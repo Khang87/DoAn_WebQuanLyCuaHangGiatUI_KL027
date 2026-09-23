@@ -872,7 +872,10 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
-    background: linear-gradient(135deg, #DBEAFE 0%, #EFF6FF 50%, #FFFFFF 100%);
+    background-image: linear-gradient(rgba(239, 246, 255, 0.68), rgba(248, 250, 252, 0.82)), url('../images/anhnen_login.jpg');
+    background-position: center;
+    background-size: cover;
+    background-attachment: fixed;
     padding: 20px;
 }
 
@@ -918,6 +921,21 @@ body {
     margin-top: 8px;
 }
 
+.notification-dropdown {
+    width: 400px;
+    max-width: calc(100vw - 32px);
+}
+
+.notification-icon {
+    display: inline-flex;
+    width: 38px;
+    height: 38px;
+    flex: 0 0 38px;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+}
+
 /* ---------------------------------------------------------------------
    Responsive
 --------------------------------------------------------------------- */
@@ -946,6 +964,10 @@ body {
 @media (max-width: 575.98px) {
     .login-card {
         padding: 32px 24px;
+    }
+
+    .notification-dropdown {
+        width: calc(100vw - 32px);
     }
     
     .content-wrapper {

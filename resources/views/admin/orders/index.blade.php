@@ -39,6 +39,7 @@
                         <th>Khách Hàng</th>
                         <th>Dịch Vụ</th>
                         <th>Số Lượng</th>
+                        <th>Ghi Chú Khách Hàng</th>
                         <th>Tổng Tiền</th>
                         <th>Trạng Thái</th>
                         <th>Ngày Tạo</th>
@@ -60,6 +61,7 @@
                         </td>
                         <td>Giặt ủi + Giặt khô</td>
                         <td><span class="fw-semibold">5kg đồ thường + 3 áo trắng</span></td>
+                        <td><small>Giặt nhẹ, lấy trước 18h tối nay.</small></td>
                         <td><strong>250,000 VNĐ</strong></td>
                         <td><span class="badge-status badge-processing">Đang xử lý</span></td>
                         <td>20/09/2024</td>
@@ -94,6 +96,7 @@
                         </td>
                         <td>Giặt ủi thường</td>
                         <td><span class="fw-semibold">3kg đồ thường + 2 áo sơ mi</span></td>
+                        <td><small>Không dùng nước xả có mùi.</small></td>
                         <td><strong>180,000 VNĐ</strong></td>
                         <td><span class="badge-status badge-pending">Chờ xử lý</span></td>
                         <td>19/09/2024</td>
@@ -128,6 +131,7 @@
                         </td>
                         <td>Giặt khô + Ủi</td>
                         <td><span class="fw-semibold">8kg đồ nặng + 5 quần dài</span></td>
+                        <td><small>Ủi phẳng, đóng gói riêng.</small></td>
                         <td><strong>320,000 VNĐ</strong></td>
                         <td><span class="badge-status badge-completed">Hoàn thành</span></td>
                         <td>18/09/2024</td>

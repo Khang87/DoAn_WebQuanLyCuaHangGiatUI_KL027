@@ -78,10 +78,6 @@
                     </select>
                 </div>
 
-                <div class="col-12">
-                    <label class="form-label">Ghi chú</label>
-                    <textarea class="form-control" name="notes" rows="4" placeholder="Ví dụ: 5kg đồ thường + áo sơ mi, giặt nhẹ, không xả tay..."></textarea>
-                </div>
             </div>
 
             <div class="d-flex justify-content-end gap-2 mt-4">

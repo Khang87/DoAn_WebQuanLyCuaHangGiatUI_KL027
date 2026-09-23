@@ -78,10 +78,6 @@
                     </select>
                 </div>
 
-                <div class="col-12">
-                    <label class="form-label">Ghi chú</label>
-                    <textarea class="form-control" name="notes" rows="4">Khách yêu cầu: 5kg đồ thường + 3 áo trắng, giặt trước 18h tối nay.</textarea>
-                </div>
             </div>
 
             <div class="d-flex justify-content-end gap-2 mt-4">

@@ -43,7 +43,7 @@
                         <div class="fw-semibold">20/09/2024</div>
                     </div>
                     <div class="col-12">
-                        <div class="small text-muted">Ghi chú</div>
+                        <div class="small text-muted">Ghi chú từ khách hàng</div>
                         <div>Khách yêu cầu giặt trước 18h tối nay.</div>
                     </div>
                 </div>

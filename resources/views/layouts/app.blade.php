@@ -172,10 +172,6 @@
                 <h1 class="page-title">@yield('page-title', 'Dashboard')</h1>
             </div>
 
-            <div class="navbar-search-wrapper">
-                <input type="text" class="navbar-search-input" placeholder="Tìm kiếm..." id="main-search">
-            </div>
-
             <div class="navbar-actions">
                 <!-- Notifications -->
                 <div class="dropdown">
@@ -183,14 +179,14 @@
                         <i class="bi bi-bell"></i>
                         <span class="navbar-action-badge"></span>
                     </button>
-                    <div class="dropdown-menu dropdown-menu-end" style="width: 320px;">
+                    <div class="dropdown-menu dropdown-menu-end notification-dropdown">
                         <div class="p-3 border-bottom">
                             <h6 class="mb-0">Thông Báo</h6>
                         </div>
                         <div class="p-2" style="max-height: 300px; overflow-y: auto;">
                             <a href="#" class="dropdown-item py-2">
                                 <div class="d-flex align-items-center">
-                                    <div class="bg-success text-white rounded-circle p-2 me-3">
+                                    <div class="notification-icon bg-success text-white me-3">
                                         <i class="bi bi-check-lg"></i>
                                     </div>
                                     <div>
@@ -201,7 +197,7 @@
                             </a>
                             <a href="#" class="dropdown-item py-2">
                                 <div class="d-flex align-items-center">
-                                    <div class="bg-primary text-white rounded-circle p-2 me-3">
+                                    <div class="notification-icon bg-primary text-white me-3">
                                         <i class="bi bi-person-plus"></i>
                                     </div>
                                     <div>

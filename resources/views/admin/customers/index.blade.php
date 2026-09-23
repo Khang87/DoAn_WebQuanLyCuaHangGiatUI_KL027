@@ -63,20 +63,20 @@
                         <td><strong>1,250</strong> điểm</td>
                         <td><span class="badge bg-warning text-dark">VIP</span></td>
                         <td>01/01/2024</td>
-                        <td>
-                            <a href="{{ route('customers.show', 1) }}" class="btn btn-sm btn-outline-primary me-1" title="Xem">
+                        <td><div class="d-flex gap-2">
+                            <a href="{{ route('customers.show', 1) }}" class="btn btn-order-action view" title="Xem">
                                 <i class="bi bi-eye"></i>
                             </a>
-                            <a href="{{ route('customers.edit', 1) }}" class="btn btn-sm btn-outline-warning me-1" title="Sửa">
+                            <a href="{{ route('customers.edit', 1) }}" class="btn btn-order-action edit" title="Sửa">
                                 <i class="bi bi-pencil"></i>
                             </a>
                             <form action="{{ route('customers.destroy', 1) }}" method="POST" class="d-inline" onsubmit="return confirm('Bạn có chắc muốn xóa?')">
                                 @csrf @method('DELETE')
-                                <button type="submit" class="btn btn-sm btn-outline-danger" title="Xóa">
+                                <button type="submit" class="btn btn-order-action delete" title="Xóa">
                                     <i class="bi bi-trash"></i>
                                 </button>
                             </form>
-                        </td>
+                        </div></td>
                     </tr>
                     <tr>
                         <td><strong>KH002</strong></td>
@@ -95,20 +95,20 @@
                         <td><strong>850</strong> điểm</td>
                         <td><span class="badge bg-primary">Thường</span></td>
                         <td>15/02/2024</td>
-                        <td>
-                            <a href="{{ route('customers.show', 2) }}" class="btn btn-sm btn-outline-primary me-1" title="Xem">
+                        <td><div class="d-flex gap-2">
+                            <a href="{{ route('customers.show', 2) }}" class="btn btn-order-action view" title="Xem">
                                 <i class="bi bi-eye"></i>
                             </a>
-                            <a href="{{ route('customers.edit', 2) }}" class="btn btn-sm btn-outline-warning me-1" title="Sửa">
+                            <a href="{{ route('customers.edit', 2) }}" class="btn btn-order-action edit" title="Sửa">
                                 <i class="bi bi-pencil"></i>
                             </a>
                             <form action="{{ route('customers.destroy', 2) }}" method="POST" class="d-inline" onsubmit="return confirm('Bạn có chắc muốn xóa?')">
                                 @csrf @method('DELETE')
-                                <button type="submit" class="btn btn-sm btn-outline-danger" title="Xóa">
+                                <button type="submit" class="btn btn-order-action delete" title="Xóa">
                                     <i class="bi bi-trash"></i>
                                 </button>
                             </form>
-                        </td>
+                        </div></td>
                     </tr>
                     <tr>
                         <td><strong>KH003</strong></td>
@@ -127,20 +127,20 @@
                         <td><strong>0</strong> điểm</td>
                         <td><span class="badge bg-success">Mới</span></td>
                         <td>20/09/2024</td>
-                        <td>
-                            <a href="{{ route('customers.show', 3) }}" class="btn btn-sm btn-outline-primary me-1" title="Xem">
+                        <td><div class="d-flex gap-2">
+                            <a href="{{ route('customers.show', 3) }}" class="btn btn-order-action view" title="Xem">
                                 <i class="bi bi-eye"></i>
                             </a>
-                            <a href="{{ route('customers.edit', 3) }}" class="btn btn-sm btn-outline-warning me-1" title="Sửa">
+                            <a href="{{ route('customers.edit', 3) }}" class="btn btn-order-action edit" title="Sửa">
                                 <i class="bi bi-pencil"></i>
                             </a>
                             <form action="{{ route('customers.destroy', 3) }}" method="POST" class="d-inline" onsubmit="return confirm('Bạn có chắc muốn xóa?')">
                                 @csrf @method('DELETE')
-                                <button type="submit" class="btn btn-sm btn-outline-danger" title="Xóa">
+                                <button type="submit" class="btn btn-order-action delete" title="Xóa">
                                     <i class="bi bi-trash"></i>
                                 </button>
                             </form>
-                        </td>
+                        </div></td>
                     </tr>
                 </tbody>
             </table>
