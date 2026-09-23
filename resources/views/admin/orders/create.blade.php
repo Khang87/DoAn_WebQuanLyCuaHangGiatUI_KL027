@@ -20,9 +20,9 @@
                     <label class="form-label">Khách hàng</label>
                     <select class="form-select" name="customer_id" required>
                         <option value="">-- Chọn khách hàng --</option>
-                        <option value="1">Nguyễn Văn A</option>
-                        <option value="2">Trần Thị B</option>
-                        <option value="3">Phạm Thị C</option>
+                        @foreach($customers as $customer)
+                            <option value="{{ $customer->id }}">{{ $customer->name }} ({{ $customer->code }})</option>
+                        @endforeach
                     </select>
                 </div>
 
@@ -30,26 +30,12 @@
                     <label class="form-label">Chọn dịch vụ</label>
                     <p class="service-choice-help">Bạn có thể mô tả cụ thể về đồ cần giặt ở bước Ghi chú.</p>
                     <div class="service-choice-list">
-                        <label class="service-choice">
-                            <input type="radio" name="service_id" value="1" required>
-                            <span>Giặt thường</span>
-                        </label>
-                        <label class="service-choice">
-                            <input type="radio" name="service_id" value="2">
-                            <span>Giặt khô</span>
-                        </label>
-                        <label class="service-choice">
-                            <input type="radio" name="service_id" value="3">
-                            <span>Ủi đồ</span>
-                        </label>
-                        <label class="service-choice">
-                            <input type="radio" name="service_id" value="4">
-                            <span>Giặt chăn mền</span>
-                        </label>
-                        <label class="service-choice">
-                            <input type="radio" name="service_id" value="5">
-                            <span>Giặt giày</span>
-                        </label>
+                        @foreach($services as $service)
+                            <label class="service-choice">
+                                <input type="radio" name="service_id" value="{{ $service->id }}" required>
+                                <span>{{ $service->name }}</span>
+                            </label>
+                        @endforeach
                     </div>
                 </div>
 
@@ -65,7 +51,7 @@
 
                 <div class="col-md-4">
                     <label class="form-label">Tổng tiền</label>
-                    <input type="text" class="form-control" name="total_amount" value="250,000" required>
+                    <input type="number" class="form-control" name="total_amount" value="250000" min="0" required>
                 </div>
 
                 <div class="col-md-4">

@@ -46,102 +46,40 @@
                     </tr>
                 </thead>
                 <tbody>
+                    @php
+                        $sampleCustomers = [
+                            (object)['code' => 'KH001', 'name' => 'Nguyễn Văn A', 'email' => 'nguyenvana@email.com', 'phone' => '0901234567', 'address' => '123 Đường ABC, Quận 1, TP.HCM', 'points' => 1250, 'type' => 'VIP', 'created_at' => now()->subDays(5)],
+                            (object)['code' => 'KH002', 'name' => 'Trần Thị B', 'email' => 'tranthib@email.com', 'phone' => '0912345678', 'address' => '456 Đường XYZ, Quận 3, TP.HCM', 'points' => 850, 'type' => 'Thường', 'created_at' => now()->subDays(8)],
+                            (object)['code' => 'KH003', 'name' => 'Phạm Thị C', 'email' => 'phamthic@email.com', 'phone' => '0923456789', 'address' => '789 Đường DEF, Quận 5, TP.HCM', 'points' => 0, 'type' => 'Mới', 'created_at' => now()->subDays(12)],
+                        ];
+                        $displayCustomers = $customers->count() > 0 ? $customers : collect($sampleCustomers);
+                    @endphp
+                    @forelse($displayCustomers as $customer)
                     <tr>
-                        <td><strong>KH001</strong></td>
+                        <td><strong>{{ $customer->code }}</strong></td>
                         <td>
                             <div class="d-flex align-items-center">
-                                <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=40&auto=format&fit=crop" 
-                                     alt="Avatar" class="rounded-circle me-2" style="width: 40px; height: 40px;">
-                                <div>
-                                    <div class="fw-semibold">Nguyễn Văn A</div>
-                                </div>
+                                <img src="{{ asset('assets/images/user.jfif') }}" alt="Ảnh khách hàng" class="rounded-circle me-2" style="width: 40px; height: 40px; object-fit: cover;" onerror="this.onerror=null; this.src='{{ asset('assets/images/user.jfif') }}';">
+                                <div class="fw-semibold">{{ $customer->name }}</div>
                             </div>
                         </td>
-                        <td>nguyenvana@email.com</td>
-                        <td>0901234567</td>
-                        <td>123 Đường ABC, Quận 1, TP.HCM</td>
-                        <td><strong>1,250</strong> điểm</td>
-                        <td><span class="badge bg-warning text-dark">VIP</span></td>
-                        <td>01/01/2024</td>
+                        <td>{{ $customer->email ?: '-' }}</td>
+                        <td>{{ $customer->phone ?: '-' }}</td>
+                        <td>{{ $customer->address ?: '-' }}</td>
+                        <td><strong>{{ number_format($customer->points) }}</strong> điểm</td>
+                        <td><span class="customer-type-badge {{ $customer->type === 'VIP' ? 'vip' : ($customer->type === 'Mới' ? 'new' : 'regular') }}">{{ $customer->type }}</span></td>
+                        <td>{{ $customer->created_at?->format('d/m/Y') }}</td>
                         <td><div class="d-flex gap-2">
-                            <a href="{{ route('customers.show', 1) }}" class="btn btn-order-action view" title="Xem">
-                                <i class="bi bi-eye"></i>
-                            </a>
-                            <a href="{{ route('customers.edit', 1) }}" class="btn btn-order-action edit" title="Sửa">
-                                <i class="bi bi-pencil"></i>
-                            </a>
-                            <form action="{{ route('customers.destroy', 1) }}" method="POST" class="d-inline" onsubmit="return confirm('Bạn có chắc muốn xóa?')">
-                                @csrf @method('DELETE')
-                                <button type="submit" class="btn btn-order-action delete" title="Xóa">
-                                    <i class="bi bi-trash"></i>
-                                </button>
-                            </form>
+                            <a href="{{ route('customers.show', $customer) }}" class="btn btn-order-action view" title="Xem"><i class="bi bi-eye"></i></a>
+                            <a href="{{ route('customers.edit', $customer) }}" class="btn btn-order-action edit" title="Sửa"><i class="bi bi-pencil"></i></a>
+                            <form action="{{ route('customers.destroy', $customer) }}" method="POST" class="d-inline" onsubmit="return confirm('Bạn có chắc muốn xóa?')">@csrf @method('DELETE')<button type="submit" class="btn btn-order-action delete" title="Xóa"><i class="bi bi-trash"></i></button></form>
                         </div></td>
                     </tr>
+                    @empty
                     <tr>
-                        <td><strong>KH002</strong></td>
-                        <td>
-                            <div class="d-flex align-items-center">
-                                <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=40&auto=format&fit=crop" 
-                                     alt="Avatar" class="rounded-circle me-2" style="width: 40px; height: 40px;">
-                                <div>
-                                    <div class="fw-semibold">Trần Thị B</div>
-                                </div>
-                            </div>
-                        </td>
-                        <td>tranthib@email.com</td>
-                        <td>0912345678</td>
-                        <td>456 Đường XYZ, Quận 3, TP.HCM</td>
-                        <td><strong>850</strong> điểm</td>
-                        <td><span class="badge bg-primary">Thường</span></td>
-                        <td>15/02/2024</td>
-                        <td><div class="d-flex gap-2">
-                            <a href="{{ route('customers.show', 2) }}" class="btn btn-order-action view" title="Xem">
-                                <i class="bi bi-eye"></i>
-                            </a>
-                            <a href="{{ route('customers.edit', 2) }}" class="btn btn-order-action edit" title="Sửa">
-                                <i class="bi bi-pencil"></i>
-                            </a>
-                            <form action="{{ route('customers.destroy', 2) }}" method="POST" class="d-inline" onsubmit="return confirm('Bạn có chắc muốn xóa?')">
-                                @csrf @method('DELETE')
-                                <button type="submit" class="btn btn-order-action delete" title="Xóa">
-                                    <i class="bi bi-trash"></i>
-                                </button>
-                            </form>
-                        </div></td>
+                        <td colspan="9" class="text-center text-muted py-4">Chưa có khách hàng nào</td>
                     </tr>
-                    <tr>
-                        <td><strong>KH003</strong></td>
-                        <td>
-                            <div class="d-flex align-items-center">
-                                <img src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=40&auto=format&fit=crop" 
-                                     alt="Avatar" class="rounded-circle me-2" style="width: 40px; height: 40px;">
-                                <div>
-                                    <div class="fw-semibold">Phạm Thị C</div>
-                                </div>
-                            </div>
-                        </td>
-                        <td>phamthic@email.com</td>
-                        <td>0923456789</td>
-                        <td>789 Đường DEF, Quận 5, TP.HCM</td>
-                        <td><strong>0</strong> điểm</td>
-                        <td><span class="badge bg-success">Mới</span></td>
-                        <td>20/09/2024</td>
-                        <td><div class="d-flex gap-2">
-                            <a href="{{ route('customers.show', 3) }}" class="btn btn-order-action view" title="Xem">
-                                <i class="bi bi-eye"></i>
-                            </a>
-                            <a href="{{ route('customers.edit', 3) }}" class="btn btn-order-action edit" title="Sửa">
-                                <i class="bi bi-pencil"></i>
-                            </a>
-                            <form action="{{ route('customers.destroy', 3) }}" method="POST" class="d-inline" onsubmit="return confirm('Bạn có chắc muốn xóa?')">
-                                @csrf @method('DELETE')
-                                <button type="submit" class="btn btn-order-action delete" title="Xóa">
-                                    <i class="bi bi-trash"></i>
-                                </button>
-                            </form>
-                        </div></td>
-                    </tr>
+                    @endforelse
                 </tbody>
             </table>
         </div>

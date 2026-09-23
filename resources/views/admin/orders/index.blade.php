@@ -47,111 +47,39 @@
                     </tr>
                 </thead>
                 <tbody>
+                    @php
+                        $sampleOrders = [
+                            (object)['code' => 'DH001', 'customer_id' => 1, 'service_id' => 1, 'weight_kg' => '5kg', 'quantity_items' => 'đồ thường + 3 áo trắng', 'total_amount' => 250000, 'status' => 'processing', 'notes' => 'Giặt nhẹ, lấy trước 18h tối nay.', 'created_at' => now(), 'customer' => (object)['name' => 'Nguyễn Văn A', 'phone' => '0901234567'], 'service' => (object)['name' => 'Giặt thường']],
+                            (object)['code' => 'DH002', 'customer_id' => 2, 'service_id' => 2, 'weight_kg' => '3kg', 'quantity_items' => 'đồ thường + 2 áo sơ mi', 'total_amount' => 180000, 'status' => 'completed', 'notes' => 'Không dùng nước xả có mùi.', 'created_at' => now()->subDay(), 'customer' => (object)['name' => 'Trần Thị B', 'phone' => '0912345678'], 'service' => (object)['name' => 'Giặt khô']],
+                            (object)['code' => 'DH003', 'customer_id' => 3, 'service_id' => 3, 'weight_kg' => '8kg', 'quantity_items' => 'đồ nặng + 5 quần dài', 'total_amount' => 320000, 'status' => 'pending', 'notes' => 'Ủi phẳng, đóng gói riêng.', 'created_at' => now()->subDays(2), 'customer' => (object)['name' => 'Phạm Thị C', 'phone' => '0923456789'], 'service' => (object)['name' => 'Ủi đồ']],
+                        ];
+                        $displayOrders = $orders->count() > 0 ? $orders : collect($sampleOrders);
+                    @endphp
+                    @forelse($displayOrders as $order)
                     <tr>
-                        <td><strong>#DH001</strong></td>
+                        <td><strong>#{{ $order->code }}</strong></td>
                         <td>
                             <div class="d-flex align-items-center">
-                                <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=32&auto=format&fit=crop" 
-                                     alt="Avatar" class="rounded-circle me-2" style="width: 32px; height: 32px;">
+                                <img src="{{ asset('assets/images/user.jfif') }}" alt="Ảnh khách hàng" class="rounded-circle me-2" style="width: 32px; height: 32px; object-fit: cover;" onerror="this.onerror=null; this.src='{{ asset('assets/images/user.jfif') }}';">
                                 <div>
-                                    <div class="fw-semibold">Nguyễn Văn A</div>
-                                    <small class="text-muted">0901234567</small>
+                                    <div class="fw-semibold">{{ $order->customer?->name ?: '-' }}</div>
+                                    <small class="text-muted">{{ $order->customer?->phone ?: 'Chưa có số điện thoại' }}</small>
                                 </div>
                             </div>
                         </td>
-                        <td>Giặt ủi + Giặt khô</td>
-                        <td><span class="fw-semibold">5kg đồ thường + 3 áo trắng</span></td>
-                        <td><small>Giặt nhẹ, lấy trước 18h tối nay.</small></td>
-                        <td><strong>250,000 VNĐ</strong></td>
-                        <td><span class="badge-status badge-processing">Đang xử lý</span></td>
-                        <td>20/09/2024</td>
-                        <td>
-                            <div class="d-flex gap-2">
-                                <a href="{{ route('orders.show', 1) }}" class="btn btn-order-action view" title="Xem">
-                                    <i class="bi bi-eye"></i>
-                                </a>
-                                <a href="{{ route('orders.edit', 1) }}" class="btn btn-order-action edit" title="Sửa">
-                                    <i class="bi bi-pencil"></i>
-                                </a>
-                                <form action="{{ route('orders.destroy', 1) }}" method="POST" class="d-inline" onsubmit="return confirm('Bạn có chắc muốn xóa?')">
-                                    @csrf @method('DELETE')
-                                    <button type="submit" class="btn btn-order-action delete" title="Xóa">
-                                        <i class="bi bi-trash"></i>
-                                    </button>
-                                </form>
-                            </div>
-                        </td>
+                        <td>{{ $order->service?->name ?: '-' }}</td>
+                        <td><span class="fw-semibold">{{ trim(($order->weight_kg ? $order->weight_kg . ' ' : '') . ($order->quantity_items ?: '-')) }}</span></td>
+                        <td><small>{{ $order->notes ?: 'Không có ghi chú' }}</small></td>
+                        <td><strong>{{ number_format($order->total_amount) }} VNĐ</strong></td>
+                        <td><span class="badge-status badge-{{ $order->status === 'completed' ? 'completed' : ($order->status === 'pending' ? 'pending' : 'processing') }}">{{ $order->status }}</span></td>
+                        <td>{{ $order->created_at?->format('d/m/Y') }}</td>
+                        <td><div class="d-flex gap-2"><a href="{{ route('orders.show', $order) }}" class="btn btn-order-action view" title="Xem"><i class="bi bi-eye"></i></a><a href="{{ route('orders.edit', $order) }}" class="btn btn-order-action edit" title="Sửa"><i class="bi bi-pencil"></i></a><form action="{{ route('orders.destroy', $order) }}" method="POST" class="d-inline" onsubmit="return confirm('Bạn có chắc muốn xóa?')">@csrf @method('DELETE')<button type="submit" class="btn btn-order-action delete" title="Xóa"><i class="bi bi-trash"></i></button></form></div></td>
                     </tr>
+                    @empty
                     <tr>
-                        <td><strong>#DH002</strong></td>
-                        <td>
-                            <div class="d-flex align-items-center">
-                                <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=32&auto=format&fit=crop" 
-                                     alt="Avatar" class="rounded-circle me-2" style="width: 32px; height: 32px;">
-                                <div>
-                                    <div class="fw-semibold">Trần Thị B</div>
-                                    <small class="text-muted">0912345678</small>
-                                </div>
-                            </div>
-                        </td>
-                        <td>Giặt ủi thường</td>
-                        <td><span class="fw-semibold">3kg đồ thường + 2 áo sơ mi</span></td>
-                        <td><small>Không dùng nước xả có mùi.</small></td>
-                        <td><strong>180,000 VNĐ</strong></td>
-                        <td><span class="badge-status badge-pending">Chờ xử lý</span></td>
-                        <td>19/09/2024</td>
-                        <td>
-                            <div class="d-flex gap-2">
-                                <a href="{{ route('orders.show', 2) }}" class="btn btn-order-action view" title="Xem">
-                                    <i class="bi bi-eye"></i>
-                                </a>
-                                <a href="{{ route('orders.edit', 2) }}" class="btn btn-order-action edit" title="Sửa">
-                                    <i class="bi bi-pencil"></i>
-                                </a>
-                                <form action="{{ route('orders.destroy', 2) }}" method="POST" class="d-inline" onsubmit="return confirm('Bạn có chắc muốn xóa?')">
-                                    @csrf @method('DELETE')
-                                    <button type="submit" class="btn btn-order-action delete" title="Xóa">
-                                        <i class="bi bi-trash"></i>
-                                    </button>
-                                </form>
-                            </div>
-                        </td>
+                        <td colspan="9" class="text-center text-muted py-4">Chưa có đơn hàng nào</td>
                     </tr>
-                    <tr>
-                        <td><strong>#DH003</strong></td>
-                        <td>
-                            <div class="d-flex align-items-center">
-                                <img src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=32&auto=format&fit=crop" 
-                                     alt="Avatar" class="rounded-circle me-2" style="width: 32px; height: 32px;">
-                                <div>
-                                    <div class="fw-semibold">Phạm Thị C</div>
-                                    <small class="text-muted">0923456789</small>
-                                </div>
-                            </div>
-                        </td>
-                        <td>Giặt khô + Ủi</td>
-                        <td><span class="fw-semibold">8kg đồ nặng + 5 quần dài</span></td>
-                        <td><small>Ủi phẳng, đóng gói riêng.</small></td>
-                        <td><strong>320,000 VNĐ</strong></td>
-                        <td><span class="badge-status badge-completed">Hoàn thành</span></td>
-                        <td>18/09/2024</td>
-                        <td>
-                            <div class="d-flex gap-2">
-                                <a href="{{ route('orders.show', 3) }}" class="btn btn-order-action view" title="Xem">
-                                    <i class="bi bi-eye"></i>
-                                </a>
-                                <a href="{{ route('orders.edit', 3) }}" class="btn btn-order-action edit" title="Sửa">
-                                    <i class="bi bi-pencil"></i>
-                                </a>
-                                <form action="{{ route('orders.destroy', 3) }}" method="POST" class="d-inline" onsubmit="return confirm('Bạn có chắc muốn xóa?')">
-                                    @csrf @method('DELETE')
-                                    <button type="submit" class="btn btn-order-action delete" title="Xóa">
-                                        <i class="bi bi-trash"></i>
-                                    </button>
-                                </form>
-                            </div>
-                        </td>
-                    </tr>
+                    @endforelse
                 </tbody>
             </table>
         </div>

@@ -30,7 +30,11 @@
                 </div>
                 <div class="col-md-6">
                     <label class="form-label">Giá cơ bản</label>
-                    <input type="text" class="form-control" name="price" placeholder="25,000 VNĐ" required>
+                    <input type="number" class="form-control" name="price" placeholder="25000" min="0" required>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Đơn vị tính</label>
+                    <input type="text" class="form-control" name="unit" value="kg" required>
                 </div>
                 <div class="col-md-6">
                     <label class="form-label">Trạng thái</label>

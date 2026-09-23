@@ -7,19 +7,19 @@
 <div class="card">
     <div class="card-body">
         <div class="d-flex justify-content-between align-items-center mb-4">
-            <h5 class="mb-0">Giặt Ủi Thường</h5>
+            <h5 class="mb-0">{{ $service->name }}</h5>
             <a href="{{ route('services.index') }}" class="btn btn-outline-secondary btn-sm">
                 <i class="bi bi-arrow-left me-1"></i>Quay lại
             </a>
         </div>
 
-        <form action="{{ route('services.update', 1) }}" method="POST">
+        <form action="{{ route('services.update', $service->id) }}" method="POST">
             @csrf
             @method('PUT')
             <div class="row g-4">
                 <div class="col-md-6">
                     <label class="form-label">Tên dịch vụ</label>
-                    <input type="text" class="form-control" name="name" value="Giặt Ủi Thường" required>
+                    <input type="text" class="form-control" name="name" value="{{ $service->name }}" required>
                 </div>
                 <div class="col-md-6">
                     <label class="form-label">Loại dịch vụ</label>
@@ -31,18 +31,22 @@
                 </div>
                 <div class="col-md-6">
                     <label class="form-label">Giá cơ bản</label>
-                    <input type="text" class="form-control" name="price" value="25,000 VNĐ" required>
+                    <input type="number" class="form-control" name="price" value="{{ $service->price }}" min="0" required>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Đơn vị tính</label>
+                    <input type="text" class="form-control" name="unit" value="{{ $service->unit }}" required>
                 </div>
                 <div class="col-md-6">
                     <label class="form-label">Trạng thái</label>
                     <select class="form-select" name="status">
-                        <option value="active" selected>Đang hoạt động</option>
-                        <option value="inactive">Tạm ngừng</option>
+                        <option value="active" @selected($service->status === 'active')>Đang hoạt động</option>
+                        <option value="inactive" @selected($service->status === 'inactive')>Tạm ngừng</option>
                     </select>
                 </div>
                 <div class="col-12">
                     <label class="form-label">Mô tả</label>
-                    <textarea class="form-control" name="description" rows="4">Dịch vụ giặt ủi cơ bản cho quần áo hàng ngày. Thời gian xử lý 2-3 ngày.</textarea>
+                    <textarea class="form-control" name="description" rows="4">{{ $service->description }}</textarea>
                 </div>
             </div>
 

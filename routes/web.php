@@ -6,7 +6,6 @@ use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\OrderController;
 use App\Http\Controllers\Admin\CustomerController;
 use App\Http\Controllers\Admin\ServiceController;
-use App\Http\Controllers\Admin\GarmentController;
 use App\Http\Controllers\Admin\PricingController;
 use App\Http\Controllers\Admin\DeliveryController;
 use App\Http\Controllers\Admin\PaymentController;
@@ -32,6 +31,8 @@ Route::get('/login', [LoginController::class, 'showLoginForm'])->name('login');
 Route::post('/login', [LoginController::class, 'login']);
 Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
 
+use App\Http\Controllers\Admin\GarmentController;
+
 // Protected Routes
 Route::middleware(['auth'])->group(function () {
     
@@ -46,12 +47,12 @@ Route::middleware(['auth'])->group(function () {
     
     // Services Management
     Route::resource('services', ServiceController::class);
-    
-    // Garment Types Management
+
+    // Garments Management
     Route::resource('garments', GarmentController::class);
     
     // Pricing Management
-    Route::resource('pricings', PricingController::class);
+    Route::resource('pricings', PricingController::class)->middleware('role:admin');
     
     // Delivery Management
     Route::resource('deliveries', DeliveryController::class);
@@ -63,10 +64,10 @@ Route::middleware(['auth'])->group(function () {
     Route::resource('invoices', InvoiceController::class);
     
     // Promotions Management
-    Route::resource('promotions', PromotionController::class);
+    Route::resource('promotions', PromotionController::class)->middleware('role:admin');
     
     // Reports
-    Route::prefix('reports')->name('reports.')->group(function () {
+    Route::prefix('reports')->name('reports.')->middleware('role:admin')->group(function () {
         Route::get('/', [ReportController::class, 'index'])->name('index');
         Route::get('/revenue', [ReportController::class, 'revenue'])->name('revenue');
         Route::get('/orders', [ReportController::class, 'orders'])->name('orders');
@@ -74,10 +75,10 @@ Route::middleware(['auth'])->group(function () {
     });
     
     // Accounts Management
-    Route::resource('accounts', AccountController::class);
+    Route::resource('accounts', AccountController::class)->middleware('role:admin');
     
     // Notifications Management
-    Route::resource('notifications', NotificationController::class);
+    Route::resource('notifications', NotificationController::class)->middleware('role:admin');
 });
 
 // Default route redirect to login or dashboard

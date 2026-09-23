@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Customer;
 use Illuminate\Http\Request;
 
 class CustomerController extends Controller
@@ -12,7 +13,7 @@ class CustomerController extends Controller
      */
     public function index()
     {
-        return view('admin.customers.index');
+        return view('admin.customers.index', ['customers' => Customer::latest()->get()]);
     }
 
     /**
@@ -28,6 +29,16 @@ class CustomerController extends Controller
      */
     public function store(Request $request)
     {
+        $data = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'email' => ['nullable', 'email', 'max:255'],
+            'phone' => ['nullable', 'string', 'max:30'],
+            'address' => ['nullable', 'string'],
+            'type' => ['nullable', 'string', 'max:50'],
+        ]);
+        $data['code'] = 'KH' . str_pad((string) ((Customer::max('id') ?? 0) + 1), 3, '0', STR_PAD_LEFT);
+        Customer::create($data);
+
         return redirect()->route('customers.index')->with('success', 'Khách hàng đã được tạo thành công.');
     }
 
@@ -36,7 +47,7 @@ class CustomerController extends Controller
      */
     public function show($id)
     {
-        return view('admin.customers.show', compact('id'));
+        return view('admin.customers.show', ['customer' => Customer::with(['orders.service'])->findOrFail($id)]);
     }
 
     /**
@@ -44,7 +55,7 @@ class CustomerController extends Controller
      */
     public function edit($id)
     {
-        return view('admin.customers.edit', compact('id'));
+        return view('admin.customers.edit', ['customer' => Customer::findOrFail($id)]);
     }
 
     /**
@@ -52,6 +63,15 @@ class CustomerController extends Controller
      */
     public function update(Request $request, $id)
     {
+        $customer = Customer::findOrFail($id);
+        $customer->update($request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'email' => ['nullable', 'email', 'max:255'],
+            'phone' => ['nullable', 'string', 'max:30'],
+            'address' => ['nullable', 'string'],
+            'type' => ['nullable', 'string', 'max:50'],
+        ]));
+
         return redirect()->route('customers.index')->with('success', 'Khách hàng đã được cập nhật.');
     }
 
@@ -60,6 +80,8 @@ class CustomerController extends Controller
      */
     public function destroy($id)
     {
+        Customer::findOrFail($id)->delete();
+
         return redirect()->route('customers.index')->with('success', 'Khách hàng đã được xóa.');
     }
 }

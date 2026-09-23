@@ -19,30 +19,65 @@
     </div>
 </div>
 
+@php
+    function getServiceIconConfig($service) {
+        $name = mb_strtolower($service->name ?? '');
+        $type = mb_strtolower($service->type ?? '');
+
+        if (str_contains($name, 'khô') || str_contains($type, 'khô') || str_contains($name, 'hấp') || str_contains($type, 'dry')) {
+            return ['icon' => 'fa-solid fa-shirt', 'bg' => 'bg-info'];
+        }
+        if (str_contains($name, 'ủi') || str_contains($type, 'ủi') || str_contains($type, 'iron')) {
+            return ['icon' => 'fa-solid fa-jug-detergent', 'bg' => 'bg-warning text-dark'];
+        }
+        if (str_contains($name, 'chăn') || str_contains($name, 'mền') || str_contains($name, 'ga') || str_contains($name, 'thảm') || str_contains($type, 'chăn')) {
+            return ['icon' => 'fa-solid fa-bed', 'bg' => 'bg-danger'];
+        }
+        if (str_contains($name, 'giày') || str_contains($type, 'giày') || str_contains($name, 'dép')) {
+            return ['icon' => 'fa-solid fa-shoe-prints', 'bg' => 'bg-dark'];
+        }
+        if (str_contains($name, 'nhanh') || str_contains($name, 'tốc')) {
+            return ['icon' => 'fa-solid fa-bolt', 'bg' => 'bg-secondary'];
+        }
+
+        return ['icon' => 'fa-solid fa-droplet', 'bg' => 'bg-primary'];
+    }
+
+    $sampleServices = [
+        (object)['id' => 1, 'name' => 'Giặt thường', 'type' => 'Đồ thường', 'price' => 25000, 'unit' => 'kg', 'status' => 'active', 'description' => 'Dịch vụ giặt ủi cơ bản cho quần áo hàng ngày. Thời gian xử lý 2-3 ngày.'],
+        (object)['id' => 2, 'name' => 'Giặt Khô', 'type' => 'Quần áo cao cấp', 'price' => 45000, 'unit' => 'kg', 'status' => 'active', 'description' => 'Dịch vụ giặt khô chuyên dụng cho quần áo cao cấp, vải đặc biệt. Thời gian xử lý 3-4 ngày.'],
+        (object)['id' => 3, 'name' => 'Ủi đồ', 'type' => 'Ủi hơi nước', 'price' => 15000, 'unit' => 'món', 'status' => 'active', 'description' => 'Dịch vụ ủi chuyên nghiệp với hơi nước nóng, giúp quần áo phẳng và thơm lâu.'],
+        (object)['id' => 4, 'name' => 'Giặt chăn mền', 'type' => 'Chăn ga gối', 'price' => 80000, 'unit' => 'món', 'status' => 'active', 'description' => 'Dịch vụ giặt thảm, chăn ga, gối đệm chuyên nghiệp. Thời gian xử lý 5-7 ngày.'],
+        (object)['id' => 5, 'name' => 'Giặt giày', 'type' => 'Giày dép', 'price' => 50000, 'unit' => 'đôi', 'status' => 'active', 'description' => 'Dịch vụ giặt nhanh trong ngày. Phù hợp khi cần gấp. Hoàn thành trong 6-8 giờ.'],
+    ];
+    $displayServices = $services->count() > 0 ? $services : collect($sampleServices);
+@endphp
+
 <!-- Services Cards -->
 <div class="row g-4">
-    <!-- Service Card 1 -->
+    @forelse($displayServices as $service)
+    @php $iconConfig = getServiceIconConfig($service); @endphp
     <div class="col-12 col-md-6 col-xl-4">
         <div class="card h-100">
             <div class="card-body">
                 <div class="d-flex align-items-center mb-3">
-                    <div class="bg-primary text-white rounded p-3 me-3">
-                        <i class="bi bi-droplet fs-4"></i>
+                    <div class="{{ $iconConfig['bg'] }} text-white rounded p-3 me-3 d-flex align-items-center justify-content-center" style="width: 52px; height: 52px;">
+                        <i class="{{ $iconConfig['icon'] }} fs-4"></i>
                     </div>
                     <div>
-                        <h5 class="card-title mb-1">Giặt thường</h5>
-                        <span class="badge bg-success">Đang hoạt động</span>
+                        <h5 class="card-title mb-1">{{ $service->name }}</h5>
+                        <span class="badge {{ $service->status === 'active' ? 'bg-success' : 'bg-secondary' }}">{{ $service->status === 'active' ? 'Đang hoạt động' : 'Tạm ngưng' }}</span>
                     </div>
                 </div>
-                <p class="text-muted mb-3">Dịch vụ giặt ủi cơ bản cho quần áo hàng ngày. Thời gian xử lý 2-3 ngày.</p>
+                <p class="text-muted mb-3">{{ $service->description ?: 'Chưa có mô tả chi tiết.' }}</p>
                 <div class="mb-3">
-                    <strong>Giá cơ bản:</strong> <span class="text-primary">25,000 VNĐ/kg</span>
+                    <strong>Giá cơ bản:</strong> <span class="text-primary">{{ number_format($service->price) }} VNĐ/{{ $service->unit ?: 'kg' }}</span>
                 </div>
                 <div class="d-flex gap-2">
-                    <a href="{{ route('services.edit', 1) }}" class="btn btn-sm btn-outline-warning flex-grow-1">
+                    <a href="{{ route('services.edit', $service) }}" class="btn btn-sm btn-outline-warning flex-grow-1">
                         <i class="bi bi-pencil me-1"></i>Sửa
                     </a>
-                    <form action="{{ route('services.destroy', 1) }}" method="POST" class="flex-grow-1" onsubmit="return confirm('Bạn có chắc muốn xóa?')">
+                    <form action="{{ route('services.destroy', $service) }}" method="POST" class="flex-grow-1" onsubmit="return confirm('Bạn có chắc muốn xóa?')">
                         @csrf @method('DELETE')
                         <button type="submit" class="btn btn-sm btn-outline-danger w-100">
                             <i class="bi bi-trash me-1"></i>Xóa
@@ -52,133 +87,10 @@
             </div>
         </div>
     </div>
-
-    <!-- Service Card 2 -->
-    <div class="col-12 col-md-6 col-xl-4">
-        <div class="card h-100">
-            <div class="card-body">
-                <div class="d-flex align-items-center mb-3">
-                    <div class="bg-info text-white rounded p-3 me-3">
-                        <i class="bi bi-snow fs-4"></i>
-                    </div>
-                    <div>
-                        <h5 class="card-title mb-1">Giặt Khô</h5>
-                        <span class="badge bg-success">Đang hoạt động</span>
-                    </div>
-                </div>
-                <p class="text-muted mb-3">Dịch vụ giặt khô chuyên dụng cho quần áo cao cấp, vải đặc biệt. Thời gian xử lý 3-4 ngày.</p>
-                <div class="mb-3">
-                    <strong>Giá cơ bản:</strong> <span class="text-primary">45,000 VNĐ/kg</span>
-                </div>
-                <div class="d-flex gap-2">
-                    <a href="{{ route('services.edit', 2) }}" class="btn btn-sm btn-outline-warning flex-grow-1">
-                        <i class="bi bi-pencil me-1"></i>Sửa
-                    </a>
-                    <form action="{{ route('services.destroy', 2) }}" method="POST" class="flex-grow-1" onsubmit="return confirm('Bạn có chắc muốn xóa?')">
-                        @csrf @method('DELETE')
-                        <button type="submit" class="btn btn-sm btn-outline-danger w-100">
-                            <i class="bi bi-trash me-1"></i>Xóa
-                        </button>
-                    </form>
-                </div>
-            </div>
-        </div>
+    @empty
+    <div class="col-12">
+        <div class="alert alert-info text-center">Chưa có dịch vụ nào trong hệ thống.</div>
     </div>
-
-    <!-- Service Card 3 -->
-    <div class="col-12 col-md-6 col-xl-4">
-        <div class="card h-100">
-            <div class="card-body">
-                <div class="d-flex align-items-center mb-3">
-                    <div class="bg-warning text-white rounded p-3 me-3">
-                        <i class="bi bi-wind fs-4"></i>
-                    </div>
-                    <div>
-                        <h5 class="card-title mb-1">Ủi đồ</h5>
-                        <span class="badge bg-success">Đang hoạt động</span>
-                    </div>
-                </div>
-                <p class="text-muted mb-3">Dịch vụ ủi chuyên nghiệp với hơi nước nóng, giúp quần áo phẳng và thơm lâu.</p>
-                <div class="mb-3">
-                    <strong>Giá cơ bản:</strong> <span class="text-primary">15,000 VNĐ/món</span>
-                </div>
-                <div class="d-flex gap-2">
-                    <a href="{{ route('services.edit', 3) }}" class="btn btn-sm btn-outline-warning flex-grow-1">
-                        <i class="bi bi-pencil me-1"></i>Sửa
-                    </a>
-                    <form action="{{ route('services.destroy', 3) }}" method="POST" class="flex-grow-1" onsubmit="return confirm('Bạn có chắc muốn xóa?')">
-                        @csrf @method('DELETE')
-                        <button type="submit" class="btn btn-sm btn-outline-danger w-100">
-                            <i class="bi bi-trash me-1"></i>Xóa
-                        </button>
-                    </form>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Service Card 4 -->
-    <div class="col-12 col-md-6 col-xl-4">
-        <div class="card h-100">
-            <div class="card-body">
-                <div class="d-flex align-items-center mb-3">
-                    <div class="bg-danger text-white rounded p-3 me-3">
-                        <i class="bi bi-tornado fs-4"></i>
-                    </div>
-                    <div>
-                        <h5 class="card-title mb-1">Giặt chăn mền</h5>
-                        <span class="badge bg-success">Đang hoạt động</span>
-                    </div>
-                </div>
-                <p class="text-muted mb-3">Dịch vụ giặt thảm, chăn ga, gối đệm chuyên nghiệp. Thời gian xử lý 5-7 ngày.</p>
-                <div class="mb-3">
-                    <strong>Giá cơ bản:</strong> <span class="text-primary">80,000 VNĐ/món</span>
-                </div>
-                <div class="d-flex gap-2">
-                    <a href="{{ route('services.edit', 4) }}" class="btn btn-sm btn-outline-warning flex-grow-1">
-                        <i class="bi bi-pencil me-1"></i>Sửa
-                    </a>
-                    <form action="{{ route('services.destroy', 4) }}" method="POST" class="flex-grow-1" onsubmit="return confirm('Bạn có chắc muốn xóa?')">
-                        @csrf @method('DELETE')
-                        <button type="submit" class="btn btn-sm btn-outline-danger w-100">
-                            <i class="bi bi-trash me-1"></i>Xóa
-                        </button>
-                    </form>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Service Card 5 -->
-    <div class="col-12 col-md-6 col-xl-4">
-        <div class="card h-100">
-            <div class="card-body">
-                <div class="d-flex align-items-center mb-3">
-                    <div class="bg-secondary text-white rounded p-3 me-3">
-                        <i class="bi bi-lightning fs-4"></i>
-                    </div>
-                    <div>
-                        <h5 class="card-title mb-1">Giặt giày</h5>
-                        <span class="badge bg-success">Đang hoạt động</span>
-                    </div>
-                </div>
-                <p class="text-muted mb-3">Dịch vụ giặt nhanh trong ngày. Phù hợp khi cần gấp. Hoàn thành trong 6-8 giờ.</p>
-                <div class="mb-3">
-                    <strong>Giá cơ bản:</strong> <span class="text-primary">50,000 VNĐ/kg</span>
-                </div>
-                <div class="d-flex gap-2">
-                    <a href="{{ route('services.edit', 5) }}" class="btn btn-sm btn-outline-warning flex-grow-1">
-                        <i class="bi bi-pencil me-1"></i>Sửa
-                    </a>
-                    <form action="{{ route('services.destroy', 5) }}" method="POST" class="flex-grow-1" onsubmit="return confirm('Bạn có chắc muốn xóa?')">
-                        @csrf @method('DELETE')
-                        <button type="submit" class="btn btn-sm btn-outline-danger w-100">
-                            <i class="bi bi-trash me-1"></i>Xóa
-                        </button>
-                    </form>
-                </div>
-            </div>
-        </div>
-    </div>
+    @endforelse
 </div>
 @endsection

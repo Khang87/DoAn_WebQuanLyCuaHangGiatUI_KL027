@@ -532,6 +532,30 @@ body {
     font-weight: 600;
 }
 
+.customer-type-badge {
+    display: inline-block;
+    border-radius: 6px;
+    padding: 4px 9px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    line-height: 1;
+}
+
+.customer-type-badge.vip {
+    background: #facc15;
+    color: #713f12;
+}
+
+.customer-type-badge.regular {
+    background: #1677d2;
+    color: #fff;
+}
+
+.customer-type-badge.new {
+    background: #168b5b;
+    color: #fff;
+}
+
 .service-choice-list {
     display: grid;
     gap: 10px;

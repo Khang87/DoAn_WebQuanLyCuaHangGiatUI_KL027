@@ -19,6 +19,9 @@
     <!-- Bootstrap Icons -->
     <link rel="stylesheet" href="{{ asset('assets/libs/bootstrap-icons/bootstrap-icons.css') }}">
 
+    <!-- FontAwesome 6 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
     <!-- Custom CSS -->
     <link rel="stylesheet" href="{{ asset('assets/css/laundry.css') }}">
 
@@ -73,7 +76,7 @@
                     </li>
                     <li class="sidebar-menu-item">
                         <a href="{{ route('garments.index') }}" class="sidebar-menu-link {{ request()->routeIs('garments.*') ? 'active' : '' }}">
-                            <i class="bi bi-tag"></i>
+                            <i class="fa-solid fa-shirt"></i>
                             <span>Loại Đồ Giặt</span>
                         </a>
                     </li>
@@ -111,6 +114,7 @@
                 </ul>
             </div>
 
+            @if(auth()->user()?->role === 'admin')
             <!-- Khuyến Mãi & Báo Cáo -->
             <div class="sidebar-menu-section">
                 <div class="sidebar-menu-title">Khuyến Mãi & Báo Cáo</div>
@@ -129,7 +133,9 @@
                     </li>
                 </ul>
             </div>
+            @endif
 
+            @if(auth()->user()?->role === 'admin')
             <!-- Hệ Thống -->
             <div class="sidebar-menu-section">
                 <div class="sidebar-menu-title">Hệ Thống</div>
@@ -148,6 +154,7 @@
                     </li>
                 </ul>
             </div>
+            @endif
         </div>
 
         <!-- Sidebar Profile -->

@@ -22,18 +22,18 @@
                 </div>
                 <div class="col-md-6">
                     <label class="form-label">Email</label>
-                    <input type="email" class="form-control" name="email" placeholder="Nhập email" required>
+                    <input type="email" class="form-control" name="email" placeholder="Nhập email">
                 </div>
                 <div class="col-md-6">
                     <label class="form-label">Số điện thoại</label>
-                    <input type="text" class="form-control" name="phone" placeholder="Nhập số điện thoại" required>
+                    <input type="text" class="form-control" name="phone" placeholder="Nhập số điện thoại">
                 </div>
                 <div class="col-md-6">
                     <label class="form-label">Loại khách hàng</label>
                     <select class="form-select" name="type">
-                        <option value="new">Mới</option>
-                        <option value="regular">Thường</option>
-                        <option value="vip">VIP</option>
+                        <option value="Mới">Mới</option>
+                        <option value="Thường">Thường</option>
+                        <option value="VIP">VIP</option>
                     </select>
                 </div>
                 <div class="col-12">

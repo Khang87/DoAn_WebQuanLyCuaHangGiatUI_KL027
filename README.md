@@ -105,6 +105,10 @@ Laravel_Web_QuanLyCuaHangGiatUi/
 - Email: `staff@giatui.com`
 - Mật khẩu: `staff123`
 
+### 3. VIP
+- Email: `vip@giatui.com`
+- Mật khẩu: `vip123`
+
 > Các tài khoản này đã được thêm vào seeder để có thể đăng nhập vào hệ thống demo.
 
 ---

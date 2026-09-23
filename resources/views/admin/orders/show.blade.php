@@ -9,42 +9,42 @@
         <div class="card">
             <div class="card-body">
                 <div class="d-flex justify-content-between align-items-center mb-4">
-                    <h5 class="mb-0">Đơn hàng #DH001</h5>
-                    <span class="badge-status badge-processing">Đang xử lý</span>
+                    <h5 class="mb-0">Đơn hàng #{{ $order->code }}</h5>
+                    <span class="badge-status badge-processing">{{ $order->status }}</span>
                 </div>
 
                 <div class="row g-3">
                     <div class="col-md-6">
                         <div class="small text-muted">Khách hàng</div>
-                        <div class="fw-semibold">Nguyễn Văn A</div>
+                        <div class="fw-semibold">{{ $order->customer?->name ?: '-' }}</div>
                     </div>
                     <div class="col-md-6">
                         <div class="small text-muted">Số điện thoại</div>
-                        <div class="fw-semibold">0901234567</div>
+                        <div class="fw-semibold">{{ $order->customer?->phone ?: '-' }}</div>
                     </div>
                     <div class="col-md-6">
                         <div class="small text-muted">Dịch vụ</div>
-                        <div class="fw-semibold">Giặt ủi thường</div>
+                        <div class="fw-semibold">{{ $order->service?->name ?: '-' }}</div>
                     </div>
                     <div class="col-md-6">
                         <div class="small text-muted">Khối lượng</div>
-                        <div class="fw-semibold">5kg</div>
+                        <div class="fw-semibold">{{ $order->weight_kg ?: '-' }}</div>
                     </div>
                     <div class="col-md-6">
                         <div class="small text-muted">Mô tả số lượng</div>
-                        <div class="fw-semibold">đồ thường + 3 áo trắng</div>
+                        <div class="fw-semibold">{{ $order->quantity_items ?: '-' }}</div>
                     </div>
                     <div class="col-md-6">
                         <div class="small text-muted">Tổng tiền</div>
-                        <div class="fw-semibold text-primary">250,000 VNĐ</div>
+                        <div class="fw-semibold text-primary">{{ number_format($order->total_amount) }} VNĐ</div>
                     </div>
                     <div class="col-md-6">
                         <div class="small text-muted">Ngày tạo</div>
-                        <div class="fw-semibold">20/09/2024</div>
+                        <div class="fw-semibold">{{ $order->created_at?->format('d/m/Y') }}</div>
                     </div>
                     <div class="col-12">
                         <div class="small text-muted">Ghi chú từ khách hàng</div>
-                        <div>Khách yêu cầu giặt trước 18h tối nay.</div>
+                        <div>{{ $order->notes ?: 'Không có ghi chú.' }}</div>
                     </div>
                 </div>
             </div>
@@ -56,8 +56,8 @@
             <div class="card-body">
                 <h6 class="mb-3">Thao tác</h6>
                 <div class="d-grid gap-2">
-                    <a href="{{ route('orders.edit', 1) }}" class="btn btn-order-secondary order-form-btn">Chỉnh sửa</a>
-                    <form action="{{ route('orders.destroy', 1) }}" method="POST" onsubmit="return confirm('Bạn có chắc muốn xóa đơn hàng?')">
+                    <a href="{{ route('orders.edit', $order) }}" class="btn btn-order-secondary order-form-btn">Chỉnh sửa</a>
+                    <form action="{{ route('orders.destroy', $order) }}" method="POST" onsubmit="return confirm('Bạn có chắc muốn xóa đơn hàng?')">
                         @csrf
                         @method('DELETE')
                         <button type="submit" class="btn btn-danger w-100 order-form-btn">Xóa đơn hàng</button>
