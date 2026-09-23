@@ -11,12 +11,27 @@
             <i class="bi bi-plus-lg me-2"></i>Thêm Dịch Vụ
         </a>
     </div>
-    <div class="input-group" style="width: 300px;">
-        <input type="text" class="form-control" placeholder="Tìm kiếm dịch vụ...">
-        <button class="btn btn-outline-secondary" type="button">
-            <i class="bi bi-search"></i>
-        </button>
-    </div>
+    <form action="{{ route('services.index') }}" method="GET" class="d-flex gap-2">
+        <div class="input-group" style="width: 300px;">
+            <input type="text" name="search" class="form-control" placeholder="Tìm kiếm dịch vụ..." value="{{ request('search') }}">
+            <button class="btn btn-outline-secondary" type="submit">
+                <i class="bi bi-search"></i>
+            </button>
+        </div>
+        <select name="category_id" class="form-select" style="width: auto;" onchange="this.form.submit()">
+            <option value="">Tất cả danh mục</option>
+            @foreach($categories as $category)
+                <option value="{{ $category->id }}" @selected(request('category_id') == $category->id)>
+                    {{ $category->name }}
+                </option>
+            @endforeach
+        </select>
+        <select name="status" class="form-select" style="width: auto;" onchange="this.form.submit()">
+            <option value="">Tất cả trạng thái</option>
+            <option value="active" @selected(request('status') === 'active')>Đang hoạt động</option>
+            <option value="inactive" @selected(request('status') === 'inactive')>Tạm ngưng</option>
+        </select>
+    </form>
 </div>
 
 @php
@@ -42,20 +57,11 @@
 
         return ['icon' => 'fa-solid fa-droplet', 'bg' => 'bg-primary'];
     }
-
-    $sampleServices = [
-        (object)['id' => 1, 'name' => 'Giặt thường', 'type' => 'Đồ thường', 'price' => 25000, 'unit' => 'kg', 'status' => 'active', 'description' => 'Dịch vụ giặt ủi cơ bản cho quần áo hàng ngày. Thời gian xử lý 2-3 ngày.'],
-        (object)['id' => 2, 'name' => 'Giặt Khô', 'type' => 'Quần áo cao cấp', 'price' => 45000, 'unit' => 'kg', 'status' => 'active', 'description' => 'Dịch vụ giặt khô chuyên dụng cho quần áo cao cấp, vải đặc biệt. Thời gian xử lý 3-4 ngày.'],
-        (object)['id' => 3, 'name' => 'Ủi đồ', 'type' => 'Ủi hơi nước', 'price' => 15000, 'unit' => 'món', 'status' => 'active', 'description' => 'Dịch vụ ủi chuyên nghiệp với hơi nước nóng, giúp quần áo phẳng và thơm lâu.'],
-        (object)['id' => 4, 'name' => 'Giặt chăn mền', 'type' => 'Chăn ga gối', 'price' => 80000, 'unit' => 'món', 'status' => 'active', 'description' => 'Dịch vụ giặt thảm, chăn ga, gối đệm chuyên nghiệp. Thời gian xử lý 5-7 ngày.'],
-        (object)['id' => 5, 'name' => 'Giặt giày', 'type' => 'Giày dép', 'price' => 50000, 'unit' => 'đôi', 'status' => 'active', 'description' => 'Dịch vụ giặt nhanh trong ngày. Phù hợp khi cần gấp. Hoàn thành trong 6-8 giờ.'],
-    ];
-    $displayServices = $services->count() > 0 ? $services : collect($sampleServices);
 @endphp
 
 <!-- Services Cards -->
 <div class="row g-4">
-    @forelse($displayServices as $service)
+    @forelse($services as $service)
     @php $iconConfig = getServiceIconConfig($service); @endphp
     <div class="col-12 col-md-6 col-xl-4">
         <div class="card h-100">
@@ -65,8 +71,12 @@
                         <i class="{{ $iconConfig['icon'] }} fs-4"></i>
                     </div>
                     <div>
-                        <h5 class="card-title mb-1">{{ $service->name }}</h5>
-                        <span class="badge {{ $service->status === 'active' ? 'bg-success' : 'bg-secondary' }}">{{ $service->status === 'active' ? 'Đang hoạt động' : 'Tạm ngưng' }}</span>
+                         <h5 class="card-title mb-1">{{ $service->name }}</h5>
+                        @if($service->status === 'active')
+                            <span class="badge bg-success-subtle text-success border border-success px-3 py-2 rounded-pill"><i class="fas fa-check-circle me-1"></i>Hoạt động</span>
+                        @else
+                            <span class="badge bg-danger-subtle text-danger border border-danger px-3 py-2 rounded-pill"><i class="fas fa-ban me-1"></i>Khóa</span>
+                        @endif
                     </div>
                 </div>
                 <p class="text-muted mb-3">{{ $service->description ?: 'Chưa có mô tả chi tiết.' }}</p>
@@ -93,4 +103,31 @@
     </div>
     @endforelse
 </div>
+
+@if($services->hasPages())
+<nav class="mt-4">
+    <div class="d-flex justify-content-between align-items-center">
+        <div class="text-muted small">Hiển thị {{ $services->firstItem() }} - {{ $services->lastItem() }} của {{ $services->total() }} dịch vụ</div>
+        <ul class="pagination mb-0">
+            @if ($services->onFirstPage())
+                <li class="page-item disabled"><span class="page-link"><i class="bi bi-chevron-left"></i></span></li>
+            @else
+                <li class="page-item"><a class="page-link" href="{{ $services->appends(request()->query())->url($services->currentPage() - 1) }}"><i class="bi bi-chevron-left"></i></a></li>
+            @endif
+            @foreach ($services->getUrlRange(max(1, $services->currentPage() - 2), min($services->lastPage(), $services->currentPage() + 2)) as $page => $url)
+                @if ($page == $services->currentPage())
+                    <li class="page-item active"><span class="page-link">{{ $page }}</span></li>
+                @else
+                    <li class="page-item"><a class="page-link" href="{{ $services->appends(request()->query())->url($page) }}">{{ $page }}</a></li>
+                @endif
+            @endforeach
+            @if ($services->onLastPage())
+                <li class="page-item disabled"><span class="page-link"><i class="bi bi-chevron-right"></i></span></li>
+            @else
+                <li class="page-item"><a class="page-link" href="{{ $services->appends(request()->query())->url($services->currentPage() + 1) }}"><i class="bi bi-chevron-right"></i></span></a></li>
+            @endif
+        </ul>
+    </div>
+</nav>
+@endif
 @endsection

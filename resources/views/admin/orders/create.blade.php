@@ -17,6 +17,11 @@
             @csrf
             <div class="row g-4">
                 <div class="col-md-6">
+                    <label class="form-label">Mã đơn hàng</label>
+                    <input type="text" class="form-control" name="code" placeholder="VD: DH001" required>
+                </div>
+
+                <div class="col-md-6">
                     <label class="form-label">Khách hàng</label>
                     <select class="form-select" name="customer_id" required>
                         <option value="">-- Chọn khách hàng --</option>

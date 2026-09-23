@@ -13,7 +13,7 @@
     </div>
     <form action="{{ route('accounts.index') }}" method="GET" class="d-flex gap-2">
         <div class="input-group" style="width: 260px;">
-            <input type="text" name="search" class="form-control" placeholder="Tìm tên, email..." value="{{ request('search') }}">
+            <input type="text" name="search" class="form-control" placeholder="Tìm tên, email, SĐT..." value="{{ request('search') }}">
             <button class="btn btn-outline-secondary" type="submit">
                 <i class="bi bi-search"></i>
             </button>
@@ -24,6 +24,12 @@
             <option value="staff" @selected(request('role') === 'staff')>Nhân viên</option>
             <option value="customer" @selected(request('role') === 'customer')>Khách hàng</option>
         </select>
+        <select name="status" class="form-select" style="width: auto;" onchange="this.form.submit()">
+            <option value="">Tất cả trạng thái</option>
+            <option value="active" @selected(request('status') === 'active')>Đang hoạt động</option>
+            <option value="inactive" @selected(request('status') === 'inactive')>Đã khóa</option>
+        </select>
+        <a href="{{ route('accounts.index') }}" class="btn btn-outline-secondary">Xóa</a>
     </form>
 </div>
 
@@ -35,7 +41,7 @@
                 <thead>
                     <tr>
                         <th>Người Dùng</th>
-                        <th>Email</th>
+                        <th>Email / SĐT</th>
                         <th>Vai Trò Phân Quyền</th>
                         <th>Trạng Thái</th>
                         <th>Ngày Tạo</th>
@@ -51,28 +57,43 @@
                                 <strong class="fw-semibold">{{ $account->name }}</strong>
                             </div>
                         </td>
-                        <td>{{ $account->email }}</td>
                         <td>
-                            @if($account->role === 'admin')
-                                <span class="badge bg-danger"><i class="bi bi-shield-lock-fill me-1"></i>Quản trị viên</span>
-                            @elseif($account->role === 'staff')
-                                <span class="badge bg-info text-dark"><i class="bi bi-person-badge-fill me-1"></i>Nhân viên</span>
-                            @else
-                                <span class="badge bg-success"><i class="bi bi-person-fill me-1"></i>Khách hàng</span>
+                            {{ $account->email }}
+                            @if($account->phone)
+                                <br><small class="text-muted">{{ $account->phone }}</small>
                             @endif
                         </td>
-                        <td><span class="badge-status badge-completed">Đang hoạt động</span></td>
+                        <td>
+                            @if($account->role === 'admin')
+                                <span class="badge bg-danger-subtle text-danger border border-danger px-3 py-2 rounded-pill"><i class="fas fa-shield-alt me-1"></i>Quản trị viên</span>
+                            @elseif($account->role === 'staff')
+                                <span class="badge bg-info-subtle text-info border border-info px-3 py-2 rounded-pill"><i class="fas fa-user-tie me-1"></i>Nhân viên</span>
+                            @else
+                                <span class="badge bg-success-subtle text-success border border-success px-3 py-2 rounded-pill"><i class="fas fa-user me-1"></i>Khách hàng</span>
+                            @endif
+                        </td>
+                        <td>
+                            @if($account->deleted_at)
+                                <span class="badge bg-danger-subtle text-danger border border-danger px-3 py-2 rounded-pill"><i class="fas fa-ban me-1"></i>Khóa</span>
+                            @else
+                                <span class="badge bg-success-subtle text-success border border-success px-3 py-2 rounded-pill"><i class="fas fa-check-circle me-1"></i>Hoạt động</span>
+                            @endif
+                        </td>
                         <td>{{ $account->created_at?->format('d/m/Y') }}</td>
                         <td>
                             <div class="d-flex gap-2">
                                 <a href="{{ route('accounts.show', $account->id) }}" class="btn btn-order-action view" title="Xem"><i class="bi bi-eye"></i></a>
+                                @can('update', $account)
                                 <a href="{{ route('accounts.edit', $account->id) }}" class="btn btn-order-action edit" title="Sửa"><i class="bi bi-pencil"></i></a>
-                                @if((int) $account->id !== (int) auth()->id())
-                                <form action="{{ route('accounts.destroy', $account->id) }}" method="POST" class="d-inline" onsubmit="return confirm('Bạn có chắc muốn xóa tài khoản này?')">
-                                    @csrf @method('DELETE')
-                                    <button type="submit" class="btn btn-order-action delete" title="Xóa"><i class="bi bi-trash"></i></button>
+                                @endcan
+                                @can('update', $account)
+                                <form action="{{ route('accounts.toggle-status', $account->id) }}" method="POST" class="d-inline" onsubmit="return confirm('Bạn có chắc muốn {{ $account->deleted_at ? 'kích hoạt' : 'khóa' }} tài khoản này?')">
+                                    @csrf
+                                    <button type="submit" class="btn btn-order-action {{ $account->deleted_at ? 'view' : 'delete' }}" title="{{ $account->deleted_at ? 'Kích hoạt' : 'Khóa' }}">
+                                        <i class="bi bi-{{ $account->deleted_at ? 'unlock' : 'lock' }}"></i>
+                                    </button>
                                 </form>
-                                @endif
+                                @endcan
                             </div>
                         </td>
                     </tr>
@@ -86,4 +107,10 @@
         </div>
     </div>
 </div>
+
+@if($accounts->hasPages())
+<div class="mt-3">
+    {{ $accounts->appends(request()->query())->links('pagination::bootstrap-5') }}
+</div>
+@endif
 @endsection

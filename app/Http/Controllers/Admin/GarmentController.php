@@ -3,103 +3,105 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\GarmentRequest;
 use App\Models\Garment;
+use App\Services\GarmentService;
 use Illuminate\Http\Request;
 
 class GarmentController extends Controller
 {
-    /**
-     * Hiển thị danh sách loại đồ giặt
-     */
+    public function __construct(
+        private GarmentService $garmentService,
+    ) {}
+
     public function index(Request $request)
     {
-        $query = Garment::query();
+        $garments = $this->garmentService->getAll([
+            'search' => $request->input('search'),
+            'category' => $request->input('category'),
+            'status' => $request->input('status'),
+        ]);
 
-        if ($request->filled('search')) {
-            $search = $request->input('search');
-            $query->where('name', 'like', "%{$search}%")
-                  ->orWhere('category', 'like', "%{$search}%")
-                  ->orWhere('condition_note', 'like', "%{$search}%");
-        }
+        $categories = $this->garmentService->getCategories();
 
-        if ($request->filled('category')) {
-            $query->where('category', $request->input('category'));
-        }
-
-        $garments = $query->latest()->get();
-
-        return view('admin.garments.index', compact('garments'));
+        return view('admin.garments.index', compact('garments', 'categories'));
     }
 
-    /**
-     * Form tạo mới loại đồ giặt
-     */
     public function create()
     {
-        return view('admin.garments.create');
+        $categories = $this->garmentService->getCategories();
+
+        return view('admin.garments.create', compact('categories'));
     }
 
-    /**
-     * Lưu loại đồ giặt mới
-     */
-    public function store(Request $request)
+    public function store(GarmentRequest $request)
     {
-        $data = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'category' => ['nullable', 'string', 'max:255'],
-            'price' => ['required', 'numeric', 'min:0'],
-            'condition_note' => ['nullable', 'string'],
-            'status' => ['required', 'in:active,inactive'],
-        ]);
+        try {
+            $this->garmentService->create($request->validated());
 
-        Garment::create($data);
-
-        return redirect()->route('garments.index')->with('success', 'Loại đồ giặt đã được thêm thành công.');
+            return redirect()->route('garments.index')->with('success', 'Loại đồ giặt đã được thêm.');
+        } catch (\Exception $e) {
+            return redirect()->route('garments.create')->with('error', 'Có lỗi xảy ra: ' . $e->getMessage())->withInput();
+        }
     }
 
-    /**
-     * Chi tiết loại đồ giặt
-     */
-    public function show($id)
+    public function show(int $id)
     {
-        $garment = Garment::findOrFail($id);
-        return view('admin.garments.show', compact('garment'));
+        $garment = $this->garmentService->find($id);
+
+        if (!$garment) {
+            abort(404);
+        }
+
+        $conditions = $garment->conditions()->latest()->paginate(10);
+
+        return view('admin.garments.show', compact('garment', 'conditions'));
     }
 
-    /**
-     * Form chỉnh sửa
-     */
-    public function edit($id)
+    public function edit(int $id)
     {
-        $garment = Garment::findOrFail($id);
-        return view('admin.garments.edit', compact('garment'));
+        $garment = $this->garmentService->find($id);
+
+        if (!$garment) {
+            abort(404);
+        }
+
+        $categories = $this->garmentService->getCategories();
+
+        return view('admin.garments.edit', compact('garment', 'categories'));
     }
 
-    /**
-     * Cập nhật loại đồ giặt
-     */
-    public function update(Request $request, $id)
+    public function update(GarmentRequest $request, int $id)
     {
-        $garment = Garment::findOrFail($id);
-        $data = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'category' => ['nullable', 'string', 'max:255'],
-            'price' => ['required', 'numeric', 'min:0'],
-            'condition_note' => ['nullable', 'string'],
-            'status' => ['required', 'in:active,inactive'],
-        ]);
+        $garment = $this->garmentService->find($id);
 
-        $garment->update($data);
+        if (!$garment) {
+            abort(404);
+        }
 
-        return redirect()->route('garments.index')->with('success', 'Loại đồ giặt đã được cập nhật.');
+        try {
+            $this->garmentService->update($garment, $request->validated());
+
+            return redirect()->route('garments.index')->with('success', 'Loại đồ giặt đã được cập nhật.');
+        } catch (\Exception $e) {
+            return redirect()->route('garments.edit', $garment)->with('error', 'Có lỗi xảy ra: ' . $e->getMessage())->withInput();
+        }
     }
 
-    /**
-     * Xóa loại đồ giặt
-     */
-    public function destroy($id)
+    public function destroy(int $id)
     {
-        Garment::findOrFail($id)->delete();
-        return redirect()->route('garments.index')->with('success', 'Loại đồ giặt đã được xóa.');
+        $garment = $this->garmentService->find($id);
+
+        if (!$garment) {
+            abort(404);
+        }
+
+        try {
+            $this->garmentService->delete($garment);
+
+            return redirect()->route('garments.index')->with('success', 'Loại đồ giặt đã được xóa.');
+        } catch (\Exception $e) {
+            return redirect()->route('garments.index')->with('error', 'Có lỗi xảy ra: ' . $e->getMessage());
+        }
     }
 }

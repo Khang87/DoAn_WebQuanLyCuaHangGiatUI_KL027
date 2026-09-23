@@ -18,6 +18,11 @@
             @method('PUT')
             <div class="row g-4">
                 <div class="col-md-6">
+                    <label class="form-label">Mã đơn hàng</label>
+                    <input type="text" class="form-control" name="code" value="{{ $order->code }}" required>
+                </div>
+
+                <div class="col-md-6">
                     <label class="form-label">Khách hàng</label>
                     <select class="form-select" name="customer_id">
                         @foreach($customers as $customer)

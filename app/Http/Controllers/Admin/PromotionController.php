@@ -3,14 +3,24 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\PromotionRequest;
 use App\Models\Promotion;
+use App\Services\PromotionService;
 use Illuminate\Http\Request;
 
 class PromotionController extends Controller
 {
-    public function index()
+    public function __construct(
+        private PromotionService $promotionService,
+    ) {}
+
+    public function index(Request $request)
     {
-        return view('admin.promotions.index', ['promotions' => Promotion::latest()->get()]);
+        $promotions = $this->promotionService->getAll([
+            'status' => $request->input('status'),
+        ]);
+
+        return view('admin.promotions.index', compact('promotions'));
     }
 
     public function create()
@@ -18,31 +28,70 @@ class PromotionController extends Controller
         return view('admin.promotions.create');
     }
 
-    public function store(Request $request)
+    public function store(PromotionRequest $request)
     {
-        Promotion::create($request->validate(['name' => 'required|string|max:255', 'code' => 'required|string|max:50|unique:promotions,code', 'discount' => 'required|string|max:50', 'expires_at' => 'nullable|date', 'status' => 'nullable|string']));
-        return redirect()->route('promotions.index')->with('success', 'Khuyến mãi đã được tạo thành công.');
+        try {
+            $this->promotionService->create($request->validated());
+
+            return redirect()->route('promotions.index')->with('success', 'Khuyến mãi đã được tạo.');
+        } catch (\Exception $e) {
+            return redirect()->route('promotions.create')->with('error', 'Có lỗi xảy ra: ' . $e->getMessage())->withInput();
+        }
     }
 
-    public function show($id)
+    public function show(int $id)
     {
-        return view('admin.promotions.show', ['promotion' => Promotion::findOrFail($id)]);
+        $promotion = $this->promotionService->find($id);
+
+        if (!$promotion) {
+            abort(404);
+        }
+
+        $coupons = $promotion->coupons()->latest()->paginate(10);
+
+        return view('admin.promotions.show', compact('promotion', 'coupons'));
     }
 
-    public function edit($id)
+    public function edit(int $id)
     {
-        return view('admin.promotions.edit', ['promotion' => Promotion::findOrFail($id)]);
+        $promotion = $this->promotionService->find($id);
+
+        if (!$promotion) {
+            abort(404);
+        }
+
+        return view('admin.promotions.edit', compact('promotion'));
     }
 
-    public function update(Request $request, $id)
+    public function update(PromotionRequest $request, int $id)
     {
-        Promotion::findOrFail($id)->update($request->validate(['name' => 'required|string|max:255', 'code' => 'required|string|max:50|unique:promotions,code,' . $id, 'discount' => 'required|string|max:50', 'expires_at' => 'nullable|date', 'status' => 'nullable|string']));
-        return redirect()->route('promotions.index')->with('success', 'Khuyến mãi đã được cập nhật.');
+        $promotion = $this->promotionService->find($id);
+
+        if (!$promotion) {
+            abort(404);
+        }
+
+        try {
+            $this->promotionService->update($promotion, $request->validated());
+
+            return redirect()->route('promotions.index')->with('success', 'Khuyến mãi đã được cập nhật.');
+        } catch (\Exception $e) {
+            return redirect()->route('promotions.edit', $promotion)->with('error', 'Có lỗi xảy ra: ' . $e->getMessage())->withInput();
+        }
     }
 
-    public function destroy($id)
+    public function destroy(int $id)
     {
-        Promotion::findOrFail($id)->delete();
+        $promotion = $this->promotionService->find($id);
+
+        if ($promotion) {
+            try {
+                $this->promotionService->delete($promotion);
+            } catch (\Exception $e) {
+                return redirect()->route('promotions.index')->with('error', 'Có lỗi xảy ra: ' . $e->getMessage());
+            }
+        }
+
         return redirect()->route('promotions.index')->with('success', 'Khuyến mãi đã được xóa.');
     }
 }

@@ -12,18 +12,22 @@
         </a>
     </div>
     <div class="d-flex gap-2">
-        <div class="input-group" style="width: 300px;">
-            <input type="text" class="form-control" placeholder="Tìm kiếm khách hàng...">
-            <button class="btn btn-outline-secondary" type="button">
-                <i class="bi bi-search"></i>
-            </button>
-        </div>
-        <select class="form-select" style="width: auto;">
-            <option value="">Tất cả loại</option>
-            <option value="vip">VIP</option>
-            <option value="regular">Thường</option>
-            <option value="new">Mới</option>
-        </select>
+        <form method="GET" action="{{ route('customers.index') }}" class="d-flex gap-2">
+            <div class="input-group" style="width: 300px;">
+                <input type="text" name="search" class="form-control" placeholder="Tìm kiếm khách hàng..." value="{{ request('search') }}">
+                <button class="btn btn-outline-secondary" type="submit">
+                    <i class="bi bi-search"></i>
+                </button>
+            </div>
+            <select name="type" class="form-select" style="width: auto;">
+                <option value="">Tất cả loại</option>
+                <option value="VIP" {{ request('type') === 'VIP' ? 'selected' : '' }}>VIP</option>
+                <option value="Thường" {{ request('type') === 'Thường' ? 'selected' : '' }}>Thường</option>
+                <option value="Mới" {{ request('type') === 'Mới' ? 'selected' : '' }}>Mới</option>
+            </select>
+            <button type="submit" class="btn btn-outline-secondary">Lọc</button>
+            <a href="{{ route('customers.index') }}" class="btn btn-outline-secondary">Xóa</a>
+        </form>
     </div>
 </div>
 
@@ -46,15 +50,7 @@
                     </tr>
                 </thead>
                 <tbody>
-                    @php
-                        $sampleCustomers = [
-                            (object)['code' => 'KH001', 'name' => 'Nguyễn Văn A', 'email' => 'nguyenvana@email.com', 'phone' => '0901234567', 'address' => '123 Đường ABC, Quận 1, TP.HCM', 'points' => 1250, 'type' => 'VIP', 'created_at' => now()->subDays(5)],
-                            (object)['code' => 'KH002', 'name' => 'Trần Thị B', 'email' => 'tranthib@email.com', 'phone' => '0912345678', 'address' => '456 Đường XYZ, Quận 3, TP.HCM', 'points' => 850, 'type' => 'Thường', 'created_at' => now()->subDays(8)],
-                            (object)['code' => 'KH003', 'name' => 'Phạm Thị C', 'email' => 'phamthic@email.com', 'phone' => '0923456789', 'address' => '789 Đường DEF, Quận 5, TP.HCM', 'points' => 0, 'type' => 'Mới', 'created_at' => now()->subDays(12)],
-                        ];
-                        $displayCustomers = $customers->count() > 0 ? $customers : collect($sampleCustomers);
-                    @endphp
-                    @forelse($displayCustomers as $customer)
+                    @forelse($customers as $customer)
                     <tr>
                         <td><strong>{{ $customer->code }}</strong></td>
                         <td>
@@ -86,18 +82,33 @@
     </div>
 </div>
 
+@if($customers->hasPages())
 <!-- Pagination -->
 <nav class="mt-4">
-    <ul class="pagination justify-content-center">
-        <li class="page-item disabled">
-            <a class="page-link" href="#"><i class="bi bi-chevron-left"></i></a>
-        </li>
-        <li class="page-item active"><a class="page-link" href="#">1</a></li>
-        <li class="page-item"><a class="page-link" href="#">2</a></li>
-        <li class="page-item"><a class="page-link" href="#">3</a></li>
-        <li class="page-item">
-            <a class="page-link" href="#"><i class="bi bi-chevron-right"></i></a>
-        </li>
-    </ul>
+    <div class="d-flex justify-content-between align-items-center">
+        <div class="text-muted small">
+            Hiển thị {{ $customers->firstItem() }} - {{ $customers->lastItem() }} của {{ $customers->total() }} khách hàng
+        </div>
+        <ul class="pagination mb-0">
+            @if ($customers->onFirstPage())
+                <li class="page-item disabled"><span class="page-link"><i class="bi bi-chevron-left"></i></span></li>
+            @else
+                <li class="page-item"><a class="page-link" href="{{ $customers->appends(request()->query())->url($customers->currentPage() - 1) }}"><i class="bi bi-chevron-left"></i></a></li>
+            @endif
+            @foreach ($customers->getUrlRange(max(1, $customers->currentPage() - 2), min($customers->lastPage(), $customers->currentPage() + 2)) as $page => $url)
+                @if ($page == $customers->currentPage())
+                    <li class="page-item active"><span class="page-link">{{ $page }}</span></li>
+                @else
+                    <li class="page-item"><a class="page-link" href="{{ $customers->appends(request()->query())->url($page) }}">{{ $page }}</a></li>
+                @endif
+            @endforeach
+            @if ($customers->onLastPage())
+                <li class="page-item disabled"><span class="page-link"><i class="bi bi-chevron-right"></i></span></li>
+            @else
+                <li class="page-item"><a class="page-link" href="{{ $customers->appends(request()->query())->url($customers->currentPage() + 1) }}"><i class="bi bi-chevron-right"></i></a></li>
+            @endif
+        </ul>
+    </div>
 </nav>
+@endif
 @endsection

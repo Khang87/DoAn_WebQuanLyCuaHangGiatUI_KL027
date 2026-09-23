@@ -12,19 +12,31 @@
         </a>
     </div>
     <div class="d-flex gap-2 align-items-center">
-        <div class="input-group search-box">
-            <input type="text" class="form-control" placeholder="Tìm kiếm đơn hàng...">
-            <button class="btn btn-order-secondary" type="button">
-                <i class="bi bi-search"></i>
-            </button>
-        </div>
-        <select class="form-select" style="width: auto; border-radius: 12px; border-color: rgba(148,163,184,0.35);">
-            <option value="">Tất cả trạng thái</option>
-            <option value="pending">Chờ xử lý</option>
-            <option value="processing">Đang xử lý</option>
-            <option value="completed">Hoàn thành</option>
-            <option value="cancelled">Đã hủy</option>
-        </select>
+        <form method="GET" action="{{ route('orders.index') }}" class="d-flex gap-2 align-items-center">
+            <div class="input-group search-box">
+                <input type="text" name="search" class="form-control" placeholder="Tìm kiếm đơn hàng..." value="{{ request('search') }}">
+                <button class="btn btn-order-secondary" type="submit">
+                    <i class="bi bi-search"></i>
+                </button>
+            </div>
+            <select name="status" class="form-select" style="width: auto; border-radius: 12px; border-color: rgba(148,163,184,0.35);">
+                <option value="">Tất cả trạng thái</option>
+                @foreach($statusFlow as $value => $label)
+                    <option value="{{ $value }}" {{ request('status') === $value ? 'selected' : '' }}>{{ $label }}</option>
+                @endforeach
+            </select>
+            @if(request('customer_id'))
+                <input type="hidden" name="customer_id" value="{{ request('customer_id') }}">
+            @endif
+            @if(request('date_from'))
+                <input type="hidden" name="date_from" value="{{ request('date_from') }}">
+            @endif
+            @if(request('date_to'))
+                <input type="hidden" name="date_to" value="{{ request('date_to') }}">
+            @endif
+            <button type="submit" class="btn btn-order-secondary">Lọc</button>
+            <a href="{{ route('orders.index') }}" class="btn btn-outline-secondary">Xóa bộ lọc</a>
+        </form>
     </div>
 </div>
 
@@ -47,15 +59,7 @@
                     </tr>
                 </thead>
                 <tbody>
-                    @php
-                        $sampleOrders = [
-                            (object)['code' => 'DH001', 'customer_id' => 1, 'service_id' => 1, 'weight_kg' => '5kg', 'quantity_items' => 'đồ thường + 3 áo trắng', 'total_amount' => 250000, 'status' => 'processing', 'notes' => 'Giặt nhẹ, lấy trước 18h tối nay.', 'created_at' => now(), 'customer' => (object)['name' => 'Nguyễn Văn A', 'phone' => '0901234567'], 'service' => (object)['name' => 'Giặt thường']],
-                            (object)['code' => 'DH002', 'customer_id' => 2, 'service_id' => 2, 'weight_kg' => '3kg', 'quantity_items' => 'đồ thường + 2 áo sơ mi', 'total_amount' => 180000, 'status' => 'completed', 'notes' => 'Không dùng nước xả có mùi.', 'created_at' => now()->subDay(), 'customer' => (object)['name' => 'Trần Thị B', 'phone' => '0912345678'], 'service' => (object)['name' => 'Giặt khô']],
-                            (object)['code' => 'DH003', 'customer_id' => 3, 'service_id' => 3, 'weight_kg' => '8kg', 'quantity_items' => 'đồ nặng + 5 quần dài', 'total_amount' => 320000, 'status' => 'pending', 'notes' => 'Ủi phẳng, đóng gói riêng.', 'created_at' => now()->subDays(2), 'customer' => (object)['name' => 'Phạm Thị C', 'phone' => '0923456789'], 'service' => (object)['name' => 'Ủi đồ']],
-                        ];
-                        $displayOrders = $orders->count() > 0 ? $orders : collect($sampleOrders);
-                    @endphp
-                    @forelse($displayOrders as $order)
+                    @forelse($orders as $order)
                     <tr>
                         <td><strong>#{{ $order->code }}</strong></td>
                         <td>
@@ -71,7 +75,21 @@
                         <td><span class="fw-semibold">{{ trim(($order->weight_kg ? $order->weight_kg . ' ' : '') . ($order->quantity_items ?: '-')) }}</span></td>
                         <td><small>{{ $order->notes ?: 'Không có ghi chú' }}</small></td>
                         <td><strong>{{ number_format($order->total_amount) }} VNĐ</strong></td>
-                        <td><span class="badge-status badge-{{ $order->status === 'completed' ? 'completed' : ($order->status === 'pending' ? 'pending' : 'processing') }}">{{ $order->status }}</span></td>
+                        <td>
+                            @if($order->status === 'completed')
+                                <span class="badge bg-success-subtle text-success border border-success px-3 py-2 rounded-pill"><i class="fas fa-check-circle me-1"></i>Hoàn thành</span>
+                            @elseif($order->status === 'cancelled')
+                                <span class="badge bg-danger-subtle text-danger border border-danger px-3 py-2 rounded-pill"><i class="fas fa-x-circle me-1"></i>Đã hủy</span>
+                            @elseif($order->status === 'pending')
+                                <span class="badge bg-warning-subtle text-warning border border-warning px-3 py-2 rounded-pill"><i class="fas fa-hourglass me-1"></i>Chờ xử lý</span>
+                            @elseif($order->status === 'processing')
+                                <span class="badge bg-info-subtle text-info border border-info px-3 py-2 rounded-pill"><i class="fas fa-cog me-1"></i>Đang xử lý</span>
+                            @elseif($order->status === 'delivering')
+                                <span class="badge bg-primary-subtle text-primary border border-primary px-3 py-2 rounded-pill"><i class="fas fa-truck me-1"></i>Đang giao</span>
+                            @else
+                                <span class="badge bg-secondary-subtle text-secondary border border-secondary px-3 py-2 rounded-pill"><i class="fas fa-circle-notch me-1"></i>{{ $order->status }}</span>
+                            @endif
+                        </td>
                         <td>{{ $order->created_at?->format('d/m/Y') }}</td>
                         <td><div class="d-flex gap-2"><a href="{{ route('orders.show', $order) }}" class="btn btn-order-action view" title="Xem"><i class="bi bi-eye"></i></a><a href="{{ route('orders.edit', $order) }}" class="btn btn-order-action edit" title="Sửa"><i class="bi bi-pencil"></i></a><form action="{{ route('orders.destroy', $order) }}" method="POST" class="d-inline" onsubmit="return confirm('Bạn có chắc muốn xóa?')">@csrf @method('DELETE')<button type="submit" class="btn btn-order-action delete" title="Xóa"><i class="bi bi-trash"></i></button></form></div></td>
                     </tr>
@@ -86,18 +104,33 @@
     </div>
 </div>
 
+@if($orders->hasPages())
 <!-- Pagination -->
 <nav class="mt-4">
-    <ul class="pagination justify-content-center">
-        <li class="page-item disabled">
-            <a class="page-link" href="#"><i class="bi bi-chevron-left"></i></a>
-        </li>
-        <li class="page-item active"><a class="page-link" href="#">1</a></li>
-        <li class="page-item"><a class="page-link" href="#">2</a></li>
-        <li class="page-item"><a class="page-link" href="#">3</a></li>
-        <li class="page-item">
-            <a class="page-link" href="#"><i class="bi bi-chevron-right"></i></a>
-        </li>
-    </ul>
+    <div class="d-flex justify-content-between align-items-center">
+        <div class="text-muted small">
+            Hiển thị {{ $orders->firstItem() }} - {{ $orders->lastItem() }} của {{ $orders->total() }} đơn hàng
+        </div>
+        <ul class="pagination mb-0">
+            @if ($orders->onFirstPage())
+                <li class="page-item disabled"><span class="page-link"><i class="bi bi-chevron-left"></i></span></li>
+            @else
+                <li class="page-item"><a class="page-link" href="{{ $orders->appends(request()->query())->url($orders->currentPage() - 1) }}"><i class="bi bi-chevron-left"></i></a></li>
+            @endif
+            @foreach ($orders->getUrlRange(max(1, $orders->currentPage() - 2), min($orders->lastPage(), $orders->currentPage() + 2)) as $page => $url)
+                @if ($page == $orders->currentPage())
+                    <li class="page-item active"><span class="page-link">{{ $page }}</span></li>
+                @else
+                    <li class="page-item"><a class="page-link" href="{{ $orders->appends(request()->query())->url($page) }}">{{ $page }}</a></li>
+                @endif
+            @endforeach
+            @if ($orders->onLastPage())
+                <li class="page-item disabled"><span class="page-link"><i class="bi bi-chevron-right"></i></span></li>
+            @else
+                <li class="page-item"><a class="page-link" href="{{ $orders->appends(request()->query())->url($orders->currentPage() + 1) }}"><i class="bi bi-chevron-right"></i></a></li>
+            @endif
+        </ul>
+    </div>
 </nav>
+@endif
 @endsection

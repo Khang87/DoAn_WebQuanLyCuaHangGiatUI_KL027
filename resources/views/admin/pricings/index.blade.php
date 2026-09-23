@@ -1,11 +1,58 @@
 @extends('layouts.app')
 @section('title', 'Bảng Giá - Giặt Ủi Pro')
 @section('page-title', 'Bảng Giá')
+
 @section('content')
-<div class="order-toolbar"><p class="text-muted mb-0">Giá dịch vụ theo kg, món, cái hoặc đôi.</p><a href="{{ route('pricings.create') }}" class="btn btn-primary"><i class="bi bi-plus-lg me-2"></i>Thêm bảng giá</a></div>
-<div class="card"><div class="card-body p-0"><div class="table-responsive"><table class="table-custom mb-0"><thead><tr><th>Dịch vụ</th><th>Loại đồ</th><th>Đơn vị</th><th>Đơn giá</th><th>Hiệu lực</th><th>Thao tác</th></tr></thead><tbody>
-@foreach ([['Giặt thường', 'Đồ thường', 'kg', '25,000 VNĐ'], ['Giặt khô', 'Áo sơ mi', 'cái', '45,000 VNĐ'], ['Ủi đồ', 'Quần áo', 'món', '15,000 VNĐ'], ['Giặt chăn mền', 'Chăn mền', 'món', '80,000 VNĐ'], ['Giặt giày', 'Giày thể thao', 'đôi', '60,000 VNĐ']] as $item)
-<tr><td><strong>{{ $item[0] }}</strong></td><td>{{ $item[1] }}</td><td>{{ $item[2] }}</td><td class="fw-semibold">{{ $item[3] }}</td><td><span class="badge-status badge-completed">Đang áp dụng</span></td><td><a href="{{ route('pricings.edit', $loop->iteration) }}" class="btn btn-order-action edit" title="Sửa"><i class="bi bi-pencil"></i></a></td></tr>
-@endforeach
-</tbody></table></div></div></div>
+<div class="order-toolbar">
+    <p class="text-muted mb-0">Giá dịch vụ theo kg, món, cái hoặc đôi.</p>
+    <a href="{{ route('pricings.create') }}" class="btn btn-primary">
+        <i class="bi bi-plus-lg me-2"></i>Thêm bảng giá
+    </a>
+</div>
+
+<div class="card">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table-custom mb-0">
+                <thead>
+                    <tr>
+                        <th>Dịch vụ</th>
+                        <th>Đơn vị</th>
+                        <th>Đơn giá</th>
+                        <th>Trạng thái</th>
+                        <th>Ngày tạo</th>
+                        <th>Thao tác</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @forelse($pricings as $pricing)
+                    <tr>
+                        <td><strong>{{ $pricing->name }}</strong></td>
+                        <td>{{ $pricing->unit ?: 'kg' }}</td>
+                        <td class="fw-semibold text-primary">{{ number_format($pricing->price) }} VNĐ</td>
+                        <td>
+                            <span class="badge {{ $pricing->status === 'active' ? 'bg-success' : 'bg-secondary' }}">
+                                {{ $pricing->status === 'active' ? 'Đang áp dụng' : 'Tắt' }}
+                            </span>
+                        </td>
+                        <td>{{ $pricing->created_at?->format('d/m/Y') }}</td>
+                        <td>
+                            <div class="d-flex gap-2">
+                                <a href="{{ route('pricings.show', $pricing) }}" class="btn btn-order-action view" title="Xem"><i class="bi bi-eye"></i></a>
+                                <a href="{{ route('pricings.edit', $pricing) }}" class="btn btn-order-action edit" title="Sửa"><i class="bi bi-pencil"></i></a>
+                                <form action="{{ route('pricings.destroy', $pricing) }}" method="POST" class="d-inline" onsubmit="return confirm('Bạn có chắc muốn xóa?')">
+                                    @csrf @method('DELETE')
+                                    <button type="submit" class="btn btn-order-action delete" title="Xóa"><i class="bi bi-trash"></i></button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    @empty
+                    <tr><td colspan="6" class="text-center text-muted py-4">Chưa có bảng giá nào</td></tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
 @endsection

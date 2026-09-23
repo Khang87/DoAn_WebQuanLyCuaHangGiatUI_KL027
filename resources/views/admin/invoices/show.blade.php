@@ -1,27 +1,31 @@
 @extends('layouts.app')
-@section('title', 'Chi Tiết Hóa Đơn - Giặt Ủi Pro')
+
+@section('title', 'Chi tiết hóa đơn - Giặt Ủi Pro')
 @section('page-title', 'Chi tiết hóa đơn')
+
 @section('content')
-<div class="card"><div class="card-body">
-    <div class="d-flex justify-content-between align-items-start mb-4">
-        <div>
-            <span class="text-muted">Số hóa đơn</span>
-            <h4 class="mb-0">{{ $invoice->code ?? ('HD' . str_pad($invoice->id ?? 1, 3, '0', STR_PAD_LEFT)) }}</h4>
-        </div>
-        <span class="badge-status badge-{{ $invoice->status === 'paid' ? 'completed' : 'pending' }}">{{ $invoice->status === 'paid' ? 'Đã thanh toán' : 'Chưa thanh toán' }}</span>
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <a href="{{ route('invoices.index') }}" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-arrow-left me-1"></i>Quay lại
+    </a>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <h5 class="mb-3">Hóa đơn #{{ $invoice->code }}</h5>
+        <table class="table table-borderless">
+            <tr><td><strong>Đơn hàng</strong></td><td>#{{ $invoice->order?->code }}</td></tr>
+            <tr><td><strong>Tổng tiền</strong></td><td><strong>{{ number_format($invoice->total) }} VNĐ</strong></td></tr>
+            <tr><td><strong>Trạng thái</strong></td>
+                <td>
+                    @if($invoice->status === 'paid') <span class="badge bg-success">Đã thanh toán</span>
+                    @elseif($invoice->status === 'partial') <span class="badge bg-warning">Một phần</span>
+                    @else <span class="badge bg-secondary">Chưa thanh toán</span> @endif
+                </td>
+            </tr>
+            <tr><td><strong>Ghi chú</strong></td><td>{{ $invoice->notes ?: '-' }}</td></tr>
+            <tr><td><strong>Ngày tạo</strong></td><td>{{ $invoice->created_at?->format('d/m/Y H:i') }}</td></tr>
+        </table>
     </div>
-    <div class="row g-4">
-        <div class="col-md-6"><div class="small text-muted">Mã đơn hàng</div><div class="fw-semibold">{{ $invoice->order?->code ?? 'Chưa gắn đơn' }}</div></div>
-        <div class="col-md-6"><div class="small text-muted">Khách hàng</div><div class="fw-semibold">{{ $invoice->order?->customer?->name ?? 'Chưa có' }}</div></div>
-        <div class="col-md-6"><div class="small text-muted">Dịch vụ</div><div class="fw-semibold">{{ $invoice->order?->service?->name ?? '-' }}</div></div>
-        <div class="col-md-6"><div class="small text-muted">Tổng tiền</div><div class="fw-semibold text-primary">{{ number_format($invoice->total ?? 0) }} VNĐ</div></div>
-    </div>
-    @if($invoice->notes)
-    <div class="mt-3"><div class="small text-muted">Ghi chú</div><div class="text-muted">{{ $invoice->notes }}</div></div>
-    @endif
-    <div class="mt-4">
-        <a href="{{ route('invoices.index') }}" class="btn btn-outline-secondary">Quay lại</a>
-        <a href="{{ route('invoices.edit', $invoice) }}" class="btn btn-primary">Chỉnh sửa</a>
-    </div>
-</div></div>
+</div>
 @endsection

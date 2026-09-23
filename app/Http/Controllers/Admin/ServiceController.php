@@ -3,46 +3,120 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\ServiceRequest;
 use App\Models\Service;
+use App\Services\ServiceService;
 use Illuminate\Http\Request;
 
 class ServiceController extends Controller
 {
-    public function index()
+    public function __construct(
+        private ServiceService $serviceService,
+    ) {}
+
+    public function index(Request $request)
     {
-        return view('admin.services.index', ['services' => Service::latest()->get()]);
+        $services = $this->serviceService->getAll([
+            'search' => $request->input('search'),
+            'category_id' => $request->input('category_id'),
+            'status' => $request->input('status'),
+        ]);
+
+        $categories = \App\Models\ServiceCategory::where('status', 'active')->orderBy('name')->get();
+
+        return view('admin.services.index', compact('services', 'categories'));
     }
 
     public function create()
     {
-        return view('admin.services.create');
+        $categories = \App\Models\ServiceCategory::where('status', 'active')->orderBy('name')->get();
+
+        return view('admin.services.create', compact('categories'));
     }
 
-    public function store(Request $request)
+    public function store(ServiceRequest $request)
     {
-        Service::create($request->validate(['name' => 'required|string|max:255', 'type' => 'nullable|string|max:50', 'price' => 'required|numeric|min:0', 'unit' => 'nullable|string|max:20', 'status' => 'required|string', 'description' => 'nullable|string']));
-        return redirect()->route('services.index')->with('success', 'Dịch vụ đã được tạo thành công.');
+        try {
+            $this->serviceService->create($request->validated());
+
+            return redirect()->route('services.index')->with('success', 'Dịch vụ đã được tạo thành công.');
+        } catch (\Exception $e) {
+            return redirect()->route('services.create')->with('error', 'Có lỗi xảy ra: ' . $e->getMessage())->withInput();
+        }
     }
 
-    public function show($id)
+    public function show(int $id)
     {
-        return view('admin.services.show', ['service' => Service::findOrFail($id)]);
+        $service = $this->serviceService->find($id);
+
+        if (!$service) {
+            abort(404);
+        }
+
+        return view('admin.services.show', compact('service'));
     }
 
-    public function edit($id)
+    public function edit(int $id)
     {
-        return view('admin.services.edit', ['service' => Service::findOrFail($id)]);
+        $service = $this->serviceService->find($id);
+
+        if (!$service) {
+            abort(404);
+        }
+
+        $categories = \App\Models\ServiceCategory::where('status', 'active')->orderBy('name')->get();
+
+        return view('admin.services.edit', compact('service', 'categories'));
     }
 
-    public function update(Request $request, $id)
+    public function update(ServiceRequest $request, int $id)
     {
-        Service::findOrFail($id)->update($request->validate(['name' => 'required|string|max:255', 'type' => 'nullable|string|max:50', 'price' => 'required|numeric|min:0', 'unit' => 'nullable|string|max:20', 'status' => 'required|string', 'description' => 'nullable|string']));
-        return redirect()->route('services.index')->with('success', 'Dịch vụ đã được cập nhật.');
+        $service = $this->serviceService->find($id);
+
+        if (!$service) {
+            abort(404);
+        }
+
+        try {
+            $this->serviceService->update($service, $request->validated());
+
+            return redirect()->route('services.index')->with('success', 'Dịch vụ đã được cập nhật.');
+        } catch (\Exception $e) {
+            return redirect()->route('services.edit', $service)->with('error', 'Có lỗi xảy ra: ' . $e->getMessage())->withInput();
+        }
     }
 
-    public function destroy($id)
+    public function destroy(int $id)
     {
-        Service::findOrFail($id)->delete();
-        return redirect()->route('services.index')->with('success', 'Dịch vụ đã được xóa.');
+        $service = $this->serviceService->find($id);
+
+        if (!$service) {
+            abort(404);
+        }
+
+        try {
+            $this->serviceService->delete($service);
+
+            return redirect()->route('services.index')->with('success', 'Dịch vụ đã được xóa.');
+        } catch (\Exception $e) {
+            return redirect()->route('services.index')->with('error', 'Có lỗi xảy ra: ' . $e->getMessage());
+        }
+    }
+
+    public function toggleStatus(int $id)
+    {
+        $service = $this->serviceService->find($id);
+
+        if (!$service) {
+            abort(404);
+        }
+
+        try {
+            $service->update(['status' => $service->status === 'active' ? 'inactive' : 'active']);
+
+            return back()->with('success', 'Trạng thái dịch vụ đã được cập nhật.');
+        } catch (\Exception $e) {
+            return back()->with('error', 'Có lỗi xảy ra: ' . $e->getMessage());
+        }
     }
 }

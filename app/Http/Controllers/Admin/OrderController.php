@@ -3,96 +3,131 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\Customer;
+use App\Http\Requests\Admin\OrderRequest;
+use App\Http\Requests\Admin\OrderItemRequest;
 use App\Models\Order;
-use App\Models\Service;
+use App\Services\OrderService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class OrderController extends Controller
 {
-    /**
-     * Hiển thị danh sách đơn hàng
-     */
-    public function index()
+    public function __construct(
+        private OrderService $orderService,
+    ) {}
+
+    public function index(Request $request)
     {
-        return view('admin.orders.index', ['orders' => Order::with(['customer', 'service'])->latest()->get()]);
+        $orders = $this->orderService->getAll([
+            'search' => $request->input('search'),
+            'customer_id' => $request->input('customer_id'),
+            'status' => $request->input('status'),
+            'date_from' => $request->input('date_from'),
+            'date_to' => $request->input('date_to'),
+        ]);
+
+        $customers = \App\Models\Customer::orderBy('name')->get();
+        $statusFlow = $this->orderService->getStatusFlow();
+
+        return view('admin.orders.index', compact('orders', 'customers', 'statusFlow'));
     }
 
-    /**
-     * Hiển thị form tạo đơn hàng mới
-     */
     public function create()
     {
-        return view('admin.orders.create', [
-            'customers' => Customer::orderBy('name')->get(),
-            'services' => Service::where('status', 'active')->orderBy('name')->get(),
-        ]);
+        $customers = \App\Models\Customer::orderBy('name')->get();
+        $services = \App\Models\Service::where('status', 'active')->orderBy('name')->get();
+        $statusFlow = $this->orderService->getStatusFlow();
+
+        return view('admin.orders.create', compact('customers', 'services', 'statusFlow'));
     }
 
-    /**
-     * Lưu đơn hàng mới
-     */
-    public function store(Request $request)
+    public function store(OrderRequest $request)
     {
-        $data = $request->validate([
-            'customer_id' => ['required', 'exists:customers,id'],
-            'service_id' => ['required', 'exists:services,id'],
-            'weight_kg' => ['nullable', 'string', 'max:50'],
-            'quantity_items' => ['required', 'string', 'max:255'],
-            'total_amount' => ['required', 'numeric', 'min:0'],
-            'status' => ['required', 'in:pending,processing,completed,cancelled'],
-        ]);
-        $data['code'] = 'DH' . str_pad((string) ((Order::max('id') ?? 0) + 1), 3, '0', STR_PAD_LEFT);
-        Order::create($data);
+        try {
+            $order = $this->orderService->create($request->validated());
 
-        return redirect()->route('orders.index')->with('success', 'Đơn hàng đã được tạo thành công.');
+            return redirect()->route('orders.show', $order)->with('success', 'Đơn hàng đã được tạo thành công.');
+        } catch (\Exception $e) {
+            return redirect()->route('orders.create')->with('error', 'Có lỗi xảy ra: ' . $e->getMessage())->withInput();
+        }
     }
 
-    /**
-     * Hiển thị chi tiết đơn hàng
-     */
-    public function show($id)
+    public function show(int $id)
     {
-        return view('admin.orders.show', ['order' => Order::with(['customer', 'service'])->findOrFail($id)]);
+        $order = $this->orderService->find($id);
+
+        if (!$order) {
+            abort(404);
+        }
+
+        $statusFlow = $this->orderService->getStatusFlow();
+
+        return view('admin.orders.show', compact('order', 'statusFlow'));
     }
 
-    /**
-     * Hiển thị form chỉnh sửa đơn hàng
-     */
-    public function edit($id)
+    public function edit(int $id)
     {
-        return view('admin.orders.edit', [
-            'order' => Order::findOrFail($id),
-            'customers' => Customer::orderBy('name')->get(),
-            'services' => Service::where('status', 'active')->orderBy('name')->get(),
-        ]);
+        $order = $this->orderService->find($id);
+
+        if (!$order) {
+            abort(404);
+        }
+
+        $customers = \App\Models\Customer::orderBy('name')->get();
+        $services = \App\Models\Service::where('status', 'active')->orderBy('name')->get();
+        $statusFlow = $this->orderService->getStatusFlow();
+
+        return view('admin.orders.edit', compact('order', 'customers', 'services', 'statusFlow'));
     }
 
-    /**
-     * Cập nhật đơn hàng
-     */
-    public function update(Request $request, $id)
+    public function update(OrderRequest $request, int $id)
     {
-        $order = Order::findOrFail($id);
-        $order->update($request->validate([
-            'customer_id' => ['required', 'exists:customers,id'],
-            'service_id' => ['required', 'exists:services,id'],
-            'weight_kg' => ['nullable', 'string', 'max:50'],
-            'quantity_items' => ['required', 'string', 'max:255'],
-            'total_amount' => ['required', 'numeric', 'min:0'],
-            'status' => ['required', 'in:pending,processing,completed,cancelled'],
-        ]));
+        $order = $this->orderService->find($id);
 
-        return redirect()->route('orders.index')->with('success', 'Đơn hàng đã được cập nhật.');
+        if (!$order) {
+            abort(404);
+        }
+
+        try {
+            $this->orderService->update($order, $request->validated());
+
+            return redirect()->route('orders.index')->with('success', 'Đơn hàng đã được cập nhật.');
+        } catch (\Exception $e) {
+            return redirect()->route('orders.edit', $order)->with('error', 'Có lỗi xảy ra: ' . $e->getMessage())->withInput();
+        }
     }
 
-    /**
-     * Xóa đơn hàng
-     */
-    public function destroy($id)
+    public function destroy(int $id)
     {
-        Order::findOrFail($id)->delete();
+        $order = $this->orderService->find($id);
 
-        return redirect()->route('orders.index')->with('success', 'Đơn hàng đã được xóa.');
+        if (!$order) {
+            abort(404);
+        }
+
+        try {
+            $this->orderService->delete($order);
+
+            return redirect()->route('orders.index')->with('success', 'Đơn hàng đã được xóa.');
+        } catch (\Exception $e) {
+            return redirect()->route('orders.index')->with('error', 'Có lỗi xảy ra: ' . $e->getMessage());
+        }
+    }
+
+    public function updateStatus(Request $request, int $id)
+    {
+        $order = $this->orderService->find($id);
+
+        if (!$order) {
+            abort(404);
+        }
+
+        try {
+            $order->update(['status' => $request->input('status')]);
+
+            return back()->with('success', 'Trạng thái đơn hàng đã được cập nhật.');
+        } catch (\Exception $e) {
+            return back()->with('error', 'Có lỗi xảy ra: ' . $e->getMessage());
+        }
     }
 }

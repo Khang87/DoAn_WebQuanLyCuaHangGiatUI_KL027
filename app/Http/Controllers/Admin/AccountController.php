@@ -3,112 +3,158 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\UserRequest;
 use App\Models\User;
+use App\Policies\UserPolicy;
+use App\Services\UserService;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Hash;
 
 class AccountController extends Controller
 {
-    /**
-     * Danh sách tài khoản hệ thống
-     */
+    use AuthorizesRequests;
+    public function __construct(
+        private UserService $userService,
+    ) {}
+
     public function index(Request $request)
     {
-        $query = User::query();
+        $this->authorize('viewAny', User::class);
 
-        if ($request->filled('search')) {
-            $search = $request->input('search');
-            $query->where('name', 'like', "%{$search}%")
-                  ->orWhere('email', 'like', "%{$search}%");
-        }
-
-        if ($request->filled('role')) {
-            $query->where('role', $request->input('role'));
-        }
-
-        $accounts = $query->latest()->get();
+        $accounts = $this->userService-> getAll([
+            'search' => $request->input('search'),
+            'role' => $request->input('role'),
+            'status' => $request->input('status'),
+        ]);
 
         return view('admin.accounts.index', compact('accounts'));
     }
 
-    /**
-     * Form tạo tài khoản
-     */
     public function create()
     {
+        $this->authorize('create', User::class);
+
         return view('admin.accounts.create');
     }
 
-    /**
-     * Lưu tài khoản mới
-     */
-    public function store(Request $request)
+    public function store(UserRequest $request)
     {
-        $data = $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|email|unique:users,email',
-            'password' => 'required|string|min:6',
-            'role' => 'nullable|in:admin,staff,customer',
-        ]);
+        $this->authorize('create', User::class);
 
-        $data['role'] = $data['role'] ?? 'customer';
-        $data['password'] = Hash::make($data['password']);
+        try {
+            $user = $this->userService->create($request->validated());
 
-        User::create($data);
-
-        return redirect()->route('accounts.index')->with('success', 'Tài khoản đã được tạo thành công với vai trò: ' . ($data['role'] === 'admin' ? 'Quản trị viên' : ($data['role'] === 'staff' ? 'Nhân viên' : 'Khách hàng')));
+            return redirect()->route('accounts.index')->with('success', 'Tài khoản đã được tạo thành công với vai trò: ' . ($user->role === 'admin' ? 'Quản trị viên' : ($user->role === 'staff' ? 'Nhân viên' : 'Khách hàng')));
+        } catch (\Exception $e) {
+            return redirect()->route('accounts.create')->with('error', 'Có lỗi xảy ra: ' . $e->getMessage())->withInput();
+        }
     }
 
-    /**
-     * Xem chi tiết tài khoản
-     */
-    public function show($id)
+    public function show(int $id)
     {
-        $account = User::findOrFail($id);
+        $account = $this->userService->find($id);
+
+        if (!$account) {
+            abort(404);
+        }
+
+        $this->authorize('view', [User::class, $account]);
+
         return view('admin.accounts.show', compact('account'));
     }
 
-    /**
-     * Form chỉnh sửa tài khoản
-     */
-    public function edit($id)
+    public function edit(int $id)
     {
-        $account = User::findOrFail($id);
+        $account = $this->userService->find($id);
+
+        if (!$account) {
+            abort(404);
+        }
+
+        $this->authorize('update', [User::class, $account]);
+
         return view('admin.accounts.edit', compact('account'));
     }
 
-    /**
-     * Cập nhật tài khoản
-     */
-    public function update(Request $request, $id)
+    public function update(UserRequest $request, int $id)
     {
-        $account = User::findOrFail($id);
-        $data = $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|email|unique:users,email,' . $id,
-            'password' => 'nullable|string|min:6',
-            'role' => 'required|in:admin,staff,customer',
-        ]);
+        $account = $this->userService->find($id);
 
-        if (blank($data['password'] ?? null)) {
-            unset($data['password']);
-        } else {
-            $data['password'] = Hash::make($data['password']);
+        if (!$account) {
+            abort(404);
         }
 
-        $account->update($data);
+        $this->authorize('update', [User::class, $account]);
 
-        return redirect()->route('accounts.index')->with('success', 'Tài khoản đã được cập nhật.');
+        try {
+            $this->userService->update($account, $request->validated());
+
+            return redirect()->route('accounts.index')->with('success', 'Tài khoản đã được cập nhật.');
+        } catch (\Exception $e) {
+            return redirect()->route('accounts.edit', $account)->with('error', 'Có lỗi xảy ra: ' . $e->getMessage())->withInput();
+        }
     }
 
-    /**
-     * Xóa tài khoản
-     */
-    public function destroy($id)
+    public function destroy(int $id)
     {
-        abort_if((int) $id === (int) auth()->id(), 422, 'Không thể xóa tài khoản đang đăng nhập.');
-        User::findOrFail($id)->delete();
+        $account = $this->userService->find($id);
 
-        return redirect()->route('accounts.index')->with('success', 'Tài khoản đã được xóa.');
+        if (!$account) {
+            abort(404);
+        }
+
+        $this->authorize('delete', [User::class, $account]);
+
+        try {
+            $this->userService->delete($account);
+
+            return redirect()->route('accounts.index')->with('success', 'Tài khoản đã được xóa.');
+        } catch (\Exception $e) {
+            return redirect()->route('accounts.index')->with('error', 'Có lỗi xảy ra: ' . $e->getMessage());
+        }
+    }
+
+    public function toggleStatus(int $id)
+    {
+        $account = $this->userService->find($id);
+
+        if (!$account) {
+            abort(404);
+        }
+
+        $this->authorize('update', [User::class, $account]);
+
+        try {
+            if ($account->trashed()) {
+                $account->restore();
+                return redirect()->route('accounts.index')->with('success', 'Tài khoản đã được kích hoạt.');
+            } else {
+                $account->delete();
+                return redirect()->route('accounts.index')->with('success', 'Tài khoản đã bị khóa.');
+            }
+        } catch (\Exception $e) {
+            return redirect()->route('accounts.index')->with('error', 'Có lỗi xảy ra: ' . $e->getMessage());
+        }
+    }
+
+    public function resetPassword(int $id)
+    {
+        $account = $this->userService->find($id);
+
+        if (!$account) {
+            abort(404);
+        }
+
+        $this->authorize('update', [User::class, $account]);
+
+        try {
+            $account->update(['password' => Hash::make('Abc123!@#')]);
+
+            return redirect()->route('accounts.show', $account)->with('success', 'Mật khẩu đã được đặt lại thành công. Mật khẩu mới: Abc123!@#');
+        } catch (\Exception $e) {
+            return redirect()->route('accounts.show', $account)->with('error', 'Có lỗi xảy ra: ' . $e->getMessage());
+        }
     }
 }

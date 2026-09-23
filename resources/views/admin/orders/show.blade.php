@@ -1,70 +1,83 @@
 @extends('layouts.app')
 
-@section('title', 'Chi Tiết Đơn Hàng - Giặt Ủi Pro')
-@section('page-title', 'Chi Tiết Đơn Hàng')
+@section('title', 'Chi tiết đơn hàng - Giặt Ủi Pro')
+@section('page-title', 'Chi tiết đơn hàng')
 
 @section('content')
-<div class="row g-4">
-    <div class="col-lg-8">
-        <div class="card">
-            <div class="card-body">
-                <div class="d-flex justify-content-between align-items-center mb-4">
-                    <h5 class="mb-0">Đơn hàng #{{ $order->code }}</h5>
-                    <span class="badge-status badge-processing">{{ $order->status }}</span>
-                </div>
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <a href="{{ route('orders.index') }}" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-arrow-left me-1"></i>Quay lại
+    </a>
+    <a href="{{ route('orders.edit', $order->id) }}" class="btn btn-primary btn-sm">
+        <i class="bi bi-pencil me-1"></i>Chỉnh sửa
+    </a>
+</div>
 
-                <div class="row g-3">
-                    <div class="col-md-6">
-                        <div class="small text-muted">Khách hàng</div>
-                        <div class="fw-semibold">{{ $order->customer?->name ?: '-' }}</div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="small text-muted">Số điện thoại</div>
-                        <div class="fw-semibold">{{ $order->customer?->phone ?: '-' }}</div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="small text-muted">Dịch vụ</div>
-                        <div class="fw-semibold">{{ $order->service?->name ?: '-' }}</div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="small text-muted">Khối lượng</div>
-                        <div class="fw-semibold">{{ $order->weight_kg ?: '-' }}</div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="small text-muted">Mô tả số lượng</div>
-                        <div class="fw-semibold">{{ $order->quantity_items ?: '-' }}</div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="small text-muted">Tổng tiền</div>
-                        <div class="fw-semibold text-primary">{{ number_format($order->total_amount) }} VNĐ</div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="small text-muted">Ngày tạo</div>
-                        <div class="fw-semibold">{{ $order->created_at?->format('d/m/Y') }}</div>
-                    </div>
-                    <div class="col-12">
-                        <div class="small text-muted">Ghi chú từ khách hàng</div>
-                        <div>{{ $order->notes ?: 'Không có ghi chú.' }}</div>
-                    </div>
-                </div>
+<div class="card mb-4">
+    <div class="card-header bg-primary text-white">
+        <h5 class="mb-0">Đơn hàng #{{ $order->code }}</h5>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-6">
+                <table class="table table-borderless">
+                    <tr><td><strong>Khách hàng</strong></td><td>{{ $order->customer?->name }}</td></tr>
+                    <tr><td><strong>Dịch vụ</strong></td><td>{{ $order->service?->name }}</td></tr>
+                    <tr><td><strong>Trạng thái</strong></td>
+                        <td>
+                            <span class="badge badge-status badge-{{ $order->status }}">{{ $order->status }}</span>
+                        </td>
+                    </tr>
+                    <tr><td><strong>Ngày tạo</strong></td><td>{{ $order->created_at?->format('d/m/Y H:i') }}</td></tr>
+                </table>
+            </div>
+            <div class="col-md-6">
+                <table class="table table-borderless">
+                    <tr><td><strong>Tổng tiền</strong></td><td><strong class="text-primary">{{ number_format($order->total_amount) }} VNĐ</strong></td></tr>
+                    <tr><td><strong>Ghi chú</strong></td><td>{{ $order->notes ?: '-' }}</td></tr>
+                </table>
             </div>
         </div>
     </div>
+</div>
 
-    <div class="col-lg-4">
-        <div class="card">
-            <div class="card-body">
-                <h6 class="mb-3">Thao tác</h6>
-                <div class="d-grid gap-2">
-                    <a href="{{ route('orders.edit', $order) }}" class="btn btn-order-secondary order-form-btn">Chỉnh sửa</a>
-                    <form action="{{ route('orders.destroy', $order) }}" method="POST" onsubmit="return confirm('Bạn có chắc muốn xóa đơn hàng?')">
-                        @csrf
-                        @method('DELETE')
-                        <button type="submit" class="btn btn-danger w-100 order-form-btn">Xóa đơn hàng</button>
-                    </form>
-                    <a href="{{ route('orders.index') }}" class="btn btn-order-primary order-form-btn">Quay lại danh sách</a>
-                </div>
+@if($order->items->count() > 0)
+<div class="card mb-4">
+    <div class="card-header"><h5 class="mb-0">Chi tiết mặt hàng</h5></div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead><tr><th>Mặt hàng</th><th>Loại</th><th>Đơn giá</th><th>SL</th><th>Thành tiền</th></tr></thead>
+                <tbody>
+                    @foreach($order->items as $item)
+                    <tr>
+                        <td>{{ $item->item_name }}</td>
+                        <td>{{ $item->item_type }}</td>
+                        <td>{{ number_format($item->price) }} VNĐ</td>
+                        <td>{{ $item->quantity }}</td>
+                        <td>{{ number_format($item->subtotal) }} VNĐ</td>
+                    </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+@endif
+
+<div class="card">
+    <div class="card-header"><h5 class="mb-0">Lịch sử trạng thái</h5></div>
+    <div class="card-body">
+        <div class="timeline">
+            @foreach($statusFlow as $key => $label)
+            <div class="d-flex align-items-center mb-3 @if($key === $order->status) fw-bold @else text-muted @endif">
+                <div class="status-dot {{ $key === $order->status ? 'bg-primary' : 'bg-secondary' }} me-3"></div>
+                <span>{{ $label }}</span>
+                @if($key === $order->status)
+                <span class="badge bg-primary ms-3">(Hiện tại)</span>
+                @endif
             </div>
+            @endforeach
         </div>
     </div>
 </div>

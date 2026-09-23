@@ -20,11 +20,14 @@
         </div>
         <select name="category" class="form-select" style="width: auto;" onchange="this.form.submit()">
             <option value="">Tất cả danh mục</option>
-            <option value="Trang phục truyền thống" @selected(request('category') === 'Trang phục truyền thống')>Trang phục truyền thống</option>
-            <option value="Đồ cao cấp" @selected(request('category') === 'Đồ cao cấp')>Đồ cao cấp</option>
-            <option value="Áo khoác" @selected(request('category') === 'Áo khoác')>Áo khoác</option>
-            <option value="Đồ công sở" @selected(request('category') === 'Đồ công sở')>Đồ công sở</option>
-            <option value="Hàng ngày" @selected(request('category') === 'Hàng ngày')>Hàng ngày</option>
+            @foreach($categories as $cat)
+                <option value="{{ $cat }}" @selected(request('category') === $cat)>{{ $cat }}</option>
+            @endforeach
+        </select>
+        <select name="status" class="form-select" style="width: auto;" onchange="this.form.submit()">
+            <option value="">Tất cả trạng thái</option>
+            <option value="active" @selected(request('status') === 'active')>Đang hoạt động</option>
+            <option value="inactive" @selected(request('status') === 'inactive')>Tạm ngưng</option>
         </select>
     </form>
 </div>
@@ -52,15 +55,6 @@
 
         return 'fa-solid fa-shirt';
     }
-
-    $sampleGarments = [
-        (object)['id' => 1, 'name' => 'Áo Dài Truyền Thống', 'category' => 'Trang phục truyền thống', 'price' => 70000, 'condition_note' => 'Cần kiểm tra kỹ đường chỉ, rách nhẹ ở tà hoặc ố vàng', 'status' => 'active'],
-        (object)['id' => 2, 'name' => 'Váy Cưới / Đầm Dạ Hội', 'category' => 'Đồ cao cấp', 'price' => 150000, 'condition_note' => 'Kiểm tra đính hạt, vết ố rượu bia/đồ ăn trước khi giặt khô', 'status' => 'active'],
-        (object)['id' => 3, 'name' => 'Áo Khoác Dạ / Blazer', 'category' => 'Áo khoác', 'price' => 60000, 'condition_note' => 'Xù lông nhẹ, đứt cúc áo, sờn cổ tay', 'status' => 'active'],
-        (object)['id' => 4, 'name' => 'Quần Tây / Quần Ân', 'category' => 'Đồ công sở', 'price' => 30000, 'condition_note' => 'Mất nếp gấp, sờn gấu quần', 'status' => 'active'],
-        (object)['id' => 5, 'name' => 'Đồ Thường / Áo Thun', 'category' => 'Hàng ngày', 'price' => 20000, 'condition_note' => 'Tình trạng bình thường', 'status' => 'active'],
-    ];
-    $displayGarments = $garments->count() > 0 ? $garments : collect($sampleGarments);
 @endphp
 
 <!-- Garments Table -->
@@ -73,13 +67,13 @@
                         <th>Tên Loại Đồ</th>
                         <th>Danh Mục</th>
                         <th>Giá Dịch Vụ</th>
-                        <th>Mô Tả Hiện Trạng Trước Khi Giặt</th>
+                        <th>Mô Tả Hiện Trạng</th>
                         <th>Trạng Thái</th>
                         <th>Thao Tác</th>
                     </tr>
                 </thead>
                 <tbody>
-                    @forelse($displayGarments as $garment)
+                    @forelse($garments as $garment)
                     @php $garmentIcon = getGarmentIcon($garment); @endphp
                     <tr>
                         <td>
@@ -115,4 +109,31 @@
         </div>
     </div>
 </div>
+
+@if($garments->hasPages())
+<nav class="mt-4">
+    <div class="d-flex justify-content-between align-items-center">
+        <div class="text-muted small">Hiển thị {{ $garments->firstItem() }} - {{ $garments->lastItem() }} của {{ $garments->total() }} loại đồ</div>
+        <ul class="pagination mb-0">
+            @if ($garments->onFirstPage())
+                <li class="page-item disabled"><span class="page-link"><i class="bi bi-chevron-left"></i></span></li>
+            @else
+                <li class="page-item"><a class="page-link" href="{{ $garments->appends(request()->query())->url($garments->currentPage() - 1) }}"><i class="bi bi-chevron-left"></i></a></li>
+            @endif
+            @foreach ($garments->getUrlRange(max(1, $garments->currentPage() - 2), min($garments->lastPage(), $garments->currentPage() + 2)) as $page => $url)
+                @if ($page == $garments->currentPage())
+                    <li class="page-item active"><span class="page-link">{{ $page }}</span></li>
+                @else
+                    <li class="page-item"><a class="page-link" href="{{ $garments->appends(request()->query())->url($page) }}">{{ $page }}</a></li>
+                @endif
+            @endforeach
+            @if ($garments->onLastPage())
+                <li class="page-item disabled"><span class="page-link"><i class="bi bi-chevron-right"></i></span></li>
+            @else
+                <li class="page-item"><a class="page-link" href="{{ $garments->appends(request()->query())->url($garments->currentPage() + 1) }}"><i class="bi bi-chevron-right"></i></a></li>
+            @endif
+        </ul>
+    </div>
+</nav>
+@endif
 @endsection

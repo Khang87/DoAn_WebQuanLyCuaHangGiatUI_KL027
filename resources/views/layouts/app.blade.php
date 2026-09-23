@@ -69,6 +69,12 @@
                         </a>
                     </li>
                     <li class="sidebar-menu-item">
+                        <a href="{{ route('service-categories.index') }}" class="sidebar-menu-link {{ request()->routeIs('service-categories.*') ? 'active' : '' }}">
+                            <i class="bi bi-folder-fill"></i>
+                            <span>Danh mục DV</span>
+                        </a>
+                    </li>
+                    <li class="sidebar-menu-item">
                         <a href="{{ route('services.index') }}" class="sidebar-menu-link {{ request()->routeIs('services.*') ? 'active' : '' }}">
                             <i class="bi bi-briefcase"></i>
                             <span>Dịch Vụ</span>

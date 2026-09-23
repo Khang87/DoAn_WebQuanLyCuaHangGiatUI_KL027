@@ -1,0 +1,81 @@
+<?php
+
+namespace App\Services;
+
+use App\Models\Customer;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+
+class CustomerService
+{
+    public function getAll(array $filters = []): LengthAwarePaginator
+    {
+        $query = Customer::query();
+
+        if (!empty($filters['search'])) {
+            $search = $filters['search'];
+            $query->where('name', 'like', "%{$search}%")
+                  ->orWhere('phone', 'like', "%{$search}%")
+                  ->orWhere('code', 'like', "%{$search}%");
+        }
+
+        if (!empty($filters['type'])) {
+            $query->where('type', $filters['type']);
+        }
+
+        return $query->withTrashed()->latest()->paginate(20);
+    }
+
+    public function find(int $id): ?Customer
+    {
+        return Customer::withTrashed()->find($id);
+    }
+
+    public function findByCode(string $code): ?Customer
+    {
+        return Customer::where('code', $code)->first();
+    }
+
+    public function create(array $data): Customer
+    {
+        if (empty($data['code'])) {
+            $data['code'] = 'KH' . str_pad((string) ((Customer::max('id') ?? 0) + 1), 3, '0', STR_PAD_LEFT);
+        }
+        if (empty($data['points'])) {
+            $data['points'] = 0;
+        }
+        if (empty($data['type'])) {
+            $data['type'] = 'Mới';
+        }
+        return Customer::create($data);
+    }
+
+    public function update(Customer $customer, array $data): Customer
+    {
+        $customer->update($data);
+        return $customer->fresh();
+    }
+
+    public function delete(Customer $customer): bool
+    {
+        return $customer->delete();
+    }
+
+    public function restore(int $id): ?Customer
+    {
+        $customer = Customer::onlyTrashed()->find($id);
+        if ($customer) {
+            $customer->restore();
+        }
+        return $customer;
+    }
+
+    public function getTotalSpent(Customer $customer): float
+    {
+        return (float) $customer->orders()->sum('total_amount');
+    }
+
+    public function getOrderCount(Customer $customer): int
+    {
+        return (int) $customer->orders()->count();
+    }
+}

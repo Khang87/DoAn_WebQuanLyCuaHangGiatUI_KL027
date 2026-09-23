@@ -1,6 +1,41 @@
 @extends('layouts.app')
-@section('title', 'Báo Cáo Đơn Hàng - Giặt Ủi Pro')
-@section('page-title', 'Báo Cáo Đơn Hàng')
+
+@section('title', 'Thống kê đơn hàng - Giặt Ủi Pro')
+@section('page-title', 'Thống kê đơn hàng')
+
 @section('content')
-<div class="card"><div class="card-body"><h5 class="mb-4">Tình hình đơn hàng tháng 09/2026</h5><div class="row g-4"><div class="col-md-3"><strong class="d-block fs-4">156</strong><span class="text-muted">Tổng đơn</span></div><div class="col-md-3"><strong class="d-block fs-4 text-warning">18</strong><span class="text-muted">Chờ xử lý</span></div><div class="col-md-3"><strong class="d-block fs-4 text-info">32</strong><span class="text-muted">Đang xử lý</span></div><div class="col-md-3"><strong class="d-block fs-4 text-success">106</strong><span class="text-muted">Hoàn thành</span></div></div></div></div>
+<div class="card mb-4">
+    <div class="card-header"><h5 class="mb-0">Đơn hàng theo trạng thái</h5></div>
+    <div class="card-body">
+        <table class="table table-hover">
+            <thead><tr><th>Trạng thái</th><th>Số lượng</th><th>Tỷ lệ</th></tr></thead>
+            <tbody>
+                @foreach($orderStatusCounts as $status => $count)
+                <tr>
+                    <td>{{ $status }}</td>
+                    <td>{{ $count }}</td>
+                    <td>{{ $count > 0 ? round(($count / array_sum($orderStatusCounts)) * 100, 1) : 0 }}%</td>
+                </tr>
+                @endforeach
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header"><h5 class="mb-0">Đơn hàng theo dịch vụ</h5></div>
+    <div class="card-body">
+        <table class="table table-hover">
+            <thead><tr><th>Dịch vụ</th><th>Số đơn</th></tr></thead>
+            <tbody>
+                @foreach($serviceCounts as $serviceId => $count)
+                <tr>
+                    <td>{{ $services->firstWhere('id', $serviceId)?->name ?? 'Không rõ' }}</td>
+                    <td>{{ $count }}</td>
+                </tr>
+                @endforeach
+            </tbody>
+        </table>
+    </div>
+</div>
 @endsection
