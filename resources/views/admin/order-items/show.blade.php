@@ -14,7 +14,7 @@
     <div class="card-body">
         <h5 class="mb-3">{{ $item->item_name }}</h5>
         <table class="table table-borderless">
-            <tr><td><strong>Đơn hàng</strong></td><td>#{{ $item->order?->code }}</td></tr>
+            <tr><td><strong>Đơn hàng</strong></td><td>{{ $item->order?->code }}</td></tr>
             <tr><td><strong>Loại</strong></td><td>{{ $item->item_type }}</td></tr>
             <tr><td><strong>Đơn giá</strong></td><td>{{ number_format($item->price) }} VNĐ</td></tr>
             <tr><td><strong>Số lượng</strong></td><td>{{ $item->quantity }}</td></tr>

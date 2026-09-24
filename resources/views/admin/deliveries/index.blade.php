@@ -50,7 +50,7 @@
                 <tbody>
                     @forelse($deliveries as $delivery)
                     <tr>
-                        <td><strong>#GH{{ $delivery->id }}</strong></td>
+                        <td><strong>GH{{ $delivery->id }}</strong></td>
                         <td>
                             {{ $delivery->customer?->name ?: '-' }}
                             <br><small class="text-muted">{{ $delivery->customer?->phone ?: '' }}</small>

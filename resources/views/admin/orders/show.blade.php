@@ -15,7 +15,7 @@
 
 <div class="card mb-4">
     <div class="card-header bg-primary text-white">
-        <h5 class="mb-0">Đơn hàng #{{ $order->code }}</h5>
+        <h5 class="mb-0">Đơn hàng {{ $order->code }}</h5>
     </div>
     <div class="card-body">
         <div class="row">

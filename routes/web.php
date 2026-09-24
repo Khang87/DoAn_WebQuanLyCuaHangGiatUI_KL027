@@ -90,6 +90,11 @@ Route::middleware(['auth'])->group(function () {
     Route::post('accounts/{account}/toggle-status', [AccountController::class, 'toggleStatus'])->name('accounts.toggle-status')->middleware('role:admin');
     Route::post('accounts/{account}/reset-password', [AccountController::class, 'resetPassword'])->name('accounts.reset-password')->middleware('role:admin');
 
+    // User Profile & Settings
+    Route::get('/profile', [AccountController::class, 'profile'])->name('profile');
+    Route::put('/profile', [AccountController::class, 'updateProfile'])->name('profile.update');
+    Route::get('/settings', [AccountController::class, 'settings'])->name('settings');
+
     // Services Management - add toggle status
     Route::post('services/{service}/toggle-status', [ServiceController::class, 'toggleStatus'])->name('services.toggle-status');
     Route::post('service-categories/{service_category}/toggle-status', [ServiceCategoryController::class, 'toggleStatus'])->name('service-categories.toggle-status');

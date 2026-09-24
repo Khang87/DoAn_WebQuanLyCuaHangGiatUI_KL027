@@ -29,7 +29,7 @@
                     @forelse($items as $item)
                     <tr>
                         <td>{{ $item->id }}</td>
-                        <td><a href="{{ route('orders.show', $item->order_id) }}">#{{ $item->order?->code }}</a></td>
+                        <td><a href="{{ route('orders.show', $item->order_id) }}">{{ $item->order?->code }}</a></td>
                         <td><strong>{{ $item->item_name }}</strong></td>
                         <td>{{ $item->item_type }}</td>
                         <td>{{ number_format($item->price) }} VNĐ</td>

@@ -54,8 +54,8 @@
                 <tbody>
                     @forelse($payments as $payment)
                     <tr>
-                        <td><strong>#TT{{ $payment->id }}</strong></td>
-                        <td><a href="{{ route('orders.show', $payment->order_id) }}">#{{ $payment->order?->code ?: $payment->order_id }}</a></td>
+                        <td><strong>TT{{ $payment->id }}</strong></td>
+                        <td><a href="{{ route('orders.show', $payment->order_id) }}">{{ $payment->order?->code ?: $payment->order_id }}</a></td>
                         <td>{{ $payment->order?->customer?->name ?: '-' }}</td>
                         <td class="fw-semibold">{{ number_format($payment->amount) }} VNĐ</td>
                         <td>

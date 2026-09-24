@@ -45,11 +45,11 @@
                 <tbody>
                     @forelse($invoices as $invoice)
                     <tr>
-                        <td><strong>#{{ $invoice->code }}</strong></td>
+                        <td><strong>{{ $invoice->code }}</strong></td>
                         <td>{{ $invoice->order?->customer?->name ?: '-' }}</td>
                         <td>
                             @if($invoice->order)
-                                <a href="{{ route('orders.show', $invoice->order) }}">#{{ $invoice->order->code }}</a>
+                                <a href="{{ route('orders.show', $invoice->order) }}">{{ $invoice->order->code }}</a>
                             @else
                                 -
                             @endif

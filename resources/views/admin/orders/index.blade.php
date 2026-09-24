@@ -61,7 +61,7 @@
                 <tbody>
                     @forelse($orders as $order)
                     <tr>
-                        <td><strong>#{{ $order->code }}</strong></td>
+                        <td><strong>{{ $order->code }}</strong></td>
                         <td>
                             <div class="d-flex align-items-center">
                                 <img src="{{ asset('assets/images/user.jfif') }}" alt="Ảnh khách hàng" class="rounded-circle me-2" style="width: 32px; height: 32px; object-fit: cover;" onerror="this.onerror=null; this.src='{{ asset('assets/images/user.jfif') }}';">

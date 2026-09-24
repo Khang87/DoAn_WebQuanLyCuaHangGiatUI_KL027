@@ -38,7 +38,7 @@
                 <tbody>
                     @forelse($bookings as $booking)
                     <tr>
-                        <td><strong>#{{ $booking->id }}</strong></td>
+                        <td><strong>BK{{ $booking->id }}</strong></td>
                         <td>{{ $booking->customer?->name ?: '-' }}</td>
                         <td>{{ $booking->service?->name ?: '-' }}</td>
                         <td>{{ $booking->garment_type }}</td>

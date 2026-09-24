@@ -34,7 +34,7 @@
         <!-- Brand Logo -->
         <a href="{{ route('dashboard') }}" class="sidebar-brand">
             <img src="{{ asset('assets/images/icon_maygiat.png') }}" alt="Logo" style="width: 28px; height: 28px; object-fit: contain;">
-            <span>Giặt Ủi Pro</span>
+            <span>Sky Laundry</span>
         </a>
 
         <!-- Navigation Menu -->
@@ -229,8 +229,8 @@
                         <i class="bi bi-person-circle"></i>
                     </button>
                     <ul class="dropdown-menu dropdown-menu-end">
-                        <li><a class="dropdown-item" href="#"><i class="bi bi-person me-2"></i> Hồ Sơ</a></li>
-                        <li><a class="dropdown-item" href="#"><i class="bi bi-gear me-2"></i> Cài Đặt</a></li>
+                        <li><a class="dropdown-item" href="{{ route('profile') }}"><i class="bi bi-person me-2"></i> Hồ Sơ</a></li>
+                        <li><a class="dropdown-item" href="{{ route('settings') }}"><i class="bi bi-gear me-2"></i> Cài Đặt</a></li>
                         <li><hr class="dropdown-divider"></li>
                         <li>
                             <form action="{{ route('logout') }}" method="POST">

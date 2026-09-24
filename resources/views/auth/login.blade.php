@@ -30,7 +30,7 @@
             <div class="login-logo">
                 <img src="{{ asset('assets/images/icon_maygiat.png') }}" alt="Logo" style="width: 80px; height: 80px; margin-bottom: 12px;" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline-block';">
                 <i class="bi bi-droplet-fill" style="font-size: 3rem; color: var(--primary-blue); display: none;"></i>
-                <h1>Giặt Ủi Pro</h1>
+                <h1>Sky Laundry</h1>
                 <p>Hệ thống quản lý cửa hàng giặt ủi</p>
             </div>
 
@@ -114,7 +114,7 @@
 
             <!-- Footer -->
             <div class="text-center mt-4">
-                <small class="text-muted">© 2024 Giặt Ủi Pro. All rights reserved.</small>
+                <small class="text-muted">© 2026 Sky Laundry. All rights reserved.</small>
             </div>
         </div>
     </div>

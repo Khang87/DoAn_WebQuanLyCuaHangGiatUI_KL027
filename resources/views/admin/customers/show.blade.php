@@ -80,7 +80,7 @@
                 <tbody>
                     @foreach($orders as $order)
                     <tr>
-                        <td><strong>#{{ $order->code }}</strong></td>
+                        <td><strong>{{ $order->code }}</strong></td>
                         <td>{{ $order->service?->name ?: '-' }}</td>
                         <td>{{ number_format($order->total_amount) }} VNĐ</td>
                         @if($order->status === 'completed')

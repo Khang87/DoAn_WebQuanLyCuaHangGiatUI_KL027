@@ -21,7 +21,7 @@
                     <select class="form-select" name="order_id">
                         <option value="">Chọn đơn hàng</option>
                         @foreach($orders as $order)
-                        <option value="{{ $order->id }}">#{{ $order->code }} - {{ $order->customer?->name }}</option>
+                        <option value="{{ $order->id }}">{{ $order->code }} - {{ $order->customer?->name }}</option>
                         @endforeach
                     </select>
                 </div>

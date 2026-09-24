@@ -14,7 +14,7 @@
     <div class="card-body">
         <h5 class="mb-3">Thông tin thanh toán</h5>
         <table class="table table-borderless">
-            <tr><td><strong>Đơn hàng</strong></td><td>#{{ $payment->order?->code }}</td></tr>
+            <tr><td><strong>Đơn hàng</strong></td><td>{{ $payment->order?->code }}</td></tr>
             <tr><td><strong>Số tiền</strong></td><td><strong>{{ number_format($payment->amount) }} VNĐ</strong></td></tr>
             <tr><td><strong>Phương thức</strong></td>
                 <td>

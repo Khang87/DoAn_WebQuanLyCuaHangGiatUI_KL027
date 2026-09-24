@@ -157,4 +157,34 @@ class AccountController extends Controller
             return redirect()->route('accounts.show', $account)->with('error', 'Có lỗi xảy ra: ' . $e->getMessage());
         }
     }
+
+    public function profile()
+    {
+        $account = auth()->user();
+        return view('admin.accounts.profile', compact('account'));
+    }
+
+    public function updateProfile(Request $request)
+    {
+        $account = auth()->user();
+
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|email|max:255|unique:users,email,' . $account->id,
+            'phone' => 'nullable|string|max:20',
+        ]);
+
+        try {
+            $account->update($request->only(['name', 'email', 'phone']));
+
+            return redirect()->route('profile')->with('success', 'Hồ sơ đã được cập nhật.');
+        } catch (\Exception $e) {
+            return redirect()->route('profile')->with('error', 'Có lỗi xảy ra: ' . $e->getMessage())->withInput();
+        }
+    }
+
+    public function settings()
+    {
+        return view('admin.settings.index');
+    }
 }

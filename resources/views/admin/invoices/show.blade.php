@@ -12,9 +12,9 @@
 
 <div class="card">
     <div class="card-body">
-        <h5 class="mb-3">Hóa đơn #{{ $invoice->code }}</h5>
+        <h5 class="mb-3">Hóa đơn {{ $invoice->code }}</h5>
         <table class="table table-borderless">
-            <tr><td><strong>Đơn hàng</strong></td><td>#{{ $invoice->order?->code }}</td></tr>
+            <tr><td><strong>Đơn hàng</strong></td><td>{{ $invoice->order?->code }}</td></tr>
             <tr><td><strong>Tổng tiền</strong></td><td><strong>{{ number_format($invoice->total) }} VNĐ</strong></td></tr>
             <tr><td><strong>Trạng thái</strong></td>
                 <td>
