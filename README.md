@@ -319,12 +319,5 @@ DB_PASSWORD=
 
 ---
 
-## 📞 Thông Tin Liên Hệ
-
-- **Project:** Web_Laravel_QuanLyGiatUi
-- **Framework:** Laravel 13 / PHP 8.3+
-- **Developer:** Senior Lead Developer Team
-
----
 
 > 💡 **Mẹo nhanh:** Chạy `php artisan migrate:fresh --seed` mỗi khi cần reset dữ liệu về trạng thái mẫu ban đầu.
