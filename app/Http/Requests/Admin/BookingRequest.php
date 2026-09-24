@@ -25,7 +25,7 @@ class BookingRequest extends FormRequest
             'pickup_date' => ['required', 'date'],
             'pickup_time' => ['required', 'date_format:H:i'],
             'notes' => ['nullable', 'string', 'max:1000'],
-            'status' => ['required', 'in:pending,confirmed,completed,cancelled'],
+            'status' => ['nullable', 'in:pending,confirmed,cancelled'],
         ];
     }
 

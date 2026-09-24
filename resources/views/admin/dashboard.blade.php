@@ -4,11 +4,100 @@
 @section('page-title', 'Dashboard')
 
 @push('styles')
+@if(auth()->user()->isAdmin())
 <link rel="stylesheet" href="{{ asset('assets/libs/apexcharts/apexcharts.css') }}">
+@endif
 @endpush
 
 @section('content')
-<!-- Stats Cards Row -->
+<!-- Staff Shared Cards Row (Visible to Staff & Admin) -->
+<div class="row g-4 mb-4">
+    <!-- Card 1: Lịch Giao Nhận Hôm Nay -->
+    <div class="col-12 col-sm-6 col-xl-3">
+        <div class="card stat-card">
+            <div class="card-body">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                        <div class="stat-value">{{ $todayDeliveries->count() }}</div>
+                        <div class="stat-label">Lịch Giao Nhận Hôm Nay</div>
+                    </div>
+                    <div class="stat-icon">
+                        <i class="bi bi-truck"></i>
+                    </div>
+                </div>
+                <div class="mt-3">
+                        <small class="text-muted"><i class="bi bi-calendar3"></i> Đơn cần giao/nhận hôm nay</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Card 2: Hóa Đơn Chờ Thanh Toán -->
+    <div class="col-12 col-sm-6 col-xl-3">
+        <div class="card stat-card">
+            <div class="card-body">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                        <div class="stat-value">{{ $pendingInvoices->count() }}</div>
+                        <div class="stat-label">Hóa Đơn Chờ Thanh Toán</div>
+                    </div>
+                    <div class="stat-icon">
+                        <i class="bi bi-receipt"></i>
+                    </div>
+                </div>
+                <div class="mt-3">
+                        <small class="text-warning"><i class="bi bi-exclamation-circle"></i> Chưa thu tiền</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Card 3: Khách Hàng Mới Hôm Nay -->
+    <div class="col-12 col-sm-6 col-xl-3">
+        <div class="card stat-card">
+            <div class="card-body">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                        <div class="stat-value">{{ $newCustomersToday }}</div>
+                        <div class="stat-label">Khách Hàng Mới Hôm Nay</div>
+                    </div>
+                    <div class="stat-icon">
+                        <i class="bi bi-people"></i>
+                    </div>
+                </div>
+                <div class="mt-3">
+                        <small class="text-muted"><i class="bi bi-calendar3"></i> Trong ngày hôm nay</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="col-12 col-sm-6 col-xl-3">
+        <div class="card stat-card h-100">
+            <div class="card-body">
+                <div class="d-flex align-items-center justify-content-between mb-3">
+                    <div>
+                        <div class="stat-label">Lối Tắt Nhanh</div>
+                    </div>
+                    <div class="stat-icon">
+                        <i class="bi bi-lightning-charge"></i>
+                    </div>
+                </div>
+                <div class="d-grid gap-2">
+                    @if(auth()->user()->isAdmin())
+                    <a href="{{ route('orders.create') }}" class="btn btn-primary w-100 mb-2"><i class="fas fa-plus-circle me-1"></i> Tạo đơn hàng mới</a>
+                    @endif
+                    <a href="{{ route('customers.create') }}" class="btn btn-sm btn-outline-primary"><i class="bi bi-person-plus"></i> Tạo khách hàng mới</a>
+                    <a href="{{ route('invoices.create') }}" class="btn btn-sm btn-outline-primary"><i class="bi bi-receipt"></i> Lập hóa đơn</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@if(auth()->user()->isAdmin())
+<!-- Stats Cards Row (Admin Only) -->
 <div class="row g-4 mb-4">
     <!-- Tổng Đơn Hàng -->
     <div class="col-12 col-sm-6 col-xl-3">
@@ -239,10 +328,159 @@
         </div>
     </div>
 </div>
+
+@endif
+
+<!-- Recent Orders & Deliveries Tables (Staff & Admin) -->
+<div class="row g-4">
+    <!-- Left Column: Orders & Deliveries -->
+    <div class="col-lg-8">
+        @if(auth()->user()->isAdmin())
+        <!-- Đơn Hàng Mới Cần Xử Lý (Admin Only - contains financial data) -->
+        <div class="card shadow-sm border-0 rounded-3 mb-4">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">Đơn Hàng Mới Cần Xử Lý</h5>
+                <a href="{{ route('orders.index') }}" class="btn btn-sm btn-outline-primary">Xem Tất Cả</a>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th>Mã Đơn</th>
+                                <th>Khách Hàng</th>
+                                <th>Dịch Vụ</th>
+                                <th>Tổng Tiền</th>
+                                <th>Trạng Thái</th>
+                                <th>Thao Tác</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @forelse($processingOrders as $order)
+                            <tr>
+                                <td><strong>{{ $order->code }}</strong></td>
+                                <td>{{ $order->customer?->name ?: '-' }}</td>
+                                <td>{{ $order->service?->name ?: '-' }}</td>
+                                <td><strong>{{ number_format($order->total_amount) }} VNĐ</strong></td>
+                                <td>
+                                    @if($order->status === 'pending')
+                                        <span class="badge bg-warning-subtle text-warning border border-warning px-3 py-2 rounded-pill"><i class="fas fa-hourglass me-1"></i>Chờ xử lý</span>
+                                    @elseif($order->status === 'washing')
+                                        <span class="badge bg-info-subtle text-info border border-info px-3 py-2 rounded-pill"><i class="fas fa-washer me-1"></i>Đang giặt</span>
+                                    @else
+                                        <span class="badge bg-secondary-subtle text-secondary border border-secondary px-3 py-2 rounded-pill">{{ $order->status }}</span>
+                                    @endif
+                                </td>
+                                <td><a href="{{ route('orders.show', $order) }}" class="btn btn-sm btn-light"><i class="bi bi-eye"></i> Xem</a></td>
+                            </tr>
+                            @empty
+                            <tr><td colspan="6" class="text-center text-muted py-4">Chưa có đơn hàng cần xử lý</td></tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        @endif
+
+        <!-- Lịch Giao Nhận Trong Ngày (Staff & Admin) -->
+        <div class="card shadow-sm border-0 rounded-3">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">Lịch Giao Nhận Trong Ngày</h5>
+                <a href="{{ route('deliveries.index') }}" class="btn btn-sm btn-outline-primary">Xem Tất Cả</a>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th>Mã Lịch</th>
+                                <th>Khách Hàng</th>
+                                <th>Địa Chỉ Giao Hàng</th>
+                                <th>Khung Giờ</th>
+                                <th>Loại</th>
+                                <th>Trạng Thái</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @forelse($todayDeliveries as $delivery)
+                            <tr>
+                                <td><strong>#{{ $delivery->id }}</strong></td>
+                                <td>{{ $delivery->customer?->name ?: '-' }}</td>
+                                <td>{{ $delivery->address ?: 'Chưa có địa chỉ' }}</td>
+                                <td>{{ $delivery->pickup_time?->format('H:i') ?: '-' }}</td>
+                                <td>
+                                    @if($delivery->method === 'pickup')
+                                        <span class="badge bg-info-subtle text-info border border-info px-2 py-1 rounded-pill">Nhận Đồ</span>
+                                    @elseif($delivery->method === 'dropoff')
+                                        <span class="badge bg-primary-subtle text-primary border border-primary px-2 py-1 rounded-pill">Giao Đồ</span>
+                                    @else
+                                        <span class="badge bg-secondary-subtle text-secondary border border-secondary px-2 py-1 rounded-pill">{{ $delivery->method }}</span>
+                                    @endif
+                                </td>
+                                <td>
+                                    @if($delivery->status === 'completed')
+                                        <span class="badge bg-success-subtle text-success border border-success px-2 py-1 rounded-pill">Hoàn Thành</span>
+                                    @elseif($delivery->status === 'cancelled')
+                                        <span class="badge bg-danger-subtle text-danger border border-danger px-2 py-1 rounded-pill">Đã Hủy</span>
+                                    @elseif($delivery->status === 'confirmed')
+                                        <span class="badge bg-success-subtle text-success border border-success px-2 py-1 rounded-pill">Đã Xác Nhận</span>
+                                    @elseif($delivery->status === 'pending')
+                                        <span class="badge bg-warning-subtle text-warning border border-warning px-2 py-1 rounded-pill">Chờ Xác Nhận</span>
+                                    @else
+                                        <span class="badge bg-secondary-subtle text-secondary border border-secondary px-2 py-1 rounded-pill">{{ $delivery->status }}</span>
+                                    @endif
+                                </td>
+                            </tr>
+                            @empty
+                            <tr><td colspan="6" class="text-center text-muted py-4">Không có lịch giao hôm nay</td></tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Right Column: Pending Invoices -->
+    <div class="col-lg-4">
+        <div class="card shadow-sm border-0 rounded-3 h-100">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">Hóa Đơn Chờ Thanh Toán</h5>
+                <a href="{{ route('invoices.index') }}" class="btn btn-sm btn-outline-primary">Xem Tất Cả</a>
+            </div>
+            <div class="card-body p-0">
+                <ul class="list-group list-group-flush">
+                    @forelse($pendingInvoices as $invoice)
+                    <li class="list-group-item d-flex justify-content-between align-items-center py-3">
+                        <div>
+                            <div class="fw-semibold">{{ $invoice->code }}</div>
+                            <small class="text-muted">{{ $invoice->order?->customer?->name ?: 'Không có khách hàng' }}</small>
+                        </div>
+                        <div class="text-end">
+                            <div class="fw-semibold text-danger">{{ number_format($invoice->total) }} VNĐ</div>
+                            <div class="btn-group btn-group-sm mt-1" role="group">
+                                <a href="{{ route('invoices.show', $invoice) }}" class="btn btn-sm btn-light" title="Xem hóa đơn"><i class="bi bi-eye"></i></a>
+                                <a href="{{ route('invoices.edit', $invoice) }}" class="btn btn-sm btn-success" title="Thu tiền"><i class="fas fa-money-bill"></i></a>
+                            </div>
+                        </div>
+                    </li>
+                    @empty
+                    <li class="list-group-item text-center text-muted py-4">
+                        Không có hóa đơn chờ thanh toán
+                    </li>
+                    @endforelse
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
 @endsection
 
 @push('scripts')
+@if(auth()->user()->isAdmin())
 <script src="{{ asset('assets/libs/apexcharts/apexcharts.min.js') }}"></script>
+
 <script>
     // Revenue Chart
     var revenueOptions = {
@@ -349,4 +587,5 @@
     var statusChart = new ApexCharts(document.querySelector("#status-chart"), statusOptions);
     statusChart.render();
 </script>
+@endif
 @endpush

@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Danh sách chi tiết đơn hàng - Giặt Ủi Pro')
+@section('title', 'Danh sách chi tiết đơn hàng - Sky Laundry')
 @section('page-title', 'Chi tiết đơn hàng')
 
 @section('content')
@@ -10,13 +10,17 @@
             <i class="bi bi-arrow-left me-1"></i>Quay lại Đơn hàng
         </a>
     </div>
-    <form action="{{ route('order-items.index') }}" method="GET" class="d-flex gap-2">
-        <div class="input-group" style="width: 200px;">
-            <input type="text" name="order_id" class="form-control" placeholder="Mã đơn hàng..." value="{{ request('order_id') }}">
-        </div>
-        <a href="{{ route('order-items.index') }}" class="btn btn-outline-secondary">Xóa</a>
-    </form>
 </div>
+<form action="{{ url()->current() }}" method="GET" class="row g-3 align-items-center mb-4">
+    <div class="col-12 col-md-5">
+        <div class="input-group shadow-sm rounded-3 overflow-hidden">
+            <span class="input-group-text bg-white border-end-0 ps-3">
+                <i class="fas fa-search text-muted"></i>
+            </span>
+            <input type="text" name="order_id" class="form-control border-start-0 py-2 ps-2" placeholder="Mã đơn hàng..." value="{{ request('order_id') }}">
+        </div>
+    </div>
+</form>
 
 <div class="card">
     <div class="card-body p-0">

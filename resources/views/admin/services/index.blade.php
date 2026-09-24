@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Quản Lý Dịch Vụ - Giặt Ủi Pro')
+@section('title', 'Quản Lý Dịch Vụ - Sky Laundry')
 @section('page-title', 'Quản Lý Dịch Vụ')
 
 @section('content')
@@ -11,28 +11,34 @@
             <i class="bi bi-plus-lg me-2"></i>Thêm Dịch Vụ
         </a>
     </div>
-    <form action="{{ route('services.index') }}" method="GET" class="d-flex gap-2">
-        <div class="input-group" style="width: 300px;">
-            <input type="text" name="search" class="form-control" placeholder="Tìm kiếm dịch vụ..." value="{{ request('search') }}">
-            <button class="btn btn-outline-secondary" type="submit">
-                <i class="bi bi-search"></i>
-            </button>
+</div>
+<form action="{{ url()->current() }}" method="GET" class="row g-3 align-items-center mb-4">
+    <div class="col-12 col-md-5">
+        <div class="input-group shadow-sm rounded-3 overflow-hidden">
+            <span class="input-group-text bg-white border-end-0 ps-3">
+                <i class="fas fa-search text-muted"></i>
+            </span>
+            <input type="text" name="search" class="form-control border-start-0 py-2 ps-2" placeholder="Tìm kiếm dịch vụ..." value="{{ request('search') }}">
         </div>
-        <select name="category_id" class="form-select" style="width: auto;" onchange="this.form.submit()">
-            <option value="">Tất cả danh mục</option>
+    </div>
+    <div class="col-12 col-md-3">
+        <select name="category_id" class="form-select shadow-sm rounded-3 py-2" style="min-width: 220px;" onchange="this.form.submit()">
+            <option value="">-- Tất cả danh mục --</option>
             @foreach($categories as $category)
                 <option value="{{ $category->id }}" @selected(request('category_id') == $category->id)>
                     {{ $category->name }}
                 </option>
             @endforeach
         </select>
-        <select name="status" class="form-select" style="width: auto;" onchange="this.form.submit()">
-            <option value="">Tất cả trạng thái</option>
+    </div>
+    <div class="col-12 col-md-3">
+        <select name="status" class="form-select shadow-sm rounded-3 py-2" style="min-width: 200px;" onchange="this.form.submit()">
+            <option value="">-- Tất cả trạng thái --</option>
             <option value="active" @selected(request('status') === 'active')>Đang hoạt động</option>
             <option value="inactive" @selected(request('status') === 'inactive')>Tạm ngưng</option>
         </select>
-    </form>
-</div>
+    </div>
+</form>
 
 @php
     function getServiceIconConfig($service) {
@@ -72,11 +78,16 @@
                     </div>
                     <div>
                          <h5 class="card-title mb-1">{{ $service->name }}</h5>
-                        @if($service->status === 'active')
-                            <span class="badge bg-success-subtle text-success border border-success px-3 py-2 rounded-pill"><i class="fas fa-check-circle me-1"></i>Hoạt động</span>
-                        @else
-                            <span class="badge bg-danger-subtle text-danger border border-danger px-3 py-2 rounded-pill"><i class="fas fa-ban me-1"></i>Khóa</span>
-                        @endif
+                        <div class="d-flex gap-1 flex-wrap mt-1">
+                            @if($service->category)
+                                <span class="badge bg-secondary-subtle text-secondary border px-2 py-1 rounded-pill text-xs">{{ $service->category->name }}</span>
+                            @endif
+                            @if($service->status === 'active')
+                                <span class="badge bg-success-subtle text-success border border-success px-2 py-1 rounded-pill text-xs"><i class="fas fa-check-circle me-1"></i>Hoạt động</span>
+                            @else
+                                <span class="badge bg-danger-subtle text-danger border border-danger px-2 py-1 rounded-pill text-xs"><i class="fas fa-ban me-1"></i>Khóa</span>
+                            @endif
+                        </div>
                     </div>
                 </div>
                 <p class="text-muted mb-3">{{ $service->description ?: 'Chưa có mô tả chi tiết.' }}</p>

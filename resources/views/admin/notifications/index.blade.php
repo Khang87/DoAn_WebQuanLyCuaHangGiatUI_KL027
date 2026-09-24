@@ -1,27 +1,31 @@
 @extends('layouts.app')
-@section('title', 'Thông Báo - Giặt Ủi Pro')
+@section('title', 'Thông Báo - Sky Laundry')
 @section('page-title', 'Thông Báo')
 
 @section('content')
-<div class="order-toolbar">
+<div class="order-toolbar d-flex justify-content-between align-items-center mb-4">
     <p class="text-muted mb-0">Các cập nhật mới từ hoạt động cửa hàng.</p>
     <a href="{{ route('notifications.create') }}" class="btn btn-primary">
         <i class="bi bi-plus-lg me-2"></i>Tạo thông báo
     </a>
 </div>
 
-<form action="{{ route('notifications.index') }}" method="GET" class="d-flex gap-2 mb-3">
-    <div class="input-group" style="width: 250px;">
-        <input type="text" name="search" class="form-control" placeholder="Tìm thông báo..." value="{{ request('search') }}">
-        <button class="btn btn-outline-secondary" type="submit">
-            <i class="bi bi-search"></i>
-        </button>
+<form action="{{ url()->current() }}" method="GET" class="row g-3 align-items-center mb-4">
+    <div class="col-12 col-md-5">
+        <div class="input-group shadow-sm rounded-3 overflow-hidden">
+            <span class="input-group-text bg-white border-end-0 ps-3">
+                <i class="fas fa-search text-muted"></i>
+            </span>
+            <input type="text" name="search" class="form-control border-start-0 py-2 ps-2" placeholder="Tìm thông báo..." value="{{ request('search') }}">
+        </div>
     </div>
-    <select name="read" class="form-select" style="width: auto;" onchange="this.form.submit()">
-        <option value="">Tất cả</option>
-        <option value="unread" @selected(request('read') === 'unread')>Chưa đọc</option>
-        <option value="read" @selected(request('read') === 'read')>Đã đọc</option>
-    </select>
+    <div class="col-12 col-md-3">
+        <select name="read" class="form-select shadow-sm rounded-3 py-2" style="min-width: 220px;" onchange="this.form.submit()">
+            <option value="">-- Tất cả trạng thái --</option>
+            <option value="unread" @selected(request('read') === 'unread')>Chưa đọc</option>
+            <option value="read" @selected(request('read') === 'read')>Đã đọc</option>
+        </select>
+    </div>
 </form>
 
 <div class="card">

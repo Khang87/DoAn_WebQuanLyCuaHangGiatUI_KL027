@@ -21,7 +21,8 @@ class DeliveryRequest extends FormRequest
             'address' => ['nullable', 'string', 'max:500'],
             'pickup_date' => ['required', 'date'],
             'pickup_time' => ['required', 'date_format:H:i'],
-            'status' => ['required', 'in:pending,confirmed,completed,cancelled'],
+            'status' => ['nullable', 'in:pending,confirmed,cancelled'],
+            'notes' => ['nullable', 'string', 'max:1000'],
         ];
     }
 

@@ -17,6 +17,7 @@ class PromotionController extends Controller
     public function index(Request $request)
     {
         $promotions = $this->promotionService->getAll([
+            'search' => $request->input('search'),
             'status' => $request->input('status'),
         ]);
 

@@ -16,6 +16,7 @@ class PaymentController extends Controller
     public function index(Request $request)
     {
         $payments = $this->paymentService->getAll([
+            'search' => $request->input('search'),
             'order_id' => $request->input('order_id'),
             'method' => $request->input('method'),
             'status' => $request->input('status'),

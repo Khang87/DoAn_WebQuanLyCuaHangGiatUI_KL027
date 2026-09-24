@@ -23,7 +23,23 @@ class DeliveryService
             $query->where('status', $filters['status']);
         }
 
-        return $query->with('customer')->withTrashed()->latest()->paginate(20);
+        if (!empty($filters['search'])) {
+            $search = trim($filters['search']);
+            $query->where(function ($q) use ($search) {
+                $numericPart = preg_replace('/[^0-9]/', '', $search);
+                if (!empty($numericPart)) {
+                    $q->where('id', $numericPart);
+                }
+                $q->orWhere('address', 'LIKE', "%{$search}%")
+                    ->orWhere('notes', 'LIKE', "%{$search}%")
+                    ->orWhereHas('customer', function ($sub) use ($search) {
+                        $sub->where('name', 'LIKE', "%{$search}%")
+                            ->orWhere('phone', 'LIKE', "%{$search}%");
+                    });
+            });
+        }
+
+        return $query->with('customer')->withTrashed()->latest()->paginate(10)->withQueryString();
     }
 
     public function find(int $id): ?Delivery

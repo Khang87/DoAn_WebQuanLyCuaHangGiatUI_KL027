@@ -52,20 +52,21 @@
                 </ul>
             </div>
 
-            <!-- Quản Lý -->
+            <!-- Quản Lý - Chung (Staff & Admin) -->
             <div class="sidebar-menu-section">
                 <div class="sidebar-menu-title">Quản Lý</div>
                 <ul class="sidebar-menu-list">
                     <li class="sidebar-menu-item">
-                        <a href="{{ route('orders.index') }}" class="sidebar-menu-link {{ request()->routeIs('orders.*') ? 'active' : '' }}">
-                            <i class="bi bi-receipt"></i>
-                            <span>Đơn Hàng</span>
-                        </a>
-                    </li>
-                    <li class="sidebar-menu-item">
                         <a href="{{ route('customers.index') }}" class="sidebar-menu-link {{ request()->routeIs('customers.*') ? 'active' : '' }}">
                             <i class="bi bi-people"></i>
                             <span>Khách Hàng</span>
+                        </a>
+                    </li>
+                    @if(auth()->user()?->isAdmin())
+                    <li class="sidebar-menu-item">
+                        <a href="{{ route('orders.index') }}" class="sidebar-menu-link {{ request()->routeIs('orders.*') ? 'active' : '' }}">
+                            <i class="bi bi-receipt"></i>
+                            <span>Đơn Hàng</span>
                         </a>
                     </li>
                     <li class="sidebar-menu-item">
@@ -92,10 +93,11 @@
                             <span>Bảng Giá</span>
                         </a>
                     </li>
+                    @endif
                 </ul>
             </div>
 
-            <!-- Giao Nhận & Thanh Toán -->
+            <!-- Giao Nhận & Thanh Toán (Staff & Admin) -->
             <div class="sidebar-menu-section">
                 <div class="sidebar-menu-title">Giao Nhận & Thanh Toán</div>
                 <ul class="sidebar-menu-list">
@@ -103,6 +105,12 @@
                         <a href="{{ route('deliveries.index') }}" class="sidebar-menu-link {{ request()->routeIs('deliveries.*') ? 'active' : '' }}">
                             <i class="bi bi-truck"></i>
                             <span>Giao Nhận</span>
+                        </a>
+                    </li>
+                    <li class="sidebar-menu-item">
+                        <a href="{{ route('bookings.index') }}" class="sidebar-menu-link {{ request()->routeIs('bookings.*') ? 'active' : '' }}">
+                            <i class="bi bi-calendar-check"></i>
+                            <span>Đặt Lịch</span>
                         </a>
                     </li>
                     <li class="sidebar-menu-item">
@@ -120,8 +128,8 @@
                 </ul>
             </div>
 
-            @if(auth()->user()?->role === 'admin')
-            <!-- Khuyến Mãi & Báo Cáo -->
+            @if(auth()->user()?->isAdmin())
+            <!-- Khuyến Mãi & Báo Cáo (Chỉ Admin) -->
             <div class="sidebar-menu-section">
                 <div class="sidebar-menu-title">Khuyến Mãi & Báo Cáo</div>
                 <ul class="sidebar-menu-list">
@@ -139,10 +147,8 @@
                     </li>
                 </ul>
             </div>
-            @endif
 
-            @if(auth()->user()?->role === 'admin')
-            <!-- Hệ Thống -->
+            <!-- Hệ Thống (Chỉ Admin) -->
             <div class="sidebar-menu-section">
                 <div class="sidebar-menu-title">Hệ Thống</div>
                 <ul class="sidebar-menu-list">

@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Quản Lý Khách Hàng - Giặt Ủi Pro')
+@section('title', 'Quản Lý Khách Hàng - Sky Laundry')
 @section('page-title', 'Quản Lý Khách Hàng')
 
 @section('content')
@@ -11,25 +11,25 @@
             <i class="bi bi-person-plus me-2"></i>Thêm Khách Hàng
         </a>
     </div>
-    <div class="d-flex gap-2">
-        <form method="GET" action="{{ route('customers.index') }}" class="d-flex gap-2">
-            <div class="input-group" style="width: 300px;">
-                <input type="text" name="search" class="form-control" placeholder="Tìm kiếm khách hàng..." value="{{ request('search') }}">
-                <button class="btn btn-outline-secondary" type="submit">
-                    <i class="bi bi-search"></i>
-                </button>
-            </div>
-            <select name="type" class="form-select" style="width: auto;">
-                <option value="">Tất cả loại</option>
-                <option value="VIP" {{ request('type') === 'VIP' ? 'selected' : '' }}>VIP</option>
-                <option value="Thường" {{ request('type') === 'Thường' ? 'selected' : '' }}>Thường</option>
-                <option value="Mới" {{ request('type') === 'Mới' ? 'selected' : '' }}>Mới</option>
-            </select>
-            <button type="submit" class="btn btn-outline-secondary">Lọc</button>
-            <a href="{{ route('customers.index') }}" class="btn btn-outline-secondary">Xóa</a>
-        </form>
-    </div>
 </div>
+<form method="GET" action="{{ url()->current() }}" class="row g-3 align-items-center mb-4">
+    <div class="col-12 col-md-5">
+        <div class="input-group shadow-sm rounded-3 overflow-hidden">
+            <span class="input-group-text bg-white border-end-0 ps-3">
+                <i class="fas fa-search text-muted"></i>
+            </span>
+            <input type="text" name="search" class="form-control border-start-0 py-2 ps-2" placeholder="Tìm kiếm khách hàng..." value="{{ request('search') }}">
+        </div>
+    </div>
+    <div class="col-12 col-md-3">
+        <select name="type" class="form-select shadow-sm rounded-3 py-2" style="min-width: 200px;" onchange="this.form.submit()">
+            <option value="">-- Tất cả hạng --</option>
+            <option value="VIP" {{ request('type') === 'VIP' ? 'selected' : '' }}>VIP</option>
+            <option value="Thường" {{ request('type') === 'Thường' ? 'selected' : '' }}>Thường</option>
+            <option value="Mới" {{ request('type') === 'Mới' ? 'selected' : '' }}>Mới</option>
+        </select>
+    </div>
+</form>
 
 <!-- Customers Table -->
 <div class="card">

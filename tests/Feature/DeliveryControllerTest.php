@@ -42,22 +42,32 @@ class DeliveryControllerTest extends TestCase
         $response->assertSee('Nguyễn Văn A');
     }
 
-    public function test_can_create_delivery(): void
+    public function test_can_search_deliveries(): void
     {
-        $response = $this->actingAs($this->admin)->post(route('deliveries.store'), [
+        Delivery::create([
             'customer_id' => $this->customer->id,
-            'method' => 'dropoff',
-            'address' => '456 Đường XYZ',
+            'method' => 'pickup',
+            'address' => '123 Đường ABC',
             'pickup_date' => now()->toDateString(),
-            'pickup_time' => '14:00',
-            'status' => 'scheduled',
+            'pickup_time' => '10:00',
+            'status' => 'pending',
+            'notes' => 'Ghi chú test',
         ]);
 
-        $response->assertRedirect(route('deliveries.index'));
-        $this->assertDatabaseHas('deliveries', [
-            'customer_id' => $this->customer->id,
-            'method' => 'dropoff',
-        ]);
+        $response = $this->actingAs($this->admin)
+            ->get(route('deliveries.index', ['search' => 'Nguyễn Văn A']));
+
+        $response->assertStatus(200);
+        $response->assertSee('Nguyễn Văn A');
+    }
+
+    public function test_search_returns_empty_state_when_no_results(): void
+    {
+        $response = $this->actingAs($this->admin)
+            ->get(route('deliveries.index', ['search' => 'nonexistent']));
+
+        $response->assertStatus(200);
+        $response->assertSee('Không tìm thấy dữ liệu phù hợp');
     }
 
     public function test_can_delete_delivery(): void
@@ -74,8 +84,6 @@ class DeliveryControllerTest extends TestCase
         $response = $this->actingAs($this->admin)->delete(route('deliveries.destroy', $delivery));
 
         $response->assertRedirect(route('deliveries.index'));
-        $this->assertDatabaseMissing('deliveries', [
-            'id' => $delivery->id,
-        ]);
+        $this->assertSoftDeleted('deliveries', ['id' => $delivery->id]);
     }
 }

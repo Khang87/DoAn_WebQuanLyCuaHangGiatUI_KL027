@@ -23,7 +23,22 @@ class BookingService
             $query->where('delivery_method', $filters['delivery_method']);
         }
 
-        return $query->with('customer', 'service')->withTrashed()->latest()->paginate(20);
+        if (!empty($filters['search'])) {
+            $search = trim($filters['search']);
+            $query->where(function ($q) use ($search) {
+                $numericPart = preg_replace('/[^0-9]/', '', $search);
+                if (!empty($numericPart)) {
+                    $q->where('id', $numericPart);
+                }
+                $q->orWhereHas('customer', function ($sub) use ($search) {
+                    $sub->where('name', 'LIKE', "%{$search}%")
+                        ->orWhere('phone', 'LIKE', "%{$search}%");
+                });
+                $q->orWhere('address', 'LIKE', "%{$search}%");
+            });
+        }
+
+        return $query->with('customer', 'service')->withTrashed()->latest()->paginate(10)->withQueryString();
     }
 
     public function find(int $id): ?Booking

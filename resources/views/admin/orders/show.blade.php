@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Chi tiết đơn hàng - Giặt Ủi Pro')
+@section('title', 'Chi tiết đơn hàng - Sky Laundry')
 @section('page-title', 'Chi tiết đơn hàng')
 
 @section('content')
@@ -8,9 +8,20 @@
     <a href="{{ route('orders.index') }}" class="btn btn-outline-secondary btn-sm">
         <i class="bi bi-arrow-left me-1"></i>Quay lại
     </a>
-    <a href="{{ route('orders.edit', $order->id) }}" class="btn btn-primary btn-sm">
-        <i class="bi bi-pencil me-1"></i>Chỉnh sửa
-    </a>
+    <div class="d-flex gap-2">
+        @if($order->invoice)
+            <a href="{{ route('invoices.show', $order->invoice->id) }}" class="btn btn-outline-info">
+                <i class="fas fa-eye me-1"></i> Xem Hóa Đơn
+            </a>
+        @elseif(in_array($order->status, ['completed', 'washed', 'delivering']))
+            <a href="{{ route('invoices.create', ['order_id' => $order->id]) }}" class="btn btn-primary">
+                <i class="fas fa-file-invoice me-1"></i> Tạo Hóa Đơn
+            </a>
+        @endif
+        <a href="{{ route('orders.edit', $order->id) }}" class="btn btn-primary btn-sm">
+            <i class="bi bi-pencil me-1"></i>Chỉnh sửa
+        </a>
+    </div>
 </div>
 
 <div class="card mb-4">

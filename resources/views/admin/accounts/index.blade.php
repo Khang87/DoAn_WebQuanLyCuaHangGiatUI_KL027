@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Quản Lý Tài Khoản - Giặt Ủi Pro')
+@section('title', 'Quản Lý Tài Khoản - Sky Laundry')
 @section('page-title', 'Quản Lý Tài Khoản & Phân Quyền')
 
 @section('content')
@@ -11,27 +11,32 @@
             <i class="bi bi-person-plus me-2"></i>Thêm Tài Khoản Mới
         </a>
     </div>
-    <form action="{{ route('accounts.index') }}" method="GET" class="d-flex gap-2">
-        <div class="input-group" style="width: 260px;">
-            <input type="text" name="search" class="form-control" placeholder="Tìm tên, email, SĐT..." value="{{ request('search') }}">
-            <button class="btn btn-outline-secondary" type="submit">
-                <i class="bi bi-search"></i>
-            </button>
+</div>
+<form action="{{ url()->current() }}" method="GET" class="row g-3 align-items-center mb-4">
+    <div class="col-12 col-md-5">
+        <div class="input-group shadow-sm rounded-3 overflow-hidden">
+            <span class="input-group-text bg-white border-end-0 ps-3">
+                <i class="fas fa-search text-muted"></i>
+            </span>
+            <input type="text" name="search" class="form-control border-start-0 py-2 ps-2" placeholder="Tìm tên, email, SĐT..." value="{{ request('search') }}">
         </div>
-        <select name="role" class="form-select" style="width: auto;" onchange="this.form.submit()">
-            <option value="">Tất cả vai trò</option>
+    </div>
+    <div class="col-12 col-md-3">
+        <select name="role" class="form-select shadow-sm rounded-3 py-2" style="min-width: 220px;" onchange="this.form.submit()">
+            <option value="">-- Tất cả vai trò --</option>
             <option value="admin" @selected(request('role') === 'admin')>Quản trị viên</option>
             <option value="staff" @selected(request('role') === 'staff')>Nhân viên</option>
             <option value="customer" @selected(request('role') === 'customer')>Khách hàng</option>
         </select>
-        <select name="status" class="form-select" style="width: auto;" onchange="this.form.submit()">
-            <option value="">Tất cả trạng thái</option>
+    </div>
+    <div class="col-12 col-md-3">
+        <select name="status" class="form-select shadow-sm rounded-3 py-2" style="min-width: 200px;" onchange="this.form.submit()">
+            <option value="">-- Tất cả trạng thái --</option>
             <option value="active" @selected(request('status') === 'active')>Đang hoạt động</option>
             <option value="inactive" @selected(request('status') === 'inactive')>Đã khóa</option>
         </select>
-        <a href="{{ route('accounts.index') }}" class="btn btn-outline-secondary">Xóa</a>
-    </form>
-</div>
+    </div>
+</form>
 
 <!-- Accounts Table -->
 <div class="card">

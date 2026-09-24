@@ -10,7 +10,7 @@ class Delivery extends Model
 {
     use HasFactory, SoftDeletes;
 
-    protected $fillable = ['customer_id', 'method', 'address', 'pickup_date', 'pickup_time', 'status'];
+    protected $fillable = ['customer_id', 'method', 'address', 'pickup_date', 'pickup_time', 'notes', 'status'];
 
     protected $casts = [
         'pickup_date' => 'date',

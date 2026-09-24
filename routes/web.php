@@ -40,67 +40,72 @@ Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
 // Protected Routes
 Route::middleware(['auth'])->group(function () {
 
-    // Dashboard
+    // Dashboard (Staff & Admin)
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
-    // Orders Management
-    Route::resource('orders', OrderController::class);
-    Route::resource('order-items', OrderItemController::class);
-
-    // Customers Management
+    // Customers Management (Staff & Admin)
     Route::resource('customers', CustomerController::class);
 
-    // Services Management
-    Route::resource('service-categories', ServiceCategoryController::class);
-    Route::resource('services', ServiceController::class);
+     // Delivery Management (Staff & Admin)
+    Route::resource('deliveries', DeliveryController::class)->except(['create', 'store']);
 
-    // Garments Management
-    Route::resource('garments', GarmentController::class);
-    Route::resource('garment-conditions', GarmentConditionController::class);
+    // Booking Management (Staff & Admin)
+    Route::resource('bookings', BookingController::class)->except(['create', 'store']);
 
-    // Booking Management
-    Route::resource('bookings', BookingController::class);
-
-    // Pricing Management
-    Route::resource('pricings', PricingController::class)->middleware('role:admin');
-
-    // Delivery Management
-    Route::resource('deliveries', DeliveryController::class);
-
-    // Payments Management
+    // Payments Management (Staff & Admin)
     Route::resource('payments', PaymentController::class);
 
-    // Invoices Management
+    // Invoices Management (Staff & Admin)
+    Route::get('invoices/export', [InvoiceController::class, 'export'])->name('invoices.export');
     Route::resource('invoices', InvoiceController::class);
 
-    // Promotions & Coupons Management
-    Route::resource('promotions', PromotionController::class)->middleware('role:admin');
-    Route::resource('coupons', CouponController::class)->middleware('role:admin');
+    // ===== ADMIN ONLY ROUTES =====
+    Route::middleware(['role:admin'])->group(function () {
 
-    // Reports
-    Route::prefix('reports')->name('reports.')->middleware('role:admin')->group(function () {
-        Route::get('/', [ReportController::class, 'index'])->name('index');
-        Route::get('/revenue', [ReportController::class, 'revenue'])->name('revenue');
-        Route::get('/orders', [ReportController::class, 'orders'])->name('orders');
-        Route::get('/customers', [ReportController::class, 'customers'])->name('customers');
+        // Orders Management
+        Route::resource('orders', OrderController::class);
+        Route::resource('order-items', OrderItemController::class);
+
+        // Services Management
+        Route::resource('service-categories', ServiceCategoryController::class);
+        Route::resource('services', ServiceController::class);
+
+        // Garments Management
+        Route::resource('garments', GarmentController::class);
+        Route::resource('garment-conditions', GarmentConditionController::class);
+
+        // Pricing Management
+        Route::resource('pricings', PricingController::class);
+
+        // Promotions & Coupons Management
+        Route::resource('promotions', PromotionController::class);
+        Route::resource('coupons', CouponController::class);
+
+        // Reports
+        Route::prefix('reports')->name('reports.')->group(function () {
+            Route::get('/', [ReportController::class, 'index'])->name('index');
+            Route::get('/revenue', [ReportController::class, 'revenue'])->name('revenue');
+            Route::get('/orders', [ReportController::class, 'orders'])->name('orders');
+            Route::get('/customers', [ReportController::class, 'customers'])->name('customers');
+        });
+
+        // Accounts Management
+        Route::resource('accounts', AccountController::class);
+        Route::post('accounts/{account}/toggle-status', [AccountController::class, 'toggleStatus'])->name('accounts.toggle-status');
+        Route::post('accounts/{account}/reset-password', [AccountController::class, 'resetPassword'])->name('accounts.reset-password');
+
+        // Notifications Management
+        Route::resource('notifications', NotificationController::class);
+
+        // Services Management - add toggle status
+        Route::post('services/{service}/toggle-status', [ServiceController::class, 'toggleStatus'])->name('services.toggle-status');
+        Route::post('service-categories/{service_category}/toggle-status', [ServiceCategoryController::class, 'toggleStatus'])->name('service-categories.toggle-status');
     });
 
-    // Accounts Management
-    Route::resource('accounts', AccountController::class)->middleware('role:admin');
-    Route::post('accounts/{account}/toggle-status', [AccountController::class, 'toggleStatus'])->name('accounts.toggle-status')->middleware('role:admin');
-    Route::post('accounts/{account}/reset-password', [AccountController::class, 'resetPassword'])->name('accounts.reset-password')->middleware('role:admin');
-
-    // User Profile & Settings
+    // User Profile & Settings (Staff & Admin)
     Route::get('/profile', [AccountController::class, 'profile'])->name('profile');
     Route::put('/profile', [AccountController::class, 'updateProfile'])->name('profile.update');
     Route::get('/settings', [AccountController::class, 'settings'])->name('settings');
-
-    // Services Management - add toggle status
-    Route::post('services/{service}/toggle-status', [ServiceController::class, 'toggleStatus'])->name('services.toggle-status');
-    Route::post('service-categories/{service_category}/toggle-status', [ServiceCategoryController::class, 'toggleStatus'])->name('service-categories.toggle-status');
-
-    // Notifications Management
-    Route::resource('notifications', NotificationController::class)->middleware('role:admin');
 });
 
 // Default route redirect to login or dashboard

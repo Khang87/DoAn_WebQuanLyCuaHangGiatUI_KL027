@@ -1,39 +1,40 @@
 @extends('layouts.app')
-@section('title', 'Thanh Toán - Giặt Ủi Pro')
+@section('title', 'Thanh Toán - Sky Laundry')
 @section('page-title', 'Thanh Toán')
 
 @section('content')
-<div class="order-toolbar">
+<div class="order-toolbar d-flex justify-content-between align-items-center mb-3">
     <p class="text-muted mb-0">Theo dõi các khoản thu của đơn hàng.</p>
     <a href="{{ route('payments.create') }}" class="btn btn-primary">
         <i class="bi bi-plus-lg me-2"></i>Ghi nhận thanh toán
     </a>
 </div>
 
-<form action="{{ route('payments.index') }}" method="GET" class="d-flex gap-2 mb-3">
-    <div class="input-group" style="width: 200px;">
-        <input type="text" name="search" class="form-control" placeholder="Tìm kiếm..." value="{{ request('search') }}">
+<form action="{{ url()->current() }}" method="GET" class="row g-3 align-items-center mb-4">
+    <div class="col-12 col-md-5">
+        <div class="input-group shadow-sm rounded-3 overflow-hidden">
+            <span class="input-group-text bg-white border-end-0 ps-3">
+                <i class="fas fa-search text-muted"></i>
+            </span>
+            <input type="text" name="search" class="form-control border-start-0 py-2 ps-2" placeholder="Tìm theo ID, mã thanh toán, mã hóa đơn, tên khách..." value="{{ request('search') }}">
+        </div>
     </div>
-    <select name="method" class="form-select" style="width: auto;" onchange="this.form.submit()">
-        <option value="">Tất cả phương thức</option>
-        @foreach($methods as $value => $label)
-            <option value="{{ $value }}" @selected(request('method') === $value)>{{ $label }}</option>
-        @endforeach
-    </select>
-    <select name="status" class="form-select" style="width: auto;" onchange="this.form.submit()">
-        <option value="">Tất cả trạng thái</option>
-        <option value="pending" @selected(request('status') === 'pending')>Chờ thanh toán</option>
-        <option value="partial" @selected(request('status') === 'partial')>Một phần</option>
-        <option value="paid" @selected(request('status') === 'paid')>Đã thanh toán</option>
-    </select>
-    @if(request('method'))
-        <input type="hidden" name="method" value="{{ request('method') }}">
-    @endif
-    @if(request('status'))
-        <input type="hidden" name="status" value="{{ request('status') }}">
-    @endif
-    <button type="submit" class="btn btn-outline-secondary">Lọc</button>
-    <a href="{{ route('payments.index') }}" class="btn btn-outline-secondary">Xóa</a>
+    <div class="col-12 col-md-3">
+        <select name="method" class="form-select shadow-sm rounded-3 py-2" style="min-width: 220px;" onchange="this.form.submit()">
+            <option value="">-- Tất cả phương thức --</option>
+            @foreach($methods as $value => $label)
+                <option value="{{ $value }}" @selected(request('method') === $value)>{{ $label }}</option>
+            @endforeach
+        </select>
+    </div>
+    <div class="col-12 col-md-3">
+        <select name="status" class="form-select shadow-sm rounded-3 py-2" style="min-width: 200px;" onchange="this.form.submit()">
+            <option value="">-- Tất cả trạng thái --</option>
+            <option value="pending" @selected(request('status') === 'pending')>Chờ thanh toán</option>
+            <option value="partial" @selected(request('status') === 'partial')>Một phần</option>
+            <option value="paid" @selected(request('status') === 'paid')>Đã thanh toán</option>
+        </select>
+    </div>
 </form>
 
 <div class="card">
@@ -88,7 +89,7 @@
                         </td>
                     </tr>
                     @empty
-                    <tr><td colspan="7" class="text-center text-muted py-4">Chưa có thanh toán nào</td></tr>
+                    <tr><td colspan="7" class="text-center py-4 text-muted"><i class="fas fa-search fa-2x mb-2 text-secondary d-block"></i>Không tìm thấy dữ liệu phù hợp</td></tr>
                     @endforelse
                 </tbody>
             </table>

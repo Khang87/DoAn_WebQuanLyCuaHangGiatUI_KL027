@@ -1,7 +1,7 @@
 @extends('layouts.app')
 
-@section('title', 'Mã giảm giá - Giặt Ủi Pro')
-@section('page-title', 'Mã giảm giá')
+@section('title', 'Mã Giảm Giá - Sky Laundry')
+@section('page-title', 'Mã Giảm Giá')
 
 @section('content')
 <div class="d-flex justify-content-between align-items-center mb-4">
@@ -13,20 +13,32 @@
             <i class="bi bi-plus-lg me-1"></i>Tạo coupon
         </a>
     </div>
-    <form action="{{ route('coupons.index') }}" method="GET" class="d-flex gap-2">
-        <select name="promotion_id" class="form-select" style="width: auto;" onchange="this.form.submit()">
-            <option value="">Tất cả chương trình</option>
+</div>
+<form action="{{ url()->current() }}" method="GET" class="row g-3 align-items-center mb-4">
+    <div class="col-12 col-md-5">
+        <div class="input-group shadow-sm rounded-3 overflow-hidden">
+            <span class="input-group-text bg-white border-end-0 ps-3">
+                <i class="fas fa-search text-muted"></i>
+            </span>
+            <input type="text" name="search" class="form-control border-start-0 py-2 ps-2" placeholder="Tìm kiếm mã..." value="{{ request('search') }}">
+        </div>
+    </div>
+    <div class="col-12 col-md-3">
+        <select name="promotion_id" class="form-select shadow-sm rounded-3 py-2" style="min-width: 220px;" onchange="this.form.submit()">
+            <option value="">-- Tất cả chương trình --</option>
             @foreach($promotions as $promo)
                 <option value="{{ $promo->id }}" @selected(request('promotion_id') == $promo->id)>{{ $promo->name }}</option>
             @endforeach
         </select>
-        <select name="status" class="form-select" style="width: auto;" onchange="this.form.submit()">
-            <option value="">Tất cả trạng thái</option>
+    </div>
+    <div class="col-12 col-md-3">
+        <select name="status" class="form-select shadow-sm rounded-3 py-2" style="min-width: 200px;" onchange="this.form.submit()">
+            <option value="">-- Tất cả trạng thái --</option>
             <option value="active" @selected(request('status') === 'active')>Hoạt động</option>
             <option value="inactive" @selected(request('status') === 'inactive')>Tắt</option>
         </select>
-    </form>
-</div>
+    </div>
+</form>
 
 <div class="card">
     <div class="card-body p-0">

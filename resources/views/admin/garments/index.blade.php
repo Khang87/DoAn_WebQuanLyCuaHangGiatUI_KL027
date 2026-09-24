@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Quản Lý Loại Đồ Giặt - Giặt Ủi Pro')
+@section('title', 'Quản Lý Loại Đồ Giặt - Sky Laundry')
 @section('page-title', 'Quản Lý Loại Đồ Giặt & Tình Trạng Sản Phẩm')
 
 @section('content')
@@ -11,26 +11,32 @@
             <i class="fa-solid fa-plus me-2"></i>Thêm Loại Đồ Giặt
         </a>
     </div>
-    <form action="{{ route('garments.index') }}" method="GET" class="d-flex gap-2">
-        <div class="input-group" style="width: 260px;">
-            <input type="text" name="search" class="form-control" placeholder="Tìm kiếm loại đồ, hiện trạng..." value="{{ request('search') }}">
-            <button class="btn btn-outline-secondary" type="submit">
-                <i class="bi bi-search"></i>
-            </button>
+</div>
+<form action="{{ url()->current() }}" method="GET" class="row g-3 align-items-center mb-4">
+    <div class="col-12 col-md-5">
+        <div class="input-group shadow-sm rounded-3 overflow-hidden">
+            <span class="input-group-text bg-white border-end-0 ps-3">
+                <i class="fas fa-search text-muted"></i>
+            </span>
+            <input type="text" name="search" class="form-control border-start-0 py-2 ps-2" placeholder="Tìm kiếm loại đồ, hiện trạng..." value="{{ request('search') }}">
         </div>
-        <select name="category" class="form-select" style="width: auto;" onchange="this.form.submit()">
-            <option value="">Tất cả danh mục</option>
+    </div>
+    <div class="col-12 col-md-3">
+        <select name="category" class="form-select shadow-sm rounded-3 py-2" style="min-width: 220px;" onchange="this.form.submit()">
+            <option value="">-- Tất cả danh mục --</option>
             @foreach($categories as $cat)
                 <option value="{{ $cat }}" @selected(request('category') === $cat)>{{ $cat }}</option>
             @endforeach
         </select>
-        <select name="status" class="form-select" style="width: auto;" onchange="this.form.submit()">
-            <option value="">Tất cả trạng thái</option>
+    </div>
+    <div class="col-12 col-md-3">
+        <select name="status" class="form-select shadow-sm rounded-3 py-2" style="min-width: 200px;" onchange="this.form.submit()">
+            <option value="">-- Tất cả trạng thái --</option>
             <option value="active" @selected(request('status') === 'active')>Đang hoạt động</option>
             <option value="inactive" @selected(request('status') === 'inactive')>Tạm ngưng</option>
         </select>
-    </form>
-</div>
+    </div>
+</form>
 
 @php
     function getGarmentIcon($garment) {

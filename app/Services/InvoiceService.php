@@ -21,12 +21,20 @@ class InvoiceService
             $query->where('status', $filters['status']);
         }
 
-        return $query->with('order')->withTrashed()->latest()->paginate(20);
+        if (!empty($filters['search'])) {
+            $query->where(function ($q) use ($filters) {
+                $q->where('code', 'LIKE', '%' . $filters['search'] . '%')
+                    ->orWhere('notes', 'LIKE', '%' . $filters['search'] . '%')
+                    ->orWhereHas('order.customer', fn($sub) => $sub->where('name', 'LIKE', '%' . $filters['search'] . '%'));
+            });
+        }
+
+        return $query->with('order.customer')->withTrashed()->latest()->paginate(20);
     }
 
-    public function find(int $id): ?Invoice
+    public function find(int|string $id): ?Invoice
     {
-        return Invoice::withTrashed()->find($id);
+        return Invoice::withTrashed()->where('id', $id)->orWhere('code', $id)->first();
     }
 
     public function create(array $data): Invoice

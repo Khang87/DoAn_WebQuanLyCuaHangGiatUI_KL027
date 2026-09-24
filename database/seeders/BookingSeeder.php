@@ -17,22 +17,57 @@ class BookingSeeder extends Seeder
     {
         $customers = Customer::all();
         $services = Service::all();
-        $statuses = ['pending', 'confirmed', 'completed', 'cancelled'];
-        $deliveryMethods = ['pickup', 'dropoff'];
+
+        $addresses = [
+            '140 Lê Trọng Tấn, Phường Tây Thạnh, Quận Tân Phú, TP.HCM',
+            '54/12 Chế Lan Viên, Phường Tây Thạnh, Quận Tân Phú, TP.HCM',
+            '102 Trường Chinh, Phường 12, Quận Tân Bình, TP.HCM',
+            '215 Tân Sơn Nhì, Phường Tân Sơn Nhì, Quận Tân Phú, TP.HCM',
+            '88 Bình Long, Phường Phú Thạnh, Quận Tân Phú, TP.HCM',
+            '45 Nguyễn Văn Lượng, Phường Tây Thạnh, Quận Tân Phú, TP.HCM',
+            '78/42 Lê Đức Thọ, Phường 15, Quận Tân Bình, TP.HCM',
+            '300/14 Đỗ Thúc Tĩnh, Phường Tây Thạnh, Quận Tân Phú, TP.HCM',
+            '126 Trường Đinh, Phường 12, Quận Tân Bình, TP.HCM',
+            '999 Lê Văn Sỹ, Phường 14, Quận 3, TP.HCM',
+        ];
+
+        $cancelReasons = [
+            'Khách đổi lịch bận',
+            'Cửa hàng quá tải khung giờ',
+            'Địa chỉ giao hàng không chính xác',
+            'Khách hủy chuyến đi cuối tuần',
+            'Thời gian không phù hợp với giờ mở cửa',
+        ];
+
         $garmentTypes = ['Áo dài', 'Váy cưới', 'Áo vest', 'Chăn ga', 'Áo sơ mi', 'Quần tây', 'Áo khoác'];
+        $deliveryMethods = ['pickup', 'dropoff'];
+
+        $statuses = ['pending', 'pending', 'pending', 'pending', 'confirmed', 'confirmed', 'confirmed', 'cancelled', 'cancelled', 'cancelled'];
 
         for ($i = 1; $i <= 10; $i++) {
+            $status = $statuses[$i - 1];
+            $customer = $customers[($i - 1) % $customers->count()];
+            $service = $services[($i - 1) % $services->count()];
+
+            $pickupDate = Carbon::now()->addDays(rand(0, 5))->format('Y-m-d');
+            $pickupTime = sprintf('%02d:00:00', rand(9, 17));
+
+            $notes = '';
+            if ($status === 'cancelled') {
+                $notes = $cancelReasons[array_rand($cancelReasons)];
+            }
+
             Booking::create([
-                'customer_id' => $customers->random()->id,
-                'service_id' => $services->random()->id,
+                'customer_id' => $customer->id,
+                'service_id' => $service->id,
                 'garment_type' => $garmentTypes[array_rand($garmentTypes)],
                 'quantity' => rand(1, 5),
                 'delivery_method' => $deliveryMethods[array_rand($deliveryMethods)],
-                'address' => 'Địa chỉ pickup #' . $i,
-                'pickup_date' => Carbon::now()->addDays(rand(1, 7)),
-                'pickup_time' => Carbon::now()->addHours(rand(9, 17)),
-                'notes' => 'Ghi chú booking #' . $i,
-                'status' => $statuses[array_rand($statuses)],
+                'address' => $addresses[($i - 1) % count($addresses)],
+                'pickup_date' => $pickupDate,
+                'pickup_time' => $pickupTime,
+                'notes' => $notes,
+                'status' => $status,
                 'created_at' => Carbon::now()->subDays(rand(0, 30)),
                 'updated_at' => Carbon::now()->subDays(rand(0, 30)),
             ]);

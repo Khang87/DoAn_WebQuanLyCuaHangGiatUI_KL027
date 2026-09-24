@@ -16,6 +16,7 @@ class BookingController extends Controller
     public function index(Request $request)
     {
         $bookings = $this->bookingService->getAll([
+            'search' => $request->input('search'),
             'customer_id' => $request->input('customer_id'),
             'status' => $request->input('status'),
             'delivery_method' => $request->input('delivery_method'),
@@ -27,24 +28,7 @@ class BookingController extends Controller
         return view('admin.bookings.index', compact('bookings', 'customers', 'services'));
     }
 
-    public function create()
-    {
-        $customers = \App\Models\Customer::orderBy('name')->get();
-        $services = \App\Models\Service::where('status', 'active')->orderBy('name')->get();
-
-        return view('admin.bookings.create', compact('customers', 'services'));
-    }
-
-    public function store(BookingRequest $request)
-    {
-        try {
-            $this->bookingService->create($request->validated());
-
-            return redirect()->route('bookings.index')->with('success', 'Đặt lịch đã được tạo.');
-        } catch (\Exception $e) {
-            return redirect()->route('bookings.create')->with('error', 'Có lỗi xảy ra: ' . $e->getMessage())->withInput();
-        }
-    }
+    // create() and store() methods removed - "Tạo đặt lịch" feature disabled
 
     public function show(int $id)
     {

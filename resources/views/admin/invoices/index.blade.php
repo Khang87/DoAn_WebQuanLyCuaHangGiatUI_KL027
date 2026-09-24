@@ -1,30 +1,37 @@
 @extends('layouts.app')
-@section('title', 'Hóa Đơn - Giặt Ủi Pro')
+@section('title', 'Hóa Đơn - Sky Laundry')
 @section('page-title', 'Hóa Đơn')
 
 @section('content')
-<div class="order-toolbar">
+<div class="order-toolbar d-flex justify-content-between align-items-center mb-3">
     <p class="text-muted mb-0">Quản lý hóa đơn và biên nhận của khách hàng.</p>
-    <a href="{{ route('invoices.create') }}" class="btn btn-primary">
-        <i class="bi bi-plus-lg me-2"></i>Tạo hóa đơn
-    </a>
+    <div class="d-flex gap-2">
+        <a href="{{ route('invoices.create') }}" class="btn btn-primary rounded-3">
+            <i class="bi bi-plus-lg me-1"></i> Tạo hóa đơn
+        </a>
+        <a href="{{ route('invoices.export', request()->query()) }}" class="btn btn-outline-success rounded-3 me-2">
+            <i class="fas fa-file-excel me-1"></i> Xuất Excel
+        </a>
+    </div>
 </div>
 
-<form action="{{ route('invoices.index') }}" method="GET" class="d-flex gap-2 mb-3">
-    <div class="input-group" style="width: 200px;">
-        <input type="text" name="search" class="form-control" placeholder="Tìm kiếm..." value="{{ request('search') }}">
+<form action="{{ url()->current() }}" method="GET" class="row g-3 align-items-center mb-4">
+    <div class="col-12 col-md-5">
+        <div class="input-group shadow-sm rounded-3 overflow-hidden">
+            <span class="input-group-text bg-white border-end-0 ps-3">
+                <i class="fas fa-search text-muted"></i>
+            </span>
+            <input type="text" name="search" class="form-control border-start-0 py-2 ps-2" placeholder="Tìm kiếm..." value="{{ request('search') }}">
+        </div>
     </div>
-    <select name="status" class="form-select" style="width: auto;" onchange="this.form.submit()">
-        <option value="">Tất cả trạng thái</option>
-        @foreach($statuses as $value => $label)
-            <option value="{{ $value }}" @selected(request('status') === $value)>{{ $label }}</option>
-        @endforeach
-    </select>
-    @if(request('status'))
-        <input type="hidden" name="status" value="{{ request('status') }}">
-    @endif
-    <button type="submit" class="btn btn-outline-secondary">Lọc</button>
-    <a href="{{ route('invoices.index') }}" class="btn btn-outline-secondary">Xóa</a>
+    <div class="col-12 col-md-4">
+        <select name="status" class="form-select shadow-sm rounded-3 py-2" style="min-width: 220px;" onchange="this.form.submit()">
+            <option value="">-- Tất cả trạng thái --</option>
+            @foreach($statuses as $value => $label)
+                <option value="{{ $value }}" @selected(request('status') === $value)>{{ $label }}</option>
+            @endforeach
+        </select>
+    </div>
 </form>
 
 <div class="card">

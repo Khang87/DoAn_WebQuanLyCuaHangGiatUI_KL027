@@ -1,44 +1,35 @@
 @extends('layouts.app')
 
-@section('title', 'Quản Lý Đơn Hàng - Giặt Ủi Pro')
+@section('title', 'Quản Lý Đơn Hàng - Sky Laundry')
 @section('page-title', 'Quản Lý Đơn Hàng')
 
 @section('content')
 <!-- Page Actions -->
-<div class="order-toolbar">
+<div class="order-toolbar d-flex justify-content-between align-items-center mb-4">
     <div>
-        <a href="{{ route('orders.create') }}" class="btn btn-order-primary">
+        <a href="{{ route('orders.create') }}" class="btn btn-primary">
             <i class="bi bi-plus-lg me-2"></i>Tạo đơn hàng mới
         </a>
     </div>
-    <div class="d-flex gap-2 align-items-center">
-        <form method="GET" action="{{ route('orders.index') }}" class="d-flex gap-2 align-items-center">
-            <div class="input-group search-box">
-                <input type="text" name="search" class="form-control" placeholder="Tìm kiếm đơn hàng..." value="{{ request('search') }}">
-                <button class="btn btn-order-secondary" type="submit">
-                    <i class="bi bi-search"></i>
-                </button>
-            </div>
-            <select name="status" class="form-select" style="width: auto; border-radius: 12px; border-color: rgba(148,163,184,0.35);">
-                <option value="">Tất cả trạng thái</option>
-                @foreach($statusFlow as $value => $label)
-                    <option value="{{ $value }}" {{ request('status') === $value ? 'selected' : '' }}>{{ $label }}</option>
-                @endforeach
-            </select>
-            @if(request('customer_id'))
-                <input type="hidden" name="customer_id" value="{{ request('customer_id') }}">
-            @endif
-            @if(request('date_from'))
-                <input type="hidden" name="date_from" value="{{ request('date_from') }}">
-            @endif
-            @if(request('date_to'))
-                <input type="hidden" name="date_to" value="{{ request('date_to') }}">
-            @endif
-            <button type="submit" class="btn btn-order-secondary">Lọc</button>
-            <a href="{{ route('orders.index') }}" class="btn btn-outline-secondary">Xóa bộ lọc</a>
-        </form>
-    </div>
 </div>
+<form action="{{ url()->current() }}" method="GET" class="row g-3 align-items-center mb-4">
+    <div class="col-12 col-md-5">
+        <div class="input-group shadow-sm rounded-3 overflow-hidden">
+            <span class="input-group-text bg-white border-end-0 ps-3">
+                <i class="fas fa-search text-muted"></i>
+            </span>
+            <input type="text" name="search" class="form-control border-start-0 py-2 ps-2" placeholder="Tìm kiếm đơn hàng..." value="{{ request('search') }}">
+        </div>
+    </div>
+    <div class="col-12 col-md-4">
+        <select name="status" class="form-select shadow-sm rounded-3 py-2" style="min-width: 220px;" onchange="this.form.submit()">
+            <option value="">-- Tất cả trạng thái --</option>
+            @foreach($statusFlow as $value => $label)
+                <option value="{{ $value }}" @selected(request('status') === $value)>{{ $label }}</option>
+            @endforeach
+        </select>
+    </div>
+</form>
 
 <!-- Orders Table -->
 <div class="card">
@@ -95,7 +86,25 @@
                             @endif
                         </td>
                         <td>{{ $order->created_at?->format('d/m/Y') }}</td>
-                        <td><div class="d-flex gap-2"><a href="{{ route('orders.show', $order) }}" class="btn btn-order-action view" title="Xem"><i class="bi bi-eye"></i></a><a href="{{ route('orders.edit', $order) }}" class="btn btn-order-action edit" title="Sửa"><i class="bi bi-pencil"></i></a><form action="{{ route('orders.destroy', $order) }}" method="POST" class="d-inline" onsubmit="return confirm('Bạn có chắc muốn xóa?')">@csrf @method('DELETE')<button type="submit" class="btn btn-order-action delete" title="Xóa"><i class="bi bi-trash"></i></button></form></div></td>
+                        <td>
+                            <div class="d-flex gap-2">
+                                @if(!$order->invoice && in_array($order->status, ['completed', 'washed', 'delivering']))
+                                    <a href="{{ route('invoices.create', ['order_id' => $order->id]) }}" class="btn btn-sm btn-outline-primary" title="Tạo hóa đơn" data-bs-toggle="tooltip">
+                                        <i class="fas fa-file-invoice"></i>
+                                    </a>
+                                @elseif($order->invoice)
+                                    <a href="{{ route('invoices.show', $order->invoice->id) }}" class="btn btn-sm btn-outline-info" title="Xem hóa đơn" data-bs-toggle="tooltip">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                @endif
+                                <a href="{{ route('orders.show', $order) }}" class="btn btn-order-action view" title="Xem"><i class="bi bi-eye"></i></a>
+                                <a href="{{ route('orders.edit', $order) }}" class="btn btn-order-action edit" title="Sửa"><i class="bi bi-pencil"></i></a>
+                                <form action="{{ route('orders.destroy', $order) }}" method="POST" class="d-inline" onsubmit="return confirm('Bạn có chắc muốn xóa?')">
+                                    @csrf @method('DELETE')
+                                    <button type="submit" class="btn btn-order-action delete" title="Xóa"><i class="bi bi-trash"></i></button>
+                                </form>
+                            </div>
+                        </td>
                     </tr>
                     @empty
                     <tr>

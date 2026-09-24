@@ -16,6 +16,7 @@ class DeliveryController extends Controller
     public function index(Request $request)
     {
         $deliveries = $this->deliveryService->getAll([
+            'search' => $request->input('search'),
             'customer_id' => $request->input('customer_id'),
             'method' => $request->input('method'),
             'status' => $request->input('status'),
@@ -26,23 +27,7 @@ class DeliveryController extends Controller
         return view('admin.deliveries.index', compact('deliveries', 'customers'));
     }
 
-    public function create()
-    {
-        $customers = \App\Models\Customer::orderBy('name')->get();
-
-        return view('admin.deliveries.create', compact('customers'));
-    }
-
-    public function store(DeliveryRequest $request)
-    {
-        try {
-            $this->deliveryService->create($request->validated());
-
-            return redirect()->route('deliveries.index')->with('success', 'Giao nhận đã được tạo.');
-        } catch (\Exception $e) {
-            return redirect()->route('deliveries.create')->with('error', 'Có lỗi xảy ra: ' . $e->getMessage())->withInput();
-        }
-    }
+    // create() and store() methods removed - "Tạo lịch giao nhận" feature disabled
 
     public function show(int $id)
     {

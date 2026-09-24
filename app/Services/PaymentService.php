@@ -26,7 +26,28 @@ class PaymentService
             $query->where('status', $filters['status']);
         }
 
-        return $query->with('order')->withTrashed()->latest()->paginate(20);
+        if (!empty($filters['search'])) {
+            $search = trim($filters['search']);
+            $query->where(function ($q) use ($search) {
+                $numericPart = preg_replace('/[^0-9]/', '', $search);
+                if (!empty($numericPart)) {
+                    $q->where('id', $numericPart);
+                }
+                $q->orWhereHas('order', function ($sub) use ($search) {
+                    $sub->where('code', 'LIKE', "%{$search}%")
+                        ->orWhereHas('customer', function ($cust) use ($search) {
+                            $cust->where('name', 'LIKE', "%{$search}%")
+                                ->orWhere('phone', 'LIKE', "%{$search}%");
+                        })
+                        ->orWhereHas('invoice', function ($inv) use ($search) {
+                            $inv->where('code', 'LIKE', "%{$search}%");
+                        });
+                });
+                $q->orWhere('method', 'LIKE', "%{$search}%");
+            });
+        }
+
+        return $query->with('order.customer', 'order.invoice')->withTrashed()->latest()->paginate(10)->withQueryString();
     }
 
     public function find(int $id): ?Payment

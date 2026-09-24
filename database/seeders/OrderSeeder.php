@@ -26,6 +26,16 @@ class OrderSeeder extends Seeder
             'đồ trẻ em', 'vest công sở', 'áo dài lễ phục',
         ];
 
+        $realNotes = [
+            'Giặt riêng áo trắng giúp em, không tẩy mạnh.',
+            'Váy cưới vải voan mỏng, yêu cầu giặt hấp nhẹ nhàng.',
+            'Chăn bông có vết ố trà, xử lý kỹ vết bẩn góc viền.',
+            'Ủi gấp nếp quần tây phẳng, giao trước 17h chiều nay.',
+            'Giày Sneaker vải lưới, không phơi trực tiếp dưới nắng.',
+            'Áo len mỏng, giặt nước lạnh, không phân tẩy.',
+            'Đồ trẻ em nhạy cảm da, dùng xà phòng không hương liệu.',
+        ];
+
         $orderCount = 25;
 
         for ($i = 1; $i <= $orderCount; $i++) {
@@ -42,7 +52,7 @@ class OrderSeeder extends Seeder
                 'quantity_items' => $items[array_rand($items)],
                 'total_amount' => rand(100000, 500000),
                 'status' => $status,
-                'notes' => 'Ghi chú đơn hàng #' . $i,
+                'notes' => $realNotes[($i - 1) % count($realNotes)],
                 'created_at' => $createdAt,
                 'updated_at' => $createdAt,
             ]);

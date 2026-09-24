@@ -89,7 +89,19 @@ Tài liệu này ghi nhận toàn bộ các Test Case kiểm thử tự động 
 
 ---
 
-## 8. Phân Hệ Quản Lý Sản Phẩm / Loại Đồ Giặt & Hiện Trạng (Garment Management)
+## 8. Phân Hệ Xuất Excel Hóa Đơn (Invoice Export)
+**File Test**: `tests/Feature/InvoiceControllerTest.php`
+
+| Mã Test Case | Tên Test Case | Mô Tả | Dữ Liệu Đầu Vào | Kết Quả Mong Đợi | Trạng Thái |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **TC-INV-01** | Admin xuất hóa đơn ra Excel | Kiểm tra route xuất Excel cho tài khoản admin | GET `route('invoices.export')` | Trả về HTTP 200, Content-Type Excel (.xlsx) | PASSED |
+| **TC-INV-02** | Staff xuất hóa đơn ra Excel | Kiểm tra route xuất Excel cho tài khoản staff | GET `route('invoices.export')` | Trả về HTTP 200, Content-Type Excel (.xlsx) | PASSED |
+| **TC-INV-03** | Chặn truy cập export cho chưa đăng nhập | Middleware auth ngăn guest | GET `route('invoices.export')` (Guest) | Chuyển hướng về `/login` | PASSED |
+| **TC-INV-04** | Xuất Excel với bộ lọc | Kiểm tra giữ lại tham số query khi xuất | GET `route('invoices.export', ['status' => 'unpaid'])` | Trả về HTTP 200, Content-Type Excel | PASSED |
+
+---
+
+## 9. Phân Hệ Quản Lý Sản Phẩm / Loại Đồ Giặt & Hiện Trạng (Garment Management)
 **File Test**: `tests/Feature/GarmentControllerTest.php`
 
 | Mã Test Case | Tên Test Case | Mô Tả | Dữ Liệu Đầu Vào | Kết Quả Mong Đợi | Trạng Thái |

@@ -12,11 +12,24 @@ class PromotionService
     {
         $query = Promotion::query();
 
+        if (!empty($filters['search'])) {
+            $search = trim($filters['search']);
+            $query->where(function ($q) use ($search) {
+                $numericPart = preg_replace('/[^0-9]/', '', $search);
+                if (!empty($numericPart)) {
+                    $q->where('id', $numericPart);
+                }
+                $q->orWhere('code', 'LIKE', "%{$search}%")
+                    ->orWhere('name', 'LIKE', "%{$search}%")
+                    ->orWhere('discount', 'LIKE', "%{$search}%");
+            });
+        }
+
         if (!empty($filters['status'])) {
             $query->where('status', $filters['status']);
         }
 
-        return $query->withTrashed()->latest()->paginate(20);
+        return $query->withTrashed()->latest()->paginate(10)->withQueryString();
     }
 
     public function find(int $id): ?Promotion

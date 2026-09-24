@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Order extends Model
@@ -41,9 +42,9 @@ class Order extends Model
         return $this->hasMany(Payment::class);
     }
 
-    public function invoice(): BelongsTo
+    public function invoice(): HasOne
     {
-        return $this->belongsTo(Invoice::class);
+        return $this->hasOne(Invoice::class);
     }
 
     public function bookings(): HasMany

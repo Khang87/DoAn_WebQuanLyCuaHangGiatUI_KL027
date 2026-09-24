@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Customer;
+use App\Models\Delivery;
+use App\Models\Invoice;
 use App\Models\Order;
 use App\Models\Promotion;
 use Illuminate\Support\Carbon;
@@ -15,6 +17,7 @@ class DashboardController extends Controller
      */
     public function index()
     {
+        $isAdmin = auth()->user()->isAdmin();
         $orders = Order::with(['customer', 'service'])->latest()->get();
         $recentOrders = $orders->take(5);
         $recentCustomers = Customer::latest()->take(5)->get();
@@ -28,6 +31,25 @@ class DashboardController extends Controller
             ->filter(fn ($order) => $order->created_at?->month === $month)
             ->sum('total_amount'));
 
+        // Staff & Admin shared data
+        $todayDeliveries = Delivery::whereDate('pickup_date', today())
+            ->whereNotIn('status', ['cancelled'])
+            ->with('customer')
+            ->latest()
+            ->take(5)
+            ->get();
+
+        $pendingInvoices = Invoice::where('status', 'unpaid')
+            ->with('order.customer')
+            ->latest()
+            ->take(5)
+            ->get();
+
+        $newCustomersToday = Customer::whereDate('created_at', today())->count();
+
+        // Orders needing processing (pending + washing status)
+        $processingOrders = $orders->whereIn('status', ['pending', 'washing'])->take(7);
+
         return view('admin.dashboard', [
             'totalOrders' => $orders->count(),
             'revenue' => $orders->sum('total_amount'),
@@ -40,6 +62,11 @@ class DashboardController extends Controller
             })->latest()->take(5)->get(),
             'statusCounts' => $statusCounts,
             'monthlyRevenue' => $monthlyRevenue,
+            'isAdmin' => $isAdmin,
+            'todayDeliveries' => $todayDeliveries,
+            'pendingInvoices' => $pendingInvoices,
+            'newCustomersToday' => $newCustomersToday,
+            'processingOrders' => $processingOrders,
         ]);
     }
 }

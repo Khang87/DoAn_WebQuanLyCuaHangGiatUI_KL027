@@ -30,6 +30,7 @@ class DatabaseSeeder extends Seeder
     {
         $this->call([
             UserSeeder::class,
+            ServiceCategorySeeder::class,
             ServiceSeeder::class,
             GarmentSeeder::class,
             CustomerSeeder::class,

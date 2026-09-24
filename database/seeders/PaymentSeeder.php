@@ -39,5 +39,18 @@ class PaymentSeeder extends Seeder
                 'updated_at' => now(),
             ]);
         }
+
+        // Create pending payments for some new orders
+        $pendingOrders = Order::where('status', 'processing')->take(3)->get();
+        foreach ($pendingOrders as $order) {
+            Payment::create([
+                'order_id' => $order->id,
+                'amount' => $order->total_amount,
+                'method' => $methods[array_rand($methods)],
+                'status' => 'pending',
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
     }
 }

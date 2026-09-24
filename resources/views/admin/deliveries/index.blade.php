@@ -1,35 +1,37 @@
 @extends('layouts.app')
 
-@section('title', 'Quản Lý Giao Nhận - Giặt Ủi Pro')
+@section('title', 'Quản Lý Giao Nhận - Sky Laundry')
 @section('page-title', 'Quản Lý Giao Nhận')
 
 @section('content')
-<div class="order-toolbar">
-    <div>
-        <p class="text-muted mb-0">Theo dõi lịch lấy và giao đồ cho khách hàng.</p>
-    </div>
-    <a href="{{ route('deliveries.create') }}" class="btn btn-primary">
-        <i class="bi bi-plus-lg me-2"></i>Tạo lịch giao nhận
-    </a>
+<div class="order-toolbar mb-4">
+    <p class="text-muted mb-0">Theo dõi lịch lấy và giao đồ cho khách hàng.</p>
 </div>
 
-<form action="{{ route('deliveries.index') }}" method="GET" class="d-flex gap-2 mb-3">
-    <div class="input-group" style="width: 200px;">
-        <input type="text" name="search" class="form-control" placeholder="Tìm khách hàng..." value="{{ request('search') }}">
+<form action="{{ url()->current() }}" method="GET" class="row g-3 align-items-center mb-4">
+    <div class="col-12 col-md-5">
+        <div class="input-group shadow-sm rounded-3 overflow-hidden">
+            <span class="input-group-text bg-white border-end-0 ps-3">
+                <i class="fas fa-search text-muted"></i>
+            </span>
+            <input type="text" name="search" class="form-control border-start-0 py-2 ps-2" placeholder="Tìm theo ID, mã giao nhận, mã đơn hàng, tên khách, SĐT..." value="{{ request('search') }}">
+        </div>
     </div>
-    <select name="method" class="form-select" style="width: auto;" onchange="this.form.submit()">
-        <option value="">Tất cả hình thức</option>
-        <option value="pickup" @selected(request('method') === 'pickup')>Lấy tại tiệm</option>
-        <option value="dropoff" @selected(request('method') === 'dropoff')>Giao tận nơi</option>
-    </select>
-    <select name="status" class="form-select" style="width: auto;" onchange="this.form.submit()">
-        <option value="">Tất cả trạng thái</option>
-        <option value="pending" @selected(request('status') === 'pending')>Chờ lấy đồ</option>
-        <option value="confirmed" @selected(request('status') === 'confirmed')>Đã nhận đồ</option>
-        <option value="completed" @selected(request('status') === 'completed')>Hoàn thành</option>
-        <option value="cancelled" @selected(request('status') === 'cancelled')>Đã hủy</option>
-    </select>
-    <a href="{{ route('deliveries.index') }}" class="btn btn-outline-secondary">Xóa</a>
+    <div class="col-12 col-md-3">
+        <select name="method" class="form-select shadow-sm rounded-3 py-2" style="min-width: 220px;" onchange="this.form.submit()">
+            <option value="">-- Tất cả hình thức --</option>
+            <option value="pickup" @selected(request('method') === 'pickup')>Lấy tại tiệm</option>
+            <option value="dropoff" @selected(request('method') === 'dropoff')>Giao tận nơi</option>
+        </select>
+    </div>
+    <div class="col-12 col-md-3">
+        <select name="status" class="form-select shadow-sm rounded-3 py-2" style="min-width: 200px;" onchange="this.form.submit()">
+            <option value="">-- Tất cả trạng thái --</option>
+            <option value="pending" @selected(request('status') === 'pending')>Chờ xác nhận</option>
+            <option value="confirmed" @selected(request('status') === 'confirmed')>Đã xác nhận</option>
+            <option value="cancelled" @selected(request('status') === 'cancelled')>Đã hủy</option>
+        </select>
+    </div>
 </form>
 
 <div class="card">
@@ -64,15 +66,13 @@
                         </td>
                         <td>{{ $delivery->address ?: '-' }}</td>
                         <td>{{ $delivery->pickup_date?->format('d/m/Y') }}<br><small class="text-muted">{{ $delivery->pickup_time?->format('H:i') }}</small></td>
-                        <td>
-                            @if($delivery->status === 'completed')
-                                <span class="badge bg-success-subtle text-success border border-success px-3 py-2 rounded-pill"><i class="fas fa-check-circle me-1"></i>Đã giao</span>
-                            @elseif($delivery->status === 'in_progress')
-                                <span class="badge bg-info-subtle text-info border border-info px-3 py-2 rounded-pill"><i class="fas fa-cog me-1"></i>Đang giao</span>
+                            <td>
+                            @if($delivery->status === 'confirmed')
+                                <span class="badge bg-primary-subtle text-primary border border-primary px-3 py-2 rounded-pill"><i class="fas fa-check-circle me-1"></i>Đã xác nhận</span>
                             @elseif($delivery->status === 'cancelled')
                                 <span class="badge bg-danger-subtle text-danger border border-danger px-3 py-2 rounded-pill"><i class="fas fa-x-circle me-1"></i>Đã hủy</span>
                             @else
-                                <span class="badge bg-warning-subtle text-warning border border-warning px-3 py-2 rounded-pill"><i class="fas fa-hourglass me-1"></i>Chờ lấy đồ</span>
+                                <span class="badge bg-warning-subtle text-warning border border-warning px-3 py-2 rounded-pill"><i class="fas fa-hourglass me-1"></i>Chờ xác nhận</span>
                             @endif
                         </td>
                         <td>
@@ -87,7 +87,7 @@
                         </td>
                     </tr>
                     @empty
-                    <tr><td colspan="7" class="text-center text-muted py-4">Chưa có lịch giao nhận nào</td></tr>
+                     <tr><td colspan="7" class="text-center py-4 text-muted"><i class="fas fa-search fa-2x mb-2 text-secondary d-block"></i>Không tìm thấy dữ liệu phù hợp</td></tr>
                     @endforelse
                 </tbody>
             </table>
