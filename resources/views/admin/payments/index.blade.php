@@ -37,59 +37,69 @@
     </div>
 </form>
 
-<div class="card">
+<div class="card border-0 shadow-sm rounded-3">
     <div class="card-body p-0">
         <div class="table-responsive">
-            <table class="table-custom mb-0">
-                <thead>
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
                     <tr>
-                        <th>Mã thanh toán</th>
-                        <th>Mã đơn</th>
-                        <th>Khách hàng</th>
-                        <th>Số tiền</th>
-                        <th>Phương thức</th>
-                        <th>Trạng thái</th>
-                        <th>Thao tác</th>
+                        <th class="text-uppercase text-secondary fs-7 fw-semibold text-start">Mã thanh toán</th>
+                        <th class="text-uppercase text-secondary fs-7 fw-semibold text-start">Mã đơn</th>
+                        <th class="text-uppercase text-secondary fs-7 fw-semibold text-start">Khách hàng</th>
+                        <th class="text-uppercase text-secondary fs-7 fw-semibold text-start">Số tiền</th>
+                        <th class="text-uppercase text-secondary fs-7 fw-semibold text-start">Phương thức</th>
+                        <th class="text-uppercase text-secondary fs-7 fw-semibold text-start">Trạng thái</th>
+                        <th class="text-uppercase text-secondary fs-7 fw-semibold text-start">Thao tác</th>
                     </tr>
                 </thead>
                 <tbody>
                     @forelse($payments as $payment)
                     <tr>
-                        <td><strong>TT{{ $payment->id }}</strong></td>
-                        <td><a href="{{ route('orders.show', $payment->order_id) }}">{{ $payment->order?->code ?: $payment->order_id }}</a></td>
-                        <td>{{ $payment->order?->customer?->name ?: '-' }}</td>
-                        <td class="fw-semibold">{{ number_format($payment->amount) }} VNĐ</td>
-                        <td>
+                        <td class="text-start align-middle py-3 fw-bold text-dark">TT{{ $payment->id }}</td>
+                        <td class="text-start align-middle py-3">
+                            <a href="{{ route('orders.show', $payment->order_id) }}" class="text-decoration-none fw-bold text-dark">{{ $payment->order?->code ?: $payment->order_id }}</a>
+                        </td>
+                        <td class="text-start align-middle py-3">
+                            <div class="fw-bold">{{ $payment->order?->customer?->name ?: '-' }}</div>
+                            <small class="text-muted">{{ $payment->order?->customer?->phone ?: 'Chưa có SĐT' }}</small>
+                        </td>
+                        <td class="text-start align-middle py-3 fw-semibold">{{ number_format($payment->amount) }} VNĐ</td>
+                        <td class="text-start align-middle py-3 text-muted">
                             @if($payment->method === 'cash')
-                                <i class="bi bi-cash-coin"></i> Tiền mặt
+                                <i class="bi bi-cash-coin me-1"></i>Tiền mặt
                             @elseif($payment->method === 'bank_transfer')
-                                <i class="bi bi-bank"></i> Chuyển khoản
+                                <i class="bi bi-bank me-1"></i>Chuyển khoản
                             @else
-                                <i class="bi bi-wallet2"></i> Ví điện tử
+                                <i class="bi bi-wallet2 me-1"></i>Ví điện tử
                             @endif
                         </td>
-                        <td>
-                                @if($payment->status === 'paid')
-                                    <span class="badge bg-success-subtle text-success border border-success px-3 py-2 rounded-pill"><i class="fas fa-check-circle me-1"></i>Đã thanh toán</span>
-                                @elseif($payment->status === 'partial')
-                                    <span class="badge bg-warning-subtle text-warning border border-warning px-3 py-2 rounded-pill"><i class="fas fa-hourglass me-1"></i>Một phần</span>
-                                @else
-                                    <span class="badge bg-danger-subtle text-danger border border-danger px-3 py-2 rounded-pill"><i class="fas fa-x-circle me-1"></i>Chưa thanh toán</span>
-                                @endif
+                        <td class="text-start align-middle py-3">
+                            @if($payment->status === 'paid')
+                                <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-3 py-2"><i class="fas fa-check-circle me-1"></i>Đã thanh toán</span>
+                            @elseif($payment->status === 'partial')
+                                <span class="badge bg-warning-subtle text-warning border border-warning-subtle rounded-pill px-3 py-2"><i class="fas fa-clock me-1"></i>Một phần</span>
+                            @else
+                                <span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-3 py-2"><i class="fas fa-times-circle me-1"></i>Chưa thanh toán</span>
+                            @endif
                         </td>
-                        <td>
-                            <div class="d-flex gap-2">
-                                <a href="{{ route('payments.show', $payment) }}" class="btn btn-order-action view" title="Xem"><i class="bi bi-eye"></i></a>
-                                <a href="{{ route('payments.edit', $payment) }}" class="btn btn-order-action edit" title="Sửa"><i class="bi bi-pencil"></i></a>
+                        <td class="text-start align-middle py-3">
+                            <div class="d-flex align-items-center gap-1">
+                                <a href="{{ route('payments.show', $payment) }}" class="btn btn-sm btn-outline-info" title="Xem chi tiết"><i class="fas fa-eye"></i></a>
+                                <a href="{{ route('payments.edit', $payment) }}" class="btn btn-sm btn-outline-warning" title="Chỉnh sửa"><i class="fas fa-pen"></i></a>
                                 <form action="{{ route('payments.destroy', $payment) }}" method="POST" class="d-inline" onsubmit="return confirm('Bạn có chắc muốn xóa?')">
                                     @csrf @method('DELETE')
-                                    <button type="submit" class="btn btn-order-action delete" title="Xóa"><i class="bi bi-trash"></i></button>
+                                    <button type="submit" class="btn btn-sm btn-outline-danger" title="Xóa"><i class="fas fa-trash-alt"></i></button>
                                 </form>
                             </div>
                         </td>
                     </tr>
                     @empty
-                    <tr><td colspan="7" class="text-center py-4 text-muted"><i class="fas fa-search fa-2x mb-2 text-secondary d-block"></i>Không tìm thấy dữ liệu phù hợp</td></tr>
+                    <tr>
+                        <td colspan="7" class="text-center py-4 text-muted">
+                            <i class="fas fa-search fa-2x mb-2 text-secondary d-block"></i>
+                            Không tìm thấy dữ liệu phù hợp
+                        </td>
+                    </tr>
                     @endforelse
                 </tbody>
             </table>
@@ -98,8 +108,13 @@
 </div>
 
 @if($payments->hasPages())
-<div class="mt-3">
-    {{ $payments->appends(request()->query())->links('pagination::bootstrap-5') }}
-</div>
+<nav class="mt-4">
+    <div class="d-flex justify-content-between align-items-center">
+        <div class="text-muted small">
+            Hiển thị {{ $payments->firstItem() }} - {{ $payments->lastItem() }} của {{ $payments->total() }} thanh toán
+        </div>
+        {{ $payments->appends(request()->query())->links('pagination::bootstrap-5') }}
+    </div>
+</nav>
 @endif
 @endsection
