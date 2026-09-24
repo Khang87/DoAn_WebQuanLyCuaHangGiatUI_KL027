@@ -75,7 +75,7 @@ Route::middleware(['auth'])->group(function () {
 
     // Promotions & Coupons Management
     Route::resource('promotions', PromotionController::class)->middleware('role:admin');
-    Route::resource('coupons', CouponController::class);
+    Route::resource('coupons', CouponController::class)->middleware('role:admin');
 
     // Reports
     Route::prefix('reports')->name('reports.')->middleware('role:admin')->group(function () {

@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Promotion;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Collection;
 
 class PromotionService
 {

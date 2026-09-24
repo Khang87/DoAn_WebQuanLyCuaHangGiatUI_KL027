@@ -28,11 +28,11 @@
                     <tr><td><strong>Loại</strong></td>
                         <td>
                             @if($customer->type === 'VIP')
-                                <span class="badge bg-warning">VIP</span>
+                                <span class="badge bg-warning-subtle text-warning border border-warning px-3 py-2 rounded-pill"><i class="fas fa-crown me-1"></i>VIP</span>
                             @elseif($customer->type === 'Thường')
-                                <span class="badge bg-info text-dark">Thường</span>
+                                <span class="badge bg-success-subtle text-success border border-success px-3 py-2 rounded-pill"><i class="fas fa-user me-1"></i>Thường</span>
                             @else
-                                <span class="badge bg-secondary">Mới</span>
+                                <span class="badge bg-secondary-subtle text-secondary border border-secondary px-3 py-2 rounded-pill"><i class="fas fa-user-plus me-1"></i>Mới</span>
                             @endif
                         </td>
                     </tr>
@@ -41,9 +41,9 @@
                     <tr><td><strong>Trạng thái</strong></td>
                         <td>
                             @if($customer->deleted_at)
-                                <span class="badge bg-warning">Đã xóa</span>
+                                <span class="badge bg-danger-subtle text-danger border border-danger px-3 py-2 rounded-pill"><i class="fas fa-trash me-1"></i>Đã xóa</span>
                             @else
-                                <span class="badge bg-success">Hoạt động</span>
+                                <span class="badge bg-success-subtle text-success border border-success px-3 py-2 rounded-pill"><i class="fas fa-check-circle me-1"></i>Hoạt động</span>
                             @endif
                         </td>
                     </tr>
@@ -83,7 +83,23 @@
                         <td><strong>#{{ $order->code }}</strong></td>
                         <td>{{ $order->service?->name ?: '-' }}</td>
                         <td>{{ number_format($order->total_amount) }} VNĐ</td>
-                        <td>{{ $order->status }}</td>
+                        @if($order->status === 'completed')
+                            <span class="badge bg-success-subtle text-success border border-success px-2 py-1 rounded-pill"><i class="fas fa-check-circle"></i></span>
+                        @elseif($order->status === 'cancelled')
+                            <span class="badge bg-danger-subtle text-danger border border-danger px-2 py-1 rounded-pill"><i class="fas fa-x-circle"></i></span>
+                        @elseif($order->status === 'pending')
+                            <span class="badge bg-warning-subtle text-warning border border-warning px-2 py-1 rounded-pill"><i class="fas fa-hourglass"></i></span>
+                        @elseif($order->status === 'processing')
+                            <span class="badge bg-info-subtle text-info border border-info px-2 py-1 rounded-pill"><i class="fas fa-cog"></i></span>
+                        @elseif($order->status === 'delivering')
+                            <span class="badge bg-primary-subtle text-primary border border-primary px-2 py-1 rounded-pill"><i class="fas fa-truck"></i></span>
+                        @elseif($order->status === 'washing')
+                            <span class="badge bg-warning-subtle text-warning border border-warning px-2 py-1 rounded-pill"><i class="fas fa-washer"></i></span>
+                        @elseif($order->status === 'washed')
+                            <span class="badge bg-info-subtle text-info border border-info px-2 py-1 rounded-pill"><i class="fas fa-tshirt-pocket"></i></span>
+                        @else
+                            <span class="badge bg-secondary-subtle text-secondary border border-secondary px-2 py-1 rounded-pill">{{ $order->status }}</span>
+                        @endif
                         <td>{{ $order->created_at?->format('d/m/Y') }}</td>
                     </tr>
                     @endforeach

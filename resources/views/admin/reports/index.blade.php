@@ -7,15 +7,15 @@
 <div class="row g-4 mb-4">
     <div class="col-12 col-sm-6 col-xl-3">
         <div class="card">
-            <div class="card-body">
-                <div class="stat-value">{{ number_format($summary['total_revenue']) }}</div>
+            <div class="card-body text-center">
+                <div class="stat-value">{{ number_format($summary['total_revenue']) }} VNĐ</div>
                 <div class="stat-label">Tổng Doanh Thu</div>
             </div>
         </div>
     </div>
     <div class="col-12 col-sm-6 col-xl-3">
         <div class="card">
-            <div class="card-body">
+            <div class="card-body text-center">
                 <div class="stat-value">{{ $summary['total_orders'] }}</div>
                 <div class="stat-label">Tổng Đơn Hàng</div>
             </div>
@@ -23,16 +23,16 @@
     </div>
     <div class="col-12 col-sm-6 col-xl-3">
         <div class="card">
-            <div class="card-body">
-                <div class="stat-value">{{ $summary['today_revenue'] }}</div>
+            <div class="card-body text-center">
+                <div class="stat-value">{{ number_format($summary['today_revenue']) }} VNĐ</div>
                 <div class="stat-label">Doanh Thu Hôm Nay</div>
             </div>
         </div>
     </div>
     <div class="col-12 col-sm-6 col-xl-3">
         <div class="card">
-            <div class="card-body">
-                <div class="stat-value">{{ $summary['month_revenue'] }}</div>
+            <div class="card-body text-center">
+                <div class="stat-value">{{ number_format($summary['month_revenue']) }} VNĐ</div>
                 <div class="stat-label">Doanh Thu Tháng</div>
             </div>
         </div>
@@ -42,15 +42,29 @@
 <div class="row g-4 mb-4">
     <div class="col-12 col-xl-8">
         <div class="card">
-            <div class="card-header"><h5 class="mb-0">Đơn hàng theo trạng thái</h5></div>
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Đơn hàng theo trạng thái</h5>
+            </div>
             <div class="card-body">
+                @php
+                    $statusLabels = [
+                        'completed' => 'Hoàn thành',
+                        'cancelled' => 'Đã hủy',
+                        'pending' => 'Chờ xử lý',
+                        'processing' => 'Đang xử lý',
+                        'delivering' => 'Đang giao',
+                        'washing' => 'Đang giặt',
+                        'washed' => 'Đã giặt xong',
+                    ];
+                    $maxCount = max($orderStatusCounts) ?: 1;
+                @endphp
                 @foreach($orderStatusCounts as $status => $count)
-                <div class="d-flex align-items-center mb-2">
-                    <span class="badge bg-info text-dark me-3" style="width: 100px;">{{ $status }}</span>
+                <div class="d-flex align-items-center mb-3">
+                    <span class="badge bg-info-subtle text-info border border-info px-3 py-2 rounded-pill me-3" style="width: 140px; justify-content: center;">{{ $statusLabels[$status] ?? $status }}</span>
                     <div class="flex-grow-1">
-                        <div class="progress" style="height: 20px;">
-                            <div class="progress-bar" role="progressbar" style="width: {{ $count > 0 ? min(100, ($count / max(1, max($orderStatusCounts))) * 100) : 0 }}%;">
-                                {{ $count }}
+                        <div class="progress" style="height: 24px;">
+                            <div class="progress-bar progress-bar-striped" role="progressbar" style="width: {{ $count > 0 ? ($count / $maxCount) * 100 : 0 }}%;">
+                                {{ number_format($count) }}
                             </div>
                         </div>
                     </div>
@@ -61,7 +75,10 @@
     </div>
     <div class="col-12 col-xl-4">
         <div class="card">
-            <div class="card-header"><h5 class="mb-0">Top Khách Hàng</h5></div>
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Top 10 Khách Hàng</h5>
+                <a href="{{ route('reports.customers') }}" class="text-decoration-none">Xem tất cả</a>
+            </div>
             <div class="card-body">
                 @forelse($topCustomers as $item)
                 <div class="d-flex align-items-center mb-3 pb-3 border-bottom">
@@ -71,11 +88,11 @@
                     </div>
                     <div class="text-end">
                         <strong>{{ number_format($item->total_spent) }} VNĐ</strong><br>
-                        <small>{{ $item->order_count }} đơn</small>
+                        <small class="text-muted">{{ number_format($item->order_count) }} đơn</small>
                     </div>
                 </div>
                 @empty
-                <p class="text-center text-muted">Chưa có dữ liệu</p>
+                <p class="text-center text-muted mb-0">Chưa có dữ liệu</p>
                 @endforelse
             </div>
         </div>

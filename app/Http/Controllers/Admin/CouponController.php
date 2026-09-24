@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\CouponRequest;
 use App\Models\Coupon;
+use App\Models\Promotion;
 use App\Services\CouponService;
 use App\Services\PromotionService;
 use Illuminate\Http\Request;

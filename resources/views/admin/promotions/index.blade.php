@@ -36,9 +36,11 @@
                         <td>{{ $promotion->discount }}</td>
                         <td>{{ $promotion->expires_at?->format('d/m/Y') ?: 'Không hạn' }}</td>
                         <td>
-                            <span class="badge {{ $promotion->status === 'active' ? 'bg-success' : 'bg-secondary' }}">
-                                {{ $promotion->status === 'active' ? 'Đang chạy' : 'Tắt' }}
-                            </span>
+                            @if($promotion->status === 'active')
+                                <span class="badge bg-success-subtle text-success border border-success px-3 py-2 rounded-pill"><i class="fas fa-check-circle me-1"></i>Đang chạy</span>
+                            @else
+                                <span class="badge bg-danger-subtle text-danger border border-danger px-3 py-2 rounded-pill"><i class="fas fa-ban me-1"></i>Hết hạn</span>
+                            @endif
                         </td>
                         <td>
                             <div class="d-flex gap-2">

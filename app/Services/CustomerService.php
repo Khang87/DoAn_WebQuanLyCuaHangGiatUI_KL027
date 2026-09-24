@@ -43,14 +43,20 @@ class CustomerService
         if (empty($data['points'])) {
             $data['points'] = 0;
         }
-        if (empty($data['type'])) {
-            $data['type'] = 'Mới';
+        if (empty($data['points'])) {
+            $data['points'] = 0;
         }
-        return Customer::create($data);
+        unset($data['type']);
+        $customer = Customer::create($data);
+        return $customer->fresh();
     }
 
     public function update(Customer $customer, array $data): Customer
     {
+        if (isset($data['points'])) {
+            $customer->points = $data['points'];
+            unset($data['points']);
+        }
         $customer->update($data);
         return $customer->fresh();
     }

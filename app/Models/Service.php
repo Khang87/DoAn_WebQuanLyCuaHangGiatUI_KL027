@@ -28,4 +28,15 @@ class Service extends Model
     {
         return $this->hasMany(Order::class);
     }
+
+    public function getFormattedProcessingTimeAttribute(): string
+    {
+        $hours = $this->processing_time ?? 0;
+        if ($hours < 24) {
+            return "{$hours} giờ";
+        }
+        $days = floor($hours / 24);
+        $remainHours = $hours % 24;
+        return $remainHours > 0 ? "{$days} ngày {$remainHours} giờ" : "{$days} ngày";
+    }
 }

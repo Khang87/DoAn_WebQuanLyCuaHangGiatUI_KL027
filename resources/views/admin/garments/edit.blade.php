@@ -19,26 +19,50 @@
             <div class="row g-4">
                 <div class="col-md-6">
                     <label class="form-label fw-semibold">Tên loại đồ giặt / sản phẩm</label>
-                    <input type="text" class="form-control" name="name" value="{{ $garment->name }}" required>
+                    <input type="text" class="form-control @error('name') is-invalid @enderror" name="name" value="{{ old('name', $garment->name) }}" required>
+                    @error('name')
+                        <div class="invalid-feedback">{{ $message }}</div>
+                    @enderror
                 </div>
                 <div class="col-md-6">
                     <label class="form-label fw-semibold">Danh mục loại đồ</label>
-                    <input type="text" class="form-control" name="category" value="{{ $garment->category }}">
+                    <select class="form-select @error('category') is-invalid @enderror" name="category">
+                        <option value="">Chọn danh mục</option>
+                        <option value="áo dài" @selected(old('category', $garment->category) === 'áo dài')>Áo dài</option>
+                        <option value="váy cưới" @selected(old('category', $garment->category) === 'váy cưới')>Váy cưới</option>
+                        <option value="áo khoác" @selected(old('category', $garment->category) === 'áo khoác')>Áo khoác</option>
+                        <option value="quần âu" @selected(old('category', $garment->category) === 'quần âu')>Quần âu</option>
+                        <option value="đồ thường" @selected(old('category', $garment->category) === 'đồ thường')>Đồ thường</option>
+                        <option value="chăn mền" @selected(old('category', $garment->category) === 'chăn mền')>Chăn mền</option>
+                        <option value="giày dép" @selected(old('category', $garment->category) === 'giày dép')>Giày dép</option>
+                    </select>
+                    @error('category')
+                        <div class="invalid-feedback">{{ $message }}</div>
+                    @enderror
                 </div>
                 <div class="col-md-6">
                     <label class="form-label fw-semibold">Đơn giá dịch vụ (VNĐ)</label>
-                    <input type="number" class="form-control" name="price" value="{{ $garment->price }}" min="0" required>
+                    <input type="number" class="form-control @error('price') is-invalid @enderror" name="price" value="{{ old('price', $garment->price) }}" min="0" required>
+                    @error('price')
+                        <div class="invalid-feedback">{{ $message }}</div>
+                    @enderror
                 </div>
                 <div class="col-md-6">
                     <label class="form-label fw-semibold">Trạng thái</label>
-                    <select class="form-select" name="status">
-                        <option value="active" @selected($garment->status === 'active')>Đang hoạt động</option>
-                        <option value="inactive" @selected($garment->status === 'inactive')>Tạm ngưng</option>
+                    <select class="form-select @error('status') is-invalid @enderror" name="status">
+                        <option value="active" @selected(old('status', $garment->status) === 'active')>Đang hoạt động</option>
+                        <option value="inactive" @selected(old('status', $garment->status) === 'inactive')>Tạm ngưng</option>
                     </select>
+                    @error('status')
+                        <div class="invalid-feedback">{{ $message }}</div>
+                    @enderror
                 </div>
                 <div class="col-12">
-                    <label class="form-label fw-semibold">Mô tả hiện trạng trước khi giặt</label>
-                    <textarea class="form-control" name="condition_note" rows="4">{{ $garment->condition_note }}</textarea>
+                    <label class="form-label fw-semibold">Mô tả hiện trạng trước khi giặt (Ghi chú rách, ố, cũ, sờn...)</label>
+                    <textarea class="form-control @error('condition_note') is-invalid @enderror" name="condition_note" rows="4" placeholder="Nhập mô tả tình trạng sản phẩm trước khi tiếp nhận giặt...">{{ old('condition_note', $garment->condition_note) }}</textarea>
+                    @error('condition_note')
+                        <div class="invalid-feedback">{{ $message }}</div>
+                    @enderror
                 </div>
             </div>
 

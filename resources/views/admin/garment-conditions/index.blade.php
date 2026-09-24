@@ -28,9 +28,11 @@
                         <td><strong>{{ $condition->condition_type }}</strong></td>
                         <td>{{ \Illuminate\Support\Str::limit($condition->description, 50) ?: '-' }}</td>
                         <td>
-                            <span class="badge {{ $condition->status === 'active' ? 'bg-success' : 'bg-secondary' }}">
-                                {{ $condition->status === 'active' ? 'Hoạt động' : 'Tắt' }}
-                            </span>
+                            @if($condition->status === 'active')
+                                <span class="badge bg-success-subtle text-success border border-success px-3 py-2 rounded-pill"><i class="fas fa-check-circle me-1"></i>Hoạt động</span>
+                            @else
+                                <span class="badge bg-danger-subtle text-danger border border-danger px-3 py-2 rounded-pill"><i class="fas fa-ban me-1"></i>Khóa</span>
+                            @endif
                         </td>
                         <td>
                             <div class="d-flex gap-2">

@@ -63,7 +63,13 @@
                         <td>{{ $customer->phone ?: '-' }}</td>
                         <td>{{ $customer->address ?: '-' }}</td>
                         <td><strong>{{ number_format($customer->points) }}</strong> điểm</td>
-                        <td><span class="customer-type-badge {{ $customer->type === 'VIP' ? 'vip' : ($customer->type === 'Mới' ? 'new' : 'regular') }}">{{ $customer->type }}</span></td>
+                        <td>                            @if($customer->type === 'VIP')
+                                <span class="badge bg-warning-subtle text-warning border border-warning px-3 py-2 rounded-pill"><i class="fas fa-crown me-1"></i>VIP</span>
+                            @elseif($customer->type === 'Thường')
+                                <span class="badge bg-success-subtle text-success border border-success px-3 py-2 rounded-pill"><i class="fas fa-user me-1"></i>Thường</span>
+                            @else
+                                <span class="badge bg-info-subtle text-info border border-info px-3 py-2 rounded-pill"><i class="fas fa-user-plus me-1"></i>Mới</span>
+                            @endif</td>
                         <td>{{ $customer->created_at?->format('d/m/Y') }}</td>
                         <td><div class="d-flex gap-2">
                             <a href="{{ route('customers.show', $customer) }}" class="btn btn-order-action view" title="Xem"><i class="bi bi-eye"></i></a>

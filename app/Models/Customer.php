@@ -28,4 +28,25 @@ class Customer extends Model
     {
         return $this->hasMany(Delivery::class);
     }
+
+    public function recalculateLoyaltyLevel(): string
+    {
+        if ($this->points >= 2000) {
+            return 'VIP';
+        } elseif ($this->points >= 500) {
+            return 'Thường';
+        }
+        return 'Mới';
+    }
+
+    public function getLoyaltyLevelAttribute(): string
+    {
+        return $this->recalculateLoyaltyLevel();
+    }
+
+    protected function setPointsAttribute($value)
+    {
+        $this->attributes['points'] = (int) $value;
+        $this->attributes['type'] = $this->recalculateLoyaltyLevel();
+    }
 }

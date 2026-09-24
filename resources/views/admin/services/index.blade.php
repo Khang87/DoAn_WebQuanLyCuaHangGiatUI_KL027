@@ -83,14 +83,18 @@
                 <div class="mb-3">
                     <strong>Giá cơ bản:</strong> <span class="text-primary">{{ number_format($service->price) }} VNĐ/{{ $service->unit ?: 'kg' }}</span>
                 </div>
+                @if($service->processing_time)
+                <div class="mb-2">
+                    <span class="badge bg-light text-dark border"><i class="far fa-clock text-warning me-1"></i>{{ $service->formatted_processing_time }}</span>
+                </div>
+                @endif
                 <div class="d-flex gap-2">
-                    <a href="{{ route('services.edit', $service) }}" class="btn btn-sm btn-outline-warning flex-grow-1">
-                        <i class="bi bi-pencil me-1"></i>Sửa
-                    </a>
-                    <form action="{{ route('services.destroy', $service) }}" method="POST" class="flex-grow-1" onsubmit="return confirm('Bạn có chắc muốn xóa?')">
-                        @csrf @method('DELETE')
-                        <button type="submit" class="btn btn-sm btn-outline-danger w-100">
-                            <i class="bi bi-trash me-1"></i>Xóa
+                    <a href="{{ route('services.show', $service) }}" class="btn btn-order-action view" title="Xem"><i class="bi bi-eye"></i></a>
+                    <a href="{{ route('services.edit', $service) }}" class="btn btn-order-action edit" title="Sửa"><i class="bi bi-pencil"></i></a>
+                    <form action="{{ route('services.toggle-status', $service) }}" method="POST" class="d-inline" onsubmit="return confirm('Bạn có chắc muốn {{ $service->status === 'active' ? 'khóa' : 'kích hoạt' }} dịch vụ này?')">
+                        @csrf
+                        <button type="submit" class="btn btn-order-action {{ $service->status === 'active' ? 'delete' : 'view' }}" title="{{ $service->status === 'active' ? 'Khóa' : 'Kích hoạt' }}">
+                            <i class="bi bi-{{ $service->status === 'active' ? 'lock' : 'unlock' }}"></i>
                         </button>
                     </form>
                 </div>
@@ -124,7 +128,7 @@
             @if ($services->onLastPage())
                 <li class="page-item disabled"><span class="page-link"><i class="bi bi-chevron-right"></i></span></li>
             @else
-                <li class="page-item"><a class="page-link" href="{{ $services->appends(request()->query())->url($services->currentPage() + 1) }}"><i class="bi bi-chevron-right"></i></span></a></li>
+                                <li class="page-item"><a class="page-link" href="{{ $services->appends(request()->query())->url($services->currentPage() + 1) }}"><i class="bi bi-chevron-right"></i></a></li></li>
             @endif
         </ul>
     </div>

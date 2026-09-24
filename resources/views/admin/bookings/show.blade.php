@@ -30,7 +30,17 @@
                     <tr><td><strong>Địa chỉ</strong></td><td>{{ $booking->address ?: '-' }}</td></tr>
                     <tr><td><strong>Ngày lấy</strong></td><td>{{ $booking->pickup_date?->format('d/m/Y') }}</td></tr>
                     <tr><td><strong>Giờ lấy</strong></td><td>{{ $booking->pickup_time }}</td></tr>
-                    <tr><td><strong>Trạng thái</strong></td><td>{{ $booking->status }}</td></tr>
+                    <tr><td><strong>Trạng thái</strong></td><td>
+                            @if($booking->status === 'confirmed')
+                                <span class="badge bg-success-subtle text-success border border-success px-3 py-2 rounded-pill"><i class="fas fa-check-circle me-1"></i>Đã xác nhận</span>
+                            @elseif($booking->status === 'cancelled')
+                                <span class="badge bg-danger-subtle text-danger border border-danger px-3 py-2 rounded-pill"><i class="fas fa-x-circle me-1"></i>Đã hủy</span>
+                            @elseif($booking->status === 'completed')
+                                <span class="badge bg-success-subtle text-success border border-success px-3 py-2 rounded-pill"><i class="fas fa-check-circle me-1"></i>Hoàn thành</span>
+                            @else
+                                <span class="badge bg-warning-subtle text-warning border border-warning px-3 py-2 rounded-pill"><i class="fas fa-hourglass me-1"></i>{{ ucfirst($booking->status) }}</span>
+                            @endif
+                        </td></tr>
                 </table>
             </div>
         </div>

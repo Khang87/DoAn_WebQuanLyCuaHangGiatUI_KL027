@@ -86,6 +86,10 @@
                                 <span class="badge bg-info-subtle text-info border border-info px-3 py-2 rounded-pill"><i class="fas fa-cog me-1"></i>Đang xử lý</span>
                             @elseif($order->status === 'delivering')
                                 <span class="badge bg-primary-subtle text-primary border border-primary px-3 py-2 rounded-pill"><i class="fas fa-truck me-1"></i>Đang giao</span>
+                            @elseif($order->status === 'washing')
+                                <span class="badge bg-warning-subtle text-warning border border-warning px-3 py-2 rounded-pill"><i class="fas fa-washer me-1"></i>Đang giặt</span>
+                            @elseif($order->status === 'washed')
+                                <span class="badge bg-info-subtle text-info border border-info px-3 py-2 rounded-pill"><i class="fas fa-tshirt-pocket me-1"></i>Đã giặt xong</span>
                             @else
                                 <span class="badge bg-secondary-subtle text-secondary border border-secondary px-3 py-2 rounded-pill"><i class="fas fa-circle-notch me-1"></i>{{ $order->status }}</span>
                             @endif

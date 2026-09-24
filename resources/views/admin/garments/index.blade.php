@@ -87,7 +87,13 @@
                         <td><span class="badge bg-light text-dark border">{{ $garment->category ?: 'Đồ giặt' }}</span></td>
                         <td><strong class="text-primary">{{ number_format($garment->price) }} VNĐ</strong></td>
                         <td><small class="text-muted">{{ $garment->condition_note ?: 'Chưa ghi nhận hiện trạng' }}</small></td>
-                        <td><span class="badge {{ $garment->status === 'active' ? 'bg-success' : 'bg-secondary' }}">{{ $garment->status === 'active' ? 'Đang hoạt động' : 'Tạm ngưng' }}</span></td>
+                        <td>
+                            @if($garment->status === 'active')
+                                <span class="badge bg-success-subtle text-success border border-success px-3 py-2 rounded-pill"><i class="fas fa-check-circle me-1"></i>Hoạt động</span>
+                            @else
+                                <span class="badge bg-danger-subtle text-danger border border-danger px-3 py-2 rounded-pill"><i class="fas fa-ban me-1"></i>Khóa</span>
+                            @endif
+                        </td>
                         <td>
                             <div class="d-flex gap-2">
                                 <a href="{{ route('garments.show', $garment->id) }}" class="btn btn-order-action view" title="Xem"><i class="bi bi-eye"></i></a>

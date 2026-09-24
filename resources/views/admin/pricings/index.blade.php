@@ -31,9 +31,11 @@
                         <td>{{ $pricing->unit ?: 'kg' }}</td>
                         <td class="fw-semibold text-primary">{{ number_format($pricing->price) }} VNĐ</td>
                         <td>
-                            <span class="badge {{ $pricing->status === 'active' ? 'bg-success' : 'bg-secondary' }}">
-                                {{ $pricing->status === 'active' ? 'Đang áp dụng' : 'Tắt' }}
-                            </span>
+                            @if($pricing->status === 'active')
+                                <span class="badge bg-success-subtle text-success border border-success px-3 py-2 rounded-pill"><i class="fas fa-check-circle me-1"></i>Đang áp dụng</span>
+                            @else
+                                <span class="badge bg-danger-subtle text-danger border border-danger px-3 py-2 rounded-pill"><i class="fas fa-ban me-1"></i>Khóa</span>
+                            @endif
                         </td>
                         <td>{{ $pricing->created_at?->format('d/m/Y') }}</td>
                         <td>

@@ -45,16 +45,19 @@
                         <td>{{ $coupon->expires_at?->format('d/m/Y') }}</td>
                         <td>{{ $coupon->used_count }}/{{ $coupon->max_uses ?? '∞' }}</td>
                         <td>
-                            <span class="badge {{ $coupon->status === 'active' ? 'bg-success' : 'bg-secondary' }}">
-                                {{ $coupon->status === 'active' ? 'Hoạt động' : 'Tắt' }}
-                            </span>
+                            @if($coupon->status === 'active')
+                                <span class="badge bg-success-subtle text-success border border-success px-3 py-2 rounded-pill"><i class="fas fa-check-circle me-1"></i>Hoạt động</span>
+                            @else
+                                <span class="badge bg-danger-subtle text-danger border border-danger px-3 py-2 rounded-pill"><i class="fas fa-ban me-1"></i>Tắt</span>
+                            @endif
                         </td>
                         <td>
                             <div class="d-flex gap-2">
-                                <a href="{{ route('coupons.edit', $coupon) }}" class="btn btn-sm btn-outline-warning">Sửa</a>
+                                <a href="{{ route('coupons.show', $coupon) }}" class="btn btn-order-action view" title="Xem"><i class="bi bi-eye"></i></a>
+                                <a href="{{ route('coupons.edit', $coupon) }}" class="btn btn-order-action edit" title="Sửa"><i class="bi bi-pencil"></i></a>
                                 <form action="{{ route('coupons.destroy', $coupon) }}" method="POST" class="d-inline" onsubmit="return confirm('Xóa?')">
                                     @csrf @method('DELETE')
-                                    <button type="submit" class="btn btn-sm btn-outline-danger">Xóa</button>
+                                    <button type="submit" class="btn btn-order-action delete" title="Xóa"><i class="bi bi-trash"></i></button>
                                 </form>
                             </div>
                         </td>

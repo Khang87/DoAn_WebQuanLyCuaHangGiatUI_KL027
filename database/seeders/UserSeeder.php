@@ -2,7 +2,6 @@
 
 namespace Database\Seeders;
 
-use App\Models\Customer;
 use App\Models\User;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
@@ -55,16 +54,6 @@ class UserSeeder extends Seeder
             '0956789012', '0967890123', '0978901234', '0989012345', '0990123456',
         ];
 
-        $addresses = [
-            '123 Đường ABC, Quận 1, TP.HCM', '456 Đường XYZ, Quận 3, TP.HCM',
-            '789 Đường DEF, Quận 5, TP.HCM', '101 Đường GHI, Quận 2, TP.HCM',
-            '202 Đường JKL, Quận 4, TP.HCM', '303 Đường MNO, Quận 7, TP.HCM',
-            '404 Đường PQR, Quận 6, TP.HCM', '505 Đường STU, Quận 8, TP.HCM',
-            '606 Đường VWX, Quận 9, TP.HCM', '707 Đường YZ, Quận 10, TP.HCM',
-        ];
-
-        $types = ['Mới', 'Thường', 'VIP', 'VIP', 'Thường', 'Mới', 'Thường', 'VIP', 'Mới', 'Thường'];
-
         foreach ($customerNames as $index => $name) {
             User::factory()->create([
                 'name' => $name,
@@ -72,16 +61,6 @@ class UserSeeder extends Seeder
                 'password' => Hash::make('password'),
                 'phone' => $phones[$index],
                 'role' => 'customer',
-            ]);
-
-            Customer::create([
-                'code' => 'KH' . str_pad($index + 1, 3, '0', STR_PAD_LEFT),
-                'name' => $name,
-                'email' => $emails[$index],
-                'phone' => $phones[$index],
-                'address' => $addresses[$index],
-                'points' => [1250, 850, 0, 2000, 500, 300, 1500, 0, 750, 1200][$index],
-                'type' => $types[$index],
             ]);
         }
     }

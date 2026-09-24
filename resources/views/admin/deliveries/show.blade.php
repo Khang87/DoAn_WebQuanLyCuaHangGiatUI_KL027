@@ -11,7 +11,15 @@
                 <span class="text-muted">Mã giao nhận</span>
                 <h4 class="mb-0">{{ $delivery->id ? 'GH' . str_pad($delivery->id, 3, '0', STR_PAD_LEFT) : 'GH001' }}</h4>
             </div>
-            <span class="badge-status badge-{{ $delivery->status === 'completed' ? 'completed' : 'pending' }}">{{ $delivery->status === 'completed' ? 'Đã giao' : 'Chờ lấy đồ' }}</span>
+            @if($delivery->status === 'completed')
+                <span class="badge bg-success-subtle text-success border border-success px-3 py-2 rounded-pill"><i class="fas fa-check-circle me-1"></i>Đã giao</span>
+            @elseif($delivery->status === 'in_progress')
+                <span class="badge bg-info-subtle text-info border border-info px-3 py-2 rounded-pill"><i class="fas fa-cog me-1"></i>Đang giao</span>
+            @elseif($delivery->status === 'cancelled')
+                <span class="badge bg-danger-subtle text-danger border border-danger px-3 py-2 rounded-pill"><i class="fas fa-x-circle me-1"></i>Đã hủy</span>
+            @else
+                <span class="badge bg-warning-subtle text-warning border border-warning px-3 py-2 rounded-pill"><i class="fas fa-hourglass me-1"></i>Chờ lấy đồ</span>
+            @endif
         </div>
 
         <div class="row g-4">

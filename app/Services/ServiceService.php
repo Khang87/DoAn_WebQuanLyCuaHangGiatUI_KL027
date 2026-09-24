@@ -7,7 +7,7 @@ use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 
 class ServiceService
 {
-    public function getAll(array $filters = []): Collection
+    public function getAll(array $filters = []): LengthAwarePaginator
     {
         $query = Service::query();
 

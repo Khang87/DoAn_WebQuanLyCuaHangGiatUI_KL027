@@ -26,14 +26,14 @@ class ServiceSeeder extends Seeder
         }
 
         $services = [
-            ['name' => 'Giặt thường', 'type' => 'wash', 'price' => 25000, 'unit' => 'kg', 'status' => 'active', 'description' => 'Giặt ủi thường bằng máy', 'service_category_id' => 1, 'processing_time' => 48, 'icon' => 'fa-solid fa-washer'],
-            ['name' => 'Giặt khô', 'type' => 'dry_clean', 'price' => 45000, 'unit' => 'cái', 'status' => 'active', 'description' => 'Giặt khô chuyên dụng', 'service_category_id' => 2, 'processing_time' => 72, 'icon' => 'fa-solid fa-broom-ball'],
-            ['name' => 'Ủi đồ', 'type' => 'iron', 'price' => 15000, 'unit' => 'món', 'status' => 'active', 'description' => 'Ủi phẳng đồ giặt', 'service_category_id' => 3, 'processing_time' => 24, 'icon' => 'fa-solid fa-jug-detergent'],
-            ['name' => 'Giặt chăn mền', 'type' => 'blanket', 'price' => 80000, 'unit' => 'món', 'status' => 'active', 'description' => 'Giặt và ủi chăn mền', 'service_category_id' => 4, 'processing_time' => 96, 'icon' => 'fa-solid fa-bed'],
-            ['name' => 'Giặt giày', 'type' => 'shoes', 'price' => 60000, 'unit' => 'đôi', 'status' => 'active', 'description' => 'Giặt và làm sạch giày', 'service_category_id' => 5, 'processing_time' => 48, 'icon' => 'fa-solid fa-shoe-prints'],
+            ['name' => 'Giặt thường', 'type' => 'wash', 'price' => 25000, 'unit' => 'kg', 'status' => 'active', 'description' => 'Giặt ủi thường bằng máy', 'service_category_id' => 1, 'processing_time' => 18, 'icon' => 'fa-solid fa-washer'],
+            ['name' => 'Giặt khô', 'type' => 'dry_clean', 'price' => 45000, 'unit' => 'cái', 'status' => 'active', 'description' => 'Giặt khô chuyên dụp cho đồ cao cấp', 'service_category_id' => 2, 'processing_time' => 40, 'icon' => 'fa-solid fa-broom-ball'],
+            ['name' => 'Ủi đồ', 'type' => 'iron', 'price' => 15000, 'unit' => 'món', 'status' => 'active', 'description' => 'Ủi phẳng đồ giặt', 'service_category_id' => 3, 'processing_time' => 12, 'icon' => 'fa-solid fa-jug-detergent'],
+            ['name' => 'Giặt chăn mền', 'type' => 'blanket', 'price' => 80000, 'unit' => 'món', 'status' => 'active', 'description' => 'Giặt và ủi chăn mền, ga gối nệm', 'service_category_id' => 4, 'processing_time' => 36, 'icon' => 'fa-solid fa-bed'],
+            ['name' => 'Giặt giày', 'type' => 'shoes', 'price' => 60000, 'unit' => 'đôi', 'status' => 'active', 'description' => 'Giặt và làm sạch giày dép', 'service_category_id' => 5, 'processing_time' => 24, 'icon' => 'fa-solid fa-shoe-prints'],
             ['name' => 'Giặt nhanh', 'type' => 'express', 'price' => 50000, 'unit' => 'kg', 'status' => 'active', 'description' => 'Dịch vụ giặt nhanh trong 2 giờ', 'service_category_id' => 1, 'processing_time' => 2, 'icon' => 'fa-solid fa-bolt'],
-            ['name' => 'Giặt hấp', 'type' => 'steam', 'price' => 35000, 'unit' => 'món', 'status' => 'active', 'description' => 'Giặt hấp khử khuẩn', 'service_category_id' => 1, 'processing_time' => 36, 'icon' => 'fa-solid fa-steam-symbol'],
-            ['name' => 'Giặt sấy', 'type' => 'wash_dry', 'price' => 55000, 'unit' => 'kg', 'status' => 'active', 'description' => 'Giặt và sấy khô', 'service_category_id' => 1, 'processing_time' => 60, 'icon' => 'fa-solid fa-dryer'],
+            ['name' => 'Giặt hấp', 'type' => 'steam', 'price' => 35000, 'unit' => 'món', 'status' => 'active', 'description' => 'Giặt hấp khử khuẩn, bảo quản đồ dệt', 'service_category_id' => 1, 'processing_time' => 30, 'icon' => 'fa-solid fa-steam-symbol'],
+            ['name' => 'Giặt sấy', 'type' => 'wash_dry', 'price' => 55000, 'unit' => 'kg', 'status' => 'active', 'description' => 'Giặt và sấy khô tự động', 'service_category_id' => 1, 'processing_time' => 18, 'icon' => 'fa-solid fa-dryer'],
         ];
 
         foreach ($services as $service) {

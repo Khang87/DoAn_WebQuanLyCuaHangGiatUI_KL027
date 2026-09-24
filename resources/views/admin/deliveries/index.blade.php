@@ -64,7 +64,17 @@
                         </td>
                         <td>{{ $delivery->address ?: '-' }}</td>
                         <td>{{ $delivery->pickup_date?->format('d/m/Y') }}<br><small class="text-muted">{{ $delivery->pickup_time?->format('H:i') }}</small></td>
-                        <td><span class="badge-status badge-{{ $delivery->status }}">{{ $delivery->status }}</span></td>
+                        <td>
+                            @if($delivery->status === 'completed')
+                                <span class="badge bg-success-subtle text-success border border-success px-3 py-2 rounded-pill"><i class="fas fa-check-circle me-1"></i>Đã giao</span>
+                            @elseif($delivery->status === 'in_progress')
+                                <span class="badge bg-info-subtle text-info border border-info px-3 py-2 rounded-pill"><i class="fas fa-cog me-1"></i>Đang giao</span>
+                            @elseif($delivery->status === 'cancelled')
+                                <span class="badge bg-danger-subtle text-danger border border-danger px-3 py-2 rounded-pill"><i class="fas fa-x-circle me-1"></i>Đã hủy</span>
+                            @else
+                                <span class="badge bg-warning-subtle text-warning border border-warning px-3 py-2 rounded-pill"><i class="fas fa-hourglass me-1"></i>Chờ lấy đồ</span>
+                            @endif
+                        </td>
                         <td>
                             <div class="d-flex gap-2">
                                 <a href="{{ route('deliveries.show', $delivery) }}" class="btn btn-order-action view" title="Xem"><i class="bi bi-eye"></i></a>

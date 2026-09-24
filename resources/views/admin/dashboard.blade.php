@@ -157,99 +157,30 @@
                                 </td>
                                 <td>{{ $order->service?->name ?: '-' }}</td>
                                 <td><strong>{{ number_format($order->total_amount) }} VNĐ</strong></td>
-                                <td><span class="badge-status badge-{{ $order->status === 'completed' ? 'completed' : ($order->status === 'pending' ? 'pending' : 'processing') }}">{{ $order->status }}</span></td>
+                                <td>
+                                    @if($order->status === 'completed')
+                                        <span class="badge bg-success-subtle text-success border border-success px-3 py-2 rounded-pill"><i class="fas fa-check-circle me-1"></i>Hoàn thành</span>
+                                    @elseif($order->status === 'cancelled')
+                                        <span class="badge bg-danger-subtle text-danger border border-danger px-3 py-2 rounded-pill"><i class="fas fa-x-circle me-1"></i>Đã hủy</span>
+                                    @elseif($order->status === 'pending')
+                                        <span class="badge bg-warning-subtle text-warning border border-warning px-3 py-2 rounded-pill"><i class="fas fa-hourglass me-1"></i>Chờ xử lý</span>
+                                    @elseif($order->status === 'processing')
+                                        <span class="badge bg-info-subtle text-info border border-info px-3 py-2 rounded-pill"><i class="fas fa-cog me-1"></i>Đang xử lý</span>
+                                    @elseif($order->status === 'delivering')
+                                        <span class="badge bg-primary-subtle text-primary border border-primary px-3 py-2 rounded-pill"><i class="fas fa-truck me-1"></i>Đang giao</span>
+                                    @elseif($order->status === 'washing')
+                                        <span class="badge bg-warning-subtle text-warning border border-warning px-3 py-2 rounded-pill"><i class="fas fa-washer me-1"></i>Đang giặt</span>
+                                    @elseif($order->status === 'washed')
+                                        <span class="badge bg-info-subtle text-info border border-info px-3 py-2 rounded-pill"><i class="fas fa-tshirt-pocket me-1"></i>Đã giặt xong</span>
+                                    @else
+                                        <span class="badge bg-secondary-subtle text-secondary border border-secondary px-3 py-2 rounded-pill"><i class="fas fa-circle-notch me-1"></i>{{ $order->status }}</span>
+                                    @endif
+                                </td>
                                 <td><a href="{{ route('orders.show', $order) }}" class="btn btn-order-action view" title="Xem"><i class="bi bi-eye"></i></a></td>
                             </tr>
                             @empty
                             <tr><td colspan="6" class="text-center text-muted py-4">Chưa có đơn hàng</td></tr>
                             @endforelse
-                            @if(false)
-                            <tr>
-                                <td><strong>#DH001</strong></td>
-                                <td>
-                                    <div class="d-flex align-items-center">
-                                        <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=32&auto=format&fit=crop" 
-                                             alt="Avatar" class="rounded-circle me-2" style="width: 32px; height: 32px;">
-                                        <span>Nguyễn Văn A</span>
-                                    </div>
-                                </td>
-                                <td>Giặt ủi + Giặt khô</td>
-                                <td><strong>250,000 VNĐ</strong></td>
-                                <td><span class="badge-status badge-processing">Đang xử lý</span></td>
-                                <td>
-                                    <a href="#" class="btn btn-sm btn-outline-primary me-1"><i class="bi bi-eye"></i></a>
-                                    <a href="#" class="btn btn-sm btn-outline-success"><i class="bi bi-check-lg"></i></a>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td><strong>#DH002</strong></td>
-                                <td>
-                                    <div class="d-flex align-items-center">
-                                        <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=32&auto=format&fit=crop" 
-                                             alt="Avatar" class="rounded-circle me-2" style="width: 32px; height: 32px;">
-                                        <span>Trần Thị B</span>
-                                    </div>
-                                </td>
-                                <td>Giặt ủi thường</td>
-                                <td><strong>180,000 VNĐ</strong></td>
-                                <td><span class="badge-status badge-pending">Chờ xử lý</span></td>
-                                <td>
-                                    <a href="#" class="btn btn-sm btn-outline-primary me-1"><i class="bi bi-eye"></i></a>
-                                    <a href="#" class="btn btn-sm btn-outline-success"><i class="bi bi-check-lg"></i></a>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td><strong>#DH003</strong></td>
-                                <td>
-                                    <div class="d-flex align-items-center">
-                                        <img src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=32&auto=format&fit=crop" 
-                                             alt="Avatar" class="rounded-circle me-2" style="width: 32px; height: 32px;">
-                                        <span>Phạm Thị C</span>
-                                    </div>
-                                </td>
-                                <td>Giặt khô + Ủi</td>
-                                <td><strong>320,000 VNĐ</strong></td>
-                                <td><span class="badge-status badge-completed">Hoàn thành</span></td>
-                                <td>
-                                    <a href="#" class="btn btn-sm btn-outline-primary me-1"><i class="bi bi-eye"></i></a>
-                                    <a href="#" class="btn btn-sm btn-outline-info"><i class="bi bi-printer"></i></a>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td><strong>#DH004</strong></td>
-                                <td>
-                                    <div class="d-flex align-items-center">
-                                        <img src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?q=80&w=32&auto=format&fit=crop" 
-                                             alt="Avatar" class="rounded-circle me-2" style="width: 32px; height: 32px;">
-                                        <span>Lê Văn D</span>
-                                    </div>
-                                </td>
-                                <td>Giặt ủi + Giặt khô + Ủi</td>
-                                <td><strong>450,000 VNĐ</strong></td>
-                                <td><span class="badge-status badge-processing">Đang xử lý</span></td>
-                                <td>
-                                    <a href="#" class="btn btn-sm btn-outline-primary me-1"><i class="bi bi-eye"></i></a>
-                                    <a href="#" class="btn btn-sm btn-outline-success"><i class="bi bi-check-lg"></i></a>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td><strong>#DH005</strong></td>
-                                <td>
-                                    <div class="d-flex align-items-center">
-                                        <img src="https://images.unsplash.com/photo-1438761681033-6461ffad8d80?q=80&w=32&auto=format&fit=crop" 
-                                             alt="Avatar" class="rounded-circle me-2" style="width: 32px; height: 32px;">
-                                        <span>Hoàng Thị E</span>
-                                    </div>
-                                </td>
-                                <td>Giặt ủi thường</td>
-                                <td><strong>150,000 VNĐ</strong></td>
-                                <td><span class="badge-status badge-completed">Hoàn thành</span></td>
-                                <td>
-                                    <a href="#" class="btn btn-sm btn-outline-primary me-1"><i class="bi bi-eye"></i></a>
-                                    <a href="#" class="btn btn-sm btn-outline-info"><i class="bi bi-printer"></i></a>
-                                </td>
-                            </tr>
-                            @endif
                         </tbody>
                     </table>
                 </div>
@@ -272,63 +203,18 @@
                         <div class="fw-semibold">{{ $customer->name }}</div>
                         <small class="text-muted">{{ $customer->email ?: 'Chưa có email' }}</small>
                     </div>
-                    <span class="customer-type-badge {{ $customer->type === 'VIP' ? 'vip' : ($customer->type === 'Mới' ? 'new' : 'regular') }}">{{ $customer->type }}</span>
+                    @if($customer->type === 'VIP')
+                        <span class="badge bg-warning-subtle text-warning border border-warning px-2 py-1 rounded-pill"><i class="fas fa-crown"></i> VIP</span>
+                    @elseif($customer->type === 'Thường')
+                        <span class="badge bg-success-subtle text-success border border-success px-2 py-1 rounded-pill"><i class="fas fa-user"></i> Thường</span>
+                    @else
+                        <span class="badge bg-info-subtle text-info border border-info px-2 py-1 rounded-pill"><i class="fas fa-user-plus"></i> Mới</span>
+                    @endif
                 </div>
                 @empty
                 <p class="text-center text-muted">Chưa có khách hàng</p>
                 @endforelse
-                @if(false)
-                <!-- Customer Item -->
-                <div class="d-flex align-items-center mb-3 pb-3 border-bottom">
-                    <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=48&auto=format&fit=crop" 
-                         alt="Avatar" class="rounded-circle me-3" style="width: 48px; height: 48px;">
-                    <div class="flex-grow-1">
-                        <div class="fw-semibold">Nguyễn Văn A</div>
-                        <small class="text-muted">nguyenvana@email.com</small>
-                    </div>
-                    <span class="badge bg-primary-subtle text-primary">Mới</span>
-                </div>
-
-                <div class="d-flex align-items-center mb-3 pb-3 border-bottom">
-                    <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=48&auto=format&fit=crop" 
-                         alt="Avatar" class="rounded-circle me-3" style="width: 48px; height: 48px;">
-                    <div class="flex-grow-1">
-                        <div class="fw-semibold">Trần Thị B</div>
-                        <small class="text-muted">tranthib@email.com</small>
-                    </div>
-                    <span class="badge bg-primary-subtle text-primary">Mới</span>
-                </div>
-
-                <div class="d-flex align-items-center mb-3 pb-3 border-bottom">
-                    <img src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=48&auto=format&fit=crop" 
-                         alt="Avatar" class="rounded-circle me-3" style="width: 48px; height: 48px;">
-                    <div class="flex-grow-1">
-                        <div class="fw-semibold">Phạm Thị C</div>
-                        <small class="text-muted">phamthic@email.com</small>
-                    </div>
-                    <span class="badge bg-primary-subtle text-primary">Mới</span>
-                </div>
-
-                <div class="d-flex align-items-center mb-3 pb-3 border-bottom">
-                    <img src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?q=80&w=48&auto=format&fit=crop" 
-                         alt="Avatar" class="rounded-circle me-3" style="width: 48px; height: 48px;">
-                    <div class="flex-grow-1">
-                        <div class="fw-semibold">Lê Văn D</div>
-                        <small class="text-muted">levand@email.com</small>
-                    </div>
-                    <span class="badge bg-success-subtle text-success">VIP</span>
-                </div>
-
-                <div class="d-flex align-items-center">
-                    <img src="https://images.unsplash.com/photo-1438761681033-6461ffad8d80?q=80&w=48&auto=format&fit=crop" 
-                         alt="Avatar" class="rounded-circle me-3" style="width: 48px; height: 48px;">
-                    <div class="flex-grow-1">
-                        <div class="fw-semibold">Hoàng Thị E</div>
-                        <small class="text-muted">hoangthie@email.com</small>
-                    </div>
-                    <span class="badge bg-primary-subtle text-primary">Mới</span>
-                </div>
-                @endif
+            </div>
             </div>
         </div>
 
@@ -349,26 +235,6 @@
                 @empty
                 <p class="text-center text-muted">Chưa có khuyến mãi đang áp dụng</p>
                 @endforelse
-                @if(false)
-                <div class="d-flex align-items-center mb-3 pb-3 border-bottom">
-                    <div class="bg-warning text-white rounded p-2 me-3">
-                        <i class="bi bi-percent"></i>
-                    </div>
-                    <div class="flex-grow-1">
-                        <div class="fw-semibold">Giảm 20% Đơn Đầu</div>
-                        <small class="text-muted">HSD: 30/09/2024</small>
-                    </div>
-                </div>
-                <div class="d-flex align-items-center">
-                    <div class="bg-success text-white rounded p-2 me-3">
-                        <i class="bi bi-gift"></i>
-                    </div>
-                    <div class="flex-grow-1">
-                        <div class="fw-semibold">Tặng 50K Đơn 500K</div>
-                        <small class="text-muted">HSD: 15/10/2024</small>
-                    </div>
-                </div>
-                @endif
             </div>
         </div>
     </div>

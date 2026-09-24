@@ -9,6 +9,11 @@ class UserPolicy
 {
     use HandlesAuthorization;
 
+    public function viewAny(User $user): bool
+    {
+        return $user->role === 'admin';
+    }
+
     public function view(User $user, User $target): bool
     {
         return $user->role === 'admin' || $user->id === $target->id;
