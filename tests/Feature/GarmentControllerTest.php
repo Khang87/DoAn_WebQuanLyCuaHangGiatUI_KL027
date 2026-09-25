@@ -98,7 +98,7 @@ class GarmentControllerTest extends TestCase
         $response = $this->actingAs($this->admin)->delete(route('garments.destroy', $garment->id));
 
         $response->assertRedirect(route('garments.index'));
-        $this->assertDatabaseMissing('garments', [
+        $this->assertSoftDeleted('garments', [
             'id' => $garment->id,
         ]);
     }

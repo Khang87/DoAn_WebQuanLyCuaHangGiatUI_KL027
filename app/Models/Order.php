@@ -13,7 +13,7 @@ class Order extends Model
 {
     use HasFactory, SoftDeletes;
 
-    protected $fillable = ['code', 'customer_id', 'service_id', 'weight_kg', 'quantity_items', 'total_amount', 'status', 'notes'];
+    protected $fillable = ['code', 'customer_id', 'service_id', 'promotion_id', 'discount_amount', 'weight_kg', 'quantity_items', 'total_amount', 'status', 'notes'];
 
     protected $casts = [
         'total_amount' => 'decimal:2',
@@ -30,6 +30,11 @@ class Order extends Model
     public function service(): BelongsTo
     {
         return $this->belongsTo(Service::class);
+    }
+
+    public function promotion(): BelongsTo
+    {
+        return $this->belongsTo(Promotion::class);
     }
 
     public function items(): HasMany

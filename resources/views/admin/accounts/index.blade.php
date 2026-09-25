@@ -45,11 +45,33 @@
             <table class="table-custom mb-0">
                 <thead>
                     <tr>
-                        <th>Người Dùng</th>
-                        <th>Email / SĐT</th>
+                        @php
+                            $currentSortBy = request('sort_by');
+                            $currentSortOrder = request('sort_order', 'desc');
+                            $nextOrderName = ($currentSortBy === 'name' && $currentSortOrder === 'asc') ? 'desc' : 'asc';
+                            $nextOrderEmail = ($currentSortBy === 'email' && $currentSortOrder === 'asc') ? 'desc' : 'asc';
+                            $nextOrderCreated = ($currentSortBy === 'created_at' && $currentSortOrder === 'asc') ? 'desc' : 'asc';
+                        @endphp
+                        <th>
+                            <a href="{{ request()->fullUrlWithQuery(['sort_by' => 'name', 'sort_order' => $nextOrderName]) }}" class="text-dark text-decoration-none">
+                                Người Dùng
+                                @if($currentSortBy === 'name') @if($currentSortOrder === 'asc') <i class="bi bi-sort-up"></i> @else <i class="bi bi-sort-down"></i> @endif @endif
+                            </a>
+                        </th>
+                        <th>
+                            <a href="{{ request()->fullUrlWithQuery(['sort_by' => 'email', 'sort_order' => $nextOrderEmail]) }}" class="text-dark text-decoration-none">
+                                Email / SĐT
+                                @if($currentSortBy === 'email') @if($currentSortOrder === 'asc') <i class="bi bi-sort-up"></i> @else <i class="bi bi-sort-down"></i> @endif @endif
+                            </a>
+                        </th>
                         <th>Vai Trò Phân Quyền</th>
                         <th>Trạng Thái</th>
-                        <th>Ngày Tạo</th>
+                        <th>
+                            <a href="{{ request()->fullUrlWithQuery(['sort_by' => 'created_at', 'sort_order' => $nextOrderCreated]) }}" class="text-dark text-decoration-none">
+                                Ngày Tạo
+                                @if($currentSortBy === 'created_at') @if($currentSortOrder === 'asc') <i class="bi bi-sort-up"></i> @else <i class="bi bi-sort-down"></i> @endif @endif
+                            </a>
+                        </th>
                         <th>Thao Tác</th>
                     </tr>
                 </thead>
@@ -58,7 +80,13 @@
                     <tr>
                         <td>
                             <div class="d-flex align-items-center">
-                                <img src="{{ asset('assets/images/avatar.png') }}" alt="Avatar" class="rounded-circle me-2" style="width: 36px; height: 36px; object-fit: cover;" onerror="this.src='https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=256&auto=format&fit=crop'">
+                                @php
+                                $randomImage = 'assets/images/user_' . (($account->id % 8) + 1) . '.jpg';
+                                $avatarUrl = (!empty($account->avatar) && file_exists(public_path($account->avatar))) 
+                                           ? asset($account->avatar) 
+                                           : asset($randomImage);
+                            @endphp
+                            <img src="{{ $avatarUrl }}" alt="Avatar" class="rounded-circle me-2" style="width: 36px; height: 36px; object-fit: cover;">
                                 <strong class="fw-semibold">{{ $account->name }}</strong>
                             </div>
                         </td>

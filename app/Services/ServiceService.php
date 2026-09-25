@@ -25,7 +25,21 @@ class ServiceService
             $query->where('status', $filters['status']);
         }
 
-        return $query->with('category')->paginate(20);
+        $sortMap = [
+            'created_at_desc' => ['created_at', 'desc'],
+            'created_at_asc' => ['created_at', 'asc'],
+            'price_asc' => ['price', 'asc'],
+            'price_desc' => ['price', 'desc'],
+            'name_asc' => ['name', 'asc'],
+            'name_desc' => ['name', 'desc'],
+            'status_asc' => ['status', 'asc'],
+            'status_desc' => ['status', 'desc'],
+        ];
+
+        $sort = $filters['sort'] ?? 'created_at_desc';
+        [$sortBy, $sortOrder] = $sortMap[$sort] ?? ['created_at', 'desc'];
+
+        return $query->with('category')->orderBy($sortBy, $sortOrder)->paginate(20);
     }
 
     public function find(int $id): ?Service

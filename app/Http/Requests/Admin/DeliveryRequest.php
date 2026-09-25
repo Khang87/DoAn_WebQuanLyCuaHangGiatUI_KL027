@@ -17,11 +17,11 @@ class DeliveryRequest extends FormRequest
 
         return [
             'customer_id' => ['required', 'exists:customers,id'],
-            'method' => ['required', 'in:pickup,dropoff'],
+            'method' => ['required', 'in:pickup,dropoff,home_pickup'],
             'address' => ['nullable', 'string', 'max:500'],
             'pickup_date' => ['required', 'date'],
             'pickup_time' => ['required', 'date_format:H:i'],
-            'status' => ['nullable', 'in:pending,confirmed,cancelled'],
+            'status' => ['nullable', 'in:pending,picking,delivering,completed,confirmed,cancelled'],
             'notes' => ['nullable', 'string', 'max:1000'],
         ];
     }

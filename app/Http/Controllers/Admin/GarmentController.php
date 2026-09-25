@@ -20,6 +20,8 @@ class GarmentController extends Controller
             'search' => $request->input('search'),
             'category' => $request->input('category'),
             'status' => $request->input('status'),
+            'sort_by' => $request->input('sort_by'),
+            'sort_order' => $request->input('sort_order'),
         ]);
 
         $categories = $this->garmentService->getCategories();

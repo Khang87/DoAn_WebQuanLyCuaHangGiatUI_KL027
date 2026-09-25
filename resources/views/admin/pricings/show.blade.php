@@ -1,5 +1,5 @@
 @extends('layouts.app')
-@section('title', 'Chi Tiết Bảng Giá - Giặt Ủi Pro')
+@section('title', 'Chi Tiết Bảng Giá - Sky Laundry')
 @section('page-title', 'Chi tiết bảng giá')
 @section('content')
 <div class="card"><div class="card-body">

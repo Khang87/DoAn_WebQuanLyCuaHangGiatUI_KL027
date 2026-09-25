@@ -19,6 +19,8 @@ class ServiceCategoryController extends Controller
         $categories = $this->categoryService->getAll([
             'search' => $request->input('search'),
             'status' => $request->input('status'),
+            'sort_by' => $request->input('sort_by'),
+            'sort_order' => $request->input('sort_order'),
         ]);
 
         return view('admin.service-categories.index', compact('categories'));

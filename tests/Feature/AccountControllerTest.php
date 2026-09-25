@@ -31,7 +31,8 @@ class AccountControllerTest extends TestCase
         $response = $this->actingAs($this->admin)->post(route('accounts.store'), [
             'name' => 'Nhân Viên Mới',
             'email' => 'staff@example.com',
-            'password' => 'password123',
+            'password' => 'Password123!@#',
+            'password_confirmation' => 'Password123!@#',
             'role' => 'staff',
         ]);
 
@@ -47,7 +48,8 @@ class AccountControllerTest extends TestCase
         $response = $this->actingAs($this->admin)->post(route('accounts.store'), [
             'name' => 'Khách Hàng Mới',
             'email' => 'customer@example.com',
-            'password' => 'password123',
+            'password' => 'Password123!@#',
+            'password_confirmation' => 'Password123!@#',
         ]);
 
         $response->assertRedirect(route('accounts.index'));
@@ -72,6 +74,6 @@ class AccountControllerTest extends TestCase
         $response = $this->actingAs($this->admin)->delete(route('accounts.destroy', $otherUser));
 
         $response->assertRedirect(route('accounts.index'));
-        $this->assertDatabaseMissing('users', ['id' => $otherUser->id]);
+        $this->assertSoftDeleted('users', ['id' => $otherUser->id]);
     }
 }

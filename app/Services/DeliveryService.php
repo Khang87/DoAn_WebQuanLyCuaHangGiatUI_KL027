@@ -30,7 +30,8 @@ class DeliveryService
                 if (!empty($numericPart)) {
                     $q->where('id', $numericPart);
                 }
-                $q->orWhere('address', 'LIKE', "%{$search}%")
+                $q->orWhere('code', 'LIKE', "%{$search}%")
+                    ->orWhere('address', 'LIKE', "%{$search}%")
                     ->orWhere('notes', 'LIKE', "%{$search}%")
                     ->orWhereHas('customer', function ($sub) use ($search) {
                         $sub->where('name', 'LIKE', "%{$search}%")
@@ -39,7 +40,11 @@ class DeliveryService
             });
         }
 
-        return $query->with('customer')->withTrashed()->latest()->paginate(10)->withQueryString();
+        $allowedSorts = ['id', 'customer_id', 'method', 'status', 'created_at'];
+        $sortBy = in_array($filters['sort_by'] ?? null, $allowedSorts) ? $filters['sort_by'] : 'created_at';
+        $sortOrder = ($filters['sort_order'] ?? 'desc') === 'asc' ? 'asc' : 'desc';
+
+        return $query->with('customer')->withTrashed()->orderBy($sortBy, $sortOrder)->paginate(10)->withQueryString();
     }
 
     public function find(int $id): ?Delivery

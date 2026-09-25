@@ -410,26 +410,14 @@
                                 <td>{{ $delivery->address ?: 'Chưa có địa chỉ' }}</td>
                                 <td>{{ $delivery->pickup_time?->format('H:i') ?: '-' }}</td>
                                 <td>
-                                    @if($delivery->method === 'pickup')
-                                        <span class="badge bg-info-subtle text-info border border-info px-2 py-1 rounded-pill">Nhận Đồ</span>
-                                    @elseif($delivery->method === 'dropoff')
-                                        <span class="badge bg-primary-subtle text-primary border border-primary px-2 py-1 rounded-pill">Giao Đồ</span>
-                                    @else
-                                        <span class="badge bg-secondary-subtle text-secondary border border-secondary px-2 py-1 rounded-pill">{{ $delivery->method }}</span>
-                                    @endif
+                                    <span class="badge bg-info-subtle text-info border border-info px-2 py-1 rounded-pill">
+                                        {{ $delivery->type_label }}
+                                    </span>
                                 </td>
                                 <td>
-                                    @if($delivery->status === 'completed')
-                                        <span class="badge bg-success-subtle text-success border border-success px-2 py-1 rounded-pill">Hoàn Thành</span>
-                                    @elseif($delivery->status === 'cancelled')
-                                        <span class="badge bg-danger-subtle text-danger border border-danger px-2 py-1 rounded-pill">Đã Hủy</span>
-                                    @elseif($delivery->status === 'confirmed')
-                                        <span class="badge bg-success-subtle text-success border border-success px-2 py-1 rounded-pill">Đã Xác Nhận</span>
-                                    @elseif($delivery->status === 'pending')
-                                        <span class="badge bg-warning-subtle text-warning border border-warning px-2 py-1 rounded-pill">Chờ Xác Nhận</span>
-                                    @else
-                                        <span class="badge bg-secondary-subtle text-secondary border border-secondary px-2 py-1 rounded-pill">{{ $delivery->status }}</span>
-                                    @endif
+                                    <span class="badge {{ $delivery->status_badge_class }} px-2 py-1 rounded-pill">
+                                        {{ $delivery->status_label }}
+                                    </span>
                                 </td>
                             </tr>
                             @empty
@@ -461,7 +449,9 @@
                             <div class="fw-semibold text-danger">{{ number_format($invoice->total) }} VNĐ</div>
                             <div class="btn-group btn-group-sm mt-1" role="group">
                                 <a href="{{ route('invoices.show', $invoice) }}" class="btn btn-sm btn-light" title="Xem hóa đơn"><i class="bi bi-eye"></i></a>
-                                <a href="{{ route('invoices.edit', $invoice) }}" class="btn btn-sm btn-success" title="Thu tiền"><i class="fas fa-money-bill"></i></a>
+                                <button type="button" class="btn btn-sm btn-outline-success collect-cash-btn" title="Thu tiền mặt" data-invoice-id="{{ $invoice->id }}" data-invoice-code="{{ $invoice->code }}">
+                                    <i class="bi bi-cash-stack"></i>
+                                </button>
                             </div>
                         </div>
                     </li>
@@ -588,4 +578,82 @@
     statusChart.render();
 </script>
 @endif
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const collectBtns = document.querySelectorAll('.collect-cash-btn');
+        collectBtns.forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                const invoiceId = btn.getAttribute('data-invoice-id');
+                const invoiceCode = btn.getAttribute('data-invoice-code');
+
+                Swal.fire({
+                    title: 'Xác nhận thu tiền?',
+                    html: 'Thu tiền mặt cho hóa đơn <strong>' + invoiceCode + '</strong>?',
+                    icon: 'question',
+                    showCancelButton: true,
+                    confirmButtonColor: '#28a745',
+                    cancelButtonColor: '#6c757d',
+                    confirmButtonText: 'Xác nhận',
+                    cancelButtonText: 'Hủy'
+                }).then(function(result) {
+                    if (result.isConfirmed) {
+                        var baseUrl = '{{ route('dashboard.collect-cash-payment', '__ID__') }}';
+                        var url = baseUrl.replace('__ID__', invoiceId);
+                        fetch(url, {
+                            method: 'POST',
+                            headers: {
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                                'Accept': 'application/json',
+                                'Content-Type': 'application/json'
+                            },
+                        })
+                        .then(function(response) { return response.json(); })
+                        .then(function(data) {
+                            if (data.success) {
+                                Swal.fire({
+                                    title: 'Thành công!',
+                                    text: data.message,
+                                    icon: 'success',
+                                    timer: 1500,
+                                    showConfirmButton: false
+                                });
+                                const invoiceItem = btn.closest('li');
+                                if (invoiceItem) {
+                                    invoiceItem.remove();
+                                }
+                                const countEl = document.querySelector('.stat-value');
+                                const statCard = document.querySelector('[class*="stat-value"]');
+                                const card = btn.closest('.card');
+                                if (card) {
+                                    let count = card.querySelector('.stat-value');
+                                    if (count) {
+                                        count.textContent = parseInt(count.textContent) - 1;
+                                    }
+                                }
+                            } else {
+                                Swal.fire({
+                                    title: 'Lỗi!',
+                                    text: data.message,
+                                    icon: 'error',
+                                    timer: 2000,
+                                    showConfirmButton: false
+                                });
+                            }
+                        })
+                        .catch(function() {
+                            Swal.fire({
+                                title: 'Lỗi!',
+                                text: 'Có lỗi xảy ra. Vui lòng thử lại.',
+                                icon: 'error',
+                                timer: 2000,
+                                showConfirmButton: false
+                            });
+                        });
+                    }
+                });
+            });
+        });
+    });
+</script>
 @endpush

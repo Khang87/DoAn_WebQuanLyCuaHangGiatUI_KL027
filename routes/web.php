@@ -42,11 +42,16 @@ Route::middleware(['auth'])->group(function () {
 
     // Dashboard (Staff & Admin)
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+    Route::post('/dashboard/collect-cash-payment/{invoice}', [DashboardController::class, 'collectCashPayment'])->name('dashboard.collect-cash-payment');
 
     // Customers Management (Staff & Admin)
     Route::resource('customers', CustomerController::class);
 
-     // Delivery Management (Staff & Admin)
+    // Orders Management (Staff & Admin)
+    Route::resource('orders', OrderController::class);
+    Route::resource('order-items', OrderItemController::class);
+
+    // Delivery Management (Staff & Admin)
     Route::resource('deliveries', DeliveryController::class)->except(['create', 'store']);
 
     // Booking Management (Staff & Admin)
@@ -57,14 +62,12 @@ Route::middleware(['auth'])->group(function () {
 
     // Invoices Management (Staff & Admin)
     Route::get('invoices/export', [InvoiceController::class, 'export'])->name('invoices.export');
+    Route::get('invoices/{invoice}/export-excel', [InvoiceController::class, 'exportExcel'])->name('invoices.export-excel');
+    Route::post('invoices/{invoice}/status', [InvoiceController::class, 'updateStatus'])->name('invoices.update-status');
     Route::resource('invoices', InvoiceController::class);
 
     // ===== ADMIN ONLY ROUTES =====
     Route::middleware(['role:admin'])->group(function () {
-
-        // Orders Management
-        Route::resource('orders', OrderController::class);
-        Route::resource('order-items', OrderItemController::class);
 
         // Services Management
         Route::resource('service-categories', ServiceCategoryController::class);
@@ -99,12 +102,13 @@ Route::middleware(['auth'])->group(function () {
 
         // Services Management - add toggle status
         Route::post('services/{service}/toggle-status', [ServiceController::class, 'toggleStatus'])->name('services.toggle-status');
-        Route::post('service-categories/{service_category}/toggle-status', [ServiceCategoryController::class, 'toggleStatus'])->name('service-categories.toggle-status');
+        Route::post('service-categories/{service_category}/toggle-status', [ServiceController::class, 'toggleStatus'])->name('service-categories.toggle-status');
     });
 
     // User Profile & Settings (Staff & Admin)
     Route::get('/profile', [AccountController::class, 'profile'])->name('profile');
     Route::put('/profile', [AccountController::class, 'updateProfile'])->name('profile.update');
+    Route::post('/profile/change-password', [AccountController::class, 'changePassword'])->name('profile.change-password');
     Route::get('/settings', [AccountController::class, 'settings'])->name('settings');
 });
 

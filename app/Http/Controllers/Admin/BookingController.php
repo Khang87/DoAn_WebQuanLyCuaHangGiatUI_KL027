@@ -20,6 +20,8 @@ class BookingController extends Controller
             'customer_id' => $request->input('customer_id'),
             'status' => $request->input('status'),
             'delivery_method' => $request->input('delivery_method'),
+            'sort_by' => $request->input('sort_by'),
+            'sort_order' => $request->input('sort_order'),
         ]);
 
         $customers = \App\Models\Customer::orderBy('name')->get();

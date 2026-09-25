@@ -17,7 +17,7 @@ class CustomerRequest extends FormRequest
 
         return [
             'name' => ['required', 'string', 'max:255'],
-            'email' => ['nullable', 'email', 'max:255', 'unique:customers,email,' . ($id ?? ''), 'delete_null'],
+            'email' => ['nullable', 'email', 'max:255', 'unique:customers,email,' . ($id ?? '')],
             'phone' => ['nullable', 'string', 'max:30'],
             'address' => ['nullable', 'string', 'max:500'],
             'type' => ['nullable', 'string', 'in:Mới,Thường,VIP'],

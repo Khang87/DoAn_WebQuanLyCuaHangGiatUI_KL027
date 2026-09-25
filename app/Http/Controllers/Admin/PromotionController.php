@@ -19,6 +19,8 @@ class PromotionController extends Controller
         $promotions = $this->promotionService->getAll([
             'search' => $request->input('search'),
             'status' => $request->input('status'),
+            'sort_by' => $request->input('sort_by'),
+            'sort_order' => $request->input('sort_order'),
         ]);
 
         return view('admin.promotions.index', compact('promotions'));

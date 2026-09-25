@@ -25,6 +25,15 @@
             </div>
         @endif
 
+        @php
+            $avatarUrl = (!empty($account->avatar) && file_exists(public_path($account->avatar)))
+                ? asset($account->avatar)
+                : asset('assets/images/user_' . (($account->id % 8) + 1) . '.jpg');
+        @endphp
+        <div class="d-flex justify-content-center mb-4">
+            <img src="{{ $avatarUrl }}" alt="Avatar" class="rounded-circle shadow-sm" style="width: 180px; height: 180px; object-fit: cover; border: 4px solid #e9ecef;">
+        </div>
+
         <form action="{{ route('profile.update') }}" method="POST">
             @csrf @method('PUT')
             <div class="row g-4">
@@ -57,6 +66,45 @@
             <div class="d-flex justify-content-end gap-2 mt-4">
                 <button type="submit" class="btn btn-primary">
                     <i class="bi bi-save me-1"></i>Lưu thay đổi
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h5 class="mb-0">Đổi mật khẩu</h5>
+    </div>
+    <div class="card-body">
+        <form action="{{ route('profile.change-password') }}" method="POST">
+            @csrf
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="form-label">Mật khẩu hiện tại <span class="text-danger">*</span></label>
+                    <input type="password" class="form-control @error('current_password') is-invalid @enderror" name="current_password" required>
+                    @error('current_password')
+                        <div class="invalid-feedback">{{ $message }}</div>
+                    @enderror
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Mật khẩu mới <span class="text-danger">*</span></label>
+                    <input type="password" class="form-control @error('new_password') is-invalid @enderror" name="new_password" required>
+                    @error('new_password')
+                        <div class="invalid-feedback">{{ $message }}</div>
+                    @enderror
+                    @if(session('success'))
+    <script>document.addEventListener('DOMContentLoaded', function() { document.querySelector('input[name="new_password"]').value = ''; });</script>
+                    @endif
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Xác nhận mật khẩu mới <span class="text-danger">*</span></label>
+                    <input type="password" class="form-control" name="new_password_confirmation" required>
+                </div>
+            </div>
+            <div class="d-flex justify-content-end mt-3">
+                <button type="submit" class="btn btn-success">
+                    <i class="bi bi-key me-1"></i>Đổi mật khẩu
                 </button>
             </div>
         </form>

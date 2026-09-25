@@ -96,7 +96,7 @@ class CustomerControllerTest extends TestCase
         $response = $this->actingAs($this->admin)->delete(route('customers.destroy', $customer));
 
         $response->assertRedirect(route('customers.index'));
-        $this->assertDatabaseMissing('customers', [
+        $this->assertSoftDeleted('customers', [
             'id' => $customer->id,
         ]);
     }

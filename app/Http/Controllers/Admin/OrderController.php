@@ -24,6 +24,8 @@ class OrderController extends Controller
             'status' => $request->input('status'),
             'date_from' => $request->input('date_from'),
             'date_to' => $request->input('date_to'),
+            'sort_by' => $request->input('sort_by'),
+            'sort_order' => $request->input('sort_order'),
         ]);
 
         $customers = \App\Models\Customer::orderBy('name')->get();

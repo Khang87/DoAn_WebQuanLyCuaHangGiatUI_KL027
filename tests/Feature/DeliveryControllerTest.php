@@ -67,7 +67,7 @@ class DeliveryControllerTest extends TestCase
             ->get(route('deliveries.index', ['search' => 'nonexistent']));
 
         $response->assertStatus(200);
-        $response->assertSee('Không tìm thấy dữ liệu phù hợp');
+        $response->assertSee('Chưa có dữ liệu nào');
     }
 
     public function test_can_delete_delivery(): void

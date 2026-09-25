@@ -9,9 +9,6 @@
         <a href="{{ route('invoices.create') }}" class="btn btn-primary rounded-3">
             <i class="bi bi-plus-lg me-1"></i> Tạo hóa đơn
         </a>
-        <a href="{{ route('invoices.export', request()->query()) }}" class="btn btn-outline-success rounded-3 me-2">
-            <i class="fas fa-file-excel me-1"></i> Xuất Excel
-        </a>
     </div>
 </div>
 
@@ -63,15 +60,31 @@
                         </td>
                         <td class="fw-semibold">{{ number_format($invoice->total) }} VNĐ</td>
                         <td>{{ $invoice->created_at?->format('d/m/Y') }}</td>
-                        <td>
-                                @if($invoice->status === 'paid')
-                                    <span class="badge bg-success-subtle text-success border border-success px-3 py-2 rounded-pill"><i class="fas fa-check-circle me-1"></i>Đã thanh toán</span>
-                                @elseif($invoice->status === 'partial')
-                                    <span class="badge bg-warning-subtle text-warning border border-warning px-3 py-2 rounded-pill"><i class="fas fa-hourglass me-1"></i>Một phần</span>
-                                @else
-                                    <span class="badge bg-danger-subtle text-danger border border-danger px-3 py-2 rounded-pill"><i class="fas fa-x-circle me-1"></i>Chưa thanh toán</span>
-                                @endif
-                        </td>
+<td class="align-middle">
+                                <div class="d-flex align-items-center justify-content-start gap-2 flex-wrap">
+                                    @if($invoice->status === 'paid')
+                                        <span class="badge bg-success-subtle text-success border border-success px-3 py-2 rounded-pill"><i class="fas fa-check-circle me-1"></i>Đã thanh toán</span>
+                                    @elseif($invoice->status === 'partial')
+                                        <span class="badge bg-warning-subtle text-warning border border-warning px-3 py-2 rounded-pill"><i class="fas fa-hourglass me-1"></i>Một phần</span>
+                                    @else
+                                        <span class="badge bg-danger-subtle text-danger border border-danger px-3 py-2 rounded-pill"><i class="fas fa-x-circle me-1"></i>Chưa thanh toán</span>
+                                    @endif
+                                    @if($invoice->status !== 'paid')
+                                        <form action="{{ route('invoices.update-status', $invoice) }}" method="POST" class="d-inline m-0 p-0">
+                                            @csrf
+                                            <input type="hidden" name="status" value="paid">
+                                            <button type="submit" class="btn btn-sm btn-outline-success p-1 lh-1" title="Đánh dấu đã thanh toán"><i class="fas fa-check"></i></button>
+                                        </form>
+                                    @endif
+                                    @if($invoice->status !== 'unpaid')
+                                        <form action="{{ route('invoices.update-status', $invoice) }}" method="POST" class="d-inline m-0 p-0">
+                                            @csrf
+                                            <input type="hidden" name="status" value="unpaid">
+                                            <button type="submit" class="btn btn-sm btn-outline-warning p-1 lh-1" title="Chuyển về chờ thanh toán"><i class="fas fa-undo"></i></button>
+                                        </form>
+                                    @endif
+                                </div>
+                            </td>
                         <td>
                             <div class="d-flex gap-2">
                                 <a href="{{ route('invoices.show', $invoice) }}" class="btn btn-order-action view" title="Xem"><i class="bi bi-eye"></i></a>

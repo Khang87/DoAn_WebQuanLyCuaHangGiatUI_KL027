@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Chi Tiết Giao Nhận - Giặt Ủi Pro')
+@section('title', 'Chi Tiết Giao Nhận - Sky Laundry')
 @section('page-title', 'Chi tiết giao nhận')
 
 @section('content')
@@ -9,16 +9,18 @@
         <div class="d-flex justify-content-between align-items-center mb-4">
             <div>
                 <span class="text-muted">Mã giao nhận</span>
-                <h4 class="mb-0">{{ $delivery->id ? 'GH' . str_pad($delivery->id, 3, '0', STR_PAD_LEFT) : 'GH001' }}</h4>
+                <h4 class="mb-0">{{ $delivery->code ?? ('GH' . str_pad($delivery->id, 3, '0', STR_PAD_LEFT)) }}</h4>
             </div>
-            @if($delivery->status === 'completed')
-                <span class="badge bg-success-subtle text-success border border-success px-3 py-2 rounded-pill"><i class="fas fa-check-circle me-1"></i>Đã giao</span>
-            @elseif($delivery->status === 'in_progress')
-                <span class="badge bg-info-subtle text-info border border-info px-3 py-2 rounded-pill"><i class="fas fa-cog me-1"></i>Đang giao</span>
+            @if($delivery->status === 'picking')
+                <span class="badge bg-info-subtle text-info border border-info px-3 py-2 rounded-pill"><i class="fas fa-cog me-1"></i>Đang lấy hàng</span>
+            @elseif($delivery->status === 'delivering')
+                <span class="badge bg-primary-subtle text-primary border border-primary px-3 py-2 rounded-pill"><i class="fas fa-motorcycle me-1"></i>Đang giao hàng</span>
+            @elseif($delivery->status === 'completed')
+                <span class="badge bg-success-subtle text-success border border-success px-3 py-2 rounded-pill"><i class="fas fa-check-circle me-1"></i>Hoàn thành</span>
             @elseif($delivery->status === 'cancelled')
                 <span class="badge bg-danger-subtle text-danger border border-danger px-3 py-2 rounded-pill"><i class="fas fa-x-circle me-1"></i>Đã hủy</span>
             @else
-                <span class="badge bg-warning-subtle text-warning border border-warning px-3 py-2 rounded-pill"><i class="fas fa-hourglass me-1"></i>Chờ lấy đồ</span>
+                <span class="badge bg-warning-subtle text-warning border border-warning px-3 py-2 rounded-pill"><i class="fas fa-clock me-1"></i>Chờ xác nhận</span>
             @endif
         </div>
 
@@ -30,7 +32,15 @@
             </div>
             <div class="col-md-6">
                 <div class="small text-muted">Hình thức</div>
-                <div class="fw-semibold"><i class="bi bi-{{ $delivery->method === 'dropoff' ? 'shop' : 'truck' }} me-1"></i>{{ $delivery->method === 'dropoff' ? 'Mang đến cửa hàng' : 'Lấy tận nơi' }}</div>
+                    <div class="fw-semibold">
+                    @if($delivery->method === 'pickup')
+                        <i class="bi bi-shop me-1"></i>Khách nhận tại cửa hàng
+                    @elseif($delivery->method === 'home_pickup')
+                        <i class="bi bi-truck me-1"></i>Đến lấy đồ tận nhà
+                    @else
+                        <i class="bi bi-geo-alt me-1"></i>Giao tận nơi
+                    @endif
+                </div>
             </div>
             <div class="col-12">
                 <div class="small text-muted">Địa chỉ</div>

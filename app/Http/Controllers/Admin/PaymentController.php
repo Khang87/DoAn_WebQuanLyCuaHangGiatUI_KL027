@@ -20,19 +20,22 @@ class PaymentController extends Controller
             'order_id' => $request->input('order_id'),
             'method' => $request->input('method'),
             'status' => $request->input('status'),
+            'sort_by' => $request->input('sort_by'),
+            'sort_order' => $request->input('sort_order'),
         ]);
 
         $orders = \App\Models\Order::orderBy('code')->get();
-        $methods = ['cash' => 'Tiền mặt', 'bank_transfer' => 'Chuyển khoản', 'e_wallet' => 'Ví điện tử'];
+        $methods = ['cash' => 'Tiền mặt', 'bank_transfer' => 'Chuyển khoản ngân hàng (QR Code)', 'momo' => 'Ví MoMo', 'credit_card' => 'Thẻ ATM/Credit', 'e_wallet' => 'Ví điện tử'];
+        $statuses = ['pending' => 'Chưa thanh toán', 'partial' => 'Thanh toán một phần', 'paid' => 'Đã thanh toán', 'failed' => 'Thất bại', 'refunded' => 'Đã hoàn tiền'];
 
-        return view('admin.payments.index', compact('payments', 'orders', 'methods'));
+        return view('admin.payments.index', compact('payments', 'orders', 'methods', 'statuses'));
     }
 
     public function create()
     {
         $orders = \App\Models\Order::orderBy('code')->get();
-        $methods = ['cash' => 'Tiền mặt', 'bank_transfer' => 'Chuyển khoản', 'e_wallet' => 'Ví điện tử'];
-        $statuses = ['pending' => 'Chưa thanh toán', 'partial' => 'Thanh toán một phần', 'paid' => 'Đã thanh toán'];
+        $methods = ['cash' => 'Tiền mặt', 'bank_transfer' => 'Chuyển khoản ngân hàng (QR Code)', 'momo' => 'Ví MoMo', 'credit_card' => 'Thẻ ATM/Credit', 'e_wallet' => 'Ví điện tử'];
+        $statuses = ['pending' => 'Chưa thanh toán', 'partial' => 'Thanh toán một phần', 'paid' => 'Đã thanh toán', 'failed' => 'Thất bại', 'refunded' => 'Đã hoàn tiền'];
 
         return view('admin.payments.create', compact('orders', 'methods', 'statuses'));
     }
@@ -68,8 +71,8 @@ class PaymentController extends Controller
         }
 
         $orders = \App\Models\Order::orderBy('code')->get();
-        $methods = ['cash' => 'Tiền mặt', 'bank_transfer' => 'Chuyển khoản', 'e_wallet' => 'Ví điện tử'];
-        $statuses = ['pending' => 'Chưa thanh toán', 'partial' => 'Thanh toán một phần', 'paid' => 'Đã thanh toán'];
+        $methods = ['cash' => 'Tiền mặt', 'bank_transfer' => 'Chuyển khoản ngân hàng (QR Code)', 'momo' => 'Ví MoMo', 'credit_card' => 'Thẻ ATM/Credit', 'e_wallet' => 'Ví điện tử'];
+        $statuses = ['pending' => 'Chưa thanh toán', 'partial' => 'Thanh toán một phần', 'paid' => 'Đã thanh toán', 'failed' => 'Thất bại', 'refunded' => 'Đã hoàn tiền'];
 
         return view('admin.payments.edit', compact('payment', 'orders', 'methods', 'statuses'));
     }

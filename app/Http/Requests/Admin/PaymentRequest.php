@@ -16,8 +16,8 @@ class PaymentRequest extends FormRequest
         return [
             'order_id' => ['required', 'exists:orders,id'],
             'amount' => ['required', 'numeric', 'min:0'],
-            'method' => ['required', 'in:cash,bank_transfer,e_wallet'],
-            'status' => ['required', 'in:pending,partial,paid'],
+            'method' => ['required', 'in:cash,bank_transfer,momo,credit_card,e_wallet'],
+            'status' => ['required', 'in:pending,partial,paid,failed,refunded'],
         ];
     }
 }

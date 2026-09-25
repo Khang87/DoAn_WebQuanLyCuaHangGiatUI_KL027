@@ -10,7 +10,7 @@ class ServiceCategory extends Model
 {
     use HasFactory, SoftDeletes;
 
-    protected $fillable = ['name', 'slug', 'description', 'icon', 'status'];
+    protected $fillable = ['code', 'name', 'slug', 'description', 'icon', 'status'];
 
     protected $casts = [
         'created_at' => 'datetime',

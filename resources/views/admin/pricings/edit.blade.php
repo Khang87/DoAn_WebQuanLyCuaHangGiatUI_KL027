@@ -1,5 +1,5 @@
 @extends('layouts.app')
-@section('title', 'Sửa Bảng Giá - Giặt Ủi Pro')
+@section('title', 'Sửa Bảng Giá - Sky Laundry')
 @section('page-title', 'Sửa bảng giá')
 @section('content')
 <div class="card"><div class="card-body"><form action="{{ route('pricings.update', $pricing) }}" method="POST">@csrf @method('PUT')

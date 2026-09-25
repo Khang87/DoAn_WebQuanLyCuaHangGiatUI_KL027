@@ -7,7 +7,9 @@ use App\Models\Customer;
 use App\Models\Delivery;
 use App\Models\Invoice;
 use App\Models\Order;
+use App\Models\Payment;
 use App\Models\Promotion;
+use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 
 class DashboardController extends Controller
@@ -67,6 +69,36 @@ class DashboardController extends Controller
             'pendingInvoices' => $pendingInvoices,
             'newCustomersToday' => $newCustomersToday,
             'processingOrders' => $processingOrders,
+        ]);
+    }
+
+    public function collectCashPayment(Request $request, int $id)
+    {
+        $invoice = Invoice::with('order')->find($id);
+
+        if (!$invoice) {
+            return response()->json(['success' => false, 'message' => 'Không tìm thấy hóa đơn.'], 404);
+        }
+
+        if ($invoice->status === 'paid') {
+            return response()->json(['success' => false, 'message' => 'Hóa đơn đã được thanh toán.'], 400);
+        }
+
+        \DB::transaction(function () use ($invoice) {
+            $invoice->update(['status' => 'paid']);
+
+            Payment::create([
+                'order_id' => $invoice->order_id,
+                'amount' => $invoice->total,
+                'method' => 'cash',
+                'status' => 'paid',
+            ]);
+        });
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Thu tiền mặt thành công.',
+            'invoice_id' => $invoice->id,
         ]);
     }
 }

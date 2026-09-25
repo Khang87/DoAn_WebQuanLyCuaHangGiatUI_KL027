@@ -14,14 +14,15 @@ class PaymentSeeder extends Seeder
     public function run(): void
     {
         $orders = Order::where('status', 'completed')->get();
-        $methods = ['cash', 'bank_transfer', 'e_wallet'];
+        $methods = ['cash', 'bank_transfer', 'momo', 'credit_card', 'e_wallet'];
+        $statuses = ['paid', 'paid', 'paid', 'paid', 'partial', 'pending', 'failed', 'refunded'];
 
         foreach ($orders as $order) {
             Payment::create([
                 'order_id' => $order->id,
                 'amount' => $order->total_amount,
                 'method' => $methods[array_rand($methods)],
-                'status' => 'paid',
+                'status' => $statuses[array_rand($statuses)],
                 'created_at' => $order->created_at,
                 'updated_at' => $order->created_at,
             ]);
@@ -34,7 +35,7 @@ class PaymentSeeder extends Seeder
                 'order_id' => $order->id,
                 'amount' => $order->total_amount / 2,
                 'method' => $methods[array_rand($methods)],
-                'status' => 'partial',
+                'status' => $statuses[array_rand($statuses)],
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);

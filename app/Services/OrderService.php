@@ -35,7 +35,11 @@ class OrderService
             $query->whereDate('created_at', '<=', $filters['date_to']);
         }
 
-        return $query->with(['customer', 'service', 'items'])->withTrashed()->latest()->paginate(20);
+        $allowedSorts = ['id', 'code', 'total_amount', 'status', 'created_at'];
+        $sortBy = in_array($filters['sort_by'] ?? null, $allowedSorts) ? $filters['sort_by'] : 'created_at';
+        $sortOrder = ($filters['sort_order'] ?? 'desc') === 'asc' ? 'asc' : 'desc';
+
+        return $query->with(['customer', 'service', 'items'])->withTrashed()->orderBy($sortBy, $sortOrder)->paginate(20);
     }
 
     public function find(int $id): ?Order
@@ -46,6 +50,9 @@ class OrderService
     public function create(array $data): Order
     {
         return DB::transaction(function () use ($data) {
+            if (empty($data['code'])) {
+                $data['code'] = 'DH' . str_pad((string) ((Order::max('id') ?? 0) + 1), 3, '0', STR_PAD_LEFT);
+            }
             $order = Order::create($data);
 
             if (!empty($data['items'])) {

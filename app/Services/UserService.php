@@ -30,7 +30,11 @@ class UserService
             }
         }
 
-        return $query->withTrashed()->latest()->paginate(20);
+        $allowedSorts = ['id', 'name', 'email', 'phone', 'role', 'created_at'];
+        $sortBy = in_array($filters['sort_by'] ?? null, $allowedSorts) ? $filters['sort_by'] : 'created_at';
+        $sortOrder = ($filters['sort_order'] ?? 'desc') === 'asc' ? 'asc' : 'desc';
+
+        return $query->withTrashed()->orderBy($sortBy, $sortOrder)->paginate(20);
     }
 
     public function find(int $id): ?User
@@ -41,6 +45,9 @@ class UserService
     public function create(array $data): User
     {
         $data['password'] = Hash::make($data['password']);
+        if (empty($data['role'])) {
+            $data['role'] = 'customer';
+        }
         return User::create($data);
     }
 

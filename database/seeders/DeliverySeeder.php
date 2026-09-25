@@ -37,14 +37,24 @@ class DeliverySeeder extends Seeder
             'Thời gian không phù hợp với giờ mở cửa',
         ];
 
-        $methods = ['pickup', 'dropoff'];
-        $statuses = ['pending', 'pending', 'pending', 'pending', 'confirmed', 'confirmed', 'confirmed', 'cancelled', 'cancelled', 'cancelled'];
+        $methods = ['pickup', 'dropoff', 'home_pickup'];
+        $statuses = ['pending', 'picking', 'delivering', 'completed', 'cancelled'];
 
-        for ($i = 1; $i <= 10; $i++) {
-            $status = $statuses[$i - 1];
+        $methodStatusMap = [
+            'pickup' => ['pending', 'picking', 'completed', 'cancelled'],
+            'dropoff' => ['pending', 'delivering', 'completed', 'cancelled'],
+            'home_pickup' => ['pending', 'picking', 'delivering', 'completed', 'cancelled'],
+        ];
+
+        for ($i = 1; $i <= 15; $i++) {
+            $method = $methods[($i - 1) % count($methods)];
+            $availableStatuses = $methodStatusMap[$method];
+            $status = $availableStatuses[($i - 1) % count($availableStatuses)];
             $customer = $customers[($i - 1) % $customers->count()];
 
-            $pickupDate = Carbon::now()->addDays(rand(0, 5))->format('Y-m-d');
+            $pickupDate = ($i <= 4)
+                ? Carbon::today()->format('Y-m-d')
+                : Carbon::now()->addDays(rand(0, 5))->format('Y-m-d');
             $pickupTime = sprintf('%02d:00:00', rand(9, 17));
 
             $notes = '';
@@ -53,8 +63,9 @@ class DeliverySeeder extends Seeder
             }
 
             Delivery::create([
+                'code' => 'GH' . str_pad((string) $i, 3, '0', STR_PAD_LEFT),
                 'customer_id' => $customer->id,
-                'method' => $methods[array_rand($methods)],
+                'method' => $method,
                 'address' => $addresses[($i - 1) % count($addresses)],
                 'pickup_date' => $pickupDate,
                 'pickup_time' => $pickupTime,

@@ -38,14 +38,36 @@
             <table class="table-custom mb-0">
                 <thead>
                     <tr>
-                        <th>Mã Đơn</th>
+                        @php
+                            $currentSortBy = request('sort_by');
+                            $currentSortOrder = request('sort_order', 'desc');
+                            $nextOrderCode = ($currentSortBy === 'code' && $currentSortOrder === 'asc') ? 'desc' : 'asc';
+                            $nextOrderTotal = ($currentSortBy === 'total_amount' && $currentSortOrder === 'asc') ? 'desc' : 'asc';
+                            $nextOrderCreated = ($currentSortBy === 'created_at' && $currentSortOrder === 'asc') ? 'desc' : 'asc';
+                        @endphp
+                        <th>
+                            <a href="{{ request()->fullUrlWithQuery(['sort_by' => 'code', 'sort_order' => $nextOrderCode]) }}" class="text-dark text-decoration-none">
+                                Mã Đơn
+                                @if($currentSortBy === 'code') @if($currentSortOrder === 'asc') <i class="bi bi-sort-up"></i> @else <i class="bi bi-sort-down"></i> @endif @endif
+                            </a>
+                        </th>
                         <th>Khách Hàng</th>
                         <th>Dịch Vụ</th>
                         <th>Số Lượng</th>
                         <th>Ghi Chú Khách Hàng</th>
-                        <th>Tổng Tiền</th>
+                        <th>
+                            <a href="{{ request()->fullUrlWithQuery(['sort_by' => 'total_amount', 'sort_order' => $nextOrderTotal]) }}" class="text-dark text-decoration-none">
+                                Tổng Tiền
+                                @if($currentSortBy === 'total_amount') @if($currentSortOrder === 'asc') <i class="bi bi-sort-up"></i> @else <i class="bi bi-sort-down"></i> @endif @endif
+                            </a>
+                        </th>
                         <th>Trạng Thái</th>
-                        <th>Ngày Tạo</th>
+                        <th>
+                            <a href="{{ request()->fullUrlWithQuery(['sort_by' => 'created_at', 'sort_order' => $nextOrderCreated]) }}" class="text-dark text-decoration-none">
+                                Ngày Tạo
+                                @if($currentSortBy === 'created_at') @if($currentSortOrder === 'asc') <i class="bi bi-sort-up"></i> @else <i class="bi bi-sort-down"></i> @endif @endif
+                            </a>
+                        </th>
                         <th>Thao Tác</th>
                     </tr>
                 </thead>
@@ -54,8 +76,18 @@
                     <tr>
                         <td><strong>{{ $order->code }}</strong></td>
                         <td>
+                            @php
+                                $randomImage = 'assets/images/user_' . (($order->customer->id % 8) + 1) . '.jpg';
+                                $avatarUrl = (!empty($order->customer->avatar) && file_exists(public_path($order->customer->avatar))) 
+                                           ? asset($order->customer->avatar) 
+                                           : asset($randomImage);
+                            @endphp
                             <div class="d-flex align-items-center">
-                                <img src="{{ asset('assets/images/user.jfif') }}" alt="Ảnh khách hàng" class="rounded-circle me-2" style="width: 32px; height: 32px; object-fit: cover;" onerror="this.onerror=null; this.src='{{ asset('assets/images/user.jfif') }}';">
+                                @if($order->customer)
+                                    <img src="{{ $avatarUrl }}" alt="Avatar" class="rounded-circle me-2" style="width: 32px; height: 32px; object-fit: cover;">
+                                @else
+                                    <img src="{{ asset('assets/images/user_1.jpg') }}" alt="Avatar" class="rounded-circle me-2" style="width: 32px; height: 32px; object-fit: cover;">
+                                @endif
                                 <div>
                                     <div class="fw-semibold">{{ $order->customer?->name ?: '-' }}</div>
                                     <small class="text-muted">{{ $order->customer?->phone ?: 'Chưa có số điện thoại' }}</small>
@@ -63,7 +95,12 @@
                             </div>
                         </td>
                         <td>{{ $order->service?->name ?: '-' }}</td>
-                        <td><span class="fw-semibold">{{ trim(($order->weight_kg ? $order->weight_kg . ' ' : '') . ($order->quantity_items ?: '-')) }}</span></td>
+                        <td>
+                            <strong>
+                                {{ number_format((float)($order->quantity_items ?? $order->weight_kg ?? 0)) }}
+                                {{ $order->service->unit ?? 'kg' }}
+                            </strong>
+                        </td>
                         <td><small>{{ $order->notes ?: 'Không có ghi chú' }}</small></td>
                         <td><strong>{{ number_format($order->total_amount) }} VNĐ</strong></td>
                         <td>

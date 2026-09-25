@@ -46,12 +46,13 @@ class OrderControllerTest extends TestCase
         $response = $this->actingAs($this->admin)->get(route('orders.index'));
 
         $response->assertStatus(200);
-        $response->assertSee('#DH001');
+        $response->assertSee('DH001');
     }
 
     public function test_can_create_order(): void
     {
         $response = $this->actingAs($this->admin)->post(route('orders.store'), [
+            'code' => 'DH100',
             'customer_id' => $this->customer->id,
             'service_id' => $this->service->id,
             'weight_kg' => '5kg',
@@ -60,8 +61,9 @@ class OrderControllerTest extends TestCase
             'status' => 'processing',
         ]);
 
-        $response->assertRedirect(route('orders.index'));
+        $response->assertRedirect(route('orders.show', Order::where('code', 'DH100')->first()));
         $this->assertDatabaseHas('orders', [
+            'code' => 'DH100',
             'customer_id' => $this->customer->id,
             'total_amount' => 250000,
             'status' => 'processing',
@@ -97,6 +99,7 @@ class OrderControllerTest extends TestCase
         ]);
 
         $response = $this->actingAs($this->admin)->put(route('orders.update', $order), [
+            'code' => 'DH003',
             'customer_id' => $this->customer->id,
             'service_id' => $this->service->id,
             'quantity_items' => '1 bộ',
@@ -125,7 +128,7 @@ class OrderControllerTest extends TestCase
         $response = $this->actingAs($this->admin)->delete(route('orders.destroy', $order));
 
         $response->assertRedirect(route('orders.index'));
-        $this->assertDatabaseMissing('orders', [
+        $this->assertSoftDeleted('orders', [
             'id' => $order->id,
         ]);
     }

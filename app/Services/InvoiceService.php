@@ -34,7 +34,19 @@ class InvoiceService
 
     public function find(int|string $id): ?Invoice
     {
-        return Invoice::withTrashed()->where('id', $id)->orWhere('code', $id)->first();
+        return Invoice::withTrashed()
+            ->where('id', $id)
+            ->orWhere('code', $id)
+            ->first();
+    }
+
+    public function findDetailed(int|string $id): ?Invoice
+    {
+        return Invoice::withTrashed()
+            ->where('id', $id)
+            ->orWhere('code', $id)
+            ->first()
+            ?->load(['order.customer', 'order.service', 'order.items.service', 'payments']);
     }
 
     public function create(array $data): Invoice

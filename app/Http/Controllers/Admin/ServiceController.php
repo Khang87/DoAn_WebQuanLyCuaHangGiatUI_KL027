@@ -20,6 +20,7 @@ class ServiceController extends Controller
             'search' => $request->input('search'),
             'category_id' => $request->input('category_id'),
             'status' => $request->input('status'),
+            'sort' => $request->input('sort'),
         ]);
 
         $categories = \App\Models\ServiceCategory::where('status', 'active')->orderBy('name')->get();

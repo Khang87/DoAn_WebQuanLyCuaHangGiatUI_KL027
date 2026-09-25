@@ -31,7 +31,7 @@ class UserPolicy
 
     public function delete(User $user, User $target): bool
     {
-        return $user->role === 'admin' && $user->id !== $target->id;
+        return $user->role === 'admin';
     }
 
     public function restore(User $user, User $target): bool

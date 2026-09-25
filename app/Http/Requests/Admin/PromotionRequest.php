@@ -19,7 +19,8 @@ class PromotionRequest extends FormRequest
             'name' => ['required', 'string', 'max:255'],
             'code' => ['required', 'string', 'max:50', 'unique:promotions,code,' . ($id ?? '')],
             'discount' => ['required', 'string', 'max:50'],
-            'expires_at' => ['nullable', 'date'],
+            'start_date' => ['nullable', 'date'],
+            'expires_at' => ['nullable', 'date', 'after_or_equal:start_date', 'after_or_equal:today'],
             'status' => ['required', 'in:active,inactive'],
         ];
     }

@@ -38,14 +38,42 @@
             <table class="table-custom mb-0">
                 <thead>
                     <tr>
-                        <th>Mã khách hàng</th>
-                        <th>Khách Hàng</th>
+                        @php
+                            $currentSortBy = request('sort_by');
+                            $currentSortOrder = request('sort_order', 'desc');
+                            $nextOrderCode = ($currentSortBy === 'code' && $currentSortOrder === 'asc') ? 'desc' : 'asc';
+                            $nextOrderName = ($currentSortBy === 'name' && $currentSortOrder === 'asc') ? 'desc' : 'asc';
+                            $nextOrderPoints = ($currentSortBy === 'points' && $currentSortOrder === 'asc') ? 'desc' : 'asc';
+                            $nextOrderCreated = ($currentSortBy === 'created_at' && $currentSortOrder === 'asc') ? 'desc' : 'asc';
+                        @endphp
+                        <th>
+                            <a href="{{ request()->fullUrlWithQuery(['sort_by' => 'code', 'sort_order' => $nextOrderCode]) }}" class="text-dark text-decoration-none">
+                                Mã khách hàng
+                                @if($currentSortBy === 'code') @if($currentSortOrder === 'asc') <i class="bi bi-sort-up"></i> @else <i class="bi bi-sort-down"></i> @endif @endif
+                            </a>
+                        </th>
+                        <th>
+                            <a href="{{ request()->fullUrlWithQuery(['sort_by' => 'name', 'sort_order' => $nextOrderName]) }}" class="text-dark text-decoration-none">
+                                Khách Hàng
+                                @if($currentSortBy === 'name') @if($currentSortOrder === 'asc') <i class="bi bi-sort-up"></i> @else <i class="bi bi-sort-down"></i> @endif @endif
+                            </a>
+                        </th>
                         <th>Email</th>
                         <th>Số Điện Thoại</th>
                         <th>Địa Chỉ</th>
-                        <th>Điểm Tích Lũy</th>
+                        <th>
+                            <a href="{{ request()->fullUrlWithQuery(['sort_by' => 'points', 'sort_order' => $nextOrderPoints]) }}" class="text-dark text-decoration-none">
+                                Điểm Tích Lũy
+                                @if($currentSortBy === 'points') @if($currentSortOrder === 'asc') <i class="bi bi-sort-up"></i> @else <i class="bi bi-sort-down"></i> @endif @endif
+                            </a>
+                        </th>
                         <th>Loại</th>
-                        <th>Ngày Đăng Ký</th>
+                        <th>
+                            <a href="{{ request()->fullUrlWithQuery(['sort_by' => 'created_at', 'sort_order' => $nextOrderCreated]) }}" class="text-dark text-decoration-none">
+                                Ngày Đăng Ký
+                                @if($currentSortBy === 'created_at') @if($currentSortOrder === 'asc') <i class="bi bi-sort-up"></i> @else <i class="bi bi-sort-down"></i> @endif @endif
+                            </a>
+                        </th>
                         <th>Thao Tác</th>
                     </tr>
                 </thead>
@@ -55,7 +83,13 @@
                         <td><strong>{{ $customer->code }}</strong></td>
                         <td>
                             <div class="d-flex align-items-center">
-                                <img src="{{ asset('assets/images/user.jfif') }}" alt="Ảnh khách hàng" class="rounded-circle me-2" style="width: 40px; height: 40px; object-fit: cover;" onerror="this.onerror=null; this.src='{{ asset('assets/images/user.jfif') }}';">
+                                @php
+                                    $randomImage = 'assets/images/user_' . (($customer->id % 8) + 1) . '.jpg';
+                                    $avatarUrl = (!empty($customer->avatar) && file_exists(public_path($customer->avatar))) 
+                                               ? asset($customer->avatar) 
+                                               : asset($randomImage);
+                                @endphp
+                                <img src="{{ $avatarUrl }}" alt="Avatar" class="rounded-circle me-2" style="width: 40px; height: 40px; object-fit: cover;">
                                 <div class="fw-semibold">{{ $customer->name }}</div>
                             </div>
                         </td>

@@ -49,7 +49,9 @@ class BookingSeeder extends Seeder
             $customer = $customers[($i - 1) % $customers->count()];
             $service = $services[($i - 1) % $services->count()];
 
-            $pickupDate = Carbon::now()->addDays(rand(0, 5))->format('Y-m-d');
+            $pickupDate = ($i <= 4)
+                ? Carbon::today()->format('Y-m-d')
+                : Carbon::now()->addDays(rand(0, 5))->format('Y-m-d');
             $pickupTime = sprintf('%02d:00:00', rand(9, 17));
 
             $notes = '';

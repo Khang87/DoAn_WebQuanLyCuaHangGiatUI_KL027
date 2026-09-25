@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Chỉnh sửa khuyến mãi - Giặt Ủi Pro')
+@section('title', 'Chỉnh sửa khuyến mãi - Sky Laundry')
 @section('page-title', 'Chỉnh sửa khuyến mãi')
 
 @section('content')
@@ -35,6 +35,13 @@
                     <input type="text" class="form-control @error('discount') is-invalid @enderror" name="discount" value="{{ old('discount', $promotion->discount) }}" placeholder="10% hoặc 50,000 VNĐ" required>
                     <div class="form-text">Nhập mô tả chiết khấu, ví dụ: 20% hoặc 50,000 VNĐ</div>
                     @error('discount')
+                        <div class="invalid-feedback">{{ $message }}</div>
+                    @enderror
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Ngày bắt đầu</label>
+                    <input type="date" class="form-control @error('start_date') is-invalid @enderror" name="start_date" value="{{ old('start_date', $promotion->start_date?->format('Y-m-d')) }}">
+                    @error('start_date')
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
                 </div>

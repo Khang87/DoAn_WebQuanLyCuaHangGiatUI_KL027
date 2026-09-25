@@ -38,7 +38,11 @@ class BookingService
             });
         }
 
-        return $query->with('customer', 'service')->withTrashed()->latest()->paginate(10)->withQueryString();
+        $allowedSorts = ['id', 'customer_id', 'service_id', 'status', 'created_at'];
+        $sortBy = in_array($filters['sort_by'] ?? null, $allowedSorts) ? $filters['sort_by'] : 'created_at';
+        $sortOrder = ($filters['sort_order'] ?? 'desc') === 'asc' ? 'asc' : 'desc';
+
+        return $query->with('customer', 'service')->withTrashed()->orderBy($sortBy, $sortOrder)->paginate(10)->withQueryString();
     }
 
     public function find(int $id): ?Booking

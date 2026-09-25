@@ -28,7 +28,11 @@ class ServiceCategoryService
             $query->where('status', $filters['status']);
         }
 
-        return $query->withTrashed()->latest()->paginate(10)->withQueryString();
+        $allowedSorts = ['id', 'name', 'icon', 'status', 'created_at'];
+        $sortBy = in_array($filters['sort_by'] ?? null, $allowedSorts) ? $filters['sort_by'] : 'created_at';
+        $sortOrder = ($filters['sort_order'] ?? 'desc') === 'asc' ? 'asc' : 'desc';
+
+        return $query->withTrashed()->orderBy($sortBy, $sortOrder)->paginate(10)->withQueryString();
     }
 
     public function find(int $id): ?ServiceCategory

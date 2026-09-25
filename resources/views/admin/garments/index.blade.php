@@ -70,12 +70,28 @@
             <table class="table-custom mb-0">
                 <thead>
                     <tr>
-                        <th>Tên Loại Đồ</th>
+                        @php
+                            $currentSortBy = request('sort_by');
+                            $currentSortOrder = request('sort_order', 'desc');
+                            $nextOrderName = ($currentSortBy === 'name' && $currentSortOrder === 'asc') ? 'desc' : 'asc';
+                            $nextOrderPrice = ($currentSortBy === 'price' && $currentSortOrder === 'asc') ? 'desc' : 'asc';
+                        @endphp
+                        <th>
+                            <a href="{{ request()->fullUrlWithQuery(['sort_by' => 'name', 'sort_order' => $nextOrderName]) }}" class="text-dark text-decoration-none">
+                                Tên Loại Đồ
+                                @if($currentSortBy === 'name') @if($currentSortOrder === 'asc') <i class="bi bi-sort-up"></i> @else <i class="bi bi-sort-down"></i> @endif @endif
+                            </a>
+                        </th>
                         <th>Danh Mục</th>
-                        <th>Giá Dịch Vụ</th>
+                        <th>
+                            <a href="{{ request()->fullUrlWithQuery(['sort_by' => 'price', 'sort_order' => $nextOrderPrice]) }}" class="text-dark text-decoration-none">
+                                Giá Dịch Vụ
+                                @if($currentSortBy === 'price') @if($currentSortOrder === 'asc') <i class="bi bi-sort-up"></i> @else <i class="bi bi-sort-down"></i> @endif @endif
+                            </a>
+                        </th>
                         <th>Mô Tả Hiện Trạng</th>
                         <th>Trạng Thái</th>
-                        <th>Thao Tác</th>
+                        <th>Thao tác</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -100,20 +116,20 @@
                                 <span class="badge bg-danger-subtle text-danger border border-danger px-3 py-2 rounded-pill"><i class="fas fa-ban me-1"></i>Khóa</span>
                             @endif
                         </td>
-                        <td>
-                            <div class="d-flex gap-2">
-                                <a href="{{ route('garments.show', $garment->id) }}" class="btn btn-order-action view" title="Xem"><i class="bi bi-eye"></i></a>
-                                <a href="{{ route('garments.edit', $garment->id) }}" class="btn btn-order-action edit" title="Sửa"><i class="bi bi-pencil"></i></a>
-                                <form action="{{ route('garments.destroy', $garment->id) }}" method="POST" class="d-inline" onsubmit="return confirm('Bạn có chắc muốn xóa loại đồ giặt này?')">
-                                    @csrf @method('DELETE')
-                                    <button type="submit" class="btn btn-order-action delete" title="Xóa"><i class="bi bi-trash"></i></button>
-                                </form>
-                            </div>
-                        </td>
-                    </tr>
-                    @empty
-                    <tr>
-                        <td colspan="6" class="text-center text-muted py-4">Chưa có thông tin loại đồ giặt nào.</td>
+                         <td>
+                             <div class="d-flex gap-2">
+                                 <a href="{{ route('garments.show', $garment->id) }}" class="btn btn-order-action view" title="Xem"><i class="bi bi-eye"></i></a>
+                                 <a href="{{ route('garments.edit', $garment->id) }}" class="btn btn-order-action edit" title="Sửa"><i class="bi bi-pencil"></i></a>
+                                 <form action="{{ route('garments.destroy', $garment->id) }}" method="POST" class="d-inline" onsubmit="return confirm('Bạn có chắc muốn xóa loại đồ giặt này?')">
+                                     @csrf @method('DELETE')
+                                     <button type="submit" class="btn btn-order-action delete" title="Xóa"><i class="bi bi-trash"></i></button>
+                                 </form>
+                             </div>
+                         </td>
+                     </tr>
+                     @empty
+                     <tr>
+                         <td colspan="6" class="text-center text-muted py-4">Chưa có thông tin loại đồ giặt nào.</td>
                     </tr>
                     @endforelse
                 </tbody>

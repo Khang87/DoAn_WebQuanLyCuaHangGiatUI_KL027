@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Exports\InvoiceDetailExport;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\InvoiceRequest;
 use App\Models\Invoice;
@@ -23,8 +24,7 @@ class InvoiceController extends Controller
     ) {}
 
     public function index(Request $request)
-    {
-        $invoices = $this->invoiceService->getAll([
+    {        $invoices = $this->invoiceService->getAll([
             'order_id' => $request->input('order_id'),
             'status' => $request->input('status'),
             'search' => $request->input('search'),
@@ -128,13 +128,26 @@ class InvoiceController extends Controller
 
     public function show(int|string $id)
     {
-        $invoice = $this->invoiceService->find($id);
+        $invoice = $this->invoiceService->findDetailed($id);
 
         if (!$invoice) {
             abort(404);
         }
 
         return view('admin.invoices.show', compact('invoice'));
+    }
+
+    public function exportExcel(int|string $id)
+    {
+        $invoice = $this->invoiceService->find($id);
+
+        if (!$invoice) {
+            abort(404);
+        }
+
+        $export = new InvoiceDetailExport($invoice->id);
+
+        return $export->export();
     }
 
     public function edit(int|string $id)
@@ -181,5 +194,39 @@ class InvoiceController extends Controller
         }
 
         return redirect()->route('invoices.index')->with('success', 'Hóa đơn đã được xóa.');
+    }
+
+    public function updateStatus(Request $request, int|string $id)
+    {
+        $invoice = $this->invoiceService->find($id);
+
+        if (!$invoice) {
+            abort(404);
+        }
+
+        $status = $request->input('status');
+
+        try {
+            $this->invoiceService->update($invoice, ['status' => $status]);
+
+            if ($request->wantsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Cập nhật trạng thái thành công.',
+                    'status' => $invoice->fresh()->status,
+                ]);
+            }
+
+            return redirect()->route('invoices.show', $invoice)->with('success', 'Cập nhật trạng thái hóa đơn thành công.');
+        } catch (\Exception $e) {
+            if ($request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Có lỗi xảy ra: ' . $e->getMessage(),
+                ], 500);
+            }
+
+            return redirect()->route('invoices.show', $invoice)->with('error', 'Có lỗi xảy ra: ' . $e->getMessage());
+        }
     }
 }

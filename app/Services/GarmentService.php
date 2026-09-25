@@ -26,7 +26,11 @@ class GarmentService
             $query->where('status', $filters['status']);
         }
 
-        return $query->withTrashed()->latest()->paginate(20);
+        $allowedSorts = ['id', 'name', 'category', 'price', 'status', 'created_at'];
+        $sortBy = in_array($filters['sort_by'] ?? null, $allowedSorts) ? $filters['sort_by'] : 'created_at';
+        $sortOrder = ($filters['sort_order'] ?? 'desc') === 'asc' ? 'asc' : 'desc';
+
+        return $query->withTrashed()->orderBy($sortBy, $sortOrder)->paginate(20);
     }
 
     public function find(int $id): ?Garment

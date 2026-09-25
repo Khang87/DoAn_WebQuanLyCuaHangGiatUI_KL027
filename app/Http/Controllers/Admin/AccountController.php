@@ -27,6 +27,8 @@ class AccountController extends Controller
             'search' => $request->input('search'),
             'role' => $request->input('role'),
             'status' => $request->input('status'),
+            'sort_by' => $request->input('sort_by'),
+            'sort_order' => $request->input('sort_order'),
         ]);
 
         return view('admin.accounts.index', compact('accounts'));
@@ -108,12 +110,16 @@ class AccountController extends Controller
         $this->authorize('delete', [User::class, $account]);
 
         try {
-            $this->userService->delete($account);
-
-            return redirect()->route('accounts.index')->with('success', 'Tài khoản đã được xóa.');
+            $result = $this->userService->delete($account);
         } catch (\Exception $e) {
             return redirect()->route('accounts.index')->with('error', 'Có lỗi xảy ra: ' . $e->getMessage());
         }
+
+        if (!$result) {
+            abort(422, 'Không thể xóa tài khoản đang đăng nhập.');
+        }
+
+        return redirect()->route('accounts.index')->with('success', 'Tài khoản đã được xóa.');
     }
 
     public function toggleStatus(int $id)
@@ -186,5 +192,30 @@ class AccountController extends Controller
     public function settings()
     {
         return view('admin.settings.index');
+    }
+
+    public function changePassword(Request $request)
+    {
+        $account = auth()->user();
+
+        $request->validate([
+            'current_password' => 'required|string',
+            'new_password' => 'required|string|min:8|confirmed|regex:/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&_-]).+$/',
+        ], [
+            'new_password.regex' => 'Mật khẩu phải chứa ít nhất một chữ hoa, một chữ thường, một số và một ký tự đặc biệt.',
+            'new_password.confirmed' => 'Mật khẩu xác nhận không khớp.',
+        ]);
+
+        if (!Hash::check($request->input('current_password'), $account->password)) {
+            return back()->withErrors(['current_password' => 'Mật khẩu hiện tại không đúng.'])->withInput();
+        }
+
+        try {
+            $account->update(['password' => Hash::make($request->input('new_password'))]);
+
+            return redirect()->route('profile')->with('success', 'Mật khẩu đã được đổi thành công.');
+        } catch (\Exception $e) {
+            return back()->with('error', 'Có lỗi xảy ra: ' . $e->getMessage())->withInput();
+        }
     }
 }

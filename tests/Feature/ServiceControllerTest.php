@@ -61,7 +61,9 @@ class ServiceControllerTest extends TestCase
 
         $response = $this->actingAs($this->admin)->put(route('services.update', $service), [
             'name' => 'Ủi Đồ Hấp',
+            'type' => 'Ủi',
             'price' => 30000,
+            'unit' => 'món',
             'status' => 'active',
         ]);
 
@@ -84,7 +86,7 @@ class ServiceControllerTest extends TestCase
         $response = $this->actingAs($this->admin)->delete(route('services.destroy', $service));
 
         $response->assertRedirect(route('services.index'));
-        $this->assertDatabaseMissing('services', [
+        $this->assertSoftDeleted('services', [
             'id' => $service->id,
         ]);
     }

@@ -33,74 +33,105 @@
             <option value="pending" @selected(request('status') === 'pending')>Chờ thanh toán</option>
             <option value="partial" @selected(request('status') === 'partial')>Một phần</option>
             <option value="paid" @selected(request('status') === 'paid')>Đã thanh toán</option>
+            <option value="failed" @selected(request('status') === 'failed')>Thất bại</option>
+            <option value="refunded" @selected(request('status') === 'refunded')>Đã hoàn tiền</option>
         </select>
     </div>
 </form>
 
-<div class="card border-0 shadow-sm rounded-3">
+<!-- Payments Table -->
+<div class="card">
     <div class="card-body p-0">
         <div class="table-responsive">
-            <table class="table table-hover align-middle mb-0">
-                <thead class="table-light">
+            <table class="table-custom mb-0">
+                <thead>
                     <tr>
-                        <th class="text-uppercase text-secondary fs-7 fw-semibold text-start">Mã thanh toán</th>
-                        <th class="text-uppercase text-secondary fs-7 fw-semibold text-start">Mã đơn</th>
-                        <th class="text-uppercase text-secondary fs-7 fw-semibold text-start">Khách hàng</th>
-                        <th class="text-uppercase text-secondary fs-7 fw-semibold text-start">Số tiền</th>
-                        <th class="text-uppercase text-secondary fs-7 fw-semibold text-start">Phương thức</th>
-                        <th class="text-uppercase text-secondary fs-7 fw-semibold text-start">Trạng thái</th>
-                        <th class="text-uppercase text-secondary fs-7 fw-semibold text-start">Thao tác</th>
+                        @php
+                            $currentSortBy = request('sort_by');
+                            $currentSortOrder = request('sort_order', 'desc');
+                            $nextOrderId = ($currentSortBy === 'id' && $currentSortOrder === 'asc') ? 'desc' : 'asc';
+                            $nextOrderAmount = ($currentSortBy === 'amount' && $currentSortOrder === 'asc') ? 'desc' : 'asc';
+                        @endphp
+                        <th>
+                            <a href="{{ request()->fullUrlWithQuery(['sort_by' => 'id', 'sort_order' => $nextOrderId]) }}" class="text-dark text-decoration-none">
+                                Mã thanh toán
+                                @if($currentSortBy === 'id') @if($currentSortOrder === 'asc') <i class="bi bi-sort-up"></i> @else <i class="bi bi-sort-down"></i> @endif @endif
+                            </a>
+                        </th>
+                        <th>Mã đơn</th>
+                        <th>Khách hàng</th>
+                        <th>
+                            <a href="{{ request()->fullUrlWithQuery(['sort_by' => 'amount', 'sort_order' => $nextOrderAmount]) }}" class="text-dark text-decoration-none">
+                                Số tiền
+                                @if($currentSortBy === 'amount') @if($currentSortOrder === 'asc') <i class="bi bi-sort-up"></i> @else <i class="bi bi-sort-down"></i> @endif @endif
+                            </a>
+                        </th>
+                        <th>Phương thức</th>
+                        <th>Trạng thái</th>
+                        <th>Thao tác</th>
                     </tr>
                 </thead>
                 <tbody>
                     @forelse($payments as $payment)
                     <tr>
-                        <td class="text-start align-middle py-3 fw-bold text-dark">TT{{ $payment->id }}</td>
-                        <td class="text-start align-middle py-3">
-                            <a href="{{ route('orders.show', $payment->order_id) }}" class="text-decoration-none fw-bold text-dark">{{ $payment->order?->code ?: $payment->order_id }}</a>
+                        <td><strong>TT{{ $payment->id }}</strong></td>
+                        <td><a href="{{ route('orders.show', $payment->order_id) }}">{{ $payment->order?->code ?: $payment->order_id }}</a></td>
+                        <td>
+                <div class="d-flex align-items-center">
+                                 @php
+                                     $avatarId = $payment->order?->customer?->id ?? ($payment->order?->id ?? $payment->id);
+                                     $avatarUrl = 'assets/images/user_' . (($avatarId % 8) + 1) . '.jpg';
+                                 @endphp
+                                 <img src="{{ asset($avatarUrl) }}" alt="Ảnh khách hàng" class="rounded-circle me-2" style="width: 40px; height: 40px; object-fit: cover;">
+                                 <div>
+                                    <div class="fw-semibold">{{ $payment->order?->customer?->name ?: '-' }}</div>
+                                    <small class="text-muted">{{ $payment->order?->customer?->phone ?: 'Chưa có SĐT' }}</small>
+                                </div>
+                            </div>
                         </td>
-                        <td class="text-start align-middle py-3">
-                            <div class="fw-bold">{{ $payment->order?->customer?->name ?: '-' }}</div>
-                            <small class="text-muted">{{ $payment->order?->customer?->phone ?: 'Chưa có SĐT' }}</small>
-                        </td>
-                        <td class="text-start align-middle py-3 fw-semibold">{{ number_format($payment->amount) }} VNĐ</td>
-                        <td class="text-start align-middle py-3 text-muted">
+                        <td class="fw-semibold">{{ number_format($payment->amount) }} VNĐ</td>
+                        <td>
                             @if($payment->method === 'cash')
                                 <i class="bi bi-cash-coin me-1"></i>Tiền mặt
                             @elseif($payment->method === 'bank_transfer')
-                                <i class="bi bi-bank me-1"></i>Chuyển khoản
+                                <i class="bi bi-bank me-1"></i>Chuyển khoản (QR)
+                            @elseif($payment->method === 'momo')
+                                <i class="bi bi-phone me-1"></i>Ví MoMo
+                            @elseif($payment->method === 'credit_card')
+                                <i class="bi bi-credit-card me-1"></i>Thẻ ATM/Credit
                             @else
                                 <i class="bi bi-wallet2 me-1"></i>Ví điện tử
                             @endif
                         </td>
-                        <td class="text-start align-middle py-3">
+                        <td>
                             @if($payment->status === 'paid')
-                                <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-3 py-2"><i class="fas fa-check-circle me-1"></i>Đã thanh toán</span>
+                                <span class="badge bg-success-subtle text-success border border-success px-3 py-2 rounded-pill"><i class="fas fa-check-circle me-1"></i>Đã thanh toán</span>
                             @elseif($payment->status === 'partial')
-                                <span class="badge bg-warning-subtle text-warning border border-warning-subtle rounded-pill px-3 py-2"><i class="fas fa-clock me-1"></i>Một phần</span>
+                                <span class="badge bg-warning-subtle text-warning border border-warning px-3 py-2 rounded-pill"><i class="fas fa-clock me-1"></i>Một phần</span>
+                            @elseif($payment->status === 'failed')
+                                <span class="badge bg-danger-subtle text-danger border border-danger px-3 py-2 rounded-pill"><i class="fas fa-times-circle me-1"></i>Thất bại</span>
+                            @elseif($payment->status === 'refunded')
+                                <span class="badge bg-info-subtle text-info border border-info px-3 py-2 rounded-pill"><i class="fas fa-undo me-1"></i>Đã hoàn tiền</span>
                             @else
-                                <span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-3 py-2"><i class="fas fa-times-circle me-1"></i>Chưa thanh toán</span>
+                                <span class="badge bg-secondary-subtle text-secondary border border-secondary px-3 py-2 rounded-pill"><i class="fas fa-hourglass me-1"></i>Chưa thanh toán</span>
                             @endif
                         </td>
-                        <td class="text-start align-middle py-3">
-                            <div class="d-flex align-items-center gap-1">
-                                <a href="{{ route('payments.show', $payment) }}" class="btn btn-sm btn-outline-info" title="Xem chi tiết"><i class="fas fa-eye"></i></a>
-                                <a href="{{ route('payments.edit', $payment) }}" class="btn btn-sm btn-outline-warning" title="Chỉnh sửa"><i class="fas fa-pen"></i></a>
+                        <td>
+                            <div class="d-flex gap-2">
+                                <a href="{{ route('payments.show', $payment) }}" class="btn btn-order-action view" title="Xem"><i class="bi bi-eye"></i></a>
+                                <a href="{{ route('payments.edit', $payment) }}" class="btn btn-order-action edit" title="Sửa"><i class="bi bi-pencil"></i></a>
                                 <form action="{{ route('payments.destroy', $payment) }}" method="POST" class="d-inline" onsubmit="return confirm('Bạn có chắc muốn xóa?')">
                                     @csrf @method('DELETE')
-                                    <button type="submit" class="btn btn-sm btn-outline-danger" title="Xóa"><i class="fas fa-trash-alt"></i></button>
+                                    <button type="submit" class="btn btn-order-action delete" title="Xóa"><i class="bi bi-trash"></i></button>
                                 </form>
                             </div>
                         </td>
-                    </tr>
+                     </tr>
                     @empty
                     <tr>
-                        <td colspan="7" class="text-center py-4 text-muted">
-                            <i class="fas fa-search fa-2x mb-2 text-secondary d-block"></i>
-                            Không tìm thấy dữ liệu phù hợp
-                        </td>
+                        <td colspan="7" class="text-center text-muted py-4">Chưa có dữ liệu nào</td>
                     </tr>
-                    @endforelse
+                    @endempty
                 </tbody>
             </table>
         </div>
@@ -110,10 +141,26 @@
 @if($payments->hasPages())
 <nav class="mt-4">
     <div class="d-flex justify-content-between align-items-center">
-        <div class="text-muted small">
-            Hiển thị {{ $payments->firstItem() }} - {{ $payments->lastItem() }} của {{ $payments->total() }} thanh toán
-        </div>
-        {{ $payments->appends(request()->query())->links('pagination::bootstrap-5') }}
+        <div class="text-muted small">Hiển thị {{ $payments->firstItem() }} - {{ $payments->lastItem() }} của {{ $payments->total() }} thanh toán</div>
+        <ul class="pagination mb-0">
+            @if ($payments->onFirstPage())
+                <li class="page-item disabled"><span class="page-link"><i class="bi bi-chevron-left"></i></span></li>
+            @else
+                <li class="page-item"><a class="page-link" href="{{ $payments->appends(request()->query())->url($payments->currentPage() - 1) }}"><i class="bi bi-chevron-left"></i></a></li>
+            @endif
+            @foreach ($payments->getUrlRange(max(1, $payments->currentPage() - 2), min($payments->lastPage(), $payments->currentPage() + 2)) as $page => $url)
+                @if ($page == $payments->currentPage())
+                    <li class="page-item active"><span class="page-link">{{ $page }}</span></li>
+                @else
+                    <li class="page-item"><a class="page-link" href="{{ $payments->appends(request()->query())->url($page) }}">{{ $page }}</a></li>
+                @endif
+            @endforeach
+            @if ($payments->onLastPage())
+                <li class="page-item disabled"><span class="page-link"><i class="bi bi-chevron-right"></i></span></li>
+            @else
+                <li class="page-item"><a class="page-link" href="{{ $payments->appends(request()->query())->url($payments->currentPage() + 1) }}"><i class="bi bi-chevron-right"></i></a></li>
+            @endif
+        </ul>
     </div>
 </nav>
 @endif

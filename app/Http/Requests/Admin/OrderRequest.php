@@ -16,7 +16,7 @@ class OrderRequest extends FormRequest
         $id = $this->route('order') ?? $this->route('id') ?? null;
 
         return [
-            'code' => ['required', 'string', 'max:50', 'unique:orders,code'],
+            'code' => ['nullable', 'string', 'max:50', 'unique:orders,code,' . ($id ?? '')],
             'customer_id' => ['required', 'exists:customers,id'],
             'service_id' => ['required', 'exists:services,id'],
             'weight_kg' => ['nullable', 'string', 'max:50'],

@@ -27,54 +27,91 @@
     </div>
 </form>
 
-<div class="card border-0 shadow-sm rounded-3">
+<!-- Promotions Table -->
+<div class="card">
     <div class="card-body p-0">
         <div class="table-responsive">
-            <table class="table table-hover align-middle mb-0">
-                <thead class="table-light">
+            <table class="table-custom mb-0">
+                <thead>
                     <tr>
-                        <th class="text-uppercase text-secondary fs-7 fw-semibold text-start">ID</th>
-                        <th class="text-uppercase text-secondary fs-7 fw-semibold text-start">Tên chương trình</th>
-                        <th class="text-uppercase text-secondary fs-7 fw-semibold text-start">Mã KM</th>
-                        <th class="text-uppercase text-secondary fs-7 fw-semibold text-start">Giá trị giảm</th>
-                        <th class="text-uppercase text-secondary fs-7 fw-semibold text-start">HSD</th>
-                        <th class="text-uppercase text-secondary fs-7 fw-semibold text-start">Trạng thái</th>
-                        <th class="text-uppercase text-secondary fs-7 fw-semibold text-start">Thao tác</th>
+                        @php
+                            $currentSortBy = request('sort_by');
+                            $currentSortOrder = request('sort_order', 'desc');
+                            $nextOrderId = ($currentSortBy === 'id' && $currentSortOrder === 'asc') ? 'desc' : 'asc';
+                            $nextOrderName = ($currentSortBy === 'name' && $currentSortOrder === 'asc') ? 'desc' : 'asc';
+                            $nextOrderCode = ($currentSortBy === 'code' && $currentSortOrder === 'asc') ? 'desc' : 'asc';
+                            $nextOrderDiscount = ($currentSortBy === 'discount' && $currentSortOrder === 'asc') ? 'desc' : 'asc';
+                            $nextOrderExpires = ($currentSortBy === 'expires_at' && $currentSortOrder === 'asc') ? 'desc' : 'asc';
+                        @endphp
+                        <th>
+                            <a href="{{ request()->fullUrlWithQuery(['sort_by' => 'id', 'sort_order' => $nextOrderId]) }}" class="text-dark text-decoration-none">
+                                ID
+                                @if($currentSortBy === 'id') @if($currentSortOrder === 'asc') <i class="bi bi-sort-up"></i> @else <i class="bi bi-sort-down"></i> @endif @endif
+                            </a>
+                        </th>
+                        <th>
+                            <a href="{{ request()->fullUrlWithQuery(['sort_by' => 'name', 'sort_order' => $nextOrderName]) }}" class="text-dark text-decoration-none">
+                                Tên chương trình
+                                @if($currentSortBy === 'name') @if($currentSortOrder === 'asc') <i class="bi bi-sort-up"></i> @else <i class="bi bi-sort-down"></i> @endif @endif
+                            </a>
+                        </th>
+                        <th>
+                            <a href="{{ request()->fullUrlWithQuery(['sort_by' => 'code', 'sort_order' => $nextOrderCode]) }}" class="text-dark text-decoration-none">
+                                Mã KM
+                                @if($currentSortBy === 'code') @if($currentSortOrder === 'asc') <i class="bi bi-sort-up"></i> @else <i class="bi bi-sort-down"></i> @endif @endif
+                            </a>
+                        </th>
+                        <th>
+                            <a href="{{ request()->fullUrlWithQuery(['sort_by' => 'discount', 'sort_order' => $nextOrderDiscount]) }}" class="text-dark text-decoration-none">
+                                Giá trị giảm
+                                @if($currentSortBy === 'discount') @if($currentSortOrder === 'asc') <i class="bi bi-sort-up"></i> @else <i class="bi bi-sort-down"></i> @endif @endif
+                            </a>
+                        </th>
+                        <th>
+                            <a href="{{ request()->fullUrlWithQuery(['sort_by' => 'expires_at', 'sort_order' => $nextOrderExpires]) }}" class="text-dark text-decoration-none">
+                                Hạn sử dụng
+                                @if($currentSortBy === 'expires_at') @if($currentSortOrder === 'asc') <i class="bi bi-sort-up"></i> @else <i class="bi bi-sort-down"></i> @endif @endif
+                            </a>
+                        </th>
+                        <th>Trạng thái</th>
+                        <th>Thao tác</th>
                     </tr>
                 </thead>
                 <tbody>
                     @forelse($promotions as $promotion)
+                    @php
+                        $isExpired = $promotion->expires_at && $promotion->expires_at->lt(today());
+                    @endphp
                     <tr>
-                        <td class="text-start align-middle py-3 fw-bold text-dark">{{ $promotion->id }}</td>
-                        <td class="text-start align-middle py-3 fw-bold text-muted">{{ $promotion->name ?: '-' }}</td>
-                        <td class="text-start align-middle py-3 text-muted">{{ $promotion->code ?: '-' }}</td>
-                        <td class="text-start align-middle py-3 text-muted">{{ $promotion->discount ?: '-' }}</td>
-                        <td class="text-start align-middle py-3 text-muted">{{ $promotion->expires_at?->format('d/m/Y') ?: 'Không hạn' }}</td>
-                        <td class="text-start align-middle py-3">
-                            @if($promotion->status === 'active')
-                                <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-3 py-2"><i class="fas fa-check-circle me-1"></i>Đang chạy</span>
+                        <td><strong>{{ $promotion->id }}</strong></td>
+                        <td><strong>{{ $promotion->name ?: '-' }}</strong></td>
+                        <td>{{ $promotion->code ?: '-' }}</td>
+                        <td>{{ $promotion->discount ?: '-' }}</td>
+                        <td>{{ $promotion->expires_at?->format('d/m/Y') ?: 'Không hạn' }}</td>
+                        <td>
+                            @if($isExpired)
+                                <span class="badge bg-secondary-subtle text-secondary border border-secondary px-3 py-2 rounded-pill"><i class="far fa-hourglass me-1"></i>Đã hết hạn</span>
+                            @elseif($promotion->status === 'active')
+                                <span class="badge bg-success-subtle text-success border border-success px-3 py-2 rounded-pill"><i class="fas fa-check-circle me-1"></i>Đang chạy</span>
                             @else
-                                <span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-3 py-2"><i class="fas fa-times-circle me-1"></i>Hết hạn</span>
+                                <span class="badge bg-danger-subtle text-danger border border-danger px-3 py-2 rounded-pill"><i class="fas fa-times-circle me-1"></i>Hết hạn</span>
                             @endif
                         </td>
-                        <td class="text-start align-middle py-3">
-                            <div class="d-flex align-items-center gap-1">
-                                <a href="{{ route('promotions.edit', $promotion) }}" class="btn btn-sm btn-outline-warning" title="Chỉnh sửa"><i class="fas fa-pen"></i></a>
+                        <td>
+                            <div class="d-flex gap-2">
+                                <a href="{{ route('promotions.edit', $promotion) }}" class="btn btn-order-action edit" title="Sửa"><i class="bi bi-pencil"></i></a>
                                 <form action="{{ route('promotions.destroy', $promotion) }}" method="POST" class="d-inline" onsubmit="return confirm('Xóa?')">
                                     @csrf @method('DELETE')
-                                    <button type="submit" class="btn btn-sm btn-outline-danger" title="Xóa"><i class="fas fa-trash-alt"></i></button>
+                                    <button type="submit" class="btn btn-order-action delete" title="Xóa"><i class="bi bi-trash"></i></button>
                                 </form>
                             </div>
                         </td>
-                    </tr>
-                    @empty
+                     </tr>
+                     @empty
                     <tr>
-                        <td colspan="7" class="text-center py-4 text-muted">
-                            <i class="fas fa-search fa-2x mb-2 text-secondary d-block"></i>
-                            Không tìm thấy dữ liệu phù hợp
-                        </td>
+                        <td colspan="7" class="text-center text-muted py-4">Chưa có dữ liệu nào</td>
                     </tr>
-                    @endforelse
+                    @endempty
                 </tbody>
             </table>
         </div>
@@ -84,10 +121,26 @@
 @if($promotions->hasPages())
 <nav class="mt-4">
     <div class="d-flex justify-content-between align-items-center">
-        <div class="text-muted small">
-            Hiển thị {{ $promotions->firstItem() }} - {{ $promotions->lastItem() }} của {{ $promotions->total() }} khuyến mãi
-        </div>
-        {{ $promotions->appends(request()->query())->links('pagination::bootstrap-5') }}
+        <div class="text-muted small">Hiển thị {{ $promotions->firstItem() }} - {{ $promotions->lastItem() }} của {{ $promotions->total() }} khuyến mãi</div>
+        <ul class="pagination mb-0">
+            @if ($promotions->onFirstPage())
+                <li class="page-item disabled"><span class="page-link"><i class="bi bi-chevron-left"></i></span></li>
+            @else
+                <li class="page-item"><a class="page-link" href="{{ $promotions->appends(request()->query())->url($promotions->currentPage() - 1) }}"><i class="bi bi-chevron-left"></i></a></li>
+            @endif
+            @foreach ($promotions->getUrlRange(max(1, $promotions->currentPage() - 2), min($promotions->lastPage(), $promotions->currentPage() + 2)) as $page => $url)
+                @if ($page == $promotions->currentPage())
+                    <li class="page-item active"><span class="page-link">{{ $page }}</span></li>
+                @else
+                    <li class="page-item"><a class="page-link" href="{{ $promotions->appends(request()->query())->url($page) }}">{{ $page }}</a></li>
+                @endif
+            @endforeach
+            @if ($promotions->onLastPage())
+                <li class="page-item disabled"><span class="page-link"><i class="bi bi-chevron-right"></i></span></li>
+            @else
+                <li class="page-item"><a class="page-link" href="{{ $promotions->appends(request()->query())->url($promotions->currentPage() + 1) }}"><i class="bi bi-chevron-right"></i></a></li>
+            @endif
+        </ul>
     </div>
 </nav>
 @endif

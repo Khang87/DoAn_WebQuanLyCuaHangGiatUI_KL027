@@ -62,13 +62,15 @@
                             <span>Khách Hàng</span>
                         </a>
                     </li>
-                    @if(auth()->user()?->isAdmin())
+                    @if(auth()->user()?->isStaff())
                     <li class="sidebar-menu-item">
                         <a href="{{ route('orders.index') }}" class="sidebar-menu-link {{ request()->routeIs('orders.*') ? 'active' : '' }}">
                             <i class="bi bi-receipt"></i>
                             <span>Đơn Hàng</span>
                         </a>
                     </li>
+                    @endif
+                    @if(auth()->user()?->isAdmin())
                     <li class="sidebar-menu-item">
                         <a href="{{ route('service-categories.index') }}" class="sidebar-menu-link {{ request()->routeIs('service-categories.*') ? 'active' : '' }}">
                             <i class="bi bi-folder-fill"></i>
@@ -230,9 +232,20 @@
                 </div>
 
                 <!-- User Menu -->
+                @php
+                    $authUser = Auth::user();
+                    $authAvatar = 'assets/images/user_1.jpg';
+                    if ($authUser) {
+                        if (!empty($authUser->avatar) && file_exists(public_path($authUser->avatar))) {
+                            $authAvatar = $authUser->avatar;
+                        } else {
+                            $authAvatar = 'assets/images/user_' . (($authUser->id % 8) + 1) . '.jpg';
+                        }
+                    }
+                @endphp
                 <div class="dropdown">
                     <button class="navbar-action-btn dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                        <i class="bi bi-person-circle"></i>
+                        <img src="{{ asset($authAvatar) }}" alt="{{ $authUser->name ?? 'User' }}" class="rounded-circle border" style="width: 32px; height: 32px; object-fit: cover;">
                     </button>
                     <ul class="dropdown-menu dropdown-menu-end">
                         <li><a class="dropdown-item" href="{{ route('profile') }}"><i class="bi bi-person me-2"></i> Hồ Sơ</a></li>
