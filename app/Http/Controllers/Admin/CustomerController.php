@@ -18,11 +18,12 @@ class CustomerController extends Controller
     {
         $customers = $this->customerService->getAll([
             'search' => $request->input('search'),
-            'sort_by' => $request->input('sort_by'),
-            'sort_order' => $request->input('sort_order'),
+            'sort' => $request->input('sort'),
         ]);
 
-        return view('admin.customers.index', compact('customers'));
+        $currentSort = $request->input('sort', 'latest');
+
+        return view('admin.customers.index', compact('customers', 'currentSort'));
     }
 
     public function create()
@@ -37,7 +38,7 @@ class CustomerController extends Controller
 
             return redirect()->route('customers.index')->with('success', 'Khách hàng đã được tạo thành công.');
         } catch (\Exception $e) {
-            return redirect()->route('customers.create')->with('error', 'Có lỗi xảy ra: ' . $e->getMessage())->withInput();
+            return redirect()->route('customers.create')->with('error', \App\Support\FriendlyError::message($e))->withInput();
         }
     }
 
@@ -81,7 +82,7 @@ class CustomerController extends Controller
 
             return redirect()->route('customers.index')->with('success', 'Khách hàng đã được cập nhật.');
         } catch (\Exception $e) {
-            return redirect()->route('customers.edit', $customer)->with('error', 'Có lỗi xảy ra: ' . $e->getMessage())->withInput();
+            return redirect()->route('customers.edit', $customer)->with('error', \App\Support\FriendlyError::message($e))->withInput();
         }
     }
 
@@ -98,7 +99,7 @@ class CustomerController extends Controller
 
             return redirect()->route('customers.index')->with('success', 'Khách hàng đã được xóa.');
         } catch (\Exception $e) {
-            return redirect()->route('customers.index')->with('error', 'Có lỗi xảy ra: ' . $e->getMessage());
+            return redirect()->route('customers.index')->with('error', \App\Support\FriendlyError::message($e));
         }
     }
 }

@@ -28,8 +28,16 @@ enum RecordStatus: string
     public function badgeClass(): string
     {
         return match ($this) {
-            self::Active => 'bg-success-subtle text-success border-success',
-            self::Inactive => 'bg-secondary-subtle text-secondary border-secondary',
+            self::Active => 'bg-success-subtle text-success-emphasis border border-success',
+            self::Inactive => 'bg-secondary-subtle text-secondary-emphasis border border-secondary',
+        };
+    }
+
+    public function icon(): string
+    {
+        return match ($this) {
+            self::Active => 'check-circle',
+            self::Inactive => 'pause-circle',
         };
     }
 
@@ -92,5 +100,23 @@ enum RecordStatus: string
             '0', 'off', 'false', 'no', 'draft', 'hidden' => self::Inactive,
             default => null,
         };
+    }
+
+    /**
+     * Nhãn tiếng Việt cho một giá trị trạng thái bất kỳ, không ném lỗi.
+     */
+    public static function labelFor(mixed $value, self $default = self::Inactive): string
+    {
+        return self::parse($value, $default)->label();
+    }
+
+    public static function badgeClassFor(mixed $value, self $default = self::Inactive): string
+    {
+        return self::parse($value, $default)->badgeClass();
+    }
+
+    public static function iconFor(mixed $value, self $default = self::Inactive): string
+    {
+        return self::parse($value, $default)->icon();
     }
 }

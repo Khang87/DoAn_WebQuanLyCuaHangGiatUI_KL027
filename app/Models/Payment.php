@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\PaymentStatus;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -31,12 +32,12 @@ class Payment extends Model
 
     public function order(): BelongsTo
     {
-        return $this->belongsTo(Order::class);
+        return $this->belongsTo(Order::class)->withTrashed();
     }
 
     public function invoice(): BelongsTo
     {
-        return $this->belongsTo(Invoice::class);
+        return $this->belongsTo(Invoice::class)->withTrashed();
     }
 
     public function getMethodLabel(): string
@@ -65,25 +66,86 @@ class Payment extends Model
 
     public function getStatusLabel(): string
     {
-        return match ($this->status) {
-            'paid' => 'Đã thanh toán',
-            'partial' => 'Một phần',
-            'pending' => 'Chờ thanh toán',
-            'failed' => 'Thất bại',
-            'refunded' => 'Đã hoàn tiền',
-            default => $this->status,
-        };
+        return PaymentStatus::labelFor($this->status);
     }
 
     public function getStatusBadgeClass(): string
     {
-        return match ($this->status) {
-            'paid' => 'bg-success-subtle text-success border-success',
-            'partial' => 'bg-warning-subtle text-warning border-warning',
-            'pending' => 'bg-secondary-subtle text-secondary border-secondary',
-            'failed' => 'bg-danger-subtle text-danger border-danger',
-            'refunded' => 'bg-info-subtle text-info border-info',
-            default => 'bg-secondary-subtle text-secondary border-secondary',
-        };
+        return PaymentStatus::badgeClassFor($this->status);
+    }
+
+    public function getStatusIcon(): string
+    {
+        return PaymentStatus::iconFor($this->status);
+    }
+
+    /**
+     * Khoản thu đã ghi nhận tiền thật chưa? "partial" là đang thu dở nên vẫn
+     * được sửa; "failed"/"refunded" không phải tiền đã vào quỹ.
+     */
+    public function isSettled(): bool
+    {
+        return PaymentStatus::parse($this->status)->isPaid();
+    }
+
+    /**
+     * Đơn/hóa đơn liên quan đã quyết toán thì khoản thu này cũng bị khoá theo.
+     */
+    public function hasSettledDocument(): bool
+    {
+        $invoice = $this->invoice ?? $this->order?->invoice;
+
+        if ($invoice?->isPaid()) {
+            return true;
+        }
+
+        return (bool) $this->order?->isLocked();
+    }
+
+    /**
+     * Khoản thu đã thu tiền thật là chứng từ lịch sử: chỉ đọc, không sửa/xoá.
+     */
+    public function isLocked(): bool
+    {
+        return $this->isSettled() || $this->hasSettledDocument();
+    }
+
+    public function canEdit(): bool
+    {
+        if (! $this->isLocked()) {
+            return true;
+        }
+
+        return $this->viewerCanOverrideSettled('payments.edit_paid');
+    }
+
+    public function canDelete(): bool
+    {
+        if (! $this->isLocked()) {
+            return true;
+        }
+
+        return $this->viewerCanOverrideSettled('payments.delete_paid');
+    }
+
+    /**
+     * Người đang đăng nhập có mở khoá được khoản thu đã quyết toán hay không.
+     * Chỉ Chủ cửa hàng (người giữ payments.edit_paid / payments.delete_paid) mở khoá được.
+     */
+    private function viewerCanOverrideSettled(string $code): bool
+    {
+        $user = auth()->user();
+
+        return $user instanceof User && $user->canPermission($code);
+    }
+
+    public function getCanEditAttribute(): bool
+    {
+        return $this->canEdit();
+    }
+
+    public function getCanDeleteAttribute(): bool
+    {
+        return $this->canDelete();
     }
 }

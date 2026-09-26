@@ -19,7 +19,7 @@ class CouponService
             $query->where('status', $filters['status']);
         }
 
-        return $query->with('promotion')->withTrashed()->latest()->paginate(20);
+        return $query->with('promotion')->latest()->paginate(10);
     }
 
     public function find(int $id): ?Coupon

@@ -150,13 +150,18 @@ class DashboardController extends Controller
         ]);
     }
 
-    /**
-     * Tổng doanh thu (không tính đơn đã hủy) trong khoảng thời gian.
+/**
+     * Tổng doanh thu từ đơn hàng đã hoàn thành hoặc đã thanh toán trong khoảng thời gian.
      */
     private function revenueBetween(Carbon $from, Carbon $to): float
     {
         return (float) Order::whereBetween('created_at', [$from, $to])
-            ->where('status', '!=', 'cancelled')
+            ->where(function ($query) {
+                $query->where('status', 'completed')
+                    ->orWhereHas('invoice', function ($q) {
+                        $q->where('status', 'paid');
+                    });
+            })
             ->sum('total_amount');
     }
 
@@ -204,4 +209,88 @@ class DashboardController extends Controller
 
         return round((($current - $previous) / $previous) * 100, 1);
     }
+
+    /**
+     * API lấy dữ liệu doanh thu cho biểu đồ Dashboard.
+     * Hỗ trợ filter: today, 7_days, this_month, this_year
+     */
+    public function getRevenueChartData(Request $request)
+    {
+        $filter = $request->get('filter', '7_days');
+        $today = Carbon::today();
+        $thisYear = now()->year;
+
+        $labels = [];
+        $data = [];
+
+        switch ($filter) {
+            case 'today':
+                // Doanh thu theo giờ trong ngày hôm nay (0-23h)
+                for ($hour = 0; $hour <= 23; $hour++) {
+                    $from = $today->copy()->setTime($hour, 0, 0);
+                    $to = $today->copy()->setTime($hour, 59, 59);
+                    $labels[] = sprintf('%02d:00', $hour);
+                    $data[] = $this->revenueBetween($from, $to);
+                }
+                break;
+
+            case '7_days':
+                // Doanh thu 7 ngày gần nhất
+                for ($daysAgo = 6; $daysAgo >= 0; $daysAgo--) {
+                    $date = $today->copy()->subDays($daysAgo);
+                    $labels[] = $date->format('d/m');
+                    $data[] = $this->revenueBetween($date->copy()->startOfDay(), $date->copy()->endOfDay());
+                }
+                break;
+
+            case 'this_month':
+                // Doanh thu theo ngày trong tháng hiện tại
+                $daysInMonth = $today->copy()->daysInMonth;
+                for ($day = 1; $day <= $daysInMonth; $day++) {
+                    $date = $today->copy()->setDay($day);
+                    $labels[] = $date->format('d/m');
+                    $data[] = $this->revenueBetween($date->copy()->startOfDay(), $date->copy()->endOfDay());
+                }
+                break;
+
+            case 'this_year':
+                // Doanh thu 12 tháng trong năm hiện tại
+                for ($month = 1; $month <= 12; $month++) {
+                    $date = Carbon::create($thisYear, $month, 1);
+                    $labels[] = 'Tháng ' . $month;
+                    $data[] = $this->revenueBetween($date->copy()->startOfMonth(), $date->copy()->endOfMonth());
+                }
+                break;
+
+            default:
+                // Mặc định 7 ngày
+                for ($daysAgo = 6; $daysAgo >= 0; $daysAgo--) {
+                    $date = $today->copy()->subDays($daysAgo);
+                    $labels[] = $date->format('d/m');
+                    $data[] = $this->revenueBetween($date->copy()->startOfDay(), $date->copy()->endOfDay());
+                }
+        }
+
+        return response()->json([
+            'labels' => $labels,
+            'data' => $data,
+            'filter' => $filter,
+            'filter_label' => $this->getFilterLabel($filter),
+        ]);
+    }
+
+    /**
+     * Nhãn hiển thị cho từng filter.
+     */
+    private function getFilterLabel(string $filter): string
+    {
+        return match ($filter) {
+            'today' => 'Doanh thu hôm nay',
+            '7_days' => 'Doanh thu 7 ngày gần nhất',
+            'this_month' => 'Doanh thu tháng này',
+            'this_year' => 'Doanh thu năm ' . now()->year,
+            default => 'Doanh thu 7 ngày gần nhất',
+        };
+    }
 }
+

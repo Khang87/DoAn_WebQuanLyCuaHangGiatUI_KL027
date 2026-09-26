@@ -33,12 +33,12 @@ class Pricing extends Model
 
     public function service(): BelongsTo
     {
-        return $this->belongsTo(Service::class);
+        return $this->belongsTo(Service::class)->withTrashed();
     }
 
     public function garment(): BelongsTo
     {
-        return $this->belongsTo(Garment::class);
+        return $this->belongsTo(Garment::class)->withTrashed();
     }
 
     /**

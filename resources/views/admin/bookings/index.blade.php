@@ -4,28 +4,29 @@
 @section('page-title', 'Đặt lịch')
 
 @section('content')
-<div class="mb-3 text-start">
-    <h4 class="fw-bold mb-1">Quản lý đặt lịch</h4>
-    <p class="text-muted small mb-0">Tiếp nhận lịch hẹn và chuyển lịch đã xác nhận thành đơn hàng.</p>
+<div class="page-toolbar">
+    <p class="text-muted page-toolbar__desc">Tiếp nhận lịch hẹn. Khi chuyển lịch sang <strong>Đã xác nhận</strong>, hệ thống tự động tạo đơn hàng có mã tham chiếu về lịch.</p>
 </div>
 
 <form action="{{ url()->current() }}" method="GET" class="row g-3 align-items-center mb-4">
-    <div class="col-12 col-md-5">
-        <div class="input-group shadow-sm rounded-3 overflow-hidden">
+    <div class="col-12 col-md-auto flex-grow-1">
+        <div class="input-group input-group-sm shadow-sm rounded-3 overflow-hidden">
             <span class="input-group-text bg-white border-end-0 ps-3"><i class="fas fa-search text-muted"></i></span>
-            <input type="text" name="search" class="form-control border-start-0 py-2 ps-2" placeholder="Tìm theo mã lịch, tên khách hàng, SĐT..." value="{{ request('search') }}">
+            <input type="text" name="search" class="form-control form-control-sm border-start-0 ps-2" placeholder="Tìm theo mã lịch, tên khách hàng, SĐT..." value="{{ request('search') }}">
         </div>
     </div>
-    <div class="col-12 col-md-3">
-        <select name="status" class="form-select shadow-sm rounded-3 py-2" onchange="this.form.submit()">
-            <option value="">-- Tất cả trạng thái --</option>
-            @foreach($statuses ?? \App\Enums\RecordStatus::options() as $value => $label)
-                <option value="{{ $value }}" @selected(request('status') === $value)>{{ $label }}</option>
-            @endforeach
-        </select>
+    <div class="col-12 col-sm-6 col-md-auto">
+        <x-admin.status-select
+            name="status"
+            id="filter-status"
+            :options="\App\Enums\BookingStatus::options()"
+            placeholder="-- Tất cả trạng thái --"
+            class="form-select form-select-sm filter-select shadow-sm rounded-3"
+            submit
+        />
     </div>
-    <div class="col-12 col-md-3">
-        <select name="method" class="form-select shadow-sm rounded-3 py-2" onchange="this.form.submit()">
+    <div class="col-12 col-sm-6 col-md-auto">
+        <select name="method" class="form-select form-select-sm filter-select shadow-sm rounded-3" onchange="this.form.submit()">
             <option value="">-- Tất cả hình thức --</option>
             <option value="nhan_do" @selected(request('method') === 'nhan_do')>Nhận đồ</option>
             <option value="giao_do" @selected(request('method') === 'giao_do')>Giao đồ</option>
@@ -37,7 +38,7 @@
     <div class="card-body p-0">
         <div class="table-responsive">
             <table class="table-custom mb-0">
-                <thead><tr><th>STT</th><th>Mã</th><th>Khách hàng</th><th>Nhân viên</th><th>Hình thức</th><th>Ngày hẹn</th><th>Trạng thái</th><th>Thao tác</th></tr></thead>
+                <thead><tr><th>STT</th><th>Mã lịch hẹn</th><th>Khách hàng</th><th>Nhân viên</th><th>Hình thức</th><th>Ngày hẹn</th><th>Trạng thái</th><th>Thao tác</th></tr></thead>
                 <tbody>
                 @forelse($bookings as $booking)
                     <tr>
@@ -45,17 +46,27 @@
                         <td><strong>{{ $booking->code ?: 'BK' . str_pad($booking->id, 4, '0', STR_PAD_LEFT) }}</strong></td>
                         <td><div class="fw-semibold">{{ $booking->customer?->name ?: '-' }}</div><small class="text-muted">{{ $booking->customer?->phone ?: 'Chưa có SĐT' }}</small></td>
                         <td>{{ $booking->staff?->name ?: 'Chưa phân công' }}</td>
-                        <td>{{ $booking->method_label }}</td>
+                        <td>
+                            @if($booking->method === 'nhan_do')
+                                <i class="bi bi-box-arrow-in-down me-1"></i>Nhận đồ
+                            @else
+                                <i class="bi bi-truck me-1"></i>Giao đồ
+                            @endif
+                        </td>
                         <td>{{ $booking->scheduled_date?->format('d/m/Y') ?: '-' }} {{ $booking->scheduled_time?->format('H:i') ?: '' }}</td>
-                        <td><span class="badge {{ $booking->status_badge_class }}">{{ $booking->status_label }}</span></td>
+                        <td><x-admin.status-badge :status="$booking->status" :enum="\App\Enums\BookingStatus::class" /></td>
                         <td><div class="d-flex gap-2">
                             <a href="{{ route('bookings.show', $booking) }}" class="btn btn-order-action view" title="Xem"><i class="bi bi-eye"></i></a>
                             <a href="{{ route('bookings.edit', $booking) }}" class="btn btn-order-action edit" title="Sửa"><i class="bi bi-pencil"></i></a>
-                            @if($booking->status === 'confirmed')
+                            @if($booking->status === 'pending')
+                                <span class="btn btn-order-action" disabled title="Đơn hàng sẽ tự động được tạo khi chuyển sang trạng thái Đã xác nhận"><i class="bi bi-hourglass-split"></i></span>
+                            @elseif(! $booking->order && $booking->status === 'confirmed')
                                 <form action="{{ route('bookings.confirm', $booking) }}" method="POST" class="d-inline" id="confirmBookingForm_{{ $booking->id }}">
                                     @csrf
                                     <button type="submit" class="btn btn-order-action view" title="Tạo đơn hàng"><i class="bi bi-cart-plus"></i></button>
                                 </form>
+                            @elseif($booking->order)
+                                <a href="{{ route('orders.show', $booking->order) }}" class="btn btn-order-action view" title="Xem đơn hàng {{ $booking->order->code }}"><i class="bi bi-box-arrow-up-right"></i></a>
                             @endif
                             <form action="{{ route('bookings.destroy', $booking) }}" method="POST" class="d-inline" id="deleteBookingForm_{{ $booking->id }}">
                                 @csrf @method('DELETE')

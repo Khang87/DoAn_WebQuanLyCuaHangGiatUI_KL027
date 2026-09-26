@@ -26,7 +26,7 @@ class DeliveryControllerTest extends TestCase
             'name' => 'Nguyễn Văn A',
         ]);
         $this->order = \App\Models\Order::create([
-            'code' => 'DH001',
+            'code' => 'DH-DEL-001',
             'customer_id' => $this->customer->id,
             'total_amount' => 100000,
             'status' => 'pending',
@@ -98,3 +98,4 @@ class DeliveryControllerTest extends TestCase
         $this->assertSoftDeleted('deliveries', ['id' => $delivery->id]);
     }
 }
+

@@ -43,7 +43,7 @@ class CouponController extends Controller
 
             return redirect()->route('coupons.index')->with('success', 'Mã giảm giá đã được tạo.');
         } catch (\Exception $e) {
-            return redirect()->route('coupons.create')->with('error', 'Có lỗi xảy ra: ' . $e->getMessage())->withInput();
+            return redirect()->route('coupons.create')->with('error', \App\Support\FriendlyError::message($e))->withInput();
         }
     }
 
@@ -83,7 +83,7 @@ class CouponController extends Controller
 
             return redirect()->route('coupons.index')->with('success', 'Mã giảm giá đã được cập nhật.');
         } catch (\Exception $e) {
-            return redirect()->route('coupons.edit', $coupon)->with('error', 'Có lỗi xảy ra: ' . $e->getMessage())->withInput();
+            return redirect()->route('coupons.edit', $coupon)->with('error', \App\Support\FriendlyError::message($e))->withInput();
         }
     }
 
@@ -95,7 +95,7 @@ class CouponController extends Controller
             try {
                 $this->couponService->delete($coupon);
             } catch (\Exception $e) {
-                return redirect()->route('coupons.index')->with('error', 'Có lỗi xảy ra: ' . $e->getMessage());
+                return redirect()->route('coupons.index')->with('error', \App\Support\FriendlyError::message($e));
             }
         }
 

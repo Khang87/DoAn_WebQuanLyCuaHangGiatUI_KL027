@@ -39,7 +39,7 @@ class PricingService
         $sortBy = in_array($filters['sort_by'] ?? null, $allowedSorts) ? $filters['sort_by'] : 'created_at';
         $sortOrder = ($filters['sort_order'] ?? 'desc') === 'asc' ? 'asc' : 'desc';
 
-        return $query->with(['service', 'garment'])->withTrashed()->orderBy($sortBy, $sortOrder)->paginate(20);
+        return $query->with(['service', 'garment'])->orderBy($sortBy, $sortOrder)->paginate(10);
     }
 
     public function find(int $id): ?Pricing

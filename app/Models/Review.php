@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\ReviewStatus;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -33,29 +34,16 @@ class Review extends Model
 
     public function order(): BelongsTo
     {
-        return $this->belongsTo(Order::class);
+        return $this->belongsTo(Order::class)->withTrashed();
     }
 
     public function customer(): BelongsTo
     {
-        return $this->belongsTo(Customer::class);
+        return $this->belongsTo(Customer::class)->withTrashed();
     }
 
     public function getStatusLabelAttribute(): string
     {
-        return match($this->status) {
-            'visible' => 'Hiển thị',
-            'hidden' => 'Ẩn',
-            default => 'Hiển thị',
-        };
-    }
-
-    public function getStatusBadgeClassAttribute(): string
-    {
-        return match($this->status) {
-            'visible' => 'bg-success-subtle text-success border-success',
-            'hidden' => 'bg-secondary-subtle text-secondary border-secondary',
-            default => 'bg-secondary-subtle text-secondary border-secondary',
-        };
+        return ReviewStatus::labelFor($this->status);
     }
 }

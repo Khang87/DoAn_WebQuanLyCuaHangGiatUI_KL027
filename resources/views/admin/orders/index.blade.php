@@ -1,44 +1,43 @@
 @extends('layouts.app')
 
-@section('title', 'Quản lý Đơn Hàng - Sky Laundry')
-@section('page-title', 'Quản lý Đơn Hàng')
+@section('title', 'Quản lý Đơn hàng - Sky Laundry')
+@section('page-title', 'Quản lý Đơn hàng')
 
 @section('content')
-@php
-    $orderStatusLabels = [
-        'pending' => 'Chờ tiếp nhận',
-        'received' => 'Đã nhận đồ',
-        'sorting' => 'Đang phân loại',
-        'processing' => 'Đang giặt / Xử lý',
-        'washed' => 'Đã giặt xong',
-        'delivering' => 'Đang giao đồ',
-        'completed' => 'Hoàn thành',
-        'cancelled' => 'Đã hủy',
-    ];
-@endphp
-<!-- Page Actions -->
-<div class="order-toolbar d-flex justify-content-between align-items-center mb-4">
-    <div>
-        <a href="{{ route('orders.create') }}" class="btn btn-primary">
-            <i class="bi bi-plus-lg me-2"></i>Tạo đơn hàng mới
-        </a>
-    </div>
+<!-- Page Actions: nút "Thêm" luôn nằm góc trên bên trái -->
+<div class="page-toolbar">
+    <a href="{{ route('orders.create') }}" class="btn btn-create">
+        <i class="bi bi-plus-lg"></i>Thêm đơn hàng
+    </a>
+    <p class="text-muted page-toolbar__desc">Theo dõi toàn bộ đơn giặt của khách hàng, từ lúc tiếp nhận đến khi hoàn tất giao trả.</p>
 </div>
 <form action="{{ url()->current() }}" method="GET" class="row g-3 align-items-center mb-4">
-    <div class="col-12 col-md-5">
-        <div class="input-group shadow-sm rounded-3 overflow-hidden">
+    <div class="col-12 col-md-auto flex-grow-1">
+        <div class="input-group input-group-sm shadow-sm rounded-3 overflow-hidden">
             <span class="input-group-text bg-white border-end-0 ps-3">
                 <i class="fas fa-search text-muted"></i>
             </span>
-            <input type="text" name="search" class="form-control border-start-0 py-2 ps-2" placeholder="Tìm kiếm đơn hàng..." value="{{ request('search') }}">
+            <input type="text" name="search" class="form-control form-control-sm border-start-0 ps-2" placeholder="Tìm kiếm đơn hàng..." value="{{ request('search') }}">
         </div>
     </div>
-    <div class="col-12 col-md-4">
-        <select name="status" class="form-select shadow-sm rounded-3 py-2" style="min-width: 220px;" onchange="this.form.submit()">
-            <option value="">-- Tất cả trạng thái --</option>
-            @foreach($statusFlow as $value => $label)
-                <option value="{{ $value }}" @selected(request('status') === $value)>{{ $label }}</option>
-            @endforeach
+    <div class="col-12 col-sm-6 col-md-auto">
+        <x-admin.status-select
+            name="status"
+            id="filter-status"
+            :options="$statusFlow ?? \App\Enums\OrderStatus::options()"
+            placeholder="-- Tất cả trạng thái --"
+            class="form-select form-select-sm filter-select shadow-sm rounded-3"
+            submit
+        />
+    </div>
+    <div class="col-12 col-sm-6 col-md-auto">
+        <select name="sort" class="form-select form-select-sm filter-select shadow-sm rounded-3" onchange="this.form.submit()">
+            <option value="latest" @selected(request('sort', 'latest') === 'latest')>Mới nhất</option>
+            <option value="oldest" @selected(request('sort') === 'oldest')>Cũ nhất</option>
+            <option value="total_desc" @selected(request('sort') === 'total_desc')>Tổng tiền cao → thấp</option>
+            <option value="total_asc" @selected(request('sort') === 'total_asc')>Tổng tiền thấp → cao</option>
+            <option value="code_asc" @selected(request('sort') === 'code_asc')>Mã đơn A → Z</option>
+            <option value="code_desc" @selected(request('sort') === 'code_desc')>Mã đơn Z → A</option>
         </select>
     </div>
 </form>
@@ -50,49 +49,26 @@
             <table class="table-custom mb-0">
                 <thead>
                     <tr>
-                        @php
-                            $currentSortBy = request('sort_by');
-                            $currentSortOrder = request('sort_order', 'desc');
-                            $nextOrderCode = ($currentSortBy === 'code' && $currentSortOrder === 'asc') ? 'desc' : 'asc';
-                            $nextOrderTotal = ($currentSortBy === 'total_amount' && $currentSortOrder === 'asc') ? 'desc' : 'asc';
-                            $nextOrderCreated = ($currentSortBy === 'created_at' && $currentSortOrder === 'asc') ? 'desc' : 'asc';
-                        @endphp
-                        <th>
-                            <a href="{{ request()->fullUrlWithQuery(['sort_by' => 'code', 'sort_order' => $nextOrderCode]) }}" class="text-dark text-decoration-none">
-                                Mã Đơn
-                                @if($currentSortBy === 'code') @if($currentSortOrder === 'asc') <i class="bi bi-sort-up"></i> @else <i class="bi bi-sort-down"></i> @endif @endif
-                            </a>
-                        </th>
-                        <th>Khách hàng</th>
-                        <th>Dịch vụ</th>
-                        <th>Số lượng</th>
-                        <th>Ghi chú khách Hàng</th>
-                        <th>
-                            <a href="{{ request()->fullUrlWithQuery(['sort_by' => 'total_amount', 'sort_order' => $nextOrderTotal]) }}" class="text-dark text-decoration-none">
-                                Tổng tiền
-                                @if($currentSortBy === 'total_amount') @if($currentSortOrder === 'asc') <i class="bi bi-sort-up"></i> @else <i class="bi bi-sort-down"></i> @endif @endif
-                            </a>
-                        </th>
-                        <th>Trạng thái</th>
-                        <th>
-                            <a href="{{ request()->fullUrlWithQuery(['sort_by' => 'created_at', 'sort_order' => $nextOrderCreated]) }}" class="text-dark text-decoration-none">
-                                Ngày tạo
-                                @if($currentSortBy === 'created_at') @if($currentSortOrder === 'asc') <i class="bi bi-sort-up"></i> @else <i class="bi bi-sort-down"></i> @endif @endif
-                            </a>
-                        </th>
-                        <th>Thao tác</th>
+                        <th class="fw-bold text-dark">Mã đơn hàng</th>
+                        <th class="fw-bold text-dark">Khách hàng</th>
+                        <th class="fw-bold text-dark">Số điện thoại</th>
+                        <th class="fw-bold text-dark">Dịch vụ</th>
+                        <th class="fw-bold text-dark">Số lượng</th>
+                        <th class="fw-bold text-dark">Ghi chú khách hàng</th>
+                        <th class="fw-bold text-dark">Tổng tiền</th>
+                        <th class="fw-bold text-dark">Trạng thái</th>
+                        <th class="fw-bold text-dark">Ngày tạo</th>
+                        <th class="fw-bold text-dark">Thao tác</th>
                     </tr>
                 </thead>
                 <tbody>
                     @forelse($orders as $order)
                     <tr>
-                        <td><strong>{{ $order->code }}</strong></td>
+                        <td class="text-dark">{{ $order->code }}</td>
                         <td>
                             @php
-                                $randomImage = 'assets/images/user_' . (($order->customer->id % 8) + 1) . '.jpg';
-                                $avatarUrl = (!empty($order->customer->avatar) && file_exists(public_path($order->customer->avatar))) 
-                                           ? asset($order->customer->avatar) 
-                                           : asset($randomImage);
+                                $customer = $order->customer;
+                                $avatarUrl = asset('assets/images/user_' . ((($customer->id ?? 0) % 8) + 1) . '.jpg');
                             @endphp
                             <div class="d-flex align-items-center">
                                 @if($order->customer)
@@ -101,48 +77,25 @@
                                     <img src="{{ asset('assets/images/user_1.jpg') }}" alt="Avatar" class="rounded-circle me-2 avatar-cover" style="width: 32px; height: 32px;">
                                 @endif
                                 <div>
-                                    <div class="fw-semibold">{{ $order->customer?->name ?: '-' }}</div>
+                                    <div class="text-dark">{{ $order->customer?->name ?: '-' }}</div>
                                     <small class="text-muted">{{ $order->customer?->phone ?: 'Chưa có số điện thoại' }}</small>
                                 </div>
                             </div>
                         </td>
-                         <td>{{ $order->items->pluck('service.name')->filter()->join(', ') ?: ($order->service?->name ?: '-') }}</td>
-                        <td>
-                            <strong>
-                                 {{ number_format((float)($order->items->sum('quantity') ?: ($order->quantity_items ?? $order->weight_kg ?? 0))) }}
-                                 {{ $order->service?->unit ?? 'món' }}
-                            </strong>
+                        <td class="text-dark">{{ $order->customer?->phone ?: '-' }}</td>
+                        <td class="text-dark">{{ $order->items->pluck('service.name')->filter()->join(', ') ?: ($order->service?->name ?: '-') }}</td>
+                        <td class="text-dark">
+                             {{ number_format((float)($order->items->sum('quantity') ?: ($order->quantity_items ?? $order->weight_kg ?? 0))) }}
+                             {{ $order->service?->unit ?? 'món' }}
                         </td>
-                        <td><small>{{ $order->notes ?: 'Không có ghi chú' }}</small></td>
-                        <td><strong>{{ number_format($order->total_amount) }} VNĐ</strong></td>
+                        <td><small class="text-muted">{{ $order->notes ?: 'Không có ghi chú' }}</small></td>
+                        <td class="text-dark">{{ number_format($order->total_amount) }} VNĐ</td>
                         <td>
-                             @php $status = $orderStatusLabels[$order->status] ?? $orderStatusLabels['pending']; @endphp
-                             @if($order->status === 'completed')
-                                 <span class="badge bg-success-subtle text-success border border-success px-3 py-2 rounded-pill"><i class="fas fa-check-circle me-1"></i>{{ $status }}</span>
-                             @elseif($order->status === 'cancelled')
-                                 <span class="badge bg-danger-subtle text-danger border border-danger px-3 py-2 rounded-pill"><i class="fas fa-x-circle me-1"></i>{{ $status }}</span>
-                             @elseif($order->status === 'delivering')
-                                 <span class="badge bg-primary-subtle text-primary border border-primary px-3 py-2 rounded-pill"><i class="fas fa-truck me-1"></i>{{ $status }}</span>
-                             @elseif($order->status === 'processing')
-                                 <span class="badge bg-warning-subtle text-warning border border-warning px-3 py-2 rounded-pill"><i class="fas fa-washer me-1"></i>{{ $status }}</span>
-                             @elseif($order->status === 'washed')
-                                 <span class="badge bg-info-subtle text-info border border-info px-3 py-2 rounded-pill"><i class="fas fa-tshirt-pocket me-1"></i>{{ $status }}</span>
-                             @else
-                                 <span class="badge bg-warning-subtle text-warning border border-warning px-3 py-2 rounded-pill"><i class="fas fa-clock me-1"></i>{{ $status }}</span>
-                             @endif
+                            <x-admin.status-badge :status="$order->status" :enum="\App\Enums\OrderStatus::class" />
                         </td>
-                        <td>{{ $order->created_at?->format('d/m/Y') }}</td>
+                        <td class="text-dark">{{ $order->created_at?->format('d/m/Y') }}</td>
                         <td>
                             <div class="d-flex gap-2">
-                                @if(!$order->invoice && in_array($order->status, ['completed', 'washed', 'delivering']))
-                                    <a href="{{ route('invoices.create', ['order_id' => $order->id]) }}" class="btn btn-sm btn-outline-primary" title="Tạo hóa đơn" data-bs-toggle="tooltip">
-                                        <i class="fas fa-file-invoice"></i>
-                                    </a>
-                                @elseif($order->invoice)
-                                    <a href="{{ route('invoices.show', $order->invoice->id) }}" class="btn btn-sm btn-outline-info" title="Xem hóa đơn" data-bs-toggle="tooltip">
-                                        <i class="fas fa-eye"></i>
-                                    </a>
-                                @endif
                                 <a href="{{ route('orders.show', $order) }}" class="btn btn-order-action view" title="Xem"><i class="bi bi-eye"></i></a>
                                 @if($order->can_edit)
                                     <a href="{{ route('orders.edit', $order) }}" class="btn btn-order-action edit" title="Sửa"><i class="bi bi-pencil"></i></a>
@@ -153,8 +106,8 @@
                                         <button type="submit" class="btn btn-order-action delete" title="Xóa"><i class="bi bi-trash"></i></button>
                                     </form>
                                 @endif
-                                @if($order->is_locked)
-                                    <span class="badge bg-secondary text-white px-3 py-2 rounded-pill d-flex align-items-center" title="Đã quyết toán">
+                                @if(!$order->can_edit && !$order->can_delete)
+                                    <span class="badge bg-secondary-subtle text-secondary-emphasis border border-secondary px-3 py-2 rounded-pill d-flex align-items-center" title="Đã quyết toán">
                                         <i class="bi bi-lock me-1"></i>Đã quyết toán
                                     </span>
                                 @endif
@@ -163,7 +116,7 @@
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="9" class="text-center text-muted py-4">Chưa có đơn hàng nào</td>
+                        <td colspan="10" class="text-center text-muted py-4">Chưa có đơn hàng nào</td>
                     </tr>
                     @endforelse
                 </tbody>

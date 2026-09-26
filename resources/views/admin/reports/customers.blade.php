@@ -26,7 +26,7 @@
                         </td>
                         <td>{{ $item->customer?->email ?: '-' }}</td>
                         <td>{{ $item->customer?->phone ?: '-' }}</td>
-                        <td><span class="badge bg-primary-subtle text-primary border border-primary px-2 py-1 rounded-pill">{{ number_format($item->customer?->points ?? 0) }} <i class="fas fa-star"></i></span></td>
+                        <td><span class="badge bg-amber-subtle text-amber-emphasis border border-amber px-2 py-1 rounded-pill">{{ number_format($item->customer?->points ?? 0) }} <i class="fas fa-star"></i></span></td>
                         <td>{{ number_format($item->order_count) }}</td>
                         <td><strong class="text-primary">{{ number_format($item->total_spent) }} VND</strong></td>
                     </tr>

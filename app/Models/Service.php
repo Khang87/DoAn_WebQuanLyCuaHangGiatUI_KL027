@@ -39,17 +39,17 @@ class Service extends Model
 
     public function orders(): HasMany
     {
-        return $this->hasMany(Order::class);
+        return $this->hasMany(Order::class)->withTrashed();
     }
 
     public function orderItems(): HasMany
     {
-        return $this->hasMany(OrderItem::class);
+        return $this->hasMany(OrderItem::class)->withTrashed();
     }
 
     public function pricings(): HasMany
     {
-        return $this->hasMany(Pricing::class);
+        return $this->hasMany(Pricing::class)->withTrashed();
     }
 
     public function getFormattedProcessingTimeAttribute(): string

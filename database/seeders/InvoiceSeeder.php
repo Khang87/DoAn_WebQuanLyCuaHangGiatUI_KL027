@@ -13,7 +13,7 @@ class InvoiceSeeder extends Seeder
 
     public function run(): void
     {
-        $orders = Order::whereIn('status', ['completed', 'processing'])->get();
+        $orders = Order::whereIn('status', ['completed', 'processing', 'ready_for_pickup'])->get();
 
         foreach ($orders as $index => $order) {
             $subtotal = (float) ($order->subtotal ?: $order->total_amount);
@@ -30,7 +30,7 @@ class InvoiceSeeder extends Seeder
                 'discount_amount' => $discountAmount,
                 'delivery_fee' => $deliveryFee,
                 'grand_total' => $grandTotal,
-                'status' => $order->status === 'completed' ? 'paid' : 'unpaid',
+                'status' => in_array($order->status, ['completed', 'ready_for_pickup']) ? 'paid' : 'unpaid',
                 'notes' => 'Hóa đơn cho đơn hàng #' . $order->code,
                 'created_at' => $order->created_at,
                 'updated_at' => $order->created_at,

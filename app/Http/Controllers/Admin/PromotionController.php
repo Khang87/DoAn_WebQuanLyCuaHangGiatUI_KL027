@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Enums\RecordStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\PromotionRequest;
+use App\Models\Promotion;
 use App\Services\PromotionService;
 use Illuminate\Http\Request;
 
@@ -19,8 +20,7 @@ class PromotionController extends Controller
         $promotions = $this->promotionService->getAll([
             'search' => $request->input('search'),
             'status' => $request->input('status'),
-            'sort_by' => $request->input('sort_by'),
-            'sort_order' => $request->input('sort_order'),
+            'sort' => $request->input('sort'),
         ]);
 
         $statuses = RecordStatus::options();
@@ -36,11 +36,11 @@ class PromotionController extends Controller
     public function store(PromotionRequest $request)
     {
         try {
-            $this->promotionService->create($request->validated());
+            $this->promotionService->create($this->payload($request));
 
             return redirect()->route('promotions.index')->with('success', 'Chương trình khuyến mãi đã được tạo thành công.');
         } catch (\Exception $e) {
-            return redirect()->route('promotions.create')->with('error', 'Có lỗi xảy ra: ' . $e->getMessage())->withInput();
+            return redirect()->route('promotions.create')->with('error', \App\Support\FriendlyError::message($e))->withInput();
         }
     }
 
@@ -52,7 +52,11 @@ class PromotionController extends Controller
             abort(404);
         }
 
-        return view('admin.promotions.show', compact('promotion'));
+        return view('admin.promotions.show', [
+            'promotion' => $promotion,
+            // View chi tiết hiển thị bảng các mã giảm giá thuộc chương trình.
+            'coupons' => $promotion->coupons()->latest()->paginate(10),
+        ]);
     }
 
     public function edit(int $id)
@@ -75,12 +79,30 @@ class PromotionController extends Controller
         }
 
         try {
-            $this->promotionService->update($promotion, $request->validated());
+            $this->promotionService->update($promotion, $this->payload($request));
 
             return redirect()->route('promotions.index')->with('success', 'Chương trình khuyến mãi đã được cập nhật.');
         } catch (\Exception $e) {
-            return redirect()->route('promotions.edit', $id)->with('error', 'Có lỗi xảy ra: ' . $e->getMessage())->withInput();
+            return redirect()->route('promotions.edit', $id)->with('error', \App\Support\FriendlyError::message($e))->withInput();
         }
+    }
+
+    /**
+     * Dữ liệu gửi lên sau khi đã validate.
+     *
+     * Checkbox không được tích không gửi field nào, nên phải tự chuẩn hoá
+     * `conditions` để người dùng bỏ được điều kiện "chỉ đơn đầu tiên"
+     * thay vì điều kiện cũ bị giữ lại mãi.
+     */
+    private function payload(PromotionRequest $request): array
+    {
+        $data = $request->validated();
+
+        $data['conditions'] = $request->boolean('conditions.' . Promotion::CONDITION_FIRST_ORDER_ONLY)
+            ? [Promotion::CONDITION_FIRST_ORDER_ONLY => true]
+            : [];
+
+        return $data;
     }
 
     public function destroy(int $id)
@@ -96,7 +118,7 @@ class PromotionController extends Controller
 
             return redirect()->route('promotions.index')->with('success', 'Chương trình khuyến mãi đã được xóa.');
         } catch (\Exception $e) {
-            return redirect()->route('promotions.index')->with('error', 'Có lỗi xảy ra: ' . $e->getMessage());
+            return redirect()->route('promotions.index')->with('error', \App\Support\FriendlyError::message($e));
         }
     }
 }

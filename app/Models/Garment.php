@@ -5,6 +5,8 @@ namespace App\Models;
 use App\Enums\RecordStatus;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Garment extends Model
@@ -13,6 +15,7 @@ class Garment extends Model
 
     protected $fillable = [
         'name',
+        'garment_category_id',
         'category',
         'price',
         'condition_note',
@@ -26,7 +29,12 @@ class Garment extends Model
         'deleted_at' => 'datetime',
     ];
 
-    public function conditions()
+    public function category(): BelongsTo
+    {
+        return $this->belongsTo(GarmentCategory::class, 'garment_category_id');
+    }
+
+    public function conditions(): HasMany
     {
         return $this->hasMany(GarmentCondition::class);
     }
@@ -42,6 +50,32 @@ class Garment extends Model
     }
 
     /**
+     * Tên danh mục dùng để hiển thị.
+     *
+     * Bảng `garments` vừa có cột legacy `category` (string) vừa có quan hệ
+     * `category()` trỏ tới `garment_category_id`. Vì thuộc tính `category`
+     * luôn thắng quan hệ khi truy cập dạng `$garment->category`, ta đọc trực
+     * tiếp quan hệ đã eager-load và fallback về cột legacy.
+     */
+    public function categoryName(): string
+    {
+        $related = $this->relations['category'] ?? null;
+
+        if ($related instanceof GarmentCategory) {
+            return (string) $related->name;
+        }
+
+        $legacy = $this->attributes['category'] ?? null;
+
+        return is_scalar($legacy) ? (string) $legacy : '';
+    }
+
+    public function getCategoryNameAttribute(): string
+    {
+        return $this->categoryName();
+    }
+
+    /**
      * Icon đại diện cho loại đồ giặt, dùng chung cho view index và show.
      *
      * Không khai báo hàm trong Blade để tránh lỗi "Cannot redeclare function"
@@ -50,15 +84,15 @@ class Garment extends Model
     public function icon(): string
     {
         $name = mb_strtolower($this->name ?? '');
-        $cat = mb_strtolower($this->category ?? '');
+        $catName = mb_strtolower($this->categoryName());
 
-        if (str_contains($name, 'dài') || str_contains($name, 'váy') || str_contains($name, 'đầm') || str_contains($cat, 'truyền thống')) {
+        if (str_contains($name, 'dài') || str_contains($name, 'váy') || str_contains($name, 'đầm') || str_contains($catName, 'truyền thống')) {
             return 'fa-solid fa-person-dress';
         }
         if (str_contains($name, 'khoác') || str_contains($name, 'blazer') || str_contains($name, 'suit') || str_contains($name, 'vest')) {
             return 'fa-solid fa-user-tie';
         }
-        if (str_contains($name, 'quần') || str_contains($cat, 'công sở')) {
+        if (str_contains($name, 'quần') || str_contains($catName, 'công sở')) {
             return 'fa-solid fa-scissors';
         }
         if (str_contains($name, 'chăn') || str_contains($name, 'mền') || str_contains($name, 'ga') || str_contains($name, 'gối')) {

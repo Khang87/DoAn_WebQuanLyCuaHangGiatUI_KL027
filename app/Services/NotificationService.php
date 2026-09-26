@@ -31,7 +31,17 @@ class NotificationService
             });
         }
 
-        return $query->with('user', 'order')->withTrashed()->latest()->paginate(20);
+        if (!empty($filters['read'])) {
+            $filters['read'] === 'unread'
+                ? $query->whereNull('read_at')
+                : $query->whereNotNull('read_at');
+        }
+
+        return $query->with('user', 'order')
+            // Thông báo chưa đọc luôn được ưu tiên đẩy lên trên, đã đọc nằm sau
+            ->orderByRaw('CASE WHEN read_at IS NULL THEN 0 ELSE 1 END')
+            ->orderByDesc('created_at')
+            ->paginate(10);
     }
 
     public function find(int $id): ?Notification

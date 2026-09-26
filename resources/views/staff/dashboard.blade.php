@@ -17,14 +17,14 @@
     ];
 
     $statusBadgeMap = [
-        'pending'    => 'bg-warning-subtle text-warning-emphasis border-warning',
-        'received'   => 'bg-info-subtle text-info border-info',
-        'sorting'    => 'bg-primary-subtle text-primary border-primary',
-        'processing' => 'bg-info-subtle text-info border-info',
-        'washed'     => 'bg-success-subtle text-success border-success',
-        'delivering' => 'bg-primary-subtle text-primary border-primary',
-        'completed'  => 'bg-success-subtle text-success border-success',
-        'cancelled'  => 'bg-danger-subtle text-danger border-danger',
+        'pending'    => 'bg-warning-subtle text-warning-emphasis border border-warning',
+        'received'   => 'bg-primary-subtle text-primary-emphasis border border-primary',
+        'sorting'    => 'bg-purple-subtle text-purple-emphasis border border-purple',
+        'processing' => 'bg-primary-subtle text-primary-emphasis border border-primary-subtle fw-semibold',
+        'washed'     => 'bg-teal-subtle text-teal-emphasis border border-teal',
+        'delivering' => 'bg-indigo-subtle text-indigo-emphasis border border-indigo',
+        'completed'  => 'bg-success-subtle text-success-emphasis border border-success',
+        'cancelled'  => 'bg-danger-subtle text-danger-emphasis border border-danger',
     ];
 @endphp
 
@@ -97,8 +97,8 @@
                 </div>
                 <div class="mt-3">
                     <small class="text-muted">
-                        <span class="badge bg-info-subtle text-info border border-info rounded-pill">{{ $pickupCount }} Nhận</span>
-                        <span class="badge bg-primary-subtle text-primary border border-primary rounded-pill">{{ $deliveryCount }} Giao</span>
+                        <span class="badge bg-primary-subtle text-primary-emphasis border border-primary rounded-pill">{{ $pickupCount }} Nhận</span>
+                        <span class="badge bg-primary-subtle text-primary-emphasis border border-primary rounded-pill">{{ $deliveryCount }} Giao</span>
                     </small>
                 </div>
             </div>
@@ -119,7 +119,7 @@
                     <table class="table table-hover mb-0">
                         <thead>
                             <tr>
-                                <th>Mã Đơn</th>
+                                <th>Mã đơn</th>
                                 <th>Khách hàng</th>
                                 <th>SĐT</th>
                                 <th>Trạng thái hiện Tại</th>
@@ -202,17 +202,13 @@
                                             'giao_do' => 'Giao đồ',
                                             default => 'Giao đồ',
                                         };
-                                        $typeBadge = $delivery->method === 'giao_do'
-                                            ? 'bg-primary-subtle text-primary border-primary'
-                                            : 'bg-info-subtle text-info border-info';
+                                        $typeBadge = 'bg-primary-subtle text-primary-emphasis border border-primary';
                                     @endphp
                                     <span class="badge {{ $typeBadge }} px-2 py-1 rounded-pill">{{ $typeLabel }}</span>
                                 </td>
                                 <td>{{ $delivery->pickup_time?->format('H:i') ?: '-' }}</td>
                                 <td>
-                                    <span class="badge {{ $delivery->status_badge_class }} px-2 py-1 rounded-pill">
-                                        {{ $delivery->status_label }}
-                                    </span>
+                                    <x-admin.status-badge :status="$delivery->status" :enum="\App\Enums\DeliveryStatus::class" size="px-2 py-1" />
                                 </td>
                             </tr>
                             @empty
@@ -255,9 +251,7 @@
                                 </td>
                                 <td>{{ $booking->method_label }}</td>
                                 <td>
-                                    <span class="badge {{ $booking->status_badge_class }} px-2 py-1 rounded-pill">
-                                        {{ $booking->status_label }}
-                                    </span>
+                                    <x-admin.status-badge :status="$booking->status" :enum="\App\Enums\BookingStatus::class" size="px-2 py-1" />
                                 </td>
                             </tr>
                             @empty

@@ -1,0 +1,27 @@
+<?php
+
+return [
+
+    /*
+    |--------------------------------------------------------------------------
+    | Pagination Language Lines
+    |--------------------------------------------------------------------------
+    |
+    | The following language lines are used by the paginator library to build
+    | the simple pagination links. You are free to change them to anything
+    | you want to customize your views to better match your application.
+    |
+    */
+
+    'previous' => '&laquo; Trước',
+    'next' => 'Sau &raquo;',
+    'showing' => 'Đang hiển thị',
+    'to' => 'đến',
+    'of' => 'của',
+    'results' => 'kết quả',
+    'showing_first' => 'Đang hiển thị',
+    'showing_last' => 'đến',
+    'of_total' => 'của tổng cộng',
+    'results_total' => 'kết quả',
+
+];

@@ -19,7 +19,7 @@
                 <div class="col-md-6">
                     <label class="form-label">Đơn hàng</label>
                     <select class="form-select" name="order_id">
-                        <option value="">Chọn đơn hàng</option>
+                        <option value="">-- Chọn đơn hàng --</option>
                         @foreach($orders as $order)
                         <option value="{{ $order->id }}" {{ $preselectedOrder && $preselectedOrder->id == $order->id ? 'selected' : '' }}>
                             {{ $order->code }} - {{ $order->customer?->name }}
@@ -30,7 +30,7 @@
                 <div class="col-md-6">
                     <label class="form-label">Hóa đơn (tự động lấy từ đơn hàng)</label>
                     <select class="form-select" name="invoice_id">
-                        <option value="">Chọn hóa đơn (tùy chọn)</option>
+                        <option value="">-- Chọn hóa đơn (tùy chọn) --</option>
                         @foreach($invoices as $inv)
                         <option value="{{ $inv->id }}" {{ $preselectedInvoice && $preselectedInvoice->id == $inv->id ? 'selected' : '' }}>
                             {{ $inv->code }} - {{ $inv->order?->customer?->name }}
@@ -54,13 +54,13 @@
                 </div>
                 <div class="col-md-6">
                     <label class="form-label">Trạng thái <span class="text-danger ms-1">*</span></label>
-                    <select class="form-select" name="status" required>
-                        <option value="paid">Đã thanh toán</option>
-                        <option value="partial">Một phần</option>
-                        <option value="pending">Chờ thanh toán</option>
-                        <option value="failed">Thất bại</option>
-                        <option value="refunded">Đã hoàn tiền</option>
-                    </select>
+                    <x-admin.status-select
+                        name="status"
+                        :options="\App\Enums\PaymentStatus::options()"
+                        selected="paid"
+                        class="form-select @error('status') is-invalid @enderror"
+                        required
+                    />
                 </div>
                 <div class="col-md-6">
                     <label class="form-label">Ngày thanh toán</label>

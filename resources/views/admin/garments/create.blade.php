@@ -26,14 +26,10 @@
                 <div class="col-md-6">
                     <label class="form-label fw-semibold">Danh mục loại đồ</label>
                     <select class="form-select @error('category') is-invalid @enderror" name="category">
-                        <option value="">Chọn danh mục</option>
-                        <option value="áo dài" @selected(old('category') === 'áo dài')>Áo dài</option>
-                        <option value="váy cưới" @selected(old('category') === 'váy cưới')>Váy cưới</option>
-                        <option value="áo khoác" @selected(old('category') === 'áo khoác')>Áo khoác</option>
-                        <option value="quần âu" @selected(old('category') === 'quần âu')>Quần âu</option>
-                        <option value="đồ thường" @selected(old('category') === 'đồ thường')>Đồ thường</option>
-                        <option value="chăn mền" @selected(old('category') === 'chăn mền')>Chăn mền</option>
-                        <option value="giày dép" @selected(old('category') === 'giày dép')>Giày dép</option>
+                        <option value="">-- Chọn danh mục --</option>
+                        @foreach($categories as $id => $name)
+                            <option value="{{ $id }}" @selected(old('category') == $id)>{{ $name }}</option>
+                        @endforeach
                     </select>
                     @error('category')
                         <div class="invalid-feedback">{{ $message }}</div>
@@ -48,10 +44,12 @@
                 </div>
                 <div class="col-md-6">
                     <label class="form-label fw-semibold">Trạng thái</label>
-                    <select class="form-select @error('status') is-invalid @enderror" name="status">
-                        <option value="active" @selected(old('status', 'active') === 'active')>Đang hoạt động</option>
-                        <option value="inactive" @selected(old('status') === 'inactive')>Tạm ngưng</option>
-                    </select>
+                    <x-admin.status-select
+                        name="status"
+                        :options="\App\Enums\RecordStatus::options()"
+                        selected="active"
+                        class="form-select @error('status') is-invalid @enderror"
+                    />
                     @error('status')
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror

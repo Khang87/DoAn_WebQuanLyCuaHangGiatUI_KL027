@@ -15,7 +15,7 @@ class PaymentSeeder extends Seeder
     {
         $orders = Order::where('status', 'completed')->get();
         $methods = ['cash', 'bank_transfer', 'momo', 'credit_card', 'e_wallet'];
-        $statuses = ['paid', 'paid', 'paid', 'paid', 'partial', 'pending', 'failed', 'refunded'];
+        $statuses = ['paid', 'paid', 'paid', 'paid', 'pending', 'failed', 'refunded'];
 
         foreach ($orders as $order) {
             $paymentStatus = $statuses[array_rand($statuses)];

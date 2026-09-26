@@ -31,18 +31,20 @@
                     @enderror
                 </div>
                 <div class="col-md-6">
-                    <label class="form-label">Icon</label>
-                    <input type="text" class="form-control @error('icon') is-invalid @enderror" name="icon" value="{{ old('icon') }}" placeholder="vd: fa-solid fa-briefcase">
-                    @error('icon')
-                        <div class="invalid-feedback">{{ $message }}</div>
-                    @enderror
+                    <x-admin.icon-picker
+                        name="icon"
+                        label="Icon"
+                        :default="'fa-solid fa-briefcase'"
+                    />
                 </div>
                 <div class="col-md-6">
                     <label class="form-label">Trạng thái</label>
-                    <select class="form-select @error('status') is-invalid @enderror" name="status">
-                        <option value="active" {{ old('status', 'active') === 'active' ? 'selected' : '' }}>Hoạt động</option>
-                        <option value="inactive" {{ old('status') === 'inactive' ? 'selected' : '' }}>Tắt</option>
-                    </select>
+                    <x-admin.status-select
+                        name="status"
+                        :options="\App\Enums\RecordStatus::options()"
+                        selected="active"
+                        class="form-select @error('status') is-invalid @enderror"
+                    />
                     @error('status')
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror

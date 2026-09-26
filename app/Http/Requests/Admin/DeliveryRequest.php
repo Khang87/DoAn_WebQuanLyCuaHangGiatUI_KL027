@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Admin;
 
+use App\Enums\DeliveryStatus;
 use Illuminate\Foundation\Http\FormRequest;
 
 class DeliveryRequest extends FormRequest
@@ -23,7 +24,7 @@ class DeliveryRequest extends FormRequest
             'address' => ['nullable', 'string', 'max:500'],
             'pickup_date' => ['required', 'date'],
             'pickup_time' => ['required', 'date_format:H:i'],
-            'status' => ['nullable', 'in:pending,picking,delivering,completed,cancelled'],
+            'status' => ['nullable', 'in:'.implode(',', DeliveryStatus::values())],
             'notes' => ['nullable', 'string', 'max:1000'],
         ];
     }
@@ -31,19 +32,19 @@ class DeliveryRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'customer_id.required' => 'Khách hàng là bắt buộc.',
-            'customer_id.exists' => 'Khách hàng không tồn tại.',
-            'order_id.required' => 'Đơn hàng là bắt buộc để tạo giao nhận.',
-            'order_id.exists' => 'Đơn hàng không tồn tại.',
-            'employee_id.exists' => 'Nhân viên không tồn tại.',
-            'method.required' => 'Phương thức giao nhận là bắt buộc.',
-            'method.in' => 'Phương thức không hợp lệ. Chỉ chấp nhận: nhan_do, giao_do.',
-            'pickup_date.required' => 'Ngày lấy hàng là bắt buộc.',
-            'pickup_time.required' => 'Giờ lấy hàng là bắt buộc.',
-            'pickup_time.date_format' => 'Định dạng giờ: HH:MM.',
-            'status.in' => 'Trạng thái không hợp lệ.',
-            'address.max' => 'Không quá 500 ký tự.',
-            'notes.max' => 'Không quá 1000 ký tự.',
+            'customer_id.required' => 'KhÃ¡ch hÃ ng lÃ  báº¯t buá»™c.',
+            'customer_id.exists' => 'KhÃ¡ch hÃ ng khÃ´ng tá»“n táº¡i.',
+            'order_id.required' => 'ÄÆ¡n hÃ ng lÃ  báº¯t buá»™c Ä‘á»ƒ táº¡o giao nháº­n.',
+            'order_id.exists' => 'ÄÆ¡n hÃ ng khÃ´ng tá»“n táº¡i.',
+            'employee_id.exists' => 'NhÃ¢n viÃªn khÃ´ng tá»“n táº¡i.',
+            'method.required' => 'PhÆ°Æ¡ng thá»©c giao nháº­n lÃ  báº¯t buá»™c.',
+            'method.in' => 'PhÆ°Æ¡ng thá»©c khÃ´ng há»£p lá»‡. Chá»‰ cháº¥p nháº­n: nhan_do, giao_do.',
+            'pickup_date.required' => 'NgÃ y láº¥y hÃ ng lÃ  báº¯t buá»™c.',
+            'pickup_time.required' => 'Giá» láº¥y hÃ ng lÃ  báº¯t buá»™c.',
+            'pickup_time.date_format' => 'Äá»‹nh dáº¡ng giá»: HH:MM.',
+            'status.in' => 'Tráº¡ng thÃ¡i khÃ´ng há»£p lá»‡.',
+            'address.max' => 'KhÃ´ng quÃ¡ 500 kÃ½ tá»±.',
+            'notes.max' => 'KhÃ´ng quÃ¡ 1000 kÃ½ tá»±.',
         ];
     }
 }

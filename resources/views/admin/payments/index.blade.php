@@ -3,38 +3,50 @@
 @section('page-title', 'Thanh toán')
 
 @section('content')
-<div class="order-toolbar d-flex justify-content-between align-items-center mb-3">
-    <p class="text-muted mb-0">Theo dõi các khoản thu của đơn hàng.</p>
-    <a href="{{ route('payments.create') }}" class="btn btn-primary">
-        <i class="bi bi-plus-lg me-2"></i>Ghi nhận thanh toán
+<!-- Page Actions: nút "Thêm" luôn nằm góc trên bên trái -->
+<div class="page-toolbar">
+    <a href="{{ route('payments.create') }}" class="btn btn-create">
+        <i class="bi bi-plus-lg"></i>Thêm thanh toán
     </a>
+    <p class="text-muted page-toolbar__desc">Theo dõi các khoản thu của đơn hàng.</p>
 </div>
 
 <form action="{{ url()->current() }}" method="GET" class="row g-3 align-items-center mb-4">
-    <div class="col-12 col-md-5">
-        <div class="input-group shadow-sm rounded-3 overflow-hidden">
+    <div class="col-12 col-md-auto flex-grow-1">
+        <div class="input-group input-group-sm shadow-sm rounded-3 overflow-hidden">
             <span class="input-group-text bg-white border-end-0 ps-3">
                 <i class="fas fa-search text-muted"></i>
             </span>
-            <input type="text" name="search" class="form-control border-start-0 py-2 ps-2" placeholder="Tìm theo ID, mã thanh toán, mã hóa đơn, tên khách..." value="{{ request('search') }}">
+            <input type="text" name="search" class="form-control form-control-sm border-start-0 ps-2" placeholder="Tìm theo ID, mã thanh toán, tên khách..." value="{{ request('search') }}">
         </div>
     </div>
-    <div class="col-12 col-md-2">
-        <select name="method" class="form-select shadow-sm rounded-3 py-2" style="min-width: 220px;" onchange="this.form.submit()">
+    <div class="col-12 col-sm-6 col-md-auto">
+        <select name="method" class="form-select form-select-sm filter-select shadow-sm rounded-3" onchange="this.form.submit()">
             <option value="">-- Tất cả phương thức --</option>
             @foreach($methods as $value => $label)
                 <option value="{{ $value }}" @selected(request('method') === $value)>{{ $label }}</option>
             @endforeach
         </select>
     </div>
-    <div class="col-12 col-md-2">
-        <select name="status" class="form-select shadow-sm rounded-3 py-2" style="min-width: 200px;" onchange="this.form.submit()">
-            <option value="">-- Tất cả trạng thái --</option>
-            <option value="paid" @selected(request('status') === 'paid')>Đã thanh toán</option>
-            <option value="partial" @selected(request('status') === 'partial')>Một phần</option>
-            <option value="pending" @selected(request('status') === 'pending')>Chờ thanh toán</option>
-            <option value="failed" @selected(request('status') === 'failed')>Thất bại</option>
-            <option value="refunded" @selected(request('status') === 'refunded')>Đã hoàn tiền</option>
+    <div class="col-12 col-sm-6 col-md-auto">
+        <x-admin.status-select
+            name="status"
+            id="filter-status"
+            :options="\App\Enums\PaymentStatus::options()"
+            placeholder="-- Tất cả trạng thái --"
+            class="form-select form-select-sm filter-select shadow-sm rounded-3"
+            submit
+        />
+    </div>
+    <div class="col-12 col-sm-6 col-md-auto">
+        <select name="sort" class="form-select form-select-sm filter-select shadow-sm rounded-3" onchange="this.form.submit()">
+            <option value="">-- Tất cả cách sắp xếp --</option>
+            <option value="created_at_desc" @selected(request('sort') === 'created_at_desc')>Mới nhất</option>
+            <option value="created_at_asc" @selected(request('sort') === 'created_at_asc')>Cũ nhất</option>
+            <option value="amount_desc" @selected(request('sort') === 'amount_desc')>Số tiền cao nhất</option>
+            <option value="amount_asc" @selected(request('sort') === 'amount_asc')>Số tiền thấp nhất</option>
+            <option value="id_desc" @selected(request('sort') === 'id_desc')>Mã giảm dần</option>
+            <option value="id_asc" @selected(request('sort') === 'id_asc')>Mã tăng dần</option>
         </select>
     </div>
 </form>
@@ -46,44 +58,25 @@
             <table class="table-custom mb-0">
                 <thead>
                     <tr>
-                        @php
-                            $currentSortBy = request('sort_by');
-                            $currentSortOrder = request('sort_order', 'desc');
-                            $nextOrderId = ($currentSortBy === 'id' && $currentSortOrder === 'asc') ? 'desc' : 'asc';
-                            $nextOrderAmount = ($currentSortBy === 'amount' && $currentSortOrder === 'asc') ? 'desc' : 'asc';
-                        @endphp
-                        <th>
-                            <a href="{{ request()->fullUrlWithQuery(['sort_by' => 'id', 'sort_order' => $nextOrderId]) }}" class="text-dark text-decoration-none">
-                                Mã thanh toán
-                                @if($currentSortBy === 'id') @if($currentSortOrder === 'asc') <i class="bi bi-sort-up"></i> @else <i class="bi bi-sort-down"></i> @endif @endif
-                            </a>
-                        </th>
-                        <th>Mã đơn</th>
-                        <th>Mã hóa đơn</th>
-                        <th>Khách hàng</th>
-                        <th>
-                            <a href="{{ request()->fullUrlWithQuery(['sort_by' => 'amount', 'sort_order' => $nextOrderAmount]) }}" class="text-dark text-decoration-none">
-                                Số tiền
-                                @if($currentSortBy === 'amount') @if($currentSortOrder === 'asc') <i class="bi bi-sort-up"></i> @else <i class="bi bi-sort-down"></i> @endif @endif
-                            </a>
-                        </th>
-                        <th>Phương thức</th>
-                        <th>Trạng thái</th>
-                        <th>Ngày thanh toán</th>
-                        <th>Thao tác</th>
+                        <th class="fw-semibold text-dark">Mã thanh toán</th>
+                        <th class="fw-semibold text-dark">Mã đơn hàng</th>
+                        <th class="fw-semibold text-dark">Khách hàng</th>
+                        <th class="fw-semibold text-dark">Số tiền</th>
+                        <th class="fw-semibold text-dark">Phương thức</th>
+                        <th class="fw-semibold text-dark">Trạng thái</th>
+                        <th class="fw-semibold text-dark">Ngày thanh toán</th>
+                        <th class="fw-semibold text-dark">Thao tác</th>
                     </tr>
                 </thead>
                 <tbody>
                     @forelse($payments as $payment)
                     <tr>
                         <td><strong>TT{{ $payment->id }}</strong></td>
-                        <td><a href="{{ route('orders.show', $payment->order_id) }}">{{ $payment->order?->code ?: $payment->order_id }}</a></td>
-                        <td>{{ $payment->invoice?->code ?: '-' }}</td>
+                        <td><span class="text-dark">{{ $payment->order?->code ?: $payment->order_id }}</span></td>
                         <td>
                             <div class="d-flex align-items-center">
                                 @php
-                                    $avatarId = $payment->order?->customer?->id ?? ($payment->order?->id ?? $payment->id);
-                                    $avatarUrl = 'assets/images/user_' . (($avatarId % 8) + 1) . '.jpg';
+                                    $avatarUrl = $payment->order?->customer?->avatar_url ?? asset('assets/images/user_1.jpg');
                                 @endphp
                                 <img src="{{ asset($avatarUrl) }}" alt="Ảnh khách hàng" class="rounded-circle me-2 avatar-cover" style="width: 40px; height: 40px;">
                                 <div>
@@ -97,25 +90,31 @@
                             <i class="bi {{ $payment->getMethodIcon() }} me-1"></i>{{ $payment->getMethodLabel() }}
                         </td>
                         <td>
-                            <span class="badge {{ $payment->getStatusBadgeClass() }} px-3 py-2 rounded-pill">
-                                <i class="fas fa-{{ $payment->status === 'paid' ? 'check-circle' : ($payment->status === 'partial' ? 'clock' : ($payment->status === 'failed' ? 'times-circle' : ($payment->status === 'refunded' ? 'undo' : 'hourglass'))) }} me-1"></i>{{ $payment->getStatusLabel() }}
-                            </span>
+                            <x-admin.status-badge :status="$payment->status" :enum="\App\Enums\PaymentStatus::class" />
                         </td>
                         <td>{{ $payment->paid_at?->format('d/m/Y H:i') ?? $payment->created_at?->format('d/m/Y H:i') }}</td>
                         <td>
                             <div class="d-flex gap-2">
                                 <a href="{{ route('payments.show', $payment) }}" class="btn btn-order-action view" title="Xem"><i class="bi bi-eye"></i></a>
-                                <a href="{{ route('payments.edit', $payment) }}" class="btn btn-order-action edit" title="Sửa"><i class="bi bi-pencil"></i></a>
-                                <form action="{{ route('payments.destroy', $payment) }}" method="POST" class="d-inline" id="deletePaymentForm_{{ $payment->id }}">
-                                    @csrf @method('DELETE')
-                                    <button type="submit" class="btn btn-order-action delete" title="Xóa"><i class="bi bi-trash"></i></button>
-                                </form>
+                                @if($payment->can_edit)
+                                    <a href="{{ route('payments.edit', $payment) }}" class="btn btn-order-action edit" title="Sửa"><i class="bi bi-pencil"></i></a>
+                                @endif
+                                @if($payment->can_delete)
+                                    <form action="{{ route('payments.destroy', $payment) }}" method="POST" class="d-inline" id="deletePaymentForm_{{ $payment->id }}">
+                                        @csrf @method('DELETE')
+                                        <button type="submit" class="btn btn-order-action delete" title="Xóa"><i class="bi bi-trash"></i></button>
+                                    </form>
+                                @else
+                                    <span class="badge bg-success-subtle text-success-emphasis border border-success px-3 py-2 rounded-pill" title="Đã thanh toán nên không thể sửa hoặc xóa">
+                                        <i class="bi bi-lock me-1"></i>Đã thanh toán
+                                    </span>
+                                @endif
                             </div>
                         </td>
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="9" class="text-center text-muted py-4">Chưa có dữ liệu nào</td>
+                        <td colspan="8" class="text-center text-muted py-4">Chưa có dữ liệu nào</td>
                     </tr>
                     @endempty
                 </tbody>

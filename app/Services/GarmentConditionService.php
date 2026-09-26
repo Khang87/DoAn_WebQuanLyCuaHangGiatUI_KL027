@@ -23,7 +23,7 @@ class GarmentConditionService
             $query->where('status', $filters['status']);
         }
 
-        return $query->with('garment')->withTrashed()->latest()->paginate(20);
+        return $query->with('garment')->latest()->paginate(10);
     }
 
     public function find(int $id): ?GarmentCondition

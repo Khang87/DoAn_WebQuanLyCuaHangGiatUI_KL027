@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Admin;
 
+use App\Enums\RecordStatus;
 use Illuminate\Foundation\Http\FormRequest;
 
 class GarmentRequest extends FormRequest
@@ -20,22 +21,22 @@ class GarmentRequest extends FormRequest
             'category' => ['nullable', 'string', 'max:255'],
             'price' => ['required', 'numeric', 'min:0'],
             'condition_note' => ['nullable', 'string', 'max:1000'],
-            'status' => ['required', 'in:active,inactive'],
+            'status' => ['required', 'in:'.implode(',', RecordStatus::values())],
         ];
     }
 
     public function messages(): array
     {
         return [
-            'name.required' => 'Tên loại đồ giặt là bắt buộc.',
-            'name.unique' => 'Tên đã tồn tại.',
-            'price.required' => 'Giá là bắt buộc.',
-            'price.numeric' => 'Giá phải là số.',
-            'price.min' => 'Giá không được nhỏ hơn 0.',
-            'category.max' => 'Không quá 255 ký tự.',
-            'condition_note.max' => 'Không quá 1000 ký tự.',
-            'status.required' => 'Trạng thái bắt buộc.',
-            'status.in' => 'Trạng thái không hợp lệ.',
+            'name.required' => 'TÃªn loáº¡i Ä‘á»“ giáº·t lÃ  báº¯t buá»™c.',
+            'name.unique' => 'TÃªn Ä‘Ã£ tá»“n táº¡i.',
+            'price.required' => 'GiÃ¡ lÃ  báº¯t buá»™c.',
+            'price.numeric' => 'GiÃ¡ pháº£i lÃ  sá»‘.',
+            'price.min' => 'GiÃ¡ khÃ´ng Ä‘Æ°á»£c nhá» hÆ¡n 0.',
+            'category.max' => 'KhÃ´ng quÃ¡ 255 kÃ½ tá»±.',
+            'condition_note.max' => 'KhÃ´ng quÃ¡ 1000 kÃ½ tá»±.',
+            'status.required' => 'Tráº¡ng thÃ¡i báº¯t buá»™c.',
+            'status.in' => 'Tráº¡ng thÃ¡i khÃ´ng há»£p lá»‡.',
         ];
     }
 }

@@ -44,7 +44,7 @@ class InvoiceControllerTest extends TestCase
     {
         $user = User::factory()->admin()->create();
 
-        Order::factory()->create(['code' => 'DH001']);
+        Order::factory()->create(['code' => 'DH-INV-001']);
         $invoice = Invoice::factory()->create(['code' => 'HD001', 'status' => 'unpaid']);
 
         $response = $this->actingAs($user)->get(route('invoices.export', ['status' => 'unpaid']));
@@ -53,3 +53,4 @@ class InvoiceControllerTest extends TestCase
         $response->assertHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     }
 }
+

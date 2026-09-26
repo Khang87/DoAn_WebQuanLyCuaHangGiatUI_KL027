@@ -19,7 +19,7 @@
                 <div class="col-md-6">
                     <label class="form-label">Đơn hàng <span class="text-danger ms-1">*</span></label>
                     <select class="form-select" name="order_id" required>
-                        <option value="">Chọn đơn hàng</option>
+                        <option value="">-- Chọn đơn hàng --</option>
                         @foreach($orders as $order)
                         <option value="{{ $order->id }}" {{ $preselectedOrder && $preselectedOrder->id == $order->id ? 'selected' : '' }}>
                             {{ $order->code }} - {{ $order->customer?->name }}

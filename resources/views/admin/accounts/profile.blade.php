@@ -25,20 +25,26 @@
             </div>
         @endif
 
-        @php
-            $avatarUrl = (!empty($account->avatar) && file_exists(public_path($account->avatar)))
-                ? asset($account->avatar)
-                : asset('assets/images/user_' . (($account->id % 8) + 1) . '.jpg');
-        @endphp
-        <div class="d-flex justify-content-center mb-4 position-relative">
-            <img id="avatarPreview" src="{{ $avatarUrl }}" alt="Avatar" class="rounded-circle shadow-sm avatar-cover" style="width: 180px; height: 180px; border: 4px solid #e9ecef;">
-            <label for="avatarInput" class="btn btn-sm btn-outline-primary position-absolute bottom-0 end-0 m-2" style="border-radius: 50%; width: 40px; height: 40px; padding: 0; display: flex; align-items: center; justify-content: center;" title="Đổi avatar">
-                <i class="bi bi-camera"></i>
-            </label>
+@php
+    $avatarUrl = (!empty($account->avatar) && file_exists(public_path($account->avatar)))
+        ? asset($account->avatar)
+        : asset('assets/images/user_' . (($account->id % 8) + 1) . '.jpg');
+@endphp
+        <div class="d-flex justify-content-center mb-4">
+            <div class="position-relative d-inline-block">
+                <label for="avatarInput" class="d-block" style="cursor: pointer;">
+                    <img id="avatarPreview" src="{{ $avatarUrl }}" alt="Avatar" class="rounded-circle shadow-sm avatar-cover" style="width: 180px; height: 180px; border: 4px solid #e9ecef;">
+                </label>
+                <span class="position-absolute bottom-0 end-0 translate-middle badge rounded-circle bg-primary border-2 border-white" style="width: 34px; height: 34px; display: flex; align-items: center; justify-content: center;">
+                    <i class="bi bi-camera" style="font-size: 14px;"></i>
+                </span>
+            </div>
         </div>
 
         <form action="{{ route('profile.update') }}" method="POST" enctype="multipart/form-data">
             @csrf @method('PUT')
+            <input type="file" name="avatar" id="avatarInput" accept="image/*" class="d-none">
+            <input type="hidden" name="remove_avatar" id="removeAvatarFlag" value="0">
             <div class="row g-4">
                 <div class="col-md-6">
                     <label class="form-label">Họ và tên <span class="text-danger ms-1">*</span></label>
@@ -53,18 +59,6 @@
                     @error('email')
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
-                </div>
-                <div class="col-md-6">
-                    <label class="form-label">Avatar</label>
-                    <input type="file" class="form-control @error('avatar') is-invalid @enderror" name="avatar" id="avatarInput" accept="image/*">
-                    @error('avatar')
-                        <div class="invalid-feedback">{{ $message }}</div>
-                    @enderror
-                    <div class="form-text">Chấp nhận JPG, PNG, GIF. Tối đa 2MB.</div>
-                    <input type="hidden" name="remove_avatar" id="removeAvatarFlag" value="0">
-                    <button type="button" class="btn btn-sm btn-outline-danger mt-2" id="removeAvatarBtn" style="display: none;">
-                        <i class="bi bi-trash me-1"></i>Xóa avatar
-                    </button>
                 </div>
                 <div class="col-md-6">
                     <label class="form-label">Số điện thoại</label>
@@ -133,10 +127,8 @@
     document.addEventListener('DOMContentLoaded', function() {
         const avatarInput = document.getElementById('avatarInput');
         const avatarPreview = document.getElementById('avatarPreview');
-        const removeAvatarBtn = document.getElementById('removeAvatarBtn');
         const removeAvatarFlag = document.getElementById('removeAvatarFlag');
 
-        // Preview avatar on file select
         const notifyError = function (message) {
             if (typeof Swal === 'undefined') {
                 window.alert(message);
@@ -147,33 +139,50 @@
 
         avatarInput.addEventListener('change', function(e) {
             const file = e.target.files[0];
-            if (file) {
-                if (!file.type.match('image.*')) {
-                    notifyError('Vui lòng chọn file hình ảnh.');
-                    this.value = '';
-                    return;
-                }
-                if (file.size > 2 * 1024 * 1024) {
-                    notifyError('Kích thước file không được vượt quá 2MB.');
-                    this.value = '';
-                    return;
-                }
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    avatarPreview.src = e.target.result;
-                };
-                reader.readAsDataURL(file);
-                removeAvatarFlag.value = '0';
-                removeAvatarBtn.style.display = 'inline-block';
-            }
-        });
+            if (!file) return;
 
-        // Remove avatar
-        removeAvatarBtn.addEventListener('click', function() {
-            avatarInput.value = '';
-            avatarPreview.src = avatarPreview.dataset.defaultSrc || '{{ asset("assets/images/user_" . (($account->id % 8) + 1) . ".jpg") }}';
-            removeAvatarFlag.value = '1';
-            removeAvatarBtn.style.display = 'none';
+            if (!file.type.match('image.*')) {
+                notifyError('Vui lòng chọn file hình ảnh.');
+                this.value = '';
+                return;
+            }
+            if (file.size > 2 * 1024 * 1024) {
+                notifyError('Kích thước file không được vượt quá 2MB.');
+                this.value = '';
+                return;
+            }
+
+            // Preview instantly
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                avatarPreview.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+            removeAvatarFlag.value = '0';
+
+            // Upload via AJAX
+            const formData = new FormData();
+            formData.append('avatar', file);
+            formData.append('_token', '{{ csrf_token() }}');
+
+            fetch('{{ route('profile.avatar') }}', {
+                method: 'POST',
+                body: formData,
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    // Sync header (navbar) and sidebar avatar images
+                    document.querySelectorAll('.sidebar-profile-img, .avatar-cover').forEach(function(img) {
+                        img.src = data.avatar_url;
+                    });
+                } else {
+                    notifyError(data.message || 'Tải ảnh lên thất bại.');
+                }
+            })
+            .catch(function() {
+                notifyError('Có lỗi xảy ra khi tải ảnh lên.');
+            });
         });
     });
 </script>

@@ -29,6 +29,12 @@
 </head>
 
 <body>
+    @php
+        $authUser = Auth::user();
+        $authAvatarUrl = $authUser ? $authUser->avatar_url : asset('assets/images/user_1.jpg');
+        $authName = $authUser?->name ?? 'Quản lý';
+    @endphp
+
     <!-- Sidebar -->
     <div class="sidebar-wrapper" id="sidebar">
         <!-- Brand Logo -->
@@ -39,9 +45,9 @@
 
         <!-- Navigation Menu -->
         <div class="flex-grow-1 overflow-y-auto">
-            <!-- Menu Chính -->
+            <!-- Menu chính -->
             <div class="sidebar-menu-section">
-                <div class="sidebar-menu-title">Menu Chính</div>
+                <div class="sidebar-menu-title">Menu chính</div>
                 <ul class="sidebar-menu-list">
                     <li class="sidebar-menu-item">
                         <a href="{{ route('dashboard') }}" class="sidebar-menu-link {{ request()->routeIs('dashboard') || request()->routeIs('admin.dashboard') || request()->routeIs('staff.dashboard') ? 'active' : '' }}">
@@ -66,7 +72,7 @@
                     <li class="sidebar-menu-item">
                         <a href="{{ route('orders.index') }}" class="sidebar-menu-link {{ request()->routeIs('orders.*') ? 'active' : '' }}">
                             <i class="bi bi-receipt"></i>
-                            <span>Đơn Hàng</span>
+                            <span>Đơn hàng</span>
                         </a>
                     </li>
                     @endif
@@ -81,6 +87,12 @@
                         <a href="{{ route('services.index') }}" class="sidebar-menu-link {{ request()->routeIs('services.*') ? 'active' : '' }}">
                             <i class="bi bi-briefcase"></i>
                             <span>Dịch vụ</span>
+                        </a>
+                    </li>
+                    <li class="sidebar-menu-item">
+                        <a href="{{ route('laundry-categories.index') }}" class="sidebar-menu-link {{ request()->routeIs('laundry-categories.*') ? 'active' : '' }}">
+                            <i class="bi bi-tags"></i>
+                            <span>Danh mục loại đồ</span>
                         </a>
                     </li>
                     <li class="sidebar-menu-item">
@@ -112,7 +124,7 @@
                     <li class="sidebar-menu-item">
                         <a href="{{ route('reviews.index') }}" class="sidebar-menu-link {{ request()->routeIs('reviews.*') ? 'active' : '' }}">
                             <i class="fas fa-star"></i>
-                            <span>Quản lý Đánh giá</span>
+                            <span>Đánh giá</span>
                         </a>
                     </li>
                     <li class="sidebar-menu-item">
@@ -131,7 +143,7 @@
                     <li class="sidebar-menu-item">
                         <a href="{{ route('invoices.index') }}" class="sidebar-menu-link {{ request()->routeIs('invoices.*') ? 'active' : '' }}">
                             <i class="bi bi-file-earmark-text"></i>
-                            <span>Hóa Đơn</span>
+                              <span>Hóa đơn</span>
                         </a>
                     </li>
                     @endif
@@ -151,8 +163,8 @@
                     </li>
                     <li class="sidebar-menu-item">
                         <a href="{{ route('reports.index') }}" class="sidebar-menu-link {{ request()->routeIs('reports.*') ? 'active' : '' }}">
-                            <i class="bi bi-bar-chart-line"></i>
-                            <span>Báo cáo</span>
+                            <i class="bi bi-graph-up-arrow"></i>
+                            <span>Báo cáo & Thống kê</span>
                         </a>
                     </li>
                 </ul>
@@ -174,6 +186,14 @@
                             <span>Thông báo</span>
                         </a>
                     </li>
+                    @can('roles.manage')
+                    <li class="sidebar-menu-item">
+                        <a href="{{ route('roles.index') }}" class="sidebar-menu-link {{ request()->routeIs('roles.*') ? 'active' : '' }}">
+                            <i class="bi bi-shield-lock"></i>
+                            <span>Quản lý phân quyền</span>
+                        </a>
+                    </li>
+                    @endcan
                 </ul>
             </div>
             @endif
@@ -181,10 +201,10 @@
 
         <!-- Sidebar Profile -->
         <div class="sidebar-profile">
-            <img src="{{ asset('assets/images/avatar.png') }}" alt="User" class="sidebar-profile-img"
-                onerror="this.src='https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=256&auto=format&fit=crop'">
+            <img src="{{ $authAvatarUrl }}" alt="{{ $authName }}" class="sidebar-profile-img"
+                onerror="this.src='{{ asset('assets/images/user_1.jpg') }}'">
             <div class="sidebar-profile-info">
-                <div class="sidebar-profile-name">{{ auth()->user()->name ?? 'Quan ly' }}</div>
+                <div class="sidebar-profile-name">{{ $authName }}</div>
                 <div class="sidebar-profile-email">{{ auth()->user()->email ?? 'quanly@email.com' }}</div>
             </div>
         </div>
@@ -282,23 +302,13 @@
                 @endif
 
                 <!-- User Menu -->
-                @php
-                    $authUser = Auth::user();
-                    $authAvatar = 'assets/images/user_1.jpg';
-                    if ($authUser) {
-                        if (!empty($authUser->avatar) && file_exists(public_path($authUser->avatar))) {
-                            $authAvatar = $authUser->avatar;
-                        } else {
-                            $authAvatar = 'assets/images/user_' . (($authUser->id % 8) + 1) . '.jpg';
-                        }
-                    }
-                @endphp
                 <div class="dropdown">
-                    <button class="navbar-action-btn dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                        <img src="{{ asset($authAvatar) }}" alt="{{ $authUser->name ?? 'User' }}" class="rounded-circle border avatar-cover" style="width: 32px; height: 32px;">
+                    <button class="navbar-action-btn dropdown-toggle user-profile-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" title="{{ $authName }}">
+                        <img src="{{ $authAvatarUrl }}" alt="{{ $authName }}" class="rounded-circle border avatar-cover"
+                            onerror="this.src='{{ asset('assets/images/user_1.jpg') }}'">
                     </button>
                     <ul class="dropdown-menu dropdown-menu-end">
-                        <li><a class="dropdown-item" href="{{ route('profile') }}"><i class="bi bi-person me-2"></i> Hồ Sơ</a></li>
+                        <li><a class="dropdown-item" href="{{ route('profile') }}"><i class="bi bi-person me-2"></i> Hồ sơ</a></li>
                         @if(auth()->user()->isManager())
                         <li><a class="dropdown-item" href="{{ route('settings') }}"><i class="bi bi-gear me-2"></i> Cài đặt</a></li>
                         @endif
@@ -374,6 +384,9 @@
             }
         });
     </script>
+
+    <!-- Service-Category Icon Preview (lightweight, no select replacement) -->
+    <script src="{{ asset('assets/js/select-icon.js') }}"></script>
 
     @stack('scripts')
 </body>

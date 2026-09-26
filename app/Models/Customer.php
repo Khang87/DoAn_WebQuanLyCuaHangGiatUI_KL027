@@ -18,6 +18,7 @@ class Customer extends Model
         'phone',
         'address',
         'points',
+        'avatar',
     ];
 
     protected $casts = [
@@ -27,24 +28,33 @@ class Customer extends Model
         'deleted_at' => 'datetime',
     ];
 
+    /**
+     * Đơn của khách. KHÔNG nạp bản ghi đã xoá mềm để tổng chi tiêu và số đơn
+     * không tính nhầm đơn đã huỷ; dùng ordersWithTrashed() cho màn hình lịch sử.
+     */
     public function orders(): HasMany
     {
         return $this->hasMany(Order::class);
     }
 
+    public function ordersWithTrashed(): HasMany
+    {
+        return $this->hasMany(Order::class)->withTrashed();
+    }
+
     public function deliveries(): HasMany
     {
-        return $this->hasMany(Delivery::class);
+        return $this->hasMany(Delivery::class)->withTrashed();
     }
 
     public function bookings(): HasMany
     {
-        return $this->hasMany(Booking::class);
+        return $this->hasMany(Booking::class)->withTrashed();
     }
 
     public function reviews(): HasMany
     {
-        return $this->hasMany(Review::class);
+        return $this->hasMany(Review::class)->withTrashed();
     }
 
     public function deductPoints(int $points): bool
@@ -59,5 +69,14 @@ class Customer extends Model
     public function addPoints(int $points): void
     {
         $this->increment('points', $points);
+    }
+
+    public function getAvatarUrlAttribute(): string
+    {
+        if (! empty($this->avatar) && file_exists(public_path($this->avatar))) {
+            return asset($this->avatar);
+        }
+
+        return asset('assets/images/user_' . (($this->id % 8) + 1) . '.jpg');
     }
 }

@@ -12,6 +12,15 @@ class Promotion extends Model
 {
     use HasFactory, SoftDeletes;
 
+    /** Khoá điều kiện trong mảng `conditions`: chỉ áp dụng cho đơn đầu tiên của khách. */
+    public const CONDITION_FIRST_ORDER_ONLY = 'first_order_only';
+
+    /** Giảm theo phần trăm. */
+    public const DISCOUNT_PERCENTAGE = 'percentage';
+
+    /** Giảm theo số tiền cố định. */
+    public const DISCOUNT_FIXED = 'fixed';
+
     protected $fillable = [
         'name',
         'code',
@@ -42,12 +51,6 @@ class Promotion extends Model
         'updated_at' => 'datetime',
         'deleted_at' => 'datetime',
     ];
-
-    /**
-     * Khoá điều kiện trong cột JSON `conditions`: voucher chỉ dùng được cho
-     * đơn hàng đầu tiên của khách.
-     */
-    public const CONDITION_FIRST_ORDER_ONLY = 'first_order_only';
 
     public function coupons(): BelongsToMany
     {
@@ -82,14 +85,6 @@ class Promotion extends Model
     }
 
     /**
-     * Voucher có giới hạn chỉ dùng cho đơn hàng đầu tiên của khách không?
-     */
-    public function isFirstOrderOnly(): bool
-    {
-        return (bool) data_get($this->conditions, self::CONDITION_FIRST_ORDER_ONLY, false);
-    }
-
-    /**
      * Điều kiện `conditions` có được bật không (mảng rỗng hoặc null là không).
      */
     public function hasConditions(): bool
@@ -98,11 +93,18 @@ class Promotion extends Model
     }
 
     /**
+     * Voucher chỉ dành cho đơn hàng đầu tiên của khách hàng hay không.
+     */
+    public function isFirstOrderOnly(): bool
+    {
+        return (bool) ($this->conditions[self::CONDITION_FIRST_ORDER_ONLY] ?? false);
+    }
+
+    /**
      * Voucher này có dùng được cho khách đang xét không?
      *
-     *   - first_order_only: khách phải chưa có đơn hàng nào (bỏ qua chính đơn
-     *     đang được sửa nếu có $excludeOrderId).
      *   - min_order_amount: tạm tính của đơn phải đạt ngưỡng tối thiểu.
+     *   - first_order_only: khách chưa có đơn nào trước đơn đang xét.
      *
      * Voucher không khai báo điều kiện nào thì luôn dùng được như trước.
      */
@@ -116,25 +118,29 @@ class Promotion extends Model
      */
     public function rejectionReasonForCustomer(?Customer $customer, float $subtotal, ?int $excludeOrderId = null): ?string
     {
-        if ($this->isFirstOrderOnly()) {
-            if (! $customer) {
-                return 'Voucher chỉ áp dụng cho đơn hàng đầu tiên của khách hàng.';
-            }
-
-            $hasOtherOrders = Order::where('customer_id', $customer->id)
-                ->when($excludeOrderId, fn ($query) => $query->where('id', '!=', $excludeOrderId))
-                ->exists();
-
-            if ($hasOtherOrders) {
-                return 'Voucher chỉ áp dụng cho đơn hàng đầu tiên của khách hàng.';
-            }
-        }
-
         if ($subtotal < (float) $this->min_order_amount) {
             return 'Đơn hàng chưa đạt giá trị tối thiểu để dùng voucher.';
         }
 
+        if ($this->isFirstOrderOnly() && $this->customerAlreadyOrderedBefore($customer, $excludeOrderId)) {
+            return 'Voucher chỉ áp dụng cho đơn hàng đầu tiên của khách hàng.';
+        }
+
         return null;
+    }
+
+    /**
+     * Khách đã có đơn hàng nào khác ngoài đơn đang xét hay chưa.
+     */
+    private function customerAlreadyOrderedBefore(?Customer $customer, ?int $excludeOrderId = null): bool
+    {
+        if (! $customer) {
+            return true;
+        }
+
+        return Order::where('customer_id', $customer->id)
+            ->when($excludeOrderId !== null, fn ($query) => $query->whereKeyNot($excludeOrderId))
+            ->exists();
     }
 
     /**
@@ -197,8 +203,8 @@ class Promotion extends Model
         }
 
         $discount = match ($this->discount_type) {
-            'percentage' => $orderAmount * ($this->discount_value / 100),
-            'fixed' => $this->discount_value,
+            self::DISCOUNT_PERCENTAGE => $orderAmount * ((float) $this->discount_value / 100),
+            self::DISCOUNT_FIXED => (float) $this->discount_value,
             default => 0,
         };
 
@@ -217,5 +223,80 @@ class Promotion extends Model
     public function getStatusBadgeClassAttribute(): string
     {
         return RecordStatus::parse($this->status)->badgeClass();
+    }
+
+    /**
+     * Danh sách loại giảm hợp lệ (nguồn duy nhất cho form + hiển thị).
+     *
+     * @return array<string, string>
+     */
+    public static function discountTypeOptions(): array
+    {
+        return [
+            self::DISCOUNT_PERCENTAGE => 'Phần trăm (%)',
+            self::DISCOUNT_FIXED => 'Số tiền cố định (VNĐ)',
+        ];
+    }
+
+    public function discountTypeLabel(): string
+    {
+        return self::discountTypeOptions()[$this->discount_type] ?? 'Không xác định';
+    }
+
+    public function discountTypeBadgeClass(): string
+    {
+        return match ($this->discount_type) {
+            self::DISCOUNT_PERCENTAGE => 'bg-primary-subtle text-primary-emphasis border border-primary',
+            self::DISCOUNT_FIXED => 'bg-purple-subtle text-purple-emphasis border border-purple',
+            default => 'bg-secondary-subtle text-secondary-emphasis border border-secondary',
+        };
+    }
+
+    /**
+     * Giá trị giảm đã định dạng: "20%" hoặc "50.000 VNĐ".
+     */
+    public function discountValueLabel(): string
+    {
+        $value = (float) $this->discount_value;
+
+        if ($this->discount_type === self::DISCOUNT_PERCENTAGE) {
+            return rtrim(rtrim(number_format($value, 2, '.', ''), '0'), '.') . '%';
+        }
+
+        return number_format($value) . ' VNĐ';
+    }
+
+    /**
+     * Mô tả đầy đủ luôn có trần giảm: "20% (tối đa 50,000 VNĐ)" hoặc "50,000 VNĐ".
+     */
+    public function discountSummary(): string
+    {
+        $summary = $this->discountValueLabel();
+
+        if ($this->discount_type === self::DISCOUNT_PERCENTAGE && (float) $this->max_discount > 0) {
+            $summary .= ' (tối đa ' . number_format((float) $this->max_discount) . ' VNĐ)';
+        }
+
+        return $summary;
+    }
+
+    /**
+     * Số mã còn phát được (null = phát vô hạn).
+     */
+    public function remainingCodes(): ?int
+    {
+        if ($this->quantity === null) {
+            return null;
+        }
+
+        return max(0, (int) $this->quantity - (int) $this->used_count);
+    }
+
+    /**
+     * "Đã dùng / tối đa" dùng cho cột hạn mức ở bảng danh sách.
+     */
+    public function usageLabel(): string
+    {
+        return $this->used_count . '/' . ($this->usage_limit ?: '∞');
     }
 }

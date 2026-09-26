@@ -17,17 +17,17 @@ use Illuminate\Support\Facades\DB;
 class OrderService
 {
     /**
-     * Quy đổi 1 điểm tích lũy thành tiền.
+     * Quy Ä‘á»•i 1 Ä‘iá»ƒm tÃ­ch lÅ©y thÃ nh tiá»n.
      */
     public const POINT_VALUE = 1000;
 
     /**
-     * Lý do voucher cuối cùng bị loại trong lần gọi create()/update() gần nhất.
+     * LÃ½ do voucher cuá»‘i cÃ¹ng bá»‹ loáº¡i trong láº§n gá»i create()/update() gáº§n nháº¥t.
      */
     private ?string $promotionRejection = null;
 
     /**
-     * Lý do voucher bị loại ở lần xử lý gần nhất (null nghĩa là không bị loại).
+     * LÃ½ do voucher bá»‹ loáº¡i á»Ÿ láº§n xá»­ lÃ½ gáº§n nháº¥t (null nghÄ©a lÃ  khÃ´ng bá»‹ loáº¡i).
      */
     public function promotionRejection(): ?string
     {
@@ -35,14 +35,14 @@ class OrderService
     }
 
     /**
-     * Chuẩn hóa bộ số tiền của đơn hàng.
+     * Chuáº©n hÃ³a bá»™ sá»‘ tiá»n cá»§a Ä‘Æ¡n hÃ ng.
      *
-     *   Tạm tính            = Σ (số lượng hoặc kg × đơn giá lịch sử theo price_lists)
-     *   Tiền giảm voucher   = Promotion::calculateDiscount(Tạm tính)
-     *   Tiền giảm do điểm   = số điểm dùng × POINT_VALUE
-     *   Tổng thanh toán     = Tạm tính - giảm voucher - giảm điểm (không nhỏ hơn 0)
+     *   Táº¡m tÃ­nh            = Î£ (sá»‘ lÆ°á»£ng hoáº·c kg Ã— Ä‘Æ¡n giÃ¡ lá»‹ch sá»­ theo price_lists)
+     *   Tiá»n giáº£m voucher   = Promotion::calculateDiscount(Táº¡m tÃ­nh)
+     *   Tiá»n giáº£m do Ä‘iá»ƒm   = sá»‘ Ä‘iá»ƒm dÃ¹ng Ã— POINT_VALUE
+     *   Tá»•ng thanh toÃ¡n     = Táº¡m tÃ­nh - giáº£m voucher - giáº£m Ä‘iá»ƒm (khÃ´ng nhá» hÆ¡n 0)
      *
-     * Mỗi khoản giảm được chặn tối đa bằng số tiền còn lại để tổng không âm.
+     * Má»—i khoáº£n giáº£m Ä‘Æ°á»£c cháº·n tá»‘i Ä‘a báº±ng sá»‘ tiá»n cÃ²n láº¡i Ä‘á»ƒ tá»•ng khÃ´ng Ã¢m.
      *
      * @return array{subtotal: float, discount_by_promotion: float, points_used: int, discount_by_points: float, total_amount: float}
      */
@@ -54,13 +54,13 @@ class OrderService
             ? min($promotion->calculateDiscount($subtotal), $subtotal)
             : 0.0;
 
-        // Không cho dùng vượt số điểm khách đang có.
+        // KhÃ´ng cho dÃ¹ng vÆ°á»£t sá»‘ Ä‘iá»ƒm khÃ¡ch Ä‘ang cÃ³.
         $pointsUsed = max(0, min($pointsUsed, $customerPoints));
 
         $remaining = max(0, $subtotal - $discountByPromotion);
         $discountByPoints = min($pointsUsed * self::POINT_VALUE, $remaining);
 
-        // Số điểm thực sự quy đổi được thành tiền (tránh ghi điểm "lãng phí").
+        // Sá»‘ Ä‘iá»ƒm thá»±c sá»± quy Ä‘á»•i Ä‘Æ°á»£c thÃ nh tiá»n (trÃ¡nh ghi Ä‘iá»ƒm "lÃ£ng phÃ­").
         $effectivePoints = (int) floor($discountByPoints / self::POINT_VALUE);
 
         return [
@@ -73,11 +73,11 @@ class OrderService
     }
 
     /**
-     * Tạo các dòng mặt hàng từ dữ liệu form, chốt đơn giá lịch sử và tính tạm tính.
+     * Táº¡o cÃ¡c dÃ²ng máº·t hÃ ng tá»« dá»¯ liá»‡u form, chá»‘t Ä‘Æ¡n giÃ¡ lá»‹ch sá»­ vÃ  tÃ­nh táº¡m tÃ­nh.
      *
-     * Đơn vị tính tiền lấy từ price_lists theo cặp service_id + garment_id:
-     *   - đơn vị "kg"  → Tạm tính = Khối lượng × Đơn giá
-     *   - đơn vị khác  → Tạm tính = Số lượng   × Đơn giá
+     * ÄÆ¡n vá»‹ tÃ­nh tiá»n láº¥y tá»« price_lists theo cáº·p service_id + garment_id:
+     *   - Ä‘Æ¡n vá»‹ "kg"  â†’ Táº¡m tÃ­nh = Khá»‘i lÆ°á»£ng Ã— ÄÆ¡n giÃ¡
+     *   - Ä‘Æ¡n vá»‹ khÃ¡c  â†’ Táº¡m tÃ­nh = Sá»‘ lÆ°á»£ng   Ã— ÄÆ¡n giÃ¡
      *
      * @return array{0: array<int, array<string, mixed>>, 1: float}
      */
@@ -90,12 +90,12 @@ class OrderService
             $serviceId = $item['service_id'] ?? null;
             $garmentId = $item['garment_id'] ?? null;
 
-            // Giá lịch sử mới nhất theo cặp service_id + garment_id.
+            // GiÃ¡ lá»‹ch sá»­ má»›i nháº¥t theo cáº·p service_id + garment_id.
             $pricing = ($serviceId && $garmentId)
                 ? Pricing::getLatestPricing((int) $serviceId, (int) $garmentId)
                 : null;
 
-            // Ưu tiên giá gửi lên; nếu thiếu thì lấy giá lịch sử từ bảng price_lists.
+            // Æ¯u tiÃªn giÃ¡ gá»­i lÃªn; náº¿u thiáº¿u thÃ¬ láº¥y giÃ¡ lá»‹ch sá»­ tá»« báº£ng price_lists.
             $price = $item['price'] ?? null;
             if (($price === null || $price === '') && $pricing) {
                 $price = $pricing->price;
@@ -105,7 +105,7 @@ class OrderService
             $quantity = max(0, (int) ($item['quantity'] ?? 0));
             $weight = max(0, (float) ($item['weight'] ?? 0));
 
-            // Dịch vụ tính theo kg dùng khối lượng làm đơn vị nhân với đơn giá.
+            // Dá»‹ch vá»¥ tÃ­nh theo kg dÃ¹ng khá»‘i lÆ°á»£ng lÃ m Ä‘Æ¡n vá»‹ nhÃ¢n vá»›i Ä‘Æ¡n giÃ¡.
             $isWeightUnit = Pricing::isWeightUnit($pricing?->unit);
             $multiplier = $isWeightUnit ? $weight : $quantity;
             $lineSubtotal = round($price * $multiplier, 2);
@@ -113,8 +113,8 @@ class OrderService
             $rows[] = [
                 'service_id' => $serviceId ?: null,
                 'garment_id' => $garmentId ?: null,
-                // order_items.item_name là NOT NULL nhưng form chỉ gửi service/garment
-                // nên tên mặt hàng được suy ra từ dịch vụ/loại đồ tương ứng.
+                // order_items.item_name lÃ  NOT NULL nhÆ°ng form chá»‰ gá»­i service/garment
+                // nÃªn tÃªn máº·t hÃ ng Ä‘Æ°á»£c suy ra tá»« dá»‹ch vá»¥/loáº¡i Ä‘á»“ tÆ°Æ¡ng á»©ng.
                 'item_name' => ($item['item_name'] ?? null) ?: $this->resolveItemName($serviceId, $garmentId),
                 'item_type' => $item['item_type'] ?? 'service',
                 'price' => $price,
@@ -131,7 +131,7 @@ class OrderService
     }
 
     /**
-     * Suy ra tên mặt hàng khi form không gửi item_name.
+     * Suy ra tÃªn máº·t hÃ ng khi form khÃ´ng gá»­i item_name.
      */
     private function resolveItemName($serviceId, $garmentId): string
     {
@@ -149,7 +149,7 @@ class OrderService
             }
         }
 
-        return 'Mặt hàng';
+        return 'Máº·t hÃ ng';
     }
 
     public function getAll(array $filters = []): LengthAwarePaginator
@@ -178,14 +178,20 @@ class OrderService
             $query->whereDate('created_at', '<=', $filters['date_to']);
         }
 
-        $allowedSorts = ['id', 'code', 'total_amount', 'status', 'created_at'];
-        $sortBy = in_array($filters['sort_by'] ?? null, $allowedSorts) ? $filters['sort_by'] : 'created_at';
-        $sortOrder = ($filters['sort_order'] ?? 'desc') === 'asc' ? 'asc' : 'desc';
+        $sortMap = [
+            'latest' => ['created_at', 'desc'],
+            'oldest' => ['created_at', 'asc'],
+            'code_asc' => ['code', 'asc'],
+            'code_desc' => ['code', 'desc'],
+            'total_desc' => ['total_amount', 'desc'],
+            'total_asc' => ['total_amount', 'asc'],
+        ];
+        $sort = $filters['sort'] ?? 'latest';
+        [$sortBy, $sortOrder] = $sortMap[$sort] ?? ['created_at', 'desc'];
 
-        return $query->with(['customer', 'employee', 'items.service', 'items.garment', 'promotion', 'invoice'])
-            ->withTrashed()
+        return $query->with(['customer', 'employee', 'items.service', 'items.garment', 'promotion', 'invoice', 'payments', 'booking'])
             ->orderBy($sortBy, $sortOrder)
-            ->paginate(20);
+            ->paginate(10);
     }
 
     public function find(int $id): ?Order
@@ -204,7 +210,7 @@ class OrderService
     }
 
     /**
-     * Xác định voucher từ form: ưu tiên promotion_id, nếu rỗng thì tra theo mã code.
+     * XÃ¡c Ä‘á»‹nh voucher tá»« form: Æ°u tiÃªn promotion_id, náº¿u rá»—ng thÃ¬ tra theo mÃ£ code.
      */
     private function resolvePromotion(array $data): ?Promotion
     {
@@ -220,10 +226,10 @@ class OrderService
     }
 
     /**
-     * Loại voucher nếu điều kiện nghiệp vụ không cho phép khách dùng.
+     * Loáº¡i voucher náº¿u Ä‘iá»u kiá»‡n nghiá»‡p vá»¥ khÃ´ng cho phÃ©p khÃ¡ch dÃ¹ng.
      *
-     * Chính sách: đơn vẫn được lưu nhưng KHÔNG áp dụng giảm giá, đồng thời ghi
-     * nhận lý do để controller hiển thị cảnh báo cho người dùng.
+     * ChÃ­nh sÃ¡ch: Ä‘Æ¡n váº«n Ä‘Æ°á»£c lÆ°u nhÆ°ng KHÃ”NG Ã¡p dá»¥ng giáº£m giÃ¡, Ä‘á»“ng thá»i ghi
+     * nháº­n lÃ½ do Ä‘á»ƒ controller hiá»ƒn thá»‹ cáº£nh bÃ¡o cho ngÆ°á»i dÃ¹ng.
      */
     private function applyPromotionConditions(?Promotion $promotion, ?Customer $customer, float $subtotal, ?int $excludeOrderId = null): ?Promotion
     {
@@ -270,7 +276,7 @@ class OrderService
                 (int) ($customer?->points ?? 0)
             );
 
-            // Trừ điểm tích lũy của khách hàng ngay trong cùng transaction.
+            // Trá»« Ä‘iá»ƒm tÃ­ch lÅ©y cá»§a khÃ¡ch hÃ ng ngay trong cÃ¹ng transaction.
             if ($customer && $amounts['points_used'] > 0) {
                 $customer->deductPoints($amounts['points_used']);
             }
@@ -284,7 +290,7 @@ class OrderService
                 OrderItem::create(array_merge(['order_id' => $order->id], $item));
             }
 
-            // Ghi nhận lượt sử dụng voucher (chỉ khi voucher còn hiệu lực).
+            // Ghi nháº­n lÆ°á»£t sá»­ dá»¥ng voucher (chá»‰ khi voucher cÃ²n hiá»‡u lá»±c).
             if ($promotion && $promotion->isValid()) {
                 $promotion->markUsed();
             }
@@ -293,9 +299,9 @@ class OrderService
         });
     }
 
-    public function update(Order $order, array $data): Order
+    public function update(Order $order, array $data, bool $overrideSettled = false): Order
     {
-        if ($order->isLocked()) {
+        if ($order->isLocked() && ! $overrideSettled) {
             throw SettledOrderException::forOrder($order->code);
         }
 
@@ -308,18 +314,18 @@ class OrderService
 
             [$items, $subtotal] = $this->buildItems($data['items'] ?? []);
 
-            // Form gửi promotion_id (có thể rỗng) và/hoặc promotion_code.
+            // Form gá»­i promotion_id (cÃ³ thá»ƒ rá»—ng) vÃ /hoáº·c promotion_code.
             $touchesPromotion = array_key_exists('promotion_id', $data) || array_key_exists('promotion_code', $data);
             $previousPromotionId = $order->promotion_id;
             $promotion = $touchesPromotion
                 ? $this->resolvePromotion($data)
                 : $order->promotion;
 
-            // Chính sách điều kiện voucher (vd first_order_only): bỏ voucher nếu
-            // khách không thoả điều kiện, đơn vẫn lưu bình thường.
+            // ChÃ­nh sÃ¡ch Ä‘iá»u kiá»‡n voucher (vd first_order_only): bá» voucher náº¿u
+            // khÃ¡ch khÃ´ng thoáº£ Ä‘iá»u kiá»‡n, Ä‘Æ¡n váº«n lÆ°u bÃ¬nh thÆ°á»ng.
             $promotion = $this->applyPromotionConditions($promotion, $customer, $subtotal, $order->id);
 
-            // Hoàn lại số điểm đã dùng ở lần lưu trước để tính lại từ đầu.
+            // HoÃ n láº¡i sá»‘ Ä‘iá»ƒm Ä‘Ã£ dÃ¹ng á»Ÿ láº§n lÆ°u trÆ°á»›c Ä‘á»ƒ tÃ­nh láº¡i tá»« Ä‘áº§u.
             $previousPoints = (int) $order->points_used;
             if ($customer && $previousPoints > 0) {
                 $customer->addPoints($previousPoints);
@@ -347,8 +353,8 @@ class OrderService
                 OrderItem::create(array_merge(['order_id' => $order->id], $item));
             }
 
-            // Đồng bộ số lần sử dụng voucher khi voucher của đơn thay đổi
-            // (bao gồm cả trường hợp bị loại vì không thoả điều kiện).
+            // Äá»“ng bá»™ sá»‘ láº§n sá»­ dá»¥ng voucher khi voucher cá»§a Ä‘Æ¡n thay Ä‘á»•i
+            // (bao gá»“m cáº£ trÆ°á»ng há»£p bá»‹ loáº¡i vÃ¬ khÃ´ng thoáº£ Ä‘iá»u kiá»‡n).
             if ((int) $previousPromotionId !== (int) ($promotion?->id)) {
                 if ($previousPromotionId) {
                     Promotion::find($previousPromotionId)?->markUnused();
@@ -362,14 +368,14 @@ class OrderService
         });
     }
 
-    public function delete(Order $order): bool
+    public function delete(Order $order, bool $overrideSettled = false): bool
     {
-        if ($order->isLocked()) {
+        if ($order->isLocked() && ! $overrideSettled) {
             throw SettledOrderException::forOrder($order->code);
         }
 
         return DB::transaction(function () use ($order) {
-            // Xóa đơn thì hoàn lại lượt sử dụng voucher đã gắn với đơn.
+            // XÃ³a Ä‘Æ¡n thÃ¬ hoÃ n láº¡i lÆ°á»£t sá»­ dá»¥ng voucher Ä‘Ã£ gáº¯n vá»›i Ä‘Æ¡n.
             if ($order->promotion_id) {
                 Promotion::find($order->promotion_id)?->markUnused();
             }
@@ -379,12 +385,12 @@ class OrderService
     }
 
     /**
-     * Đổi trạng thái đơn. Đơn đã quyết toán thì không được đi lùi trạng thái
-     * vì sẽ làm sai lệch số tiền đã thu.
+     * Äá»•i tráº¡ng thÃ¡i Ä‘Æ¡n. ÄÆ¡n Ä‘Ã£ quyáº¿t toÃ¡n thÃ¬ khÃ´ng Ä‘Æ°á»£c Ä‘i lÃ¹i tráº¡ng thÃ¡i
+     * vÃ¬ sáº½ lÃ m sai lá»‡ch sá»‘ tiá»n Ä‘Ã£ thu.
      */
-    public function updateStatus(Order $order, string $status): Order
+    public function updateStatus(Order $order, string $status, bool $overrideSettled = false): Order
     {
-        if ($order->isLocked()) {
+        if ($order->isLocked() && ! $overrideSettled) {
             throw SettledOrderException::forOrder($order->code);
         }
 

@@ -54,9 +54,12 @@ class InvoiceController extends Controller
 
             return redirect()->route('invoices.show', $invoice)->with('success', 'Hóa đơn đã được tạo thành công.');
         } catch (SettledOrderException $e) {
+            // Không tạo được hoá đơn thứ hai cho đơn đã quyết toán là quy tắc
+            // kế toán, áp dụng với MỌI vai trò kể cả Chủ cửa hàng, nên vẫn
+            // trả về redirect kèm thông báo thay vì 403.
             return $this->rejectSettled($request, $e->getMessage(), route('invoices.index'));
         } catch (\Exception $e) {
-            return redirect()->route('invoices.create')->with('error', 'Có lỗi xảy ra: '.$e->getMessage())->withInput();
+            return redirect()->route('invoices.create')->with('error', \App\Support\FriendlyError::message($e))->withInput();
         }
     }
 
@@ -71,6 +74,21 @@ class InvoiceController extends Controller
         return view('admin.invoices.show', compact('invoice'));
     }
 
+    /**
+     * Hóa đơn đã thanh toán là chốt số tiền: chỉ Chủ cửa hàng (người giữ quyền
+     * invoices.edit_paid / invoices.delete_paid) được mở khoá. Nhân viên và
+     * Quản lý không bao giờ được cấp 2 quyền này nên vẫn bị khoá như cũ.
+     */
+    private function canOverrideSettled(): bool
+    {
+        return auth()->user()?->canPermission('invoices.edit_paid') ?? false;
+    }
+
+    private function canDeleteSettled(): bool
+    {
+        return auth()->user()?->canPermission('invoices.delete_paid') ?? false;
+    }
+
     public function edit(Request $request, int|string $id)
     {
         $invoice = $this->invoiceService->find($id);
@@ -79,8 +97,8 @@ class InvoiceController extends Controller
             abort(404);
         }
 
-        if ($invoice->isPaid()) {
-            return $this->rejectSettled(
+        if ($invoice->isPaid() && ! $this->canOverrideSettled()) {
+            return $this->denySettled(
                 $request,
                 'Hóa đơn '.$invoice->code.' đã thanh toán nên chỉ có thể xem.',
                 route('invoices.show', $invoice)
@@ -101,13 +119,13 @@ class InvoiceController extends Controller
         }
 
         try {
-            $this->invoiceService->update($invoice, $request->validated());
+            $this->invoiceService->update($invoice, $request->validated(), $this->canOverrideSettled());
 
             return redirect()->route('invoices.index')->with('success', 'Hóa đơn đã được cập nhật.');
         } catch (SettledOrderException $e) {
-            return $this->rejectSettled($request, $e->getMessage(), route('invoices.show', $invoice));
+            return $this->denySettled($request, $e->getMessage(), route('invoices.show', $invoice));
         } catch (\Exception $e) {
-            return redirect()->route('invoices.edit', $invoice)->with('error', 'Có lỗi xảy ra: '.$e->getMessage())->withInput();
+            return redirect()->route('invoices.edit', $invoice)->with('error', \App\Support\FriendlyError::message($e))->withInput();
         }
     }
 
@@ -120,13 +138,13 @@ class InvoiceController extends Controller
         }
 
         try {
-            $this->invoiceService->delete($invoice);
+            $this->invoiceService->delete($invoice, $this->canDeleteSettled());
 
             return redirect()->route('invoices.index')->with('success', 'Hóa đơn đã được xóa.');
         } catch (SettledOrderException $e) {
-            return $this->rejectSettled($request, $e->getMessage(), route('invoices.index'));
+            return $this->denySettled($request, $e->getMessage(), route('invoices.index'));
         } catch (\Exception $e) {
-            return redirect()->route('invoices.index')->with('error', 'Có lỗi xảy ra: '.$e->getMessage());
+            return redirect()->route('invoices.index')->with('error', \App\Support\FriendlyError::message($e));
         }
     }
 
@@ -141,13 +159,13 @@ class InvoiceController extends Controller
         $status = $request->input('status');
 
         try {
-            $this->invoiceService->updateStatus($invoice, $status);
+            $this->invoiceService->updateStatus($invoice, $status, $this->canOverrideSettled());
 
             return back()->with('success', 'Trạng thái hóa đơn đã được cập nhật.');
         } catch (SettledOrderException $e) {
-            return $this->rejectSettled($request, $e->getMessage(), route('invoices.show', $invoice));
+            return $this->denySettled($request, $e->getMessage(), route('invoices.show', $invoice));
         } catch (\Exception $e) {
-            return back()->with('error', 'Có lỗi xảy ra: '.$e->getMessage());
+            return back()->with('error', \App\Support\FriendlyError::message($e));
         }
     }
 

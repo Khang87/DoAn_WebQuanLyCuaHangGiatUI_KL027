@@ -13,35 +13,44 @@ class UserSeeder extends Seeder
 
     public function run(): void
     {
-        // Tài khoản Quản lý (Admin/Manager)
-        User::factory()->create([
-            'name' => 'Quản lý',
-            'email' => 'admin@gmail.com',
+        // Tài khoản mẫu dùng updateOrCreate theo email để chạy lại seeder
+        // không bị lỗi unique và không làm mất role_id đã gán.
+        // Cột `role` sẽ được User::booted() tự đồng bộ sang bảng `roles`.
+
+        // Chủ cửa hàng (admin) - toàn quyền, kể cả đơn đã quyết toán
+        User::updateOrCreate(['email' => 'admin@gmail.com'], [
+            'name' => 'Chủ cửa hàng',
             'password' => Hash::make('123456'),
             'phone' => '0900000001',
             'role' => 'admin',
         ]);
 
-        User::factory()->create([
-            'name' => 'Quản lý',
-            'email' => 'quanly@gmail.com',
+        // Quản lý (manager) - không được sửa/xóa đơn đã quyết toán
+        User::updateOrCreate(['email' => 'manager@gmail.com'], [
+            'name' => 'Quản lý cửa hàng',
             'password' => Hash::make('123456'),
             'phone' => '0900000002',
             'role' => 'manager',
         ]);
 
-        // Tài khoản Nhân viên (Staff/Employee)
-        User::factory()->create([
+        User::updateOrCreate(['email' => 'quanly@gmail.com'], [
+            'name' => 'Quản lý',
+            'password' => Hash::make('123456'),
+            'phone' => '0900000012',
+            'role' => 'manager',
+        ]);
+
+        // Nhân viên (staff)
+        User::updateOrCreate(['email' => 'staff@gmail.com'], [
             'name' => 'Nhân viên',
-            'email' => 'staff@gmail.com',
             'password' => Hash::make('123456'),
             'phone' => '0900000003',
             'role' => 'staff',
         ]);
 
-        User::factory()->create([
+        // 'employee' là bí danh lịch sử, được ánh xạ về vai trò staff
+        User::updateOrCreate(['email' => 'nhanvien@gmail.com'], [
             'name' => 'Nhân viên',
-            'email' => 'nhanvien@gmail.com',
             'password' => Hash::make('123456'),
             'phone' => '0900000004',
             'role' => 'employee',

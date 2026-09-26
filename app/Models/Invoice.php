@@ -40,7 +40,7 @@ class Invoice extends Model
 
     public function order(): BelongsTo
     {
-        return $this->belongsTo(Order::class);
+        return $this->belongsTo(Order::class)->withTrashed();
     }
 
     public function payments(): HasMany
@@ -60,12 +60,17 @@ class Invoice extends Model
 
     public function getStatusLabel(): string
     {
-        return InvoiceStatus::parse($this->status)->label();
+        return InvoiceStatus::labelFor($this->status);
     }
 
     public function getStatusBadgeClass(): string
     {
-        return InvoiceStatus::parse($this->status)->badgeClass();
+        return InvoiceStatus::badgeClassFor($this->status);
+    }
+
+    public function getStatusIcon(): string
+    {
+        return InvoiceStatus::iconFor($this->status);
     }
 
     /**

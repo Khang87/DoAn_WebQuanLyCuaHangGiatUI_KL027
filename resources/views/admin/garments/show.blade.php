@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Chi tiết loại Đồ giặt - Sky Laundry')
+@section('title', 'Chi tiết loại đồ giặt - Sky Laundry')
 @section('page-title', 'Chi tiết loại đồ giặt')
 
 @section('content')
@@ -8,98 +8,125 @@
     $garmentIcon = $garment->icon();
 @endphp
 
+<x-admin.detail.page-header
+    title="Loại đồ giặt {{ $garment->name }}"
+    :back="route('garments.index')"
+    :subtitle="$garment->category_name"
+>
+    <x-slot:badge>
+        <x-admin.status-badge :status="$garment->status" :enum="\App\Enums\RecordStatus::class" />
+        @if($garment->deleted_at)
+            <span class="badge bg-danger-subtle text-danger border border-danger px-3 py-2 rounded-pill">
+                <i class="fas fa-trash me-1"></i>Đã xóa
+            </span>
+        @endif
+    </x-slot:badge>
+
+    <x-slot:actions>
+        <a href="{{ route('garments.edit', $garment->id) }}" class="btn btn-primary btn-sm">
+            <i class="bi bi-pencil me-1"></i>Chỉnh sửa
+        </a>
+    </x-slot:actions>
+</x-admin.detail.page-header>
+
+@if($garment->deleted_at)
+    <x-admin.detail.locked text="Loại đồ giặt đã bị xóa mềm nên không thể sửa hoặc xóa. Hãy khôi phục nếu cần." />
+@endif
+
 <div class="row g-4">
+    {{-- ============ CỘT CHÍNH (8/12) ============ --}}
     <div class="col-lg-8">
-        <div class="card">
-            <div class="card-body">
-                <div class="d-flex justify-content-between align-items-center mb-4">
-                    <div class="d-flex align-items-center">
-                        <div class="bg-primary-subtle text-primary rounded p-3 me-3 d-flex align-items-center justify-content-center" style="width: 52px; height: 52px;">
-                            <i class="{{ $garmentIcon }} fs-4"></i>
-                        </div>
-                        <h5 class="mb-0">{{ $garment->name }}</h5>
-                    </div>
-                    @if($garment->status === 'active')
-                        <span class="badge bg-success-subtle text-success border border-success px-3 py-2 rounded-pill"><i class="fas fa-check-circle me-1"></i>Hoạt động</span>
-                    @else
-                        <span class="badge bg-danger-subtle text-danger border border-danger px-3 py-2 rounded-pill"><i class="fas fa-ban me-1"></i>Khóa</span>
-                    @endif
-                </div>
+        <x-admin.detail.panel
+            title="Thông tin loại đồ giặt"
+            :icon="$garmentIcon"
+            :iconClass="'bg-primary-subtle text-primary'"
+        >
+            <x-admin.detail.info-grid :columns="2">
+                <x-admin.detail.info-item label="Tên loại đồ" :value="$garment->name" />
+                <x-admin.detail.info-item label="Danh mục" :value="$garment->category_name ?: 'Chưa phân loại'" />
+                <x-admin.detail.info-item label="Giá dịch vụ">
+                    <x-admin.detail.money :value="$garment->price" class="text-primary" />
+                </x-admin.detail.info-item>
+                <x-admin.detail.info-item label="Trạng thái">
+                    <x-admin.status-badge :status="$garment->status" :enum="\App\Enums\RecordStatus::class" :pill="false" />
+                </x-admin.detail.info-item>
+            </x-admin.detail.info-grid>
 
-                <div class="row g-3">
-                    <div class="col-md-6">
-                        <div class="small text-muted">Danh mục</div>
-                        <div class="fw-semibold">{{ $garment->category ?: 'Chưa phân loại' }}</div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="small text-muted">Giá dịch vụ</div>
-                        <div class="fw-semibold text-primary">{{ number_format($garment->price) }} VNĐ</div>
-                    </div>
-                    <div class="col-12">
-                        <div class="small text-muted">Mô tả hiện trạng trước khi giặt</div>
-                        <div class="p-3 bg-light rounded mt-1">{{ $garment->condition_note ?: 'Chưa có thông tin ghi nhận hiện trạng.' }}</div>
-                    </div>
-                </div>
-
-                @if($garment->deleted_at)
-                <div class="mt-4">
-                    <span class="badge bg-danger-subtle text-danger border border-danger px-3 py-2 rounded-pill"><i class="fas fa-trash me-1"></i>Đã xóa</span>
-                </div>
-                @endif
+            <div class="mt-4">
+                <div class="detail-field__label mb-2">Mô tả hiện trạng trước khi giặt</div>
+                <div class="detail-text">{{ $garment->condition_note ?: 'Chưa có thông tin ghi nhận hiện trạng.' }}</div>
             </div>
-        </div>
+        </x-admin.detail.panel>
+
+        <x-admin.detail.panel title="Lịch sử hiện trạng" icon="bi-clipboard-check" :iconClass="'bg-info-subtle text-info'" flush>
+            <x-slot:header>
+                <a href="{{ route('garment-conditions.create') }}" class="btn btn-sm btn-outline-primary">
+                    <i class="bi bi-plus-lg me-1"></i>Thêm
+                </a>
+            </x-slot:header>
+
+            @if($conditions->isEmpty())
+                <x-admin.detail.empty message="Chưa ghi nhận hiện trạng nào cho loại đồ này" icon="bi-clipboard-check" />
+            @else
+                <div class="table-responsive">
+                    <table class="table table-hover detail-table">
+                        <thead>
+                            <tr>
+                                <th>Loại hiện trạng</th>
+                                <th>Mô tả</th>
+                                <th>Ngày ghi nhận</th>
+                                <th>Thao tác</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach($conditions as $condition)
+                                <tr>
+                                    <td class="fw-semibold">{{ $condition->condition_type }}</td>
+                                    <td>{{ $condition->description ?: '—' }}</td>
+                                    <td>{{ $condition->created_at?->format('d/m/Y H:i') }}</td>
+                                    <td class="text-end">
+                                        <a href="{{ route('garment-conditions.show', $condition) }}" class="btn btn-order-action view" title="Xem">
+                                            <i class="bi bi-eye"></i>
+                                        </a>
+                                        <a href="{{ route('garment-conditions.edit', $condition) }}" class="btn btn-order-action edit" title="Sửa">
+                                            <i class="bi bi-pencil"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+
+                @if($conditions->hasPages())
+                    <div class="p-3">{{ $conditions->links() }}</div>
+                @endif
+            @endif
+        </x-admin.detail.panel>
     </div>
 
+    {{-- ============ CỘT PHỤ (4/12) ============ --}}
     <div class="col-lg-4">
-        <div class="card">
-            <div class="card-body">
-                <h6 class="mb-3">Thao tác</h6>
-                <div class="d-grid gap-2">
-                    <a href="{{ route('garments.edit', $garment->id) }}" class="btn btn-warning"><i class="bi bi-pencil me-1"></i>Chỉnh sửa</a>
-                    <form action="{{ route('garments.destroy', $garment->id) }}" method="POST" id="deleteGarmentShowForm">
-                        @csrf
-                        @method('DELETE')
-                        <button type="submit" class="btn btn-danger w-100"><i class="bi bi-trash"></i> Xóa</button>
-                    </form>
-                    <a href="{{ route('garments.index') }}" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i>Quay lại danh sách</a>
-                </div>
+        <x-admin.detail.panel title="Thao tác" icon="bi-sliders" :iconClass="'bg-secondary-subtle text-secondary'">
+            <div class="d-grid gap-2">
+                <a href="{{ route('garments.edit', $garment->id) }}" class="btn btn-primary btn-sm">
+                    <i class="bi bi-pencil me-1"></i>Chỉnh sửa
+                </a>
+                <x-admin.detail.confirm-form
+                    :action="route('garments.destroy', $garment->id)"
+                    title="Xóa loại đồ giặt?"
+                    text="Hành động này không thể hoàn tác."
+                    icon="bi-trash"
+                    variant="btn-outline-danger"
+                    :block="true"
+                >
+                    Xóa loại đồ giặt
+                </x-admin.detail.confirm-form>
+                <a href="{{ route('garments.index') }}" class="btn btn-outline-secondary btn-sm">
+                    <i class="bi bi-arrow-left me-1"></i>Quay lại danh sách
+                </a>
             </div>
-        </div>
+        </x-admin.detail.panel>
     </div>
 </div>
 @endsection
-
-@push('scripts')
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const form = document.getElementById('deleteGarmentShowForm');
-        if (!form) return;
-
-        form.addEventListener('submit', function(e) {
-            e.preventDefault();
-
-            if (typeof Swal === 'undefined') {
-                if (confirm('Bạn có chắc muốn xóa loại đồ giặt này?')) {
-                    form.submit();
-                }
-                return;
-            }
-
-            Swal.fire({
-                title: 'Xóa loại đồ giặt?',
-                text: 'Hành động này không thể hoàn tác.',
-                icon: 'warning',
-                showCancelButton: true,
-                confirmButtonColor: '#dc2626',
-                cancelButtonColor: '#64748b',
-                confirmButtonText: 'Xóa',
-                cancelButtonText: 'Hủy'
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    form.submit();
-                }
-            });
-        });
-    });
-</script>
-@endpush

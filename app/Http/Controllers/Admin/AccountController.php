@@ -27,8 +27,7 @@ class AccountController extends Controller
             'search' => $request->input('search'),
             'role' => $request->input('role'),
             'status' => $request->input('status'),
-            'sort_by' => $request->input('sort_by'),
-            'sort_order' => $request->input('sort_order'),
+            'sort' => $request->input('sort'),
         ]);
 
         return view('admin.accounts.index', compact('accounts'));
@@ -50,7 +49,7 @@ class AccountController extends Controller
 
             return redirect()->route('accounts.index')->with('success', 'Tài khoản đã được tạo thành công với vai trò: ' . ($user->isManager() ? 'Quản lý' : ($user->role === 'staff' ? 'Nhân viên' : 'Khách hàng')));
         } catch (\Exception $e) {
-            return redirect()->route('accounts.create')->with('error', 'Có lỗi xảy ra: ' . $e->getMessage())->withInput();
+            return redirect()->route('accounts.create')->with('error', \App\Support\FriendlyError::message($e))->withInput();
         }
     }
 
@@ -95,7 +94,7 @@ class AccountController extends Controller
 
             return redirect()->route('accounts.index')->with('success', 'Tài khoản đã được cập nhật.');
         } catch (\Exception $e) {
-            return redirect()->route('accounts.edit', $account)->with('error', 'Có lỗi xảy ra: ' . $e->getMessage())->withInput();
+            return redirect()->route('accounts.edit', $account)->with('error', \App\Support\FriendlyError::message($e))->withInput();
         }
     }
 
@@ -112,7 +111,7 @@ class AccountController extends Controller
         try {
             $result = $this->userService->delete($account);
         } catch (\Exception $e) {
-            return redirect()->route('accounts.index')->with('error', 'Có lỗi xảy ra: ' . $e->getMessage());
+            return redirect()->route('accounts.index')->with('error', \App\Support\FriendlyError::message($e));
         }
 
         if (!$result) {
@@ -141,7 +140,7 @@ class AccountController extends Controller
                 return redirect()->route('accounts.index')->with('success', 'Tài khoản đã bị khóa.');
             }
         } catch (\Exception $e) {
-            return redirect()->route('accounts.index')->with('error', 'Có lỗi xảy ra: ' . $e->getMessage());
+            return redirect()->route('accounts.index')->with('error', \App\Support\FriendlyError::message($e));
         }
     }
 
@@ -160,7 +159,7 @@ class AccountController extends Controller
 
             return redirect()->route('accounts.show', $account)->with('success', 'Mật khẩu đã được đặt lại thành công. Mật khẩu mới: Abc123!@#');
         } catch (\Exception $e) {
-            return redirect()->route('accounts.show', $account)->with('error', 'Có lỗi xảy ra: ' . $e->getMessage());
+            return redirect()->route('accounts.show', $account)->with('error', \App\Support\FriendlyError::message($e));
         }
     }
 
@@ -183,9 +182,52 @@ class AccountController extends Controller
         try {
             $account->update($request->only(['name', 'email', 'phone']));
 
+            if ($request->input('remove_avatar') === '1') {
+                if ($account->getOriginal('avatar') && file_exists(public_path($account->getOriginal('avatar')))) {
+                    unlink(public_path($account->getOriginal('avatar')));
+                }
+                $account->update(['avatar' => null]);
+            }
+
             return redirect()->route('profile')->with('success', 'Hồ sơ đã được cập nhật.');
         } catch (\Exception $e) {
-            return redirect()->route('profile')->with('error', 'Có lỗi xảy ra: ' . $e->getMessage())->withInput();
+            return redirect()->route('profile')->with('error', \App\Support\FriendlyError::message($e))->withInput();
+        }
+    }
+
+    public function updateAvatar(Request $request)
+    {
+        $account = auth()->user();
+
+        $request->validate([
+            'avatar' => 'required|image|max:2048',
+        ]);
+
+        try {
+            if ($account->getOriginal('avatar') && file_exists(public_path($account->getOriginal('avatar')))) {
+                unlink(public_path($account->getOriginal('avatar')));
+            }
+
+            $dir = public_path('uploads/avatars');
+            if (! is_dir($dir)) {
+                mkdir($dir, 0755, true);
+            }
+
+            $filename = 'avatar_' . $account->id . '_' . time() . '.' . $request->file('avatar')->getClientOriginalExtension();
+            $request->file('avatar')->move($dir, $filename);
+
+            $account->update(['avatar' => 'uploads/avatars/' . $filename]);
+            $account->refresh();
+
+            return response()->json([
+                'success' => true,
+                'avatar_url' => $account->avatar_url,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => \App\Support\FriendlyError::message($e),
+            ], 422);
         }
     }
 
@@ -215,7 +257,7 @@ class AccountController extends Controller
 
             return redirect()->route('profile')->with('success', 'Mật khẩu đã được đổi thành công.');
         } catch (\Exception $e) {
-            return back()->with('error', 'Có lỗi xảy ra: ' . $e->getMessage())->withInput();
+            return back()->with('error', \App\Support\FriendlyError::message($e))->withInput();
         }
     }
 }

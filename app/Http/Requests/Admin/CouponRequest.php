@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Admin;
 
+use App\Enums\RecordStatus;
 use Illuminate\Foundation\Http\FormRequest;
 
 class CouponRequest extends FormRequest
@@ -22,23 +23,23 @@ class CouponRequest extends FormRequest
             'discount_value' => ['required', 'numeric', 'min:0'],
             'max_uses' => ['nullable', 'integer', 'min:1'],
             'expires_at' => ['required', 'date'],
-            'status' => ['required', 'in:active,inactive'],
+            'status' => ['required', 'in:'.implode(',', RecordStatus::values())],
         ];
     }
 
     public function messages(): array
     {
         return [
-            'code.required' => 'Mã coupon là bắt buộc.',
-            'code.unique' => 'Mã coupon đã tồn tại.',
-            'promotion_id.required' => 'Chương trình khuyến mãi là bắt buộc.',
-            'promotion_id.exists' => 'Chương trình không tồn tại.',
-            'discount_type.required' => 'Loại giảm giá là bắt buộc.',
-            'discount_value.required' => 'Giá trị giảm giá là bắt buộc.',
-            'discount_value.numeric' => 'Giá trị phải là số.',
-            'max_uses.integer' => 'Số lần sử dụng phải là số nguyên.',
-            'expires_at.required' => 'Ngày hết hạn là bắt buộc.',
-            'status.required' => 'Trạng thái là bắt buộc.',
+            'code.required' => 'MÃ£ coupon lÃ  báº¯t buá»™c.',
+            'code.unique' => 'MÃ£ coupon Ä‘Ã£ tá»“n táº¡i.',
+            'promotion_id.required' => 'ChÆ°Æ¡ng trÃ¬nh khuyáº¿n mÃ£i lÃ  báº¯t buá»™c.',
+            'promotion_id.exists' => 'ChÆ°Æ¡ng trÃ¬nh khÃ´ng tá»“n táº¡i.',
+            'discount_type.required' => 'Loáº¡i giáº£m giÃ¡ lÃ  báº¯t buá»™c.',
+            'discount_value.required' => 'GiÃ¡ trá»‹ giáº£m giÃ¡ lÃ  báº¯t buá»™c.',
+            'discount_value.numeric' => 'GiÃ¡ trá»‹ pháº£i lÃ  sá»‘.',
+            'max_uses.integer' => 'Sá»‘ láº§n sá»­ dá»¥ng pháº£i lÃ  sá»‘ nguyÃªn.',
+            'expires_at.required' => 'NgÃ y háº¿t háº¡n lÃ  báº¯t buá»™c.',
+            'status.required' => 'Tráº¡ng thÃ¡i lÃ  báº¯t buá»™c.',
         ];
     }
 }

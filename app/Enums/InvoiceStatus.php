@@ -3,15 +3,11 @@
 namespace App\Enums;
 
 /**
- * Trạng thái hóa đơn.
+ * Trạng thái hóa đơn (3 trạng thái chuẩn).
  *
- * Giá trị thật đang dùng trong dự án (InvoiceService::updateStatus và các seeder):
- *   - "unpaid"  : chờ thanh toán
- *   - "partial" : thanh toán một phần
- *   - "paid"    : đã thanh toán
- *
- * "completed" là giá trị legacy vẫn còn trong một số dòng dữ liệu cũ và được
- * hiểu là đã quyết toán nên vẫn được coi là đã thanh toán.
+ *   unpaid   -> Chờ thanh toán
+ *   partial  -> Thanh toán một phần
+ *   paid     -> Đã thanh toán (KHÓA CHỈ ĐỌC - chỉ Owner can thiệp ngoại lệ)
  */
 enum InvoiceStatus: string
 {
@@ -31,9 +27,18 @@ enum InvoiceStatus: string
     public function badgeClass(): string
     {
         return match ($this) {
-            self::Paid => 'bg-success-subtle text-success border-success',
-            self::Partial => 'bg-warning-subtle text-warning border-warning',
-            self::Unpaid => 'bg-danger-subtle text-danger border-danger',
+            self::Unpaid => 'bg-warning-subtle text-warning-emphasis border border-warning',
+            self::Partial => 'bg-info-subtle text-info-emphasis border border-info',
+            self::Paid => 'bg-success-subtle text-success-emphasis border border-success',
+        };
+    }
+
+    public function icon(): string
+    {
+        return match ($this) {
+            self::Unpaid => 'hourglass',
+            self::Partial => 'circle-half',
+            self::Paid => 'check-circle',
         };
     }
 
@@ -94,10 +99,26 @@ enum InvoiceStatus: string
 
         $normalized = mb_strtolower(trim((string) $value));
 
-        if ($normalized === 'completed') {
+        // Map legacy values to paid
+        if (in_array($normalized, ['completed'], true)) {
             return self::Paid;
         }
 
         return self::tryFrom($normalized) ?? $default;
+    }
+
+    public static function labelFor(mixed $value, self $default = self::Unpaid): string
+    {
+        return self::parse($value, $default)->label();
+    }
+
+    public static function badgeClassFor(mixed $value, self $default = self::Unpaid): string
+    {
+        return self::parse($value, $default)->badgeClass();
+    }
+
+    public static function iconFor(mixed $value, self $default = self::Unpaid): string
+    {
+        return self::parse($value, $default)->icon();
     }
 }

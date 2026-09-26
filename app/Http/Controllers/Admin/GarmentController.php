@@ -21,11 +21,10 @@ class GarmentController extends Controller
             'search' => $request->input('search'),
             'category' => $request->input('category'),
             'status' => $request->input('status'),
-            'sort_by' => $request->input('sort_by'),
-            'sort_order' => $request->input('sort_order'),
+            'sort' => $request->input('sort'),
         ]);
 
-        $categories = $this->garmentService->getCategories();
+        $categories = $this->garmentService->getCategoryOptions();
         $statuses = RecordStatus::options();
 
         return view('admin.garments.index', compact('garments', 'categories', 'statuses'));
@@ -33,7 +32,7 @@ class GarmentController extends Controller
 
     public function create()
     {
-        $categories = $this->garmentService->getCategories();
+        $categories = $this->garmentService->getCategoryOptions();
 
         return view('admin.garments.create', compact('categories'));
     }
@@ -45,7 +44,7 @@ class GarmentController extends Controller
 
             return redirect()->route('garments.index')->with('success', 'Loại đồ giặt đã được thêm.');
         } catch (\Exception $e) {
-            return redirect()->route('garments.create')->with('error', 'Có lỗi xảy ra: ' . $e->getMessage())->withInput();
+            return redirect()->route('garments.create')->with('error', \App\Support\FriendlyError::message($e))->withInput();
         }
     }
 
@@ -70,7 +69,7 @@ class GarmentController extends Controller
             abort(404);
         }
 
-        $categories = $this->garmentService->getCategories();
+        $categories = $this->garmentService->getCategoryOptions();
 
         return view('admin.garments.edit', compact('garment', 'categories'));
     }
@@ -88,7 +87,7 @@ class GarmentController extends Controller
 
             return redirect()->route('garments.index')->with('success', 'Loại đồ giặt đã được cập nhật.');
         } catch (\Exception $e) {
-            return redirect()->route('garments.edit', $garment)->with('error', 'Có lỗi xảy ra: ' . $e->getMessage())->withInput();
+            return redirect()->route('garments.edit', $garment)->with('error', \App\Support\FriendlyError::message($e))->withInput();
         }
     }
 
@@ -105,7 +104,7 @@ class GarmentController extends Controller
 
             return redirect()->route('garments.index')->with('success', 'Loại đồ giặt đã được xóa.');
         } catch (\Exception $e) {
-            return redirect()->route('garments.index')->with('error', 'Có lỗi xảy ra: ' . $e->getMessage());
+            return redirect()->route('garments.index')->with('error', \App\Support\FriendlyError::message($e));
         }
     }
 }

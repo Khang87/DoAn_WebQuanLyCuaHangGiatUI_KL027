@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Admin;
 
+use App\Enums\RecordStatus;
 use Illuminate\Foundation\Http\FormRequest;
 
 class ServiceCategoryRequest extends FormRequest
@@ -20,18 +21,18 @@ class ServiceCategoryRequest extends FormRequest
             'slug' => ['required', 'string', 'max:255', 'unique:service_categories,slug,' . ($id ?? '')],
             'description' => ['nullable', 'string', 'max:1000'],
             'icon' => ['nullable', 'string', 'max:100'],
-            'status' => ['required', 'in:active,inactive'],
+            'status' => ['required', 'in:'.implode(',', RecordStatus::values())],
         ];
     }
 
     public function messages(): array
     {
         return [
-            'name.required' => 'Tên danh mục là bắt buộc.',
-            'slug.required' => 'Slug là bắt buộc.',
-            'slug.unique' => 'Slug đã tồn tại.',
-            'status.required' => 'Trạng thái là bắt buộc.',
-            'status.in' => 'Trạng thái không hợp lệ.',
+            'name.required' => 'TÃªn danh má»¥c lÃ  báº¯t buá»™c.',
+            'slug.required' => 'Slug lÃ  báº¯t buá»™c.',
+            'slug.unique' => 'Slug Ä‘Ã£ tá»“n táº¡i.',
+            'status.required' => 'Tráº¡ng thÃ¡i lÃ  báº¯t buá»™c.',
+            'status.in' => 'Tráº¡ng thÃ¡i khÃ´ng há»£p lá»‡.',
         ];
     }
 }

@@ -49,7 +49,7 @@ class ReviewController extends Controller
 
             return redirect()->route('reviews.show', $review)->with('success', 'Đánh giá đã được tạo thành công.');
         } catch (\Exception $e) {
-            return redirect()->route('reviews.index')->with('error', 'Có lỗi xảy ra: ' . $e->getMessage())->withInput();
+            return redirect()->route('reviews.index')->with('error', \App\Support\FriendlyError::message($e))->withInput();
         }
     }
 
@@ -68,7 +68,7 @@ class ReviewController extends Controller
 
             return redirect()->route('reviews.index')->with('success', 'Đánh giá đã được cập nhật.');
         } catch (\Exception $e) {
-            return redirect()->route('reviews.edit', $review)->with('error', 'Có lỗi xảy ra: ' . $e->getMessage())->withInput();
+            return redirect()->route('reviews.edit', $review)->with('error', \App\Support\FriendlyError::message($e))->withInput();
         }
     }
 
@@ -85,7 +85,7 @@ class ReviewController extends Controller
 
             return redirect()->route('reviews.show', $review)->with('success', 'Phản hồi đã được gửi.');
         } catch (\Exception $e) {
-            return redirect()->route('reviews.show', $review)->with('error', 'Có lỗi xảy ra: ' . $e->getMessage())->withInput();
+            return redirect()->route('reviews.show', $review)->with('error', \App\Support\FriendlyError::message($e))->withInput();
         }
     }
 
@@ -102,7 +102,7 @@ class ReviewController extends Controller
 
             return redirect()->route('reviews.index')->with('success', 'Trạng thái hiển thị đã được thay đổi.');
         } catch (\Exception $e) {
-            return redirect()->route('reviews.index')->with('error', 'Có lỗi xảy ra: ' . $e->getMessage());
+            return redirect()->route('reviews.index')->with('error', \App\Support\FriendlyError::message($e));
         }
     }
 
@@ -119,7 +119,7 @@ class ReviewController extends Controller
 
             return redirect()->route('reviews.index')->with('success', 'Đánh giá đã được xóa.');
         } catch (\Exception $e) {
-            return redirect()->route('reviews.index')->with('error', 'Có lỗi xảy ra: ' . $e->getMessage());
+            return redirect()->route('reviews.index')->with('error', \App\Support\FriendlyError::message($e));
         }
     }
 }

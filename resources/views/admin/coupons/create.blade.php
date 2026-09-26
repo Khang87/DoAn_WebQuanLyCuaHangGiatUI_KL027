@@ -19,7 +19,7 @@
                 <div class="col-md-6">
                     <label class="form-label">Chương trình khuyến mãi <span class="text-danger">*</span></label>
                     <select class="form-select @error('promotion_id') is-invalid @enderror" name="promotion_id" required>
-                        <option value="">Chọn</option>
+                        <option value="">-- Chọn chương trình --</option>
                         @foreach($promotions as $promotion)
                         <option value="{{ $promotion->id }}">{{ $promotion->name }} ({{ $promotion->code }})</option>
                         @endforeach
@@ -66,10 +66,12 @@
                 </div>
                 <div class="col-md-6">
                     <label class="form-label">Trạng thái</label>
-                    <select class="form-select" name="status">
-                        <option value="active" selected>Hoạt động</option>
-                        <option value="inactive">Tắt</option>
-                    </select>
+                    <x-admin.status-select
+                        name="status"
+                        :options="\App\Enums\RecordStatus::options()"
+                        selected="active"
+                        class="form-select @error('status') is-invalid @enderror"
+                    />
                 </div>
             </div>
             <div class="d-flex justify-content-end gap-2 mt-4">

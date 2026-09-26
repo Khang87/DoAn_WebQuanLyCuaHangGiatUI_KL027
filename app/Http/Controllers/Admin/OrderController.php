@@ -59,8 +59,7 @@ class OrderController extends Controller
             'status' => $request->input('status'),
             'date_from' => $request->input('date_from'),
             'date_to' => $request->input('date_to'),
-            'sort_by' => $request->input('sort_by'),
-            'sort_order' => $request->input('sort_order'),
+            'sort' => $request->input('sort'),
         ]);
 
         $customers = Customer::orderBy('name')->get();
@@ -99,7 +98,7 @@ class OrderController extends Controller
 
             return redirect()->route('orders.show', $order)->with('success', 'Đơn hàng đã được tạo thành công.');
         } catch (\Exception $e) {
-            return redirect()->route('orders.create')->with('error', 'Có lỗi xảy ra: ' . $e->getMessage())->withInput();
+            return redirect()->route('orders.create')->with('error', \App\Support\FriendlyError::message($e))->withInput();
         }
     }
 
@@ -116,6 +115,37 @@ class OrderController extends Controller
         return view('admin.orders.show', compact('order', 'statusFlow'));
     }
 
+    /**
+     * Đơn đã quyết toán chỉ mở cho Chủ cửa hàng (người giữ quyền
+     * orders.edit_completed / orders.delete_completed). Nhân viên và Quản lý
+     * không bao giờ được cấp 2 quyền này nên vẫn bị khoá như cũ.
+     */
+    private function canOverrideSettled(): bool
+    {
+        return auth()->user()?->canPermission('orders.edit_completed') ?? false;
+    }
+
+    private function canDeleteSettled(): bool
+    {
+        return auth()->user()?->canPermission('orders.delete_completed') ?? false;
+    }
+
+    /**
+     * Kiểm tra đơn đã thanh toán và user không phải chủ cửa hàng.
+     * Chủ cửa hàng (owner) vẫn được phép thao tác.
+     */
+    private function denyIfPaidAndNotOwner(Request $request, $order, string $action): ?\Illuminate\Http\Response
+    {
+        if ($order->isPaid() && ! auth()->user()?->isOwner()) {
+            return $this->denySettled(
+                $request,
+                "Đơn hàng {$order->code} đã thanh toán. Bạn không có quyền {$action}.",
+                $action === 'xóa' ? route('orders.index') : route('orders.show', $order)
+            );
+        }
+        return null;
+    }
+
     public function edit(Request $request, int $id)
     {
         $order = $this->orderService->find($id);
@@ -124,8 +154,13 @@ class OrderController extends Controller
             abort(404);
         }
 
-        if ($order->isLocked()) {
-            return $this->rejectSettled(
+        // Kiểm tra đơn đã thanh toán - nhân viên/quản lý không được sửa
+        if ($denied = $this->denyIfPaidAndNotOwner($request, $order, 'sửa')) {
+            return $denied;
+        }
+
+        if ($order->isLocked() && ! $this->canOverrideSettled()) {
+            return $this->denySettled(
                 $request,
                 'Đơn hàng '.$order->code.' đã quyết toán nên chỉ có thể xem, không thể sửa.',
                 route('orders.show', $order)
@@ -154,8 +189,15 @@ class OrderController extends Controller
             abort(404);
         }
 
-        if ($order->isLocked()) {
-            return $this->rejectSettled(
+        // Kiểm tra đơn đã thanh toán - nhân viên/quản lý không được sửa
+        if ($denied = $this->denyIfPaidAndNotOwner($request, $order, 'chỉnh sửa')) {
+            return $denied;
+        }
+
+        $override = $this->canOverrideSettled();
+
+        if ($order->isLocked() && ! $override) {
+            return $this->denySettled(
                 $request,
                 'Đơn hàng '.$order->code.' đã quyết toán nên không thể chỉnh sửa.',
                 route('orders.show', $order)
@@ -163,7 +205,7 @@ class OrderController extends Controller
         }
 
         try {
-            $this->orderService->update($order, $request->validated());
+            $this->orderService->update($order, $request->validated(), $override);
 
             $rejection = $this->orderService->promotionRejection();
 
@@ -174,7 +216,7 @@ class OrderController extends Controller
 
             return redirect()->route('orders.index')->with('success', 'Đơn hàng đã được cập nhật.');
         } catch (\Exception $e) {
-            return redirect()->route('orders.edit', $order)->with('error', 'Có lỗi xảy ra: ' . $e->getMessage())->withInput();
+            return redirect()->route('orders.edit', $order)->with('error', \App\Support\FriendlyError::message($e))->withInput();
         }
     }
 
@@ -186,8 +228,15 @@ class OrderController extends Controller
             abort(404);
         }
 
-        if ($order->isLocked()) {
-            return $this->rejectSettled(
+        // Kiểm tra đơn đã thanh toán - nhân viên/quản lý không được xóa
+        if ($denied = $this->denyIfPaidAndNotOwner($request, $order, 'xóa')) {
+            return $denied;
+        }
+
+        $override = $this->canDeleteSettled();
+
+        if ($order->isLocked() && ! $override) {
+            return $this->denySettled(
                 $request,
                 'Đơn hàng '.$order->code.' đã quyết toán nên không thể xóa.',
                 route('orders.index')
@@ -195,11 +244,11 @@ class OrderController extends Controller
         }
 
         try {
-            $this->orderService->delete($order);
+            $this->orderService->delete($order, $override);
 
             return redirect()->route('orders.index')->with('success', 'Đơn hàng đã được xóa.');
         } catch (\Exception $e) {
-            return redirect()->route('orders.index')->with('error', 'Có lỗi xảy ra: ' . $e->getMessage());
+            return redirect()->route('orders.index')->with('error', \App\Support\FriendlyError::message($e));
         }
     }
 
@@ -211,8 +260,15 @@ class OrderController extends Controller
             abort(404);
         }
 
-        if ($order->isLocked()) {
-            return $this->rejectSettled(
+        // Kiểm tra đơn đã thanh toán - nhân viên/quản lý không được đổi trạng thái
+        if ($denied = $this->denyIfPaidAndNotOwner($request, $order, 'đổi trạng thái')) {
+            return $denied;
+        }
+
+        $override = $this->canOverrideSettled();
+
+        if ($order->isLocked() && ! $override) {
+            return $this->denySettled(
                 $request,
                 'Đơn hàng '.$order->code.' đã quyết toán nên không thể đổi trạng thái.',
                 route('orders.show', $order)
@@ -220,11 +276,11 @@ class OrderController extends Controller
         }
 
         try {
-            $this->orderService->updateStatus($order, (string) $request->input('status'));
+            $this->orderService->updateStatus($order, (string) $request->input('status'), $override);
 
             return back()->with('success', 'Trạng thái đơn hàng đã được cập nhật.');
         } catch (\Exception $e) {
-            return back()->with('error', 'Có lỗi xảy ra: ' . $e->getMessage());
+            return back()->with('error', \App\Support\FriendlyError::message($e));
         }
     }
 }

@@ -30,11 +30,18 @@ class UserService
             }
         }
 
-        $allowedSorts = ['id', 'name', 'email', 'phone', 'role', 'created_at'];
-        $sortBy = in_array($filters['sort_by'] ?? null, $allowedSorts) ? $filters['sort_by'] : 'created_at';
-        $sortOrder = ($filters['sort_order'] ?? 'desc') === 'asc' ? 'asc' : 'desc';
+        $sortMap = [
+            'created_at_desc' => ['created_at', 'desc'],
+            'created_at_asc' => ['created_at', 'asc'],
+            'name_asc' => ['name', 'asc'],
+            'name_desc' => ['name', 'desc'],
+            'email_asc' => ['email', 'asc'],
+            'email_desc' => ['email', 'desc'],
+        ];
+        $sort = $filters['sort'] ?? 'latest';
+        [$sortBy, $sortOrder] = $sortMap[$sort] ?? ['created_at', 'desc'];
 
-        return $query->withTrashed()->orderBy($sortBy, $sortOrder)->paginate(20);
+        return $query->orderBy($sortBy, $sortOrder)->paginate(10);
     }
 
     public function find(int $id): ?User

@@ -45,6 +45,12 @@
     --info: #3B82F6;
     --info-bg: #DBEAFE;
     
+    /* Teal Colors - for "Đã giặt xong" status */
+    --teal: #14B8A6;
+    --teal-bg: #E6FFFA;
+    --teal-border: #99F6E4;
+    --teal-emphasis: #0D9488;
+    
     /* Layout */
     --sidebar-width: 260px;
     --navbar-height: 70px;
@@ -320,6 +326,38 @@ body {
     border-color: var(--primary-blue);
 }
 
+/* Ô Profile Dropdown trên Header: nới rộng để avatar + mũi tên không bị lấn.
+   Dùng 2 class để thắng .navbar-action-btn (width/height cố định 40px)
+   mà không cần !important. */
+.navbar-action-btn.user-profile-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: auto;
+    min-width: 52px;
+    height: auto;
+    min-height: 40px;
+    padding: 4px 12px;
+    border-radius: var(--radius-md);
+    background: none;
+}
+
+.navbar-action-btn.user-profile-toggle img {
+    width: 32px;
+    height: 32px;
+    min-width: 32px;
+    min-height: 32px;
+    object-fit: cover;
+    border-radius: 50%;
+    display: block;
+}
+
+.navbar-action-btn.user-profile-toggle::after {
+    margin-left: 0;
+    vertical-align: middle;
+}
+
 .navbar-action-badge {
     position: absolute;
     top: 4px;
@@ -367,8 +405,9 @@ body {
 
 /* Stats Cards */
 .stat-card {
-    background: linear-gradient(135deg, var(--card-bg) 0%, var(--primary-blue-light) 100%);
-    border: none;
+    background: var(--card-bg);
+    border: 1px solid var(--border-light);
+    box-shadow: var(--shadow-sm);
 }
 
 .stat-card .stat-icon {
@@ -377,7 +416,6 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
-    background-color: var(--primary-blue);
     border-radius: var(--radius-md);
     color: #FFFFFF;
     font-size: 1.25rem;
@@ -393,6 +431,49 @@ body {
 .stat-card .stat-label {
     color: var(--text-secondary);
     font-size: 0.875rem;
+}
+
+/* Stat Card Variants */
+.stat-card--revenue-today .stat-icon {
+    background-color: #22c55e; /* Emerald Green */
+}
+.stat-card--revenue-today .stat-icon:hover {
+    background-color: #16a34a;
+}
+
+.stat-card--revenue-week .stat-icon {
+    background-color: #3b82f6; /* Primary Blue */
+}
+.stat-card--revenue-week .stat-icon:hover {
+    background-color: #2563eb;
+}
+
+.stat-card--revenue-month .stat-icon {
+    background-color: #8b5cf6; /* Indigo/Purple */
+}
+.stat-card--revenue-month .stat-icon:hover {
+    background-color: #7c3aed;
+}
+
+.stat-card--rating .stat-icon {
+    background-color: #f59e0b; /* Amber */
+}
+.stat-card--rating .stat-icon:hover {
+    background-color: #d97706;
+}
+
+.stat-card--orders .stat-icon {
+    background-color: #06b6d4; /* Cyan/Teal */
+}
+.stat-card--orders .stat-icon:hover {
+    background-color: #0891b2;
+}
+
+.stat-card--customers .stat-icon {
+    background-color: #ec4899; /* Rose/Pink */
+}
+.stat-card--customers .stat-icon:hover {
+    background-color: #db2777;
 }
 
 /* ---------------------------------------------------------------------
@@ -469,6 +550,10 @@ body {
     color: #0f172a;
 }
 
+/* -------------------------------------------------------------------------
+   CỤM NÚT THAO TÁC TRONG BẢNG (Xem / Sửa / Xóa)
+   Kích thước nút trước, quy tắc màu ở nhóm ngay dưới.
+   ---------------------------------------------------------------------- */
 .btn-order-action {
     width: 32px;
     height: 32px;
@@ -476,33 +561,72 @@ body {
     align-items: center;
     justify-content: center;
     border-radius: 8px;
-    border: 1px solid #e2e8f0;
-    background: #fff;
-    color: #475569;
     transition: all 0.15s ease;
     padding: 0;
 }
 
-.btn-order-action:hover {
-    background: #f8fafc;
+/* Quy ước: nút trung tính, icon LUÔN ĐEN.
+   Trước đây icon kế thừa màu xám-xanh (#475569) và đổi sang xanh/cam/đỏ
+   khi hover, nhìn rối và mất cảm giác "nút". Nay mọi icon trong cụm đều
+   #111827, khung xám nhạt trên nền trắng.
+
+   `.btn-action` là tên lớp trong quy chuẩn; `.btn-order-action` là tên lớp
+   thực sự đang dùng trong toàn bộ view. Giữ cả hai để chuẩn mới dùng được
+   ngay mà không phải sửa hàng loạt blade.
+
+   `.table td .btn` áp cho các cụm nút chưa gắn lớp riêng (orders/index,
+   customers/index đang dùng btn-outline-secondary). Cố tình LOẠI TRỪ các
+   nút mang ý nghĩa bằng màu: nút "Xóa" đỏ, nút "Sửa" cảnh báo và nút xoá
+   dòng mặt hàng — phẳng màu những nút này sẽ mất tín hiệu phá huỷ.
+   ---------------------------------------------------------------------- */
+.btn-action,
+.btn-order-action,
+.table td .btn:not(.btn-outline-danger):not(.btn-outline-warning):not(.remove-item) {
+    border: 1px solid #d1d5db !important;
+    background-color: #ffffff !important;
+    border-radius: 8px;
+    /* !important vì stylesheet có `.table a { color: var(--primary-blue) !important }`
+       sẽ tô xanh chính nút thao tác nếu không ép. */
+    color: #111827 !important;
 }
 
-.btn-order-action.view:hover {
-    background: #eff6ff;
-    border-color: #bfdbfe;
-    color: #1d4ed8;
+/* Ép icon bên trong nút về đen 100%: cả biểu tượng font (Bootstrap Icons,
+   FontAwesome) lẫn SVG nội tuyến. `!important` vì Bootstrap đặt màu icon
+   qua selector riêng và nhiều view có thêm class màu (text-primary...). */
+.btn-action i,
+.btn-action svg,
+.btn-order-action i,
+.btn-order-action svg,
+.table td .btn:not(.btn-outline-danger):not(.btn-outline-warning):not(.remove-item) i,
+.table td .btn:not(.btn-outline-danger):not(.btn-outline-warning):not(.remove-item) svg {
+    color: #111827 !important;
+    fill: #111827 !important;
+    stroke: #111827 !important;
 }
 
-.btn-order-action.edit:hover {
-    background: #fff7ed;
-    border-color: #fed7aa;
-    color: #c2410c;
+/* Hover dịu mắt: chỉ đổi nền và viền, GIỮ icon đen.
+   Dùng MỘT trạng thái hover trung tính cho cả cụm thay vì tô xanh/cam/đỏ
+   theo từng biến thể — vừa đúng quy chuẩn, vừa tránh phải đấu specificity
+   với quy tắc .table td .btn ở trên. */
+.btn-action:hover,
+.btn-order-action:hover,
+.table td .btn:not(.btn-outline-danger):not(.btn-outline-warning):not(.remove-item):hover {
+    background-color: #f3f4f6 !important;
+    border-color: #9ca3af !important;
+    color: #111827 !important;
 }
 
-.btn-order-action.delete:hover {
-    background: #fef2f2;
-    border-color: #fecaca;
-    color: #dc2626;
+/* Nút bị vô hiệu hoá (bản ghi đã quyết toán) giữ nền xám trung tính. */
+.btn-order-action:disabled,
+.btn-order-action.disabled,
+.action-locked {
+    background-color: #f9fafb !important;
+    border-color: #e5e7eb !important;
+}
+
+.btn-order-action:disabled i,
+.btn-order-action.disabled i {
+    color: #9ca3af !important;
 }
 
 .order-toolbar {
@@ -513,6 +637,125 @@ body {
     margin-bottom: 20px;
     flex-wrap: wrap;
 }
+
+/* -------------------------------------------------------------------------
+   Thanh công cụ đầu trang (Page Toolbar)
+   Quy ước UI/UX thống nhất cho toàn bộ trang quản lý:
+   nút "Thêm" luôn là phần tử ĐẦU TIÊN ở góc trên bên trái, nằm ngay dưới
+   tiêu đề trang và phía trên hàng bộ lọc / bảng dữ liệu.
+   Mô tả ngắn của module nằm ngay DƯỚI nút "Thêm", canh trái (flex-basis 100%
+   đẩy xuống dòng kế tiếp trong .page-toolbar).
+   ---------------------------------------------------------------------- */
+.page-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.page-toolbar__desc {
+    flex: 0 0 100%;
+    margin: 0;
+    font-size: 0.8125rem;
+    line-height: 1.5;
+    max-width: 100%;
+}
+
+/* Nút thao tác "Thêm" - Primary Blue #3b82f6, hover #2563eb */
+.btn-create {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background-color: #3b82f6;
+    border: 1px solid #3b82f6;
+    color: #FFFFFF;
+    font-weight: 600;
+    padding: 10px 20px;
+    border-radius: var(--radius-md);
+    transition: all 0.2s ease;
+}
+
+.btn-create:hover,
+.btn-create:focus,
+.btn-create:active {
+    background-color: #2563eb;
+    border-color: #2563eb;
+    color: #FFFFFF;
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
+}
+
+.btn-create:focus-visible {
+    outline: 0;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.35);
+}
+
+/* -------------------------------------------------------------------------
+   Ma trận phân quyền (Vai trò x Quyền hạn)
+   ---------------------------------------------------------------------- */
+.rbac-matrix th,
+.rbac-matrix td {
+    vertical-align: middle;
+}
+
+.rbac-matrix__module-col {
+    min-width: 280px;
+}
+
+.rbac-matrix__role-col {
+    min-width: 170px;
+    background: #f8fafc;
+}
+
+.rbac-matrix__group-row th {
+    background: #f1f5f9;
+    border-top: 2px solid #e2e8f0;
+    letter-spacing: 0.04em;
+}
+
+.rbac-matrix__label {
+    min-width: 280px;
+    position: sticky;
+    left: 0;
+    background: #fff;
+    z-index: 2;
+}
+
+.rbac-matrix__label code {
+    color: #000000;
+    font-weight: 700;
+    background: #f1f5f9;
+    padding: 1px 5px;
+    border-radius: 4px;
+}
+
+.rbac-matrix .form-check-input {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+    accent-color: var(--primary-blue);
+}
+
+.rbac-matrix .form-check-input:disabled {
+    cursor: not-allowed;
+    opacity: 0.4;
+}
+
+.rbac-matrix .form-check-input:disabled + .bi-lock-fill {
+    cursor: not-allowed;
+}
+
+/* Sticky header for role columns */
+.rbac-matrix thead th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+}
+
+.rbac-matrix thead th.rbac-matrix__module-col {
+    z-index: 3;
+}
+
 
 .order-toolbar .search-box {
     width: 300px;
@@ -804,9 +1047,9 @@ body {
     }
 }
 
-/* ---------------------------------------------------------------------
-   Tables
---------------------------------------------------------------------- */
+/* =====================================================================
+   TABLE STYLES - Dark Headers / Gray Data Theme
+   ===================================================================== */
 .table-custom {
     width: 100%;
     border-collapse: collapse;
@@ -816,23 +1059,225 @@ body {
     background-color: var(--body-bg);
     padding: 12px 16px;
     text-align: left;
-    font-weight: 600;
-    font-size: 0.8rem;
+    font-weight: 700;
+    font-size: 0.75rem;
     text-transform: uppercase;
-    letter-spacing: 0.05em;
-    color: var(--text-secondary);
-    border-bottom: 2px solid var(--border-light);
+    letter-spacing: 0.06em;
+    color: #000000;
+    border-bottom: 1px solid var(--border-light);
 }
 
 .table-custom tbody td {
-    padding: 14px 16px;
+    padding: 12px 16px;
     border-bottom: 1px solid var(--border-light);
-    color: var(--text-main);
-    font-size: 0.9rem;
+    color: #000000;
+    font-size: 0.875rem;
+    font-weight: 700;
 }
 
 .table-custom tbody tr:hover {
     background-color: var(--primary-blue-light);
+}
+
+.table-custom tbody tr:last-child td {
+    border-bottom: none;
+}
+
+/* Global table override for all .table instances */
+/* Labels (thead th) and data cells (tbody td): always black + bold, never blue */
+.table th,
+.table thead th,
+.table-custom thead th {
+    color: #000000 !important;
+    font-weight: 700 !important;
+    font-size: 0.75rem !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.06em !important;
+    background-color: var(--body-bg) !important;
+    border-bottom: 1px solid var(--border-light) !important;
+}
+
+.table td,
+.table tbody td,
+.table-custom tbody td {
+    color: #000000 !important;
+    font-weight: 700 !important;
+    font-size: 0.875rem !important;
+    border-color: var(--border-light) !important;
+}
+
+/* Identifiers, codes, names and links inside cells stay black + bold */
+.table td.text-dark,
+.table td.fw-semibold,
+.table td.fw-bold,
+.table th.text-dark,
+.table th.fw-semibold,
+.table th.fw-bold {
+    color: #000000 !important;
+    font-weight: 700 !important;
+}
+
+/* Preserve semantic colors for status/alerts (non-blue only) */
+.table th.text-danger,
+.table td.text-danger,
+.table th.text-success,
+.table td.text-success,
+.table th.text-warning,
+.table td.text-warning {
+    font-weight: 700 !important;
+}
+
+.table .badge,
+.table-custom .badge {
+    font-weight: 700 !important;
+}
+
+/* Fix warning badge contrast on subtle backgrounds */
+.table .badge.text-warning,
+.table-custom .badge.text-warning {
+    color: #664d03 !important;
+}
+
+/* Neutralize primary/info blue inside labels and data cells */
+.table th.text-primary,
+.table td.text-primary,
+.table th.text-info,
+.table td.text-info,
+.table .text-primary,
+.table-custom .text-primary,
+.table .text-info,
+.table-custom .text-info {
+    color: #000000 !important;
+    font-weight: 700 !important;
+}
+
+/* No blue tint/border left inside table cells: blue statuses fall back to neutral gray */
+.table .bg-primary-subtle,
+.table-custom .bg-primary-subtle,
+.table .bg-info-subtle,
+.table-custom .bg-info-subtle {
+    background-color: var(--body-bg) !important;
+}
+
+.table .border-primary,
+.table-custom .border-primary,
+.table .border-info,
+.table-custom .border-info {
+    border-color: var(--border-light) !important;
+}
+
+/* Dữ liệu trong bảng chỉ hiển thị text thuần: không gạch dưới, không link.
+   Rule giữ lại để mọi link nào lọt vào bảng cũng không bị gạch chân. */
+.table a:not(.badge):not(.btn),
+.table-custom a:not(.badge):not(.btn),
+.table a:not(.badge):not(.btn):hover,
+.table-custom a:not(.badge):not(.btn):hover {
+    color: #000000 !important;
+    font-weight: 700 !important;
+    text-decoration: none !important;
+}
+
+/* ---------------------------------------------------------------------
+   Chuẩn hóa ô Select: bộ lọc gọn 160-200px, chữ căn trái, viền bo nhẹ
+--------------------------------------------------------------------- */
+.form-select-sm,
+select.form-select.filter-select {
+    width: auto !important;
+    min-width: 160px !important;
+    max-width: 200px !important;
+    text-align: left !important;
+    font-size: 0.875rem !important;
+    color: #4f5d75 !important;
+    border-color: #d1d5db !important;
+    border-radius: 6px !important;
+    padding-top: 0.35rem !important;
+    padding-bottom: 0.35rem !important;
+}
+
+/* Căn trái toàn bộ option bên trong dropdown */
+select.form-select option {
+    text-align: left !important;
+    color: #374151 !important;
+    padding: 6px 10px !important;
+}
+
+/* Ô nhập ngày trong bộ lọc (invoices) giữ cùng độ rộng với dropdown */
+.filter-date {
+    width: auto !important;
+    min-width: 160px !important;
+    max-width: 200px !important;
+    font-size: 0.875rem !important;
+    padding-top: 0.35rem !important;
+    padding-bottom: 0.35rem !important;
+}
+
+/* Select trong form nhập dữ liệu: cùng typography, giữ chiều rộng theo cột */
+select.form-select:not(.filter-select) {
+    text-align: left !important;
+    font-size: 0.875rem !important;
+    color: #4f5d75 !important;
+    border-color: #d1d5db !important;
+    border-radius: 6px !important;
+}
+
+/* Fix lỗi Badge Thời gian xử lý - loại bỏ bóng mờ đen */
+.badge-processing-time {
+    display: inline-flex !important;
+    align-items: center !important;
+    background-color: #fef3c7 !important;
+    color: #b45309 !important;
+    border: 1px solid #fde68a !important;
+    border-radius: 50rem !important;
+    padding: 0.35em 0.75em !important;
+    font-size: 0.8125rem !important;
+    font-weight: 500 !important;
+    box-shadow: none !important;
+}
+
+.badge-processing-time i {
+    color: #b45309 !important;
+    margin-right: 4px;
+}
+
+/* ---------------------------------------------------------------------
+    Module Thông báo: CHƯA ĐỌC in đậm + nổi bật, ĐÃ ĐỌC chữ thường + nhạt
+--------------------------------------------------------------------- */
+.notification-row {
+    background-color: #ffffff;
+    border-left: 3px solid transparent;
+}
+
+.notification-row .notification-title {
+    font-weight: 400;
+    color: #6c757d;
+}
+
+.notification-row .notification-body {
+    font-weight: 400;
+    color: #adb5bd;
+}
+
+.notification-row.is-unread {
+    background-color: #fff8e6;
+    border-left-color: var(--warning);
+}
+
+.notification-row.is-unread .notification-title {
+    font-weight: 700;
+    color: #1a1a1a;
+}
+
+.notification-row.is-unread .notification-body {
+    font-weight: 500;
+    color: #1a1a1a;
+}
+
+.notification-icon-read {
+    color: #adb5bd;
+}
+
+.notification-icon-unread {
+    color: var(--warning);
 }
 
 /* ---------------------------------------------------------------------
@@ -864,6 +1309,21 @@ body {
     background-color: var(--danger-bg);
     color: var(--danger);
 }
+
+/* Custom badge for "Đã giặt xong" (Washed) - Teal with proper contrast */
+.badge-washed,
+.bg-washed {
+    background-color: var(--teal-bg) !important;
+    color: var(--teal-emphasis) !important;
+    border: 1px solid var(--teal-border) !important;
+    font-weight: 600 !important;
+}
+
+/* Ensure Bootstrap utility classes work for teal */
+.bg-teal-subtle { background-color: var(--teal-bg) !important; }
+.text-teal-emphasis { color: var(--teal-emphasis) !important; }
+.border-teal { border-color: var(--teal) !important; }
+.border-teal-subtle { border-color: var(--teal-border) !important; }
 
 /* ---------------------------------------------------------------------
    Forms
@@ -1024,58 +1484,235 @@ body {
     object-fit: cover;
 }
 
+/* ---------------------------------------------------------------------
+   Xem trước biểu tượng danh mục dịch vụ
+   Phần tử <i> nhỏ đặt ngay sau thẻ <select> .js-icon-select trong
+   form lọc và bảng hàng đơn. Hiển thị biểu tượng FontAwesome của
+   option hiện đang chọn thông qua thuộc tính data-icon. Ẩn theo
+   mặc định, chỉ hiện khi có biểu tượng thực sự.
+--------------------------------------------------------------------- */
+.icon-preview {
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    margin-left: 0.5rem;
+    vertical-align: middle;
+    line-height: 1;
+}
+
+.icon-preview[hidden] {
+    display: none !important;
+}
+
 /* =====================================================================
-   CHUẨN HÓA TEXT BẢNG DỮ LIỆU (toàn hệ thống)
-   Tiêu đề (th) và nội dung (td) dùng chung một nét chữ đen đậm để rõ ràng
-   khi chiếu máy chiếu. Ghi đè cả Bootstrap (.table) lẫn lớp tùy chỉnh
-   (.table-custom) vốn dùng màu xám nhạt --text-secondary cho tiêu đề.
-   ===================================================================== */
-.table th,
-.table td,
-.table-custom th,
-.table-custom td {
-    color: #000000 !important;
-    font-weight: 700 !important;
+   TRANG CHI TIẾT (SHOW / DETAIL VIEW) - CHUẨN DÙNG CHUNG
+   Mọi module đều dựng trên bộ class .detail-* dưới đây nên bố cục,
+   khoảng cách và thang màu giống nhau ở 100% các trang chi tiết.
+   ---------------------------------------------------------------------
+   1. .detail-header  : thanh tiêu đề + cụm nút hành động
+   2. .detail-panel   : thẻ nội dung (tương đương .card shadow-sm)
+   3. .detail-field   : một cặp nhãn / giá trị
+   4. .detail-table   : bảng dữ liệu con trong trang chi tiết
+   5. .detail-money   : số tiền căn phải theo chuẩn VNĐ
+   6. .detail-summary : dòng tổng kết (tạm tính / giảm / tổng cộng)
+   7. .detail-lock    : thông báo bản ghi đã quyết toán
+   --------------------------------------------------------------------- */
+
+/* 1. Thanh tiêu đề ---------------------------------------------------- */
+.detail-header__title {
+    font-size: 1.25rem;
+    line-height: 1.3;
 }
 
-/* Giữ lại màu ngữ nghĩa cho trạng thái / cảnh báo / liên kết / nhấn mạnh */
-.table th.text-danger,
-.table td.text-danger,
-.table-custom th.text-danger,
-.table-custom td.text-danger {
-    color: var(--bs-danger) !important;
+.detail-header__subtitle {
+    color: var(--text-muted);
+    font-size: 0.8125rem;
+    margin-top: 0.25rem;
 }
 
-.table th.text-primary,
-.table td.text-primary,
-.table-custom th.text-primary,
-.table-custom td.text-primary {
-    color: var(--bs-primary) !important;
+/* Nút hành động trong thanh tiêu đề luôn cùng chiều cao */
+.detail-header .btn {
+    display: inline-flex;
+    align-items: center;
 }
 
-.table th.text-success,
-.table td.text-success,
-.table-custom th.text-success,
-.table-custom td.text-success {
-    color: var(--bs-success) !important;
+/* 2. Thẻ nội dung ----------------------------------------------------- */
+.detail-panel {
+    border: 0;
+    box-shadow: 0 0.25rem 0.75rem rgba(15, 23, 42, 0.06);
+    border-radius: 0.75rem;
+    overflow: hidden;
 }
 
-.table th.text-warning,
-.table td.text-warning,
-.table-custom th.text-warning,
-.table-custom td.text-warning {
-    color: #664d03 !important;
+.detail-panel__header {
+    background: #fff;
+    border-bottom: 1px solid #eef2f7;
+    font-weight: 700;
+    padding: 0.875rem 1.25rem;
 }
 
-.table th.text-info,
-.table td.text-info,
-.table-custom th.text-info,
-.table-custom td.text-info {
-    color: var(--bs-info) !important;
+.detail-panel__title {
+    font-size: 0.9375rem;
+    font-weight: 700;
+    color: #0f172a;
+    margin: 0;
 }
 
-/* Nhãn trạng thái (badge) giữ nguyên màu chữ riêng của hệ thống */
-.table .badge,
-.table-custom .badge {
-    font-weight: 700 !important;
+.detail-panel__body {
+    padding: 1.25rem;
+}
+
+/* Biểu tượng tròn đứng trước tiêu đề thẻ (icon dịch vụ, loại đồ...) */
+.detail-panel__icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 0.75rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.15rem;
+    flex-shrink: 0;
+}
+
+/* 3. Cặp nhãn / giá trị ---------------------------------------------- */
+.detail-field__label {
+    color: var(--text-secondary);
+    font-size: 0.6875rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    margin-bottom: 0.125rem;
+}
+
+.detail-field__value {
+    color: var(--text-main);
+    font-weight: 600;
+    word-break: break-word;
+}
+
+.detail-field--muted .detail-field__value {
+    color: var(--text-muted);
+    font-weight: 500;
+}
+
+/* Ô "chưa có giá trị" dùng chung cho toàn hệ thống */
+.detail-empty-value {
+    color: var(--text-muted);
+    font-weight: 500;
+}
+
+/* Khối mô tả dài (mô tả dịch vụ, ghi chú, nội dung đánh giá) */
+.detail-text {
+    background: #f8fafc;
+    border: 1px solid #eef2f7;
+    border-radius: 0.5rem;
+    padding: 0.875rem 1rem;
+    color: #334155;
+}
+
+/* 4. Bảng dữ liệu con ------------------------------------------------- */
+.detail-table {
+    margin-bottom: 0;
+    vertical-align: middle;
+}
+
+.detail-table thead th {
+    background: #f8fafc;
+    border-bottom: 1px solid #e2e8f0;
+    color: #000000;
+    font-size: 0.6875rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+
+.detail-table tbody td {
+    border-color: #f1f5f9;
+    color: #000000;
+    font-weight: 700;
+}
+
+/* 5. Số tiền ---------------------------------------------------------- */
+.detail-money {
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+.detail-money--muted {
+    color: var(--text-muted);
+    font-weight: 500;
+}
+
+/* 6. Dòng tổng kết ---------------------------------------------------- */
+.detail-summary {
+    border-top: 2px solid #e2e8f0;
+    margin-top: 0.75rem;
+    padding-top: 0.75rem;
+}
+
+.detail-summary__label {
+    color: var(--text-muted);
+    font-weight: 500;
+}
+
+.detail-summary__total {
+    font-size: 1.125rem;
+    font-weight: 800;
+    color: var(--text-main);
+}
+
+/* 7. Bản ghi đã quyết toán -------------------------------------------- */
+.detail-lock {
+    align-items: center;
+    background: #f1f5f9;
+    border: 1px dashed #cbd5e1;
+    border-radius: 0.5rem;
+    color: #475569;
+    display: flex;
+    font-size: 0.8125rem;
+    gap: 0.5rem;
+    padding: 0.625rem 0.875rem;
+}
+
+/* 8. Vùng trạng thái rỗng --------------------------------------------- */
+.detail-empty {
+    color: var(--text-muted);
+    padding: 1.75rem 1rem;
+    text-align: center;
+}
+
+.detail-empty i {
+    display: block;
+    font-size: 1.75rem;
+    margin-bottom: 0.5rem;
+    opacity: 0.5;
+}
+
+/* 9. Danh sách mốc thời gian (lịch sử trạng thái) --------------------- */
+.detail-timeline__item {
+    align-items: center;
+    display: flex;
+    gap: 0.75rem;
+    padding: 0.375rem 0;
+}
+
+.detail-timeline__dot {
+    background: #cbd5e1;
+    border-radius: 50%;
+    flex-shrink: 0;
+    height: 0.625rem;
+    width: 0.625rem;
+}
+
+.detail-timeline__item--done .detail-timeline__dot {
+    background: var(--primary-blue-dark);
+}
+
+.detail-timeline__item--current {
+    color: #0f172a;
+    font-weight: 700;
+}
+
+.detail-timeline__item--muted {
+    color: var(--text-muted);
 }

@@ -44,7 +44,7 @@ class DeliveryService
         $sortBy = in_array($filters['sort_by'] ?? null, $allowedSorts) ? $filters['sort_by'] : 'created_at';
         $sortOrder = ($filters['sort_order'] ?? 'desc') === 'asc' ? 'asc' : 'desc';
 
-        return $query->with('customer', 'employee', 'order')->withTrashed()->orderBy($sortBy, $sortOrder)->paginate(10)->withQueryString();
+        return $query->with('customer', 'employee', 'order')->orderBy($sortBy, $sortOrder)->paginate(10)->withQueryString();
     }
 
     public function find(int $id): ?Delivery

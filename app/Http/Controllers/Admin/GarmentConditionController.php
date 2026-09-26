@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Enums\RecordStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\GarmentConditionRequest;
 use App\Models\Garment;
@@ -25,7 +26,9 @@ class GarmentConditionController extends Controller
 
         $garments = Garment::where('status', 'active')->orderBy('name')->get();
 
-        return view('admin.garment-conditions.index', compact('conditions', 'garments'));
+        $statuses = RecordStatus::options();
+
+        return view('admin.garment-conditions.index', compact('conditions', 'garments', 'statuses'));
     }
 
     public function create()
@@ -42,7 +45,7 @@ class GarmentConditionController extends Controller
 
             return redirect()->route('garment-conditions.index')->with('success', 'Điều kiện đã được thêm.');
         } catch (\Exception $e) {
-            return redirect()->route('garment-conditions.create')->with('error', 'Có lỗi xảy ra: ' . $e->getMessage())->withInput();
+            return redirect()->route('garment-conditions.create')->with('error', \App\Support\FriendlyError::message($e))->withInput();
         }
     }
 
@@ -83,7 +86,7 @@ class GarmentConditionController extends Controller
 
             return redirect()->route('garment-conditions.index')->with('success', 'Điều kiện đã được cập nhật.');
         } catch (\Exception $e) {
-            return redirect()->route('garment-conditions.edit', $condition)->with('error', 'Có lỗi xảy ra: ' . $e->getMessage())->withInput();
+            return redirect()->route('garment-conditions.edit', $condition)->with('error', \App\Support\FriendlyError::message($e))->withInput();
         }
     }
 
@@ -100,7 +103,7 @@ class GarmentConditionController extends Controller
 
             return redirect()->route('garment-conditions.index')->with('success', 'Đã xóa điều kiện.');
         } catch (\Exception $e) {
-            return redirect()->route('garment-conditions.index')->with('error', 'Có lỗi xảy ra: ' . $e->getMessage());
+            return redirect()->route('garment-conditions.index')->with('error', \App\Support\FriendlyError::message($e));
         }
     }
 }

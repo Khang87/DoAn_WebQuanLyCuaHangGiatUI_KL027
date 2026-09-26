@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Admin;
 
+use App\Enums\ReviewStatus;
 use Illuminate\Foundation\Http\FormRequest;
 
 class ReviewRequest extends FormRequest
@@ -23,7 +24,7 @@ class ReviewRequest extends FormRequest
             'images' => ['nullable', 'array'],
             'images.*' => ['string', 'max:500'],
             'shop_response' => ['nullable', 'string', 'max:2000'],
-            'status' => ['nullable', 'in:visible,hidden'],
+            'status' => ['nullable', 'in:'.implode(',', ReviewStatus::values())],
             'reviewed_at' => ['nullable', 'date'],
         ];
     }
@@ -31,20 +32,20 @@ class ReviewRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'order_id.required' => 'Đơn hàng là bắt buộc.',
-            'order_id.exists' => 'Đơn hàng không tồn tại.',
-            'order_id.unique' => 'Đơn hàng này đã được đánh giá.',
-            'customer_id.required' => 'Khách hàng là bắt buộc.',
-            'customer_id.exists' => 'Khách hàng không tồn tại.',
-            'rating.required' => 'Đánh giá sao là bắt buộc.',
-            'rating.integer' => 'Đánh giá sao phải là số nguyên.',
-            'rating.between' => 'Đánh giá sao phải từ 1 đến 5.',
-            'content.max' => 'Nội dung không quá 2000 ký tự.',
-            'images.array' => 'Hình ảnh phải là mảng.',
-            'images.*.string' => 'Mỗi hình ảnh phải là chuỗi.',
-            'images.*.max' => 'Đường dẫn hình ảnh không quá 500 ký tự.',
-            'shop_response.max' => 'Phản hồi cửa hàng không quá 2000 ký tự.',
-            'status.in' => 'Trạng thái không hợp lệ.',
+            'order_id.required' => 'ÄÆ¡n hÃ ng lÃ  báº¯t buá»™c.',
+            'order_id.exists' => 'ÄÆ¡n hÃ ng khÃ´ng tá»“n táº¡i.',
+            'order_id.unique' => 'ÄÆ¡n hÃ ng nÃ y Ä‘Ã£ Ä‘Æ°á»£c Ä‘Ã¡nh giÃ¡.',
+            'customer_id.required' => 'KhÃ¡ch hÃ ng lÃ  báº¯t buá»™c.',
+            'customer_id.exists' => 'KhÃ¡ch hÃ ng khÃ´ng tá»“n táº¡i.',
+            'rating.required' => 'ÄÃ¡nh giÃ¡ sao lÃ  báº¯t buá»™c.',
+            'rating.integer' => 'ÄÃ¡nh giÃ¡ sao pháº£i lÃ  sá»‘ nguyÃªn.',
+            'rating.between' => 'ÄÃ¡nh giÃ¡ sao pháº£i tá»« 1 Ä‘áº¿n 5.',
+            'content.max' => 'Ná»™i dung khÃ´ng quÃ¡ 2000 kÃ½ tá»±.',
+            'images.array' => 'HÃ¬nh áº£nh pháº£i lÃ  máº£ng.',
+            'images.*.string' => 'Má»—i hÃ¬nh áº£nh pháº£i lÃ  chuá»—i.',
+            'images.*.max' => 'ÄÆ°á»ng dáº«n hÃ¬nh áº£nh khÃ´ng quÃ¡ 500 kÃ½ tá»±.',
+            'shop_response.max' => 'Pháº£n há»“i cá»­a hÃ ng khÃ´ng quÃ¡ 2000 kÃ½ tá»±.',
+            'status.in' => 'Tráº¡ng thÃ¡i khÃ´ng há»£p lá»‡.',
         ];
     }
 }

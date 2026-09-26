@@ -19,8 +19,7 @@ class ServiceCategoryController extends Controller
         $categories = $this->categoryService->getAll([
             'search' => $request->input('search'),
             'status' => $request->input('status'),
-            'sort_by' => $request->input('sort_by'),
-            'sort_order' => $request->input('sort_order'),
+            'sort' => $request->input('sort'),
         ]);
 
         return view('admin.service-categories.index', compact('categories'));
@@ -38,7 +37,7 @@ class ServiceCategoryController extends Controller
 
             return redirect()->route('service-categories.index')->with('success', 'Danh mục đã được tạo thành công.');
         } catch (\Exception $e) {
-            return redirect()->route('service-categories.create')->with('error', 'Có lỗi xảy ra: ' . $e->getMessage())->withInput();
+            return redirect()->route('service-categories.create')->with('error', \App\Support\FriendlyError::message($e))->withInput();
         }
     }
 
@@ -80,7 +79,7 @@ class ServiceCategoryController extends Controller
 
             return redirect()->route('service-categories.index')->with('success', 'Danh mục đã được cập nhật.');
         } catch (\Exception $e) {
-            return redirect()->route('service-categories.edit', $category)->with('error', 'Có lỗi xảy ra: ' . $e->getMessage())->withInput();
+            return redirect()->route('service-categories.edit', $category)->with('error', \App\Support\FriendlyError::message($e))->withInput();
         }
     }
 
@@ -97,7 +96,7 @@ class ServiceCategoryController extends Controller
 
             return redirect()->route('service-categories.index')->with('success', 'Danh mục đã được xóa.');
         } catch (\Exception $e) {
-            return redirect()->route('service-categories.index')->with('error', 'Có lỗi xảy ra: ' . $e->getMessage());
+            return redirect()->route('service-categories.index')->with('error', \App\Support\FriendlyError::message($e));
         }
     }
 
@@ -114,7 +113,7 @@ class ServiceCategoryController extends Controller
 
             return back()->with('success', 'Trạng thái danh mục đã được cập nhật.');
         } catch (\Exception $e) {
-            return back()->with('error', 'Có lỗi xảy ra: ' . $e->getMessage());
+            return back()->with('error', \App\Support\FriendlyError::message($e));
         }
     }
 }

@@ -67,7 +67,7 @@ class ModuleConsistencyTest extends TestCase
 
         $this->assertSame('pending', $order->status);
         $this->assertSame($staff->id, $order->employee_id);
-        $this->assertSame('completed', $booking->fresh()->status);
+        $this->assertSame('confirmed', $booking->fresh()->status);
 
         $this->assertDatabaseHas('deliveries', [
             'order_id' => $order->id,

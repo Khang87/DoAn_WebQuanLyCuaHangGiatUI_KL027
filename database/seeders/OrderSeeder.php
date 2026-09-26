@@ -32,7 +32,7 @@ class OrderSeeder extends Seeder
             return;
         }
 
-        $statuses = ['pending', 'processing', 'washing', 'washed', 'delivering', 'completed', 'cancelled'];
+        $statuses = ['pending', 'processing', 'ready_for_pickup', 'completed', 'cancelled'];
         $methods = ['cash', 'bank_transfer', 'e_wallet'];
         $itemNotes = [
             'Giặt riêng áo trắng, không tẩy mạnh.',
@@ -134,7 +134,7 @@ class OrderSeeder extends Seeder
 
                 // 4. Tạo Thanh Toán
                 if ($status !== 'cancelled') {
-                    $paymentStatus = in_array($status, ['completed', 'washed']) ? 'paid' : 'pending';
+                    $paymentStatus = in_array($status, ['completed', 'ready_for_pickup']) ? 'paid' : 'pending';
                     $paidAt = null;
                     $transactionCode = null;
 
@@ -156,7 +156,7 @@ class OrderSeeder extends Seeder
                 }
 
                 // 5. Tạo Giao Nhận
-                if (in_array($status, ['processing', 'washing', 'washed', 'delivering', 'completed'])) {
+                if (in_array($status, ['processing', 'ready_for_pickup', 'completed'])) {
                     $deliveryStatus = ($status === 'completed') ? 'completed' : 'delivering';
                     $deliveryMethod = ['nhan_do', 'giao_do'][array_rand(['nhan_do', 'giao_do'])];
 

@@ -53,11 +53,18 @@ class PaymentService
             });
         }
 
-        $allowedSorts = ['id', 'amount', 'method', 'status', 'paid_at', 'created_at'];
-        $sortBy = in_array($filters['sort_by'] ?? null, $allowedSorts) ? $filters['sort_by'] : 'created_at';
-        $sortOrder = ($filters['sort_order'] ?? 'desc') === 'asc' ? 'asc' : 'desc';
+        $sortMap = [
+            'latest' => ['created_at', 'desc'],
+            'oldest' => ['created_at', 'asc'],
+            'amount_desc' => ['amount', 'desc'],
+            'amount_asc' => ['amount', 'asc'],
+            'id_desc' => ['id', 'desc'],
+            'id_asc' => ['id', 'asc'],
+        ];
+        $sort = $filters['sort'] ?? 'latest';
+        [$sortBy, $sortOrder] = $sortMap[$sort] ?? ['created_at', 'desc'];
 
-        return $query->with('order.customer', 'order.invoice', 'invoice')->withTrashed()->orderBy($sortBy, $sortOrder)->paginate(10)->withQueryString();
+        return $query->with(['order.customer', 'order.invoice', 'order.payments', 'invoice'])->orderBy($sortBy, $sortOrder)->paginate(10)->withQueryString();
     }
 
     public function find(int $id): ?Payment
@@ -67,6 +74,17 @@ class PaymentService
 
     public function create(array $data): Payment
     {
+        // Đơn đã quyết toán thì không được ghi thêm khoản thu: bước cập nhật
+        // trạng thái bên dưới có thể hạ 'completed' về 'processing' và mở khoá đơn.
+        $targetOrderId = $data['order_id'] ?? null;
+        if (empty($targetOrderId) && ! empty($data['invoice_id'])) {
+            $targetOrderId = Invoice::find($data['invoice_id'])?->order_id;
+        }
+
+        if (! empty($targetOrderId) && Order::find($targetOrderId)?->isLocked()) {
+            throw SettledOrderException::forOrder($targetOrderId);
+        }
+
         return DB::transaction(function () use ($data) {
             // If invoice_id is provided, get order_id from invoice
             if (! empty($data['invoice_id']) && empty($data['order_id'])) {
@@ -92,7 +110,7 @@ class PaymentService
 
             if ($order) {
                 // Update order status based on payment
-                $totalPaid = $order->payments()->where('status', 'paid')->sum('amount');
+                $totalPaid = $this->paidTotalFor($order);
                 $grandTotal = $order->invoice?->grand_total ?? $order->total_amount;
 
                 if ($totalPaid >= $grandTotal) {
@@ -106,9 +124,11 @@ class PaymentService
         });
     }
 
-    public function update(Payment $payment, array $data): Payment
+    public function update(Payment $payment, array $data, bool $override = false): Payment
     {
-        $this->guardSettledPayment($payment);
+        if (! $override) {
+            $this->guardSettledPayment($payment);
+        }
 
         $payment->update($data);
 
@@ -119,7 +139,7 @@ class PaymentService
 
         $order = $payment->order;
         if ($order) {
-            $totalPaid = $order->payments()->where('status', 'paid')->sum('amount');
+            $totalPaid = $this->paidTotalFor($order);
             $grandTotal = $order->invoice?->grand_total ?? $order->total_amount;
 
             if ($totalPaid >= $grandTotal) {
@@ -133,8 +153,8 @@ class PaymentService
     }
 
     /**
-     * Khoản thu đã gắn với hóa đơn đã thanh toán thì không được sửa/xoá vì sẽ
-     * làm lệch số tiền đã quyết toán.
+     * Khoản thu đã ghi nhận tiền thật, hoặc đã gắn với hóa đơn/đơn đã quyết
+     * toán, thì không được sửa/xoá vì sẽ làm lệch số tiền đã thu.
      */
     private function guardSettledPayment(Payment $payment): void
     {
@@ -143,6 +163,29 @@ class PaymentService
         if ($invoice?->isPaid()) {
             throw SettledOrderException::forInvoice($invoice->code);
         }
+
+        if ($payment->isSettled()) {
+            throw new SettledOrderException(sprintf(
+                'Khoản thu %s đã ghi nhận tiền nên chỉ có thể xem, không thể chỉnh sửa hoặc xóa.',
+                $payment->transaction_code ?: ('#' . $payment->id)
+            ));
+        }
+
+        if ($payment->order?->isLocked()) {
+            throw SettledOrderException::forOrder($payment->order->code);
+        }
+    }
+
+    /**
+     * Tổng tiền đã ghi nhận của đơn. Bản ghi đã xoá mềm không phải tiền trong quỹ
+     * nên bị loại (quan hệ Order::payments() nạp cả bản ghi đã xoá để hiển thị).
+     */
+    private function paidTotalFor(Order $order): float
+    {
+        return (float) $order->payments()
+            ->whereNull('deleted_at')
+            ->where('status', 'paid')
+            ->sum('amount');
     }
 
     private function updateInvoiceStatus(Invoice $invoice): void
@@ -159,9 +202,11 @@ class PaymentService
         }
     }
 
-    public function delete(Payment $payment): bool
+    public function delete(Payment $payment, bool $override = false): bool
     {
-        $this->guardSettledPayment($payment);
+        if (! $override) {
+            $this->guardSettledPayment($payment);
+        }
 
         $invoice = $payment->invoice ?? ($payment->order?->invoice);
         $order = $payment->order;
@@ -173,7 +218,7 @@ class PaymentService
         }
 
         if ($order) {
-            $totalPaid = $order->payments()->where('status', 'paid')->sum('amount');
+            $totalPaid = $this->paidTotalFor($order);
             $grandTotal = $order->invoice?->grand_total ?? $order->total_amount;
 
             if ($totalPaid >= $grandTotal) {

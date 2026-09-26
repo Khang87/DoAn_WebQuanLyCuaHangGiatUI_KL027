@@ -22,6 +22,7 @@ class NotificationController extends Controller
             'user_id' => $request->input('user_id'),
             'type' => $request->input('type'),
             'order_id' => $request->input('order_id'),
+            'read' => $request->input('read'),
         ]);
 
         $users = User::orderBy('name')->get();
@@ -56,7 +57,7 @@ class NotificationController extends Controller
 
             return redirect()->route('notifications.index')->with('success', 'Thông báo đã được tạo thành công.');
         } catch (\Exception $e) {
-            return redirect()->route('notifications.create')->with('error', 'Có lỗi xảy ra: ' . $e->getMessage())->withInput();
+            return redirect()->route('notifications.create')->with('error', \App\Support\FriendlyError::message($e))->withInput();
         }
     }
 
@@ -107,7 +108,7 @@ class NotificationController extends Controller
 
             return redirect()->route('notifications.index')->with('success', 'Thông báo đã được cập nhật.');
         } catch (\Exception $e) {
-            return redirect()->route('notifications.edit', $id)->with('error', 'Có lỗi xảy ra: ' . $e->getMessage())->withInput();
+            return redirect()->route('notifications.edit', $id)->with('error', \App\Support\FriendlyError::message($e))->withInput();
         }
     }
 
@@ -124,7 +125,7 @@ class NotificationController extends Controller
 
             return redirect()->route('notifications.index')->with('success', 'Thông báo đã được xóa.');
         } catch (\Exception $e) {
-            return redirect()->route('notifications.index')->with('error', 'Có lỗi xảy ra: ' . $e->getMessage());
+            return redirect()->route('notifications.index')->with('error', \App\Support\FriendlyError::message($e));
         }
     }
 

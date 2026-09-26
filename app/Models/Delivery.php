@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\DeliveryStatus;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -34,12 +35,12 @@ class Delivery extends Model
 
     public function customer(): BelongsTo
     {
-        return $this->belongsTo(Customer::class);
+        return $this->belongsTo(Customer::class)->withTrashed();
     }
 
     public function order(): BelongsTo
     {
-        return $this->belongsTo(Order::class);
+        return $this->belongsTo(Order::class)->withTrashed();
     }
 
     public function employee(): BelongsTo
@@ -68,25 +69,6 @@ class Delivery extends Model
 
     public function getStatusLabelAttribute(): string
     {
-        return match($this->status) {
-            'pending' => 'Chờ xác nhận',
-            'picking' => 'Đang lấy đồ',
-            'delivering' => 'Đang giao đồ',
-            'completed' => 'Hoàn thành',
-            'cancelled' => 'Đã hủy',
-            default => 'Chờ xác nhận',
-        };
-    }
-
-    public function getStatusBadgeClassAttribute(): string
-    {
-        return match($this->status) {
-            'pending' => 'bg-warning-subtle text-warning border-warning',
-            'picking' => 'bg-info-subtle text-info border-info',
-            'delivering' => 'bg-primary-subtle text-primary border-primary',
-            'completed' => 'bg-success-subtle text-success border-success',
-            'cancelled' => 'bg-danger-subtle text-danger border-danger',
-            default => 'bg-secondary-subtle text-secondary border-secondary',
-        };
+        return DeliveryStatus::labelFor($this->status);
     }
 }

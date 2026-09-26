@@ -38,15 +38,10 @@
                     @enderror
                 </div>
                 <div class="col-md-6">
-                    <label class="form-label">Vai trò <span class="text-danger">*</span></label>
-                    <select class="form-select @error('role') is-invalid @enderror" name="role" required>
-                        <option value="manager" @selected(old('role', $account->role) === 'manager' || old('role', $account->role) === 'admin')>Quản lý</option>
-                        <option value="staff" {{ $account->role === 'staff' ? 'selected' : '' }}>Nhân viên</option>
-                        <option value="customer" {{ $account->role === 'customer' ? 'selected' : '' }}>Khách hàng</option>
-                    </select>
-                    @error('role')
-                        <div class="invalid-feedback">{{ $message }}</div>
-                    @enderror
+                    <x-admin.role-select
+                        name="role"
+                        :selected="$account->role"
+                    />
                 </div>
                 <div class="col-md-6">
                     <label class="form-label">Mật khẩu mới</label>

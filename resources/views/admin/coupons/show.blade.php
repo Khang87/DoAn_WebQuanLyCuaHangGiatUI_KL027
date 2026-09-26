@@ -4,129 +4,106 @@
 @section('page-title', 'Chi tiết mã giảm giá')
 
 @section('content')
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <a href="{{ route('coupons.index') }}" class="btn btn-outline-secondary btn-sm">
-        <i class="bi bi-arrow-left me-1"></i>Quay lại
-    </a>
-    <div class="d-flex gap-2">
-        <a href="{{ route('coupons.edit', $coupon) }}" class="btn btn-warning btn-sm">
+@php
+    $discountLabels = [
+        'percent' => 'Phần trăm',
+        'fixed' => 'Số tiền cố định',
+        'free_shipping' => 'Miễn phí giao hàng',
+    ];
+    $discountBadge = [
+        'percent' => 'bg-primary-subtle text-primary-emphasis border border-primary',
+        'fixed' => 'bg-purple-subtle text-purple-emphasis border border-purple',
+        'free_shipping' => 'bg-warning-subtle text-warning-emphasis border border-warning',
+    ];
+    $discountType = $coupon->discount_type;
+    $usedPercent = $coupon->max_uses ? min(100, ($coupon->used_count / $coupon->max_uses) * 100) : 0;
+@endphp
+
+<x-admin.detail.page-header
+    title="Mã giảm giá {{ $coupon->code }}"
+    :back="route('coupons.index')"
+    :subtitle="$coupon->promotion?->name"
+>
+    <x-slot:badge>
+        <x-admin.status-badge :status="$coupon->status" :enum="\App\Enums\RecordStatus::class" />
+    </x-slot:badge>
+
+    <x-slot:actions>
+        <a href="{{ route('coupons.edit', $coupon) }}" class="btn btn-primary btn-sm">
             <i class="bi bi-pencil me-1"></i>Chỉnh sửa
         </a>
-        <form action="{{ route('coupons.destroy', $coupon) }}" method="POST" class="d-inline" id="deleteCouponForm">
-            @csrf @method('DELETE')
-            <button type="submit" class="btn btn-danger btn-sm">
-                <i class="bi bi-trash me-1"></i>Xóa
-            </button>
-        </form>
+
+        <x-admin.detail.confirm-form
+            :action="route('coupons.destroy', $coupon)"
+            title="Xóa mã giảm giá?"
+            text="Hành động này không thể hoàn tác."
+            label="Xóa"
+            icon="bi-trash"
+            variant="btn-outline-danger"
+        />
+    </x-slot:actions>
+</x-admin.detail.page-header>
+
+<div class="row g-4">
+    {{-- ============ CỘT CHÍNH (8/12) ============ --}}
+    <div class="col-lg-8">
+        <x-admin.detail.panel title="Thông tin mã giảm giá" icon="bi-ticket-perforated" :iconClass="'bg-primary-subtle text-primary'">
+            <x-admin.detail.info-grid :columns="2">
+                <x-admin.detail.info-item label="Mã coupon">
+                    <span class="badge bg-primary-subtle text-primary-emphasis border border-primary px-3 py-2 rounded-pill">
+                        {{ $coupon->code }}
+                    </span>
+                </x-admin.detail.info-item>
+                <x-admin.detail.info-item label="Chương trình">
+                    @if($coupon->promotion)
+                        <a href="{{ route('promotions.show', $coupon->promotion) }}" class="text-decoration-none">
+                            {{ $coupon->promotion->name }} ({{ $coupon->promotion->code }})
+                        </a>
+                    @else
+                        <span class="detail-empty-value">Không thuộc chương trình nào</span>
+                    @endif
+                </x-admin.detail.info-item>
+                <x-admin.detail.info-item label="Loại giảm">
+                    <span class="badge {{ $discountBadge[$discountType] ?? 'bg-secondary-subtle text-secondary-emphasis border border-secondary' }} px-3 py-2 rounded-pill">
+                        {{ $discountLabels[$discountType] ?? 'Không xác định' }}
+                    </span>
+                </x-admin.detail.info-item>
+                <x-admin.detail.info-item label="Giá trị">
+                    @if($discountType === 'percent')
+                        {{ rtrim(rtrim((string) $coupon->discount_value, '0'), '.') }}%
+                    @elseif($discountType === 'fixed')
+                        <x-admin.detail.money :value="$coupon->discount_value" class="text-primary fw-bold" />
+                    @else
+                        <span class="detail-empty-value">Miễn phí</span>
+                    @endif
+                </x-admin.detail.info-item>
+                <x-admin.detail.info-item label="Số lần dùng" :value="$coupon->used_count . '/' . ($coupon->max_uses ?: '∞')" />
+                <x-admin.detail.info-item label="Ngày hết hạn" :value="$coupon->expires_at?->format('d/m/Y') ?: 'Không thời hạn'" />
+                <x-admin.detail.info-item label="Ngày tạo" :value="$coupon->created_at?->format('d/m/Y H:i')" />
+                <x-admin.detail.info-item label="Trạng thái">
+                    <x-admin.status-badge :status="$coupon->status" :enum="\App\Enums\RecordStatus::class" :pill="false" />
+                </x-admin.detail.info-item>
+            </x-admin.detail.info-grid>
+        </x-admin.detail.panel>
+    </div>
+
+    {{-- ============ CỘT PHỤ (4/12) ============ --}}
+    <div class="col-lg-4">
+        <x-admin.detail.panel title="Mức độ sử dụng" icon="bi-bar-chart" :iconClass="'bg-success-subtle text-success'">
+            <div class="d-flex justify-content-between align-items-baseline mb-2">
+                <span class="detail-field__label">Đã dùng</span>
+                <span class="detail-summary__total">{{ number_format($usedPercent, 1) }}%</span>
+            </div>
+            <div class="progress" style="height: 20px;">
+                <div class="progress-bar {{ $usedPercent >= 100 ? 'bg-danger' : 'bg-success' }}" role="progressbar"
+                     style="width: {{ $usedPercent }}%" aria-valuenow="{{ $usedPercent }}" aria-valuemin="0" aria-valuemax="100"></div>
+            </div>
+            <div class="detail-field__label mt-3 mb-2">Hạn mức</div>
+            <x-admin.detail.info-grid :columns="1">
+                <x-admin.detail.info-item label="Đã sử dụng" :value="$coupon->used_count" />
+                <x-admin.detail.info-item label="Tối đa" :value="$coupon->max_uses ?: 'Không giới hạn'" />
+            </x-admin.detail.info-grid>
+        </x-admin.detail.panel>
     </div>
 </div>
-
-<div class="card">
-    <div class="card-body">
-        <div class="d-flex justify-content-between align-items-center mb-4">
-            <div>
-                <span class="text-muted">Mã coupon</span>
-                <h4 class="mb-0 text-primary">{{ $coupon->code }}</h4>
-            </div>
-            @if($coupon->status === 'active')
-                <span class="badge bg-success-subtle text-success border border-success px-3 py-2 rounded-pill"><i class="fas fa-check-circle me-1"></i>Hoạt động</span>
-            @else
-                <span class="badge bg-danger-subtle text-danger border border-danger px-3 py-2 rounded-pill"><i class="fas fa-ban me-1"></i>Tắt</span>
-            @endif
-        </div>
-
-        <div class="row g-4">
-            <div class="col-md-6">
-                <table class="table table-borderless">
-                    <tr>
-                        <td><strong>Chương trình</strong></td>
-                        <td>{{ $coupon->promotion?->name }} ({{ $coupon->promotion?->code }})</td>
-                    </tr>
-                    <tr>
-                        <td><strong>Loại giảm</strong></td>
-                        <td>
-                            @if($coupon->discount_type === 'percent')
-                                <span class="badge bg-info-subtle text-info border border-info px-2 py-1 rounded-pill">Phần trăm</span>
-                            @elseif($coupon->discount_type === 'fixed')
-                                <span class="badge bg-primary-subtle text-primary border border-primary px-2 py-1 rounded-pill">Số tiền cố định</span>
-                            @else
-                                <span class="badge bg-warning-subtle text-warning border border-warning px-2 py-1 rounded-pill">Miễn phí ship</span>
-                            @endif
-                        </td>
-                    </tr>
-                    <tr>
-                        <td><strong>Giá trị</strong></td>
-                        <td>
-                            @if($coupon->discount_type === 'percent')
-                                {{ $coupon->discount_value }}%
-                            @elseif($coupon->discount_type === 'fixed')
-                                {{ number_format($coupon->discount_value) }} VNĐ
-                            @else
-                                Miễn phí
-                            @endif
-                        </td>
-                    </tr>
-                    <tr>
-                        <td><strong>Số lần dùng</strong></td>
-                        <td>{{ $coupon->used_count }}/{{ $coupon->max_uses ?: '∞' }}</td>
-                    </tr>
-                    <tr>
-                        <td><strong>Ngày tạo</strong></td>
-                        <td>{{ $coupon->created_at?->format('d/m/Y H:i') }}</td>
-                    </tr>
-                    <tr>
-                        <td><strong>Ngày hết hạn</strong></td>
-                        <td>{{ $coupon->expires_at?->format('d/m/Y') ?: 'Không thời hạn' }}</td>
-                    </tr>
-                </table>
-            </div>
-            <div class="col-md-6">
-                <div class="progress mt-2" style="height: 20px;">
-                    @php $percent = $coupon->max_uses ? min(100, ($coupon->used_count / $coupon->max_uses) * 100) : 0; @endphp
-                    <div class="progress-bar {{ $percent >= 100 ? 'bg-danger' : 'bg-success' }}" role="progressbar" style="width: {{ $percent }}%"></div>
-                </div>
-                <small class="text-muted">Tỷ lệ sử dụng: {{ number_format($percent, 1) }}%</small>
-            </div>
-        </div>
-    </div>
-</div>
-
-<a href="{{ route('coupons.index') }}" class="btn btn-outline-secondary mt-3">
-    <i class="bi bi-arrow-left me-1"></i>Quay lại danh sách
-</a>
 @endsection
-
-@push('scripts')
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const form = document.getElementById('deleteCouponForm');
-        if (!form) return;
-        
-        form.addEventListener('submit', function(e) {
-            e.preventDefault();
-            
-            if (typeof Swal === 'undefined') {
-                if (confirm('Bạn có chắc muốn xóa mã giảm giá này?')) {
-                    form.submit();
-                }
-                return;
-            }
-            
-            Swal.fire({
-                title: 'Xóa mã giảm giá?',
-                text: 'Hành động này không thể hoàn tác.',
-                icon: 'warning',
-                showCancelButton: true,
-                confirmButtonColor: '#dc2626',
-                cancelButtonColor: '#64748b',
-                confirmButtonText: 'Xóa',
-                cancelButtonText: 'Hủy'
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    form.submit();
-                }
-            });
-        });
-    });
-</script>
-@endpush

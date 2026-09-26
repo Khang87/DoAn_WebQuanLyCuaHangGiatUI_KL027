@@ -19,7 +19,7 @@
                 <div class="col-md-6">
                     <label class="form-label">Chương trình</label>
                     <select class="form-select" name="promotion_id">
-                        <option value="">Chọn</option>
+                        <option value="">-- Chọn chương trình --</option>
                         @foreach($promotions as $promotion)
                         <option value="{{ $promotion->id }}" {{ $coupon->promotion_id === $promotion->id ? 'selected' : '' }}>{{ $promotion->name }}</option>
                         @endforeach
@@ -39,7 +39,7 @@
                 </div>
                 <div class="col-md-6">
                     <label class="form-label">Giá trị</label>
-                    <input type="number" class="form-control" name="discount_value" value="{{ old('discount_value', $coupon->discount_value) }}" min="0">
+                    <input type="number" class="form-control" name="discount_value" value="{{ old('discount_value', (float) $coupon->discount_value) }}" min="0">
                 </div>
                 <div class="col-md-6">
                     <label class="form-label">Số lần tối đa</label>
@@ -51,10 +51,12 @@
                 </div>
                 <div class="col-md-6">
                     <label class="form-label">Trạng thái</label>
-                    <select class="form-select" name="status">
-                        <option value="active" {{ $coupon->status === 'active' ? 'selected' : '' }}>Hoạt động</option>
-                        <option value="inactive" {{ $coupon->status === 'inactive' ? 'selected' : '' }}>Tắt</option>
-                    </select>
+                    <x-admin.status-select
+                        name="status"
+                        :options="\App\Enums\RecordStatus::options()"
+                        :selected="$coupon->status"
+                        class="form-select @error('status') is-invalid @enderror"
+                    />
                 </div>
             </div>
             <div class="d-flex justify-content-end gap-2 mt-4">

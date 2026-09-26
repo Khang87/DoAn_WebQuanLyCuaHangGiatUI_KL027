@@ -11,28 +11,28 @@ class ServiceCategorySeeder extends Seeder
     {
         $categories = [
             [
-                'name' => 'Giặt Sấy Quần Áo',
+                'name' => 'Giặt sấy quần áo',
                 'slug' => 'giat-say-quan-ao',
                 'description' => 'Giặt quần áo hằng ngày, tính theo kg',
                 'icon' => 'fa-solid fa-shirt',
                 'status' => 'active',
             ],
             [
-                'name' => 'Giặt Hấp / Giặt Khô Cao Cấp',
+                'name' => 'Giặt hấp / giặt khô cao cấp',
                 'slug' => 'giat-hap-giat-kho-cao-cap',
                 'description' => 'Dành cho Vest, Váy cưới, Áo dạ, Áo dài, Đồ hiệu',
                 'icon' => 'fa-solid fa-shirt-long-sleeve',
                 'status' => 'active',
             ],
             [
-                'name' => 'Giặt Chăn Ga Nệm & Thảm',
+                'name' => 'Giặt chăn ga nệm & thảm',
                 'slug' => 'giat-chan-ga-nem-tham',
                 'description' => 'Giặt chăn màn, ga gối, rèm cửa, thảm văn phòng',
                 'icon' => 'fa-solid fa-bed',
                 'status' => 'active',
             ],
             [
-                'name' => 'Chăm Sóc Giày & Phụ Kiện',
+                'name' => 'Chăm sóc giày & phụ kiện',
                 'slug' => 'cham-soc-giay-phu-kien',
                 'description' => 'Vệ sinh giày Sneaker, tẩy ố, bảo dưỡng đồ da',
                 'icon' => 'fa-solid fa-shoe-prints',

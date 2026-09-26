@@ -39,7 +39,7 @@ class ServiceService
         $sort = $filters['sort'] ?? 'created_at_desc';
         [$sortBy, $sortOrder] = $sortMap[$sort] ?? ['created_at', 'desc'];
 
-        return $query->with('category')->orderBy($sortBy, $sortOrder)->paginate(20);
+        return $query->with('category')->orderBy($sortBy, $sortOrder)->paginate(10);
     }
 
     public function find(int $id): ?Service

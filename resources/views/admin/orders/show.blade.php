@@ -5,205 +5,212 @@
 
 @section('content')
 @php
-    $orderStatusLabels = [
-        'pending' => 'Chờ tiếp nhận',
-        'received' => 'Đã nhận đồ',
-        'sorting' => 'Đang phân loại',
-        'processing' => 'Đang giặt / Xử lý',
-        'washed' => 'Đã giặt xong',
-        'delivering' => 'Đang giao đồ',
-        'completed' => 'Hoàn thành',
-        'cancelled' => 'Đã hủy',
-    ];
+    $isPaid = $order->is_paid;
+    $isOwner = auth()->user()?->isOwner();
+    $canEdit = (! $isPaid || $isOwner) && $order->can_edit;
+
+    // Tính trước để tránh dấu ">" trong biểu thức thuộc tính của thẻ Blade.
+    $hasPromotionDiscount = (float) $order->discount_by_promotion > 0;
+    $hasPointsDiscount = (float) $order->discount_by_points > 0;
 @endphp
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <a href="{{ route('orders.index') }}" class="btn btn-outline-secondary btn-sm">
-        <i class="bi bi-arrow-left me-1"></i>Quay lại
-    </a>
-    <div class="d-flex gap-2">
+
+<x-admin.detail.page-header
+    title="Đơn hàng {{ $order->code }}"
+    :back="route('orders.index')"
+    :subtitle="$order->created_at?->format('d/m/Y H:i')"
+>
+    <x-slot:badge>
+        <x-admin.status-badge :status="$order->status" :enum="\App\Enums\OrderStatus::class" />
+        @if($order->is_locked)
+            <span class="badge bg-secondary-subtle text-secondary-emphasis border border-secondary px-3 py-2 rounded-pill">
+                <i class="bi bi-lock-fill me-1"></i>Đã quyết toán
+            </span>
+        @endif
+    </x-slot:badge>
+
+    <x-slot:actions>
         @if($order->invoice)
-            <a href="{{ route('invoices.show', $order->invoice->id) }}" class="btn btn-outline-info">
-                <i class="fas fa-eye me-1"></i> Xem hóa đơn
+            <a href="{{ route('invoices.show', $order->invoice->id) }}" class="btn btn-outline-info btn-sm">
+                <i class="fas fa-file-invoice me-1"></i>Xem hóa đơn
             </a>
-        @elseif(in_array($order->status, ['completed', 'washed', 'delivering']))
-            <a href="{{ route('invoices.create', ['order_id' => $order->id]) }}" class="btn btn-primary">
-                <i class="fas fa-file-invoice me-1"></i> Tạo hóa đơn
+        @elseif(in_array($order->status, ['completed', 'ready_for_pickup', 'processing']))
+            <a href="{{ route('invoices.create', ['order_id' => $order->id]) }}" class="btn btn-outline-info btn-sm">
+                <i class="fas fa-file-invoice me-1"></i>Tạo hóa đơn
             </a>
         @endif
-        @if($order->can_edit)
+        @if($canEdit)
             <a href="{{ route('orders.edit', $order->id) }}" class="btn btn-primary btn-sm">
                 <i class="bi bi-pencil me-1"></i>Chỉnh sửa
             </a>
         @endif
-        @if($order->is_locked)
-            <span class="badge bg-secondary text-white px-3 py-2 rounded-pill d-flex align-items-center" title="Đã quyết toán">
-                <i class="bi bi-lock me-1"></i>Đã quyết toán
-            </span>
-        @endif
-    </div>
-</div>
+    </x-slot:actions>
+</x-admin.detail.page-header>
 
-@if($order->booking)
-<div class="alert alert-info mb-4 d-flex align-items-center gap-2">
-    <i class="bi bi-journal-bookmark text-primary"></i>
-    <div>
-        <strong>Đơn hàng từ lịch hẹn:</strong> <a href="{{ route('bookings.show', $order->booking) }}">{{ $order->booking->code }}</a>
-    </div>
-</div>
+@if($order->is_locked)
+    <x-admin.detail.locked text="Đơn hàng đã quyết toán nên bị khóa sửa/xóa. Liên hệ Chủ cửa hàng nếu cần điều chỉnh." />
 @endif
 
-<div class="card mb-4">
-    <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
-        <h5 class="mb-0">Đơn hàng {{ $order->code }}</h5>
-        @if($order->is_locked)
-            <span class="badge bg-light text-dark px-3 py-2 rounded-pill">
-                <i class="bi bi-lock me-1"></i>Đã quyết toán
-            </span>
-        @endif
-    </div>
-    <div class="card-body">
-        <div class="row">
-            <div class="col-md-6">
-                <table class="table table-borderless">
-                    <tr><td><strong>Khách hàng</strong></td><td>{{ $order->customer?->name }}</td></tr>
-                    <tr><td><strong>Dịch vụ</strong></td><td>{{ $order->service?->name }}</td></tr>
-                    <tr><td><strong>Trạng thái</strong></td>
-                        <td>
-                             @php $status = $orderStatusLabels[$order->status] ?? $orderStatusLabels['pending']; @endphp
-                             @if($order->status === 'completed')
-                                 <span class="badge bg-success-subtle text-success border border-success px-3 py-2 rounded-pill"><i class="fas fa-check-circle me-1"></i>{{ $status }}</span>
-                             @elseif($order->status === 'cancelled')
-                                 <span class="badge bg-danger-subtle text-danger border border-danger px-3 py-2 rounded-pill"><i class="fas fa-x-circle me-1"></i>{{ $status }}</span>
-                             @elseif($order->status === 'delivering')
-                                 <span class="badge bg-primary-subtle text-primary border border-primary px-3 py-2 rounded-pill"><i class="fas fa-truck me-1"></i>{{ $status }}</span>
-                             @elseif($order->status === 'processing')
-                                 <span class="badge bg-warning-subtle text-warning border border-warning px-3 py-2 rounded-pill"><i class="fas fa-washer me-1"></i>{{ $status }}</span>
-                             @elseif($order->status === 'washed')
-                                 <span class="badge bg-info-subtle text-info border border-info px-3 py-2 rounded-pill"><i class="fas fa-tshirt-pocket me-1"></i>{{ $status }}</span>
-                             @else
-                                 <span class="badge bg-warning-subtle text-warning border border-warning px-3 py-2 rounded-pill"><i class="fas fa-clock me-1"></i>{{ $status }}</span>
-                             @endif
-                        </td>
-                    </tr>
-                    <tr><td><strong>Ngày tạo</strong></td><td>{{ $order->created_at?->format('d/m/Y H:i') }}</td></tr>
-                    <tr><td><strong>Ghi chú</strong></td><td>{{ $order->notes ?: '-' }}</td></tr>
-                </table>
-            </div>
-            <div class="col-md-6">
-                <table class="table table-borderless mb-0">
-                    <tbody>
-                        <tr>
-                            <td>Tạm tính:</td>
-                            <td class="text-end">{{ number_format($order->subtotal) }} VNĐ</td>
-                        </tr>
-                        <tr>
-                            <td>Tiền giảm voucher:</td>
-                            <td class="text-end text-danger">-{{ number_format($order->discount_by_promotion) }} VNĐ</td>
-                        </tr>
-                        <tr>
-                            <td>Tiền giảm do điểm:</td>
-                            <td class="text-end text-danger">-{{ number_format($order->discount_by_points) }} VNĐ
-                                @if($order->points_used > 0)
-                                    <small class="text-muted">({{ number_format($order->points_used) }} điểm)</small>
-                                @endif
-                            </td>
-                        </tr>
-                        <tr class="table-light">
-                            <td class="fw-bold fs-5">TỔNG THANH TOÁN:</td>
-                            <td class="text-end fw-bold fs-5 text-primary">{{ number_format($order->total_amount) }} VNĐ</td>
-                        </tr>
-                    </tbody>
-                </table>
-                @if($order->promotion)
-                    <div class="text-end mt-1">
-                        <span class="badge bg-primary-subtle text-primary border border-primary">
-                            <i class="fas fa-ticket me-1"></i>{{ $order->promotion->name }} ({{ $order->promotion->code }})
-                        </span>
-                    </div>
-                @endif
-            </div>
-        </div>
-    </div>
-</div>
+<div class="row g-4">
+    {{-- ============ CỘT CHÍNH (8/12) ============ --}}
+    <div class="col-lg-8">
+        <x-admin.detail.panel title="Thông tin đơn hàng" icon="bi-receipt" :iconClass="'bg-primary-subtle text-primary'">
+            <x-admin.detail.info-grid :columns="2">
+                <x-admin.detail.info-item label="Mã đơn hàng" :value="$order->code" />
+                <x-admin.detail.info-item label="Trạng thái">
+                    <x-admin.status-badge :status="$order->status" :enum="\App\Enums\OrderStatus::class" :pill="false" />
+                </x-admin.detail.info-item>
+                <x-admin.detail.info-item label="Khách hàng">
+                    @if($order->customer)
+                        <a href="{{ route('customers.show', $order->customer->id) }}" class="text-decoration-none">
+                            {{ $order->customer->name }}
+                        </a>
+                    @else
+                        <span class="detail-empty-value">Khách hàng đã bị xóa</span>
+                    @endif
+                </x-admin.detail.info-item>
+                <x-admin.detail.info-item label="Số điện thoại" :value="$order->customer?->phone" />
+                <x-admin.detail.info-item label="Nhân viên phụ trách" :value="$order->employee?->name" />
+                <x-admin.detail.info-item label="Dịch vụ" :value="$order->service?->name" />
+                <x-admin.detail.info-item label="Nguồn đơn">
+                    @if($order->booking)
+                        <a href="{{ route('bookings.show', $order->booking) }}" class="text-decoration-none">
+                            <i class="bi bi-calendar-check me-1"></i>Lịch hẹn {{ $order->booking->code }}
+                        </a>
+                    @else
+                        <span class="detail-empty-value">Nhập trực tiếp</span>
+                    @endif
+                </x-admin.detail.info-item>
+                <x-admin.detail.info-item label="Ngày tạo" :value="$order->created_at?->format('d/m/Y H:i')" />
+                <x-admin.detail.info-item label="Thanh toán" :value="$order->payment_status_label" />
+            </x-admin.detail.info-grid>
 
-<!-- Thông tin giao nhận -->
-<div class="card mb-4">
-    <div class="card-header bg-info text-white">
-        <h5 class="mb-0"><i class="fas fa-truck me-2"></i>Thông tin giao nhận</h5>
+            @if($order->notes)
+                <div class="mt-4">
+                    <div class="detail-field__label mb-2">Ghi chú</div>
+                    <div class="detail-text">{{ $order->notes }}</div>
+                </div>
+            @endif
+        </x-admin.detail.panel>
+
+        <x-admin.detail.panel title="Chi tiết mặt hàng" icon="bi-list-check" :iconClass="'bg-info-subtle text-info'" flush>
+            <x-slot:header>
+                <span class="text-muted small">{{ $order->items->count() }} mục</span>
+            </x-slot:header>
+
+            @if($order->items->isEmpty())
+                <x-admin.detail.empty message="Đơn hàng chưa có mặt hàng nào" icon="bi-bag" />
+            @else
+                <div class="table-responsive">
+                    <table class="table table-hover detail-table">
+                        <thead>
+                            <tr>
+                                <th>Dịch vụ</th>
+                                <th>Loại đồ giặt</th>
+                                <th class="text-end">Khối lượng (kg)</th>
+                                <th class="text-end">Đơn giá</th>
+                                <th class="text-end">Số lượng</th>
+                                <th class="text-end">Thành tiền</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach($order->items as $item)
+                                <tr>
+                                    <td class="fw-semibold">{{ $item->service?->name ?: $item->item_name }}</td>
+                                    <td>{{ $item->garment?->name ?: $item->item_type }}</td>
+                                    <td class="text-end">{{ $item->weight !== null ? format_weight($item->weight) : '—' }}</td>
+                                    <td class="text-end"><x-admin.detail.money :value="$item->price" /></td>
+                                    <td class="text-end">{{ number_format($item->quantity) }}</td>
+                                    <td class="text-end fw-semibold"><x-admin.detail.money :value="$item->subtotal" /></td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            @endif
+        </x-admin.detail.panel>
+
+        <x-admin.detail.panel title="Lịch sử trạng thái" icon="bi-clock-history" :iconClass="'bg-secondary-subtle text-secondary'">
+            <div class="detail-timeline">
+                @foreach($statusFlow as $key => $label)
+                    <div class="detail-timeline__item {{ $key === $order->status ? 'detail-timeline__item--current' : 'detail-timeline__item--muted' }}">
+                        <span class="detail-timeline__dot"></span>
+                        <span>{{ $label }}</span>
+                        @if($key === $order->status)
+                            <span class="badge bg-primary-subtle text-primary-emphasis border border-primary px-2 py-1 rounded-pill ms-auto">Hiện tại</span>
+                        @endif
+                    </div>
+                @endforeach
+            </div>
+        </x-admin.detail.panel>
     </div>
-    <div class="card-body">
-        @if($order->delivery)
-            <table class="table table-borderless mb-0">
-                <tr><td><strong>Hình thức giao nhận</strong></td>
-                    <td>
-                        <span class="badge bg-primary-subtle text-primary border border-primary px-3 py-2 rounded-pill">
-                            <i class="fas {{ $order->delivery->method === 'home_pickup' || $order->delivery->method === 'pickup' || $order->delivery->method === 'nhan_do' ? 'fa-home' : 'fa-truck' }} me-1"></i>
+
+    {{-- ============ CỘT PHỤ (4/12) ============ --}}
+    <div class="col-lg-4">
+        <x-admin.detail.panel title="Tổng thanh toán" icon="bi-calculator" :iconClass="'bg-success-subtle text-success'">
+            <div class="d-flex justify-content-between align-items-center py-2">
+                <span class="detail-summary__label">Tạm tính</span>
+                <x-admin.detail.money :value="$order->subtotal" class="fw-semibold" />
+            </div>
+            <div class="d-flex justify-content-between align-items-center py-2">
+                <span class="detail-summary__label">Tiền giảm voucher</span>
+                <x-admin.detail.money :value="$order->discount_by_promotion" :negative="$hasPromotionDiscount" class="text-danger" />
+            </div>
+            <div class="d-flex justify-content-between align-items-start py-2">
+                <span class="detail-summary__label">
+                    Tiền giảm do điểm
+                    @if($order->points_used > 0)
+                        <small class="d-block">({{ number_format($order->points_used) }} điểm)</small>
+                    @endif
+                </span>
+                <x-admin.detail.money :value="$order->discount_by_points" :negative="$hasPointsDiscount" class="text-danger" />
+            </div>
+
+            <div class="detail-summary d-flex justify-content-between align-items-center">
+                <span class="detail-summary__total">Tổng thanh toán</span>
+                <x-admin.detail.money :value="$order->total_amount" class="detail-summary__total text-primary" />
+            </div>
+
+            @if($order->promotion)
+                <div class="d-flex justify-content-end">
+                    <span class="badge bg-primary-subtle text-primary-emphasis border border-primary px-3 py-2 rounded-pill">
+                        <i class="fas fa-ticket me-1"></i>{{ $order->promotion->name }} ({{ $order->promotion->code }})
+                    </span>
+                </div>
+            @endif
+        </x-admin.detail.panel>
+
+        <x-admin.detail.panel title="Thông tin giao nhận" icon="bi-truck" :iconClass="'bg-warning-subtle text-warning-emphasis'">
+            @if($order->delivery)
+                <x-admin.detail.info-grid :columns="1">
+                    <x-admin.detail.info-item label="Hình thức">
+                        <span class="badge bg-primary-subtle text-primary-emphasis border border-primary px-3 py-2 rounded-pill">
+                            <i class="fas {{ in_array($order->delivery->method, ['home_pickup', 'pickup', 'nhan_do']) ? 'fa-home' : 'fa-truck' }} me-1"></i>
                             {{ $order->delivery->type_label }}
                         </span>
-                    </td>
-                </tr>
-                <tr><td><strong>Trạng thái giao nhận</strong></td>
-                    <td><span class="badge {{ $order->delivery->status_badge_class }} px-3 py-2 rounded-pill">{{ $order->delivery->status_label }}</span></td>
-                </tr>
-                @if($order->delivery->address)
-                    <tr><td><strong>Địa chỉ giao hàng</strong></td><td>{{ $order->delivery->address }}</td></tr>
-                @endif
-                @if($order->delivery->pickup_date)
-                    <tr><td><strong>Ngày giao dự kiến</strong></td><td>{{ $order->delivery->pickup_date->format('d/m/Y') }}</td></tr>
-                @endif
+                    </x-admin.detail.info-item>
+                    <x-admin.detail.info-item label="Trạng thái">
+                        <x-admin.status-badge :status="$order->delivery->status" :enum="\App\Enums\DeliveryStatus::class" :pill="false" />
+                    </x-admin.detail.info-item>
+                    <x-admin.detail.info-item label="Ngày giao dự kiến" :value="$order->delivery->pickup_date?->format('d/m/Y')" />
+                    <x-admin.detail.info-item label="Địa chỉ giao hàng" :value="$order->delivery->address" />
+                </x-admin.detail.info-grid>
+
                 @if($order->delivery->notes)
-                    <tr><td><strong>Ghi chú</strong></td><td>{{ $order->delivery->notes }}</td></tr>
+                    <div class="mt-3">
+                        <div class="detail-field__label mb-2">Ghi chú giao nhận</div>
+                        <div class="detail-text">{{ $order->delivery->notes }}</div>
+                    </div>
                 @endif
-            </table>
-        @else
-            <p class="text-center text-muted py-3">
-                <i class="fas fa-info-circle me-1"></i>
-                Đơn hàng này chưa có lịch giao nhận.
-                <a href="#" class="text-primary">Tạo lịch giao nhận</a>
-            </p>
-        @endif
-    </div>
-</div>
 
-@if($order->items->count() > 0)
-<div class="card mb-4">
-    <div class="card-header"><h5 class="mb-0">Chi tiết mặt hàng</h5></div>
-    <div class="card-body p-0">
-        <div class="table-responsive">
-            <table class="table table-hover mb-0">
-                <thead><tr><th>Dịch vụ</th><th>Loại đồ giặt</th><th>Khối lượng (kg)</th><th>Đơn giá</th><th>Số lượng</th><th>Thành tiền</th></tr></thead>
-                <tbody>
-                    @foreach($order->items as $item)
-                    <tr>
-                        <td>{{ $item->service?->name ?: $item->item_name }}</td>
-                        <td>{{ $item->garment?->name ?: $item->item_type }}</td>
-                        <td>{{ $item->weight !== null ? number_format((float)$item->weight, 2) : '—' }}</td>
-                        <td>{{ number_format($item->price) }} VNĐ</td>
-                        <td>{{ number_format($item->quantity) }}</td>
-                        <td>{{ number_format($item->subtotal) }} VNĐ</td>
-                    </tr>
-                    @endforeach
-                </tbody>
-            </table>
-        </div>
-    </div>
-</div>
-@endif
-
-<div class="card">
-    <div class="card-header"><h5 class="mb-0">Lịch sử trạng thái</h5></div>
-    <div class="card-body">
-        <div class="timeline">
-            @foreach($statusFlow as $key => $label)
-            <div class="d-flex align-items-center mb-3 @if($key === $order->status) fw-bold @else text-muted @endif">
-                <div class="status-dot {{ $key === $order->status ? 'bg-primary' : 'bg-secondary' }} me-3"></div>
-                <span>{{ $label }}</span>
-                @if($key === $order->status)
-                <span class="badge bg-primary ms-3">(Hiện tại)</span>
-                @endif
-            </div>
-            @endforeach
-        </div>
+                <div class="mt-3">
+                    <a href="{{ route('deliveries.show', $order->delivery->id) }}" class="btn btn-outline-secondary btn-sm w-100">
+                        <i class="bi bi-box-arrow-up-right me-1"></i>Chi tiết phiếu giao nhận
+                    </a>
+                </div>
+            @else
+                <x-admin.detail.empty message="Đơn hàng chưa có lịch giao nhận" icon="bi-truck" />
+            @endif
+        </x-admin.detail.panel>
     </div>
 </div>
 @endsection

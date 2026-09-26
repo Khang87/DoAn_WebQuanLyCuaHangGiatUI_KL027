@@ -49,15 +49,10 @@
                     <input type="password" class="form-control" name="password_confirmation" placeholder="Xác nhận mật khẩu" required>
                 </div>
                 <div class="col-md-6">
-                    <label class="form-label">Vai trò <span class="text-danger">*</span></label>
-                    <select class="form-select @error('role') is-invalid @enderror" name="role" required>
-                        <option value="customer">Khách hàng</option>
-                        <option value="staff">Nhân viên</option>
-                        <option value="manager" @selected(old('role') === 'manager')>Quản lý</option>
-                    </select>
-                    @error('role')
-                        <div class="invalid-feedback">{{ $message }}</div>
-                    @enderror
+                    <x-admin.role-select
+                        name="role"
+                        :selected="old('role', 'staff')"
+                    />
                 </div>
             </div>
 

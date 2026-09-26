@@ -18,12 +18,12 @@ class BookingService
             $query->where('customer_id', $filters['customer_id']);
         }
 
-        if (!empty($filters['status'])) {
-            $query->where('status', $filters['status']);
-        }
-
         if (!empty($filters['method'])) {
             $query->where('method', $filters['method']);
+        }
+
+        if (!empty($filters['status'])) {
+            $query->where('status', $filters['status']);
         }
 
         if (!empty($filters['search'])) {
@@ -45,12 +45,12 @@ class BookingService
         $sortBy = in_array($filters['sort_by'] ?? null, $allowedSorts) ? $filters['sort_by'] : 'created_at';
         $sortOrder = ($filters['sort_order'] ?? 'desc') === 'asc' ? 'asc' : 'desc';
 
-        return $query->with('customer', 'staff')->withTrashed()->orderBy($sortBy, $sortOrder)->paginate(10)->withQueryString();
+        return $query->with(['customer', 'staff', 'order'])->orderBy($sortBy, $sortOrder)->paginate(10)->withQueryString();
     }
 
     public function find(int $id): ?Booking
     {
-        return Booking::withTrashed()->with(['customer', 'staff'])->find($id);
+        return Booking::withTrashed()->with(['customer', 'staff', 'order'])->find($id);
     }
 
     public function create(array $data): Booking
@@ -58,10 +58,43 @@ class BookingService
         return Booking::create($data);
     }
 
+    /**
+     * Cập nhật đặt lịch và tự động sinh đơn hàng khi trạng thái chuyển sang
+     * "Đã xác nhận" (hoặc các trạng thái sau đó).
+     *
+     * Việc sinh đơn đặt ở tầng service thay vì controller để MỌI đường đi tới
+     * trạng thái "đã xác nhận" đều tự động có đơn: nút "Xác nhận", dropdown
+     * trạng thái trong form chỉnh sửa, hay seeder/import sau này.
+     */
     public function update(Booking $booking, array $data): Booking
     {
+        $previousStatus = $booking->status;
+
         $booking->update($data);
-        return $booking->fresh();
+
+        $booking = $booking->fresh();
+
+        $this->syncOrderOnStatusChange($booking, $previousStatus);
+
+        return $booking;
+    }
+
+    /**
+     * Nếu lịch hẹn vừa chuyển sang trạng thái "đủ điều kiện có đơn" thì tạo đơn.
+     * Trả về đơn vừa tạo, hoặc null nếu không cần tạo.
+     */
+    public function syncOrderOnStatusChange(Booking $booking, ?string $previousStatus = null): ?Order
+    {
+        if (! $booking->isConvertibleToOrder()) {
+            return null;
+        }
+
+        // Đã có đơn rồi thì không tạo lại (idempotent).
+        if ($this->hasConvertedOrder($booking)) {
+            return null;
+        }
+
+        return $this->createOrderFor($booking);
     }
 
     public function delete(Booking $booking): bool
@@ -72,9 +105,11 @@ class BookingService
     public function restore(int $id): ?Booking
     {
         $booking = Booking::onlyTrashed()->find($id);
+
         if ($booking) {
             $booking->restore();
         }
+
         return $booking;
     }
 
@@ -105,33 +140,74 @@ class BookingService
                 return $existing;
             }
 
-            $order = Order::create([
-                'code' => 'DH' . str_pad((string) ((Order::max('id') ?? 0) + 1), 3, '0', STR_PAD_LEFT),
-                'customer_id' => $booking->customer_id,
-                'employee_id' => $booking->staff_id,
-                'booking_id' => $booking->id,
-                'status' => 'pending',
-                'notes' => $booking->notes,
-                'total_amount' => 0,
-                'weight_kg' => '',
-                'quantity_items' => '',
-            ]);
-
-            // Create a delivery for this order
-            \App\Models\Delivery::create([
-                'code' => 'GH' . str_pad((string) ((\App\Models\Delivery::max('id') ?? 0) + 1), 4, '0', STR_PAD_LEFT),
-                'order_id' => $order->id,
-                'customer_id' => $booking->customer_id,
-                'employee_id' => $booking->staff_id,
-                'method' => $booking->method,
-                'status' => 'pending',
-                'notes' => $booking->notes,
-            ]);
-
-            $booking->update(['status' => 'completed']);
-
-            return $order->fresh();
+            return $this->insertOrderAndDelivery($booking)->fresh();
         });
+    }
+
+    /**
+     * Tạo đơn + phiếu giao cho lịch hẹn, KHÔNG đụng tới trạng thái lịch hẹn.
+     * Dùng cho đường tự động hoá theo trạng thái.
+     */
+    private function createOrderFor(Booking $booking): Order
+    {
+        return DB::transaction(function () use ($booking) {
+            $existing = $this->findOrderForBooking($booking, true);
+
+            if ($existing) {
+                return $existing;
+            }
+
+            return $this->insertOrderAndDelivery($booking)->fresh();
+        });
+    }
+
+    /**
+     * Insert bản ghi đơn hàng (kèm phiếu giao) có tham chiếu về lịch hẹn.
+     * Bản ghi đơn luôn chứa mã tham chiếu của lịch đặt: qua quan hệ
+     * `orders.booking_id` và qua mã ghi trong phần ghi chú.
+     */
+    private function insertOrderAndDelivery(Booking $booking): Order
+    {
+        $bookingCode = $booking->code ?: Booking::nextCode();
+
+        $order = Order::create([
+            'code' => 'DH' . str_pad((string) ((Order::max('id') ?? 0) + 1), 3, '0', STR_PAD_LEFT),
+            'customer_id' => $booking->customer_id,
+            'employee_id' => $booking->staff_id,
+            'booking_id' => $booking->id,
+            'status' => 'pending',
+            'notes' => $this->buildOrderNotes($booking, $bookingCode),
+            'total_amount' => 0,
+            'weight_kg' => '',
+            'quantity_items' => '',
+        ]);
+
+        \App\Models\Delivery::create([
+            'code' => 'GH' . str_pad((string) ((\App\Models\Delivery::max('id') ?? 0) + 1), 4, '0', STR_PAD_LEFT),
+            'order_id' => $order->id,
+            'customer_id' => $booking->customer_id,
+            'employee_id' => $booking->staff_id,
+            'method' => $booking->method,
+            'status' => 'pending',
+            'notes' => $booking->notes,
+        ]);
+
+        return $order;
+    }
+
+    /**
+     * Ghi chú của đơn luôn mở đầu bằng mã tham chiếu lịch đặt để nhân viên
+     * nhìn bảng đơn là biết đơn này sinh ra từ lịch nào.
+     */
+    private function buildOrderNotes(Booking $booking, string $bookingCode): string
+    {
+        $reference = 'Tự động tạo từ đặt lịch ' . $bookingCode
+            . ' (' . $booking->method_label . ' ngày '
+            . ($booking->scheduled_date?->format('d/m/Y') ?? '—') . ')';
+
+        return $booking->notes
+            ? $reference . ' | ' . $booking->notes
+            : $reference;
     }
 
     /**

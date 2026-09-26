@@ -4,201 +4,111 @@
 @section('page-title', 'Chi tiết tài khoản')
 
 @section('content')
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h4>Thông tin tài khoản</h4>
-    <div class="d-flex gap-2">
+@php
+    $roleLabel = $account->isManager() ? 'Quản lý' : ($account->role === 'staff' ? 'Nhân viên' : 'Khách hàng');
+    $roleClass = $account->isManager()
+        ? 'bg-danger-subtle text-danger-emphasis border border-danger'
+        : ($account->role === 'staff' ? 'bg-primary-subtle text-primary-emphasis border border-primary' : 'bg-success-subtle text-success-emphasis border border-success');
+    $roleIcon = $account->isManager() ? 'fa-shield-alt' : ($account->role === 'staff' ? 'fa-user-tie' : 'fa-user');
+@endphp
+
+<x-admin.detail.page-header
+    title="Tài khoản {{ $account->name }}"
+    :back="route('accounts.index')"
+    :subtitle="$account->email"
+>
+    <x-slot:badge>
+        <span class="badge {{ $roleClass }} px-3 py-2 rounded-pill">
+            <i class="fas {{ $roleIcon }} me-1"></i>{{ $roleLabel }}
+        </span>
+        <x-admin.status-badge
+            :status="$account->deleted_at ? 'inactive' : 'active'"
+            :enum="\App\Enums\RecordStatus::class"
+        />
+    </x-slot:badge>
+
+    <x-slot:actions>
         <a href="{{ route('accounts.edit', $account->id) }}" class="btn btn-primary btn-sm">
             <i class="bi bi-pencil me-1"></i>Chỉnh sửa
         </a>
-        @if(!$account->isManager())
-        <form action="{{ route('accounts.reset-password', $account->id) }}" method="POST" class="d-inline" id="resetPasswordForm">
-            @csrf
-            <button type="submit" class="btn btn-outline-warning btn-sm">
-                <i class="bi bi-key me-1"></i>Đặt lại mật khẩu
-            </button>
-        </form>
-        @endif
+
+        @unless($account->isManager())
+            <x-admin.detail.confirm-form
+                :action="route('accounts.reset-password', $account->id)"
+                method="POST"
+                title="Đặt lại mật khẩu?"
+                text="Mật khẩu sẽ được đặt lại về mặc định."
+                label="Đặt lại mật khẩu"
+                icon="bi-key"
+                variant="btn-outline-warning"
+                color="#f59e0b"
+                :iconName="'question'"
+            />
+        @endunless
+
         @if($account->id !== auth()->id())
-        <form action="{{ route('accounts.toggle-status', $account->id) }}" method="POST" class="d-inline" id="toggleStatusAccountShowForm">
-            @csrf
-            <button type="submit" class="btn btn-outline-{{ $account->deleted_at ? 'success' : 'danger' }} btn-sm">
-                <i class="bi bi-{{ $account->deleted_at ? 'unlock' : 'lock' }} me-1"></i>
-                {{ $account->deleted_at ? 'Kích hoạt' : 'Khóa tài khoản' }}
-            </button>
-        </form>
+            <x-admin.detail.confirm-form
+                :action="route('accounts.toggle-status', $account->id)"
+                method="POST"
+                title="{{ $account->deleted_at ? 'Kích hoạt' : 'Tạm ngưng' }} tài khoản này?"
+                text="Tài khoản sẽ {{ $account->deleted_at ? 'được kích hoạt trở lại' : 'bị tạm ngưng' }}."
+                label="{{ $account->deleted_at ? 'Kích hoạt' : 'Tạm ngưng' }}"
+                :icon="$account->deleted_at ? 'bi-unlock' : 'bi-lock'"
+                :variant="$account->deleted_at ? 'btn-outline-success' : 'btn-outline-warning'"
+                :color="$account->deleted_at ? '#16a34a' : '#f59e0b'"
+                :iconName="'question'"
+            />
         @endif
-        <form action="{{ route('accounts.destroy', $account->id) }}" method="POST" class="d-inline" id="deleteAccountShowForm">
-            @csrf @method('DELETE')
-            <button type="submit" class="btn btn-outline-danger btn-sm">
-                <i class="bi bi-trash"></i> Xóa
-            </button>
-        </form>
+
+        <x-admin.detail.confirm-form
+            :action="route('accounts.destroy', $account->id)"
+            title="Xóa tài khoản?"
+            text="Hành động này không thể hoàn tác."
+            label="Xóa"
+            icon="bi-trash"
+            variant="btn-outline-danger"
+        />
+    </x-slot:actions>
+</x-admin.detail.page-header>
+
+@if($account->deleted_at)
+    <x-admin.detail.locked text="Tài khoản đã bị xóa mềm nên không thể sửa hoặc xóa. Hãy kích hoạt lại nếu cần." />
+@endif
+
+<div class="row g-4">
+    {{-- ============ CỘT CHÍNH (8/12) ============ --}}
+    <div class="col-lg-8">
+        <x-admin.detail.panel title="Thông tin tài khoản" icon="bi-person-badge" :iconClass="'bg-primary-subtle text-primary'">
+            <x-admin.detail.info-grid :columns="2">
+                <x-admin.detail.info-item label="Họ và tên" :value="$account->name" />
+                <x-admin.detail.info-item label="Email" :value="$account->email" />
+                <x-admin.detail.info-item label="Số điện thoại" :value="$account->phone ?: 'Chưa cập nhật'" />
+                <x-admin.detail.info-item label="Vai trò">
+                    <span class="badge {{ $roleClass }} px-3 py-2 rounded-pill">
+                        <i class="fas {{ $roleIcon }} me-1"></i>{{ $roleLabel }}
+                    </span>
+                </x-admin.detail.info-item>
+                <x-admin.detail.info-item label="Ngày tạo" :value="$account->created_at?->format('d/m/Y H:i')" />
+                <x-admin.detail.info-item label="Trạng thái">
+                    <x-admin.status-badge
+                        :status="$account->deleted_at ? 'inactive' : 'active'"
+                        :enum="\App\Enums\RecordStatus::class"
+                        :pill="false"
+                    />
+                </x-admin.detail.info-item>
+            </x-admin.detail.info-grid>
+        </x-admin.detail.panel>
+    </div>
+
+    {{-- ============ CỘT PHỤ (4/12) ============ --}}
+    <div class="col-lg-4">
+        <x-admin.detail.panel title="Hoạt động" icon="bi-activity" :iconClass="'bg-secondary-subtle text-secondary'">
+            <x-admin.detail.info-grid :columns="1">
+                <x-admin.detail.info-item label="Đơn hàng đã xử lý" :value="number_format($account->orders?->count() ?? 0)" />
+                <x-admin.detail.info-item label="Phiếu giao nhận" :value="number_format($account->deliveries?->count() ?? 0)" />
+                <x-admin.detail.info-item label="Cập nhật lần cuối" :value="$account->updated_at?->format('d/m/Y H:i')" />
+            </x-admin.detail.info-grid>
+        </x-admin.detail.panel>
     </div>
 </div>
-
-<div class="card">
-    <div class="card-body">
-        <div class="row">
-            <div class="col-md-6">
-                <table class="table table-borderless">
-                    <tr>
-                        <td><strong>Họ tên</strong></td>
-                        <td>{{ $account->name }}</td>
-                    </tr>
-                    <tr>
-                        <td><strong>Email</strong></td>
-                        <td>{{ $account->email }}</td>
-                    </tr>
-                    <tr>
-                        <td><strong>Số điện thoại</strong></td>
-                        <td>{{ $account->phone ?: 'Chưa cập nhật' }}</td>
-                    </tr>
-                    <tr>
-                        <td><strong>Vai trò</strong></td>
-                        <td>
-                            @if($account->isManager())
-                                <span class="badge bg-danger-subtle text-danger border border-danger px-3 py-2 rounded-pill"><i class="fas fa-shield-alt me-1"></i>Quản lý</span>
-                            @elseif($account->role === 'staff')
-                                <span class="badge bg-info-subtle text-info border border-info px-3 py-2 rounded-pill"><i class="fas fa-user-tie me-1"></i>Nhân viên</span>
-                            @else
-                                <span class="badge bg-success-subtle text-success border border-success px-3 py-2 rounded-pill"><i class="fas fa-user me-1"></i>Khách hàng</span>
-                            @endif
-                        </td>
-                    </tr>
-                    <tr>
-                        <td><strong>Ngày tạo</strong></td>
-                        <td>{{ $account->created_at?->format('d/m/Y H:i') }}</td>
-                    </tr>
-                    <tr>
-                        <td><strong>Trạng thái</strong></td>
-                        <td>
-                            @if($account->deleted_at)
-                                <span class="badge bg-danger-subtle text-danger border border-danger px-3 py-2 rounded-pill"><i class="fas fa-ban me-1"></i>Khóa</span>
-                            @else
-                                <span class="badge bg-success-subtle text-success border border-success px-3 py-2 rounded-pill"><i class="fas fa-check-circle me-1"></i>Hoạt động</span>
-                            @endif
-                        </td>
-                    </tr>
-                </table>
-            </div>
-            <div class="col-md-6">
-                <table class="table table-borderless">
-                    <tr>
-                        <td><strong>Đơn hàng</strong></td>
-                        <td>{{ $account->orders?->count() ?? 0 }}</td>
-                    </tr>
-                    <tr>
-                        <td><strong>Giao nhận</strong></td>
-                        <td>{{ $account->deliveries?->count() ?? 0 }}</td>
-                    </tr>
-                </table>
-            </div>
-        </div>
-
-        @if($account->deleted_at)
-        <div class="mt-3">
-            <span class="badge bg-warning-subtle text-warning border border-warning px-3 py-2 rounded-pill"><i class="fas fa-trash me-1"></i>Đã xóa</span>
-        </div>
-        @endif
-    </div>
-</div>
-
-<a href="{{ route('accounts.index') }}" class="btn btn-outline-secondary mt-3">
-    <i class="bi bi-arrow-left me-1"></i>Quay lại
-</a>
 @endsection
-
-@push('scripts')
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const resetForm = document.getElementById('resetPasswordForm');
-        if (resetForm) {
-            resetForm.addEventListener('submit', function(e) {
-                e.preventDefault();
-
-                if (typeof Swal === 'undefined') {
-                    if (confirm('Bạn có chắc muốn đặt lại mật khẩu cho tài khoản này?')) {
-                        resetForm.submit();
-                    }
-                    return;
-                }
-
-                Swal.fire({
-                    title: 'Đặt lại mật khẩu?',
-                    text: 'Mật khẩu sẽ được đặt lại về mặc định.',
-                    icon: 'question',
-                    showCancelButton: true,
-                    confirmButtonColor: '#f59e0b',
-                    cancelButtonColor: '#64748b',
-                    confirmButtonText: 'Đặt lại',
-                    cancelButtonText: 'Hủy'
-                }).then((result) => {
-                    if (result.isConfirmed) {
-                        resetForm.submit();
-                    }
-                });
-            });
-        }
-
-        const toggleForm = document.getElementById('toggleStatusAccountShowForm');
-        if (toggleForm) {
-            toggleForm.addEventListener('submit', function(e) {
-                e.preventDefault();
-
-                if (typeof Swal === 'undefined') {
-                    toggleForm.submit();
-                    return;
-                }
-
-                const button = toggleForm.querySelector('button');
-                const isActive = button && button.classList.contains('btn-outline-danger');
-                const actionText = isActive ? 'khóa' : 'kích hoạt';
-
-                Swal.fire({
-                    title: 'Xác nhận ' + actionText + ' tài khoản?',
-                    text: 'Tài khoản sẽ được ' + actionText + '.',
-                    icon: 'question',
-                    showCancelButton: true,
-                    confirmButtonColor: '#2563eb',
-                    cancelButtonColor: '#64748b',
-                    confirmButtonText: actionText.charAt(0).toUpperCase() + actionText.slice(1),
-                    cancelButtonText: 'Hủy'
-                }).then((result) => {
-                    if (result.isConfirmed) {
-                        toggleForm.submit();
-                    }
-                });
-            });
-        }
-
-        const deleteForm = document.getElementById('deleteAccountShowForm');
-        if (deleteForm) {
-            deleteForm.addEventListener('submit', function(e) {
-                e.preventDefault();
-
-                if (typeof Swal === 'undefined') {
-                    if (confirm('Bạn có chắc muốn xóa tài khoản này?')) {
-                        deleteForm.submit();
-                    }
-                    return;
-                }
-
-                Swal.fire({
-                    title: 'Xóa tài khoản?',
-                    text: 'Hành động này không thể hoàn tác.',
-                    icon: 'warning',
-                    showCancelButton: true,
-                    confirmButtonColor: '#dc2626',
-                    cancelButtonColor: '#64748b',
-                    confirmButtonText: 'Xóa',
-                    cancelButtonText: 'Hủy'
-                }).then((result) => {
-                    if (result.isConfirmed) {
-                        deleteForm.submit();
-                    }
-                });
-            });
-        }
-    });
-</script>
-@endpush

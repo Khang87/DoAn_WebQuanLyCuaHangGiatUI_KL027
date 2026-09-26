@@ -30,11 +30,22 @@ class PromotionService
             $query->where('status', $filters['status']);
         }
 
-        $allowedSorts = ['id', 'name', 'code', 'discount_type', 'discount_value', 'expires_at', 'created_at'];
-        $sortBy = in_array($filters['sort_by'] ?? null, $allowedSorts) ? $filters['sort_by'] : 'created_at';
-        $sortOrder = ($filters['sort_order'] ?? 'desc') === 'asc' ? 'asc' : 'desc';
+        $sortMap = [
+            'created_at_desc' => ['created_at', 'desc'],
+            'created_at_asc' => ['created_at', 'asc'],
+            'name_asc' => ['name', 'asc'],
+            'name_desc' => ['name', 'desc'],
+            'code_asc' => ['code', 'asc'],
+            'code_desc' => ['code', 'desc'],
+            'discount_value_asc' => ['discount_value', 'asc'],
+            'discount_value_desc' => ['discount_value', 'desc'],
+            'expires_at_asc' => ['expires_at', 'asc'],
+            'expires_at_desc' => ['expires_at', 'desc'],
+        ];
+        $sort = $filters['sort'] ?? 'latest';
+        [$sortBy, $sortOrder] = $sortMap[$sort] ?? ['created_at', 'desc'];
 
-        return $query->withTrashed()->orderBy($sortBy, $sortOrder)->paginate(10)->withQueryString();
+        return $query->orderBy($sortBy, $sortOrder)->paginate(10)->withQueryString();
     }
 
     public function find(int $id): ?Promotion

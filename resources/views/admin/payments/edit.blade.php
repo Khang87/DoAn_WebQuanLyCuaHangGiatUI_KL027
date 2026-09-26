@@ -24,7 +24,7 @@
                 </div>
                 <div class="col-md-6">
                     <label class="form-label">Số tiền <span class="text-danger ms-1">*</span></label>
-                    <input type="number" class="form-control" name="amount" value="{{ $payment->amount }}" min="0" step="1000" required>
+                    <input type="number" class="form-control" name="amount" value="{{ old('amount', (int) round((float) $payment->amount)) }}" min="0" step="1000" required>
                 </div>
                 <div class="col-md-6">
                     <label class="form-label">Phương thức <span class="text-danger ms-1">*</span></label>
@@ -38,13 +38,13 @@
                 </div>
                 <div class="col-md-6">
                     <label class="form-label">Trạng thái <span class="text-danger ms-1">*</span></label>
-                    <select class="form-select" name="status" required>
-                        <option value="paid" {{ $payment->status === 'paid' ? 'selected' : '' }}>Đã thanh toán</option>
-                        <option value="partial" {{ $payment->status === 'partial' ? 'selected' : '' }}>Một phần</option>
-                        <option value="pending" {{ $payment->status === 'pending' ? 'selected' : '' }}>Chờ thanh toán</option>
-                        <option value="failed" {{ $payment->status === 'failed' ? 'selected' : '' }}>Thất bại</option>
-                        <option value="refunded" {{ $payment->status === 'refunded' ? 'selected' : '' }}>Đã hoàn tiền</option>
-                    </select>
+                    <x-admin.status-select
+                        name="status"
+                        :options="\App\Enums\PaymentStatus::options()"
+                        :selected="$payment->status"
+                        class="form-select @error('status') is-invalid @enderror"
+                        required
+                    />
                 </div>
                 <div class="col-md-6">
                     <label class="form-label">Ngày thanh toán</label>

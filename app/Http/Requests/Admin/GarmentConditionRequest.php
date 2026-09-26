@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Admin;
 
+use App\Enums\RecordStatus;
 use Illuminate\Foundation\Http\FormRequest;
 
 class GarmentConditionRequest extends FormRequest
@@ -20,20 +21,20 @@ class GarmentConditionRequest extends FormRequest
             'condition_type' => ['required', 'string', 'max:100'],
             'description' => ['nullable', 'string', 'max:1000'],
             'photo' => ['nullable', 'string', 'max:500'],
-            'status' => ['required', 'in:active,inactive'],
+            'status' => ['required', 'in:'.implode(',', RecordStatus::values())],
         ];
     }
 
     public function messages(): array
     {
         return [
-            'garment_id.required' => 'Loại đồ giặt là bắt buộc.',
-            'garment_id.exists' => 'Loại đồ giặt không tồn tại.',
-            'condition_type.required' => 'Loại hiện trạng là bắt buộc.',
-            'condition_type.max' => 'Không quá 100 ký tự.',
-            'photo.max' => 'Đường dẫn ảnh không quá 500 ký tự.',
-            'status.required' => 'Trạng thái bắt buộc.',
-            'status.in' => 'Trạng thái không hợp lệ.',
+            'garment_id.required' => 'Loáº¡i Ä‘á»“ giáº·t lÃ  báº¯t buá»™c.',
+            'garment_id.exists' => 'Loáº¡i Ä‘á»“ giáº·t khÃ´ng tá»“n táº¡i.',
+            'condition_type.required' => 'Loáº¡i hiá»‡n tráº¡ng lÃ  báº¯t buá»™c.',
+            'condition_type.max' => 'KhÃ´ng quÃ¡ 100 kÃ½ tá»±.',
+            'photo.max' => 'ÄÆ°á»ng dáº«n áº£nh khÃ´ng quÃ¡ 500 kÃ½ tá»±.',
+            'status.required' => 'Tráº¡ng thÃ¡i báº¯t buá»™c.',
+            'status.in' => 'Tráº¡ng thÃ¡i khÃ´ng há»£p lá»‡.',
         ];
     }
 }

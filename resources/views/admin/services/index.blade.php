@@ -4,44 +4,46 @@
 @section('page-title', 'Quản lý dịch vụ')
 
 @section('content')
-<!-- Page Actions -->
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <div>
-        <a href="{{ route('services.create') }}" class="btn btn-primary">
-            <i class="bi bi-plus-lg me-2"></i>Thêm dịch vụ
-        </a>
-    </div>
+<!-- Page Actions: nút "Thêm" luôn nằm góc trên bên trái -->
+<div class="page-toolbar">
+    <a href="{{ route('services.create') }}" class="btn btn-create">
+        <i class="bi bi-plus-lg"></i>Thêm dịch vụ
+    </a>
+    <p class="text-muted page-toolbar__desc">Danh mục các dịch vụ giặt ủi đang cung cấp kèm đơn giá và thời gian xử lý.</p>
 </div>
 <form action="{{ url()->current() }}" method="GET" class="row g-3 align-items-center mb-4">
-    <div class="col-12 col-md-5">
-        <div class="input-group shadow-sm rounded-3 overflow-hidden">
+    <div class="col-12 col-md-auto flex-grow-1">
+        <div class="input-group input-group-sm shadow-sm rounded-3 overflow-hidden">
             <span class="input-group-text bg-white border-end-0 ps-3">
                 <i class="fas fa-search text-muted"></i>
             </span>
-            <input type="text" name="search" class="form-control border-start-0 py-2 ps-2" placeholder="Tìm kiếm dịch vụ..." value="{{ request('search') }}">
+            <input type="text" name="search" class="form-control form-control-sm border-start-0 ps-2" placeholder="Tìm kiếm dịch vụ..." value="{{ request('search') }}">
         </div>
     </div>
-    <div class="col-12 col-md-3">
-        <select name="category_id" class="form-select shadow-sm rounded-3 py-2" style="min-width: 220px;" onchange="this.form.submit()">
+    <div class="col-12 col-sm-6 col-md-auto">
+        <select id="category-filter" name="category_id" class="form-select form-select-sm filter-select shadow-sm rounded-3 js-icon-select" onchange="this.form.submit()">
             <option value="">-- Tất cả danh mục --</option>
             @foreach($categories as $category)
-                <option value="{{ $category->id }}" @selected(request('category_id') == $category->id)>
+                <option value="{{ $category->id }}" data-icon="{{ $category->icon }}" @selected(request('category_id') == $category->id)>
                     {{ $category->name }}
                 </option>
             @endforeach
         </select>
+        <i class="icon-preview" hidden></i>
     </div>
-    <div class="col-12 col-md-2">
-        <select name="status" class="form-select shadow-sm rounded-3 py-2" style="min-width: 180px;" onchange="this.form.submit()">
-            <option value="">-- Trạng thái --</option>
-            @foreach($statuses ?? \App\Enums\RecordStatus::options() as $value => $label)
-                <option value="{{ $value }}" @selected(request('status') === $value)>{{ $label }}</option>
-            @endforeach
-        </select>
+    <div class="col-12 col-sm-6 col-md-auto">
+        <x-admin.status-select
+            name="status"
+            id="filter-status"
+            :options="$statuses ?? \App\Enums\RecordStatus::options()"
+            placeholder="-- Tất cả trạng thái --"
+            class="form-select form-select-sm filter-select shadow-sm rounded-3"
+            submit
+        />
     </div>
-    <div class="col-12 col-md-2">
-        <select name="sort" class="form-select shadow-sm rounded-3 py-2" style="min-width: 180px;" onchange="this.form.submit()">
-            <option value="">-- Sắp xếp --</option>
+    <div class="col-12 col-sm-6 col-md-auto">
+        <select name="sort" class="form-select form-select-sm filter-select shadow-sm rounded-3" onchange="this.form.submit()">
+            <option value="">-- Tất cả cách sắp xếp --</option>
             <option value="created_at_desc" @selected(request('sort') === 'created_at_desc')>Mới nhất</option>
             <option value="created_at_asc" @selected(request('sort') === 'created_at_asc')>Cũ nhất</option>
             <option value="price_asc" @selected(request('sort') === 'price_asc')>Giá tăng dần</option>
@@ -58,35 +60,36 @@
 <!-- Services Cards -->
 <div class="row g-4">
     @forelse($services as $service)
-    @php $iconConfig = $service->iconConfig(); @endphp
-    <div class="col-12 col-md-6 col-xl-4">
+    <div class="col-12 col-xl-4">
         <div class="card h-100">
             <div class="card-body">
                 <div class="d-flex align-items-center mb-3">
-                    <div class="{{ $iconConfig['bg'] }} text-white rounded p-3 me-3 d-flex align-items-center justify-content-center" style="width: 52px; height: 52px;">
-                        <i class="{{ $iconConfig['icon'] }} fs-4"></i>
+                    <div class="rounded-3 d-flex align-items-center justify-content-center text-white me-3" style="width: 48px; height: 48px; background-color: #00c4cc; flex-shrink: 0;">
+                        @if(!empty($service->icon))
+                            <i class="{{ $service->icon }} fs-4"></i>
+                        @else
+                            <i class="bi bi-water fs-4"></i>
+                        @endif
                     </div>
                     <div>
                          <h5 class="card-title mb-1">{{ $service->name }}</h5>
                         <div class="d-flex gap-1 flex-wrap mt-1">
                             @if($service->category)
-                                <span class="badge bg-secondary-subtle text-secondary border px-2 py-1 rounded-pill text-xs">{{ $service->category->name }}</span>
+                                <span class="badge bg-secondary-subtle text-secondary-emphasis border border-secondary px-2 py-1 rounded-pill text-xs">{{ $service->category->name }}</span>
                             @endif
-                            @if($service->status === 'active')
-                                <span class="badge bg-success-subtle text-success border border-success px-2 py-1 rounded-pill text-xs"><i class="fas fa-check-circle me-1"></i>{{ $service->status_label ?? 'Đang hoạt động' }}</span>
-                            @else
-                                <span class="badge bg-secondary-subtle text-secondary border border-secondary px-2 py-1 rounded-pill text-xs"><i class="fas fa-pause-circle me-1"></i>{{ $service->status_label ?? 'Tạm ngưng' }}</span>
-                            @endif
+                            <x-admin.status-badge :status="$service->status" :enum="\App\Enums\RecordStatus::class" size="px-2 py-1" class="text-xs" />
                         </div>
                     </div>
                 </div>
                 <p class="text-muted mb-3">{{ $service->description ?: 'Chưa có mô tả chi tiết.' }}</p>
-                <div class="mb-3">
-                    <strong>Giá cơ bản:</strong> <span class="text-primary">{{ number_format($service->price) }} VNĐ/{{ $service->unit ?: 'kg' }}</span>
-                </div>
+                    <div class="mb-3">
+                        <strong>Giá cơ bản:</strong> <span class="text-dark">{{ number_format($service->price) }} VNĐ/{{ $service->unit ?: 'kg' }}</span>
+                    </div>
                 @if($service->processing_time)
                 <div class="mb-2">
-                    <span class="badge bg-light text-dark border"><i class="far fa-clock text-warning me-1"></i>{{ $service->formatted_processing_time }}</span>
+                    <span class="badge rounded-pill px-2.5 py-1 fw-medium" style="background-color: #fef3c7 !important; color: #b45309 !important; border: 1px solid #fde68a !important; font-size: 0.8125rem; display: inline-flex; align-items: center; width: fit-content;">
+                        <i class="bi bi-clock me-1" style="color: #b45309;"></i> {{ $service->formatted_processing_time }}
+                    </span>
                 </div>
                 @endif
                 <div class="d-flex gap-2">

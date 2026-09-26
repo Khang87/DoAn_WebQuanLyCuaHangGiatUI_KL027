@@ -38,10 +38,9 @@ class ReviewService
         $sortOrder = ($filters['sort_order'] ?? 'desc') === 'asc' ? 'asc' : 'desc';
 
         return $query->with('customer', 'order')
-            ->withTrashed()
             ->orderBy($sortBy, $sortOrder)
             ->latest('id')
-            ->paginate(20);
+            ->paginate(10);
     }
 
     /**

@@ -49,7 +49,7 @@ class DeliveryController extends Controller
 
             return redirect()->route('deliveries.show', $delivery)->with('success', 'Giao nhận đã được tạo thành công.');
         } catch (\Exception $e) {
-            return redirect()->route('deliveries.create')->with('error', 'Có lỗi xảy ra: ' . $e->getMessage())->withInput();
+            return redirect()->route('deliveries.create')->with('error', \App\Support\FriendlyError::message($e))->withInput();
         }
     }
 
@@ -92,7 +92,7 @@ class DeliveryController extends Controller
 
             return redirect()->route('deliveries.index')->with('success', 'Giao nhận đã được cập nhật.');
         } catch (\Exception $e) {
-            return redirect()->route('deliveries.edit', $delivery)->with('error', 'Có lỗi xảy ra: ' . $e->getMessage())->withInput();
+            return redirect()->route('deliveries.edit', $delivery)->with('error', \App\Support\FriendlyError::message($e))->withInput();
         }
     }
 
@@ -109,7 +109,7 @@ class DeliveryController extends Controller
 
             return redirect()->route('deliveries.index')->with('success', 'Đã xóa giao nhận.');
         } catch (\Exception $e) {
-            return redirect()->route('deliveries.index')->with('error', 'Có lỗi xảy ra: ' . $e->getMessage());
+            return redirect()->route('deliveries.index')->with('error', \App\Support\FriendlyError::message($e));
         }
     }
 }

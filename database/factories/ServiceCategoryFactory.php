@@ -21,7 +21,7 @@ class ServiceCategoryFactory extends Factory
             'name' => fake()->word(),
             'slug' => fake()->slug(),
             'description' => fake()->sentence(),
-            'icon' => 'bi-box',
+            'icon' => 'fa-solid fa-box',
             'status' => 'active',
         ];
     }

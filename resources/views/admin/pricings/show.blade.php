@@ -1,12 +1,81 @@
 @extends('layouts.app')
-@section('title', 'Chi tiết bảng Giá - Sky Laundry')
+
+@section('title', 'Chi tiết bảng giá - Sky Laundry')
 @section('page-title', 'Chi tiết bảng giá')
+
 @section('content')
-<div class="container py-2"><div class="card"><div class="card-body">
-    <div class="d-flex justify-content-between align-items-start mb-4"><div><span class="text-muted">Bảng giá</span><h4 class="mb-0">{{ $pricing->service?->name ?: $pricing->name ?: 'Bảng giá dịch vụ' }}</h4></div>@if($pricing->status === 'active')<span class="badge bg-success-subtle text-success border border-success px-3 py-2 rounded-pill">Đang áp dụng</span>@else<span class="badge bg-secondary-subtle text-secondary border border-secondary px-3 py-2 rounded-pill">Tạm ngừng</span>@endif</div>
-    <div class="row g-4"><div class="col-md-6"><div class="small text-muted">Dịch vụ</div><div class="fw-semibold mb-3">{{ $pricing->service?->name ?: $pricing->name ?: '—' }}</div><div class="small text-muted">Loại đồ giặt</div><div class="fw-semibold">{{ $pricing->garment?->name ?: $pricing->garment_name ?: '—' }}</div></div><div class="col-md-6"><div class="small text-muted">Đơn vị tính</div><div class="fw-semibold mb-3">{{ $pricing->unit ?: 'kg' }}</div><div class="small text-muted">Ngày áp dụng</div><div class="fw-semibold">{{ $pricing->effective_date?->format('d/m/Y') ?: $pricing->created_at?->format('d/m/Y') ?: '—' }}</div></div></div>
-    <div class="bg-light rounded-3 p-4 my-4 text-center"><div class="small text-muted">Đơn giá</div><div class="display-6 fw-bold text-primary">{{ number_format($pricing->price) }} VNĐ</div><div class="text-muted">/ {{ $pricing->unit ?: 'kg' }}</div></div>
-    @if($pricing->description)<div><strong>Mô tả:</strong><p class="text-muted mb-0">{{ $pricing->description }}</p></div>@endif
-    <div class="d-flex justify-content-end gap-2 mt-4"><a href="{{ route('pricings.index') }}" class="btn btn-outline-secondary">Quay lại</a><a href="{{ route('pricings.edit', $pricing) }}" class="btn btn-primary">Chỉnh sửa</a></div>
-</div></div></div>
+@php
+    $pricingName = $pricing->service?->name ?: $pricing->name ?: 'Bảng giá dịch vụ';
+@endphp
+
+<x-admin.detail.page-header
+    title="Bảng giá {{ $pricingName }}"
+    :back="route('pricings.index')"
+    :subtitle="$pricing->effective_date?->format('d/m/Y')"
+>
+    <x-slot:badge>
+        <x-admin.status-badge :status="$pricing->status" :enum="\App\Enums\RecordStatus::class" />
+    </x-slot:badge>
+
+    <x-slot:actions>
+        <a href="{{ route('pricings.edit', $pricing) }}" class="btn btn-primary btn-sm">
+            <i class="bi bi-pencil me-1"></i>Chỉnh sửa
+        </a>
+    </x-slot:actions>
+</x-admin.detail.page-header>
+
+<div class="row g-4">
+    {{-- ============ CỘT CHÍNH (8/12) ============ --}}
+    <div class="col-lg-8">
+        <x-admin.detail.panel title="Thông tin bảng giá" icon="bi-tags" :iconClass="'bg-primary-subtle text-primary'">
+            <x-admin.detail.info-grid :columns="2">
+                <x-admin.detail.info-item label="Dịch vụ" :value="$pricing->service?->name ?: $pricing->name ?: '—'" />
+                <x-admin.detail.info-item label="Loại đồ giặt" :value="$pricing->garment?->name ?: $pricing->garment_name ?: '—'" />
+                <x-admin.detail.info-item label="Đơn vị tính" :value="$pricing->unit ?: 'kg'" />
+                <x-admin.detail.info-item label="Ngày áp dụng" :value="$pricing->effective_date?->format('d/m/Y') ?: $pricing->created_at?->format('d/m/Y')" />
+                <x-admin.detail.info-item label="Ngày tạo" :value="$pricing->created_at?->format('d/m/Y H:i')" />
+                <x-admin.detail.info-item label="Trạng thái">
+                    <x-admin.status-badge :status="$pricing->status" :enum="\App\Enums\RecordStatus::class" :pill="false" />
+                </x-admin.detail.info-item>
+            </x-admin.detail.info-grid>
+
+            <div class="mt-4 text-center bg-light rounded-3 p-4">
+                <div class="detail-field__label">Đơn giá</div>
+                <div class="display-6 fw-bold text-primary">
+                    <x-admin.detail.money :value="$pricing->price" unit="" />
+                </div>
+                <div class="text-muted">/ {{ $pricing->unit ?: 'kg' }}</div>
+            </div>
+
+            @if($pricing->description)
+                <div class="mt-4">
+                    <div class="detail-field__label mb-2">Mô tả</div>
+                    <div class="detail-text">{{ $pricing->description }}</div>
+                </div>
+            @endif
+        </x-admin.detail.panel>
+    </div>
+
+    {{-- ============ CỘT PHỤ (4/12) ============ --}}
+    <div class="col-lg-4">
+        <x-admin.detail.panel title="Dịch vụ liên quan" icon="bi-box" :iconClass="'bg-secondary-subtle text-secondary'">
+            @if($pricing->service)
+                <x-admin.detail.info-grid :columns="1">
+                    <x-admin.detail.info-item label="Dịch vụ" :value="$pricing->service->name" />
+                    <x-admin.detail.info-item label="Đơn giá dịch vụ">
+                        <x-admin.detail.money :value="$pricing->service->price" />
+                    </x-admin.detail.info-item>
+                    <x-admin.detail.info-item label="Danh mục" :value="$pricing->service->category?->name" />
+                </x-admin.detail.info-grid>
+                <div class="mt-3">
+                    <a href="{{ route('services.show', $pricing->service) }}" class="btn btn-outline-secondary btn-sm w-100">
+                        <i class="bi bi-box-arrow-up-right me-1"></i>Xem dịch vụ
+                    </a>
+                </div>
+            @else
+                <x-admin.detail.empty message="Bảng giá không gắn với dịch vụ nào" icon="bi-box" />
+            @endif
+        </x-admin.detail.panel>
+    </div>
+</div>
 @endsection

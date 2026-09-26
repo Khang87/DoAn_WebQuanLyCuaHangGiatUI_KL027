@@ -39,7 +39,8 @@ class OrderItemController extends Controller
             $items->where('order_id', $request->input('order_id'));
         }
 
-        $items = $items->with('order', 'service')->latest()->paginate(20);
+        // Nạp sẵn invoice + payments của đơn để isLocked() không N+1
+        $items = $items->with('order', 'order.invoice', 'order.payments', 'service')->latest()->paginate(10);
 
         $orders = \App\Models\Order::orderBy('code')->get();
 
@@ -74,7 +75,7 @@ class OrderItemController extends Controller
 
             return redirect()->route('order-items.index')->with('success', 'Chi tiết đơn hàng đã được thêm.');
         } catch (\Exception $e) {
-            return redirect()->route('order-items.create')->with('error', 'Có lỗi xảy ra: ' . $e->getMessage())->withInput();
+            return redirect()->route('order-items.create')->with('error', \App\Support\FriendlyError::message($e))->withInput();
         }
     }
 
@@ -87,7 +88,12 @@ class OrderItemController extends Controller
 
     public function edit(int $id)
     {
-        $item = OrderItem::findOrFail($id);
+        $item = OrderItem::with('order')->findOrFail($id);
+
+        if ($rejected = $this->assertOrderEditable($item, request(), route('order-items.index'))) {
+            return $rejected;
+        }
+
         $orders = \App\Models\Order::orderBy('code')->get();
         $services = \App\Models\Service::where('status', 'active')->orderBy('name')->get();
 
@@ -109,7 +115,7 @@ class OrderItemController extends Controller
 
             return redirect()->route('order-items.index')->with('success', 'Chi tiết đã được cập nhật.');
         } catch (\Exception $e) {
-            return redirect()->route('order-items.edit', $id)->with('error', 'Có lỗi xảy ra: ' . $e->getMessage())->withInput();
+            return redirect()->route('order-items.edit', $id)->with('error', \App\Support\FriendlyError::message($e))->withInput();
         }
     }
 
@@ -126,7 +132,7 @@ class OrderItemController extends Controller
 
             return redirect()->route('order-items.index')->with('success', 'Đã xóa chi tiết.');
         } catch (\Exception $e) {
-            return redirect()->route('order-items.index')->with('error', 'Có lỗi xảy ra: ' . $e->getMessage());
+            return redirect()->route('order-items.index')->with('error', \App\Support\FriendlyError::message($e));
         }
     }
 }

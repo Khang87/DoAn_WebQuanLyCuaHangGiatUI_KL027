@@ -4,6 +4,9 @@
 @section('page-title', 'Cài đặt')
 
 @section('content')
+<div class="page-toolbar">
+    <p class="text-muted page-toolbar__desc">Thiết lập thông tin cửa hàng, giờ làm việc và các tuỳ chọn vận hành.</p>
+</div>
 <div class="card">
     <div class="card-header d-flex justify-content-between align-items-center">
         <h5 class="mb-0">Cài đặt hệ thống</h5>

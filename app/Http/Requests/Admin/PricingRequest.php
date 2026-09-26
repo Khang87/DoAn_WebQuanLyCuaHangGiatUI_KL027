@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Admin;
 
+use App\Enums\RecordStatus;
 use Illuminate\Foundation\Http\FormRequest;
 
 class PricingRequest extends FormRequest
@@ -22,7 +23,7 @@ class PricingRequest extends FormRequest
             'unit' => ['required', 'string', 'max:20'],
             'price' => ['required', 'numeric', 'min:0'],
             'effective_date' => ['nullable', 'date'],
-            'status' => ['nullable', 'in:active,inactive'],
+            'status' => ['nullable', 'in:'.implode(',', RecordStatus::values())],
             'description' => ['nullable', 'string'],
         ];
     }

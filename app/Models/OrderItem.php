@@ -36,16 +36,16 @@ class OrderItem extends Model
 
     public function order(): BelongsTo
     {
-        return $this->belongsTo(Order::class);
+        return $this->belongsTo(Order::class)->withTrashed();
     }
 
     public function service(): BelongsTo
     {
-        return $this->belongsTo(Service::class);
+        return $this->belongsTo(Service::class)->withTrashed();
     }
 
     public function garment(): BelongsTo
     {
-        return $this->belongsTo(Garment::class);
+        return $this->belongsTo(Garment::class)->withTrashed();
     }
 }

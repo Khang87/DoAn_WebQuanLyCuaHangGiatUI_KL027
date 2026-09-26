@@ -24,23 +24,24 @@
                 </div>
                 <div class="col-md-4">
                     <label class="form-label">Tạm tính <span class="text-danger ms-1">*</span></label>
-                    <input type="number" class="form-control" name="total_amount" value="{{ $invoice->total_amount }}" min="0" step="1000" required>
+                    <input type="number" class="form-control" name="total_amount" value="{{ old('total_amount', (int) round((float) $invoice->total_amount)) }}" min="0" step="1000" required>
                 </div>
                 <div class="col-md-4">
                     <label class="form-label">Giảm giá</label>
-                    <input type="number" class="form-control" name="discount_amount" value="{{ $invoice->discount_amount }}" min="0" step="1000">
+                    <input type="number" class="form-control" name="discount_amount" value="{{ old('discount_amount', (int) round((float) $invoice->discount_amount)) }}" min="0" step="1000">
                 </div>
                 <div class="col-md-4">
                     <label class="form-label">Phí giao hàng</label>
-                    <input type="number" class="form-control" name="delivery_fee" value="{{ $invoice->delivery_fee }}" min="0" step="1000">
+                    <input type="number" class="form-control" name="delivery_fee" value="{{ old('delivery_fee', (int) round((float) $invoice->delivery_fee)) }}" min="0" step="1000">
                 </div>
                 <div class="col-md-6">
                     <label class="form-label">Trạng thái</label>
-                    <select class="form-select" name="status">
-                        <option value="unpaid" {{ $invoice->status === 'unpaid' ? 'selected' : '' }}>Chờ thanh toán</option>
-                        <option value="partial" {{ $invoice->status === 'partial' ? 'selected' : '' }}>Thanh toán một phần</option>
-                        <option value="paid" {{ $invoice->status === 'paid' ? 'selected' : '' }}>Đã thanh toán</option>
-                    </select>
+                    <x-admin.status-select
+                        name="status"
+                        :options="\App\Enums\InvoiceStatus::options()"
+                        :selected="$invoice->status"
+                        class="form-select @error('status') is-invalid @enderror"
+                    />
                 </div>
                 <div class="col-12">
                     <label class="form-label">Ghi chú</label>

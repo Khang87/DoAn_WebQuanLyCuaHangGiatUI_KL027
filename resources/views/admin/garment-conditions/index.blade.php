@@ -4,14 +4,35 @@
 @section('page-title', 'Điều kiện đồ giặt')
 
 @section('content')
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <a href="{{ route('garments.index') }}" class="btn btn-outline-secondary btn-sm">
+<!-- Page Actions: nút "Thêm" luôn là phần tử đầu tiên ở góc trên bên trái -->
+<div class="page-toolbar">
+    <a href="{{ route('garment-conditions.create') }}" class="btn btn-create">
+        <i class="bi bi-plus-lg"></i>Thêm điều kiện
+    </a>
+    <a href="{{ route('garments.index') }}" class="btn btn-outline-secondary">
         <i class="bi bi-arrow-left me-1"></i>Quay lại
     </a>
-    <a href="{{ route('garment-conditions.create') }}" class="btn btn-primary btn-sm">
-        <i class="bi bi-plus-lg me-1"></i>Thêm điều kiện
-    </a>
+    <p class="text-muted page-toolbar__desc">Quy định tình trạng ban đầu của đồ khi nhận vào cửa hàng (mới, cũ, thấm bẩn…).</p>
 </div>
+
+<form action="{{ url()->current() }}" method="GET" class="row g-3 align-items-center mb-4">
+    <div class="col-12 col-md-auto flex-grow-1">
+        <div class="input-group input-group-sm shadow-sm rounded-3 overflow-hidden">
+            <span class="input-group-text bg-white border-end-0 ps-3"><i class="fas fa-search text-muted"></i></span>
+            <input type="text" name="garment_id" class="form-control form-control-sm border-start-0 ps-2" placeholder="Lọc theo mã loại đồ giặt..." value="{{ request('garment_id') }}">
+        </div>
+    </div>
+    <div class="col-12 col-sm-6 col-md-auto">
+        <x-admin.status-select
+            name="status"
+            id="filter-status"
+            :options="$statuses ?? \App\Enums\RecordStatus::options()"
+            placeholder="-- Tất cả trạng thái --"
+            class="form-select form-select-sm filter-select shadow-sm rounded-3"
+            submit
+        />
+    </div>
+</form>
 
 <div class="card">
     <div class="card-body p-0">
@@ -28,11 +49,7 @@
                         <td><strong>{{ $condition->condition_type }}</strong></td>
                         <td>{{ \Illuminate\Support\Str::limit($condition->description, 50) ?: '-' }}</td>
                         <td>
-                            @if($condition->status === 'active')
-                                <span class="badge bg-success-subtle text-success border border-success px-3 py-2 rounded-pill"><i class="fas fa-check-circle me-1"></i>Hoạt động</span>
-                            @else
-                                <span class="badge bg-danger-subtle text-danger border border-danger px-3 py-2 rounded-pill"><i class="fas fa-ban me-1"></i>Khóa</span>
-                            @endif
+                            <x-admin.status-badge :status="$condition->status" :enum="\App\Enums\RecordStatus::class" />
                         </td>
                         <td>
                             <div class="d-flex gap-2">

@@ -4,39 +4,42 @@
 @section('page-title', 'Mã giảm giá')
 
 @section('content')
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <div>
-        <a href="{{ route('promotions.index') }}" class="btn btn-outline-secondary btn-sm">
-            <i class="bi bi-arrow-left me-1"></i>Quay lại Khuyến mãi
-        </a>
-        <a href="{{ route('coupons.create') }}" class="btn btn-primary btn-sm">
-            <i class="bi bi-plus-lg me-1"></i>Tạo coupon
-        </a>
-    </div>
+<!-- Page Actions: nút "Thêm" luôn là phần tử đầu tiên ở góc trên bên trái -->
+<div class="page-toolbar">
+    <a href="{{ route('coupons.create') }}" class="btn btn-create">
+        <i class="bi bi-plus-lg"></i>Thêm coupon
+    </a>
+    <a href="{{ route('promotions.index') }}" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left me-1"></i>Quay lại Khuyến mãi
+    </a>
+    <p class="text-muted page-toolbar__desc">Danh sách mã giảm giá đã phát ra, theo dõi số lượt dùng và thời hạn hiệu lực.</p>
 </div>
 <form action="{{ url()->current() }}" method="GET" class="row g-3 align-items-center mb-4">
-    <div class="col-12 col-md-5">
-        <div class="input-group shadow-sm rounded-3 overflow-hidden">
+    <div class="col-12 col-md-auto flex-grow-1">
+        <div class="input-group input-group-sm shadow-sm rounded-3 overflow-hidden">
             <span class="input-group-text bg-white border-end-0 ps-3">
                 <i class="fas fa-search text-muted"></i>
             </span>
-            <input type="text" name="search" class="form-control border-start-0 py-2 ps-2" placeholder="Tìm kiếm mã..." value="{{ request('search') }}">
+            <input type="text" name="search" class="form-control form-control-sm border-start-0 ps-2" placeholder="Tìm kiếm mã..." value="{{ request('search') }}">
         </div>
     </div>
-    <div class="col-12 col-md-3">
-        <select name="promotion_id" class="form-select shadow-sm rounded-3 py-2" style="min-width: 220px;" onchange="this.form.submit()">
+    <div class="col-12 col-sm-6 col-md-auto">
+        <select name="promotion_id" class="form-select form-select-sm filter-select shadow-sm rounded-3" onchange="this.form.submit()">
             <option value="">-- Tất cả chương trình --</option>
             @foreach($promotions as $promo)
                 <option value="{{ $promo->id }}" @selected(request('promotion_id') == $promo->id)>{{ $promo->name }}</option>
             @endforeach
         </select>
     </div>
-    <div class="col-12 col-md-3">
-        <select name="status" class="form-select shadow-sm rounded-3 py-2" style="min-width: 200px;" onchange="this.form.submit()">
-            <option value="">-- Tất cả trạng thái --</option>
-            <option value="active" @selected(request('status') === 'active')>Hoạt động</option>
-            <option value="inactive" @selected(request('status') === 'inactive')>Tắt</option>
-        </select>
+    <div class="col-12 col-sm-6 col-md-auto">
+        <x-admin.status-select
+            name="status"
+            id="filter-status"
+            :options="\App\Enums\RecordStatus::options()"
+            placeholder="-- Tất cả trạng thái --"
+            class="form-select form-select-sm filter-select shadow-sm rounded-3"
+            submit
+        />
     </div>
 </form>
 
@@ -57,11 +60,7 @@
                         <td>{{ $coupon->expires_at?->format('d/m/Y') }}</td>
                         <td>{{ $coupon->used_count }}/{{ $coupon->max_uses ?? '∞' }}</td>
                         <td>
-                            @if($coupon->status === 'active')
-                                <span class="badge bg-success-subtle text-success border border-success px-3 py-2 rounded-pill"><i class="fas fa-check-circle me-1"></i>Hoạt động</span>
-                            @else
-                                <span class="badge bg-danger-subtle text-danger border border-danger px-3 py-2 rounded-pill"><i class="fas fa-ban me-1"></i>Tắt</span>
-                            @endif
+                            <x-admin.status-badge :status="$coupon->status" :enum="\App\Enums\RecordStatus::class" />
                         </td>
                         <td>
                             <div class="d-flex gap-2">

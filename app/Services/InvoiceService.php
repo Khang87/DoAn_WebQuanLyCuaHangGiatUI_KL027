@@ -39,7 +39,7 @@ class InvoiceService
             });
         }
 
-        return $query->with('order.customer')->withTrashed()->latest()->paginate(20);
+        return $query->with('order.customer')->latest()->paginate(10);
     }
 
     public function find(int|string $id): ?Invoice
@@ -61,7 +61,7 @@ class InvoiceService
 
     public function create(array $data): Invoice
     {
-        if (! empty($data['order_id']) && Order::find($data['order_id'])?->hasPaidInvoice()) {
+        if (! empty($data['order_id']) && Order::find($data['order_id'])?->isLocked()) {
             throw SettledOrderException::forOrder($data['order_id']);
         }
 
@@ -114,9 +114,9 @@ class InvoiceService
         });
     }
 
-    public function update(Invoice $invoice, array $data): Invoice
+    public function update(Invoice $invoice, array $data, bool $overrideSettled = false): Invoice
     {
-        $this->guardSettledInvoice($invoice, $data);
+        $this->guardSettledInvoice($invoice, $data, $overrideSettled);
 
         $data = $this->normalizeAmounts($data, $invoice);
 
@@ -126,14 +126,14 @@ class InvoiceService
     }
 
     /**
-     * Hóa đơn đã thanh toán là chốt số tiền: chỉ cho sửa ghi chú, mọi thay đổi
-     * về khoản tiền hoặc đánh dấu lại là chưa thanh toán đều bị từ chối.
+     * HÃ³a Ä‘Æ¡n Ä‘Ã£ thanh toÃ¡n lÃ  chá»‘t sá»‘ tiá»n: chá»‰ cho sá»­a ghi chÃº, má»i thay Ä‘á»•i
+     * vá» khoáº£n tiá»n hoáº·c Ä‘Ã¡nh dáº¥u láº¡i lÃ  chÆ°a thanh toÃ¡n Ä‘á»u bá»‹ tá»« chá»‘i.
      *
      * @param  array<string, mixed>  $data
      */
-    private function guardSettledInvoice(Invoice $invoice, array $data): void
+    private function guardSettledInvoice(Invoice $invoice, array $data, bool $overrideSettled = false): void
     {
-        if (! $invoice->isPaid()) {
+        if ($overrideSettled || ! $invoice->isPaid()) {
             return;
         }
 
@@ -154,14 +154,14 @@ class InvoiceService
         }
     }
 
-    public function updateStatus(Invoice $invoice, string $status): Invoice
+    public function updateStatus(Invoice $invoice, string $status, bool $overrideSettled = false): Invoice
     {
         if (! in_array($status, InvoiceStatus::values(), true)) {
-            throw new \InvalidArgumentException('Trạng thái không hợp lệ');
+            throw new \InvalidArgumentException('Tráº¡ng thÃ¡i khÃ´ng há»£p lá»‡');
         }
 
-        // Đã thanh toán thì không được đánh dấu lại là chưa/chưa đủ thanh toán.
-        if ($invoice->isPaid() && InvoiceStatus::parse($status) !== InvoiceStatus::Paid) {
+        // ÄÃ£ thanh toÃ¡n thÃ¬ khÃ´ng Ä‘Æ°á»£c Ä‘Ã¡nh dáº¥u láº¡i lÃ  chÆ°a/chÆ°a Ä‘á»§ thanh toÃ¡n.
+        if (! $overrideSettled && $invoice->isPaid() && InvoiceStatus::parse($status) !== InvoiceStatus::Paid) {
             throw SettledOrderException::forInvoice($invoice->code);
         }
 
@@ -171,11 +171,11 @@ class InvoiceService
     }
 
     /**
-     * Chuẩn hóa bộ số tiền của hóa đơn.
+     * Chuáº©n hÃ³a bá»™ sá»‘ tiá»n cá»§a hÃ³a Ä‘Æ¡n.
      *
-     * Form đăng tải dùng `total` (số tiền phải trả) trong khi các cột
-     * total_amount / discount_amount / delivery_fee / grand_total phục vụ báo cáo.
-     * Hai nhóm này được đồng bộ qua đây để không lệch nhau.
+     * Form Ä‘Äƒng táº£i dÃ¹ng `total` (sá»‘ tiá»n pháº£i tráº£) trong khi cÃ¡c cá»™t
+     * total_amount / discount_amount / delivery_fee / grand_total phá»¥c vá»¥ bÃ¡o cÃ¡o.
+     * Hai nhÃ³m nÃ y Ä‘Æ°á»£c Ä‘á»“ng bá»™ qua Ä‘Ã¢y Ä‘á»ƒ khÃ´ng lá»‡ch nhau.
      */
     private function normalizeAmounts(array $data, ?Invoice $invoice = null): array
     {
@@ -202,9 +202,9 @@ class InvoiceService
         return $data;
     }
 
-    public function delete(Invoice $invoice): bool
+    public function delete(Invoice $invoice, bool $overrideSettled = false): bool
     {
-        if ($invoice->isPaid()) {
+        if (! $overrideSettled && $invoice->isPaid()) {
             throw SettledOrderException::forInvoice($invoice->code);
         }
 

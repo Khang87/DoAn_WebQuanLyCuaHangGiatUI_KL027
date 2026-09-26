@@ -19,7 +19,7 @@
                 <div class="col-md-6">
                     <label class="form-label">Đơn hàng</label>
                     <select class="form-select" name="order_id">
-                        <option value="">Chọn</option>
+                        <option value="">-- Chọn đơn hàng --</option>
                         @foreach($orders as $order)
                         <option value="{{ $order->id }}" {{ $item->order_id === $order->id ? 'selected' : '' }}>{{ $order->code }}</option>
                         @endforeach
@@ -28,7 +28,7 @@
                 <div class="col-md-6">
                     <label class="form-label">Dịch vụ</label>
                     <select class="form-select" name="service_id">
-                        <option value="">Chọn</option>
+                        <option value="">-- Chọn dịch vụ --</option>
                         @foreach($services as $service)
                         <option value="{{ $service->id }}" {{ $item->service_id === $service->id ? 'selected' : '' }}>{{ $service->name }}</option>
                         @endforeach
@@ -47,7 +47,7 @@
                 </div>
                 <div class="col-md-6">
                     <label class="form-label">Đơn giá <span class="text-danger ms-1">*</span></label>
-                    <input type="number" class="form-control" name="price" value="{{ old('price', $item->price) }}" min="0" required>
+                    <input type="number" class="form-control" name="price" value="{{ old('price', (int) round((float) $item->price)) }}" min="0" required>
                 </div>
                 <div class="col-md-6">
                     <label class="form-label">Số lượng <span class="text-danger ms-1">*</span></label>

@@ -18,11 +18,18 @@ class CustomerService
                   ->orWhere('code', 'like', "%{$search}%");
         }
 
-        $allowedSorts = ['id', 'name', 'email', 'phone', 'points', 'created_at'];
-        $sortBy = in_array($filters['sort_by'] ?? null, $allowedSorts) ? $filters['sort_by'] : 'created_at';
-        $sortOrder = ($filters['sort_order'] ?? 'desc') === 'asc' ? 'asc' : 'desc';
+        $sortMap = [
+            'latest' => ['created_at', 'desc'],
+            'oldest' => ['created_at', 'asc'],
+            'name_asc' => ['name', 'asc'],
+            'name_desc' => ['name', 'desc'],
+            'points_desc' => ['points', 'desc'],
+            'points_asc' => ['points', 'asc'],
+        ];
+        $sort = $filters['sort'] ?? 'latest';
+        [$sortBy, $sortOrder] = $sortMap[$sort] ?? ['created_at', 'desc'];
 
-        return $query->withTrashed()->orderBy($sortBy, $sortOrder)->paginate(20);
+        return $query->orderBy($sortBy, $sortOrder)->paginate(10);
     }
 
     public function find(int $id): ?Customer

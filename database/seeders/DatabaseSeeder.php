@@ -12,6 +12,7 @@ class DatabaseSeeder extends Seeder
             UserSeeder::class,
             CustomerSeeder::class,
             ServiceCategorySeeder::class,
+            LaundryCategorySeeder::class,
             CategorySeeder::class,
             ServiceSeeder::class,
             GarmentSeeder::class,

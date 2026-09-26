@@ -2,31 +2,36 @@
 @section('title', 'Quản lý giao nhận - Sky Laundry')
 @section('page-title', 'Quản lý giao nhận')
 @section('content')
-<div class="order-toolbar mb-4">
-    <p class="text-muted mb-0">Theo dõi lịch nhận và giao đồ cho khách hàng.</p>
-    <a href="{{ route('deliveries.create') }}" class="btn btn-primary"><i class="bi bi-plus-lg me-2"></i>Tạo lịch giao nhận</a>
+<!-- Page Actions: nút "Thêm" luôn nằm góc trên bên trái -->
+<div class="page-toolbar">
+    <a href="{{ route('deliveries.create') }}" class="btn btn-create">
+        <i class="bi bi-plus-lg"></i>Thêm lịch giao nhận
+    </a>
+    <p class="text-muted page-toolbar__desc">Theo dõi lịch nhận và giao đồ cho khách hàng.</p>
 </div>
 <form action="{{ url()->current() }}" method="GET" class="row g-3 align-items-center mb-4">
-    <div class="col-12 col-md-5">
-        <div class="input-group shadow-sm rounded-3 overflow-hidden">
+    <div class="col-12 col-md-auto flex-grow-1">
+        <div class="input-group input-group-sm shadow-sm rounded-3 overflow-hidden">
             <span class="input-group-text bg-white border-end-0 ps-3"><i class="fas fa-search text-muted"></i></span>
-            <input type="text" name="search" class="form-control border-start-0 py-2 ps-2" placeholder="Tìm theo mã đơn, mã giao nhận, khách hàng..." value="{{ request('search') }}">
+            <input type="text" name="search" class="form-control form-control-sm border-start-0 ps-2" placeholder="Tìm theo mã đơn, mã giao nhận, khách hàng..." value="{{ request('search') }}">
         </div>
     </div>
-    <div class="col-12 col-md-3">
-        <select name="method" class="form-select shadow-sm rounded-3 py-2" onchange="this.form.submit()">
+    <div class="col-12 col-sm-6 col-md-auto">
+        <select name="method" class="form-select form-select-sm filter-select shadow-sm rounded-3" onchange="this.form.submit()">
             <option value="">-- Tất cả hình thức --</option>
             <option value="nhan_do" @selected(request('method') === 'nhan_do')>Nhận đồ</option>
             <option value="giao_do" @selected(request('method') === 'giao_do')>Giao đồ</option>
         </select>
     </div>
-    <div class="col-12 col-md-3">
-        <select name="status" class="form-select shadow-sm rounded-3 py-2" onchange="this.form.submit()">
-            <option value="">-- Tất cả trạng thái --</option>
-            @foreach($statuses ?? \App\Enums\RecordStatus::options() as $value => $label)
-                <option value="{{ $value }}" @selected(request('status') === $value)>{{ $label }}</option>
-            @endforeach
-        </select>
+    <div class="col-12 col-sm-6 col-md-auto">
+        <x-admin.status-select
+            name="status"
+            id="filter-status"
+            :options="\App\Enums\DeliveryStatus::options()"
+            placeholder="-- Tất cả trạng thái --"
+            class="form-select form-select-sm filter-select shadow-sm rounded-3"
+            submit
+        />
     </div>
 </form>
 <div class="card">
@@ -39,7 +44,7 @@
                         <th>Mã giao nhận</th>
                         <th>Mã đơn hàng</th>
                         <th>Khách hàng</th>
-                        <th>Phương thức</th>
+                        <th>Hình thức</th>
                         <th>Nhân viên</th>
                         <th>Thời gian</th>
                         <th>Trạng thái</th>
@@ -51,7 +56,7 @@
                     <tr>
                         <td>{{ $loop->iteration }}</td>
                         <td><strong>{{ $delivery->code ?: ('GH' . str_pad($delivery->id, 3, '0', STR_PAD_LEFT)) }}</strong></td>
-                        <td><a href="{{ route('orders.show', $delivery->order_id) }}" class="text-decoration-none">{{ $delivery->order?->code ?: '—' }}</a></td>
+                        <td><span class="text-dark">{{ $delivery->order?->code ?: '—' }}</span></td>
                         <td>{{ $delivery->customer?->name ?: $delivery->order?->customer?->name ?: '—' }}</td>
                         <td>
                             @if($delivery->method === 'nhan_do')
@@ -66,17 +71,7 @@
                             <br><small class="text-muted">{{ $delivery->pickup_time?->format('H:i') ?: '—' }}</small>
                         </td>
                         <td>
-                            @if($delivery->status === 'picking')
-                                <span class="badge bg-info-subtle text-info border border-info px-3 py-2 rounded-pill">{{ $delivery->status_label ?? 'Đang nhận đồ' }}</span>
-                            @elseif($delivery->status === 'delivering')
-                                <span class="badge bg-primary-subtle text-primary border border-primary px-3 py-2 rounded-pill">{{ $delivery->status_label ?? 'Đang giao đồ' }}</span>
-                            @elseif($delivery->status === 'completed')
-                                <span class="badge bg-success-subtle text-success border border-success px-3 py-2 rounded-pill">{{ $delivery->status_label ?? 'Hoàn thành' }}</span>
-                            @elseif($delivery->status === 'cancelled')
-                                <span class="badge bg-danger-subtle text-danger border border-danger px-3 py-2 rounded-pill">{{ $delivery->status_label ?? 'Đã hủy' }}</span>
-                            @else
-                                <span class="badge bg-warning-subtle text-warning border border-warning px-3 py-2 rounded-pill">{{ $delivery->status_label ?? 'Chờ xác nhận' }}</span>
-                            @endif
+                            <x-admin.status-badge :status="$delivery->status" :enum="\App\Enums\DeliveryStatus::class" />
                         </td>
                         <td class="text-center">
                             <div class="d-flex gap-2 justify-content-center">

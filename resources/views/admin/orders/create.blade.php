@@ -11,16 +11,6 @@
             <a href="{{ route('orders.index') }}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left me-1"></i>Quay lại</a>
         </div>
         @php
-            $orderStatusOptions = [
-                'pending' => 'Chờ tiếp nhận',
-                'received' => 'Đã nhận đồ',
-                'sorting' => 'Đang phân loại',
-                'processing' => 'Đang giặt / Xử lý',
-                'washed' => 'Đã giặt xong',
-                'delivering' => 'Đang giao đồ',
-                'completed' => 'Hoàn thành',
-                'cancelled' => 'Đã hủy',
-            ];
             $garmentOptions = $garments ?? $garmentTypes ?? \App\Models\Garment::where('status', 'active')->orderBy('name')->get();
             $employeeOptions = $employees ?? $staffUsers ?? \App\Models\User::where('role', 'staff')->orderBy('name')->get();
             $priceOptions = $pricings ?? $priceLists ?? \App\Models\Pricing::where('status', 'active')->get();
@@ -38,7 +28,7 @@
 
                     $value = is_object($category) ? ($category->id ?? $category->name) : $category;
 
-                    return (object) ['id' => $value, 'name' => $value];
+                    return (object) ['id' => $value, 'name' => $value, 'icon' => is_object($category) ? ($category->icon ?? null) : null];
                 })->values();
             };
             $serviceCategories = $normalizeCategories($serviceCategories ?? []);
@@ -72,11 +62,14 @@
                 </div>
                 <div class="col-md-6">
                     <label class="form-label" for="status">Trạng thái <span class="text-danger ms-1">*</span></label>
-                    <select class="form-select" id="status" name="status" required>
-                        @foreach($orderStatusOptions as $value => $label)
-                            <option value="{{ $value }}" @selected(old('status', 'pending') === $value)>{{ $label }}</option>
-                        @endforeach
-                    </select>
+                    <x-admin.status-select
+                        name="status"
+                        id="status"
+                        :options="$statusFlow ?? \App\Enums\OrderStatus::options()"
+                        selected="pending"
+                        class="form-select"
+                        required
+                    />
                 </div>
                 <div class="col-12">
                     <div class="d-flex justify-content-between align-items-center mb-2">
@@ -89,7 +82,7 @@
                             <tbody>
                                 @foreach($items as $index => $item)
                                     <tr>
-                                        <td><select class="form-select item-service-category" name="items[{{ $index }}][service_category_id]"><option value="">-- Danh mục --</option>@foreach($serviceCategories as $cat)<option value="{{ $cat->id }}" @selected(($item['service_category_id'] ?? '') == $cat->id)>{{ $cat->name }}</option>@endforeach</select></td>
+                                        <td><select class="form-select js-icon-select item-service-category" name="items[{{ $index }}][service_category_id]"><option value="">-- Danh mục --</option>@foreach($serviceCategories as $cat)<option value="{{ $cat->id }}" data-icon="{{ $cat->icon }}" @selected(($item['service_category_id'] ?? '') == $cat->id)>{{ $cat->name }}</option>@endforeach</select><i class="icon-preview" hidden></i></td>
                                         <td><select class="form-select item-service" name="items[{{ $index }}][service_id]" required><option value="">-- Chọn dịch vụ --</option>@foreach($services as $service)<option value="{{ $service->id }}" @selected(($item['service_id'] ?? '') == $service->id)>{{ $service->name }}</option>@endforeach</select></td>
                                         <td><select class="form-select item-garment-category" name="items[{{ $index }}][garment_category_id]"><option value="">-- Danh mục --</option>@foreach($garmentCategories as $cat)<option value="{{ $cat->id }}" @selected(($item['garment_category_id'] ?? '') == $cat->id)>{{ $cat->name }}</option>@endforeach</select></td>
                                         <td><select class="form-select item-garment" name="items[{{ $index }}][garment_id]" required><option value="">-- Chọn loại đồ --</option>@foreach($garmentOptions as $garment)<option value="{{ $garment->id }}" @selected(($item['garment_id'] ?? '') == $garment->id)>{{ $garment->name }}</option>@endforeach</select></td>
@@ -189,7 +182,7 @@
     const customerPoints = {!! $customerPointsJson !!};
     const services = @json($services->pluck('name', 'id'));
     const garments = @json($garmentOptions->pluck('name', 'id'));
-    const serviceCategories = @json($serviceCategories->pluck('name', 'id'));
+    const serviceCategories = @json($serviceCategories->map(fn($c) => ['id' => $c->id, 'name' => $c->name, 'icon' => $c->icon ?? null])->keyBy('id'));
     const garmentCategories = @json($garmentCategories->pluck('name', 'id'));
 
     const table = document.getElementById('itemsTable');
@@ -318,7 +311,7 @@
     document.getElementById('addItem').addEventListener('click', () => {
         const index = table.tBodies[0].rows.length;
         const row = table.tBodies[0].insertRow();
-        row.innerHTML = `<td><select class="form-select item-service-category" name="items[${index}][service_category_id]"><option value="">-- Danh mục --</option>${Object.entries(serviceCategories).map(([id,name]) => `<option value="${id}">${name}</option>`).join('')}</select></td><td><select class="form-select item-service" name="items[${index}][service_id]" required><option value="">-- Chọn dịch vụ --</option>${Object.entries(services).map(([id,name]) => `<option value="${id}">${name}</option>`).join('')}</select></td><td><select class="form-select item-garment-category" name="items[${index}][garment_category_id]"><option value="">-- Danh mục --</option>${Object.entries(garmentCategories).map(([id,name]) => `<option value="${id}">${name}</option>`).join('')}</select></td><td><select class="form-select item-garment" name="items[${index}][garment_id]" required><option value="">-- Chọn loại đồ --</option>${Object.entries(garments).map(([id,name]) => `<option value="${id}">${name}</option>`).join('')}</select></td><td><input type="number" class="form-control item-quantity" name="items[${index}][quantity]" value="1" min="1" required></td><td><input type="number" step="0.01" class="form-control item-weight" name="items[${index}][weight]" value="0" min="0" step="0.01"></td><td><input type="number" class="form-control item-price" name="items[${index}][price]" value="0" min="0" step="100"></td><td><input type="number" class="form-control item-subtotal" value="0" readonly></td><td><button type="button" class="btn btn-sm btn-outline-danger remove-item"><i class="bi bi-trash"></i></button></td>`;
+        row.innerHTML = `<td><select class="form-select js-icon-select item-service-category" name="items[${index}][service_category_id]"><option value="">-- Danh mục --</option>${Object.entries(serviceCategories).map(([id,cat]) => `<option value="${id}" data-icon="${cat.icon || ''}">${cat.name}</option>`).join('')}</select><i class="icon-preview" hidden></i></td><td><select class="form-select item-service" name="items[${index}][service_id]" required><option value="">-- Chọn dịch vụ --</option>${Object.entries(services).map(([id,name]) => `<option value="${id}">${name}</option>`).join('')}</select></td><td><select class="form-select item-garment-category" name="items[${index}][garment_category_id]"><option value="">-- Danh mục --</option>${Object.entries(garmentCategories).map(([id,name]) => `<option value="${id}">${name}</option>`).join('')}</select></td><td><select class="form-select item-garment" name="items[${index}][garment_id]" required><option value="">-- Chọn loại đồ --</option>${Object.entries(garments).map(([id,name]) => `<option value="${id}">${name}</option>`).join('')}</select></td><td><input type="number" class="form-control item-quantity" name="items[${index}][quantity]" value="1" min="1" required></td><td><input type="number" step="0.01" class="form-control item-weight" name="items[${index}][weight]" value="0" min="0" step="0.01"></td><td><input type="number" class="form-control item-price" name="items[${index}][price]" value="0" min="0" step="100"></td><td><input type="number" class="form-control item-subtotal" value="0" readonly></td><td><button type="button" class="btn btn-sm btn-outline-danger remove-item"><i class="bi bi-trash"></i></button></td>`;
         updateTotals();
     });
 

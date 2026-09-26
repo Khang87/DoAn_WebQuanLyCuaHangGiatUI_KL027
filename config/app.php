@@ -123,4 +123,22 @@ return [
         'store' => env('APP_MAINTENANCE_STORE', 'database'),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Khoá bản ghi đã quyết toán
+    |--------------------------------------------------------------------------
+    |
+    | "Đã quyết toán" = đơn hoàn thành, hoặc đã có hóa đơn thanh toán, hoặc
+    | đã thu đủ tiền. Các bản ghi này chỉ đọc: không sửa, không xoá.
+    |
+    | Điều kiện "đã thu đủ tiền" được bật/tắt riêng vì nó áp dụng ngay lập tức
+    | cho mọi đơn đã thu đủ tiền trong dữ liệu cũ. Tắt khi cần rà soát lại
+    | các bản ghi bị khoá ngoài ý muốn mà không cần deploy lại.
+    |
+    */
+
+    'lock_settled' => [
+        'payment' => env('LOCK_SETTLED_BY_PAYMENT', true),
+    ],
+
 ];

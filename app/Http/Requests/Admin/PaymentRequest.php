@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Admin;
 
+use App\Enums\PaymentStatus;
 use Illuminate\Foundation\Http\FormRequest;
 
 class PaymentRequest extends FormRequest
@@ -18,7 +19,7 @@ class PaymentRequest extends FormRequest
             'amount' => ['required', 'numeric', 'min:0'],
             'method' => ['required', 'in:cash,bank_transfer,momo,credit_card,e_wallet'],
             'paid_at' => ['nullable', 'date'],
-            'status' => ['required', 'in:pending,partial,paid,failed,refunded'],
+            'status' => ['required', 'in:'.implode(',', PaymentStatus::values())],
             'transaction_code' => ['nullable', 'string', 'max:100'],
         ];
     }

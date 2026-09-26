@@ -1,85 +1,120 @@
 @extends('layouts.app')
 
-@section('title', 'Chi tiết danh mục - Sky Laundry')
-@section('page-title', 'Chi tiết danh mục')
+@section('title', 'Chi tiết danh mục dịch vụ - Sky Laundry')
+@section('page-title', 'Chi tiết danh mục dịch vụ')
 
 @section('content')
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <a href="{{ route('service-categories.index') }}" class="btn btn-outline-secondary btn-sm">
-        <i class="bi bi-arrow-left me-1"></i>Quay lại
-    </a>
-    <a href="{{ route('service-categories.edit', $category->id) }}" class="btn btn-primary btn-sm">
-        <i class="bi bi-pencil me-1"></i>Chỉnh sửa
-    </a>
-</div>
-
-<div class="card mb-4">
-    <div class="card-body">
-        <h5 class="mb-3">{{ $category->name }}</h5>
-        <div class="row">
-            <div class="col-md-6">
-                <table class="table table-borderless">
-                    <tr><td><strong>Slug</strong></td><td>{{ $category->slug }}</td></tr>
-                    <tr><td><strong>Icon</strong></td><td>{{ $category->icon ?: '-' }}</td></tr>
-                    <tr><td><strong>Trạng thái</strong></td>
-                        <td>
-                            @if($category->status === 'active')
-                                <span class="badge bg-success-subtle text-success border border-success px-3 py-2 rounded-pill"><i class="fas fa-check-circle me-1"></i>Hoạt động</span>
-                            @else
-                                <span class="badge bg-danger-subtle text-danger border border-danger px-3 py-2 rounded-pill"><i class="fas fa-ban me-1"></i>Khóa</span>
-                            @endif
-                        </td>
-                    </tr>
-                    <tr><td><strong>Ngày tạo</strong></td><td>{{ $category->created_at?->format('d/m/Y') }}</td></tr>
-                </table>
-            </div>
-            <div class="col-md-6">
-                <table class="table table-borderless">
-                    <tr><td><strong>Số dịch vụ</strong></td><td>{{ $category->services->count() }}</td></tr>
-                </table>
-            </div>
-        </div>
-        @if($category->description)
-        <div class="mt-3"><strong>Mô tả:</strong><br>{{ $category->description }}</div>
-        @endif
+<x-admin.detail.page-header
+    title="Danh mục {{ $category->name }}"
+    :back="route('service-categories.index')"
+    :subtitle="$category->slug"
+>
+    <x-slot:badge>
+        <x-admin.status-badge :status="$category->status" :enum="\App\Enums\RecordStatus::class" />
         @if($category->deleted_at)
-        <div class="mt-3">
-            <span class="badge bg-danger-subtle text-danger border border-danger px-3 py-2 rounded-pill"><i class="fas fa-ban me-1"></i>Đã xóa</span>
-        </div>
+            <span class="badge bg-danger-subtle text-danger border border-danger px-3 py-2 rounded-pill">
+                <i class="fas fa-ban me-1"></i>Đã xóa
+            </span>
         @endif
-    </div>
-</div>
+    </x-slot:badge>
 
-<div class="card">
-    <div class="card-header"><h5 class="mb-0">Dịch vụ trong danh mục</h5></div>
-    <div class="card-body p-0">
-        @if($services->count() > 0)
-        <div class="table-responsive">
-            <table class="table table-hover mb-0">
-                <thead><tr><th>Tên</th><th>Loại</th><th>Đơn giá</th><th>Đơn vị</th><th>Trạng thái</th></tr></thead>
-                <tbody>
-                    @foreach($services as $service)
-                    <tr>
-                        <td>{{ $service->name }}</td>
-                        <td>{{ $service->type ?: '-' }}</td>
-                        <td>{{ number_format($service->price) }} VNĐ</td>
-                        <td>{{ $service->unit }}</td>
-                        <td>
-                            @if($service->status === 'active')
-                                <span class="badge bg-success-subtle text-success border border-success px-2 py-1 rounded-pill"><i class="fas fa-check-circle"></i></span>
-                            @else
-                                <span class="badge bg-danger-subtle text-danger border border-danger px-2 py-1 rounded-pill"><i class="fas fa-ban"></i></span>
-                            @endif
-                        </td>
-                    </tr>
-                    @endforeach
-                </tbody>
-            </table>
-        </div>
-        {{ $services->links() }}
-        @else
-        <p class="text-center text-muted py-4">Chưa có dịch vụ</p>
-        @endif
+    <x-slot:actions>
+        <a href="{{ route('service-categories.edit', $category->id) }}" class="btn btn-primary btn-sm">
+            <i class="bi bi-pencil me-1"></i>Chỉnh sửa
+        </a>
+    </x-slot:actions>
+</x-admin.detail.page-header>
+
+@if($category->deleted_at)
+    <x-admin.detail.locked text="Danh mục đã bị xóa mềm nên không thể sửa hoặc xóa. Hãy khôi phục nếu cần." />
+@endif
+
+<div class="row g-4">
+    {{-- ============ CỘT CHÍNH (8/12) ============ --}}
+    <div class="col-lg-8">
+        <x-admin.detail.panel
+            title="Thông tin danh mục"
+            :icon="$category->icon ?: 'bi-folder'"
+            :iconClass="'bg-primary-subtle text-primary'"
+        >
+            <x-admin.detail.info-grid :columns="2">
+                <x-admin.detail.info-item label="Tên danh mục" :value="$category->name" />
+                <x-admin.detail.info-item label="Mã danh mục" :value="$category->code" />
+                <x-admin.detail.info-item label="Slug" :value="$category->slug" />
+                <x-admin.detail.info-item label="Số dịch vụ" :value="$category->services->count()" />
+                <x-admin.detail.info-item label="Ngày tạo" :value="$category->created_at?->format('d/m/Y')" />
+                <x-admin.detail.info-item label="Trạng thái">
+                    <x-admin.status-badge :status="$category->status" :enum="\App\Enums\RecordStatus::class" :pill="false" />
+                </x-admin.detail.info-item>
+            </x-admin.detail.info-grid>
+
+            <div class="mt-4">
+                <div class="detail-field__label mb-2">Mô tả</div>
+                <div class="detail-text">{{ $category->description ?: 'Chưa có mô tả.' }}</div>
+            </div>
+        </x-admin.detail.panel>
+
+        <x-admin.detail.panel title="Dịch vụ trong danh mục" icon="bi-list-check" :iconClass="'bg-secondary-subtle text-secondary'" flush>
+            <x-slot:header>
+                <span class="text-muted small">{{ $services->total() }} dịch vụ</span>
+            </x-slot:header>
+
+            @if($services->isEmpty())
+                <x-admin.detail.empty message="Danh mục này chưa có dịch vụ nào" icon="bi-bag" />
+            @else
+                <div class="table-responsive">
+                    <table class="table table-hover detail-table">
+                        <thead>
+                            <tr>
+                                <th>Tên dịch vụ</th>
+                                <th>Loại</th>
+                                <th class="text-end">Đơn giá</th>
+                                <th class="text-end">Đơn vị</th>
+                                <th>Trạng thái</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach($services as $service)
+                                <tr>
+                                    <td>
+                                        <span class="fw-semibold">
+                                            {{ $service->name }}
+                                        </span>
+                                    </td>
+                                    <td>{{ $service->type ?: '—' }}</td>
+                                    <td class="text-end"><x-admin.detail.money :value="$service->price" /></td>
+                                    <td class="text-end">{{ $service->unit ?: 'kg' }}</td>
+                                    <td>
+                                        <x-admin.status-badge :status="$service->status" :enum="\App\Enums\RecordStatus::class" size="px-2 py-1" />
+                                    </td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+
+                @if($services->hasPages())
+                    <div class="p-3">{{ $services->links() }}</div>
+                @endif
+            @endif
+        </x-admin.detail.panel>
+    </div>
+
+    {{-- ============ CỘT PHỤ (4/12) ============ --}}
+    <div class="col-lg-4">
+        <x-admin.detail.panel title="Thao tác" icon="bi-sliders" :iconClass="'bg-secondary-subtle text-secondary'">
+            <div class="d-grid gap-2">
+                <a href="{{ route('service-categories.edit', $category->id) }}" class="btn btn-primary btn-sm">
+                    <i class="bi bi-pencil me-1"></i>Chỉnh sửa
+                </a>
+                <a href="{{ route('services.create') }}" class="btn btn-outline-primary btn-sm">
+                    <i class="bi bi-plus-lg me-1"></i>Thêm dịch vụ
+                </a>
+                <a href="{{ route('service-categories.index') }}" class="btn btn-outline-secondary btn-sm">
+                    <i class="bi bi-arrow-left me-1"></i>Quay lại danh sách
+                </a>
+            </div>
+        </x-admin.detail.panel>
     </div>
 </div>
 @endsection

@@ -20,16 +20,16 @@ class BookingController extends Controller
         $bookings = $this->bookingService->getAll([
             'search' => $request->input('search'),
             'customer_id' => $request->input('customer_id'),
-            'status' => $request->input('status'),
             'method' => $request->input('method'),
+            'status' => $request->input('status'),
             'sort_by' => $request->input('sort_by'),
             'sort_order' => $request->input('sort_order'),
         ]);
 
         $customers = Customer::orderBy('name')->get();
-        $staff = User::where('role', '!=', 'customer')->orderBy('name')->get();
+        $employees = User::where('role', '!=', 'customer')->orderBy('name')->get();
 
-        return view('admin.bookings.index', compact('bookings', 'customers', 'staff'));
+        return view('admin.bookings.index', compact('bookings', 'customers', 'employees'));
     }
 
     // create() and store() methods disabled - "Tạo đặt lịch" feature disabled
@@ -54,9 +54,9 @@ class BookingController extends Controller
         }
 
         $customers = Customer::orderBy('name')->get();
-        $staff = User::where('role', '!=', 'customer')->orderBy('name')->get();
+        $employees = User::where('role', '!=', 'customer')->orderBy('name')->get();
 
-        return view('admin.bookings.edit', compact('booking', 'customers', 'staff'));
+        return view('admin.bookings.edit', compact('booking', 'customers', 'employees'));
     }
 
     public function update(BookingRequest $request, int $id)
@@ -70,9 +70,20 @@ class BookingController extends Controller
         try {
             $this->bookingService->update($booking, $request->validated());
 
+            // Lịch hẹn vừa chuyển sang "Đã xác nhận" nên đã được sinh đơn tự động.
+            $booking = $this->bookingService->find($id);
+            $order = $booking?->order;
+
+            if ($order) {
+                return redirect()->route('bookings.index')->with(
+                    'success',
+                    'Đặt lịch ' . ($booking?->code ?? '') . ' đã được cập nhật và tự động tạo đơn hàng ' . $order->code . '.'
+                );
+            }
+
             return redirect()->route('bookings.index')->with('success', 'Đặt lịch đã được cập nhật.');
         } catch (\Exception $e) {
-            return redirect()->route('bookings.edit', $booking)->with('error', 'Có lỗi xảy ra: ' . $e->getMessage())->withInput();
+            return redirect()->route('bookings.edit', $booking)->with('error', \App\Support\FriendlyError::message($e))->withInput();
         }
     }
 
@@ -89,7 +100,7 @@ class BookingController extends Controller
 
             return redirect()->route('bookings.index')->with('success', 'Đã xóa đặt lịch.');
         } catch (\Exception $e) {
-            return redirect()->route('bookings.index')->with('error', 'Có lỗi xảy ra: ' . $e->getMessage());
+            return redirect()->route('bookings.index')->with('error', \App\Support\FriendlyError::message($e));
         }
     }
 
@@ -118,7 +129,7 @@ class BookingController extends Controller
 
             return redirect()->route('bookings.index')->with('error', 'Chỉ đặt lịch đã xác nhận mới chuyển thành đơn hàng được.');
         } catch (\Exception $e) {
-            return redirect()->route('bookings.index')->with('error', 'Có lỗi xảy ra: ' . $e->getMessage());
+            return redirect()->route('bookings.index')->with('error', \App\Support\FriendlyError::message($e));
         }
     }
 }

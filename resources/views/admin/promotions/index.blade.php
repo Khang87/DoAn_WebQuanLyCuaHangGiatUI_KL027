@@ -4,26 +4,44 @@
 @section('page-title', 'Chương trình khuyến mãi')
 
 @section('content')
-<div class="order-toolbar d-flex justify-content-between align-items-center mb-4">
-    <a href="{{ route('promotions.create') }}" class="btn btn-primary">
-        <i class="bi bi-plus-lg me-2"></i>Thêm chương trình
+<!-- Page Actions: nút "Thêm" luôn nằm góc trên bên trái -->
+<div class="page-toolbar">
+    <a href="{{ route('promotions.create') }}" class="btn btn-create">
+        <i class="bi bi-plus-lg"></i>Thêm chương trình
     </a>
+    <p class="text-muted page-toolbar__desc">Các chương trình khuyến mãi đang chạy, phát mã giảm giá cho khách hàng.</p>
 </div>
 <form action="{{ url()->current() }}" method="GET" class="row g-3 align-items-center mb-4">
-    <div class="col-12 col-md-5">
-        <div class="input-group shadow-sm rounded-3 overflow-hidden">
+    <div class="col-12 col-md-auto flex-grow-1">
+        <div class="input-group input-group-sm shadow-sm rounded-3 overflow-hidden">
             <span class="input-group-text bg-white border-end-0 ps-3">
                 <i class="fas fa-search text-muted"></i>
             </span>
-            <input type="text" name="search" class="form-control border-start-0 py-2 ps-2" placeholder="Tìm theo ID, mã khuyến mãi, tên chương trình..." value="{{ request('search') }}">
+            <input type="text" name="search" class="form-control form-control-sm border-start-0 ps-2" placeholder="Tìm theo ID, mã khuyến mãi, tên chương trình..." value="{{ request('search') }}">
         </div>
     </div>
-    <div class="col-12 col-md-4">
-        <select name="status" class="form-select shadow-sm rounded-3 py-2" style="min-width: 220px;" onchange="this.form.submit()">
-            <option value="">-- Tất cả trạng thái --</option>
-            @foreach($statuses ?? \App\Enums\RecordStatus::options() as $value => $label)
-                <option value="{{ $value }}" @selected(request('status') === $value)>{{ $label }}</option>
-            @endforeach
+    <div class="col-12 col-sm-6 col-md-auto">
+        <x-admin.status-select
+            name="status"
+            id="filter-status"
+            :options="$statuses ?? \App\Enums\RecordStatus::options()"
+            placeholder="-- Tất cả trạng thái --"
+            class="form-select form-select-sm filter-select shadow-sm rounded-3"
+            submit
+        />
+    </div>
+    <div class="col-12 col-sm-6 col-md-auto">
+        <select name="sort" class="form-select form-select-sm filter-select shadow-sm rounded-3" onchange="this.form.submit()">
+            <option value="">-- Tất cả cách sắp xếp --</option>
+            <option value="latest" @selected(request('sort') === 'latest')>Mới nhất</option>
+            <option value="oldest" @selected(request('sort') === 'oldest')>Cũ nhất</option>
+            <option value="name_asc" @selected(request('sort') === 'name_asc')>Tên A-Z</option>
+            <option value="name_desc" @selected(request('sort') === 'name_desc')>Tên Z-A</option>
+            <option value="code_asc" @selected(request('sort') === 'code_asc')>Mã tăng dần</option>
+            <option value="code_desc" @selected(request('sort') === 'code_desc')>Mã giảm dần</option>
+            <option value="discount_value_desc" @selected(request('sort') === 'discount_value_desc')>Giá trị cao nhất</option>
+            <option value="discount_value_asc" @selected(request('sort') === 'discount_value_asc')>Giá trị thấp nhất</option>
+            <option value="expires_at_asc" @selected(request('sort') === 'expires_at_asc')>Hạn sử dụng sớm nhất</option>
         </select>
     </div>
 </form>
@@ -35,47 +53,13 @@
             <table class="table-custom mb-0">
                 <thead>
                     <tr>
-                        @php
-                            $currentSortBy = request('sort_by');
-                            $currentSortOrder = request('sort_order', 'desc');
-                            $nextOrderId = ($currentSortBy === 'id' && $currentSortOrder === 'asc') ? 'desc' : 'asc';
-                            $nextOrderName = ($currentSortBy === 'name' && $currentSortOrder === 'asc') ? 'desc' : 'asc';
-                            $nextOrderCode = ($currentSortBy === 'code' && $currentSortOrder === 'asc') ? 'desc' : 'asc';
-                            $nextOrderDiscount = ($currentSortBy === 'discount' && $currentSortOrder === 'asc') ? 'desc' : 'asc';
-                            $nextOrderExpires = ($currentSortBy === 'expires_at' && $currentSortOrder === 'asc') ? 'desc' : 'asc';
-                        @endphp
-                        <th>
-                            <a href="{{ request()->fullUrlWithQuery(['sort_by' => 'id', 'sort_order' => $nextOrderId]) }}" class="text-dark text-decoration-none">
-                                ID
-                                @if($currentSortBy === 'id') @if($currentSortOrder === 'asc') <i class="bi bi-sort-up"></i> @else <i class="bi bi-sort-down"></i> @endif @endif
-                            </a>
-                        </th>
-                        <th>
-                            <a href="{{ request()->fullUrlWithQuery(['sort_by' => 'name', 'sort_order' => $nextOrderName]) }}" class="text-dark text-decoration-none">
-                                Tên chương trình
-                                @if($currentSortBy === 'name') @if($currentSortOrder === 'asc') <i class="bi bi-sort-up"></i> @else <i class="bi bi-sort-down"></i> @endif @endif
-                            </a>
-                        </th>
-                        <th>
-                            <a href="{{ request()->fullUrlWithQuery(['sort_by' => 'code', 'sort_order' => $nextOrderCode]) }}" class="text-dark text-decoration-none">
-                                Mã KM
-                                @if($currentSortBy === 'code') @if($currentSortOrder === 'asc') <i class="bi bi-sort-up"></i> @else <i class="bi bi-sort-down"></i> @endif @endif
-                            </a>
-                        </th>
-                        <th>
-                            <a href="{{ request()->fullUrlWithQuery(['sort_by' => 'discount', 'sort_order' => $nextOrderDiscount]) }}" class="text-dark text-decoration-none">
-                                Giá trị giảm
-                                @if($currentSortBy === 'discount') @if($currentSortOrder === 'asc') <i class="bi bi-sort-up"></i> @else <i class="bi bi-sort-down"></i> @endif @endif
-                            </a>
-                        </th>
-                        <th>
-                            <a href="{{ request()->fullUrlWithQuery(['sort_by' => 'expires_at', 'sort_order' => $nextOrderExpires]) }}" class="text-dark text-decoration-none">
-                                Hạn sử dụng
-                                @if($currentSortBy === 'expires_at') @if($currentSortOrder === 'asc') <i class="bi bi-sort-up"></i> @else <i class="bi bi-sort-down"></i> @endif @endif
-                            </a>
-                        </th>
-                        <th>Trạng thái</th>
-                        <th>Thao tác</th>
+                        <th class="fw-bold text-dark">ID</th>
+                        <th class="fw-bold text-dark">Tên chương trình</th>
+                        <th class="fw-bold text-dark">Mã khuyến mãi</th>
+                        <th class="fw-bold text-dark">Giá trị giảm</th>
+                        <th class="fw-bold text-dark">Hạn sử dụng</th>
+                        <th class="fw-bold text-dark">Trạng thái</th>
+                        <th class="fw-bold text-dark">Thao tác</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -87,15 +71,19 @@
                         <td><strong>{{ $promotion->id }}</strong></td>
                         <td><strong>{{ $promotion->name ?: '-' }}</strong></td>
                         <td>{{ $promotion->code ?: '-' }}</td>
-                        <td>{{ $promotion->discount ?: '-' }}</td>
-                        <td>{{ $promotion->expires_at?->format('d/m/Y') ?: 'Không hạn' }}</td>
+                        <td>
+                            <div>{{ $promotion->discountSummary() }}</div>
+                            <small class="text-muted">{{ $promotion->discountTypeLabel() }}</small>
+                        </td>
+                        <td>
+                            <div>{{ $promotion->usageLabel() }}</div>
+                            <small class="text-muted">Hết hạn: {{ $promotion->expires_at?->format('d/m/Y') ?: 'Không hạn' }}</small>
+                        </td>
                         <td>
                             @if($isExpired)
-                                <span class="badge bg-secondary-subtle text-secondary border border-secondary px-3 py-2 rounded-pill"><i class="far fa-hourglass me-1"></i>{{ $promotion->status_label ?? 'Đã hết hạn' }}</span>
-                            @elseif($promotion->status === 'active')
-                                <span class="badge bg-success-subtle text-success border border-success px-3 py-2 rounded-pill"><i class="fas fa-check-circle me-1"></i>{{ $promotion->status_label ?? 'Đang hoạt động' }}</span>
+                                <span class="badge bg-secondary-subtle text-secondary-emphasis border border-secondary px-3 py-2 rounded-pill"><i class="far fa-hourglass me-1"></i>Đã hết hạn</span>
                             @else
-                                <span class="badge bg-danger-subtle text-danger border border-danger px-3 py-2 rounded-pill"><i class="fas fa-times-circle me-1"></i>{{ $promotion->status_label ?? 'Tạm ngưng' }}</span>
+                                <x-admin.status-badge :status="$promotion->status" :enum="\App\Enums\RecordStatus::class" />
                             @endif
                         </td>
                         <td>

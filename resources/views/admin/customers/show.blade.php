@@ -1,104 +1,127 @@
 @extends('layouts.app')
 
-@section('title', 'Chi tiet khach hang - Sky Laundry')
-@section('page-title', 'Chi tiet khach hang')
+@section('title', 'Chi tiết khách hàng - Sky Laundry')
+@section('page-title', 'Chi tiết khách hàng')
 
 @section('content')
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <a href="{{ route('customers.index') }}" class="btn btn-outline-secondary btn-sm">
-        <i class="bi bi-arrow-left me-1"></i>Quay lai
-    </a>
-    <a href="{{ route('customers.edit', $customer->id) }}" class="btn btn-primary btn-sm">
-        <i class="bi bi-pencil me-1"></i>Chinh sua
-    </a>
-</div>
+<x-admin.detail.page-header
+    title="Khách hàng {{ $customer->name }}"
+    :back="route('customers.index')"
+    :subtitle="$customer->code"
+>
+    <x-slot:badge>
+        <x-admin.status-badge
+            :status="$customer->deleted_at ? 'inactive' : 'active'"
+            :enum="\App\Enums\RecordStatus::class"
+        />
+    </x-slot:badge>
 
-<div class="card mb-4">
-    <div class="card-header bg-primary text-white">
-        <h5 class="mb-0">Thong tin khach hang</h5>
-    </div>
-    <div class="card-body">
-        <div class="row">
-            <div class="col-md-6">
-                <table class="table table-borderless">
-                    <tr><td><strong>Ma</strong></td><td>{{ $customer->code }}</td></tr>
-                    <tr><td><strong>Ho ten</strong></td><td>{{ $customer->name }}</td></tr>
-                    <tr><td><strong>Email</strong></td><td>{{ $customer->email ?: '-' }}</td></tr>
-                    <tr><td><strong>So dien thoai</strong></td><td>{{ $customer->phone ?: '-' }}</td></tr>
-                    <tr><td><strong>Diem tich luy</strong></td><td><strong>{{ number_format($customer->points) }}</strong> diem</td></tr>
-                    <tr><td><strong>Ngay dang ky</strong></td><td>{{ $customer->created_at?->format('d/m/Y H:i') }}</td></tr>
-                    <tr><td><strong>Trang thai</strong></td>
-                        <td>
-                            @if($customer->deleted_at)
-                                <span class="badge bg-danger-subtle text-danger border border-danger px-3 py-2 rounded-pill"><i class="fas fa-trash me-1"></i>Da xoa</span>
-                            @else
-                                <span class="badge bg-success-subtle text-success border border-success px-3 py-2 rounded-pill"><i class="fas fa-check-circle me-1"></i>Hoat dong</span>
-                            @endif
-                        </td>
-                    </tr>
-                </table>
-            </div>
-            <div class="col-md-6">
-                <table class="table table-borderless">
-                    <tr><td><strong>Tong chi tieu</strong></td><td><strong>{{ number_format($totalSpent) }} VND</strong></td></tr>
-                    <tr><td><strong>Tong don hang</strong></td><td>{{ $orderCount }}</td></tr>
-                </table>
-            </div>
-        </div>
-        @if($customer->address)
-        <div class="mt-3">
-            <strong>Dia chi:</strong> {{ $customer->address }}
-        </div>
-        @endif
-    </div>
-</div>
+    <x-slot:actions>
+        <a href="{{ route('customers.edit', $customer->id) }}" class="btn btn-primary btn-sm">
+            <i class="bi bi-pencil me-1"></i>Chỉnh sửa
+        </a>
+    </x-slot:actions>
+</x-admin.detail.page-header>
 
-<div class="card">
-    <div class="card-header d-flex justify-content-between align-items-center">
-        <h5 class="mb-0">Lich su don hang</h5>
+@if($customer->deleted_at)
+    <x-admin.detail.locked text="Khách hàng đã bị xóa mềm nên không thể sửa hoặc xóa. Hãy khôi phục nếu cần." />
+@endif
+
+<div class="row g-4">
+    {{-- ============ CỘT CHÍNH (8/12) ============ --}}
+    <div class="col-lg-8">
+        <x-admin.detail.panel title="Thông tin khách hàng" icon="bi-person" :iconClass="'bg-primary-subtle text-primary'">
+            <div class="d-flex align-items-center gap-3 mb-4 pb-3 border-bottom">
+                <img src="{{ $customer->avatar_url }}" alt="{{ $customer->name }}"
+                    class="rounded-circle object-fit-cover border border-2 border-light-subtle shadow-sm"
+                    width="70" height="70">
+                <div>
+                    <h4 class="mb-1 text-dark fw-bold">{{ $customer->name }}</h4>
+                    <span class="badge bg-secondary-subtle text-secondary-emphasis border border-secondary">{{ $customer->code }}</span>
+                </div>
+            </div>
+            <x-admin.detail.info-grid :columns="2">
+                <x-admin.detail.info-item label="Mã khách hàng" :value="$customer->code" />
+                <x-admin.detail.info-item label="Họ và tên" :value="$customer->name" />
+                <x-admin.detail.info-item label="Email" :value="$customer->email" />
+                <x-admin.detail.info-item label="Số điện thoại" :value="$customer->phone" />
+                <x-admin.detail.info-item label="Địa chỉ" :value="$customer->address" />
+                <x-admin.detail.info-item label="Ngày đăng ký" :value="$customer->created_at?->format('d/m/Y H:i')" />
+                <x-admin.detail.info-item label="Trạng thái">
+                    @if($customer->deleted_at)
+                        <span class="badge bg-danger-subtle text-danger-emphasis border border-danger px-3 py-2 rounded-pill">
+                            <i class="fas fa-trash me-1"></i>Đã xóa
+                        </span>
+                    @else
+                        <span class="badge bg-success-subtle text-success-emphasis border border-success px-3 py-2 rounded-pill">
+                            <i class="fas fa-check-circle me-1"></i>Hoạt động
+                        </span>
+                    @endif
+                </x-admin.detail.info-item>
+            </x-admin.detail.info-grid>
+        </x-admin.detail.panel>
+
+        <x-admin.detail.panel title="Lịch sử đơn hàng" icon="bi-clock-history" :iconClass="'bg-secondary-subtle text-secondary'" flush>
+            <x-slot:header>
+                <span class="text-muted small">{{ $orderCount }} đơn</span>
+            </x-slot:header>
+
+            @if($orders->isEmpty())
+                <x-admin.detail.empty message="Khách hàng chưa có đơn hàng nào" icon="bi-bag" />
+            @else
+                <div class="table-responsive">
+                    <table class="table table-hover detail-table">
+                        <thead>
+                            <tr>
+                                <th>Mã đơn</th>
+                                <th>Dịch vụ</th>
+                                <th class="text-end">Tổng tiền</th>
+                                <th>Trạng thái</th>
+                                <th class="text-end">Ngày tạo</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach($orders as $order)
+                                <tr>
+                                    <td>
+                                        <span class="fw-semibold">
+                                            {{ $order->code }}
+                                        </span>
+                                    </td>
+                                    <td>{{ $order->service?->name ?: '—' }}</td>
+                                    <td class="text-end"><x-admin.detail.money :value="$order->total_amount" /></td>
+                                    <td>
+                                        <x-admin.status-badge :status="$order->status" :enum="\App\Enums\OrderStatus::class" size="px-2 py-1" />
+                                    </td>
+                                    <td class="text-end">{{ $order->created_at?->format('d/m/Y') }}</td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+
+                @if($orders->hasPages())
+                    <div class="p-3">{{ $orders->links() }}</div>
+                @endif
+            @endif
+        </x-admin.detail.panel>
     </div>
-    <div class="card-body p-0">
-        @if($orders->count() > 0)
-        <div class="table-responsive">
-            <table class="table table-hover mb-0">
-                <thead>
-                    <tr>
-                        <th>Ma don</th><th>Dich vu</th><th>Tong tien</th><th>Trang thai</th><th>Ngay tao</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach($orders as $order)
-                    <tr>
-                        <td><strong>{{ $order->code }}</strong></td>
-                        <td>{{ $order->service?->name ?: '-' }}</td>
-                        <td>{{ number_format($order->total_amount) }} VND</td>
-                        @if($order->status === 'completed')
-                            <span class="badge bg-success-subtle text-success border border-success px-2 py-1 rounded-pill"><i class="fas fa-check-circle"></i></span>
-                        @elseif($order->status === 'cancelled')
-                            <span class="badge bg-danger-subtle text-danger border border-danger px-2 py-1 rounded-pill"><i class="fas fa-x-circle"></i></span>
-                        @elseif($order->status === 'pending')
-                            <span class="badge bg-warning-subtle text-warning border border-warning px-2 py-1 rounded-pill"><i class="fas fa-hourglass"></i></span>
-                        @elseif($order->status === 'processing')
-                            <span class="badge bg-info-subtle text-info border border-info px-2 py-1 rounded-pill"><i class="fas fa-cog"></i></span>
-                        @elseif($order->status === 'delivering')
-                            <span class="badge bg-primary-subtle text-primary border border-primary px-2 py-1 rounded-pill"><i class="fas fa-truck"></i></span>
-                        @elseif($order->status === 'washing')
-                            <span class="badge bg-warning-subtle text-warning border border-warning px-2 py-1 rounded-pill"><i class="fas fa-washer"></i></span>
-                        @elseif($order->status === 'washed')
-                            <span class="badge bg-info-subtle text-info border border-info px-2 py-1 rounded-pill"><i class="fas fa-tshirt-pocket"></i></span>
-                        @else
-                            <span class="badge bg-secondary-subtle text-secondary border border-secondary px-2 py-1 rounded-pill">{{ $order->status }}</span>
-                        @endif
-                        <td>{{ $order->created_at?->format('d/m/Y') }}</td>
-                    </tr>
-                    @endforeach
-                </tbody>
-            </table>
-        </div>
-        {{ $orders->links() }}
-        @else
-        <p class="text-center text-muted py-4">Chua co don hang</p>
-        @endif
+
+    {{-- ============ CỘT PHỤ (4/12) ============ --}}
+    <div class="col-lg-4">
+        <x-admin.detail.panel title="Tổng quan tài chính" icon="bi-wallet2" :iconClass="'bg-success-subtle text-success'">
+            <x-admin.detail.info-grid :columns="1">
+                <x-admin.detail.info-item label="Tổng chi tiêu">
+                    <x-admin.detail.money :value="$totalSpent" class="detail-summary__total text-primary" />
+                </x-admin.detail.info-item>
+                <x-admin.detail.info-item label="Tổng số đơn hàng" :value="number_format($orderCount)" />
+                <x-admin.detail.info-item label="Điểm tích lũy">
+                    <span class="badge bg-amber-subtle text-amber-emphasis border border-amber px-3 py-2 rounded-pill">
+                        <i class="bi bi-star-fill me-1"></i>{{ number_format($customer->points) }} điểm
+                    </span>
+                </x-admin.detail.info-item>
+            </x-admin.detail.info-grid>
+        </x-admin.detail.panel>
     </div>
 </div>
 @endsection

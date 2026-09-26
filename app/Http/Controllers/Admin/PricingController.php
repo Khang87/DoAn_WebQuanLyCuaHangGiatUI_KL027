@@ -51,7 +51,7 @@ class PricingController extends Controller
 
             return redirect()->route('pricings.index')->with('success', 'Bảng giá đã được tạo thành công.');
         } catch (\Exception $e) {
-            return redirect()->route('pricings.create')->with('error', 'Có lỗi xảy ra: ' . $e->getMessage())->withInput();
+            return redirect()->route('pricings.create')->with('error', \App\Support\FriendlyError::message($e))->withInput();
         }
     }
 
@@ -93,7 +93,7 @@ class PricingController extends Controller
 
             return redirect()->route('pricings.index')->with('success', 'Bảng giá đã được cập nhật.');
         } catch (\Exception $e) {
-            return redirect()->route('pricings.edit', $id)->with('error', 'Có lỗi xảy ra: ' . $e->getMessage())->withInput();
+            return redirect()->route('pricings.edit', $id)->with('error', \App\Support\FriendlyError::message($e))->withInput();
         }
     }
 
@@ -110,7 +110,7 @@ class PricingController extends Controller
 
             return redirect()->route('pricings.index')->with('success', 'Bảng giá đã được xóa.');
         } catch (\Exception $e) {
-            return redirect()->route('pricings.index')->with('error', 'Có lỗi xảy ra: ' . $e->getMessage());
+            return redirect()->route('pricings.index')->with('error', \App\Support\FriendlyError::message($e));
         }
     }
 }
