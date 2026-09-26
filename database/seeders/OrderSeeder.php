@@ -4,11 +4,13 @@ namespace Database\Seeders;
 
 use App\Models\Customer;
 use App\Models\Delivery;
+use App\Models\Garment;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Payment;
 use App\Models\Promotion;
 use App\Models\Service;
+use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
@@ -21,7 +23,9 @@ class OrderSeeder extends Seeder
     {
         $customers = Customer::all();
         $services = Service::all();
+        $garments = Garment::all();
         $promotions = Promotion::all();
+        $employees = User::whereIn('role', ['manager', 'staff'])->get();
 
         if ($customers->isEmpty() || $services->isEmpty()) {
             $this->command->error('LỖI: Cần tạo dữ liệu Customers và Services trước!');
@@ -54,36 +58,52 @@ class OrderSeeder extends Seeder
                 $status = $statuses[array_rand($statuses)];
                 $createdAt = Carbon::now()->subDays(rand(1, 30))->subHours(rand(0, 23));
 
-                // 1. Tính giảm giá khuyến mãi (ngẫu nhiên áp dụng)
+                $employeeId = $employees->isNotEmpty() ? $employees->random()->id : null;
+
+                $pointsUsed = 0;
+                $pointsDiscount = 0;
+                if ($customer->points > 0 && rand(0, 2) === 0) {
+                    $pointsUsed = min(rand(1, 100), $customer->points);
+                    $pointsDiscount = $pointsUsed * 1000;
+                }
+
+                // 1. Tính giảm giá khuyến mãi
                 $promotionId = null;
-                $discountAmount = 0;
+                $discountByPromotion = 0;
 
                 if ($promotions->isNotEmpty() && rand(0, 3) === 0) {
                     $promotion = $promotions->random();
-                    $discount = $promotion->discount;
 
-                    if (str_ends_with($discount, '%')) {
-                        $percent = (float) rtrim($discount, '%');
-                        $discountAmount = $totalAmount * ($percent / 100);
-                    } elseif ($discount !== 'free_shipping') {
-                        $discountAmount = min((float) $discount, $totalAmount);
+                    if ($promotion->discount_type === 'percentage') {
+                        $discountByPromotion = $totalAmount * ($promotion->discount_value / 100);
+                    } elseif ($promotion->discount_type === 'fixed') {
+                        $discountByPromotion = min($promotion->discount_value, $totalAmount);
                     }
 
-                    if ($discountAmount > 0) {
+                    if ($discountByPromotion > 0) {
                         $promotionId = $promotion->id;
                     }
                 }
 
-                // Đảm bảo tổng tiền sau giảm giá không âm
-                $finalAmount = max(0, $totalAmount - $discountAmount);
+                $discountByPromotion = round(min($discountByPromotion, $totalAmount), 2);
+
+                // Tiền giảm do điểm không được vượt quá số tiền còn lại.
+                $discountByPoints = round(min($pointsDiscount, max(0, $totalAmount - $discountByPromotion)), 2);
+                $pointsUsed = (int) floor($discountByPoints / 1000);
+
+                $finalAmount = max(0, $totalAmount - $discountByPromotion - $discountByPoints);
 
                 // 2. Tạo Đơn Hàng
                 $order = Order::create([
                     'code' => 'DH' . str_pad($customer->id . $i, 6, '0', STR_PAD_LEFT),
                     'customer_id' => $customer->id,
+                    'employee_id' => $employeeId,
                     'service_id' => $service->id,
                     'promotion_id' => $promotionId,
-                    'discount_amount' => $discountAmount,
+                    'subtotal' => round($totalAmount, 2),
+                    'discount_by_promotion' => $discountByPromotion,
+                    'points_used' => $pointsUsed,
+                    'discount_by_points' => $discountByPoints,
                     'weight_kg' => $isKgBased ? ($quantity . 'kg') : null,
                     'quantity_items' => $isKgBased ? null : ($quantity . ' ' . ($service->unit ?? 'món')),
                     'total_amount' => $finalAmount,
@@ -93,42 +113,59 @@ class OrderSeeder extends Seeder
                     'updated_at' => $createdAt,
                 ]);
 
-                // 3. Tạo Chi Tiết Đơn Hàng (1 item duy nhất)
+                // 3. Tạo Chi Tiết Đơn Hàng
+                $garment = $garments->isNotEmpty() ? $garments->random() : null;
+                $itemWeight = $isKgBased ? (string) $quantity : null;
+
                 OrderItem::create([
                     'order_id' => $order->id,
                     'service_id' => $service->id,
+                    'garment_id' => $garment ? $garment->id : null,
                     'item_name' => $service->name,
                     'item_type' => 'garment',
                     'price' => $price,
                     'quantity' => $quantity,
+                    'weight' => $itemWeight,
                     'subtotal' => $finalAmount,
                     'notes' => null,
                     'created_at' => $createdAt,
                     'updated_at' => $createdAt,
                 ]);
 
-                // 4. Đồng bộ tạo Thanh Toán (trừ đơn hủy)
+                // 4. Tạo Thanh Toán
                 if ($status !== 'cancelled') {
                     $paymentStatus = in_array($status, ['completed', 'washed']) ? 'paid' : 'pending';
+                    $paidAt = null;
+                    $transactionCode = null;
+
+                    if ($paymentStatus === 'paid') {
+                        $paidAt = $createdAt->copy()->addDays(rand(0, 3));
+                        $transactionCode = 'TXN' . str_pad($order->id, 6, '0', STR_PAD_LEFT);
+                    }
 
                     Payment::create([
                         'order_id' => $order->id,
                         'amount' => $finalAmount,
                         'method' => $methods[array_rand($methods)],
+                        'paid_at' => $paidAt,
                         'status' => $paymentStatus,
+                        'transaction_code' => $transactionCode,
                         'created_at' => $createdAt,
                         'updated_at' => $createdAt,
                     ]);
                 }
 
-                // 5. Đồng bộ tạo Giao Nhận (đơn đang xử lý, đã giặt, đang giao, hoàn thành)
+                // 5. Tạo Giao Nhận
                 if (in_array($status, ['processing', 'washing', 'washed', 'delivering', 'completed'])) {
                     $deliveryStatus = ($status === 'completed') ? 'completed' : 'delivering';
+                    $deliveryMethod = ['nhan_do', 'giao_do'][array_rand(['nhan_do', 'giao_do'])];
 
                     Delivery::create([
                         'order_id' => $order->id,
                         'customer_id' => $customer->id,
-                        'method' => 'delivery',
+                        'employee_id' => $employeeId,
+                        'code' => 'GH' . str_pad($order->id, 4, '0', STR_PAD_LEFT),
+                        'method' => $deliveryMethod,
                         'address' => $customer->address ?? 'Địa chỉ mặc định',
                         'pickup_date' => $createdAt->addDay()->toDateString(),
                         'pickup_time' => sprintf('%02d:00:00', rand(9, 17)),

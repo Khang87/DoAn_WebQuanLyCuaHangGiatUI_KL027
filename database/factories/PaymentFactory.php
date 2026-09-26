@@ -10,11 +10,6 @@ use Illuminate\Database\Eloquent\Factories\Factory;
  */
 class PaymentFactory extends Factory
 {
-    /**
-     * Define the model's default state.
-     *
-     * @return array<string, mixed>
-     */
     public function definition(): array
     {
         $methods = ['cash', 'bank_transfer', 'e_wallet'];
@@ -24,7 +19,9 @@ class PaymentFactory extends Factory
             'order_id' => \App\Models\Order::factory(),
             'amount' => fake()->randomFloat(2, 50000, 1000000),
             'method' => fake()->randomElement($methods),
+            'paid_at' => fake()->optional()->dateTime(),
             'status' => fake()->randomElement($statuses),
+            'transaction_code' => fake()->optional()->bothify('TXN####'),
         ];
     }
 }

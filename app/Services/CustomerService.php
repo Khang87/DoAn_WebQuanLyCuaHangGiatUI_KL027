@@ -18,11 +18,7 @@ class CustomerService
                   ->orWhere('code', 'like', "%{$search}%");
         }
 
-        if (!empty($filters['type'])) {
-            $query->where('type', $filters['type']);
-        }
-
-        $allowedSorts = ['id', 'name', 'email', 'phone', 'points', 'type', 'created_at'];
+        $allowedSorts = ['id', 'name', 'email', 'phone', 'points', 'created_at'];
         $sortBy = in_array($filters['sort_by'] ?? null, $allowedSorts) ? $filters['sort_by'] : 'created_at';
         $sortOrder = ($filters['sort_order'] ?? 'desc') === 'asc' ? 'asc' : 'desc';
 
@@ -47,10 +43,6 @@ class CustomerService
         if (empty($data['points'])) {
             $data['points'] = 0;
         }
-        if (empty($data['points'])) {
-            $data['points'] = 0;
-        }
-        unset($data['type']);
         $customer = Customer::create($data);
         return $customer->fresh();
     }
@@ -87,5 +79,19 @@ class CustomerService
     public function getOrderCount(Customer $customer): int
     {
         return (int) $customer->orders()->count();
+    }
+
+    public function deductPoints(Customer $customer, int $points): bool
+    {
+        if ($customer->points >= $points) {
+            $customer->decrement('points', $points);
+            return true;
+        }
+        return false;
+    }
+
+    public function addPoints(Customer $customer, int $points): void
+    {
+        $customer->increment('points', $points);
     }
 }

@@ -44,21 +44,38 @@ class DeliveryService
         $sortBy = in_array($filters['sort_by'] ?? null, $allowedSorts) ? $filters['sort_by'] : 'created_at';
         $sortOrder = ($filters['sort_order'] ?? 'desc') === 'asc' ? 'asc' : 'desc';
 
-        return $query->with('customer')->withTrashed()->orderBy($sortBy, $sortOrder)->paginate(10)->withQueryString();
+        return $query->with('customer', 'employee', 'order')->withTrashed()->orderBy($sortBy, $sortOrder)->paginate(10)->withQueryString();
     }
 
     public function find(int $id): ?Delivery
     {
-        return Delivery::withTrashed()->find($id);
+        return Delivery::withTrashed()->with(['customer', 'employee', 'order'])->find($id);
     }
 
     public function create(array $data): Delivery
     {
+        if (empty($data['order_id'])) {
+            throw new \InvalidArgumentException('Giao nhận phải gắn với một đơn hàng.');
+        }
+
+        if (empty($data['code'])) {
+            $data['code'] = 'GH' . str_pad((string) ((Delivery::max('id') ?? 0) + 1), 4, '0', STR_PAD_LEFT);
+        }
+
+        // Validate method
+        if (!in_array($data['method'] ?? '', ['nhan_do', 'giao_do'])) {
+            throw new \InvalidArgumentException('Phương thức giao nhận không hợp lệ. Chỉ chấp nhận: nhan_do, giao_do');
+        }
+
         return Delivery::create($data);
     }
 
     public function update(Delivery $delivery, array $data): Delivery
     {
+        if (isset($data['method']) && !in_array($data['method'], ['nhan_do', 'giao_do'])) {
+            throw new \InvalidArgumentException('Phương thức giao nhận không hợp lệ. Chỉ chấp nhận: nhan_do, giao_do');
+        }
+
         $delivery->update($data);
         return $delivery->fresh();
     }

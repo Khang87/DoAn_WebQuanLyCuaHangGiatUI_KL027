@@ -1,49 +1,38 @@
 @extends('layouts.app')
 
-@section('title', 'Chi tiết khách hàng - Sky Laundry')
-@section('page-title', 'Chi tiết khách hàng')
+@section('title', 'Chi tiet khach hang - Sky Laundry')
+@section('page-title', 'Chi tiet khach hang')
 
 @section('content')
 <div class="d-flex justify-content-between align-items-center mb-4">
     <a href="{{ route('customers.index') }}" class="btn btn-outline-secondary btn-sm">
-        <i class="bi bi-arrow-left me-1"></i>Quay lại
+        <i class="bi bi-arrow-left me-1"></i>Quay lai
     </a>
     <a href="{{ route('customers.edit', $customer->id) }}" class="btn btn-primary btn-sm">
-        <i class="bi bi-pencil me-1"></i>Chỉnh sửa
+        <i class="bi bi-pencil me-1"></i>Chinh sua
     </a>
 </div>
 
 <div class="card mb-4">
     <div class="card-header bg-primary text-white">
-        <h5 class="mb-0">Thông tin khách hàng</h5>
+        <h5 class="mb-0">Thong tin khach hang</h5>
     </div>
     <div class="card-body">
         <div class="row">
             <div class="col-md-6">
                 <table class="table table-borderless">
-                    <tr><td><strong>Mã</strong></td><td>{{ $customer->code }}</td></tr>
-                    <tr><td><strong>Họ tên</strong></td><td>{{ $customer->name }}</td></tr>
+                    <tr><td><strong>Ma</strong></td><td>{{ $customer->code }}</td></tr>
+                    <tr><td><strong>Ho ten</strong></td><td>{{ $customer->name }}</td></tr>
                     <tr><td><strong>Email</strong></td><td>{{ $customer->email ?: '-' }}</td></tr>
-                    <tr><td><strong>Số điện thoại</strong></td><td>{{ $customer->phone ?: '-' }}</td></tr>
-                    <tr><td><strong>Loại</strong></td>
-                        <td>
-                            @if($customer->type === 'VIP')
-                                <span class="badge bg-warning-subtle text-warning border border-warning px-3 py-2 rounded-pill"><i class="fas fa-crown me-1"></i>VIP</span>
-                            @elseif($customer->type === 'Thường')
-                                <span class="badge bg-success-subtle text-success border border-success px-3 py-2 rounded-pill"><i class="fas fa-user me-1"></i>Thường</span>
-                            @else
-                                <span class="badge bg-secondary-subtle text-secondary border border-secondary px-3 py-2 rounded-pill"><i class="fas fa-user-plus me-1"></i>Mới</span>
-                            @endif
-                        </td>
-                    </tr>
-                    <tr><td><strong>Điểm tích lũy</strong></td><td><strong>{{ number_format($customer->points) }}</strong> điểm</td></tr>
-                    <tr><td><strong>Ngày đăng ký</strong></td><td>{{ $customer->created_at?->format('d/m/Y H:i') }}</td></tr>
-                    <tr><td><strong>Trạng thái</strong></td>
+                    <tr><td><strong>So dien thoai</strong></td><td>{{ $customer->phone ?: '-' }}</td></tr>
+                    <tr><td><strong>Diem tich luy</strong></td><td><strong>{{ number_format($customer->points) }}</strong> diem</td></tr>
+                    <tr><td><strong>Ngay dang ky</strong></td><td>{{ $customer->created_at?->format('d/m/Y H:i') }}</td></tr>
+                    <tr><td><strong>Trang thai</strong></td>
                         <td>
                             @if($customer->deleted_at)
-                                <span class="badge bg-danger-subtle text-danger border border-danger px-3 py-2 rounded-pill"><i class="fas fa-trash me-1"></i>Đã xóa</span>
+                                <span class="badge bg-danger-subtle text-danger border border-danger px-3 py-2 rounded-pill"><i class="fas fa-trash me-1"></i>Da xoa</span>
                             @else
-                                <span class="badge bg-success-subtle text-success border border-success px-3 py-2 rounded-pill"><i class="fas fa-check-circle me-1"></i>Hoạt động</span>
+                                <span class="badge bg-success-subtle text-success border border-success px-3 py-2 rounded-pill"><i class="fas fa-check-circle me-1"></i>Hoat dong</span>
                             @endif
                         </td>
                     </tr>
@@ -51,14 +40,14 @@
             </div>
             <div class="col-md-6">
                 <table class="table table-borderless">
-                    <tr><td><strong>Tổng chi tiêu</strong></td><td><strong>{{ number_format($totalSpent) }} VNĐ</strong></td></tr>
-                    <tr><td><strong>Tổng đơn hàng</strong></td><td>{{ $orderCount }}</td></tr>
+                    <tr><td><strong>Tong chi tieu</strong></td><td><strong>{{ number_format($totalSpent) }} VND</strong></td></tr>
+                    <tr><td><strong>Tong don hang</strong></td><td>{{ $orderCount }}</td></tr>
                 </table>
             </div>
         </div>
         @if($customer->address)
         <div class="mt-3">
-            <strong>Địa chỉ:</strong> {{ $customer->address }}
+            <strong>Dia chi:</strong> {{ $customer->address }}
         </div>
         @endif
     </div>
@@ -66,7 +55,7 @@
 
 <div class="card">
     <div class="card-header d-flex justify-content-between align-items-center">
-        <h5 class="mb-0">Lịch sử đơn hàng</h5>
+        <h5 class="mb-0">Lich su don hang</h5>
     </div>
     <div class="card-body p-0">
         @if($orders->count() > 0)
@@ -74,7 +63,7 @@
             <table class="table table-hover mb-0">
                 <thead>
                     <tr>
-                        <th>Mã đơn</th><th>Dịch vụ</th><th>Tổng tiền</th><th>Trạng thái</th><th>Ngày tạo</th>
+                        <th>Ma don</th><th>Dich vu</th><th>Tong tien</th><th>Trang thai</th><th>Ngay tao</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -82,7 +71,7 @@
                     <tr>
                         <td><strong>{{ $order->code }}</strong></td>
                         <td>{{ $order->service?->name ?: '-' }}</td>
-                        <td>{{ number_format($order->total_amount) }} VNĐ</td>
+                        <td>{{ number_format($order->total_amount) }} VND</td>
                         @if($order->status === 'completed')
                             <span class="badge bg-success-subtle text-success border border-success px-2 py-1 rounded-pill"><i class="fas fa-check-circle"></i></span>
                         @elseif($order->status === 'cancelled')
@@ -108,7 +97,7 @@
         </div>
         {{ $orders->links() }}
         @else
-        <p class="text-center text-muted py-4">Chưa có đơn hàng</p>
+        <p class="text-center text-muted py-4">Chua co don hang</p>
         @endif
     </div>
 </div>

@@ -1,34 +1,11 @@
 @extends('layouts.app')
 
-@section('title', 'Chi Tiết Dịch Vụ - Sky Laundry')
-@section('page-title', 'Chi Tiết Dịch Vụ')
+@section('title', 'Chi tiết dịch Vụ - Sky Laundry')
+@section('page-title', 'Chi tiết dịch Vụ')
 
 @section('content')
 @php
-    function getServiceIconConfig($service) {
-        $name = mb_strtolower($service->name ?? '');
-        $type = mb_strtolower($service->type ?? '');
-
-        if (str_contains($name, 'khô') || str_contains($type, 'khô') || str_contains($name, 'hấp') || str_contains($type, 'dry')) {
-            return ['icon' => 'fa-solid fa-shirt', 'bg' => 'bg-info'];
-        }
-        if (str_contains($name, 'ủi') || str_contains($type, 'ủi') || str_contains($type, 'iron')) {
-            return ['icon' => 'fa-solid fa-jug-detergent', 'bg' => 'bg-warning text-dark'];
-        }
-        if (str_contains($name, 'chăn') || str_contains($name, 'mền') || str_contains($name, 'ga') || str_contains($name, 'thảm') || str_contains($type, 'chăn')) {
-            return ['icon' => 'fa-solid fa-bed', 'bg' => 'bg-danger'];
-        }
-        if (str_contains($name, 'giày') || str_contains($type, 'giày') || str_contains($name, 'dép')) {
-            return ['icon' => 'fa-solid fa-shoe-prints', 'bg' => 'bg-dark'];
-        }
-        if (str_contains($name, 'nhanh') || str_contains($name, 'tốc')) {
-            return ['icon' => 'fa-solid fa-bolt', 'bg' => 'bg-secondary'];
-        }
-
-        return ['icon' => 'fa-solid fa-droplet', 'bg' => 'bg-primary'];
-    }
-
-    $iconConfig = getServiceIconConfig($service);
+    $iconConfig = $service->iconConfig();
 @endphp
 
 <div class="row g-4">
@@ -105,18 +82,7 @@
                 <h6 class="mb-3">Thao tác</h6>
                 <div class="d-grid gap-2">
                     <a href="{{ route('services.edit', $service) }}" class="btn btn-warning"><i class="bi bi-pencil me-1"></i>Chỉnh sửa</a>
-                    @if($service->status === 'active')
-                    <form action="{{ route('services.toggle-status', $service) }}" method="POST" onsubmit="return confirm('Bạn có chắc muốn khóa dịch vụ này?')">
-                        @csrf
-                        <button type="submit" class="btn btn-outline-danger"><i class="bi bi-lock me-1"></i>Khóa dịch vụ</button>
-                    </form>
-                    @else
-                    <form action="{{ route('services.toggle-status', $service) }}" method="POST" onsubmit="return confirm('Bạn có chắc muốn kích hoạt dịch vụ này?')">
-                        @csrf
-                        <button type="submit" class="btn btn-outline-success"><i class="bi bi-unlock me-1"></i>Kích hoạt</button>
-                    </form>
-                    @endif
-                    <form action="{{ route('services.destroy', $service) }}" method="POST" onsubmit="return confirm('Bạn có chắc muốn xóa dịch vụ này?')">
+                    <form action="{{ route('services.destroy', $service) }}" method="POST" id="deleteServiceForm">
                         @csrf @method('DELETE')
                         <button type="submit" class="btn btn-danger"><i class="bi bi-trash me-1"></i>Xóa dịch vụ</button>
                     </form>
@@ -127,3 +93,38 @@
     </div>
 </div>
 @endsection
+
+@push('scripts')
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const form = document.getElementById('deleteServiceForm');
+        if (!form) return;
+
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            if (typeof Swal === 'undefined') {
+                if (confirm('Bạn có chắc muốn xóa dịch vụ này?')) {
+                    form.submit();
+                }
+                return;
+            }
+
+            Swal.fire({
+                title: 'Xóa dịch vụ?',
+                text: 'Hành động này không thể hoàn tác.',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#dc2626',
+                cancelButtonColor: '#64748b',
+                confirmButtonText: 'Xóa',
+                cancelButtonText: 'Hủy'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    form.submit();
+                }
+            });
+        });
+    });
+</script>
+@endpush

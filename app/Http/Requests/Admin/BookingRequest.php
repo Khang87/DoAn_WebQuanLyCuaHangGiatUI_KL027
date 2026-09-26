@@ -17,15 +17,12 @@ class BookingRequest extends FormRequest
 
         return [
             'customer_id' => ['required', 'exists:customers,id'],
-            'service_id' => ['required', 'exists:services,id'],
-            'garment_type' => ['required', 'string', 'max:255'],
-            'quantity' => ['required', 'integer', 'min:1'],
-            'delivery_method' => ['required', 'in:pickup,dropoff'],
-            'address' => ['nullable', 'string', 'max:500'],
-            'pickup_date' => ['required', 'date'],
-            'pickup_time' => ['required', 'date_format:H:i'],
+            'staff_id' => ['nullable', 'exists:users,id'],
+            'method' => ['required', 'in:nhan_do,giao_do'],
+            'scheduled_date' => ['required', 'date'],
+            'scheduled_time' => ['required', 'date_format:H:i'],
             'notes' => ['nullable', 'string', 'max:1000'],
-            'status' => ['nullable', 'in:pending,confirmed,cancelled'],
+            'status' => ['nullable', 'in:pending,confirmed,arrived,completed,cancelled'],
         ];
     }
 
@@ -33,16 +30,14 @@ class BookingRequest extends FormRequest
     {
         return [
             'customer_id.required' => 'Khách hàng là bắt buộc.',
-            'service_id.required' => 'Dịch vụ là bắt buộc.',
-            'garment_type.required' => 'Loại đồ giặt là bắt buộc.',
-            'quantity.required' => 'Số lượng là bắt buộc.',
-            'quantity.integer' => 'Số lượng phải là số nguyên.',
-            'quantity.min' => 'Số lượng không được nhỏ hơn 1.',
-            'delivery_method.required' => 'Phương thức giao nhận là bắt buộc.',
-            'pickup_date.required' => 'Ngày lấy hàng là bắt buộc.',
-            'pickup_time.required' => 'Giờ lấy hàng là bắt buộc.',
-            'pickup_time.date_format' => 'Định dạng giờ: HH:MM.',
-            'status.required' => 'Trạng thái là bắt buộc.',
+            'customer_id.exists' => 'Khách hàng không tồn tại.',
+            'staff_id.exists' => 'Nhân viên không tồn tại.',
+            'method.required' => 'Phương thức nhận/giao đồ là bắt buộc.',
+            'method.in' => 'Phương thức không hợp lệ. Chỉ chấp nhận: nhan_do, giao_do.',
+            'scheduled_date.required' => 'Ngày dự kiến là bắt buộc.',
+            'scheduled_time.required' => 'Giờ dự kiến là bắt buộc.',
+            'scheduled_time.date_format' => 'Định dạng giờ: HH:MM.',
+            'status.in' => 'Trạng thái không hợp lệ.',
             'notes.max' => 'Không quá 1000 ký tự.',
         ];
     }

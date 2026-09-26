@@ -13,7 +13,7 @@
 </div>
 
 <form action="{{ url()->current() }}" method="GET" class="row g-3 align-items-center mb-4">
-    <div class="col-12 col-md-5">
+    <div class="col-12 col-md-4">
         <div class="input-group shadow-sm rounded-3 overflow-hidden">
             <span class="input-group-text bg-white border-end-0 ps-3">
                 <i class="fas fa-search text-muted"></i>
@@ -21,13 +21,19 @@
             <input type="text" name="search" class="form-control border-start-0 py-2 ps-2" placeholder="Tìm kiếm..." value="{{ request('search') }}">
         </div>
     </div>
-    <div class="col-12 col-md-4">
+    <div class="col-12 col-md-3">
         <select name="status" class="form-select shadow-sm rounded-3 py-2" style="min-width: 220px;" onchange="this.form.submit()">
             <option value="">-- Tất cả trạng thái --</option>
-            @foreach($statuses as $value => $label)
+            @foreach($statuses ?? \App\Enums\RecordStatus::options() as $value => $label)
                 <option value="{{ $value }}" @selected(request('status') === $value)>{{ $label }}</option>
             @endforeach
         </select>
+    </div>
+    <div class="col-12 col-md-2">
+        <input type="date" name="date_from" class="form-control shadow-sm rounded-3 py-2" value="{{ request('date_from') }}" placeholder="Từ ngày">
+    </div>
+    <div class="col-12 col-md-2">
+        <input type="date" name="date_to" class="form-control shadow-sm rounded-3 py-2" value="{{ request('date_to') }}" placeholder="Đến ngày">
     </div>
 </form>
 
@@ -40,7 +46,10 @@
                         <th>Số hóa đơn</th>
                         <th>Khách hàng</th>
                         <th>Mã đơn</th>
-                        <th>Tổng tiền</th>
+                        <th>Tạm tính</th>
+                        <th>Giảm giá</th>
+                        <th>Phí giao hàng</th>
+                        <th>Tổng thanh toán</th>
                         <th>Ngày lập</th>
                         <th>Trạng thái</th>
                         <th>Thao tác</th>
@@ -58,38 +67,23 @@
                                 -
                             @endif
                         </td>
-                        <td class="fw-semibold">{{ number_format($invoice->total) }} VNĐ</td>
-                        <td>{{ $invoice->created_at?->format('d/m/Y') }}</td>
-<td class="align-middle">
-                                <div class="d-flex align-items-center justify-content-start gap-2 flex-wrap">
-                                    @if($invoice->status === 'paid')
-                                        <span class="badge bg-success-subtle text-success border border-success px-3 py-2 rounded-pill"><i class="fas fa-check-circle me-1"></i>Đã thanh toán</span>
-                                    @elseif($invoice->status === 'partial')
-                                        <span class="badge bg-warning-subtle text-warning border border-warning px-3 py-2 rounded-pill"><i class="fas fa-hourglass me-1"></i>Một phần</span>
-                                    @else
-                                        <span class="badge bg-danger-subtle text-danger border border-danger px-3 py-2 rounded-pill"><i class="fas fa-x-circle me-1"></i>Chưa thanh toán</span>
-                                    @endif
-                                    @if($invoice->status !== 'paid')
-                                        <form action="{{ route('invoices.update-status', $invoice) }}" method="POST" class="d-inline m-0 p-0">
-                                            @csrf
-                                            <input type="hidden" name="status" value="paid">
-                                            <button type="submit" class="btn btn-sm btn-outline-success p-1 lh-1" title="Đánh dấu đã thanh toán"><i class="fas fa-check"></i></button>
-                                        </form>
-                                    @endif
-                                    @if($invoice->status !== 'unpaid')
-                                        <form action="{{ route('invoices.update-status', $invoice) }}" method="POST" class="d-inline m-0 p-0">
-                                            @csrf
-                                            <input type="hidden" name="status" value="unpaid">
-                                            <button type="submit" class="btn btn-sm btn-outline-warning p-1 lh-1" title="Chuyển về chờ thanh toán"><i class="fas fa-undo"></i></button>
-                                        </form>
-                                    @endif
-                                </div>
-                            </td>
+                        <td>{{ number_format($invoice->total_amount) }} VNĐ</td>
+                        <td class="text-danger">{{ number_format($invoice->discount_amount) }} VNĐ</td>
+                        <td>{{ number_format($invoice->delivery_fee) }} VNĐ</td>
+                        <td class="fw-semibold text-primary">{{ number_format($invoice->grand_total) }} VNĐ</td>
+                        <td>{{ $invoice->invoice_date?->format('d/m/Y') ?? $invoice->created_at?->format('d/m/Y') }}</td>
+                        <td class="align-middle">
+                            <div class="d-flex align-items-center justify-content-start gap-2 flex-wrap">
+                                <span class="badge {{ $invoice->getStatusBadgeClass() }} px-3 py-2 rounded-pill">
+                                    <i class="fas fa-{{ $invoice->status === 'paid' ? 'check-circle' : ($invoice->status === 'partial' ? 'hourglass' : 'x-circle') }} me-1"></i>{{ $invoice->getStatusLabel() }}
+                                </span>
+                            </div>
+                        </td>
                         <td>
                             <div class="d-flex gap-2">
                                 <a href="{{ route('invoices.show', $invoice) }}" class="btn btn-order-action view" title="Xem"><i class="bi bi-eye"></i></a>
                                 <a href="{{ route('invoices.edit', $invoice) }}" class="btn btn-order-action edit" title="Sửa"><i class="bi bi-pencil"></i></a>
-                                <form action="{{ route('invoices.destroy', $invoice) }}" method="POST" class="d-inline" onsubmit="return confirm('Bạn có chắc muốn xóa?')">
+                                <form action="{{ route('invoices.destroy', $invoice) }}" method="POST" class="d-inline" id="deleteInvoiceForm_{{ $invoice->id }}">
                                     @csrf @method('DELETE')
                                     <button type="submit" class="btn btn-order-action delete" title="Xóa"><i class="bi bi-trash"></i></button>
                                 </form>
@@ -97,7 +91,7 @@
                         </td>
                     </tr>
                     @empty
-                    <tr><td colspan="7" class="text-center text-muted py-4">Chưa có hóa đơn nào</td></tr>
+                    <tr><td colspan="10" class="text-center text-muted py-4">Chưa có hóa đơn nào</td></tr>
                     @endforelse
                 </tbody>
             </table>
@@ -111,3 +105,37 @@
 </div>
 @endif
 @endsection
+
+@push('scripts')
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        document.querySelectorAll('[id^="deleteInvoiceForm_"]').forEach(function(form) {
+            form.addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                if (typeof Swal === 'undefined') {
+                    if (confirm('Bạn có chắc muốn xóa?')) {
+                        form.submit();
+                    }
+                    return;
+                }
+                
+                Swal.fire({
+                    title: 'Xóa hóa đơn?',
+                    text: 'Hành động này không thể hoàn tác.',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#dc2626',
+                    cancelButtonColor: '#64748b',
+                    confirmButtonText: 'Xóa',
+                    cancelButtonText: 'Hủy'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        form.submit();
+                    }
+                });
+            });
+        });
+    });
+</script>
+@endpush

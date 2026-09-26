@@ -1,7 +1,7 @@
 @extends('layouts.app')
 
-@section('title', 'Thêm Loại Đồ Giặt - Sky Laundry')
-@section('page-title', 'Thêm Loại Đồ Giặt & Hiện Trạng')
+@section('title', 'Thêm loại đồ Giặt - Sky Laundry')
+@section('page-title', 'Thêm loại đồ Giặt & Hiện trạng')
 
 @section('content')
 <div class="card">
@@ -17,7 +17,7 @@
             @csrf
             <div class="row g-4">
                 <div class="col-md-6">
-                    <label class="form-label fw-semibold">Tên loại đồ giặt / sản phẩm</label>
+                    <label class="form-label fw-semibold">Tên loại đồ giặt / sản phẩm <span class="text-danger ms-1">*</span></label>
                     <input type="text" class="form-control @error('name') is-invalid @enderror" name="name" value="{{ old('name') }}" placeholder="VD: Áo dài, Váy cưới, Áo khoác dạ..." required>
                     @error('name')
                         <div class="invalid-feedback">{{ $message }}</div>
@@ -40,7 +40,7 @@
                     @enderror
                 </div>
                 <div class="col-md-6">
-                    <label class="form-label fw-semibold">Đơn giá dịch vụ (VNĐ)</label>
+                    <label class="form-label fw-semibold">Đơn giá dịch vụ (VNĐ) <span class="text-danger ms-1">*</span></label>
                     <input type="number" class="form-control @error('price') is-invalid @enderror" name="price" value="{{ old('price') }}" placeholder="50000" min="0" required>
                     @error('price')
                         <div class="invalid-feedback">{{ $message }}</div>

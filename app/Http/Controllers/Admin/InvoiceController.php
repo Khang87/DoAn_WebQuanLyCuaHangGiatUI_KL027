@@ -2,117 +2,49 @@
 
 namespace App\Http\Controllers\Admin;
 
-use App\Exports\InvoiceDetailExport;
+use App\Enums\InvoiceStatus;
+use App\Exceptions\SettledOrderException;
+use App\Http\Controllers\Concerns\RejectsSettledRecords;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\InvoiceRequest;
-use App\Models\Invoice;
+use App\Models\Order;
 use App\Services\InvoiceService;
 use Illuminate\Http\Request;
-use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
-use PhpOffice\PhpSpreadsheet\Style\Alignment;
-use PhpOffice\PhpSpreadsheet\Style\Fill;
-use PhpOffice\PhpSpreadsheet\Style\Border;
-use PhpOffice\PhpSpreadsheet\Style\NumberFormat;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class InvoiceController extends Controller
 {
+    use RejectsSettledRecords;
+
     public function __construct(
         private InvoiceService $invoiceService,
     ) {}
 
     public function index(Request $request)
-    {        $invoices = $this->invoiceService->getAll([
+    {
+        $invoices = $this->invoiceService->getAll([
+            'search' => $request->input('search'),
             'order_id' => $request->input('order_id'),
             'status' => $request->input('status'),
-            'search' => $request->input('search'),
+            'date_from' => $request->input('date_from'),
+            'date_to' => $request->input('date_to'),
         ]);
 
-        $orders = \App\Models\Order::orderBy('code')->get();
-        $statuses = ['unpaid' => 'Chưa thanh toán', 'paid' => 'Đã thanh toán'];
+        $statuses = InvoiceStatus::options();
 
-        return view('admin.invoices.index', compact('invoices', 'orders', 'statuses'));
+        return view('admin.invoices.index', compact('invoices', 'statuses'));
     }
 
-    public function export(Request $request)
+    public function create(Request $request)
     {
-        $invoices = Invoice::query()
-            ->with('order.customer')
-            ->when($request->input('status'), fn($q, $s) => $q->where('status', $s))
-            ->when($request->input('search'), function ($q, $s) {
-                $q->where(function ($sub) use ($s) {
-                    $sub->where('code', 'LIKE', '%' . $s . '%')
-                        ->orWhere('notes', 'LIKE', '%' . $s . '%')
-                        ->orWhereHas('order.customer', fn($c) => $c->where('name', 'LIKE', '%' . $s . '%'));
-                });
-            })
-            ->latest()
-            ->get();
+        $orders = Order::where('status', '!=', 'cancelled')->orderBy('created_at', 'desc')->get();
 
-        $spreadsheet = new Spreadsheet();
-        $sheet = $spreadsheet->getActiveSheet();
-        $sheet->setTitle('Danh sách hóa đơn');
+        $orderId = $request->query('order_id');
+        $preselectedOrder = $orderId ? Order::find($orderId) : null;
 
-        $headerStyle = [
-            'font' => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']],
-            'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => '3056D3']],
-            'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER],
-            'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN]],
-        ];
-
-        $headers = ['STT', 'Mã hóa đơn', 'Khách hàng', 'Mã đơn', 'Tổng tiền', 'Trạng thái', 'Ngày lập'];
-        $col = 1;
-        foreach ($headers as $h) {
-            $coordinate = Coordinate::stringFromColumnIndex($col) . '1';
-            $sheet->getCell($coordinate)->setValue($h);
-            $sheet->getStyle($coordinate)->applyFromArray($headerStyle);
-            $col++;
-        }
-        $sheet->freezePane('A2');
-
-        $row = 2;
-        foreach ($invoices as $i => $invoice) {
-            $sheet->getCell('A' . $row)->setValue($i + 1);
-            $sheet->getCell('B' . $row)->setValue($invoice->code);
-            $sheet->getCell('C' . $row)->setValue($invoice->order?->customer?->name ?? 'N/A');
-            $sheet->getCell('D' . $row)->setValue($invoice->order?->code ?? '-');
-            $sheet->getCell('E' . $row)->setValue((float) $invoice->total);
-            $sheet->getCell('F' . $row)->setValue($invoice->status === 'paid' ? 'Đã thanh toán' : 'Chưa thanh toán');
-            $sheet->getCell('G' . $row)->setValue($invoice->created_at?->format('d/m/Y H:i') ?? '');
-            $row++;
-        }
-
-        $sheet->getStyle('E:E')->getNumberFormat()->setFormatCode('#,##0');
-        $sheet->getStyle('B:B')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
-        $sheet->getStyle('D:D')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
-        $sheet->getStyle('F:F')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
-        $sheet->getStyle('G:G')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
-
-        foreach (range('A', 'G') as $col) {
-            $sheet->getColumnDimension($col)->setAutoSize(true);
-        }
-
-        $filename = 'Danh_Sach_Hoa_Don_' . now()->format('Y_m_d') . '.xlsx';
-
-        $response = new StreamedResponse();
-        $response->setCallback(function () use ($spreadsheet) {
-            $writer = new Xlsx($spreadsheet);
-            $writer->save('php://output');
-        });
-        $response->headers->set('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-        $response->headers->set('Content-Disposition', 'attachment; filename="' . $filename . '"');
-        $response->headers->set('Cache-Control', 'max-age=0');
-        return $response;
-    }
-
-    public function create()
-    {
-        $orders = \App\Models\Order::whereDoesntHave('invoice')->orderBy('code')->get();
-        $statuses = ['unpaid' => 'Chưa thanh toán', 'paid' => 'Đã thanh toán'];
-
-        return view('admin.invoices.create', compact('orders', 'statuses'));
+        return view('admin.invoices.create', compact('orders', 'preselectedOrder'));
     }
 
     public function store(InvoiceRequest $request)
@@ -120,9 +52,11 @@ class InvoiceController extends Controller
         try {
             $invoice = $this->invoiceService->create($request->validated());
 
-            return redirect()->route('invoices.index')->with('success', 'Hóa đơn đã được tạo.');
+            return redirect()->route('invoices.show', $invoice)->with('success', 'Hóa đơn đã được tạo thành công.');
+        } catch (SettledOrderException $e) {
+            return $this->rejectSettled($request, $e->getMessage(), route('invoices.index'));
         } catch (\Exception $e) {
-            return redirect()->route('invoices.create')->with('error', 'Có lỗi xảy ra: ' . $e->getMessage())->withInput();
+            return redirect()->route('invoices.create')->with('error', 'Có lỗi xảy ra: '.$e->getMessage())->withInput();
         }
     }
 
@@ -130,45 +64,39 @@ class InvoiceController extends Controller
     {
         $invoice = $this->invoiceService->findDetailed($id);
 
-        if (!$invoice) {
+        if (! $invoice) {
             abort(404);
         }
 
         return view('admin.invoices.show', compact('invoice'));
     }
 
-    public function exportExcel(int|string $id)
+    public function edit(Request $request, int|string $id)
     {
         $invoice = $this->invoiceService->find($id);
 
-        if (!$invoice) {
+        if (! $invoice) {
             abort(404);
         }
 
-        $export = new InvoiceDetailExport($invoice->id);
-
-        return $export->export();
-    }
-
-    public function edit(int|string $id)
-    {
-        $invoice = $this->invoiceService->find($id);
-
-        if (!$invoice) {
-            abort(404);
+        if ($invoice->isPaid()) {
+            return $this->rejectSettled(
+                $request,
+                'Hóa đơn '.$invoice->code.' đã thanh toán nên chỉ có thể xem.',
+                route('invoices.show', $invoice)
+            );
         }
 
-        $orders = \App\Models\Order::orderBy('code')->get();
-        $statuses = ['unpaid' => 'Chưa thanh toán', 'paid' => 'Đã thanh toán'];
+        $orders = Order::where('status', '!=', 'cancelled')->orderBy('created_at', 'desc')->get();
 
-        return view('admin.invoices.edit', compact('invoice', 'orders', 'statuses'));
+        return view('admin.invoices.edit', compact('invoice', 'orders'));
     }
 
     public function update(InvoiceRequest $request, int|string $id)
     {
         $invoice = $this->invoiceService->find($id);
 
-        if (!$invoice) {
+        if (! $invoice) {
             abort(404);
         }
 
@@ -176,57 +104,162 @@ class InvoiceController extends Controller
             $this->invoiceService->update($invoice, $request->validated());
 
             return redirect()->route('invoices.index')->with('success', 'Hóa đơn đã được cập nhật.');
+        } catch (SettledOrderException $e) {
+            return $this->rejectSettled($request, $e->getMessage(), route('invoices.show', $invoice));
         } catch (\Exception $e) {
-            return redirect()->route('invoices.edit', $invoice)->with('error', 'Có lỗi xảy ra: ' . $e->getMessage())->withInput();
+            return redirect()->route('invoices.edit', $invoice)->with('error', 'Có lỗi xảy ra: '.$e->getMessage())->withInput();
         }
     }
 
-    public function destroy(int|string $id)
+    public function destroy(Request $request, int|string $id)
     {
         $invoice = $this->invoiceService->find($id);
 
-        if ($invoice) {
-            try {
-                $this->invoiceService->delete($invoice);
-            } catch (\Exception $e) {
-                return redirect()->route('invoices.index')->with('error', 'Có lỗi xảy ra: ' . $e->getMessage());
-            }
+        if (! $invoice) {
+            abort(404);
         }
 
-        return redirect()->route('invoices.index')->with('success', 'Hóa đơn đã được xóa.');
+        try {
+            $this->invoiceService->delete($invoice);
+
+            return redirect()->route('invoices.index')->with('success', 'Hóa đơn đã được xóa.');
+        } catch (SettledOrderException $e) {
+            return $this->rejectSettled($request, $e->getMessage(), route('invoices.index'));
+        } catch (\Exception $e) {
+            return redirect()->route('invoices.index')->with('error', 'Có lỗi xảy ra: '.$e->getMessage());
+        }
     }
 
     public function updateStatus(Request $request, int|string $id)
     {
         $invoice = $this->invoiceService->find($id);
 
-        if (!$invoice) {
+        if (! $invoice) {
             abort(404);
         }
 
         $status = $request->input('status');
 
         try {
-            $this->invoiceService->update($invoice, ['status' => $status]);
+            $this->invoiceService->updateStatus($invoice, $status);
 
-            if ($request->wantsJson()) {
-                return response()->json([
-                    'success' => true,
-                    'message' => 'Cập nhật trạng thái thành công.',
-                    'status' => $invoice->fresh()->status,
-                ]);
-            }
-
-            return redirect()->route('invoices.show', $invoice)->with('success', 'Cập nhật trạng thái hóa đơn thành công.');
+            return back()->with('success', 'Trạng thái hóa đơn đã được cập nhật.');
+        } catch (SettledOrderException $e) {
+            return $this->rejectSettled($request, $e->getMessage(), route('invoices.show', $invoice));
         } catch (\Exception $e) {
-            if ($request->wantsJson()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Có lỗi xảy ra: ' . $e->getMessage(),
-                ], 500);
-            }
-
-            return redirect()->route('invoices.show', $invoice)->with('error', 'Có lỗi xảy ra: ' . $e->getMessage());
+            return back()->with('error', 'Có lỗi xảy ra: '.$e->getMessage());
         }
+    }
+
+    public function export(Request $request): StreamedResponse
+    {
+        $fileName = 'Danh_Sach_Hoa_Don_'.now()->format('Y_m_d').'.xlsx';
+        $filters = $request->query();
+        $invoices = $this->invoiceService->getAll($filters)->getCollection();
+
+        $spreadsheet = new Spreadsheet;
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->setTitle('Danh sách hóa đơn');
+        $sheet->fromArray([
+            ['Mã hóa đơn', 'Ngày lập', 'Mã đơn hàng', 'Khách hàng', 'Tổng tiền', 'Giảm giá', 'Phí giao hàng', 'Tổng thanh toán', 'Trạng thái'],
+        ], null, 'A1');
+
+        $row = 2;
+        foreach ($invoices as $invoice) {
+            $sheet->fromArray([[
+                $invoice->code,
+                $invoice->invoice_date?->format('d/m/Y') ?? $invoice->created_at?->format('d/m/Y'),
+                $invoice->order?->code,
+                $invoice->order?->customer?->name,
+                (float) $invoice->total_amount,
+                (float) $invoice->discount_amount,
+                (float) $invoice->delivery_fee,
+                (float) $invoice->grand_total,
+                $invoice->getStatusLabel(),
+            ]], null, 'A'.$row);
+            $row++;
+        }
+
+        $sheet->getStyle('A1:I1')->getFont()->setBold(true);
+        $sheet->getStyle('E1:I'.max($row - 1, 1))->getNumberFormat()->setFormatCode('#,##0');
+        foreach (range('A', 'I') as $column) {
+            $sheet->getColumnDimension($column)->setAutoSize(true);
+        }
+        $sheet->freezePane('A2');
+
+        return response()->streamDownload(function () use ($spreadsheet): void {
+            (new Xlsx($spreadsheet))->save('php://output');
+            $spreadsheet->disconnectWorksheets();
+        }, $fileName, [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ]);
+    }
+
+    public function exportExcel(int|string $id): StreamedResponse
+    {
+        $invoice = $this->invoiceService->findDetailed($id);
+
+        if (! $invoice) {
+            abort(404);
+        }
+
+        $fileName = 'Hoa_Don_'.$invoice->code.'_'.now()->format('Y_m_d').'.xlsx';
+
+        $spreadsheet = new Spreadsheet;
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->setTitle('Hóa đơn '.$invoice->code);
+
+        $sheet->fromArray([
+            ['SKY LAUNDRY'],
+            ['Số 123 Đường Lê Lợi, Quận 1, TP. HCM'],
+            ['Hotline: 0909.123.456'],
+            [],
+            ['HÓA ĐƠN DỊCH VỤ GIẶT ỦI'],
+            ['Mã hóa đơn:', $invoice->code],
+            ['Ngày lập:', $invoice->invoice_date?->format('d/m/Y') ?? now()->format('d/m/Y')],
+            ['Mã đơn:', $invoice->order?->code],
+            ['Khách hàng:', $invoice->order?->customer?->name],
+            ['SĐT:', $invoice->order?->customer?->phone],
+            ['Địa chỉ:', $invoice->order?->customer?->address],
+            [],
+        ], null, 'A1');
+
+        $sheet->fromArray([
+            ['STT', 'Tên Dịch Vụ / Loại Đồ', 'Đơn Vị Tính', 'Số Lượng', 'Đơn Giá (VNĐ)', 'Thành Tiền (VNĐ)'],
+        ], null, 'A14');
+
+        $row = 15;
+        foreach ($invoice->order?->items ?? [] as $index => $item) {
+            $sheet->fromArray([[
+                $index + 1,
+                $item->service?->name ?: ($item->item_name ?: '-'),
+                $item->service?->unit ?: 'kg',
+                $item->quantity ?? 0,
+                (float) ($item->price ?? 0),
+                (float) ($item->subtotal ?? 0),
+            ]], null, 'A'.$row);
+            $row++;
+        }
+
+        $sheet->fromArray([
+            ['', '', '', '', 'Tạm tính:', (float) $invoice->total_amount],
+            ['', '', '', '', 'Giảm giá:', (float) $invoice->discount_amount],
+            ['', '', '', '', 'Phí giao hàng:', (float) $invoice->delivery_fee],
+            ['', '', '', '', 'TỔNG CỘNG:', (float) $invoice->grand_total],
+        ], null, 'A'.$row);
+
+        $sheet->getStyle('A1:F13')->getFont()->setBold(true);
+        $sheet->getStyle('E14:F14')->getFont()->setBold(true);
+        $sheet->getStyle('E'.($row+3).':F'.($row+3))->getFont()->setBold(true)->setSize(14);
+        foreach (range('A', 'F') as $column) {
+            $sheet->getColumnDimension($column)->setAutoSize(true);
+        }
+
+        return response()->streamDownload(function () use ($spreadsheet): void {
+            (new Xlsx($spreadsheet))->save('php://output');
+            $spreadsheet->disconnectWorksheets();
+        }, $fileName, [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ]);
     }
 }

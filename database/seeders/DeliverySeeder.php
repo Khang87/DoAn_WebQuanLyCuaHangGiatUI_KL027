@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 use App\Models\Customer;
 use App\Models\Delivery;
+use App\Models\Order;
 use Carbon\Carbon;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
@@ -15,6 +16,12 @@ class DeliverySeeder extends Seeder
     public function run(): void
     {
         $customers = Customer::all();
+        $orders = Order::all();
+
+        if ($customers->isEmpty() || $orders->isEmpty()) {
+            $this->command->error('Lỗi: Cần tạo dữ liệu Customers và Orders trước!');
+            return;
+        }
 
         $addresses = [
             '140 Lê Trọng Tấn, Phường Tây Thạnh, Quận Tân Phú, TP.HCM',
@@ -37,13 +44,12 @@ class DeliverySeeder extends Seeder
             'Thời gian không phù hợp với giờ mở cửa',
         ];
 
-        $methods = ['pickup', 'dropoff', 'home_pickup'];
+        $methods = ['nhan_do', 'giao_do'];
         $statuses = ['pending', 'picking', 'delivering', 'completed', 'cancelled'];
 
         $methodStatusMap = [
-            'pickup' => ['pending', 'picking', 'completed', 'cancelled'],
-            'dropoff' => ['pending', 'delivering', 'completed', 'cancelled'],
-            'home_pickup' => ['pending', 'picking', 'delivering', 'completed', 'cancelled'],
+            'nhan_do' => ['pending', 'picking', 'completed', 'cancelled'],
+            'giao_do' => ['pending', 'delivering', 'completed', 'cancelled'],
         ];
 
         for ($i = 1; $i <= 15; $i++) {
@@ -51,6 +57,7 @@ class DeliverySeeder extends Seeder
             $availableStatuses = $methodStatusMap[$method];
             $status = $availableStatuses[($i - 1) % count($availableStatuses)];
             $customer = $customers[($i - 1) % $customers->count()];
+            $order = $orders[($i - 1) % $orders->count()];
 
             $pickupDate = ($i <= 4)
                 ? Carbon::today()->format('Y-m-d')
@@ -64,6 +71,7 @@ class DeliverySeeder extends Seeder
 
             Delivery::create([
                 'code' => 'GH' . str_pad((string) $i, 3, '0', STR_PAD_LEFT),
+                'order_id' => $order->id,
                 'customer_id' => $customer->id,
                 'method' => $method,
                 'address' => $addresses[($i - 1) % count($addresses)],

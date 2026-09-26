@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Cài Đặt - Sky Laundry')
+@section('title', 'Cài đặt - Sky Laundry')
 @section('page-title', 'Cài đặt')
 
 @section('content')

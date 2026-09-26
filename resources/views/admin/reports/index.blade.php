@@ -1,39 +1,39 @@
 @extends('layouts.app')
 
-@section('title', 'Báo cáo & Thống kê - Sky Laundry')
-@section('page-title', 'Báo cáo & Thống kê')
+@section('title', 'Báo cáo & thống kê - Sky Laundry')
+@section('page-title', 'Báo cáo & thống kê')
 
 @section('content')
 <div class="row g-4 mb-4">
     <div class="col-12 col-sm-6 col-xl-3">
         <div class="card">
             <div class="card-body text-center">
-                <div class="stat-value">{{ number_format($summary['total_revenue']) }} VNĐ</div>
-                <div class="stat-label">Tổng Doanh Thu</div>
+                <div class="stat-value text-dark">{{ number_format($summary['total_revenue']) }} VNĐ</div>
+                <div class="stat-label text-dark">Tổng doanh thu</div>
             </div>
         </div>
     </div>
     <div class="col-12 col-sm-6 col-xl-3">
         <div class="card">
             <div class="card-body text-center">
-                <div class="stat-value">{{ $summary['total_orders'] }}</div>
-                <div class="stat-label">Tổng Đơn Hàng</div>
+                <div class="stat-value text-dark">{{ $summary['total_orders'] }}</div>
+                <div class="stat-label text-dark">Tổng đơn hàng</div>
             </div>
         </div>
     </div>
     <div class="col-12 col-sm-6 col-xl-3">
         <div class="card">
             <div class="card-body text-center">
-                <div class="stat-value">{{ number_format($summary['today_revenue']) }} VNĐ</div>
-                <div class="stat-label">Doanh Thu Hôm Nay</div>
+                <div class="stat-value text-dark">{{ number_format($summary['today_revenue']) }} VNĐ</div>
+                <div class="stat-label text-dark">Doanh thu hôm nay</div>
             </div>
         </div>
     </div>
     <div class="col-12 col-sm-6 col-xl-3">
         <div class="card">
             <div class="card-body text-center">
-                <div class="stat-value">{{ number_format($summary['month_revenue']) }} VNĐ</div>
-                <div class="stat-label">Doanh Thu Tháng</div>
+                <div class="stat-value text-dark">{{ number_format($summary['month_revenue']) }} VNĐ</div>
+                <div class="stat-label text-dark">Doanh thu tháng</div>
             </div>
         </div>
     </div>
@@ -48,13 +48,14 @@
             <div class="card-body">
                 @php
                     $statusLabels = [
+                        'pending' => 'Chờ tiếp nhận',
+                        'received' => 'Đã nhận đồ',
+                        'sorting' => 'Đang phân loại',
+                        'processing' => 'Đang giặt / Xử lý',
+                        'washed' => 'Đã giặt xong',
+                        'delivering' => 'Đang giao đồ',
                         'completed' => 'Hoàn thành',
                         'cancelled' => 'Đã hủy',
-                        'pending' => 'Chờ xử lý',
-                        'processing' => 'Đang xử lý',
-                        'delivering' => 'Đang giao',
-                        'washing' => 'Đang giặt',
-                        'washed' => 'Đã giặt xong',
                     ];
                     $maxCount = max($orderStatusCounts) ?: 1;
                 @endphp
@@ -76,7 +77,7 @@
     <div class="col-12 col-xl-4">
         <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
-                <h5 class="mb-0">Top 10 Khách Hàng</h5>
+                <h5 class="mb-0">Top 10 khách hàng</h5>
                 <a href="{{ route('reports.customers') }}" class="text-decoration-none">Xem tất cả</a>
             </div>
             <div class="card-body">
@@ -108,13 +109,13 @@
             <div class="card-body">
                 <div class="d-flex gap-2">
                     <a href="{{ route('reports.revenue') }}" class="btn btn-outline-primary">
-                        <i class="bi bi-currency-dollar me-1"></i>Doanh Thu
+                        <i class="bi bi-currency-dollar me-1"></i>Doanh thu
                     </a>
                     <a href="{{ route('reports.orders') }}" class="btn btn-outline-primary">
-                        <i class="bi bi-receipt me-1"></i>Đơn Hàng
+                        <i class="bi bi-receipt me-1"></i>Đơn hàng
                     </a>
                     <a href="{{ route('reports.customers') }}" class="btn btn-outline-primary">
-                        <i class="bi bi-people me-1"></i>Khách Hàng
+                        <i class="bi bi-people me-1"></i>Khách hàng
                     </a>
                 </div>
             </div>

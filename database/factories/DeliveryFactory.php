@@ -10,18 +10,16 @@ use Illuminate\Database\Eloquent\Factories\Factory;
  */
 class DeliveryFactory extends Factory
 {
-    /**
-     * Define the model's default state.
-     *
-     * @return array<string, mixed>
-     */
     public function definition(): array
     {
-        $methods = ['pickup', 'dropoff'];
-        $statuses = ['pending', 'confirmed', 'completed', 'cancelled'];
+        $methods = ['nhan_do', 'giao_do'];
+        $statuses = ['pending', 'picking', 'delivering', 'completed', 'cancelled'];
 
         return [
+            'code' => 'GH' . fake()->unique()->numerify('####'),
+            'order_id' => \App\Models\Order::factory(),
             'customer_id' => \App\Models\Customer::factory(),
+            'employee_id' => null,
             'method' => fake()->randomElement($methods),
             'address' => fake()->address(),
             'pickup_date' => fake()->dateTimeBetween('+1 day', '+5 days'),

@@ -35,7 +35,7 @@
                     </select>
                 </div>
                 <div class="col-md-6">
-                    <label class="form-label">Tên mặt hàng</label>
+                    <label class="form-label">Tên mặt hàng <span class="text-danger ms-1">*</span></label>
                     <input type="text" class="form-control" name="item_name" placeholder="vd: Áo dài, Váy cưới" required>
                 </div>
                 <div class="col-md-6">
@@ -46,11 +46,11 @@
                     </select>
                 </div>
                 <div class="col-md-6">
-                    <label class="form-label">Đơn giá</label>
+                    <label class="form-label">Đơn giá <span class="text-danger ms-1">*</span></label>
                     <input type="number" class="form-control" name="price" placeholder="25000" min="0" required>
                 </div>
                 <div class="col-md-6">
-                    <label class="form-label">Số lượng</label>
+                    <label class="form-label">Số lượng <span class="text-danger ms-1">*</span></label>
                     <input type="number" class="form-control" name="quantity" value="1" min="1" required>
                 </div>
                 <div class="col-12">

@@ -4,13 +4,25 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Delivery extends Model
 {
     use HasFactory, SoftDeletes;
 
-    protected $fillable = ['code', 'order_id', 'customer_id', 'method', 'address', 'pickup_date', 'pickup_time', 'notes', 'status'];
+    protected $fillable = [
+        'code',
+        'order_id',
+        'customer_id',
+        'employee_id',
+        'method',
+        'address',
+        'pickup_date',
+        'pickup_time',
+        'notes',
+        'status',
+    ];
 
     protected $casts = [
         'pickup_date' => 'date',
@@ -20,19 +32,19 @@ class Delivery extends Model
         'deleted_at' => 'datetime',
     ];
 
-    public function customer()
+    public function customer(): BelongsTo
     {
         return $this->belongsTo(Customer::class);
     }
 
-    public function order()
+    public function order(): BelongsTo
     {
         return $this->belongsTo(Order::class);
     }
 
-    public function bookings()
+    public function employee(): BelongsTo
     {
-        return $this->hasMany(Booking::class);
+        return $this->belongsTo(User::class, 'employee_id');
     }
 
     public function getCodeFormatAttribute(): string
@@ -43,32 +55,37 @@ class Delivery extends Model
     public function getTypeLabelAttribute(): string
     {
         return match($this->method) {
-            'home_pickup', 'pickup', 'nhan_do' => 'Nhận Đồ',
-            'dropoff', 'delivery', 'store_delivery', 'giao_do' => 'Giao Đồ',
-            default => 'Giao Đồ',
+            'nhan_do' => 'Nhận đồ',
+            'giao_do' => 'Giao đồ',
+            default => 'Giao đồ',
         };
+    }
+
+    public function getMethodLabelAttribute(): string
+    {
+        return $this->type_label;
     }
 
     public function getStatusLabelAttribute(): string
     {
         return match($this->status) {
-            'pending', 'waiting', 'cho_xac_nhan' => 'Chờ Xác Nhận',
-            'picking', 'confirmed', 'dang_lay' => 'Đang Lấy',
-            'delivering', 'shipping', 'dang_giao' => 'Đang Giao',
-            'completed', 'delivered', 'hoan_thanh' => 'Hoàn Thành',
-            'cancelled', 'da_huy' => 'Đã Hủy',
-            default => 'Chờ Xác Nhận',
+            'pending' => 'Chờ xác nhận',
+            'picking' => 'Đang lấy đồ',
+            'delivering' => 'Đang giao đồ',
+            'completed' => 'Hoàn thành',
+            'cancelled' => 'Đã hủy',
+            default => 'Chờ xác nhận',
         };
     }
 
     public function getStatusBadgeClassAttribute(): string
     {
         return match($this->status) {
-            'pending', 'waiting', 'cho_xac_nhan' => 'bg-warning-subtle text-warning border-warning',
-            'picking', 'confirmed', 'dang_lay' => 'bg-info-subtle text-info border-info',
-            'delivering', 'shipping', 'dang_giao' => 'bg-primary-subtle text-primary border-primary',
-            'completed', 'delivered', 'hoan_thanh' => 'bg-success-subtle text-success border-success',
-            'cancelled', 'da_huy' => 'bg-danger-subtle text-danger border-danger',
+            'pending' => 'bg-warning-subtle text-warning border-warning',
+            'picking' => 'bg-info-subtle text-info border-info',
+            'delivering' => 'bg-primary-subtle text-primary border-primary',
+            'completed' => 'bg-success-subtle text-success border-success',
+            'cancelled' => 'bg-danger-subtle text-danger border-danger',
             default => 'bg-secondary-subtle text-secondary border-secondary',
         };
     }

@@ -13,12 +13,17 @@ class PricingRequest extends FormRequest
 
     public function rules(): array
     {
+        $id = $this->route('pricing') ?? $this->route('id') ?? null;
+
         return [
-            'name' => 'required|string|max:255',
-            'unit' => 'required|string|max:20',
-            'price' => 'required|numeric|min:0',
-            'status' => 'nullable|string',
-            'description' => 'nullable|string',
+            'service_id' => ['nullable', 'exists:services,id'],
+            'garment_id' => ['nullable', 'exists:garments,id'],
+            'name' => ['required', 'string', 'max:255'],
+            'unit' => ['required', 'string', 'max:20'],
+            'price' => ['required', 'numeric', 'min:0'],
+            'effective_date' => ['nullable', 'date'],
+            'status' => ['nullable', 'in:active,inactive'],
+            'description' => ['nullable', 'string'],
         ];
     }
 }

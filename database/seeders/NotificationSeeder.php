@@ -3,6 +3,8 @@
 namespace Database\Seeders;
 
 use App\Models\Notification;
+use App\Models\Order;
+use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
@@ -13,12 +15,50 @@ class NotificationSeeder extends Seeder
 
     public function run(): void
     {
+        $users = User::whereIn('role', ['manager', 'staff'])->get();
+        $orders = Order::limit(5)->get();
+
         $notifications = [
-            ['title' => 'Đơn hàng #DH001 đã hoàn thành', 'message' => 'Đơn hàng giặt ủi đã được xử lý xong.', 'read_at' => Carbon::now()->subHours(2)],
-            ['title' => 'Khách hàng mới đăng ký', 'message' => 'Khách hàng mới vừa đăng ký tài khoản.', 'read_at' => Carbon::now()->subHours(5)],
-            ['title' => 'Thanh toán đã được nhận', 'message' => 'Thanh toán đơn hàng #DH002 đã được xác nhận.', 'read_at' => Carbon::now()->subDay()],
-            ['title' => 'Đặt lịch mới', 'message' => 'Khách hàng vừa đặt lịch giặt ủi.', 'read_at' => null],
-            ['title' => 'Khuyến mãi sắp hết hạn', 'message' => 'Chương trình Giảm 20% sẽ hết hạn trong 5 ngày.', 'read_at' => null],
+            [
+                'user_id' => $users->first()?->id,
+                'type' => 'order',
+                'message' => 'Đơn hàng #DH001 đã hoàn thành',
+                'order_id' => $orders->first()?->id,
+                'sent_at' => Carbon::now()->subHours(2),
+                'read_at' => Carbon::now()->subHours(2),
+            ],
+            [
+                'user_id' => $users->first()?->id,
+                'type' => 'customer',
+                'message' => 'Khách hàng mới đăng ký',
+                'order_id' => null,
+                'sent_at' => Carbon::now()->subHours(5),
+                'read_at' => Carbon::now()->subHours(5),
+            ],
+            [
+                'user_id' => $users->skip(1)->first()?->id ?? $users->first()?->id,
+                'type' => 'payment',
+                'message' => 'Thanh toán đơn hàng #' . ($orders->skip(1)->first()?->code ?? 'DH002') . ' đã được xác nhận.',
+                'order_id' => $orders->skip(1)->first()?->id,
+                'sent_at' => Carbon::now()->subDay(),
+                'read_at' => null,
+            ],
+            [
+                'user_id' => $users->first()?->id,
+                'type' => 'booking',
+                'message' => 'Khách hàng vừa đặt lịch giặt ủi.',
+                'order_id' => null,
+                'sent_at' => Carbon::now()->subHours(3),
+                'read_at' => null,
+            ],
+            [
+                'user_id' => $users->first()?->id,
+                'type' => 'promotion',
+                'message' => 'Chương trình Giảm 20% sẽ hết hạn trong 5 ngày.',
+                'order_id' => null,
+                'sent_at' => Carbon::now()->subHours(1),
+                'read_at' => null,
+            ],
         ];
 
         foreach ($notifications as $notif) {

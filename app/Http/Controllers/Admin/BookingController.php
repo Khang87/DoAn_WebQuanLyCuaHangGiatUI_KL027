@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\BookingRequest;
+use App\Models\Customer;
+use App\Models\User;
 use App\Services\BookingService;
 use Illuminate\Http\Request;
 
@@ -19,18 +21,18 @@ class BookingController extends Controller
             'search' => $request->input('search'),
             'customer_id' => $request->input('customer_id'),
             'status' => $request->input('status'),
-            'delivery_method' => $request->input('delivery_method'),
+            'method' => $request->input('method'),
             'sort_by' => $request->input('sort_by'),
             'sort_order' => $request->input('sort_order'),
         ]);
 
-        $customers = \App\Models\Customer::orderBy('name')->get();
-        $services = \App\Models\Service::where('status', 'active')->orderBy('name')->get();
+        $customers = Customer::orderBy('name')->get();
+        $staff = User::where('role', '!=', 'customer')->orderBy('name')->get();
 
-        return view('admin.bookings.index', compact('bookings', 'customers', 'services'));
+        return view('admin.bookings.index', compact('bookings', 'customers', 'staff'));
     }
 
-    // create() and store() methods removed - "Tạo đặt lịch" feature disabled
+    // create() and store() methods disabled - "Tạo đặt lịch" feature disabled
 
     public function show(int $id)
     {
@@ -51,10 +53,10 @@ class BookingController extends Controller
             abort(404);
         }
 
-        $customers = \App\Models\Customer::orderBy('name')->get();
-        $services = \App\Models\Service::where('status', 'active')->orderBy('name')->get();
+        $customers = Customer::orderBy('name')->get();
+        $staff = User::where('role', '!=', 'customer')->orderBy('name')->get();
 
-        return view('admin.bookings.edit', compact('booking', 'customers', 'services'));
+        return view('admin.bookings.edit', compact('booking', 'customers', 'staff'));
     }
 
     public function update(BookingRequest $request, int $id)
@@ -86,6 +88,35 @@ class BookingController extends Controller
             $this->bookingService->delete($booking);
 
             return redirect()->route('bookings.index')->with('success', 'Đã xóa đặt lịch.');
+        } catch (\Exception $e) {
+            return redirect()->route('bookings.index')->with('error', 'Có lỗi xảy ra: ' . $e->getMessage());
+        }
+    }
+
+    public function confirm(int $id)
+    {
+        $booking = $this->bookingService->find($id);
+
+        if (!$booking) {
+            abort(404);
+        }
+
+        try {
+            // Đã có đơn rồi thì không tạo lại, chỉ đưa người dùng tới đơn cũ.
+            if ($this->bookingService->hasConvertedOrder($booking)) {
+                $order = $this->bookingService->confirmAndCreateOrder($booking);
+
+                return redirect()->route('orders.show', $order)
+                    ->with('success', 'Đặt lịch này đã được chuyển thành đơn hàng trước đó.');
+            }
+
+            $order = $this->bookingService->confirmAndCreateOrder($booking);
+
+            if ($order) {
+                return redirect()->route('orders.show', $order)->with('success', 'Đặt lịch đã được xác nhận và tạo đơn hàng thành công.');
+            }
+
+            return redirect()->route('bookings.index')->with('error', 'Chỉ đặt lịch đã xác nhận mới chuyển thành đơn hàng được.');
         } catch (\Exception $e) {
             return redirect()->route('bookings.index')->with('error', 'Có lỗi xảy ra: ' . $e->getMessage());
         }

@@ -48,7 +48,7 @@ class AccountController extends Controller
         try {
             $user = $this->userService->create($request->validated());
 
-            return redirect()->route('accounts.index')->with('success', 'Tài khoản đã được tạo thành công với vai trò: ' . ($user->role === 'admin' ? 'Quản trị viên' : ($user->role === 'staff' ? 'Nhân viên' : 'Khách hàng')));
+            return redirect()->route('accounts.index')->with('success', 'Tài khoản đã được tạo thành công với vai trò: ' . ($user->isManager() ? 'Quản lý' : ($user->role === 'staff' ? 'Nhân viên' : 'Khách hàng')));
         } catch (\Exception $e) {
             return redirect()->route('accounts.create')->with('error', 'Có lỗi xảy ra: ' . $e->getMessage())->withInput();
         }

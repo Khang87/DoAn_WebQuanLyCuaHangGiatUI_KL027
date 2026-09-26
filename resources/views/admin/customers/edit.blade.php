@@ -17,7 +17,7 @@
             @csrf @method('PUT')
             <div class="row g-4">
                 <div class="col-md-6">
-                    <label class="form-label">Họ tên <span class="text-danger">*</span></label>
+                    <label class="form-label">Họ tên <span class="text-danger ms-1">*</span></label>
                     <input type="text" class="form-control @error('name') is-invalid @enderror" name="name" value="{{ old('name', $customer->name) }}" required>
                     @error('name')
                         <div class="invalid-feedback">{{ $message }}</div>
@@ -34,17 +34,6 @@
                     <label class="form-label">Số điện thoại</label>
                     <input type="text" class="form-control @error('phone') is-invalid @enderror" name="phone" value="{{ old('phone', $customer->phone) }}">
                     @error('phone')
-                        <div class="invalid-feedback">{{ $message }}</div>
-                    @enderror
-                </div>
-                <div class="col-md-6">
-                    <label class="form-label">Loại khách hàng</label>
-                    <select class="form-select @error('type') is-invalid @enderror" name="type">
-                        <option value="Mới" {{ $customer->type === 'Mới' ? 'selected' : '' }}>Mới</option>
-                        <option value="Thường" {{ $customer->type === 'Thường' ? 'selected' : '' }}>Thường</option>
-                        <option value="VIP" {{ $customer->type === 'VIP' ? 'selected' : '' }}>VIP</option>
-                    </select>
-                    @error('type')
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
                 </div>

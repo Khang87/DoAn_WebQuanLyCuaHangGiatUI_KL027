@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Customer;
 use App\Models\Delivery;
+use App\Models\Order;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -14,6 +15,7 @@ class DeliveryControllerTest extends TestCase
 
     private User $admin;
     private Customer $customer;
+    private Order $order;
 
     protected function setUp(): void
     {
@@ -23,13 +25,20 @@ class DeliveryControllerTest extends TestCase
             'code' => 'KH001',
             'name' => 'Nguyễn Văn A',
         ]);
+        $this->order = \App\Models\Order::create([
+            'code' => 'DH001',
+            'customer_id' => $this->customer->id,
+            'total_amount' => 100000,
+            'status' => 'pending',
+        ]);
     }
 
     public function test_can_list_deliveries(): void
     {
         Delivery::create([
             'customer_id' => $this->customer->id,
-            'method' => 'pickup',
+            'order_id' => $this->order->id,
+            'method' => 'giao_do',
             'address' => '123 Đường ABC',
             'pickup_date' => now()->toDateString(),
             'pickup_time' => '10:00',
@@ -46,7 +55,8 @@ class DeliveryControllerTest extends TestCase
     {
         Delivery::create([
             'customer_id' => $this->customer->id,
-            'method' => 'pickup',
+            'order_id' => $this->order->id,
+            'method' => 'giao_do',
             'address' => '123 Đường ABC',
             'pickup_date' => now()->toDateString(),
             'pickup_time' => '10:00',
@@ -67,14 +77,15 @@ class DeliveryControllerTest extends TestCase
             ->get(route('deliveries.index', ['search' => 'nonexistent']));
 
         $response->assertStatus(200);
-        $response->assertSee('Chưa có dữ liệu nào');
+        $response->assertSee('Chưa có dữ liệu giao nhận');
     }
 
     public function test_can_delete_delivery(): void
     {
         $delivery = Delivery::create([
             'customer_id' => $this->customer->id,
-            'method' => 'pickup',
+            'order_id' => $this->order->id,
+            'method' => 'giao_do',
             'address' => '789 Đường DEF',
             'pickup_date' => now()->toDateString(),
             'pickup_time' => '09:00',

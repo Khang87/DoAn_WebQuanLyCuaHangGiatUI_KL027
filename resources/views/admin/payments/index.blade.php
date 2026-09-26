@@ -1,6 +1,6 @@
 @extends('layouts.app')
-@section('title', 'Thanh Toán - Sky Laundry')
-@section('page-title', 'Thanh Toán')
+@section('title', 'Thanh toán - Sky Laundry')
+@section('page-title', 'Thanh toán')
 
 @section('content')
 <div class="order-toolbar d-flex justify-content-between align-items-center mb-3">
@@ -19,7 +19,7 @@
             <input type="text" name="search" class="form-control border-start-0 py-2 ps-2" placeholder="Tìm theo ID, mã thanh toán, mã hóa đơn, tên khách..." value="{{ request('search') }}">
         </div>
     </div>
-    <div class="col-12 col-md-3">
+    <div class="col-12 col-md-2">
         <select name="method" class="form-select shadow-sm rounded-3 py-2" style="min-width: 220px;" onchange="this.form.submit()">
             <option value="">-- Tất cả phương thức --</option>
             @foreach($methods as $value => $label)
@@ -27,12 +27,12 @@
             @endforeach
         </select>
     </div>
-    <div class="col-12 col-md-3">
+    <div class="col-12 col-md-2">
         <select name="status" class="form-select shadow-sm rounded-3 py-2" style="min-width: 200px;" onchange="this.form.submit()">
             <option value="">-- Tất cả trạng thái --</option>
-            <option value="pending" @selected(request('status') === 'pending')>Chờ thanh toán</option>
-            <option value="partial" @selected(request('status') === 'partial')>Một phần</option>
             <option value="paid" @selected(request('status') === 'paid')>Đã thanh toán</option>
+            <option value="partial" @selected(request('status') === 'partial')>Một phần</option>
+            <option value="pending" @selected(request('status') === 'pending')>Chờ thanh toán</option>
             <option value="failed" @selected(request('status') === 'failed')>Thất bại</option>
             <option value="refunded" @selected(request('status') === 'refunded')>Đã hoàn tiền</option>
         </select>
@@ -59,6 +59,7 @@
                             </a>
                         </th>
                         <th>Mã đơn</th>
+                        <th>Mã hóa đơn</th>
                         <th>Khách hàng</th>
                         <th>
                             <a href="{{ request()->fullUrlWithQuery(['sort_by' => 'amount', 'sort_order' => $nextOrderAmount]) }}" class="text-dark text-decoration-none">
@@ -68,6 +69,7 @@
                         </th>
                         <th>Phương thức</th>
                         <th>Trạng thái</th>
+                        <th>Ngày thanh toán</th>
                         <th>Thao tác</th>
                     </tr>
                 </thead>
@@ -76,14 +78,15 @@
                     <tr>
                         <td><strong>TT{{ $payment->id }}</strong></td>
                         <td><a href="{{ route('orders.show', $payment->order_id) }}">{{ $payment->order?->code ?: $payment->order_id }}</a></td>
+                        <td>{{ $payment->invoice?->code ?: '-' }}</td>
                         <td>
-                <div class="d-flex align-items-center">
-                                 @php
-                                     $avatarId = $payment->order?->customer?->id ?? ($payment->order?->id ?? $payment->id);
-                                     $avatarUrl = 'assets/images/user_' . (($avatarId % 8) + 1) . '.jpg';
-                                 @endphp
-                                 <img src="{{ asset($avatarUrl) }}" alt="Ảnh khách hàng" class="rounded-circle me-2" style="width: 40px; height: 40px; object-fit: cover;">
-                                 <div>
+                            <div class="d-flex align-items-center">
+                                @php
+                                    $avatarId = $payment->order?->customer?->id ?? ($payment->order?->id ?? $payment->id);
+                                    $avatarUrl = 'assets/images/user_' . (($avatarId % 8) + 1) . '.jpg';
+                                @endphp
+                                <img src="{{ asset($avatarUrl) }}" alt="Ảnh khách hàng" class="rounded-circle me-2 avatar-cover" style="width: 40px; height: 40px;">
+                                <div>
                                     <div class="fw-semibold">{{ $payment->order?->customer?->name ?: '-' }}</div>
                                     <small class="text-muted">{{ $payment->order?->customer?->phone ?: 'Chưa có SĐT' }}</small>
                                 </div>
@@ -91,45 +94,28 @@
                         </td>
                         <td class="fw-semibold">{{ number_format($payment->amount) }} VNĐ</td>
                         <td>
-                            @if($payment->method === 'cash')
-                                <i class="bi bi-cash-coin me-1"></i>Tiền mặt
-                            @elseif($payment->method === 'bank_transfer')
-                                <i class="bi bi-bank me-1"></i>Chuyển khoản (QR)
-                            @elseif($payment->method === 'momo')
-                                <i class="bi bi-phone me-1"></i>Ví MoMo
-                            @elseif($payment->method === 'credit_card')
-                                <i class="bi bi-credit-card me-1"></i>Thẻ ATM/Credit
-                            @else
-                                <i class="bi bi-wallet2 me-1"></i>Ví điện tử
-                            @endif
+                            <i class="bi {{ $payment->getMethodIcon() }} me-1"></i>{{ $payment->getMethodLabel() }}
                         </td>
                         <td>
-                            @if($payment->status === 'paid')
-                                <span class="badge bg-success-subtle text-success border border-success px-3 py-2 rounded-pill"><i class="fas fa-check-circle me-1"></i>Đã thanh toán</span>
-                            @elseif($payment->status === 'partial')
-                                <span class="badge bg-warning-subtle text-warning border border-warning px-3 py-2 rounded-pill"><i class="fas fa-clock me-1"></i>Một phần</span>
-                            @elseif($payment->status === 'failed')
-                                <span class="badge bg-danger-subtle text-danger border border-danger px-3 py-2 rounded-pill"><i class="fas fa-times-circle me-1"></i>Thất bại</span>
-                            @elseif($payment->status === 'refunded')
-                                <span class="badge bg-info-subtle text-info border border-info px-3 py-2 rounded-pill"><i class="fas fa-undo me-1"></i>Đã hoàn tiền</span>
-                            @else
-                                <span class="badge bg-secondary-subtle text-secondary border border-secondary px-3 py-2 rounded-pill"><i class="fas fa-hourglass me-1"></i>Chưa thanh toán</span>
-                            @endif
+                            <span class="badge {{ $payment->getStatusBadgeClass() }} px-3 py-2 rounded-pill">
+                                <i class="fas fa-{{ $payment->status === 'paid' ? 'check-circle' : ($payment->status === 'partial' ? 'clock' : ($payment->status === 'failed' ? 'times-circle' : ($payment->status === 'refunded' ? 'undo' : 'hourglass'))) }} me-1"></i>{{ $payment->getStatusLabel() }}
+                            </span>
                         </td>
+                        <td>{{ $payment->paid_at?->format('d/m/Y H:i') ?? $payment->created_at?->format('d/m/Y H:i') }}</td>
                         <td>
                             <div class="d-flex gap-2">
                                 <a href="{{ route('payments.show', $payment) }}" class="btn btn-order-action view" title="Xem"><i class="bi bi-eye"></i></a>
                                 <a href="{{ route('payments.edit', $payment) }}" class="btn btn-order-action edit" title="Sửa"><i class="bi bi-pencil"></i></a>
-                                <form action="{{ route('payments.destroy', $payment) }}" method="POST" class="d-inline" onsubmit="return confirm('Bạn có chắc muốn xóa?')">
+                                <form action="{{ route('payments.destroy', $payment) }}" method="POST" class="d-inline" id="deletePaymentForm_{{ $payment->id }}">
                                     @csrf @method('DELETE')
                                     <button type="submit" class="btn btn-order-action delete" title="Xóa"><i class="bi bi-trash"></i></button>
                                 </form>
                             </div>
                         </td>
-                     </tr>
+                    </tr>
                     @empty
                     <tr>
-                        <td colspan="7" class="text-center text-muted py-4">Chưa có dữ liệu nào</td>
+                        <td colspan="9" class="text-center text-muted py-4">Chưa có dữ liệu nào</td>
                     </tr>
                     @endempty
                 </tbody>
@@ -165,3 +151,37 @@
 </nav>
 @endif
 @endsection
+
+@push('scripts')
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        document.querySelectorAll('[id^="deletePaymentForm_"]').forEach(function(form) {
+            form.addEventListener('submit', function(e) {
+                e.preventDefault();
+
+                if (typeof Swal === 'undefined') {
+                    if (confirm('Bạn có chắc muốn xóa?')) {
+                        form.submit();
+                    }
+                    return;
+                }
+
+                Swal.fire({
+                    title: 'Xóa thanh toán?',
+                    text: 'Hành động này không thể hoàn tác.',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#dc2626',
+                    cancelButtonColor: '#64748b',
+                    confirmButtonText: 'Xóa',
+                    cancelButtonText: 'Hủy'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        form.submit();
+                    }
+                });
+            });
+        });
+    });
+</script>
+@endpush

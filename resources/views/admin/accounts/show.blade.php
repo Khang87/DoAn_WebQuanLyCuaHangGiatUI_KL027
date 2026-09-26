@@ -10,8 +10,8 @@
         <a href="{{ route('accounts.edit', $account->id) }}" class="btn btn-primary btn-sm">
             <i class="bi bi-pencil me-1"></i>Chỉnh sửa
         </a>
-        @if($account->role !== 'admin')
-        <form action="{{ route('accounts.reset-password', $account->id) }}" method="POST" class="d-inline" onsubmit="return confirm('Bạn có chắc muốn đặt lại mật khẩu cho tài khoản này?')">
+        @if(!$account->isManager())
+        <form action="{{ route('accounts.reset-password', $account->id) }}" method="POST" class="d-inline" id="resetPasswordForm">
             @csrf
             <button type="submit" class="btn btn-outline-warning btn-sm">
                 <i class="bi bi-key me-1"></i>Đặt lại mật khẩu
@@ -19,7 +19,7 @@
         </form>
         @endif
         @if($account->id !== auth()->id())
-        <form action="{{ route('accounts.toggle-status', $account->id) }}" method="POST" class="d-inline" onsubmit="return confirm('Bạn có chắc muốn {{ $account->deleted_at ? 'kích hoạt' : 'khóa' }} tài khoản này?')">
+        <form action="{{ route('accounts.toggle-status', $account->id) }}" method="POST" class="d-inline" id="toggleStatusAccountShowForm">
             @csrf
             <button type="submit" class="btn btn-outline-{{ $account->deleted_at ? 'success' : 'danger' }} btn-sm">
                 <i class="bi bi-{{ $account->deleted_at ? 'unlock' : 'lock' }} me-1"></i>
@@ -27,7 +27,7 @@
             </button>
         </form>
         @endif
-        <form action="{{ route('accounts.destroy', $account->id) }}" method="POST" class="d-inline" onsubmit="return confirm('Bạn có chắc muốn xóa tài khoản này?')">
+        <form action="{{ route('accounts.destroy', $account->id) }}" method="POST" class="d-inline" id="deleteAccountShowForm">
             @csrf @method('DELETE')
             <button type="submit" class="btn btn-outline-danger btn-sm">
                 <i class="bi bi-trash"></i> Xóa
@@ -56,8 +56,8 @@
                     <tr>
                         <td><strong>Vai trò</strong></td>
                         <td>
-                            @if($account->role === 'admin')
-                                <span class="badge bg-danger-subtle text-danger border border-danger px-3 py-2 rounded-pill"><i class="fas fa-shield-alt me-1"></i>Quản trị viên</span>
+                            @if($account->isManager())
+                                <span class="badge bg-danger-subtle text-danger border border-danger px-3 py-2 rounded-pill"><i class="fas fa-shield-alt me-1"></i>Quản lý</span>
                             @elseif($account->role === 'staff')
                                 <span class="badge bg-info-subtle text-info border border-info px-3 py-2 rounded-pill"><i class="fas fa-user-tie me-1"></i>Nhân viên</span>
                             @else
@@ -107,3 +107,98 @@
     <i class="bi bi-arrow-left me-1"></i>Quay lại
 </a>
 @endsection
+
+@push('scripts')
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const resetForm = document.getElementById('resetPasswordForm');
+        if (resetForm) {
+            resetForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+
+                if (typeof Swal === 'undefined') {
+                    if (confirm('Bạn có chắc muốn đặt lại mật khẩu cho tài khoản này?')) {
+                        resetForm.submit();
+                    }
+                    return;
+                }
+
+                Swal.fire({
+                    title: 'Đặt lại mật khẩu?',
+                    text: 'Mật khẩu sẽ được đặt lại về mặc định.',
+                    icon: 'question',
+                    showCancelButton: true,
+                    confirmButtonColor: '#f59e0b',
+                    cancelButtonColor: '#64748b',
+                    confirmButtonText: 'Đặt lại',
+                    cancelButtonText: 'Hủy'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        resetForm.submit();
+                    }
+                });
+            });
+        }
+
+        const toggleForm = document.getElementById('toggleStatusAccountShowForm');
+        if (toggleForm) {
+            toggleForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+
+                if (typeof Swal === 'undefined') {
+                    toggleForm.submit();
+                    return;
+                }
+
+                const button = toggleForm.querySelector('button');
+                const isActive = button && button.classList.contains('btn-outline-danger');
+                const actionText = isActive ? 'khóa' : 'kích hoạt';
+
+                Swal.fire({
+                    title: 'Xác nhận ' + actionText + ' tài khoản?',
+                    text: 'Tài khoản sẽ được ' + actionText + '.',
+                    icon: 'question',
+                    showCancelButton: true,
+                    confirmButtonColor: '#2563eb',
+                    cancelButtonColor: '#64748b',
+                    confirmButtonText: actionText.charAt(0).toUpperCase() + actionText.slice(1),
+                    cancelButtonText: 'Hủy'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        toggleForm.submit();
+                    }
+                });
+            });
+        }
+
+        const deleteForm = document.getElementById('deleteAccountShowForm');
+        if (deleteForm) {
+            deleteForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+
+                if (typeof Swal === 'undefined') {
+                    if (confirm('Bạn có chắc muốn xóa tài khoản này?')) {
+                        deleteForm.submit();
+                    }
+                    return;
+                }
+
+                Swal.fire({
+                    title: 'Xóa tài khoản?',
+                    text: 'Hành động này không thể hoàn tác.',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#dc2626',
+                    cancelButtonColor: '#64748b',
+                    confirmButtonText: 'Xóa',
+                    cancelButtonText: 'Hủy'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        deleteForm.submit();
+                    }
+                });
+            });
+        }
+    });
+</script>
+@endpush

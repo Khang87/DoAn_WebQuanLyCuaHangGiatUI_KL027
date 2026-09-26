@@ -4,6 +4,9 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\DeliveryRequest;
+use App\Models\Customer;
+use App\Models\User;
+use App\Models\Order;
 use App\Services\DeliveryService;
 use Illuminate\Http\Request;
 
@@ -24,12 +27,31 @@ class DeliveryController extends Controller
             'sort_order' => $request->input('sort_order'),
         ]);
 
-        $customers = \App\Models\Customer::orderBy('name')->get();
+        $customers = Customer::orderBy('name')->get();
+        $employees = User::where('role', '!=', 'customer')->orderBy('name')->get();
 
-        return view('admin.deliveries.index', compact('deliveries', 'customers'));
+        return view('admin.deliveries.index', compact('deliveries', 'customers', 'employees'));
     }
 
-    // create() and store() methods removed - "Tạo lịch giao nhận" feature disabled
+    public function create()
+    {
+        $customers = Customer::orderBy('name')->get();
+        $employees = User::where('role', '!=', 'customer')->orderBy('name')->get();
+        $orders = Order::whereDoesntHave('delivery')->where('status', '!=', 'cancelled')->orderBy('created_at', 'desc')->get();
+
+        return view('admin.deliveries.create', compact('customers', 'employees', 'orders'));
+    }
+
+    public function store(DeliveryRequest $request)
+    {
+        try {
+            $delivery = $this->deliveryService->create($request->validated());
+
+            return redirect()->route('deliveries.show', $delivery)->with('success', 'Giao nhận đã được tạo thành công.');
+        } catch (\Exception $e) {
+            return redirect()->route('deliveries.create')->with('error', 'Có lỗi xảy ra: ' . $e->getMessage())->withInput();
+        }
+    }
 
     public function show(int $id)
     {
@@ -50,9 +72,11 @@ class DeliveryController extends Controller
             abort(404);
         }
 
-        $customers = \App\Models\Customer::orderBy('name')->get();
+        $customers = Customer::orderBy('name')->get();
+        $employees = User::where('role', '!=', 'customer')->orderBy('name')->get();
+        $orders = Order::whereDoesntHave('delivery')->where('status', '!=', 'cancelled')->orderBy('created_at', 'desc')->get();
 
-        return view('admin.deliveries.edit', compact('delivery', 'customers'));
+        return view('admin.deliveries.edit', compact('delivery', 'customers', 'employees', 'orders'));
     }
 
     public function update(DeliveryRequest $request, int $id)
@@ -76,14 +100,16 @@ class DeliveryController extends Controller
     {
         $delivery = $this->deliveryService->find($id);
 
-        if ($delivery) {
-            try {
-                $this->deliveryService->delete($delivery);
-            } catch (\Exception $e) {
-                return redirect()->route('deliveries.index')->with('error', 'Có lỗi xảy ra: ' . $e->getMessage());
-            }
+        if (!$delivery) {
+            abort(404);
         }
 
-        return redirect()->route('deliveries.index')->with('success', 'Đã xóa giao nhận.');
+        try {
+            $this->deliveryService->delete($delivery);
+
+            return redirect()->route('deliveries.index')->with('success', 'Đã xóa giao nhận.');
+        } catch (\Exception $e) {
+            return redirect()->route('deliveries.index')->with('error', 'Có lỗi xảy ra: ' . $e->getMessage());
+        }
     }
 }

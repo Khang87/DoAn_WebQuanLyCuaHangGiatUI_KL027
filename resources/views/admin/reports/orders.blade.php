@@ -20,13 +20,14 @@
                 <tbody>
                     @php
                         $statusLabels = [
+                            'pending' => 'Chờ tiếp nhận',
+                            'received' => 'Đã nhận đồ',
+                            'sorting' => 'Đang phân loại',
+                            'processing' => 'Đang giặt / Xử lý',
+                            'washed' => 'Đã giặt xong',
+                            'delivering' => 'Đang giao đồ',
                             'completed' => 'Hoàn thành',
                             'cancelled' => 'Đã hủy',
-                            'pending' => 'Chờ xử lý',
-                            'processing' => 'Đang xử lý',
-                            'delivering' => 'Đang giao',
-                            'washing' => 'Đang giặt',
-                            'washed' => 'Đã giặt xong',
                         ];
                     @endphp
                     @foreach($orderStatusCounts as $status => $count)
@@ -38,7 +39,7 @@
                                 <span class="badge bg-danger-subtle text-danger border border-danger px-3 py-2 rounded-pill"><i class="fas fa-x-circle me-1"></i>{{ $statusLabels[$status] ?? $status }}</span>
                             @elseif($status === 'pending')
                                 <span class="badge bg-warning-subtle text-warning border border-warning px-3 py-2 rounded-pill"><i class="fas fa-hourglass me-1"></i>{{ $statusLabels[$status] ?? $status }}</span>
-                            @elseif(in_array($status, ['processing', 'delivering', 'washing', 'washed']))
+                            @elseif(in_array($status, ['received', 'sorting', 'delivering', 'processing', 'washed']))
                                 <span class="badge bg-info-subtle text-info border border-info px-3 py-2 rounded-pill"><i class="fas fa-cog me-1"></i>{{ $statusLabels[$status] ?? $status }}</span>
                             @else
                                 <span class="badge bg-secondary-subtle text-secondary border border-secondary px-3 py-2 rounded-pill">{{ $statusLabels[$status] ?? $status }}</span>

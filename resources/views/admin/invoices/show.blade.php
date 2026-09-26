@@ -10,7 +10,7 @@
     </a>
     <div class="d-flex gap-2">
         <a href="{{ route('invoices.export-excel', $invoice->id) }}" class="btn btn-success btn-sm">
-            <i class="bi bi-file-earmark-excel me-1"></i>Xuất Excel
+            <i class="bi bi-file-earmark-excel me-1"></i>Xuất excel
         </a>
         <button type="button" class="btn btn-primary btn-sm" onclick="window.print()">
             <i class="bi bi-printer me-1"></i>In hóa đơn
@@ -31,43 +31,35 @@
                 </div>
                 <div class="col-md-6 text-md-end">
                     <h5 class="fw-bold mb-1">HÓA ĐƠN DỊCH VỤ GIẶT ỦI</h5>
-                    @php
-                        $badgeClass = $invoice->status === 'paid' ? 'bg-success-subtle text-success border-success' :
-                                      ($invoice->status === 'partial' ? 'bg-warning-subtle text-warning border-warning' :
-                                      'bg-danger-subtle text-danger border-danger');
-                    @endphp
-                    @if($invoice->status === 'paid')
-                        <span class="badge {{ $badgeClass }} px-3 py-2 rounded-pill"><i class="fas fa-check-circle me-1"></i>Đã thanh toán</span>
-                    @elseif($invoice->status === 'partial')
-                        <span class="badge {{ $badgeClass }} px-3 py-2 rounded-pill"><i class="fas fa-hourglass me-1"></i>Một phần</span>
-                    @else
-                        <span class="badge {{ $badgeClass }} px-3 py-2 rounded-pill"><i class="fas fa-x-circle me-1"></i>Chưa thanh toán</span>
-                    @endif
-                    
-                        <div class="d-flex gap-2 mt-3">
-                            @if($invoice->status !== 'paid')
-                                <form action="{{ route('invoices.update-status', $invoice) }}" method="POST" class="d-inline">
-                                    @csrf
-                                    <input type="hidden" name="status" value="paid">
-                                    <button type="submit" class="btn btn-sm btn-outline-success"><i class="fas fa-check me-1"></i>Đánh dấu đã thanh toán</button>
-                                </form>
-                            @endif
-                            @if($invoice->status !== 'unpaid')
-                                <form action="{{ route('invoices.update-status', $invoice) }}" method="POST" class="d-inline">
-                                    @csrf
-                                    <input type="hidden" name="status" value="unpaid">
-                                    <button type="submit" class="btn btn-sm btn-outline-warning"><i class="fas fa-undo me-1"></i>Chuyển về chờ thanh toán</button>
-                                </form>
-                            @endif
-                        </div>
-<table class="table table-borderless table-sm mt-2 mb-0 text-start text-md-end">
+                    <span class="badge {{ $invoice->getStatusBadgeClass() }} px-3 py-2 rounded-pill">
+                        <i class="fas fa-{{ $invoice->status === 'paid' ? 'check-circle' : ($invoice->status === 'partial' ? 'hourglass' : 'x-circle') }} me-1"></i>{{ $invoice->getStatusLabel() }}
+                    </span>
+
+                    <div class="d-flex gap-2 mt-3 justify-content-md-end">
+                        @if($invoice->status !== 'paid')
+                            <form action="{{ route('invoices.update-status', $invoice) }}" method="POST" class="d-inline">
+                                @csrf
+                                <input type="hidden" name="status" value="paid">
+                                <button type="submit" class="btn btn-sm btn-outline-success"><i class="fas fa-check me-1"></i>Đánh dấu đã thanh toán</button>
+                            </form>
+                        @endif
+                        @if($invoice->status !== 'unpaid')
+                            <form action="{{ route('invoices.update-status', $invoice) }}" method="POST" class="d-inline">
+                                @csrf
+                                <input type="hidden" name="status" value="unpaid">
+                                <button type="submit" class="btn btn-sm btn-outline-warning"><i class="fas fa-undo me-1"></i>Chuyển về chờ thanh toán</button>
+                            </form>
+                        @endif
+                    </div>
+
+                    <table class="table table-borderless table-sm mt-2 mb-0 text-start text-md-end">
                         <tr>
                             <td class="text-muted">Mã hóa đơn:</td>
                             <td><strong>{{ $invoice->code ?: '-' }}</strong></td>
                         </tr>
                         <tr>
                             <td class="text-muted">Ngày lập:</td>
-                            <td>{{ $invoice->created_at?->format('d/m/Y H:i') ?: now()->format('d/m/Y H:i') }}</td>
+                            <td>{{ $invoice->invoice_date?->format('d/m/Y') ?: now()->format('d/m/Y') }}</td>
                         </tr>
                         <tr>
                             <td class="text-muted">Mã đơn:</td>
@@ -80,7 +72,8 @@
 
         @php
             $customer = $invoice->order?->customer;
-            $payment = $invoice->payments?->last();
+            $totalPaid = $invoice->total_paid;
+            $balance = $invoice->balance;
         @endphp
 
         <div class="invoice-customer mb-4">
@@ -105,27 +98,21 @@
                             <td>{{ $customer?->address ?: '-' }}</td>
                         </tr>
                         <tr>
-                            <td class="text-muted">Phương thức:</td>
-                            <td>
-                                @if($payment)
-                                    @if($payment->method === 'cash')
-                                        <i class="bi bi-cash-coin me-1"></i>Tiền mặt
-                                    @elseif($payment->method === 'bank_transfer')
-                                        <i class="bi bi-bank me-1"></i>Chuyển khoản
-                                    @else
-                                        <i class="bi bi-wallet2 me-1"></i>Ví điện tử
-                                    @endif
-                                @else
-                                    -
-                                @endif
-                            </td>
+                            <td class="text-muted">Đã thanh toán:</td>
+                            <td class="text-success fw-semibold">{{ number_format($totalPaid) }} VNĐ</td>
                         </tr>
+                        @if($balance > 0)
+                        <tr>
+                            <td class="text-muted">Còn nợ:</td>
+                            <td class="text-danger fw-semibold">{{ number_format($balance) }} VNĐ</td>
+                        </tr>
+                        @endif
                     </table>
                 </div>
             </div>
-            @if($invoice->order?->notes || $payment?->notes)
+            @if($invoice->order?->notes)
             <div class="mt-2">
-                <strong>Ghi chú:</strong> {{ $invoice->order?->notes ?: ($payment?->notes ?: '-') }}
+                <strong>Ghi chú:</strong> {{ $invoice->order?->notes }}
             </div>
             @endif
         </div>
@@ -136,11 +123,11 @@
                     <thead>
                         <tr>
                             <th>STT</th>
-                            <th>Tên Dịch Vụ / Loại Đồ</th>
-                            <th>Đơn Vị Tính</th>
-                            <th class="text-end">Số Lượng</th>
+                            <th>Tên dịch vụ / Loại đồ</th>
+                            <th>Đơn Vị tính</th>
+                            <th class="text-end">Số lượng</th>
                             <th class="text-end">Đơn Giá (VNĐ)</th>
-                            <th class="text-end">Thành Tiền (VNĐ)</th>
+                            <th class="text-end">Thành tiền (VNĐ)</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -169,20 +156,55 @@
                     <table class="table table-borderless mb-0">
                         <tr>
                             <td class="text-muted">Tạm tính:</td>
-                            <td class="text-end">{{ number_format($invoice->order?->items?->sum('subtotal') ?? $invoice->total) }} VNĐ</td>
+                            <td class="text-end">{{ number_format($invoice->total_amount) }} VNĐ</td>
                         </tr>
                         <tr>
-                            <td class="text-muted">Giảm giá:</td>
-                            <td class="text-end">{{ number_format($invoice->order?->discount_amount ?? 0) }} VNĐ</td>
+                            <td class="text-muted">Giảm giá (Voucher + Điểm):</td>
+                            <td class="text-end text-danger">-{{ number_format($invoice->discount_amount) }} VNĐ</td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted">Phí giao hàng:</td>
+                            <td class="text-end">{{ number_format($invoice->delivery_fee) }} VNĐ</td>
                         </tr>
                         <tr class="border-top">
                             <td class="fw-bold fs-5">TỔNG CỘNG:</td>
-                            <td class="text-end fw-bold fs-5 text-primary">{{ number_format($invoice->total) }} VNĐ</td>
+                            <td class="text-end fw-bold fs-5 text-primary">{{ number_format($invoice->grand_total) }} VNĐ</td>
                         </tr>
+                        @if($totalPaid > 0)
+                        <tr class="border-top">
+                            <td class="text-muted">Đã thanh toán:</td>
+                            <td class="text-end text-success">{{ number_format($totalPaid) }} VNĐ</td>
+                        </tr>
+                        <tr class="border-top">
+                            <td class="fw-bold">Còn nợ:</td>
+                            <td class="text-end fw-bold text-{{ $balance > 0 ? 'danger' : 'success' }}">{{ number_format($balance) }} VNĐ</td>
+                        </tr>
+                        @endif
                     </table>
                 </div>
             </div>
         </div>
+
+        @if($balance > 0)
+        <div class="row mt-4">
+            <div class="col-md-6">
+                <div class="card bg-light">
+                    <div class="card-body">
+                        <h6 class="fw-bold mb-3">Mã QR thanh toán (VNPAY/MoMo/ZaloPay)</h6>
+                        <div class="text-center p-4">
+                            <div class="bg-white p-4 rounded border d-inline-block">
+                                <i class="bi bi-qr-code-scan text-muted" style="font-size: 4rem;"></i>
+                                <p class="text-muted small mt-2 mb-0">Quét mã để thanh toán qua ngân hàng / ví điện tử</p>
+                            </div>
+                            <div class="mt-3">
+                                <small class="text-muted">Nội dung chuyển khoản: Thanh toan hoa don {{ $invoice->code }}</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        @endif
     </div>
 </div>
 @endsection
@@ -190,7 +212,7 @@
 @push('styles')
 <style>
     @media print {
-        .sidebar-wrapper, .navbar-custom, .invoice-header .col-md-6:first-child, .btn, .d-flex.gap-2 {
+        .sidebar-wrapper, .navbar-custom, .invoice-header .col-md-6:first-child, .btn, .d-flex.gap-2, .card.bg-light {
             display: none !important;
         }
         .invoice-header .col-md-6:last-child {

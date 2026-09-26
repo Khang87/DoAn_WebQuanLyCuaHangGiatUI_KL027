@@ -26,9 +26,44 @@
 
 <div class="d-flex gap-2">
     <a href="{{ route('order-items.edit', $item) }}" class="btn btn-warning">Sửa</a>
-    <form action="{{ route('order-items.destroy', $item) }}" method="POST" onsubmit="return confirm('Xóa?')">
+    <form action="{{ route('order-items.destroy', $item) }}" method="POST" id="deleteOrderItemShowForm">
         @csrf @method('DELETE')
         <button type="submit" class="btn btn-danger">Xóa</button>
     </form>
 </div>
 @endsection
+
+@push('scripts')
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const form = document.getElementById('deleteOrderItemShowForm');
+        if (!form) return;
+
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            if (typeof Swal === 'undefined') {
+                if (confirm('Xóa?')) {
+                    form.submit();
+                }
+                return;
+            }
+
+            Swal.fire({
+                title: 'Xóa chi tiết đơn hàng?',
+                text: 'Hành động này không thể hoàn tác.',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#dc2626',
+                cancelButtonColor: '#64748b',
+                confirmButtonText: 'Xóa',
+                cancelButtonText: 'Hủy'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    form.submit();
+                }
+            });
+        });
+    });
+</script>
+@endpush

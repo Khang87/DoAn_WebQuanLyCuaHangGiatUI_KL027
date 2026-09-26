@@ -41,7 +41,6 @@ class CustomerControllerTest extends TestCase
             'email' => 'b@example.com',
             'phone' => '0987654321',
             'address' => 'Hà Nội',
-            'type' => 'VIP',
         ]);
 
         $response->assertRedirect(route('customers.index'));

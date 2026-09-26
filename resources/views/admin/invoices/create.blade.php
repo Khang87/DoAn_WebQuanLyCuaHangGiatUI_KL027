@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Tạo Hóa Đơn - Sky Laundry')
+@section('title', 'Tạo hóa Đơn - Sky Laundry')
 @section('page-title', 'Tạo hóa đơn')
 
 @section('content')
@@ -17,17 +17,31 @@
             @csrf
             <div class="row g-4">
                 <div class="col-md-6">
-                    <label class="form-label">Đơn hàng</label>
-                    <select class="form-select" name="order_id">
+                    <label class="form-label">Đơn hàng <span class="text-danger ms-1">*</span></label>
+                    <select class="form-select" name="order_id" required>
                         <option value="">Chọn đơn hàng</option>
                         @foreach($orders as $order)
-                        <option value="{{ $order->id }}">{{ $order->code }} - {{ $order->customer?->name }}</option>
+                        <option value="{{ $order->id }}" {{ $preselectedOrder && $preselectedOrder->id == $order->id ? 'selected' : '' }}>
+                            {{ $order->code }} - {{ $order->customer?->name }}
+                        </option>
                         @endforeach
                     </select>
                 </div>
                 <div class="col-md-6">
-                    <label class="form-label">Tổng tiền</label>
-                    <input type="number" class="form-control" name="total" placeholder="250000" min="0" required>
+                    <label class="form-label">Ngày lập <span class="text-danger ms-1">*</span></label>
+                    <input type="date" class="form-control" name="invoice_date" value="{{ now()->toDateString() }}" required>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Tạm tính <span class="text-danger ms-1">*</span></label>
+                    <input type="number" class="form-control" name="total_amount" placeholder="250000" min="0" step="1000" required>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Giảm giá</label>
+                    <input type="number" class="form-control" name="discount_amount" placeholder="0" min="0" step="1000" value="0">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Phí giao hàng</label>
+                    <input type="number" class="form-control" name="delivery_fee" placeholder="0" min="0" step="1000" value="0">
                 </div>
                 <div class="col-12">
                     <label class="form-label">Ghi chú</label>

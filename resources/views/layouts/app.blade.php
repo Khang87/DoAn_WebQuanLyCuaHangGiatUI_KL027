@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>@yield('title', 'Quản Lý Cửa Hàng Giặt Ủi')</title>
+    <title>@yield('title', 'Quản lý cửa Hàng giặt Ủi')</title>
 
     <!-- Favicon -->
     <link rel="icon" type="image/png" href="{{ asset('assets/images/favicon.ico') }}">
@@ -44,7 +44,7 @@
                 <div class="sidebar-menu-title">Menu Chính</div>
                 <ul class="sidebar-menu-list">
                     <li class="sidebar-menu-item">
-                        <a href="{{ route('dashboard') }}" class="sidebar-menu-link {{ request()->routeIs('dashboard') ? 'active' : '' }}">
+                        <a href="{{ route('dashboard') }}" class="sidebar-menu-link {{ request()->routeIs('dashboard') || request()->routeIs('admin.dashboard') || request()->routeIs('staff.dashboard') ? 'active' : '' }}">
                             <i class="bi bi-grid-fill"></i>
                             <span>Dashboard</span>
                         </a>
@@ -52,14 +52,14 @@
                 </ul>
             </div>
 
-            <!-- Quản Lý - Chung (Staff & Admin) -->
+            <!-- Quan ly - Chung (Staff & Admin) -->
             <div class="sidebar-menu-section">
-                <div class="sidebar-menu-title">Quản Lý</div>
+                <div class="sidebar-menu-title">Quản lý</div>
                 <ul class="sidebar-menu-list">
                     <li class="sidebar-menu-item">
                         <a href="{{ route('customers.index') }}" class="sidebar-menu-link {{ request()->routeIs('customers.*') ? 'active' : '' }}">
                             <i class="bi bi-people"></i>
-                            <span>Khách Hàng</span>
+                            <span>Khách hàng</span>
                         </a>
                     </li>
                     @if(auth()->user()?->isStaff())
@@ -70,7 +70,7 @@
                         </a>
                     </li>
                     @endif
-                    @if(auth()->user()?->isAdmin())
+                    @if(auth()->user()?->isManager())
                     <li class="sidebar-menu-item">
                         <a href="{{ route('service-categories.index') }}" class="sidebar-menu-link {{ request()->routeIs('service-categories.*') ? 'active' : '' }}">
                             <i class="bi bi-folder-fill"></i>
@@ -80,45 +80,52 @@
                     <li class="sidebar-menu-item">
                         <a href="{{ route('services.index') }}" class="sidebar-menu-link {{ request()->routeIs('services.*') ? 'active' : '' }}">
                             <i class="bi bi-briefcase"></i>
-                            <span>Dịch Vụ</span>
+                            <span>Dịch vụ</span>
                         </a>
                     </li>
                     <li class="sidebar-menu-item">
                         <a href="{{ route('garments.index') }}" class="sidebar-menu-link {{ request()->routeIs('garments.*') ? 'active' : '' }}">
                             <i class="fa-solid fa-shirt"></i>
-                            <span>Loại Đồ Giặt</span>
+                            <span>Loại đồ giặt</span>
                         </a>
                     </li>
                     <li class="sidebar-menu-item">
                         <a href="{{ route('pricings.index') }}" class="sidebar-menu-link {{ request()->routeIs('pricings.*') ? 'active' : '' }}">
                             <i class="bi bi-currency-dollar"></i>
-                            <span>Bảng Giá</span>
+                            <span>Bảng giá</span>
                         </a>
                     </li>
                     @endif
                 </ul>
             </div>
 
-            <!-- Giao Nhận & Thanh Toán (Staff & Admin) -->
+            <!-- Giao nhan & Thanh toan (Staff & Admin) -->
             <div class="sidebar-menu-section">
-                <div class="sidebar-menu-title">Giao Nhận & Thanh Toán</div>
+                <div class="sidebar-menu-title">Giao nhận & Thanh toán</div>
                 <ul class="sidebar-menu-list">
                     <li class="sidebar-menu-item">
                         <a href="{{ route('deliveries.index') }}" class="sidebar-menu-link {{ request()->routeIs('deliveries.*') ? 'active' : '' }}">
                             <i class="bi bi-truck"></i>
-                            <span>Giao Nhận</span>
+                            <span>Giao nhận</span>
+                        </a>
+                    </li>
+                    <li class="sidebar-menu-item">
+                        <a href="{{ route('reviews.index') }}" class="sidebar-menu-link {{ request()->routeIs('reviews.*') ? 'active' : '' }}">
+                            <i class="fas fa-star"></i>
+                            <span>Quản lý Đánh giá</span>
                         </a>
                     </li>
                     <li class="sidebar-menu-item">
                         <a href="{{ route('bookings.index') }}" class="sidebar-menu-link {{ request()->routeIs('bookings.*') ? 'active' : '' }}">
                             <i class="bi bi-calendar-check"></i>
-                            <span>Đặt Lịch</span>
+                            <span>Đặt lịch</span>
                         </a>
                     </li>
+                    @if(auth()->user()?->isManager())
                     <li class="sidebar-menu-item">
                         <a href="{{ route('payments.index') }}" class="sidebar-menu-link {{ request()->routeIs('payments.*') ? 'active' : '' }}">
                             <i class="bi bi-credit-card"></i>
-                            <span>Thanh Toán</span>
+                            <span>Thanh toán</span>
                         </a>
                     </li>
                     <li class="sidebar-menu-item">
@@ -127,43 +134,44 @@
                             <span>Hóa Đơn</span>
                         </a>
                     </li>
+                    @endif
                 </ul>
             </div>
 
-            @if(auth()->user()?->isAdmin())
-            <!-- Khuyến Mãi & Báo Cáo (Chỉ Admin) -->
+            @if(auth()->user()?->isManager())
+            <!-- Khuyen mai & Bao cao (Chi quan ly) -->
             <div class="sidebar-menu-section">
-                <div class="sidebar-menu-title">Khuyến Mãi & Báo Cáo</div>
+                <div class="sidebar-menu-title">Khuyến mãi & Báo cáo</div>
                 <ul class="sidebar-menu-list">
                     <li class="sidebar-menu-item">
                         <a href="{{ route('promotions.index') }}" class="sidebar-menu-link {{ request()->routeIs('promotions.*') ? 'active' : '' }}">
                             <i class="bi bi-gift"></i>
-                            <span>Khuyến Mãi</span>
+                            <span>Khuyến mãi</span>
                         </a>
                     </li>
                     <li class="sidebar-menu-item">
                         <a href="{{ route('reports.index') }}" class="sidebar-menu-link {{ request()->routeIs('reports.*') ? 'active' : '' }}">
                             <i class="bi bi-bar-chart-line"></i>
-                            <span>Báo Cáo</span>
+                            <span>Báo cáo</span>
                         </a>
                     </li>
                 </ul>
             </div>
 
-            <!-- Hệ Thống (Chỉ Admin) -->
+            <!-- He thong (Chi quan ly) -->
             <div class="sidebar-menu-section">
-                <div class="sidebar-menu-title">Hệ Thống</div>
+                <div class="sidebar-menu-title">Hệ thống</div>
                 <ul class="sidebar-menu-list">
                     <li class="sidebar-menu-item">
                         <a href="{{ route('accounts.index') }}" class="sidebar-menu-link {{ request()->routeIs('accounts.*') ? 'active' : '' }}">
                             <i class="bi bi-person-gear"></i>
-                            <span>Tài Khoản</span>
+                            <span>Tài khoản</span>
                         </a>
                     </li>
                     <li class="sidebar-menu-item">
                         <a href="{{ route('notifications.index') }}" class="sidebar-menu-link {{ request()->routeIs('notifications.*') ? 'active' : '' }}">
                             <i class="bi bi-bell"></i>
-                            <span>Thông Báo</span>
+                            <span>Thông báo</span>
                         </a>
                     </li>
                 </ul>
@@ -176,8 +184,8 @@
             <img src="{{ asset('assets/images/avatar.png') }}" alt="User" class="sidebar-profile-img"
                 onerror="this.src='https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=256&auto=format&fit=crop'">
             <div class="sidebar-profile-info">
-                <div class="sidebar-profile-name">{{ auth()->user()->name ?? 'Administrator' }}</div>
-                <div class="sidebar-profile-email">{{ auth()->user()->email ?? 'admin@email.com' }}</div>
+                <div class="sidebar-profile-name">{{ auth()->user()->name ?? 'Quan ly' }}</div>
+                <div class="sidebar-profile-email">{{ auth()->user()->email ?? 'quanly@email.com' }}</div>
             </div>
         </div>
     </div>
@@ -202,7 +210,7 @@
                     </button>
                     <div class="dropdown-menu dropdown-menu-end notification-dropdown">
                         <div class="p-3 border-bottom">
-                            <h6 class="mb-0">Thông Báo</h6>
+                            <h6 class="mb-0">Thông báo</h6>
                         </div>
                         <div class="p-2" style="max-height: 300px; overflow-y: auto;">
                             <a href="#" class="dropdown-item py-2">
@@ -231,6 +239,48 @@
                     </div>
                 </div>
 
+                <!-- Quick Actions -->
+                @if(auth()->check() && (auth()->user()->isManager() || auth()->user()->isStaff()))
+                <div class="dropdown">
+                    <button class="navbar-action-btn dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" title="Lối tắt nhanh">
+                        <i class="bi bi-lightning-charge"></i>
+                    </button>
+                    <div class="dropdown-menu dropdown-menu-end" style="min-width: 220px;">
+                        <div class="p-2 border-bottom">
+                            <h6 class="mb-0"><i class="bi bi-lightning-charge me-1"></i>Lối tắt nhanh</h6>
+                        </div>
+                        @can('orders.create')
+                        <a class="dropdown-item py-2" href="{{ route('orders.create') }}">
+                            <i class="bi bi-plus-circle me-2"></i>Tạo đơn hàng mới
+                        </a>
+                        @endcan
+                        @can('customers.create')
+                        <a class="dropdown-item py-2" href="{{ route('customers.create') }}">
+                            <i class="bi bi-person-plus me-2"></i>Tạo khách hàng mới
+                        </a>
+                        @endcan
+                        @can('invoices.create')
+                        <a class="dropdown-item py-2" href="{{ route('invoices.create') }}">
+                            <i class="bi bi-receipt me-2"></i>Lập hóa đơn
+                        </a>
+                        @endcan
+                        @can('services.create')
+                        <a class="dropdown-item py-2" href="{{ route('services.create') }}">
+                            <i class="bi bi-plus-lg me-2"></i>Thêm dịch vụ
+                        </a>
+                        @endcan
+                        @can('promotions.create')
+                        <a class="dropdown-item py-2" href="{{ route('promotions.create') }}">
+                            <i class="bi bi-gift me-2"></i>Tạo khuyến mãi
+                        </a>
+                        @endcan
+                        <a class="dropdown-item py-2" href="{{ route('deliveries.create') }}">
+                            <i class="bi bi-truck me-2"></i>Tạo lịch giao nhận
+                        </a>
+                    </div>
+                </div>
+                @endif
+
                 <!-- User Menu -->
                 @php
                     $authUser = Auth::user();
@@ -245,17 +295,19 @@
                 @endphp
                 <div class="dropdown">
                     <button class="navbar-action-btn dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                        <img src="{{ asset($authAvatar) }}" alt="{{ $authUser->name ?? 'User' }}" class="rounded-circle border" style="width: 32px; height: 32px; object-fit: cover;">
+                        <img src="{{ asset($authAvatar) }}" alt="{{ $authUser->name ?? 'User' }}" class="rounded-circle border avatar-cover" style="width: 32px; height: 32px;">
                     </button>
                     <ul class="dropdown-menu dropdown-menu-end">
                         <li><a class="dropdown-item" href="{{ route('profile') }}"><i class="bi bi-person me-2"></i> Hồ Sơ</a></li>
-                        <li><a class="dropdown-item" href="{{ route('settings') }}"><i class="bi bi-gear me-2"></i> Cài Đặt</a></li>
+                        @if(auth()->user()->isManager())
+                        <li><a class="dropdown-item" href="{{ route('settings') }}"><i class="bi bi-gear me-2"></i> Cài đặt</a></li>
+                        @endif
                         <li><hr class="dropdown-divider"></li>
                         <li>
                             <form action="{{ route('logout') }}" method="POST">
                                 @csrf
                                 <button type="submit" class="dropdown-item text-danger">
-                                    <i class="bi bi-box-arrow-right me-2"></i> Đăng Xuất
+                                    <i class="bi bi-box-arrow-right me-2"></i> Đăng xuất
                                 </button>
                             </form>
                         </li>
@@ -272,6 +324,36 @@
 
     <!-- Bootstrap JS -->
     <script src="{{ asset('assets/libs/bootstrap/js/bootstrap.bundle.min.js') }}"></script>
+
+    <!-- SweetAlert2 -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.all.min.js"></script>
+
+    <!-- Flash Messages -->
+    @if(session('success') || session('error'))
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            @if(session('success'))
+            Swal.fire({
+                icon: 'success',
+                title: 'Thành công!',
+                text: @json(session('success')),
+                timer: 2500,
+                showConfirmButton: false
+            });
+            @endif
+
+            @if(session('error'))
+            Swal.fire({
+                icon: 'error',
+                title: 'Không có quyền truy cập!',
+                text: @json(session('error')),
+                timer: 3500,
+                showConfirmButton: false
+            });
+            @endif
+        });
+    </script>
+    @endif
 
     <!-- Custom JS -->
     <script>

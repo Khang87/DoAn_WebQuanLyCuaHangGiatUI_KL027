@@ -1,7 +1,7 @@
 @extends('layouts.app')
 
-@section('title', 'Mã Giảm Giá - Sky Laundry')
-@section('page-title', 'Mã Giảm Giá')
+@section('title', 'Mã giảm giá - Sky Laundry')
+@section('page-title', 'Mã giảm giá')
 
 @section('content')
 <div class="d-flex justify-content-between align-items-center mb-4">
@@ -67,7 +67,7 @@
                             <div class="d-flex gap-2">
                                 <a href="{{ route('coupons.show', $coupon) }}" class="btn btn-order-action view" title="Xem"><i class="bi bi-eye"></i></a>
                                 <a href="{{ route('coupons.edit', $coupon) }}" class="btn btn-order-action edit" title="Sửa"><i class="bi bi-pencil"></i></a>
-                                <form action="{{ route('coupons.destroy', $coupon) }}" method="POST" class="d-inline" onsubmit="return confirm('Xóa?')">
+                                <form action="{{ route('coupons.destroy', $coupon) }}" method="POST" class="d-inline" id="deleteCouponForm_{{ $coupon->id }}">
                                     @csrf @method('DELETE')
                                     <button type="submit" class="btn btn-order-action delete" title="Xóa"><i class="bi bi-trash"></i></button>
                                 </form>
@@ -88,3 +88,37 @@
 </div>
 @endif
 @endsection
+
+@push('scripts')
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        document.querySelectorAll('[id^="deleteCouponForm_"]').forEach(function(form) {
+            form.addEventListener('submit', function(e) {
+                e.preventDefault();
+
+                if (typeof Swal === 'undefined') {
+                    if (confirm('Xóa?')) {
+                        form.submit();
+                    }
+                    return;
+                }
+
+                Swal.fire({
+                    title: 'Xóa mã giảm giá?',
+                    text: 'Hành động này không thể hoàn tác.',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#dc2626',
+                    cancelButtonColor: '#64748b',
+                    confirmButtonText: 'Xóa',
+                    cancelButtonText: 'Hủy'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        form.submit();
+                    }
+                });
+            });
+        });
+    });
+</script>
+@endpush

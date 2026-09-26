@@ -22,14 +22,15 @@ class InvoiceControllerTest extends TestCase
         $response->assertHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     }
 
-    public function test_staff_can_access_invoice_export_route(): void
+    public function test_staff_cannot_access_invoice_export_route(): void
     {
         $user = User::factory()->staff()->create();
 
         $response = $this->actingAs($user)->get(route('invoices.export'));
 
-        $response->assertStatus(200);
-        $response->assertHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        // Báo cáo tài chính chỉ dành cho quản lý, nhân viên bị chặn.
+        $response->assertRedirect(route('staff.dashboard'));
+        $response->assertSessionHas('error');
     }
 
     public function test_unauthenticated_users_are_redirected_from_invoice_export(): void

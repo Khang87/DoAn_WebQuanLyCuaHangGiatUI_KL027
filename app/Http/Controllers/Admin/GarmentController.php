@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Enums\RecordStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\GarmentRequest;
 use App\Models\Garment;
@@ -25,8 +26,9 @@ class GarmentController extends Controller
         ]);
 
         $categories = $this->garmentService->getCategories();
+        $statuses = RecordStatus::options();
 
-        return view('admin.garments.index', compact('garments', 'categories'));
+        return view('admin.garments.index', compact('garments', 'categories', 'statuses'));
     }
 
     public function create()

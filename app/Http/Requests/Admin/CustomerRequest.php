@@ -20,7 +20,6 @@ class CustomerRequest extends FormRequest
             'email' => ['nullable', 'email', 'max:255', 'unique:customers,email,' . ($id ?? '')],
             'phone' => ['nullable', 'string', 'max:30'],
             'address' => ['nullable', 'string', 'max:500'],
-            'type' => ['nullable', 'string', 'in:Mới,Thường,VIP'],
             'points' => ['nullable', 'integer', 'min:0'],
         ];
     }
@@ -35,7 +34,6 @@ class CustomerRequest extends FormRequest
             'email.unique' => 'Email đã tồn tại.',
             'phone.max' => 'Số điện thoại không được vượt quá 30 ký tự.',
             'address.max' => 'Địa chỉ không được vượt quá 500 ký tự.',
-            'type.in' => 'Loại khách hàng không hợp lệ.',
             'points.integer' => 'Điểm phải là số nguyên.',
             'points.min' => 'Điểm không được nhỏ hơn 0.',
         ];

@@ -34,13 +34,28 @@ class User extends Authenticatable
         return $this->hasMany(Delivery::class);
     }
 
+    public function isManager(): bool
+    {
+        return in_array($this->role, ['manager', 'admin'], true);
+    }
+
     public function isAdmin(): bool
     {
-        return $this->role === 'admin';
+        return $this->isManager();
     }
 
     public function isStaff(): bool
     {
-        return in_array($this->role, ['admin', 'staff']);
+        return in_array($this->role, ['manager', 'staff', 'admin'], true);
+    }
+
+    public function isEmployee(): bool
+    {
+        return in_array($this->role, ['staff', 'employee'], true);
+    }
+
+    public function isCustomer(): bool
+    {
+        return $this->role === 'customer';
     }
 }

@@ -13,30 +13,58 @@ class UserSeeder extends Seeder
 
     public function run(): void
     {
+        // Tài khoản Quản lý (Admin/Manager)
         User::factory()->create([
             'name' => 'Quản lý',
-            'email' => 'admin@giatui.com',
-            'password' => Hash::make('12345678'),
+            'email' => 'admin@gmail.com',
+            'password' => Hash::make('123456'),
             'phone' => '0900000001',
             'role' => 'admin',
         ]);
 
+        User::factory()->create([
+            'name' => 'Quản lý',
+            'email' => 'quanly@gmail.com',
+            'password' => Hash::make('123456'),
+            'phone' => '0900000002',
+            'role' => 'manager',
+        ]);
+
+        // Tài khoản Nhân viên (Staff/Employee)
+        User::factory()->create([
+            'name' => 'Nhân viên',
+            'email' => 'staff@gmail.com',
+            'password' => Hash::make('123456'),
+            'phone' => '0900000003',
+            'role' => 'staff',
+        ]);
+
+        User::factory()->create([
+            'name' => 'Nhân viên',
+            'email' => 'nhanvien@gmail.com',
+            'password' => Hash::make('123456'),
+            'phone' => '0900000004',
+            'role' => 'employee',
+        ]);
+
+        // Các nhân viên khác (giữ lại để test)
         $staffNames = [
-            ['name' => 'Nhân viên 1', 'email' => 'staff1@giatui.com', 'password' => 'staff123', 'phone' => '0900000002'],
-            ['name' => 'Nhân viên 2', 'email' => 'staff2@giatui.com', 'password' => 'staff123', 'phone' => '0900000003'],
-            ['name' => 'Nhân viên 3', 'email' => 'staff3@giatui.com', 'password' => 'staff123', 'phone' => '0900000004'],
+            ['name' => 'Nhân viên 1', 'email' => 'staff1@giatui.com', 'phone' => '0900000005'],
+            ['name' => 'Nhân viên 2', 'email' => 'staff2@giatui.com', 'phone' => '0900000006'],
+            ['name' => 'Nhân viên 3', 'email' => 'staff3@giatui.com', 'phone' => '0900000007'],
         ];
 
         foreach ($staffNames as $staff) {
             User::factory()->create([
                 'name' => $staff['name'],
                 'email' => $staff['email'],
-                'password' => Hash::make($staff['password']),
+                'password' => Hash::make('123456'),
                 'phone' => $staff['phone'],
                 'role' => 'staff',
             ]);
         }
 
+        // Khách hàng
         $customerNames = [
             'Nguyễn Văn A', 'Trần Thị B', 'Phạm Thị C', 'Lê Văn D', 'Hoàng Thị E',
             'Đặng Minh F', 'Bùi Thu G', 'Vũ Văn H', 'Trần Lee I', 'Lương Văn J',

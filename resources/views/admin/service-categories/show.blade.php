@@ -45,7 +45,6 @@
         @if($category->deleted_at)
         <div class="mt-3">
             <span class="badge bg-danger-subtle text-danger border border-danger px-3 py-2 rounded-pill"><i class="fas fa-ban me-1"></i>Đã xóa</span>
-            <a href="{{ route('service-categories.restore', $category->id) }}" class="btn btn-sm btn-outline-success" onclick="return confirm('Khôi phục danh mục này?')">Khôi phục</a>
         </div>
         @endif
     </div>

@@ -21,7 +21,8 @@ class PromotionService
                 }
                 $q->orWhere('code', 'LIKE', "%{$search}%")
                     ->orWhere('name', 'LIKE', "%{$search}%")
-                    ->orWhere('discount', 'LIKE', "%{$search}%");
+                    ->orWhere('discount_type', 'LIKE', "%{$search}%")
+                    ->orWhere('discount_value', 'LIKE', "%{$search}%");
             });
         }
 
@@ -29,7 +30,7 @@ class PromotionService
             $query->where('status', $filters['status']);
         }
 
-        $allowedSorts = ['id', 'name', 'code', 'discount', 'expires_at', 'created_at'];
+        $allowedSorts = ['id', 'name', 'code', 'discount_type', 'discount_value', 'expires_at', 'created_at'];
         $sortBy = in_array($filters['sort_by'] ?? null, $allowedSorts) ? $filters['sort_by'] : 'created_at';
         $sortOrder = ($filters['sort_order'] ?? 'desc') === 'asc' ? 'asc' : 'desc';
 
@@ -69,6 +70,9 @@ class PromotionService
     public function getActive(): Collection
     {
         return Promotion::where('status', 'active')
+            ->where(function ($query) {
+                $query->whereNull('starts_at')->orWhereDate('starts_at', '<=', today());
+            })
             ->where(function ($query) {
                 $query->whereNull('expires_at')->orWhereDate('expires_at', '>=', today());
             })

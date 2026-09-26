@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Admin\DashboardController;
+use App\Http\Controllers\Staff\DashboardController as StaffDashboardController;
 use App\Http\Controllers\Admin\OrderController;
 use App\Http\Controllers\Admin\OrderItemController;
 use App\Http\Controllers\Admin\CustomerController;
@@ -20,6 +21,7 @@ use App\Http\Controllers\Admin\AccountController;
 use App\Http\Controllers\Admin\NotificationController;
 use App\Http\Controllers\Admin\GarmentConditionController;
 use App\Http\Controllers\Admin\GarmentController;
+use App\Http\Controllers\Admin\ReviewController;
 
 /*
 |--------------------------------------------------------------------------
@@ -38,11 +40,26 @@ Route::post('/login', [LoginController::class, 'login']);
 Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
 
 // Protected Routes
-Route::middleware(['auth'])->group(function () {
+    Route::middleware(['auth', 'reject.customer'])->group(function () {
 
-    // Dashboard (Staff & Admin)
-    Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
-    Route::post('/dashboard/collect-cash-payment/{invoice}', [DashboardController::class, 'collectCashPayment'])->name('dashboard.collect-cash-payment');
+    // Dashboard redirect based on role
+    Route::get('/dashboard', function () {
+        return auth()->user()->isAdmin()
+            ? redirect()->route('admin.dashboard')
+            : redirect()->route('staff.dashboard');
+    })->name('dashboard');
+
+    // ===== ADMIN DASHBOARD (Manager) =====
+    Route::middleware(['role:manager|admin'])->group(function () {
+        Route::get('/admin/dashboard', [DashboardController::class, 'index'])->name('admin.dashboard');
+        Route::post('/admin/dashboard/collect-cash-payment/{invoice}', [DashboardController::class, 'collectCashPayment'])->name('admin.dashboard.collect-cash-payment');
+    });
+
+    // ===== STAFF DASHBOARD (Employee) =====
+    Route::middleware(['role:staff|employee'])->group(function () {
+        Route::get('/staff/dashboard', [StaffDashboardController::class, 'index'])->name('staff.dashboard');
+        Route::patch('/staff/dashboard/orders/{order}/status', [StaffDashboardController::class, 'updateOrderStatus'])->name('staff.dashboard.update-order-status');
+    });
 
     // Customers Management (Staff & Admin)
     Route::resource('customers', CustomerController::class);
@@ -52,22 +69,30 @@ Route::middleware(['auth'])->group(function () {
     Route::resource('order-items', OrderItemController::class);
 
     // Delivery Management (Staff & Admin)
-    Route::resource('deliveries', DeliveryController::class)->except(['create', 'store']);
+    Route::resource('deliveries', DeliveryController::class);
 
     // Booking Management (Staff & Admin)
     Route::resource('bookings', BookingController::class)->except(['create', 'store']);
+    Route::post('bookings/{booking}/confirm', [BookingController::class, 'confirm'])->name('bookings.confirm');
 
-    // Payments Management (Staff & Admin)
-    Route::resource('payments', PaymentController::class);
+    // Payments Management (chỉ Quản lý / Admin — tiền nặng)
+    Route::middleware(['role:manager|admin'])->group(function () {
+        Route::resource('payments', PaymentController::class);
 
-    // Invoices Management (Staff & Admin)
-    Route::get('invoices/export', [InvoiceController::class, 'export'])->name('invoices.export');
-    Route::get('invoices/{invoice}/export-excel', [InvoiceController::class, 'exportExcel'])->name('invoices.export-excel');
-    Route::post('invoices/{invoice}/status', [InvoiceController::class, 'updateStatus'])->name('invoices.update-status');
-    Route::resource('invoices', InvoiceController::class);
+        // Invoices Management (chỉ Quản lý / Admin — quyết toán tài chính)
+        Route::get('invoices/export', [InvoiceController::class, 'export'])->name('invoices.export');
+        Route::get('invoices/{invoice}/export-excel', [InvoiceController::class, 'exportExcel'])->name('invoices.export-excel');
+        Route::post('invoices/{invoice}/status', [InvoiceController::class, 'updateStatus'])->name('invoices.update-status');
+        Route::resource('invoices', InvoiceController::class);
+    });
+
+    // Reviews Management (Staff & Admin)
+    Route::resource('reviews', ReviewController::class)->only(['index', 'show']);
+    Route::patch('reviews/{review}/respond', [ReviewController::class, 'respond'])->name('reviews.respond');
 
     // ===== ADMIN ONLY ROUTES =====
-    Route::middleware(['role:admin'])->group(function () {
+    Route::middleware(['role:manager|admin'])->group(function () {
+        Route::patch('reviews/{review}/toggle', [ReviewController::class, 'toggleStatus'])->name('reviews.toggle');
 
         // Services Management
         Route::resource('service-categories', ServiceCategoryController::class);
@@ -101,15 +126,19 @@ Route::middleware(['auth'])->group(function () {
         Route::resource('notifications', NotificationController::class);
 
         // Services Management - add toggle status
-        Route::post('services/{service}/toggle-status', [ServiceController::class, 'toggleStatus'])->name('services.toggle-status');
+        // Route::post('services/{service}/toggle-status', [ServiceController::class, 'toggleStatus'])->name('services.toggle-status');
         Route::post('service-categories/{service_category}/toggle-status', [ServiceController::class, 'toggleStatus'])->name('service-categories.toggle-status');
     });
 
-    // User Profile & Settings (Staff & Admin)
+    // User Profile (Staff & Admin) — ai cũng tự sửa được hồ sơ của mình
     Route::get('/profile', [AccountController::class, 'profile'])->name('profile');
     Route::put('/profile', [AccountController::class, 'updateProfile'])->name('profile.update');
     Route::post('/profile/change-password', [AccountController::class, 'changePassword'])->name('profile.change-password');
-    Route::get('/settings', [AccountController::class, 'settings'])->name('settings');
+
+    // ===== CẤU HÌNH HỆ THỐNG (chỉ Quản lý / Admin) =====
+    Route::middleware(['role:manager|admin'])->group(function () {
+        Route::get('/settings', [AccountController::class, 'settings'])->name('settings');
+    });
 });
 
 // Default route redirect to login or dashboard

@@ -2,19 +2,54 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Http\Controllers\Concerns\RejectsSettledRecords;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\OrderRequest;
-use App\Http\Requests\Admin\OrderItemRequest;
-use App\Models\Order;
+use App\Models\Customer;
+use App\Models\Garment;
+use App\Models\Pricing;
+use App\Models\Promotion;
+use App\Models\Service;
+use App\Models\ServiceCategory;
+use App\Models\User;
+use App\Services\GarmentService;
 use App\Services\OrderService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 
 class OrderController extends Controller
 {
+    use RejectsSettledRecords;
+
     public function __construct(
         private OrderService $orderService,
+        private GarmentService $garmentService,
     ) {}
+
+    /**
+     * Bảng giá cho UI: mỗi cặp service_id + garment_id chỉ giữ bản giá lịch sử
+     * mới nhất, đúng thứ tự mà OrderService/Pricing::getLatestPricing() chọn.
+     */
+    private function pricingOptions()
+    {
+        return Pricing::where('status', 'active')
+            ->orderByDesc('effective_date')
+            ->orderByDesc('id')
+            ->get()
+            ->unique(fn ($pricing) => $pricing->service_id.'-'.$pricing->garment_id)
+            ->values();
+    }
+
+    /**
+     * Danh sách nhóm dịch vụ và nhóm loại đồ đều lấy từ database, không hardcode.
+     */
+    private function categoryOptions(): array
+    {
+        return [
+            'serviceCategories' => ServiceCategory::where('status', 'active')->orderBy('name')->get(),
+            'garmentCategories' => $this->garmentService->getCategories(),
+            'units' => Pricing::unitOptions(),
+        ];
+    }
 
     public function index(Request $request)
     {
@@ -28,7 +63,7 @@ class OrderController extends Controller
             'sort_order' => $request->input('sort_order'),
         ]);
 
-        $customers = \App\Models\Customer::orderBy('name')->get();
+        $customers = Customer::orderBy('name')->get();
         $statusFlow = $this->orderService->getStatusFlow();
 
         return view('admin.orders.index', compact('orders', 'customers', 'statusFlow'));
@@ -36,17 +71,31 @@ class OrderController extends Controller
 
     public function create()
     {
-        $customers = \App\Models\Customer::orderBy('name')->get();
-        $services = \App\Models\Service::where('status', 'active')->orderBy('name')->get();
+        $customers = Customer::orderBy('name')->get();
+        $services = Service::where('status', 'active')->orderBy('name')->get();
+        $garments = Garment::where('status', 'active')->orderBy('name')->get();
+        $promotions = Promotion::where('status', 'active')->get();
+        $employees = User::where('role', '!=', 'customer')->orderBy('name')->get();
         $statusFlow = $this->orderService->getStatusFlow();
+        $pricings = $this->pricingOptions();
 
-        return view('admin.orders.create', compact('customers', 'services', 'statusFlow'));
+        return view('admin.orders.create', array_merge(
+            compact('customers', 'services', 'garments', 'promotions', 'employees', 'statusFlow', 'pricings'),
+            $this->categoryOptions()
+        ));
     }
 
     public function store(OrderRequest $request)
     {
         try {
             $order = $this->orderService->create($request->validated());
+
+            $rejection = $this->orderService->promotionRejection();
+
+            if ($rejection) {
+                return redirect()->route('orders.show', $order)
+                    ->with('error', $rejection.' Đơn hàng vẫn được tạo nhưng không áp dụng voucher.');
+            }
 
             return redirect()->route('orders.show', $order)->with('success', 'Đơn hàng đã được tạo thành công.');
         } catch (\Exception $e) {
@@ -67,7 +116,7 @@ class OrderController extends Controller
         return view('admin.orders.show', compact('order', 'statusFlow'));
     }
 
-    public function edit(int $id)
+    public function edit(Request $request, int $id)
     {
         $order = $this->orderService->find($id);
 
@@ -75,11 +124,26 @@ class OrderController extends Controller
             abort(404);
         }
 
-        $customers = \App\Models\Customer::orderBy('name')->get();
-        $services = \App\Models\Service::where('status', 'active')->orderBy('name')->get();
-        $statusFlow = $this->orderService->getStatusFlow();
+        if ($order->isLocked()) {
+            return $this->rejectSettled(
+                $request,
+                'Đơn hàng '.$order->code.' đã quyết toán nên chỉ có thể xem, không thể sửa.',
+                route('orders.show', $order)
+            );
+        }
 
-        return view('admin.orders.edit', compact('order', 'customers', 'services', 'statusFlow'));
+        $customers = Customer::orderBy('name')->get();
+        $services = Service::where('status', 'active')->orderBy('name')->get();
+        $garments = Garment::where('status', 'active')->orderBy('name')->get();
+        $promotions = Promotion::where('status', 'active')->get();
+        $employees = User::where('role', '!=', 'customer')->orderBy('name')->get();
+        $statusFlow = $this->orderService->getStatusFlow();
+        $pricings = $this->pricingOptions();
+
+        return view('admin.orders.edit', array_merge(
+            compact('order', 'customers', 'services', 'garments', 'promotions', 'employees', 'statusFlow', 'pricings'),
+            $this->categoryOptions()
+        ));
     }
 
     public function update(OrderRequest $request, int $id)
@@ -90,8 +154,23 @@ class OrderController extends Controller
             abort(404);
         }
 
+        if ($order->isLocked()) {
+            return $this->rejectSettled(
+                $request,
+                'Đơn hàng '.$order->code.' đã quyết toán nên không thể chỉnh sửa.',
+                route('orders.show', $order)
+            );
+        }
+
         try {
             $this->orderService->update($order, $request->validated());
+
+            $rejection = $this->orderService->promotionRejection();
+
+            if ($rejection) {
+                return redirect()->route('orders.show', $order)
+                    ->with('error', $rejection.' Đơn hàng vẫn được lưu nhưng không áp dụng voucher.');
+            }
 
             return redirect()->route('orders.index')->with('success', 'Đơn hàng đã được cập nhật.');
         } catch (\Exception $e) {
@@ -99,12 +178,20 @@ class OrderController extends Controller
         }
     }
 
-    public function destroy(int $id)
+    public function destroy(Request $request, int $id)
     {
         $order = $this->orderService->find($id);
 
         if (!$order) {
             abort(404);
+        }
+
+        if ($order->isLocked()) {
+            return $this->rejectSettled(
+                $request,
+                'Đơn hàng '.$order->code.' đã quyết toán nên không thể xóa.',
+                route('orders.index')
+            );
         }
 
         try {
@@ -124,8 +211,16 @@ class OrderController extends Controller
             abort(404);
         }
 
+        if ($order->isLocked()) {
+            return $this->rejectSettled(
+                $request,
+                'Đơn hàng '.$order->code.' đã quyết toán nên không thể đổi trạng thái.',
+                route('orders.show', $order)
+            );
+        }
+
         try {
-            $order->update(['status' => $request->input('status')]);
+            $this->orderService->updateStatus($order, (string) $request->input('status'));
 
             return back()->with('success', 'Trạng thái đơn hàng đã được cập nhật.');
         } catch (\Exception $e) {

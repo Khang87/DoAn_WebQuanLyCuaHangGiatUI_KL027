@@ -7,3 +7,24 @@
     --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
         'Segoe UI Symbol', 'Noto Color Emoji';
 }
+
+/*
+ * Nút viền (vd: "Xem tất cả" trong card header) bị mất nét viền bên phải do
+ * làm tròn sub-pixel khi nằm trong flex container. Ép lại viền đầy đủ 1px.
+ */
+.btn-outline-primary,
+.btn-outline-secondary,
+.btn-outline-success,
+.btn-outline-danger,
+.btn-outline-warning,
+.btn-outline-info,
+.btn-outline-dark,
+.btn-outline-light {
+    border-style: solid;
+    border-width: 1px;
+}
+
+/* Ảnh đại diện không bị bóp méo. */
+.avatar-cover {
+    object-fit: cover;
+}

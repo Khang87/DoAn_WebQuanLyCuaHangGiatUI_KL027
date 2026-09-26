@@ -1,69 +1,10 @@
 @extends('layouts.app')
-
-@section('title', 'Chi Tiết Giao Nhận - Sky Laundry')
+@section('title', 'Chi tiết giao Nhận - Sky Laundry')
 @section('page-title', 'Chi tiết giao nhận')
-
 @section('content')
-<div class="card">
-    <div class="card-body">
-        <div class="d-flex justify-content-between align-items-center mb-4">
-            <div>
-                <span class="text-muted">Mã giao nhận</span>
-                <h4 class="mb-0">{{ $delivery->code ?? ('GH' . str_pad($delivery->id, 3, '0', STR_PAD_LEFT)) }}</h4>
-            </div>
-            @if($delivery->status === 'picking')
-                <span class="badge bg-info-subtle text-info border border-info px-3 py-2 rounded-pill"><i class="fas fa-cog me-1"></i>Đang lấy hàng</span>
-            @elseif($delivery->status === 'delivering')
-                <span class="badge bg-primary-subtle text-primary border border-primary px-3 py-2 rounded-pill"><i class="fas fa-motorcycle me-1"></i>Đang giao hàng</span>
-            @elseif($delivery->status === 'completed')
-                <span class="badge bg-success-subtle text-success border border-success px-3 py-2 rounded-pill"><i class="fas fa-check-circle me-1"></i>Hoàn thành</span>
-            @elseif($delivery->status === 'cancelled')
-                <span class="badge bg-danger-subtle text-danger border border-danger px-3 py-2 rounded-pill"><i class="fas fa-x-circle me-1"></i>Đã hủy</span>
-            @else
-                <span class="badge bg-warning-subtle text-warning border border-warning px-3 py-2 rounded-pill"><i class="fas fa-clock me-1"></i>Chờ xác nhận</span>
-            @endif
-        </div>
-
-        <div class="row g-4">
-            <div class="col-md-6">
-                <div class="small text-muted">Khách hàng</div>
-                <div class="fw-semibold">{{ $delivery->customer?->name ?? 'Chưa có' }}</div>
-                <div class="text-muted">{{ $delivery->customer?->phone ?? 'Chưa có' }}</div>
-            </div>
-            <div class="col-md-6">
-                <div class="small text-muted">Hình thức</div>
-                    <div class="fw-semibold">
-                    @if($delivery->method === 'pickup')
-                        <i class="bi bi-shop me-1"></i>Khách nhận tại cửa hàng
-                    @elseif($delivery->method === 'home_pickup')
-                        <i class="bi bi-truck me-1"></i>Đến lấy đồ tận nhà
-                    @else
-                        <i class="bi bi-geo-alt me-1"></i>Giao tận nơi
-                    @endif
-                </div>
-            </div>
-            <div class="col-12">
-                <div class="small text-muted">Địa chỉ</div>
-                <div class="fw-semibold">{{ $delivery->address ?? 'Chưa có' }}</div>
-            </div>
-            @if($delivery->pickup_date)
-            <div class="col-md-6">
-                <div class="small text-muted">Ngày lấy đồ</div>
-                <div class="fw-semibold">{{ $delivery->pickup_date->format('d/m/Y') }}</div>
-            </div>
-            @endif
-            @if($delivery->pickup_time)
-            <div class="col-md-6">
-                <div class="small text-muted">Giờ lấy đồ</div>
-                <div class="fw-semibold">{{ $delivery->pickup_time }}</div>
-            </div>
-            @endif
-        </div>
-
-        <div class="d-flex justify-content-end gap-2 mt-4">
-            <a href="{{ route('deliveries.index') }}" class="btn btn-outline-secondary">Quay lại</a>
-            <a href="{{ route('deliveries.edit', $delivery) }}" class="btn btn-primary">Chỉnh sửa</a>
-        </div>
-    </div>
-</div>
+<div class="d-flex justify-content-between align-items-center mb-4"><a href="{{ route('deliveries.index') }}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left me-1"></i>Quay lại</a><a href="{{ route('deliveries.edit', $delivery) }}" class="btn btn-primary btn-sm"><i class="bi bi-pencil me-1"></i>Chỉnh sửa</a></div>
+<div class="card"><div class="card-body">
+    <div class="d-flex justify-content-between align-items-center mb-4"><div><span class="text-muted">Mã giao nhận</span><h4 class="mb-0">{{ $delivery->code ?: ('GH' . str_pad($delivery->id, 3, '0', STR_PAD_LEFT)) }}</h4></div><span class="badge bg-primary-subtle text-primary border border-primary px-3 py-2 rounded-pill">@if($delivery->method === 'nhan_do')Nhận đồ@else Giao đồ@endif</span></div>
+    <div class="row g-4"><div class="col-md-6"><div class="small text-muted">Đơn hàng</div><div class="fw-semibold"><a href="{{ route('orders.show', $delivery->order_id) }}">{{ $delivery->order?->code ?: '—' }}</a></div></div><div class="col-md-6"><div class="small text-muted">Khách hàng</div><div class="fw-semibold">{{ $delivery->customer?->name ?: $delivery->order?->customer?->name ?: '—' }}</div><div class="text-muted">{{ $delivery->customer?->phone ?: $delivery->order?->customer?->phone ?: '' }}</div></div><div class="col-md-6"><div class="small text-muted">Nhân viên phụ trách</div><div class="fw-semibold">{{ $delivery->employee?->name ?: 'Chưa phân công' }}</div></div><div class="col-md-6"><div class="small text-muted">Trạng thái</div><div class="fw-semibold">@if($delivery->status === 'completed')Hoàn thành@elseif($delivery->status === 'cancelled')Đã hủy@elseif($delivery->status === 'delivering')Đang giao đồ@elseif($delivery->status === 'picking')Đang nhận đồ@else Chờ xác nhận@endif</div></div><div class="col-12"><div class="small text-muted">Địa chỉ</div><div class="fw-semibold">{{ $delivery->address ?: '—' }}</div></div><div class="col-md-6"><div class="small text-muted">Ngày giao nhận</div><div class="fw-semibold">{{ $delivery->pickup_date?->format('d/m/Y') ?: '—' }}</div></div><div class="col-md-6"><div class="small text-muted">Giờ giao nhận</div><div class="fw-semibold">{{ $delivery->pickup_time?->format('H:i') ?: '—' }}</div></div>@if($delivery->notes)<div class="col-12"><div class="small text-muted">Ghi chú</div><div>{{ $delivery->notes }}</div></div>@endif</div>
+</div></div>
 @endsection

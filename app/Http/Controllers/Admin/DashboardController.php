@@ -4,77 +4,168 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Customer;
-use App\Models\Delivery;
 use App\Models\Invoice;
 use App\Models\Order;
 use App\Models\Payment;
-use App\Models\Promotion;
+use App\Models\Review;
+use App\Models\Service;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 
 class DashboardController extends Controller
 {
+    public function __construct(
+        private \App\Services\ReviewService $reviewService,
+    ) {}
+
     /**
-     * Hiển thị trang dashboard
+     * Hiển thị trang Dashboard dành cho Quản lý.
+     * Bao gồm: KPI tài chính, biểu đồ, bảng dữ liệu nhanh.
      */
     public function index()
     {
-        $isAdmin = auth()->user()->isAdmin();
-        $orders = Order::with(['customer', 'service'])->latest()->get();
-        $recentOrders = $orders->take(5);
-        $recentCustomers = Customer::latest()->take(5)->get();
+        $today = Carbon::today();
+        $thisMonth = now()->month;
+        $thisYear = now()->year;
+
+        // --- KPI: Doanh thu hôm nay ---
+        $todayRevenue = $this->revenueBetween($today->copy()->startOfDay(), $today->copy()->endOfDay());
+
+        $prevDayRevenue = $this->revenueBetween(
+            $today->copy()->subDay()->startOfDay(),
+            $today->copy()->subDay()->endOfDay()
+        );
+
+        $todayRevenueChange = $this->percentChange($todayRevenue, $prevDayRevenue);
+
+        // --- KPI: Doanh thu tuần này (từ thứ 2) ---
+        $weekStart = $today->copy()->startOfWeek(Carbon::MONDAY);
+        $weekRevenue = $this->revenueBetween($weekStart, $today->copy()->endOfDay());
+
+        $prevWeekStart = $weekStart->copy()->subWeek();
+        $prevWeekRevenue = $this->revenueBetween($prevWeekStart, $prevWeekStart->copy()->endOfWeek(Carbon::SUNDAY));
+
+        $weekRevenueChange = $this->percentChange($weekRevenue, $prevWeekRevenue);
+
+        // --- KPI: Doanh thu tháng này ---
+        $monthStart = $today->copy()->startOfMonth();
+        $monthRevenue = $this->revenueBetween($monthStart, $today->copy()->endOfDay());
+
+        $prevMonthStart = $monthStart->copy()->subMonth();
+        $prevMonthRevenue = $this->revenueBetween($prevMonthStart, $prevMonthStart->copy()->endOfMonth());
+
+        $monthRevenueChange = $this->percentChange($monthRevenue, $prevMonthRevenue);
+
+        // --- KPI: Tổng số đơn hàng (theo trạng thái) ---
         $statusCounts = [
-            'pending' => $orders->where('status', 'pending')->count(),
-            'processing' => $orders->where('status', 'processing')->count(),
-            'completed' => $orders->where('status', 'completed')->count(),
-            'cancelled' => $orders->where('status', 'cancelled')->count(),
+            'completed' => Order::where('status', 'completed')->count(),
+            'processing' => Order::whereIn('status', ['pending', 'received', 'sorting', 'processing', 'washed', 'delivering'])->count(),
+            'cancelled' => Order::where('status', 'cancelled')->count(),
         ];
-        $monthlyRevenue = collect(range(1, 12))->map(fn ($month) => (float) $orders
-            ->filter(fn ($order) => $order->created_at?->month === $month)
-            ->sum('total_amount'));
 
-        // Staff & Admin shared data
-        $todayDeliveries = Delivery::whereDate('pickup_date', today())
-            ->whereNotIn('status', ['cancelled'])
-            ->with('customer')
-            ->latest()
-            ->take(5)
+        $totalOrders = Order::count();
+
+        // --- KPI: Khách hàng ---
+        $totalCustomers = Customer::count();
+        $newCustomersMonth = Customer::whereMonth('created_at', $thisMonth)
+            ->whereYear('created_at', $thisYear)
+            ->count();
+
+        // --- KPI: Điểm đánh giá trung bình & tổng số lượt đánh giá ---
+        $averageRating = $this->reviewService->getAverageRating();
+        $totalReviews = $this->reviewService->getTotalReviews();
+
+        // --- Biểu đồ: Doanh thu 7 ngày gần nhất ---
+        $last7DaysRevenue = collect(range(6, 0))->map(function ($daysAgo) {
+            $date = Carbon::today()->subDays($daysAgo);
+
+            return [
+                'date' => $date->format('d/m'),
+                'revenue' => $this->revenueBetween($date->copy()->startOfDay(), $date->copy()->endOfDay()),
+            ];
+        })->values();
+
+        // --- Biểu đồ: Doanh thu 12 tháng gần nhất (cuộn tròn, có giới hạn năm) ---
+        $last12Months = collect(range(11, 0))->map(function ($monthsAgo) {
+            $month = Carbon::today()->subMonths($monthsAgo);
+
+            return [
+                'label' => 'T' . $month->month,
+                'revenue' => $this->revenueBetween(
+                    $month->copy()->startOfMonth(),
+                    $month->copy()->endOfMonth()
+                ),
+            ];
+        })->values();
+
+        // --- Biểu đồ tròn: Tỷ lệ đơn hàng theo trạng thái ---
+        $statusDistribution = Order::selectRaw('status, COUNT(*) as count')
+            ->groupBy('status')
+            ->pluck('count', 'status');
+
+        // --- Biểu đồ cột: Top dịch vụ được đặt nhiều nhất ---
+        $topServices = Service::withCount('orders')
+            ->orderByDesc('orders_count')
+            ->limit(5)
+            ->get()
+            ->map(fn (Service $service) => [
+                'name' => $service->name,
+                'orders_count' => $service->orders_count,
+            ]);
+
+        // --- Bảng: Đơn hàng mới nhất (top 10) ---
+        $recentOrders = Order::with(['customer', 'service', 'employee'])
+            ->orderBy('created_at', 'desc')
+            ->limit(10)
             ->get();
 
-        $pendingInvoices = Invoice::where('status', 'unpaid')
-            ->with('order.customer')
-            ->latest()
-            ->take(5)
+        // --- Bảng: Đánh giá mới nhất cần phản hồi ---
+        $latestReviews = Review::with(['customer', 'order'])
+            ->whereNull('shop_response')
+            ->orderBy('created_at', 'desc')
+            ->limit(10)
             ->get();
-
-        $newCustomersToday = Customer::whereDate('created_at', today())->count();
-
-        // Orders needing processing (pending + washing status)
-        $processingOrders = $orders->whereIn('status', ['pending', 'washing'])->take(7);
 
         return view('admin.dashboard', [
-            'totalOrders' => $orders->count(),
-            'revenue' => $orders->sum('total_amount'),
-            'newCustomers' => Customer::where('created_at', '>=', Carbon::now()->subDays(30))->count(),
-            'pendingOrders' => $statusCounts['pending'],
-            'recentOrders' => $recentOrders,
-            'recentCustomers' => $recentCustomers,
-            'activePromotions' => Promotion::where('status', 'active')->where(function ($query) {
-                $query->whereNull('expires_at')->orWhereDate('expires_at', '>=', today());
-            })->latest()->take(5)->get(),
+            'isAdmin' => true,
+            'todayRevenue' => $todayRevenue,
+            'todayRevenueChange' => $todayRevenueChange,
+            'weekRevenue' => $weekRevenue,
+            'weekRevenueChange' => $weekRevenueChange,
+            'monthRevenue' => $monthRevenue,
+            'monthRevenueChange' => $monthRevenueChange,
             'statusCounts' => $statusCounts,
-            'monthlyRevenue' => $monthlyRevenue,
-            'isAdmin' => $isAdmin,
-            'todayDeliveries' => $todayDeliveries,
-            'pendingInvoices' => $pendingInvoices,
-            'newCustomersToday' => $newCustomersToday,
-            'processingOrders' => $processingOrders,
+            'totalOrders' => $totalOrders,
+            'totalCustomers' => $totalCustomers,
+            'newCustomersMonth' => $newCustomersMonth,
+            'averageRating' => $averageRating,
+            'totalReviews' => $totalReviews,
+            'last7DaysRevenue' => $last7DaysRevenue,
+            'last12Months' => $last12Months,
+            'statusDistribution' => $statusDistribution,
+            'topServices' => $topServices,
+            'recentOrders' => $recentOrders,
+            'latestReviews' => $latestReviews,
         ]);
     }
 
-    public function collectCashPayment(Request $request, int $id)
+    /**
+     * Tổng doanh thu (không tính đơn đã hủy) trong khoảng thời gian.
+     */
+    private function revenueBetween(Carbon $from, Carbon $to): float
     {
-        $invoice = Invoice::with('order')->find($id);
+        return (float) Order::whereBetween('created_at', [$from, $to])
+            ->where('status', '!=', 'cancelled')
+            ->sum('total_amount');
+    }
+
+    /**
+     * Thu tiền mặt cho hóa đơn.
+     */
+    public function collectCashPayment(Request $request, int $invoice)
+    {
+        $invoice = Invoice::with('order')->find($invoice);
 
         if (!$invoice) {
             return response()->json(['success' => false, 'message' => 'Không tìm thấy hóa đơn.'], 404);
@@ -84,7 +175,7 @@ class DashboardController extends Controller
             return response()->json(['success' => false, 'message' => 'Hóa đơn đã được thanh toán.'], 400);
         }
 
-        \DB::transaction(function () use ($invoice) {
+        DB::transaction(function () use ($invoice) {
             $invoice->update(['status' => 'paid']);
 
             Payment::create([
@@ -100,5 +191,17 @@ class DashboardController extends Controller
             'message' => 'Thu tiền mặt thành công.',
             'invoice_id' => $invoice->id,
         ]);
+    }
+
+    /**
+     * Tính phần trăm tăng/giảm so với kỳ trước.
+     */
+    private function percentChange(float $current, float $previous): float
+    {
+        if ($previous <= 0) {
+            return $current > 0 ? 100.0 : 0.0;
+        }
+
+        return round((($current - $previous) / $previous) * 100, 1);
     }
 }

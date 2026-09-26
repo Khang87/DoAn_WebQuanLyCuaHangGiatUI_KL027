@@ -37,7 +37,7 @@
                         <td>
                             <div class="d-flex gap-2">
                                 <a href="{{ route('garment-conditions.edit', $condition) }}" class="btn btn-sm btn-outline-warning">Sửa</a>
-                                <form action="{{ route('garment-conditions.destroy', $condition) }}" method="POST" class="d-inline" onsubmit="return confirm('Xóa?')">
+                                <form action="{{ route('garment-conditions.destroy', $condition) }}" method="POST" class="d-inline" id="deleteConditionForm_{{ $condition->id }}">
                                     @csrf @method('DELETE')
                                     <button type="submit" class="btn btn-sm btn-outline-danger">Xóa</button>
                                 </form>
@@ -59,3 +59,37 @@
 </div>
 @endif
 @endsection
+
+@push('scripts')
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        document.querySelectorAll('[id^="deleteConditionForm_"]').forEach(function(form) {
+            form.addEventListener('submit', function(e) {
+                e.preventDefault();
+
+                if (typeof Swal === 'undefined') {
+                    if (confirm('Xóa?')) {
+                        form.submit();
+                    }
+                    return;
+                }
+
+                Swal.fire({
+                    title: 'Xóa điều kiện?',
+                    text: 'Hành động này không thể hoàn tác.',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#dc2626',
+                    cancelButtonColor: '#64748b',
+                    confirmButtonText: 'Xóa',
+                    cancelButtonText: 'Hủy'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        form.submit();
+                    }
+                });
+            });
+        });
+    });
+</script>
+@endpush

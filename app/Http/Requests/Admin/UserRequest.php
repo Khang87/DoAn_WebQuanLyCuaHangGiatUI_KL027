@@ -26,7 +26,7 @@ class UserRequest extends FormRequest
             'password' => $isCreate
                 ? ['required', 'confirmed', Password::min(8)->mixedCase()->numbers()->symbols()]
                 : ['nullable', 'confirmed', Password::min(8)->mixedCase()->numbers()->symbols()],
-            'role' => ['nullable', 'in:admin,staff,customer'],
+            'role' => ['nullable', 'in:manager,staff,customer'],
         ];
     }
 

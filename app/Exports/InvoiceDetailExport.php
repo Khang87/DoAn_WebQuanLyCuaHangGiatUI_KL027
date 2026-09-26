@@ -62,7 +62,7 @@ class InvoiceDetailExport
         $sheet->getCell('D' . $row)->setCellValue('Ngày lập:');
         $sheet->getCell('E' . $row)->setCellValue($invoice->created_at?->format('d/m/Y H:i') ?? now()->format('d/m/Y H:i'));
         $sheet->getCell('G' . $row)->setCellValue('Trạng thái:');
-        $sheet->getCell('H' . $row)->setCellValue($invoice->status === 'paid' ? 'Đã thanh toán' : ($invoice->status === 'partial' ? 'Thanh toán một phần' : 'Chưa thanh toán'));
+        $sheet->getCell('H' . $row)->setCellValue($invoice->getStatusLabel());
         $row++;
 
         $row++;
@@ -164,7 +164,7 @@ class InvoiceDetailExport
         $sheet->getStyle('A' . $itemRow . ':F' . $itemRow)->getBorders()->getAllBorders()->setBorderStyle(Border::BORDER_THIN);
         $itemRow++;
 
-        $discountAmount = (float) ($order?->discount_amount ?? 0);
+        $discountAmount = (float) (($order?->discount_by_promotion ?? 0) + ($order?->discount_by_points ?? 0));
         $sheet->getCell('A' . $itemRow)->setCellValue('GIẢM GIÁ:');
         $sheet->mergeCells('A' . $itemRow . ':E' . $itemRow);
         $sheet->getStyle('A' . $itemRow)->getFont()->setBold(true);

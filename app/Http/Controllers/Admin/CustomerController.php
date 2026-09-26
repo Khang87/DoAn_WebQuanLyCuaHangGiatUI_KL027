@@ -18,7 +18,6 @@ class CustomerController extends Controller
     {
         $customers = $this->customerService->getAll([
             'search' => $request->input('search'),
-            'type' => $request->input('type'),
             'sort_by' => $request->input('sort_by'),
             'sort_order' => $request->input('sort_order'),
         ]);

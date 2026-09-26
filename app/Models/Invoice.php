@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\InvoiceStatus;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -12,10 +13,26 @@ class Invoice extends Model
 {
     use HasFactory, SoftDeletes;
 
-    protected $fillable = ['order_id', 'code', 'total', 'status', 'notes'];
+    protected $fillable = [
+        'order_id',
+        'code',
+        'invoice_date',
+        'total',
+        'total_amount',
+        'discount_amount',
+        'delivery_fee',
+        'grand_total',
+        'status',
+        'notes',
+    ];
 
     protected $casts = [
         'total' => 'decimal:2',
+        'total_amount' => 'decimal:2',
+        'discount_amount' => 'decimal:2',
+        'delivery_fee' => 'decimal:2',
+        'grand_total' => 'decimal:2',
+        'invoice_date' => 'date',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
         'deleted_at' => 'datetime',
@@ -28,6 +45,39 @@ class Invoice extends Model
 
     public function payments(): HasMany
     {
-        return $this->hasMany(Payment::class, 'order_id', 'order_id');
+        return $this->hasMany(Payment::class, 'invoice_id');
+    }
+
+    public function getTotalPaidAttribute(): float
+    {
+        return (float) $this->payments()->where('status', 'paid')->sum('amount');
+    }
+
+    public function getBalanceAttribute(): float
+    {
+        return max(0, (float) $this->grand_total - $this->total_paid);
+    }
+
+    public function getStatusLabel(): string
+    {
+        return InvoiceStatus::parse($this->status)->label();
+    }
+
+    public function getStatusBadgeClass(): string
+    {
+        return InvoiceStatus::parse($this->status)->badgeClass();
+    }
+
+    /**
+     * Hóa đơn đã quyết toán (đã thanh toán) thì số tiền không đổi được nữa.
+     */
+    public function isPaid(): bool
+    {
+        return InvoiceStatus::valueIsPaid($this->status);
+    }
+
+    public function getIsPaidAttribute(): bool
+    {
+        return $this->isPaid();
     }
 }

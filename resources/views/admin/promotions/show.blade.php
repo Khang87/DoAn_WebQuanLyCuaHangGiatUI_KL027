@@ -1,5 +1,5 @@
 @extends('layouts.app')
-@section('title', 'Chi Tiết Khuyến Mãi - Sky Laundry')
+@section('title', 'Chi tiết khuyến Mãi - Sky Laundry')
 @section('page-title', 'Chi tiết khuyến mãi')
 @section('content')
 <div class="card mb-4">
@@ -49,7 +49,7 @@
             <table class="table-custom mb-0">
                 <thead>
                     <tr>
-                        <th>Mã Coupon</th><th>Loại</th><th>Giá trị</th><th>Số lần dùng</th><th>Hạn dùng</th><th>Trạng thái</th>
+                        <th>Mã coupon</th><th>Loại</th><th>Giá trị</th><th>Số lần dùng</th><th>Hạn dùng</th><th>Trạng thái</th>
                     </tr>
                 </thead>
                 <tbody>

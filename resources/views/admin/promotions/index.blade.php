@@ -1,7 +1,7 @@
 @extends('layouts.app')
 
-@section('title', 'Chương Trình Khuyến Mãi - Sky Laundry')
-@section('page-title', 'Chương Trình Khuyến Mãi')
+@section('title', 'Chương trình khuyến mãi - Sky Laundry')
+@section('page-title', 'Chương trình khuyến mãi')
 
 @section('content')
 <div class="order-toolbar d-flex justify-content-between align-items-center mb-4">
@@ -21,8 +21,9 @@
     <div class="col-12 col-md-4">
         <select name="status" class="form-select shadow-sm rounded-3 py-2" style="min-width: 220px;" onchange="this.form.submit()">
             <option value="">-- Tất cả trạng thái --</option>
-            <option value="active" @selected(request('status') === 'active')>Đang chạy</option>
-            <option value="inactive" @selected(request('status') === 'inactive')>Tắt</option>
+            @foreach($statuses ?? \App\Enums\RecordStatus::options() as $value => $label)
+                <option value="{{ $value }}" @selected(request('status') === $value)>{{ $label }}</option>
+            @endforeach
         </select>
     </div>
 </form>
@@ -90,17 +91,17 @@
                         <td>{{ $promotion->expires_at?->format('d/m/Y') ?: 'Không hạn' }}</td>
                         <td>
                             @if($isExpired)
-                                <span class="badge bg-secondary-subtle text-secondary border border-secondary px-3 py-2 rounded-pill"><i class="far fa-hourglass me-1"></i>Đã hết hạn</span>
+                                <span class="badge bg-secondary-subtle text-secondary border border-secondary px-3 py-2 rounded-pill"><i class="far fa-hourglass me-1"></i>{{ $promotion->status_label ?? 'Đã hết hạn' }}</span>
                             @elseif($promotion->status === 'active')
-                                <span class="badge bg-success-subtle text-success border border-success px-3 py-2 rounded-pill"><i class="fas fa-check-circle me-1"></i>Đang chạy</span>
+                                <span class="badge bg-success-subtle text-success border border-success px-3 py-2 rounded-pill"><i class="fas fa-check-circle me-1"></i>{{ $promotion->status_label ?? 'Đang hoạt động' }}</span>
                             @else
-                                <span class="badge bg-danger-subtle text-danger border border-danger px-3 py-2 rounded-pill"><i class="fas fa-times-circle me-1"></i>Hết hạn</span>
+                                <span class="badge bg-danger-subtle text-danger border border-danger px-3 py-2 rounded-pill"><i class="fas fa-times-circle me-1"></i>{{ $promotion->status_label ?? 'Tạm ngưng' }}</span>
                             @endif
                         </td>
                         <td>
                             <div class="d-flex gap-2">
                                 <a href="{{ route('promotions.edit', $promotion) }}" class="btn btn-order-action edit" title="Sửa"><i class="bi bi-pencil"></i></a>
-                                <form action="{{ route('promotions.destroy', $promotion) }}" method="POST" class="d-inline" onsubmit="return confirm('Xóa?')">
+                                <form action="{{ route('promotions.destroy', $promotion) }}" method="POST" class="d-inline" id="deletePromotionForm_{{ $promotion->id }}">
                                     @csrf @method('DELETE')
                                     <button type="submit" class="btn btn-order-action delete" title="Xóa"><i class="bi bi-trash"></i></button>
                                 </form>
@@ -145,3 +146,37 @@
 </nav>
 @endif
 @endsection
+
+@push('scripts')
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        document.querySelectorAll('[id^="deletePromotionForm_"]').forEach(function(form) {
+            form.addEventListener('submit', function(e) {
+                e.preventDefault();
+
+                if (typeof Swal === 'undefined') {
+                    if (confirm('Xóa?')) {
+                        form.submit();
+                    }
+                    return;
+                }
+
+                Swal.fire({
+                    title: 'Xóa khuyến mãi?',
+                    text: 'Hành động này không thể hoàn tác.',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#dc2626',
+                    cancelButtonColor: '#64748b',
+                    confirmButtonText: 'Xóa',
+                    cancelButtonText: 'Hủy'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        form.submit();
+                    }
+                });
+            });
+        });
+    });
+</script>
+@endpush

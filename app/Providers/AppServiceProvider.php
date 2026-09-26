@@ -16,6 +16,8 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        require_once base_path('app/Support/helpers.php');
+
         Gate::policy(User::class, UserPolicy::class);
     }
 }

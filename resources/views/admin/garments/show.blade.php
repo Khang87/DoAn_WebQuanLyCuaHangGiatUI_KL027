@@ -1,34 +1,11 @@
 @extends('layouts.app')
 
-@section('title', 'Chi Tiết Loại Đồ Giặt - Sky Laundry')
+@section('title', 'Chi tiết loại Đồ giặt - Sky Laundry')
 @section('page-title', 'Chi tiết loại đồ giặt')
 
 @section('content')
 @php
-    function getGarmentIconShow($garment) {
-        $name = mb_strtolower($garment->name ?? '');
-        $cat = mb_strtolower($garment->category ?? '');
-
-        if (str_contains($name, 'dài') || str_contains($name, 'váy') || str_contains($name, 'đầm') || str_contains($cat, 'truyền thống')) {
-            return 'fa-solid fa-person-dress';
-        }
-        if (str_contains($name, 'khoác') || str_contains($name, 'blazer') || str_contains($name, 'suit') || str_contains($name, 'vest')) {
-            return 'fa-solid fa-user-tie';
-        }
-        if (str_contains($name, 'quần') || str_contains($cat, 'công sở')) {
-            return 'fa-solid fa-scissors';
-        }
-        if (str_contains($name, 'chăn') || str_contains($name, 'mền') || str_contains($name, 'ga') || str_contains($name, 'gối')) {
-            return 'fa-solid fa-bed';
-        }
-        if (str_contains($name, 'giày') || str_contains($name, 'dép') || str_contains($name, 'vớ') || str_contains($name, 'tất')) {
-            return 'fa-solid fa-shoe-prints';
-        }
-
-        return 'fa-solid fa-shirt';
-    }
-
-    $garmentIcon = getGarmentIconShow($garment);
+    $garmentIcon = $garment->icon();
 @endphp
 
 <div class="row g-4">
@@ -79,7 +56,7 @@
                 <h6 class="mb-3">Thao tác</h6>
                 <div class="d-grid gap-2">
                     <a href="{{ route('garments.edit', $garment->id) }}" class="btn btn-warning"><i class="bi bi-pencil me-1"></i>Chỉnh sửa</a>
-                    <form action="{{ route('garments.destroy', $garment->id) }}" method="POST" onsubmit="return confirm('Bạn có chắc muốn xóa loại đồ giặt này?')">
+                    <form action="{{ route('garments.destroy', $garment->id) }}" method="POST" id="deleteGarmentShowForm">
                         @csrf
                         @method('DELETE')
                         <button type="submit" class="btn btn-danger w-100"><i class="bi bi-trash"></i> Xóa</button>
@@ -91,3 +68,38 @@
     </div>
 </div>
 @endsection
+
+@push('scripts')
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const form = document.getElementById('deleteGarmentShowForm');
+        if (!form) return;
+
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            if (typeof Swal === 'undefined') {
+                if (confirm('Bạn có chắc muốn xóa loại đồ giặt này?')) {
+                    form.submit();
+                }
+                return;
+            }
+
+            Swal.fire({
+                title: 'Xóa loại đồ giặt?',
+                text: 'Hành động này không thể hoàn tác.',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#dc2626',
+                cancelButtonColor: '#64748b',
+                confirmButtonText: 'Xóa',
+                cancelButtonText: 'Hủy'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    form.submit();
+                }
+            });
+        });
+    });
+</script>
+@endpush

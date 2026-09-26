@@ -1,7 +1,7 @@
 @extends('layouts.app')
 
-@section('title', 'Chỉnh Sửa Dịch Vụ - Sky Laundry')
-@section('page-title', 'Chỉnh Sửa Dịch Vụ')
+@section('title', 'Chỉnh sửa dịch Vụ - Sky Laundry')
+@section('page-title', 'Chỉnh sửa dịch Vụ')
 
 @section('content')
 <div class="card">
@@ -30,7 +30,7 @@
                     @enderror
                 </div>
                 <div class="col-md-6">
-                    <label class="form-label">Tên dịch vụ</label>
+                    <label class="form-label">Tên dịch vụ <span class="text-danger ms-1">*</span></label>
                     <input type="text" class="form-control @error('name') is-invalid @enderror" name="name" value="{{ old('name', $service->name) }}" required>
                     @error('name')
                         <div class="invalid-feedback">{{ $message }}</div>
@@ -60,13 +60,63 @@
                 </div>
                 <div class="col-md-6">
                     <label class="form-label">Icon FontAwesome</label>
-                    <input type="text" class="form-control @error('icon') is-invalid @enderror" name="icon" value="{{ old('icon', $service->icon) }}" placeholder="fa-solid fa-washer">
+                    <div class="input-group">
+                        <input type="text" class="form-control @error('icon') is-invalid @enderror" name="icon" id="iconInput" value="{{ old('icon', $service->icon) }}" placeholder="fa-solid fa-washer" readonly>
+                        <button type="button" class="btn btn-outline-secondary" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="bi bi-chevron-down"></i>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end w-100" style="max-height: 300px; overflow-y: auto;">
+                            <li><input type="text" class="form-control form-control-sm px-2 py-1" placeholder="Tìm icon..." id="iconSearch"></li>
+                            <li><hr class="dropdown-divider"></li>
+                            @foreach([
+                                'fa-solid fa-washer' => 'Máy giặt',
+                                'fa-solid fa-tshirt' => 'Áo',
+                                'fa-solid fa-shirt' => 'Sơ mi',
+                                'fa-solid fa-socks' => 'Tất',
+                                'fa-solid fa-hat-cowboy' => 'Mũ',
+                                'fa-solid fa-shoe-prints' => 'Giày',
+                                'fa-solid fa-bath' => 'Tắm',
+                                'fa-solid fa-droplet' => 'Nước',
+                                'fa-solid fa-sparkles' => 'Làm sạch',
+                                'fa-solid fa-wind' => 'Sấy',
+                                'fa-solid fa-iron' => 'Ủi',
+                                'fa-solid fa-blanket' => 'Chăn',
+                                'fa-solid fa-bed' => 'Giường',
+                                'fa-solid fa-soap' => 'Xà phòng',
+                                'fa-solid fa-spray-can' => 'Phun',
+                                'fa-solid fa-broom' => 'Chổi',
+                                'fa-solid fa-mop' => 'Cải',
+                                'fa-solid fa-truck' => 'Giao hàng',
+                                'fa-solid fa-box' => 'Đóng gói',
+                                'fa-solid fa-tag' => 'Giá',
+                                'fa-solid fa-clock' => 'Thời gian',
+                                'fa-solid fa-calendar' => 'Lịch',
+                                'fa-solid fa-star' => 'Yêu thích',
+                                'fa-solid fa-heart' => 'Tình yêu',
+                                'fa-solid fa-gem' => 'Cao cấp',
+                                'fa-solid fa-certificate' => 'Chứng nhận',
+                                'fa-solid fa-award' => 'Giải thưởng',
+                                'fa-solid fa-medal' => 'Huy chương',
+                                'fa-solid fa-trophy' => 'Cúp',
+                                'fa-solid fa-crown' => 'Vương',
+                                'fa-solid fa-magic' => 'Phép thuật',
+                            ] as $class => $label)
+                            <li>
+                                <a class="dropdown-item d-flex align-items-center gap-2 icon-picker-item" href="#" data-icon="{{ $class }}">
+                                    <i class="{{ $class }} fa-lg"></i>
+                                    <span>{{ $label }}</span>
+                                </a>
+                            </li>
+                            @endforeach
+                        </ul>
+                    </div>
                     @error('icon')
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
+                    <div class="form-text">Icon hiện tại: <i id="iconPreview" class="{{ old('icon', $service->icon) }}"></i></div>
                 </div>
                 <div class="col-md-6">
-                    <label class="form-label">Giá cơ bản</label>
+                    <label class="form-label">Giá cơ bản <span class="text-danger ms-1">*</span></label>
                     <input type="number" class="form-control @error('price') is-invalid @enderror" name="price" value="{{ old('price', $service->price) }}" min="0" required>
                     @error('price')
                         <div class="invalid-feedback">{{ $message }}</div>
@@ -114,3 +164,42 @@
     </div>
 </div>
 @endsection
+
+@push('scripts')
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const iconInput = document.getElementById('iconInput');
+        const iconPreview = document.getElementById('iconPreview');
+        const iconSearch = document.getElementById('iconSearch');
+        const dropdownItems = document.querySelectorAll('.icon-picker-item');
+
+        // Select icon
+        dropdownItems.forEach(item => {
+            item.addEventListener('click', function(e) {
+                e.preventDefault();
+                const iconClass = this.dataset.icon;
+                iconInput.value = iconClass;
+                iconPreview.className = iconClass;
+                
+                // Close dropdown
+                const dropdown = bootstrap.Dropdown.getInstance(this.closest('.dropdown-menu').previousElementSibling);
+                if (dropdown) dropdown.hide();
+            });
+        });
+
+        // Search filter
+        iconSearch.addEventListener('input', function() {
+            const query = this.value.toLowerCase();
+            dropdownItems.forEach(item => {
+                const label = item.querySelector('span').textContent.toLowerCase();
+                const iconClass = item.dataset.icon.toLowerCase();
+                if (label.includes(query) || iconClass.includes(query)) {
+                    item.style.display = '';
+                } else {
+                    item.style.display = 'none';
+                }
+            });
+        });
+    });
+</script>
+@endpush

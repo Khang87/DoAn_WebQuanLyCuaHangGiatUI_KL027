@@ -26,7 +26,7 @@
 |---|--------|----------------|
 | 1 | **Tổng Quan (Dashboard)** | Thống kê doanh thu, tổng số đơn hàng, khách hàng. Tiện ích **Lịch Giao Nhận Trong Ngày** (hiển thị label tiếng Việt qua accessor) & **Hóa Đơn Chờ Thanh Toán** với nút **thu tiền nhanh** (`dashboard.collect-cash-payment`). |
 | 2 | **Quản Lý Dịch Vụ & Danh Mục (Services & Categories)** | CRUD dịch vụ giặt sấy, giặt hấp, giặt chăn mền... Tìm kiếm, phân loại trạng thái, bộ lọc sắp xếp theo giá / ngày tạo. |
-| 3 | **Quản Lý Khách Hàng (Customers)** | Quản lý thông tin cá nhân, lịch sử sử dụng dịch vụ, tổng chi tiêu & **cấp bậc loyalty tự động**. |
+| 3 | **Quản Lý Khách Hàng (Customers)** | Quản lý thông tin cá nhân, lịch sử sử dụng dịch vụ, tổng chi tiêu & điểm tích lũy. |
 | 4 | **Quản Lý Đơn Hàng (Orders)** | Tạo đơn hàng đa dịch vụ, tính tiền tự động, theo dõi tiến độ xử lý qua `OrderService::getStatusFlow()` (washing → "Đang giặt", washed → "Đã giặt xong"). |
 | 5 | **Lịch Giao Nhận (Deliveries)** | Quản lý lịch lấy đồ tận nơi & giao đồ tận nhà. Accessor `type_label`, `status_label`, `status_badge_class` chuẩn tiếng Việt. |
 | 6 | **Đặt Lịch Online (Bookings)** | Tiếp nhận & xử lý yêu cầu đặt lịch hẹn trực tuyến. |
@@ -178,7 +178,7 @@ Hệ thống phân quyền dựa trên cột `role` của bảng `users`:
 
 | Vai Trò | Mô tả | Quyền Truy Cập |
 |---------|-------|-----------------|
-| **Admin** (`admin`) | Quản trị viên toàn quyền | Toàn bộ module + Reports + Accounts + Promotions + Coupons + Pricings + Notifications + Services + Service Categories + Garments + Garment Conditions |
+| **Quản lý** (`admin`) | Quản lý hệ thống | Toàn bộ module + Reports + Accounts + Promotions + Coupons + Pricings + Notifications + Services + Service Categories + Garments + Garment Conditions |
 | **Staff** (`staff`) | Nhân viên vận hành | Orders, Order Items, Customers, Deliveries, Bookings, Payments, Invoices, Dashboard + Profile & Settings |
 
 > Các module `promotions`, `coupons`, `pricings`, `accounts`, `notifications`, `reports`, `services`, `service-categories`, `garments`, `garment-conditions` được bảo vệ bởi middleware `role:admin`.
@@ -191,7 +191,7 @@ Hệ thống phân quyền dựa trên cột `role` của bảng `users`:
 
 | Vai Trò | Email | Mật Khẩu | Trạng Thái |
 |---------|-------|----------|------------|
-| **Quản trị viên (Admin)** | `admin@giatui.com` | `12345678` | Hoạt động |
+| **Quản lý** | `admin@giatui.com` | `12345678` | Hoạt động |
 | **Nhân viên (Staff) 1** | `staff1@giatui.com` | `staff123` | Hoạt động |
 | **Nhân viên (Staff) 2** | `staff2@giatui.com` | `staff123` | Hoạt động |
 | **Nhân viên (Staff) 3** | `staff3@giatui.com` | `staff123` | Hoạt động |
@@ -234,7 +234,7 @@ DB_PASSWORD=
 
 ## 📋 Quy Tắc Phát Triển (Development Guidelines)
 
-- **Form Request Validation:** Tất cả request đều sử dụng Form Request riêng biệt trong `app/Http/Requests/Admin/`.
+- **Form Request Validation:** Tất cả request đều sử dụng Form Request riêng biệt trong `app/Http/Requests/QuanLy/`.
 - **Service Layer:** Logic nghiệp vụ được tách ra thành Service classes trong `app/Services/`.
 - **DB Transactions:** Các thao tác ghi dữ liệu phức tạp (Orders, Payments, Invoices) sử dụng `DB::transaction()`.
 - **Eloquent ORM:** Truy vấn CSDL thông qua Model relationships, hỗ trợ SQLite/MySQL/SQL Server.

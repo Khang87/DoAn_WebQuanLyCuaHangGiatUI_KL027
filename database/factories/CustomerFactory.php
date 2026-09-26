@@ -17,8 +17,6 @@ class CustomerFactory extends Factory
      */
     public function definition(): array
     {
-        $types = ['Mới', 'Thường', 'VIP'];
-
         return [
             'code' => 'KH' . fake()->unique()->numerify('###'),
             'name' => fake()->name(),
@@ -26,7 +24,6 @@ class CustomerFactory extends Factory
             'phone' => fake()->phoneNumber(),
             'address' => fake()->address(),
             'points' => fake()->numberBetween(0, 5000),
-            'type' => fake()->randomElement($types),
         ];
     }
 }

@@ -1,7 +1,7 @@
 @extends('layouts.app')
 
-@section('title', 'Doanh Thu - Sky Laundry')
-@section('page-title', 'Doanh Thu')
+@section('title', 'Doanh thu - Sky Laundry')
+@section('page-title', 'Doanh thu')
 
 @section('content')
 <div class="card mb-4">
@@ -39,7 +39,7 @@
                 <thead>
                     <tr>
                         <th>Tháng</th>
-                        <th class="text-end">Doanh Thu</th>
+                        <th class="text-end">Doanh thu</th>
                     </tr>
                 </thead>
                 <tbody>

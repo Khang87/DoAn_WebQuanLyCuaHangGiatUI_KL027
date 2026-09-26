@@ -53,7 +53,7 @@
                     <select class="form-select @error('role') is-invalid @enderror" name="role" required>
                         <option value="customer">Khách hàng</option>
                         <option value="staff">Nhân viên</option>
-                        <option value="admin">Quản trị viên</option>
+                        <option value="manager" @selected(old('role') === 'manager')>Quản lý</option>
                     </select>
                     @error('role')
                         <div class="invalid-feedback">{{ $message }}</div>

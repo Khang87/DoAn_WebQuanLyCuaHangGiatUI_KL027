@@ -3,31 +3,56 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\Admin\UserRequest;
+use App\Models\Notification;
 use App\Models\User;
-use App\Services\UserService;
+use App\Models\Order;
+use App\Services\NotificationService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Hash;
 
 class NotificationController extends Controller
 {
-    public function index()
+    public function __construct(
+        private NotificationService $notificationService,
+    ) {}
+
+    public function index(Request $request)
     {
-        return view('admin.notifications.index', ['notifications' => \App\Models\Notification::latest()->get()]);
+        $notifications = $this->notificationService->getAll([
+            'search' => $request->input('search'),
+            'user_id' => $request->input('user_id'),
+            'type' => $request->input('type'),
+            'order_id' => $request->input('order_id'),
+        ]);
+
+        $users = User::orderBy('name')->get();
+        $orders = Order::orderBy('created_at', 'desc')->get();
+
+        return view('admin.notifications.index', compact('notifications', 'users', 'orders'));
     }
 
     public function create()
     {
-        return view('admin.notifications.create');
+        $users = User::orderBy('name')->get();
+        $orders = Order::orderBy('created_at', 'desc')->get();
+
+        return view('admin.notifications.create', compact('users', 'orders'));
     }
 
     public function store(Request $request)
     {
+        $validated = $request->validate([
+            'user_id' => 'required|exists:users,id',
+            'type' => 'nullable|string|max:100',
+            'message' => 'required|string|max:1000',
+            'order_id' => 'nullable|exists:orders,id',
+            'sent_at' => 'nullable|date',
+        ]);
+
         try {
-            \App\Models\Notification::create($request->validate([
-                'title' => 'required|string|max:255',
-                'message' => 'required|string',
-            ]));
+            if (empty($validated['sent_at'])) {
+                $validated['sent_at'] = now();
+            }
+            Notification::create($validated);
 
             return redirect()->route('notifications.index')->with('success', 'Thông báo đã được tạo thành công.');
         } catch (\Exception $e) {
@@ -35,23 +60,50 @@ class NotificationController extends Controller
         }
     }
 
-    public function show($id)
+    public function show(int $id)
     {
-        return view('admin.notifications.show', ['notification' => \App\Models\Notification::findOrFail($id)]);
+        $notification = $this->notificationService->find($id);
+
+        if (!$notification) {
+            abort(404);
+        }
+
+        return view('admin.notifications.show', compact('notification'));
     }
 
-    public function edit($id)
+    public function edit(int $id)
     {
-        return view('admin.notifications.edit', ['notification' => \App\Models\Notification::findOrFail($id)]);
+        $notification = $this->notificationService->find($id);
+
+        if (!$notification) {
+            abort(404);
+        }
+
+        $users = User::orderBy('name')->get();
+        $orders = Order::orderBy('created_at', 'desc')->get();
+
+        return view('admin.notifications.edit', compact('notification', 'users', 'orders'));
     }
 
-    public function update(Request $request, $id)
+    public function update(Request $request, int $id)
     {
+        $notification = $this->notificationService->find($id);
+
+        if (!$notification) {
+            abort(404);
+        }
+
+        $validated = $request->validate([
+            'user_id' => 'required|exists:users,id',
+            'type' => 'nullable|string|max:100',
+            'message' => 'required|string|max:1000',
+            'order_id' => 'nullable|exists:orders,id',
+            'sent_at' => 'nullable|date',
+            'read_at' => 'nullable|date',
+        ]);
+
         try {
-            \App\Models\Notification::findOrFail($id)->update($request->validate([
-                'title' => 'required|string|max:255',
-                'message' => 'required|string',
-            ]));
+            $this->notificationService->update($notification, $validated);
 
             return redirect()->route('notifications.index')->with('success', 'Thông báo đã được cập nhật.');
         } catch (\Exception $e) {
@@ -59,14 +111,31 @@ class NotificationController extends Controller
         }
     }
 
-    public function destroy($id)
+    public function destroy(int $id)
     {
+        $notification = $this->notificationService->find($id);
+
+        if (!$notification) {
+            abort(404);
+        }
+
         try {
-            \App\Models\Notification::findOrFail($id)->delete();
+            $this->notificationService->delete($notification);
 
             return redirect()->route('notifications.index')->with('success', 'Thông báo đã được xóa.');
         } catch (\Exception $e) {
             return redirect()->route('notifications.index')->with('error', 'Có lỗi xảy ra: ' . $e->getMessage());
         }
+    }
+
+    public function markAsRead(int $id)
+    {
+        $notification = $this->notificationService->markAsRead($id);
+
+        if (!$notification) {
+            abort(404);
+        }
+
+        return back()->with('success', 'Đã đánh dấu là đã đọc.');
     }
 }

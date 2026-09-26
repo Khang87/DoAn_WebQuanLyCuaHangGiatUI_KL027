@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Chi Tiết Mã Giảm Giá - Sky Laundry')
+@section('title', 'Chi tiết mã giảm giá - Sky Laundry')
 @section('page-title', 'Chi tiết mã giảm giá')
 
 @section('content')
@@ -12,7 +12,7 @@
         <a href="{{ route('coupons.edit', $coupon) }}" class="btn btn-warning btn-sm">
             <i class="bi bi-pencil me-1"></i>Chỉnh sửa
         </a>
-        <form action="{{ route('coupons.destroy', $coupon) }}" method="POST" class="d-inline" onsubmit="return confirm('Bạn có chắc muốn xóa mã giảm giá này?')">
+        <form action="{{ route('coupons.destroy', $coupon) }}" method="POST" class="d-inline" id="deleteCouponForm">
             @csrf @method('DELETE')
             <button type="submit" class="btn btn-danger btn-sm">
                 <i class="bi bi-trash me-1"></i>Xóa
@@ -95,3 +95,38 @@
     <i class="bi bi-arrow-left me-1"></i>Quay lại danh sách
 </a>
 @endsection
+
+@push('scripts')
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const form = document.getElementById('deleteCouponForm');
+        if (!form) return;
+        
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            if (typeof Swal === 'undefined') {
+                if (confirm('Bạn có chắc muốn xóa mã giảm giá này?')) {
+                    form.submit();
+                }
+                return;
+            }
+            
+            Swal.fire({
+                title: 'Xóa mã giảm giá?',
+                text: 'Hành động này không thể hoàn tác.',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#dc2626',
+                cancelButtonColor: '#64748b',
+                confirmButtonText: 'Xóa',
+                cancelButtonText: 'Hủy'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    form.submit();
+                }
+            });
+        });
+    });
+</script>
+@endpush

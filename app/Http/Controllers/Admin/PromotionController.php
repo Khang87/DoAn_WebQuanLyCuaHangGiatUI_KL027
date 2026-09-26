@@ -2,9 +2,9 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Enums\RecordStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\PromotionRequest;
-use App\Models\Promotion;
 use App\Services\PromotionService;
 use Illuminate\Http\Request;
 
@@ -23,7 +23,9 @@ class PromotionController extends Controller
             'sort_order' => $request->input('sort_order'),
         ]);
 
-        return view('admin.promotions.index', compact('promotions'));
+        $statuses = RecordStatus::options();
+
+        return view('admin.promotions.index', compact('promotions', 'statuses'));
     }
 
     public function create()
@@ -36,7 +38,7 @@ class PromotionController extends Controller
         try {
             $this->promotionService->create($request->validated());
 
-            return redirect()->route('promotions.index')->with('success', 'Khuyến mãi đã được tạo.');
+            return redirect()->route('promotions.index')->with('success', 'Chương trình khuyến mãi đã được tạo thành công.');
         } catch (\Exception $e) {
             return redirect()->route('promotions.create')->with('error', 'Có lỗi xảy ra: ' . $e->getMessage())->withInput();
         }
@@ -50,9 +52,7 @@ class PromotionController extends Controller
             abort(404);
         }
 
-        $coupons = $promotion->coupons()->latest()->paginate(10);
-
-        return view('admin.promotions.show', compact('promotion', 'coupons'));
+        return view('admin.promotions.show', compact('promotion'));
     }
 
     public function edit(int $id)
@@ -77,9 +77,9 @@ class PromotionController extends Controller
         try {
             $this->promotionService->update($promotion, $request->validated());
 
-            return redirect()->route('promotions.index')->with('success', 'Khuyến mãi đã được cập nhật.');
+            return redirect()->route('promotions.index')->with('success', 'Chương trình khuyến mãi đã được cập nhật.');
         } catch (\Exception $e) {
-            return redirect()->route('promotions.edit', $promotion)->with('error', 'Có lỗi xảy ra: ' . $e->getMessage())->withInput();
+            return redirect()->route('promotions.edit', $id)->with('error', 'Có lỗi xảy ra: ' . $e->getMessage())->withInput();
         }
     }
 
@@ -87,14 +87,16 @@ class PromotionController extends Controller
     {
         $promotion = $this->promotionService->find($id);
 
-        if ($promotion) {
-            try {
-                $this->promotionService->delete($promotion);
-            } catch (\Exception $e) {
-                return redirect()->route('promotions.index')->with('error', 'Có lỗi xảy ra: ' . $e->getMessage());
-            }
+        if (!$promotion) {
+            abort(404);
         }
 
-        return redirect()->route('promotions.index')->with('success', 'Khuyến mãi đã được xóa.');
+        try {
+            $this->promotionService->delete($promotion);
+
+            return redirect()->route('promotions.index')->with('success', 'Chương trình khuyến mãi đã được xóa.');
+        } catch (\Exception $e) {
+            return redirect()->route('promotions.index')->with('error', 'Có lỗi xảy ra: ' . $e->getMessage());
+        }
     }
 }

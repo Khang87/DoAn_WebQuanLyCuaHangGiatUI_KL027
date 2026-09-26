@@ -1,14 +1,65 @@
 @extends('layouts.app')
-@section('title', 'Sửa Thanh Toán - Sky Laundry')
+@section('title', 'Sửa thanh toán - Sky Laundry')
 @section('page-title', 'Sửa thanh toán')
 @section('content')
-<div class="card"><div class="card-body"><form action="{{ route('payments.update', $payment) }}" method="POST">@csrf @method('PUT')
-    <div class="row g-3">
-        <div class="col-md-6"><label class="form-label">Mã đơn hàng</label><input type="text" class="form-control" value="{{ $payment->order?->code ?? 'Chưa có' }}" disabled></div>
-        <div class="col-md-6"><label class="form-label">Số tiền</label><input type="number" class="form-control" name="amount" value="{{ $payment->amount }}" min="0" required></div>
-        <div class="col-md-6"><label class="form-label">Phương thức</label><select class="form-select" name="method"><option value="cash" @selected($payment->method === 'cash')">Tiền mặt</option><option value="transfer" @selected($payment->method === 'transfer')">Chuyển khoản</option><option value="wallet" @selected($payment->method === 'wallet')">Ví điện tử</option></select></div>
-        <div class="col-md-6"><label class="form-label">Trạng thái</label><select class="form-select" name="status"><option value="pending" @selected($payment->status === 'pending')">Chưa thanh toán</option><option value="completed" @selected($payment->status === 'completed')">Đã thanh toán</option></select></div>
+<div class="card">
+    <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h5 class="mb-0">Sửa thanh toán</h5>
+            <a href="{{ route('payments.index') }}" class="btn btn-outline-secondary btn-sm">
+                <i class="bi bi-arrow-left me-1"></i>Quay lại
+            </a>
+        </div>
+
+        <form action="{{ route('payments.update', $payment) }}" method="POST">
+            @csrf @method('PUT')
+            <div class="row g-4">
+                <div class="col-md-6">
+                    <label class="form-label">Mã đơn hàng</label>
+                    <input type="text" class="form-control" value="{{ $payment->order?->code ?? 'Chưa có' }}" disabled>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Hóa đơn</label>
+                    <input type="text" class="form-control" value="{{ $payment->invoice?->code ?: 'Chưa liên kết' }}" disabled>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Số tiền <span class="text-danger ms-1">*</span></label>
+                    <input type="number" class="form-control" name="amount" value="{{ $payment->amount }}" min="0" step="1000" required>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Phương thức <span class="text-danger ms-1">*</span></label>
+                    <select class="form-select" name="method" required>
+                        <option value="cash" {{ $payment->method === 'cash' ? 'selected' : '' }}>Tiền mặt</option>
+                        <option value="bank_transfer" {{ $payment->method === 'bank_transfer' ? 'selected' : '' }}>Chuyển khoản / QR</option>
+                        <option value="momo" {{ $payment->method === 'momo' ? 'selected' : '' }}>Ví MoMo</option>
+                        <option value="credit_card" {{ $payment->method === 'credit_card' ? 'selected' : '' }}>Thẻ ATM / Credit</option>
+                        <option value="e_wallet" {{ $payment->method === 'e_wallet' ? 'selected' : '' }}>Ví điện tử</option>
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Trạng thái <span class="text-danger ms-1">*</span></label>
+                    <select class="form-select" name="status" required>
+                        <option value="paid" {{ $payment->status === 'paid' ? 'selected' : '' }}>Đã thanh toán</option>
+                        <option value="partial" {{ $payment->status === 'partial' ? 'selected' : '' }}>Một phần</option>
+                        <option value="pending" {{ $payment->status === 'pending' ? 'selected' : '' }}>Chờ thanh toán</option>
+                        <option value="failed" {{ $payment->status === 'failed' ? 'selected' : '' }}>Thất bại</option>
+                        <option value="refunded" {{ $payment->status === 'refunded' ? 'selected' : '' }}>Đã hoàn tiền</option>
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Ngày thanh toán</label>
+                    <input type="datetime-local" class="form-control" name="paid_at" value="{{ $payment->paid_at?->format('Y-m-d\TH:i') ?? now()->format('Y-m-d\TH:i') }}">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Mã giao dịch</label>
+                    <input type="text" class="form-control" name="transaction_code" value="{{ $payment->transaction_code ?? '' }}" placeholder="Mã GD từ ngân hàng / ví">
+                </div>
+            </div>
+            <div class="d-flex justify-content-end gap-2 mt-4">
+                <a href="{{ route('payments.index') }}" class="btn btn-outline-secondary">Hủy</a>
+                <button type="submit" class="btn btn-primary">Lưu thay đổi</button>
+            </div>
+        </form>
     </div>
-    <button class="btn btn-primary mt-4">Lưu thay đổi</button>
-</form></div></div>
+</div>
 @endsection

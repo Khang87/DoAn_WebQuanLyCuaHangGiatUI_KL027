@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>Đăng Nhập - Quản Lý Cửa Hàng Giặt Ủi</title>
+    <title>Đăng nhập - Quản lý cửa Hàng giặt Ủi</title>
 
     <!-- Favicon -->
     <link rel="icon" type="image/png" href="{{ asset('assets/images/favicon.ico') }}">
@@ -80,7 +80,7 @@
                 </div>
 
                 <div class="form-group">
-                    <label class="form-label" for="password">Mật Khẩu</label>
+                    <label class="form-label" for="password">Mật khẩu</label>
                     <div class="input-group">
                         <input type="password" 
                                class="form-control @error('password') is-invalid @enderror" 
@@ -108,7 +108,7 @@
                 </div>
 
                 <button type="submit" class="btn btn-primary btn-login">
-                    <i class="bi bi-box-arrow-in-right me-2"></i>Đăng Nhập
+                    <i class="bi bi-box-arrow-in-right me-2"></i>Đăng nhập
                 </button>
             </form>
 

@@ -1000,7 +1000,7 @@ body {
 }
 
 /* ---------------------------------------------------------------------
-   Utilities
+    Utilities
 --------------------------------------------------------------------- */
 .text-primary {
     color: var(--primary-blue) !important;
@@ -1012,4 +1012,70 @@ body {
 
 .border-primary {
     border-color: var(--primary-blue) !important;
+}
+
+/* Ensure complete borders on outline buttons */
+.btn-outline-primary {
+    border: 1px solid var(--primary-blue) !important;
+}
+
+/* Avatar utility */
+.avatar-cover {
+    object-fit: cover;
+}
+
+/* =====================================================================
+   CHUẨN HÓA TEXT BẢNG DỮ LIỆU (toàn hệ thống)
+   Tiêu đề (th) và nội dung (td) dùng chung một nét chữ đen đậm để rõ ràng
+   khi chiếu máy chiếu. Ghi đè cả Bootstrap (.table) lẫn lớp tùy chỉnh
+   (.table-custom) vốn dùng màu xám nhạt --text-secondary cho tiêu đề.
+   ===================================================================== */
+.table th,
+.table td,
+.table-custom th,
+.table-custom td {
+    color: #000000 !important;
+    font-weight: 700 !important;
+}
+
+/* Giữ lại màu ngữ nghĩa cho trạng thái / cảnh báo / liên kết / nhấn mạnh */
+.table th.text-danger,
+.table td.text-danger,
+.table-custom th.text-danger,
+.table-custom td.text-danger {
+    color: var(--bs-danger) !important;
+}
+
+.table th.text-primary,
+.table td.text-primary,
+.table-custom th.text-primary,
+.table-custom td.text-primary {
+    color: var(--bs-primary) !important;
+}
+
+.table th.text-success,
+.table td.text-success,
+.table-custom th.text-success,
+.table-custom td.text-success {
+    color: var(--bs-success) !important;
+}
+
+.table th.text-warning,
+.table td.text-warning,
+.table-custom th.text-warning,
+.table-custom td.text-warning {
+    color: #664d03 !important;
+}
+
+.table th.text-info,
+.table td.text-info,
+.table-custom th.text-info,
+.table-custom td.text-info {
+    color: var(--bs-info) !important;
+}
+
+/* Nhãn trạng thái (badge) giữ nguyên màu chữ riêng của hệ thống */
+.table .badge,
+.table-custom .badge {
+    font-weight: 700 !important;
 }

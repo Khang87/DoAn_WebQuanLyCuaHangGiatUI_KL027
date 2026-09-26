@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Enums\RecordStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\ServiceRequest;
 use App\Models\Service;
@@ -24,8 +25,9 @@ class ServiceController extends Controller
         ]);
 
         $categories = \App\Models\ServiceCategory::where('status', 'active')->orderBy('name')->get();
+        $statuses = RecordStatus::options();
 
-        return view('admin.services.index', compact('services', 'categories'));
+        return view('admin.services.index', compact('services', 'categories', 'statuses'));
     }
 
     public function create()
@@ -104,20 +106,20 @@ class ServiceController extends Controller
         }
     }
 
-    public function toggleStatus(int $id)
-    {
-        $service = $this->serviceService->find($id);
-
-        if (!$service) {
-            abort(404);
-        }
-
-        try {
-            $service->update(['status' => $service->status === 'active' ? 'inactive' : 'active']);
-
-            return back()->with('success', 'Trạng thái dịch vụ đã được cập nhật.');
-        } catch (\Exception $e) {
-            return back()->with('error', 'Có lỗi xảy ra: ' . $e->getMessage());
-        }
-    }
+    // public function toggleStatus(int $id)
+    // {
+    //     $service = $this->serviceService->find($id);
+    //
+    //     if (!$service) {
+    //         abort(404);
+    //     }
+    //
+    //     try {
+    //         $service->update(['status' => $service->status === 'active' ? 'inactive' : 'active']);
+    //
+    //         return back()->with('success', 'Trạng thái dịch vụ đã được cập nhật.');
+    //     } catch (\Exception $e) {
+    //         return back()->with('error', 'Có lỗi xảy ra: ' . $e->getMessage());
+    //     }
+    // }
 }

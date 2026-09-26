@@ -10,16 +10,14 @@ use Illuminate\Database\Eloquent\Factories\Factory;
  */
 class NotificationFactory extends Factory
 {
-    /**
-     * Define the model's default state.
-     *
-     * @return array<string, mixed>
-     */
     public function definition(): array
     {
         return [
-            'title' => fake()->sentence(),
+            'user_id' => \App\Models\User::factory(),
+            'type' => fake()->randomElement(['order', 'payment', 'booking', 'promotion']),
             'message' => fake()->paragraph(),
+            'order_id' => null,
+            'sent_at' => now(),
             'read_at' => null,
         ];
     }

@@ -1,9 +1,21 @@
 @extends('layouts.app')
 
-@section('title', 'Quản Lý Đơn Hàng - Sky Laundry')
-@section('page-title', 'Quản Lý Đơn Hàng')
+@section('title', 'Quản lý Đơn Hàng - Sky Laundry')
+@section('page-title', 'Quản lý Đơn Hàng')
 
 @section('content')
+@php
+    $orderStatusLabels = [
+        'pending' => 'Chờ tiếp nhận',
+        'received' => 'Đã nhận đồ',
+        'sorting' => 'Đang phân loại',
+        'processing' => 'Đang giặt / Xử lý',
+        'washed' => 'Đã giặt xong',
+        'delivering' => 'Đang giao đồ',
+        'completed' => 'Hoàn thành',
+        'cancelled' => 'Đã hủy',
+    ];
+@endphp
 <!-- Page Actions -->
 <div class="order-toolbar d-flex justify-content-between align-items-center mb-4">
     <div>
@@ -51,24 +63,24 @@
                                 @if($currentSortBy === 'code') @if($currentSortOrder === 'asc') <i class="bi bi-sort-up"></i> @else <i class="bi bi-sort-down"></i> @endif @endif
                             </a>
                         </th>
-                        <th>Khách Hàng</th>
-                        <th>Dịch Vụ</th>
-                        <th>Số Lượng</th>
-                        <th>Ghi Chú Khách Hàng</th>
+                        <th>Khách hàng</th>
+                        <th>Dịch vụ</th>
+                        <th>Số lượng</th>
+                        <th>Ghi chú khách Hàng</th>
                         <th>
                             <a href="{{ request()->fullUrlWithQuery(['sort_by' => 'total_amount', 'sort_order' => $nextOrderTotal]) }}" class="text-dark text-decoration-none">
-                                Tổng Tiền
+                                Tổng tiền
                                 @if($currentSortBy === 'total_amount') @if($currentSortOrder === 'asc') <i class="bi bi-sort-up"></i> @else <i class="bi bi-sort-down"></i> @endif @endif
                             </a>
                         </th>
-                        <th>Trạng Thái</th>
+                        <th>Trạng thái</th>
                         <th>
                             <a href="{{ request()->fullUrlWithQuery(['sort_by' => 'created_at', 'sort_order' => $nextOrderCreated]) }}" class="text-dark text-decoration-none">
-                                Ngày Tạo
+                                Ngày tạo
                                 @if($currentSortBy === 'created_at') @if($currentSortOrder === 'asc') <i class="bi bi-sort-up"></i> @else <i class="bi bi-sort-down"></i> @endif @endif
                             </a>
                         </th>
-                        <th>Thao Tác</th>
+                        <th>Thao tác</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -84,9 +96,9 @@
                             @endphp
                             <div class="d-flex align-items-center">
                                 @if($order->customer)
-                                    <img src="{{ $avatarUrl }}" alt="Avatar" class="rounded-circle me-2" style="width: 32px; height: 32px; object-fit: cover;">
+                                    <img src="{{ $avatarUrl }}" alt="Avatar" class="rounded-circle me-2 avatar-cover" style="width: 32px; height: 32px;">
                                 @else
-                                    <img src="{{ asset('assets/images/user_1.jpg') }}" alt="Avatar" class="rounded-circle me-2" style="width: 32px; height: 32px; object-fit: cover;">
+                                    <img src="{{ asset('assets/images/user_1.jpg') }}" alt="Avatar" class="rounded-circle me-2 avatar-cover" style="width: 32px; height: 32px;">
                                 @endif
                                 <div>
                                     <div class="fw-semibold">{{ $order->customer?->name ?: '-' }}</div>
@@ -94,33 +106,30 @@
                                 </div>
                             </div>
                         </td>
-                        <td>{{ $order->service?->name ?: '-' }}</td>
+                         <td>{{ $order->items->pluck('service.name')->filter()->join(', ') ?: ($order->service?->name ?: '-') }}</td>
                         <td>
                             <strong>
-                                {{ number_format((float)($order->quantity_items ?? $order->weight_kg ?? 0)) }}
-                                {{ $order->service->unit ?? 'kg' }}
+                                 {{ number_format((float)($order->items->sum('quantity') ?: ($order->quantity_items ?? $order->weight_kg ?? 0))) }}
+                                 {{ $order->service?->unit ?? 'món' }}
                             </strong>
                         </td>
                         <td><small>{{ $order->notes ?: 'Không có ghi chú' }}</small></td>
                         <td><strong>{{ number_format($order->total_amount) }} VNĐ</strong></td>
                         <td>
-                            @if($order->status === 'completed')
-                                <span class="badge bg-success-subtle text-success border border-success px-3 py-2 rounded-pill"><i class="fas fa-check-circle me-1"></i>Hoàn thành</span>
-                            @elseif($order->status === 'cancelled')
-                                <span class="badge bg-danger-subtle text-danger border border-danger px-3 py-2 rounded-pill"><i class="fas fa-x-circle me-1"></i>Đã hủy</span>
-                            @elseif($order->status === 'pending')
-                                <span class="badge bg-warning-subtle text-warning border border-warning px-3 py-2 rounded-pill"><i class="fas fa-hourglass me-1"></i>Chờ xử lý</span>
-                            @elseif($order->status === 'processing')
-                                <span class="badge bg-info-subtle text-info border border-info px-3 py-2 rounded-pill"><i class="fas fa-cog me-1"></i>Đang xử lý</span>
-                            @elseif($order->status === 'delivering')
-                                <span class="badge bg-primary-subtle text-primary border border-primary px-3 py-2 rounded-pill"><i class="fas fa-truck me-1"></i>Đang giao</span>
-                            @elseif($order->status === 'washing')
-                                <span class="badge bg-warning-subtle text-warning border border-warning px-3 py-2 rounded-pill"><i class="fas fa-washer me-1"></i>Đang giặt</span>
-                            @elseif($order->status === 'washed')
-                                <span class="badge bg-info-subtle text-info border border-info px-3 py-2 rounded-pill"><i class="fas fa-tshirt-pocket me-1"></i>Đã giặt xong</span>
-                            @else
-                                <span class="badge bg-secondary-subtle text-secondary border border-secondary px-3 py-2 rounded-pill"><i class="fas fa-circle-notch me-1"></i>{{ $order->status }}</span>
-                            @endif
+                             @php $status = $orderStatusLabels[$order->status] ?? $orderStatusLabels['pending']; @endphp
+                             @if($order->status === 'completed')
+                                 <span class="badge bg-success-subtle text-success border border-success px-3 py-2 rounded-pill"><i class="fas fa-check-circle me-1"></i>{{ $status }}</span>
+                             @elseif($order->status === 'cancelled')
+                                 <span class="badge bg-danger-subtle text-danger border border-danger px-3 py-2 rounded-pill"><i class="fas fa-x-circle me-1"></i>{{ $status }}</span>
+                             @elseif($order->status === 'delivering')
+                                 <span class="badge bg-primary-subtle text-primary border border-primary px-3 py-2 rounded-pill"><i class="fas fa-truck me-1"></i>{{ $status }}</span>
+                             @elseif($order->status === 'processing')
+                                 <span class="badge bg-warning-subtle text-warning border border-warning px-3 py-2 rounded-pill"><i class="fas fa-washer me-1"></i>{{ $status }}</span>
+                             @elseif($order->status === 'washed')
+                                 <span class="badge bg-info-subtle text-info border border-info px-3 py-2 rounded-pill"><i class="fas fa-tshirt-pocket me-1"></i>{{ $status }}</span>
+                             @else
+                                 <span class="badge bg-warning-subtle text-warning border border-warning px-3 py-2 rounded-pill"><i class="fas fa-clock me-1"></i>{{ $status }}</span>
+                             @endif
                         </td>
                         <td>{{ $order->created_at?->format('d/m/Y') }}</td>
                         <td>
@@ -135,11 +144,20 @@
                                     </a>
                                 @endif
                                 <a href="{{ route('orders.show', $order) }}" class="btn btn-order-action view" title="Xem"><i class="bi bi-eye"></i></a>
-                                <a href="{{ route('orders.edit', $order) }}" class="btn btn-order-action edit" title="Sửa"><i class="bi bi-pencil"></i></a>
-                                <form action="{{ route('orders.destroy', $order) }}" method="POST" class="d-inline" onsubmit="return confirm('Bạn có chắc muốn xóa?')">
-                                    @csrf @method('DELETE')
-                                    <button type="submit" class="btn btn-order-action delete" title="Xóa"><i class="bi bi-trash"></i></button>
-                                </form>
+                                @if($order->can_edit)
+                                    <a href="{{ route('orders.edit', $order) }}" class="btn btn-order-action edit" title="Sửa"><i class="bi bi-pencil"></i></a>
+                                @endif
+                                @if($order->can_delete)
+                                    <form action="{{ route('orders.destroy', $order) }}" method="POST" class="d-inline" id="deleteOrderForm_{{ $order->id }}">
+                                        @csrf @method('DELETE')
+                                        <button type="submit" class="btn btn-order-action delete" title="Xóa"><i class="bi bi-trash"></i></button>
+                                    </form>
+                                @endif
+                                @if($order->is_locked)
+                                    <span class="badge bg-secondary text-white px-3 py-2 rounded-pill d-flex align-items-center" title="Đã quyết toán">
+                                        <i class="bi bi-lock me-1"></i>Đã quyết toán
+                                    </span>
+                                @endif
                             </div>
                         </td>
                     </tr>
@@ -184,3 +202,37 @@
 </nav>
 @endif
 @endsection
+
+@push('scripts')
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        document.querySelectorAll('[id^="deleteOrderForm_"]').forEach(function(form) {
+            form.addEventListener('submit', function(e) {
+                e.preventDefault();
+
+                if (typeof Swal === 'undefined') {
+                    if (confirm('Bạn có chắc muốn xóa?')) {
+                        form.submit();
+                    }
+                    return;
+                }
+
+                Swal.fire({
+                    title: 'Xóa đơn hàng?',
+                    text: 'Hành động này không thể hoàn tác.',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#dc2626',
+                    cancelButtonColor: '#64748b',
+                    confirmButtonText: 'Xóa',
+                    cancelButtonText: 'Hủy'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        form.submit();
+                    }
+                });
+            });
+        });
+    });
+</script>
+@endpush

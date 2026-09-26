@@ -2,13 +2,35 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Http\Controllers\Concerns\RejectsSettledRecords;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\OrderItemRequest;
 use App\Models\OrderItem;
 use Illuminate\Http\Request;
+use Symfony\Component\HttpFoundation\Response;
 
 class OrderItemController extends Controller
 {
+    use RejectsSettledRecords;
+
+    /**
+     * Đơn đã quyết toán thì các dòng mặt hàng của đơn cũng bị khoá theo.
+     */
+    private function assertOrderEditable(?OrderItem $item, Request $request, string $fallbackUrl): ?Response
+    {
+        $order = $item?->order;
+
+        if ($order?->isLocked()) {
+            return $this->rejectSettled(
+                $request,
+                'Đơn hàng '.$order->code.' đã quyết toán nên không thể thay đổi chi tiết mặt hàng.',
+                $fallbackUrl
+            );
+        }
+
+        return null;
+    }
+
     public function index(Request $request)
     {
         $items = OrderItem::query();
@@ -34,6 +56,16 @@ class OrderItemController extends Controller
 
     public function store(OrderItemRequest $request)
     {
+        $order = \App\Models\Order::find($request->input('order_id'));
+
+        if ($order?->isLocked()) {
+            return $this->rejectSettled(
+                $request,
+                'Đơn hàng '.$order->code.' đã quyết toán nên không thể thêm chi tiết mặt hàng.',
+                route('order-items.index')
+            );
+        }
+
         try {
             $data = $request->validated();
             $data['subtotal'] = $data['price'] * $data['quantity'];
@@ -64,8 +96,13 @@ class OrderItemController extends Controller
 
     public function update(OrderItemRequest $request, int $id)
     {
+        $item = OrderItem::with('order')->findOrFail($id);
+
+        if ($rejected = $this->assertOrderEditable($item, $request, route('order-items.index'))) {
+            return $rejected;
+        }
+
         try {
-            $item = OrderItem::findOrFail($id);
             $data = $request->validated();
             $data['subtotal'] = $data['price'] * $data['quantity'];
             $item->update($data);
@@ -76,10 +113,16 @@ class OrderItemController extends Controller
         }
     }
 
-    public function destroy(int $id)
+    public function destroy(Request $request, int $id)
     {
+        $item = OrderItem::with('order')->findOrFail($id);
+
+        if ($rejected = $this->assertOrderEditable($item, $request, route('order-items.index'))) {
+            return $rejected;
+        }
+
         try {
-            OrderItem::findOrFail($id)->delete();
+            $item->delete();
 
             return redirect()->route('order-items.index')->with('success', 'Đã xóa chi tiết.');
         } catch (\Exception $e) {

@@ -13,30 +13,41 @@
 <div class="card">
     <div class="card-body">
         <h5 class="mb-3">Thông tin thanh toán</h5>
-        <table class="table table-borderless">
-            <tr><td><strong>Đơn hàng</strong></td><td>{{ $payment->order?->code }}</td></tr>
-            <tr><td><strong>Số tiền</strong></td><td><strong>{{ number_format($payment->amount) }} VNĐ</strong></td></tr>
-            <tr><td><strong>Phương thức</strong></td>
-                <td>
-                    @if($payment->method === 'cash') Tiền mặt
-                    @elseif($payment->method === 'bank_transfer') Chuyển khoản
-                    @elseif($payment->method === 'e_wallet') Ví điện tử
-                    @else {{ $payment->method }} @endif
-                </td>
-            </tr>
-            <tr><td><strong>Trạng thái</strong></td>
-                <td>
-                    @if($payment->status === 'paid')
-                        <span class="badge bg-success-subtle text-success border border-success px-3 py-2 rounded-pill"><i class="fas fa-check-circle me-1"></i>Đã thanh toán</span>
-                    @elseif($payment->status === 'partial')
-                        <span class="badge bg-warning-subtle text-warning border border-warning px-3 py-2 rounded-pill"><i class="fas fa-hourglass me-1"></i>Một phần</span>
-                    @else
-                        <span class="badge bg-danger-subtle text-danger border border-danger px-3 py-2 rounded-pill"><i class="fas fa-x-circle me-1"></i>Chưa thanh toán</span>
-                    @endif
-                </td>
-            </tr>
-            <tr><td><strong>Ngày tạo</strong></td><td>{{ $payment->created_at?->format('d/m/Y H:i') }}</td></tr>
-        </table>
+        <div class="row">
+            <div class="col-md-6">
+                <table class="table table-borderless">
+                    <tr><td><strong>Mã thanh toán</strong></td><td>TT{{ $payment->id }}</td></tr>
+                    <tr><td><strong>Đơn hàng</strong></td><td><a href="{{ route('orders.show', $payment->order_id) }}">{{ $payment->order?->code }}</a></td></tr>
+                    <tr><td><strong>Hóa đơn</strong></td><td>{{ $payment->invoice?->code ?: 'Chưa liên kết' }}</td></tr>
+                    <tr><td><strong>Số tiền</strong></td><td><strong>{{ number_format($payment->amount) }} VNĐ</strong></td></tr>
+                    <tr><td><strong>Phương thức</strong></td>
+                        <td>
+                            <i class="bi {{ $payment->getMethodIcon() }} me-1"></i>{{ $payment->getMethodLabel() }}
+                        </td>
+                    </tr>
+                    <tr><td><strong>Trạng thái</strong></td>
+                        <td>
+                            <span class="badge {{ $payment->getStatusBadgeClass() }} px-3 py-2 rounded-pill">
+                                <i class="fas fa-{{ $payment->status === 'paid' ? 'check-circle' : ($payment->status === 'partial' ? 'clock' : ($payment->status === 'failed' ? 'times-circle' : ($payment->status === 'refunded' ? 'undo' : 'hourglass'))) }} me-1"></i>{{ $payment->getStatusLabel() }}
+                            </span>
+                        </td>
+                    </tr>
+                    <tr><td><strong>Mã giao dịch</strong></td><td>{{ $payment->transaction_code ?: '-' }}</td></tr>
+                    <tr><td><strong>Ngày thanh toán</strong></td><td>{{ $payment->paid_at?->format('d/m/Y H:i') ?? $payment->created_at?->format('d/m/Y H:i') }}</td></tr>
+                    <tr><td><strong>Ngày tạo</strong></td><td>{{ $payment->created_at?->format('d/m/Y H:i') }}</td></tr>
+                </table>
+            </div>
+            <div class="col-md-6">
+                @if($payment->order?->customer)
+                <table class="table table-borderless">
+                    <tr><td colspan="2"><strong>Thông tin khách hàng</strong></td></tr>
+                    <tr><td>Họ tên</td><td>{{ $payment->order->customer->name }}</td></tr>
+                    <tr><td>SĐT</td><td>{{ $payment->order->customer->phone }}</td></tr>
+                    <tr><td>Địa chỉ</td><td>{{ $payment->order->customer->address }}</td></tr>
+                </table>
+                @endif
+            </div>
+        </div>
     </div>
 </div>
 @endsection

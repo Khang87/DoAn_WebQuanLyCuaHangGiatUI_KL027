@@ -17,7 +17,12 @@ class InvoiceRequest extends FormRequest
 
         return [
             'order_id' => ['required', 'exists:orders,id'],
-            'total' => ['required', 'numeric', 'min:0'],
+            'invoice_date' => ['nullable', 'date'],
+            'total' => ['nullable', 'numeric', 'min:0'],
+            'total_amount' => ['nullable', 'numeric', 'min:0'],
+            'discount_amount' => ['nullable', 'numeric', 'min:0'],
+            'delivery_fee' => ['nullable', 'numeric', 'min:0'],
+            'grand_total' => ['nullable', 'numeric', 'min:0'],
             'status' => ['required', 'in:unpaid,partial,paid'],
             'notes' => ['nullable', 'string', 'max:1000'],
         ];
@@ -28,10 +33,10 @@ class InvoiceRequest extends FormRequest
         return [
             'order_id.required' => 'Đơn hàng là bắt buộc.',
             'order_id.exists' => 'Đơn hàng không tồn tại.',
-            'total.required' => 'Tổng tiền là bắt buộc.',
             'total.numeric' => 'Tổng tiền phải là số.',
-            'total.min' => 'Không được nhỏ hơn 0.',
+            'total.min' => 'Tổng tiền không được nhỏ hơn 0.',
             'status.required' => 'Trạng thái là bắt buộc.',
+            'status.in' => 'Trạng thái không hợp lệ.',
             'notes.max' => 'Không quá 1000 ký tự.',
         ];
     }

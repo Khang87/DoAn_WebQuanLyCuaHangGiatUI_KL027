@@ -26,7 +26,7 @@
                     </select>
                 </div>
                 <div class="col-md-6">
-                    <label class="form-label">Mã coupon</label>
+                    <label class="form-label">Mã coupon <span class="text-danger ms-1">*</span></label>
                     <input type="text" class="form-control" name="code" value="{{ old('code', $coupon->code) }}" required>
                 </div>
                 <div class="col-md-6">

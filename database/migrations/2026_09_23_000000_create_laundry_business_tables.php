@@ -16,7 +16,6 @@ return new class extends Migration
             $table->string('phone', 30)->nullable();
             $table->text('address')->nullable();
             $table->unsignedInteger('points')->default(0);
-            $table->string('type')->default('Mới');
             $table->timestamps();
         });
 

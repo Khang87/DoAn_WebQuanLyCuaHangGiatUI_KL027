@@ -1,7 +1,7 @@
 @extends('layouts.app')
 
-@section('title', 'Thêm Khách Hàng - Sky Laundry')
-@section('page-title', 'Thêm Khách Hàng')
+@section('title', 'Thêm khách hàng - Sky Laundry')
+@section('page-title', 'Thêm khách hàng')
 
 @section('content')
 <div class="card">
@@ -17,28 +17,39 @@
             @csrf
             <div class="row g-4">
                 <div class="col-md-6">
-                    <label class="form-label">Họ tên</label>
-                    <input type="text" class="form-control" name="name" placeholder="Nhập họ tên" required>
+                    <label class="form-label">Họ tên <span class="text-danger ms-1">*</span></label>
+                    <input type="text" class="form-control @error('name') is-invalid @enderror" name="name" placeholder="Nhập họ tên" required>
+                    @error('name')
+                        <div class="invalid-feedback">{{ $message }}</div>
+                    @enderror
                 </div>
                 <div class="col-md-6">
                     <label class="form-label">Email</label>
-                    <input type="email" class="form-control" name="email" placeholder="Nhập email">
+                    <input type="email" class="form-control @error('email') is-invalid @enderror" name="email" placeholder="Nhập email">
+                    @error('email')
+                        <div class="invalid-feedback">{{ $message }}</div>
+                    @enderror
                 </div>
                 <div class="col-md-6">
                     <label class="form-label">Số điện thoại</label>
-                    <input type="text" class="form-control" name="phone" placeholder="Nhập số điện thoại">
+                    <input type="text" class="form-control @error('phone') is-invalid @enderror" name="phone" placeholder="Nhập số điện thoại">
+                    @error('phone')
+                        <div class="invalid-feedback">{{ $message }}</div>
+                    @enderror
                 </div>
                 <div class="col-md-6">
-                    <label class="form-label">Loại khách hàng</label>
-                    <select class="form-select" name="type">
-                        <option value="Mới">Mới</option>
-                        <option value="Thường">Thường</option>
-                        <option value="VIP">VIP</option>
-                    </select>
+                    <label class="form-label">Điểm tích lũy</label>
+                    <input type="number" class="form-control @error('points') is-invalid @enderror" name="points" value="0" min="0" placeholder="Điểm tích lũy">
+                    @error('points')
+                        <div class="invalid-feedback">{{ $message }}</div>
+                    @enderror
                 </div>
                 <div class="col-12">
                     <label class="form-label">Địa chỉ</label>
-                    <textarea class="form-control" name="address" rows="3" placeholder="Nhập địa chỉ"></textarea>
+                    <textarea class="form-control @error('address') is-invalid @enderror" name="address" rows="3" placeholder="Nhập địa chỉ"></textarea>
+                    @error('address')
+                        <div class="invalid-feedback">{{ $message }}</div>
+                    @enderror
                 </div>
             </div>
 

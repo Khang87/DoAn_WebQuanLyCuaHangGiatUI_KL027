@@ -27,12 +27,13 @@
         <div class="table-responsive">
             <table class="table table-hover mb-0">
                 <thead>
-                    <tr><th>ID</th><th>Đơn hàng</th><th>Mặt hàng</th><th>Loại</th><th>Đơn giá</th><th>SL</th><th>Thành tiền</th><th>Ghi chú</th><th>Thao tác</th></tr>
+                    <tr><th>STT</th><th>Mã</th><th>Đơn hàng</th><th>Mặt hàng</th><th>Loại</th><th>Đơn giá</th><th>SL</th><th>Thành tiền</th><th>Ghi chú</th><th>Thao tác</th></tr>
                 </thead>
                 <tbody>
                     @forelse($items as $item)
                     <tr>
-                        <td>{{ $item->id }}</td>
+                        <td>{{ $loop->iteration }}</td>
+                        <td>{{ $item->code ?? 'CT' . str_pad($item->id, 4, '0', STR_PAD_LEFT) }}</td>
                         <td><a href="{{ route('orders.show', $item->order_id) }}">{{ $item->order?->code }}</a></td>
                         <td><strong>{{ $item->item_name }}</strong></td>
                         <td>{{ $item->item_type }}</td>
@@ -43,7 +44,7 @@
                         <td>
                             <div class="d-flex gap-2">
                                 <a href="{{ route('order-items.edit', $item) }}" class="btn btn-sm btn-outline-warning">Sửa</a>
-                                <form action="{{ route('order-items.destroy', $item) }}" method="POST" class="d-inline" onsubmit="return confirm('Xóa?')">
+                                <form action="{{ route('order-items.destroy', $item) }}" method="POST" class="d-inline" id="deleteOrderItemForm_{{ $item->id }}">
                                     @csrf @method('DELETE')
                                     <button type="submit" class="btn btn-sm btn-outline-danger">Xóa</button>
                                 </form>
@@ -51,7 +52,7 @@
                         </td>
                     </tr>
                     @empty
-                    <tr><td colspan="9" class="text-center text-muted py-4">Chưa có chi tiết</td></tr>
+                    <tr><td colspan="10" class="text-center text-muted py-4">Chưa có chi tiết</td></tr>
                     @endforelse
                 </tbody>
             </table>
@@ -60,8 +61,63 @@
 </div>
 
 @if($items->hasPages())
-<div class="mt-3">
-    {{ $items->appends(request()->query())->links('pagination::bootstrap-5') }}
-</div>
+<nav class="mt-4">
+    <div class="d-flex justify-content-between align-items-center">
+        <div class="text-muted small">Hiển thị {{ $items->firstItem() }} - {{ $items->lastItem() }} của {{ $items->total() }} chi tiết</div>
+        <ul class="pagination mb-0">
+            @if ($items->onFirstPage())
+                <li class="page-item disabled"><span class="page-link"><i class="bi bi-chevron-left"></i></span></li>
+            @else
+                <li class="page-item"><a class="page-link" href="{{ $items->appends(request()->query())->url($items->currentPage() - 1) }}"><i class="bi bi-chevron-left"></i></a></li>
+            @endif
+            @foreach ($items->getUrlRange(max(1, $items->currentPage() - 2), min($items->lastPage(), $items->currentPage() + 2)) as $page => $url)
+                @if ($page == $items->currentPage())
+                    <li class="page-item active"><span class="page-link">{{ $page }}</span></li>
+                @else
+                    <li class="page-item"><a class="page-link" href="{{ $items->appends(request()->query())->url($page) }}">{{ $page }}</a></li>
+                @endif
+            @endforeach
+            @if ($items->onLastPage())
+                <li class="page-item disabled"><span class="page-link"><i class="bi bi-chevron-right"></i></span></li>
+            @else
+                <li class="page-item"><a class="page-link" href="{{ $items->appends(request()->query())->url($items->currentPage() + 1) }}">{{ $page }}</a></li>
+            @endif
+        </ul>
+    </div>
+</nav>
 @endif
 @endsection
+
+@push('scripts')
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        document.querySelectorAll('[id^="deleteOrderItemForm_"]').forEach(function(form) {
+            form.addEventListener('submit', function(e) {
+                e.preventDefault();
+
+                if (typeof Swal === 'undefined') {
+                    if (confirm('Xóa?')) {
+                        form.submit();
+                    }
+                    return;
+                }
+
+                Swal.fire({
+                    title: 'Xóa chi tiết đơn hàng?',
+                    text: 'Hành động này không thể hoàn tác.',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#dc2626',
+                    cancelButtonColor: '#64748b',
+                    confirmButtonText: 'Xóa',
+                    cancelButtonText: 'Hủy'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        form.submit();
+                    }
+                });
+            });
+        });
+    });
+</script>
+@endpush

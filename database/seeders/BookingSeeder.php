@@ -4,7 +4,7 @@ namespace Database\Seeders;
 
 use App\Models\Booking;
 use App\Models\Customer;
-use App\Models\Service;
+use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
@@ -16,7 +16,7 @@ class BookingSeeder extends Seeder
     public function run(): void
     {
         $customers = Customer::all();
-        $services = Service::all();
+        $staff = User::whereIn('role', ['manager', 'staff'])->get();
 
         $addresses = [
             '140 Lê Trọng Tấn, Phường Tây Thạnh, Quận Tân Phú, TP.HCM',
@@ -39,35 +39,33 @@ class BookingSeeder extends Seeder
             'Thời gian không phù hợp với giờ mở cửa',
         ];
 
-        $garmentTypes = ['Áo dài', 'Váy cưới', 'Áo vest', 'Chăn ga', 'Áo sơ mi', 'Quần tây', 'Áo khoác'];
-        $deliveryMethods = ['pickup', 'dropoff'];
+        $methods = ['nhan_do', 'giao_do'];
 
         $statuses = ['pending', 'pending', 'pending', 'pending', 'confirmed', 'confirmed', 'confirmed', 'cancelled', 'cancelled', 'cancelled'];
 
         for ($i = 1; $i <= 10; $i++) {
             $status = $statuses[$i - 1];
             $customer = $customers[($i - 1) % $customers->count()];
-            $service = $services[($i - 1) % $services->count()];
 
-            $pickupDate = ($i <= 4)
+            $scheduledDate = ($i <= 4)
                 ? Carbon::today()->format('Y-m-d')
                 : Carbon::now()->addDays(rand(0, 5))->format('Y-m-d');
-            $pickupTime = sprintf('%02d:00:00', rand(9, 17));
+            $scheduledTime = sprintf('%02d:00:00', rand(9, 17));
 
             $notes = '';
             if ($status === 'cancelled') {
                 $notes = $cancelReasons[array_rand($cancelReasons)];
             }
 
+            $staffId = $staff->isNotEmpty() ? $staff->random()->id : null;
+
             Booking::create([
                 'customer_id' => $customer->id,
-                'service_id' => $service->id,
-                'garment_type' => $garmentTypes[array_rand($garmentTypes)],
-                'quantity' => rand(1, 5),
-                'delivery_method' => $deliveryMethods[array_rand($deliveryMethods)],
+                'staff_id' => $staffId,
+                'method' => $methods[array_rand($methods)],
+                'scheduled_date' => $scheduledDate,
+                'scheduled_time' => $scheduledTime,
                 'address' => $addresses[($i - 1) % count($addresses)],
-                'pickup_date' => $pickupDate,
-                'pickup_time' => $pickupTime,
                 'notes' => $notes,
                 'status' => $status,
                 'created_at' => Carbon::now()->subDays(rand(0, 30)),

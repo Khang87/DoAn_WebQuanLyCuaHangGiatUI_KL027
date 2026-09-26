@@ -16,10 +16,12 @@ class OrderItemRequest extends FormRequest
         return [
             'order_id' => ['required', 'exists:orders,id'],
             'service_id' => ['nullable', 'exists:services,id'],
+            'garment_id' => ['nullable', 'exists:garments,id'],
             'item_name' => ['required', 'string', 'max:255'],
             'item_type' => ['required', 'in:garment,service'],
             'price' => ['required', 'numeric', 'min:0'],
             'quantity' => ['required', 'integer', 'min:1'],
+            'weight' => ['nullable', 'numeric', 'min:0'],
             'notes' => ['nullable', 'string', 'max:1000'],
         ];
     }

@@ -1,6 +1,6 @@
 @extends('layouts.app')
-@section('title', 'Thông Báo - Sky Laundry')
-@section('page-title', 'Thông Báo')
+@section('title', 'Thông báo - Sky Laundry')
+@section('page-title', 'Thông báo')
 
 @section('content')
 <div class="order-toolbar d-flex justify-content-between align-items-center mb-4">
@@ -32,7 +32,7 @@
     <div class="card-body p-0">
         <div class="list-group list-group-flush">
             @forelse($notifications as $notification)
-            <div class="list-group-item px-0 d-flex gap-3 {{ $notification->read_at ? '' : 'bg-light fw-bold' }}">
+            <div class="list-group-item px-0 d-flex gap-3 {{ $notification->read_at ? 'text-muted' : 'bg-light fw-bold' }}">
                 <i class="bi bi-bag-check text-success fs-4"></i>
                 <div class="flex-grow-1">
                     <div>{{ $notification->title }}</div>
