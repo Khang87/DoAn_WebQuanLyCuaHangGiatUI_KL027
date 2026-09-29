@@ -19,7 +19,11 @@
                 <div class="display-5 fw-bold text-warning mb-1">{{ number_format($averageValue, 1) }}</div>
                 <div class="fs-5 text-warning mb-2">
                     @for($star = 1; $star <= 5; $star++)
-                        <i class="fas fa-star{{ $star <= $roundedAverage ? '' : '-regular' }}"></i>
+                        @if ($star <= $roundedAverage)
+                            <i class="fas fa-star text-warning"></i>
+                        @else
+                            <i class="far fa-star text-black-50 opacity-25"></i>
+                        @endif
                     @endfor
                 </div>
                 <div class="text-secondary small">Tổng <strong>{{ number_format($totalCount) }}</strong> đánh giá</div>
@@ -96,7 +100,11 @@
                         <td>
                             <div class="text-warning">
                                 @for($star = 1; $star <= 5; $star++)
-                                    <i class="fas fa-star{{ $star <= $review->rating ? '' : '-regular' }}"></i>
+                                    @if ($star <= $review->rating)
+                                        <i class="fas fa-star text-warning"></i>
+                                    @else
+                                        <i class="far fa-star text-black-50 opacity-25"></i>
+                                    @endif
                                 @endfor
                             </div>
                             <small class="text-muted">{{ $review->rating }}/5</small>

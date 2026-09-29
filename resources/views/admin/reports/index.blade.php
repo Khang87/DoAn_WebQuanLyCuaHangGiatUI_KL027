@@ -305,15 +305,15 @@
     <div class="col-12 col-lg-7">
         <div class="card h-100 shadow-sm border-0">
             <div class="card-header d-flex justify-content-between align-items-center">
-                <span>Xu hướng Doanh thu</span>
+                <span>Xu hướng doanh thu</span>
                 <select id="chartType" class="form-select form-select-sm" style="width: auto; min-width: 100px;" onchange="renderRevenueChart()">
                     <option value="bar">Cột</option>
                     <option value="line">Đường</option>
                 </select>
             </div>
             <div class="card-body p-3">
-                <div class="chart-container">
-                    <canvas id="revenueChart" width="800" height="320"></canvas>
+                <div class="chart-container" style="position: relative; height: 320px; width: 100%;">
+                    <canvas id="revenueChart"></canvas>
                 </div>
             </div>
         </div>
@@ -323,11 +323,11 @@
     <div class="col-12 col-lg-5">
         <div class="card h-100 shadow-sm border-0">
             <div class="card-header">
-                <span>Cơ cấu Dịch vụ</span>
+                <span>Cơ cấu dịch vụ</span>
             </div>
-            <div class="card-body p-3 d-flex flex-column">
-                <div class="chart-container flex-grow-1 d-flex align-items-center justify-content-center">
-                    <canvas id="compositionChart" width="400" height="320"></canvas>
+            <div class="card-body p-3">
+                <div class="chart-container" style="position: relative; height: 320px; width: 100%;">
+                    <canvas id="compositionChart"></canvas>
                 </div>
                 <div class="mt-3 pt-3 border-top w-100">
                     @foreach($compositionData['labels'] as $index => $label)
@@ -349,7 +349,7 @@
     <div class="col-12 col-xl-6">
         <div class="card h-100 shadow-sm border-0">
             <div class="card-header">
-                <span>Top 5 Dịch vụ bán chạy</span>
+                <span>Top 5 dịch vụ bán chạy</span>
             </div>
             <div class="card-body p-0">
                 <div class="table-responsive">
@@ -389,7 +389,7 @@
     <div class="col-12 col-xl-6">
         <div class="card h-100 shadow-sm border-0">
             <div class="card-header">
-                <span>Doanh thu theo Phương thức TT</span>
+                <span>Doanh thu theo phương thức thanh toán</span>
             </div>
             <div class="card-body p-0">
                 <div class="table-responsive">
@@ -428,37 +428,42 @@
 <!-- Recent Orders Table -->
 <div class="row g-3 mt-3">
     <div class="col-12">
-        <div class="card shadow-sm border-0">
-            <div class="card-header">
-                <span>Đơn hàng gần đây</span>
+        <div class="card shadow-sm border-0 rounded-3">
+            <div class="card-header bg-transparent border-bottom py-3">
+                <h6 class="card-title fw-bold m-0 text-dark">Đơn hàng gần đây</h6>
             </div>
             <div class="card-body p-0">
                 <div class="table-responsive">
-                    <table class="table table-hover align-middle mb-0 reports-table">
-                        <thead class="table-light">
+                    <table class="table table-hover align-middle table-nowrap mb-0">
+                        <thead class="bg-light-subtle text-secondary fs-7 text-uppercase fw-semibold">
                             <tr>
-                                <th class="fw-bold text-dark" style="width: 100px;">Mã đơn</th>
-                                <th class="fw-bold text-dark">Khách hàng</th>
-                                <th class="fw-bold text-dark">Dịch vụ</th>
-                                <th class="fw-bold text-dark" style="width: 130px;">Trạng thái</th>
-                                <th class="fw-bold text-dark text-end" style="width: 140px;">Tổng tiền</th>
-                                <th class="fw-bold text-dark" style="width: 140px;">Ngày tạo</th>
-                                <th class="fw-bold text-dark" style="width: 50px;">Thao tác</th>
+                                <th scope="col" style="width: 110px;" class="ps-3">Mã đơn</th>
+                                <th scope="col" style="width: 160px;">Khách hàng</th>
+                                <th scope="col">Dịch vụ</th>
+                                <th scope="col" style="width: 130px;" class="text-center">Trạng thái</th>
+                                <th scope="col" style="width: 140px;" class="text-end">Tổng tiền</th>
+                                <th scope="col" style="width: 140px;" class="text-center">Ngày tạo</th>
+                                <th scope="col" style="width: 80px;" class="text-center pe-3">Thao tác</th>
                             </tr>
                         </thead>
-                        <tbody>
+                        <tbody class="fs-7">
                             @forelse($recentOrders as $order)
                             <tr>
-                                <td class="fw-semibold">{{ $order->code }}</td>
-                                <td>{{ $order->customer?->name ?: '-' }}</td>
-                                <td>{{ $order->items->pluck('service.name')->filter()->join(', ') ?: ($order->service?->name ?: '-') }}</td>
-                                <td>
+                                <td class="ps-3 fw-bold text-primary">{{ $order->code }}</td>
+                                <td class="fw-medium text-dark">{{ $order->customer?->name ?: '-' }}</td>
+                                <td class="text-secondary text-truncate" style="max-width: 250px;">{{ $order->items->pluck('service.name')->filter()->join(', ') ?: ($order->service?->name ?: '-') }}</td>
+                                <td class="text-center">
                                     <x-admin.status-badge :status="$order->status" :enum="\App\Enums\OrderStatus::class" />
                                 </td>
-                                <td class="text-end fw-semibold">{{ number_format($order->total_amount) }} VNĐ</td>
-                                <td>{{ $order->created_at?->format('d/m/Y H:i') }}</td>
+                                <td class="text-end fw-bold text-dark">{{ number_format($order->total_amount) }} VNĐ</td>
                                 <td class="text-center">
-                                    <a href="{{ route('orders.show', $order) }}" class="btn btn-order-action view" title="Xem"><i class="bi bi-eye"></i></a>
+                                    <div class="text-dark fw-medium">{{ $order->created_at?->format('d/m/Y') }}</div>
+                                    <small class="text-muted fs-8">{{ $order->created_at?->format('H:i') }}</small>
+                                </td>
+                                <td class="text-center pe-3">
+                                    <a href="{{ route('orders.show', $order) }}" class="btn btn-sm btn-light btn-active-light-primary btn-icon rounded-circle" title="Xem chi tiết">
+                                        <i class="bi bi-eye text-secondary"></i>
+                                    </a>
                                 </td>
                             </tr>
                             @empty
@@ -484,252 +489,293 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
 <script>
-    // Chart.js default config
-    Chart.defaults.font.family = "'Plus Jakarta Sans', sans-serif";
-    Chart.defaults.color = '#64748B';
-    Chart.defaults.plugins.legend.labels.usePointStyle = true;
-    Chart.defaults.plugins.legend.labels.padding = 16;
-
-    // Chart colors
-    const chartColors = [
-        '#3b82f6', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6',
-        '#06b6d4', '#ec4899', '#14b8a6', '#f97316', '#6366f1'
-    ];
-
-    // Revenue Chart Data
-    const revenueLabels = @json($chartData['labels']);
-    const revenueData = @json($chartData['revenue']);
-    const orderData = @json($chartData['orders']);
-
-    let revenueChart = null;
-
-    function renderRevenueChart() {
-        const type = document.getElementById('chartType').value;
-        const canvas = document.getElementById('revenueChart');
-        const ctx = canvas.getContext('2d');
-
-        // Ensure canvas has proper dimensions
-        const container = canvas.parentElement;
-        canvas.width = container.clientWidth;
-        canvas.height = 320;
-
-        if (revenueChart) {
-            revenueChart.destroy();
+    // Wait for Chart.js to load
+    function initCharts() {
+        if (typeof Chart === 'undefined') {
+            console.warn('Chart.js not loaded yet, retrying...');
+            setTimeout(initCharts, 100);
+            return;
         }
 
-        const isBar = type === 'bar';
+        // Chart.js default config
+        Chart.defaults.font.family = "'Plus Jakarta Sans', sans-serif";
+        Chart.defaults.color = '#64748B';
+        Chart.defaults.plugins.legend.labels.usePointStyle = true;
+        Chart.defaults.plugins.legend.labels.padding = 16;
 
-        revenueChart = new Chart(ctx, {
-            type: isBar ? 'bar' : 'line',
-            data: {
-                labels: revenueLabels,
-                datasets: [
-                    {
-                        label: 'Doanh thu (VNĐ)',
-                        data: revenueData,
-                        borderColor: '#3b82f6',
-                        backgroundColor: isBar ? 'rgba(59, 130, 246, 0.15)' : 'rgba(59, 130, 246, 0.1)',
-                        borderWidth: 2,
-                        fill: true,
-                        tension: isBar ? 0 : 0.3,
-                        yAxisID: 'y',
-                        borderDash: isBar ? [] : [2, 2],
+        // Chart colors
+        const chartColors = [
+            '#3b82f6', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6',
+            '#06b6d4', '#ec4899', '#14b8a6', '#f97316', '#6366f1'
+        ];
+
+        // Revenue Chart Data
+        const revenueLabels = @json($chartData['labels'] ?? []);
+        const revenueData = @json($chartData['revenue'] ?? []);
+        const orderData = @json($chartData['orders'] ?? []);
+
+        let revenueChart = null;
+
+        function renderRevenueChart() {
+            try {
+                const type = document.getElementById('chartType')?.value || 'bar';
+                const canvas = document.getElementById('revenueChart');
+                if (!canvas) {
+                    console.error('revenueChart canvas not found');
+                    return;
+                }
+                const ctx = canvas.getContext('2d');
+
+                // Ensure canvas has proper dimensions
+                const container = canvas.parentElement;
+                if (!container || container.clientWidth === 0) {
+                    console.warn('Revenue chart container not ready, retrying...');
+                    setTimeout(renderRevenueChart, 100);
+                    return;
+                }
+                canvas.width = container.clientWidth;
+                canvas.height = 320;
+
+                if (revenueChart) {
+                    revenueChart.destroy();
+                }
+
+                const isBar = type === 'bar';
+
+                revenueChart = new Chart(ctx, {
+                    type: isBar ? 'bar' : 'line',
+                    data: {
+                        labels: revenueLabels,
+                        datasets: [
+                            {
+                                label: 'Doanh thu (VNĐ)',
+                                data: revenueData,
+                                borderColor: '#3b82f6',
+                                backgroundColor: isBar ? 'rgba(59, 130, 246, 0.15)' : 'rgba(59, 130, 246, 0.1)',
+                                borderWidth: 2,
+                                fill: true,
+                                tension: isBar ? 0 : 0.3,
+                                yAxisID: 'y',
+                                borderDash: isBar ? [] : [2, 2],
+                            },
+                            {
+                                label: 'Số đơn',
+                                data: orderData,
+                                borderColor: '#22c55e',
+                                backgroundColor: 'rgba(34, 197, 94, 0.1)',
+                                borderWidth: 2,
+                                fill: false,
+                                tension: 0.3,
+                                yAxisID: 'y1',
+                                type: 'line',
+                                borderDash: [2, 2],
+                            }
+                        ]
                     },
-                    {
-                        label: 'Số đơn',
-                        data: orderData,
-                        borderColor: '#22c55e',
-                        backgroundColor: 'rgba(34, 197, 94, 0.1)',
-                        borderWidth: 2,
-                        fill: false,
-                        tension: 0.3,
-                        yAxisID: 'y1',
-                        type: 'line',
-                        borderDash: [2, 2],
-                    }
-                ]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                interaction: {
-                    mode: 'index',
-                    intersect: false,
-                },
-                plugins: {
-                    legend: {
-                        position: 'top',
-                        labels: {
-                            boxWidth: 12,
-                            padding: 16,
-                            font: { size: 11 }
-                        }
-                    },
-                    tooltip: {
-                        backgroundColor: '#1e293b',
-                        titleFont: { size: 12 },
-                        bodyFont: { size: 11 },
-                        padding: 10,
-                        cornerRadius: 8,
-                        callbacks: {
-                            label: function(context) {
-                                if (context.dataset.yAxisID === 'y') {
-                                    return context.dataset.label + ': ' + new Intl.NumberFormat('vi-VN').format(context.raw) + ' VNĐ';
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        interaction: {
+                            mode: 'index',
+                            intersect: false,
+                        },
+                        plugins: {
+                            legend: {
+                                position: 'top',
+                                labels: {
+                                    boxWidth: 12,
+                                    padding: 16,
+                                    font: { size: 11 }
                                 }
-                                return context.dataset.label + ': ' + context.raw + ' đơn';
+                            },
+                            tooltip: {
+                                backgroundColor: '#1e293b',
+                                titleFont: { size: 12 },
+                                bodyFont: { size: 11 },
+                                padding: 10,
+                                cornerRadius: 8,
+                                callbacks: {
+                                    label: function(context) {
+                                        if (context.dataset.yAxisID === 'y') {
+                                            return context.dataset.label + ': ' + new Intl.NumberFormat('vi-VN').format(context.raw) + ' VNĐ';
+                                        }
+                                        return context.dataset.label + ': ' + context.raw + ' đơn';
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            y: {
+                                type: 'linear',
+                                display: true,
+                                position: 'left',
+                                beginAtZero: true,
+                                ticks: {
+                                    font: { size: 10 },
+                                    callback: function(value) {
+                                        return new Intl.NumberFormat('vi-VN', { notation: 'compact', compactDisplay: 'short' }).format(value) + 'đ';
+                                    }
+                                },
+                                grid: {
+                                    color: 'rgba(148, 163, 184, 0.15)',
+                                    borderDash: [2, 2],
+                                }
+                            },
+                            y1: {
+                                type: 'linear',
+                                display: true,
+                                position: 'right',
+                                beginAtZero: true,
+                                grid: {
+                                    drawOnChartArea: false,
+                                },
+                                ticks: {
+                                    font: { size: 10 },
+                                    stepSize: 1,
+                                    callback: function(value) {
+                                        return value + ' đơn';
+                                    }
+                                }
+                            },
+                            x: {
+                                grid: {
+                                    display: false,
+                                },
+                                ticks: {
+                                    font: { size: 10 },
+                                    maxRotation: 0,
+                                    autoSkip: true,
+                                    maxTicksLimit: 12
+                                }
                             }
                         }
                     }
-                },
-                scales: {
-                    y: {
-                        type: 'linear',
-                        display: true,
-                        position: 'left',
-                        beginAtZero: true,
-                        ticks: {
-                            font: { size: 10 },
-                            callback: function(value) {
-                                return new Intl.NumberFormat('vi-VN', { notation: 'compact', compactDisplay: 'short' }).format(value) + 'đ';
-                            }
-                        },
-                        grid: {
-                            color: 'rgba(148, 163, 184, 0.15)',
-                            borderDash: [2, 2],
-                        }
-                    },
-                    y1: {
-                        type: 'linear',
-                        display: true,
-                        position: 'right',
-                        beginAtZero: true,
-                        grid: {
-                            drawOnChartArea: false,
-                        },
-                        ticks: {
-                            font: { size: 10 },
-                            stepSize: 1,
-                            callback: function(value) {
-                                return value + ' đơn';
-                            }
-                        }
-                    },
-                    x: {
-                        grid: {
-                            display: false,
-                        },
-                        ticks: {
-                            font: { size: 10 },
-                            maxRotation: 0,
-                            autoSkip: true,
-                            maxTicksLimit: 12
-                        }
-                    }
-                }
+                });
+                console.log('Revenue chart rendered successfully');
+            } catch (e) {
+                console.error('Error rendering revenue chart:', e);
             }
-        });
-    }
+        }
 
-    // Composition Chart (Doughnut)
-    const compositionLabels = @json($compositionData['labels']);
-    const compositionRevenue = @json($compositionData['revenue']);
-    const compositionCounts = @json($compositionData['counts']);
+        // Composition Chart (Doughnut)
+        const compositionLabels = @json($compositionData['labels'] ?? []);
+        const compositionRevenue = @json($compositionData['revenue'] ?? []);
+        const compositionCounts = @json($compositionData['counts'] ?? []);
 
-    function initCompositionChart() {
-        const canvas = document.getElementById('compositionChart');
-        const container = canvas.parentElement;
-        canvas.width = Math.min(container.clientWidth, 400);
-        canvas.height = 320;
-        
-        const ctx = canvas.getContext('2d');
-        
-        new Chart(ctx, {
-            type: 'doughnut',
-            data: {
-                labels: compositionLabels,
-                datasets: [{
-                    data: compositionRevenue,
-                    backgroundColor: chartColors,
-                    borderWidth: 2,
-                    borderColor: '#fff',
-                    hoverOffset: 8,
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                cutout: '65%',
-                plugins: {
-                    legend: {
-                        display: false,
+        function initCompositionChart() {
+            try {
+                const canvas = document.getElementById('compositionChart');
+                if (!canvas) {
+                    console.error('compositionChart canvas not found');
+                    return;
+                }
+                const container = canvas.parentElement;
+                if (!container || container.clientWidth === 0) {
+                    console.warn('Composition chart container not ready, retrying...');
+                    setTimeout(initCompositionChart, 100);
+                    return;
+                }
+                canvas.width = Math.min(container.clientWidth, 400);
+                canvas.height = 320;
+                
+                const ctx = canvas.getContext('2d');
+                
+                new Chart(ctx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: compositionLabels,
+                        datasets: [{
+                            data: compositionRevenue,
+                            backgroundColor: chartColors,
+                            borderWidth: 2,
+                            borderColor: '#fff',
+                            hoverOffset: 8,
+                        }]
                     },
-                    tooltip: {
-                        backgroundColor: '#1e293b',
-                        titleFont: { size: 12 },
-                        bodyFont: { size: 11 },
-                        padding: 10,
-                        cornerRadius: 8,
-                        callbacks: {
-                            label: function(context) {
-                                const total = context.dataset.data.reduce((a, b) => a + b, 0);
-                                const percentage = ((context.raw / total) * 100).toFixed(1);
-                                return context.label + ': ' + new Intl.NumberFormat('vi-VN').format(context.raw) + ' VNĐ (' + percentage + '%)';
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        cutout: '65%',
+                        plugins: {
+                            legend: {
+                                display: false,
+                            },
+                            tooltip: {
+                                backgroundColor: '#1e293b',
+                                titleFont: { size: 12 },
+                                bodyFont: { size: 11 },
+                                padding: 10,
+                                cornerRadius: 8,
+                                callbacks: {
+                                    label: function(context) {
+                                        const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                        const percentage = ((context.raw / total) * 100).toFixed(1);
+                                        return context.label + ': ' + new Intl.NumberFormat('vi-VN').format(context.raw) + ' VNĐ (' + percentage + '%)';
+                                    }
+                                }
                             }
                         }
                     }
-                }
+                });
+                console.log('Composition chart rendered successfully');
+            } catch (e) {
+                console.error('Error rendering composition chart:', e);
             }
+        }
+
+        // Initialize flatpickr for date inputs
+        flatpickr('.flatpickr-date', {
+            dateFormat: 'Y-m-d',
+            locale: 'vi',
+            allowInput: true,
         });
-    }
 
-    // Initialize flatpickr for date inputs
-    flatpickr('.flatpickr-date', {
-        dateFormat: 'Y-m-d',
-        locale: 'vi',
-        allowInput: true,
-    });
+        // Toggle custom date inputs
+        function toggleCustomDate(select) {
+            const fromGroup = document.getElementById('customFromGroup');
+            const toGroup = document.getElementById('customToGroup');
+            if (select.value === 'custom') {
+                fromGroup.classList.remove('d-none');
+                toGroup.classList.remove('d-none');
+            } else {
+                fromGroup.classList.add('d-none');
+                toGroup.classList.add('d-none');
+            }
+        }
 
-    // Toggle custom date inputs
-    function toggleCustomDate(select) {
-        const fromGroup = document.getElementById('customFromGroup');
-        const toGroup = document.getElementById('customToGroup');
-        if (select.value === 'custom') {
-            fromGroup.classList.remove('d-none');
-            toGroup.classList.remove('d-none');
-        } else {
-            fromGroup.classList.add('d-none');
-            toGroup.classList.add('d-none');
+        // Render charts on load
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('DOM loaded, initializing charts...');
+            // Small delay to ensure layout is settled
+            setTimeout(() => {
+                renderRevenueChart();
+                initCompositionChart();
+            }, 100);
+        });
+
+        // Re-render charts on window resize
+        let resizeTimeout;
+        window.addEventListener('resize', function() {
+            clearTimeout(resizeTimeout);
+            resizeTimeout = setTimeout(() => {
+                if (revenueChart) renderRevenueChart();
+                initCompositionChart();
+            }, 150);
+        });
+
+        // Export to Excel (placeholder)
+        function exportToExcel() {
+            Swal.fire({
+                icon: 'info',
+                title: 'Tính năng đang phát triển',
+                text: 'Xuất Excel sẽ được cập nhật trong phiên bản tới.',
+                timer: 2000,
+                showConfirmButton: false
+            });
         }
     }
 
-    // Render charts on load
-    document.addEventListener('DOMContentLoaded', function() {
-        // Small delay to ensure layout is settled
-        setTimeout(() => {
-            renderRevenueChart();
-            initCompositionChart();
-        }, 100);
-    });
-
-    // Re-render charts on window resize
-    let resizeTimeout;
-    window.addEventListener('resize', function() {
-        clearTimeout(resizeTimeout);
-        resizeTimeout = setTimeout(() => {
-            if (revenueChart) renderRevenueChart();
-            initCompositionChart();
-        }, 150);
-    });
-
-    // Export to Excel (placeholder)
-    function exportToExcel() {
-        Swal.fire({
-            icon: 'info',
-            title: 'Tính năng đang phát triển',
-            text: 'Xuất Excel sẽ được cập nhật trong phiên bản tới.',
-            timer: 2000,
-            showConfirmButton: false
-        });
-    }
+    // Start initialization
+    initCharts();
 </script>
 @endsection

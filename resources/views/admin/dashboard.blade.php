@@ -43,8 +43,12 @@
     .review-item:last-child {
         border-bottom: none;
     }
-    .review-stars .fa-star {
+    .review-stars .fa-star.fas {
         color: #f59e0b !important;
+    }
+    .review-stars .fa-star.far {
+        color: #d1d5db !important;
+        opacity: 0.5;
     }
 </style>
 @endpush
@@ -310,7 +314,11 @@
                     <div class="flex-grow-1">
                         <div class="review-stars d-flex align-items-center gap-1 mb-1">
                             @for ($i = 1; $i <= 5; $i++)
-                                <i class="fa-{{ $i <= $review->rating ? 'solid' : 'regular' }} fa-star text-warning"></i>
+                                @if ($i <= $review->rating)
+                                    <i class="fas fa-star text-warning"></i>
+                                @else
+                                    <i class="far fa-star text-black-50 opacity-25"></i>
+                                @endif
                             @endfor
                         </div>
                         <div class="fw-semibold">{{ $review->customer?->name ?: 'Khách hàng ẩn danh' }}</div>

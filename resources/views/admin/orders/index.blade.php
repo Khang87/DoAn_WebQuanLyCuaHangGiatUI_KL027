@@ -6,9 +6,11 @@
 @section('content')
 <!-- Page Actions: nút "Thêm" luôn nằm góc trên bên trái -->
 <div class="page-toolbar">
-    <a href="{{ route('orders.create') }}" class="btn btn-create">
-        <i class="bi bi-plus-lg"></i>Thêm đơn hàng
-    </a>
+    @can('orders.create')
+        <a href="{{ route('orders.create') }}" class="btn btn-create">
+            <i class="bi bi-plus-lg"></i>Thêm đơn hàng
+        </a>
+    @endcan
     <p class="text-muted page-toolbar__desc">Theo dõi toàn bộ đơn giặt của khách hàng, từ lúc tiếp nhận đến khi hoàn tất giao trả.</p>
 </div>
 <form action="{{ url()->current() }}" method="GET" class="row g-3 align-items-center mb-4">

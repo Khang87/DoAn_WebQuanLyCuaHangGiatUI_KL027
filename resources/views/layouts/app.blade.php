@@ -223,41 +223,49 @@
 
             <div class="navbar-actions">
                 <!-- Notifications -->
-                <div class="dropdown">
-                    <button class="navbar-action-btn dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                        <i class="bi bi-bell"></i>
-                        <span class="navbar-action-badge"></span>
-                    </button>
-                    <div class="dropdown-menu dropdown-menu-end notification-dropdown">
-                        <div class="p-3 border-bottom">
-                            <h6 class="mb-0">Thông báo</h6>
-                        </div>
-                        <div class="p-2" style="max-height: 300px; overflow-y: auto;">
-                            <a href="#" class="dropdown-item py-2">
-                                <div class="d-flex align-items-center">
-                                    <div class="notification-icon bg-success text-white me-3">
-                                        <i class="bi bi-check-lg"></i>
-                                    </div>
-                                    <div>
-                                        <p class="mb-1 small">Đơn hàng #1234 đã hoàn thành</p>
-                                        <small class="text-muted">2 phút trước</small>
-                                    </div>
+            @php
+                $authUser = auth()->user();
+                $dropdownNotifications = $authUser
+                    ? $authUser->notifications()->latest()->take(5)->get()
+                    : collect();
+                $unreadCount = $dropdownNotifications->whereNull('read_at')->count();
+            @endphp
+            <div class="dropdown">
+                <button class="navbar-action-btn dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="bi bi-bell"></i>
+                    <span class="navbar-action-badge">{{ $unreadCount > 0 ? $unreadCount : '' }}</span>
+                </button>
+                <div class="dropdown-menu dropdown-menu-end notification-dropdown">
+                    <div class="p-3 border-bottom d-flex justify-content-between align-items-center">
+                        <h6 class="mb-0">Thông báo</h6>
+                        <span class="badge bg-danger-subtle text-danger-emphasis border border-danger ms-2">{{ $unreadCount }} mới</span>
+                    </div>
+                    <div class="p-2" style="max-height: 300px; overflow-y: auto;">
+                        @forelse($dropdownNotifications as $notif)
+                            <a href="{{ route('notifications.index', ['id' => $notif->id]) }}"
+                               class="dropdown-item d-flex align-items-center py-2 border-bottom notification-item {{ $notif->read_at ? '' : 'notification-item-unread' }}">
+                                <div class="notification-icon {{ $notif->read_at ? 'bg-secondary' : 'bg-primary' }} text-white me-3">
+                                    <i class="bi {{ $notif->read_at ? 'bi-check2' : 'bi-bell' }}"></i>
                                 </div>
-                            </a>
-                            <a href="#" class="dropdown-item py-2">
-                                <div class="d-flex align-items-center">
-                                    <div class="notification-icon bg-primary text-white me-3">
-                                        <i class="bi bi-person-plus"></i>
-                                    </div>
-                                    <div>
-                                        <p class="mb-1 small">Khách hàng mới đăng ký</p>
-                                        <small class="text-muted">15 phút trước</small>
-                                    </div>
+                                <div class="flex-grow-1">
+                                    <p class="mb-1 small">{{ $notif->title }}</p>
+                                    <small class="text-muted">{{ $notif->created_at->diffForHumans() }}</small>
                                 </div>
+                                @if(! $notif->read_at)
+                                    <span class="badge bg-primary-subtle text-primary-emphasis border border-primary ms-2">Mới</span>
+                                @endif
                             </a>
-                        </div>
+                        @empty
+                            <div class="p-3 text-center text-muted small">Không có thông báo nào.</div>
+                        @endforelse
+                    </div>
+                    <div class="p-2 border-top">
+                        <a href="{{ route('notifications.index') }}" class="dropdown-item text-center text-primary small fw-medium">
+                            Xem tất cả thông báo <i class="bi bi-arrow-right ms-1"></i>
+                        </a>
                     </div>
                 </div>
+            </div>
 
                 <!-- Quick Actions -->
                 @if(auth()->check() && (auth()->user()->isManager() || auth()->user()->isStaff()))

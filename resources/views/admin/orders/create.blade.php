@@ -87,8 +87,8 @@
                                         <td><select class="form-select item-garment-category" name="items[{{ $index }}][garment_category_id]"><option value="">-- Danh mục --</option>@foreach($garmentCategories as $cat)<option value="{{ $cat->id }}" @selected(($item['garment_category_id'] ?? '') == $cat->id)>{{ $cat->name }}</option>@endforeach</select></td>
                                         <td><select class="form-select item-garment" name="items[{{ $index }}][garment_id]" required><option value="">-- Chọn loại đồ --</option>@foreach($garmentOptions as $garment)<option value="{{ $garment->id }}" @selected(($item['garment_id'] ?? '') == $garment->id)>{{ $garment->name }}</option>@endforeach</select></td>
                                         <td><input type="number" class="form-control item-quantity" name="items[{{ $index }}][quantity]" value="{{ $item['quantity'] ?? 1 }}" min="1" required></td>
-                                        <td><input type="number" step="0.01" class="form-control item-weight" name="items[{{ $index }}][weight]" value="{{ $item['weight'] ?? 0 }}" min="0" step="0.01"></td>
-                                        <td><input type="number" class="form-control item-price" name="items[{{ $index }}][price]" value="{{ $item['price'] ?? 0 }}" min="0" step="100"></td>
+                                        <td><input type="number" step="0.01" class="form-control item-weight" name="items[{{ $index }}][weight]" value="{{ $item['weight'] ?? 0 }}" min="0.01" step="0.01"></td>
+                                        <td><input type="number" class="form-control item-price" name="items[{{ $index }}][price]" value="{{ $item['price'] ?? 0 }}" min="0" step="100" data-touched="1"></td>
                                         <td><input type="number" class="form-control item-subtotal" value="{{ $item['subtotal'] ?? 0 }}" readonly></td>
                                         <td><button type="button" class="btn btn-sm btn-outline-danger remove-item" title="Xóa mặt hàng"><i class="bi bi-trash"></i></button></td>
                                     </tr>
@@ -220,14 +220,14 @@
         }
 
         const price = Number(priceInput.value) || 0;
-        const quantity = Math.max(0, Number(row.querySelector('.item-quantity').value) || 0);
+        const quantity = Math.max(1, Number(row.querySelector('.item-quantity').value) || 1);
         const weight = Math.max(0, Number(row.querySelector('.item-weight').value) || 0);
 
-        // Đơn vị "kg" nhân với khối lượng, đơn vị khác nhân với số lượng
+        // Đơn vị "kg" nhân với số lượng VÀ khối lượng, đơn vị khác nhân với số lượng
         // (khớp với OrderService::buildItems()).
         const unit = String((match && match.unit) || '').trim().toLowerCase();
         const isKg = ['kg', 'kgs', 'kilogram'].includes(unit);
-        const multiplier = isKg ? weight : quantity;
+        const multiplier = (isKg && weight > 0) ? quantity * weight : quantity;
 
         const amount = price * multiplier;
         row.querySelector('.item-subtotal').value = amount;
@@ -311,8 +311,47 @@
     document.getElementById('addItem').addEventListener('click', () => {
         const index = table.tBodies[0].rows.length;
         const row = table.tBodies[0].insertRow();
-        row.innerHTML = `<td><select class="form-select js-icon-select item-service-category" name="items[${index}][service_category_id]"><option value="">-- Danh mục --</option>${Object.entries(serviceCategories).map(([id,cat]) => `<option value="${id}" data-icon="${cat.icon || ''}">${cat.name}</option>`).join('')}</select><i class="icon-preview" hidden></i></td><td><select class="form-select item-service" name="items[${index}][service_id]" required><option value="">-- Chọn dịch vụ --</option>${Object.entries(services).map(([id,name]) => `<option value="${id}">${name}</option>`).join('')}</select></td><td><select class="form-select item-garment-category" name="items[${index}][garment_category_id]"><option value="">-- Danh mục --</option>${Object.entries(garmentCategories).map(([id,name]) => `<option value="${id}">${name}</option>`).join('')}</select></td><td><select class="form-select item-garment" name="items[${index}][garment_id]" required><option value="">-- Chọn loại đồ --</option>${Object.entries(garments).map(([id,name]) => `<option value="${id}">${name}</option>`).join('')}</select></td><td><input type="number" class="form-control item-quantity" name="items[${index}][quantity]" value="1" min="1" required></td><td><input type="number" step="0.01" class="form-control item-weight" name="items[${index}][weight]" value="0" min="0" step="0.01"></td><td><input type="number" class="form-control item-price" name="items[${index}][price]" value="0" min="0" step="100"></td><td><input type="number" class="form-control item-subtotal" value="0" readonly></td><td><button type="button" class="btn btn-sm btn-outline-danger remove-item"><i class="bi bi-trash"></i></button></td>`;
+        row.innerHTML = `<td><select class="form-select js-icon-select item-service-category" name="items[${index}][service_category_id]"><option value="">-- Danh mục --</option>${Object.entries(serviceCategories).map(([id,cat]) => `<option value="${id}" data-icon="${cat.icon || ''}">${cat.name}</option>`).join('')}</select><i class="icon-preview" hidden></i></td><td><select class="form-select item-service" name="items[${index}][service_id]" required><option value="">-- Chọn dịch vụ --</option>${Object.entries(services).map(([id,name]) => `<option value="${id}">${name}</option>`).join('')}</select></td><td><select class="form-select item-garment-category" name="items[${index}][garment_category_id]"><option value="">-- Danh mục --</option>${Object.entries(garmentCategories).map(([id,name]) => `<option value="${id}">${name}</option>`).join('')}</select></td><td><select class="form-select item-garment" name="items[${index}][garment_id]" required><option value="">-- Chọn loại đồ --</option>${Object.entries(garments).map(([id,name]) => `<option value="${id}">${name}</option>`).join('')}</select></td><td><input type="number" class="form-control item-quantity" name="items[${index}][quantity]" value="1" min="1" required></td><td><input type="number" step="0.01" class="form-control item-weight" name="items[${index}][weight]" value="0" min="0.01" step="0.01"></td><td><input type="number" class="form-control item-price" name="items[${index}][price]" value="0" min="0" step="100" data-touched="1"></td><td><input type="number" class="form-control item-subtotal" value="0" readonly></td><td><button type="button" class="btn btn-sm btn-outline-danger remove-item"><i class="bi bi-trash"></i></button></td>`;
         updateTotals();
+    });
+
+    // Cascading dropdowns: Service Category -> Services, Garment Category -> Garments
+    table.addEventListener('change', event => {
+        const row = event.target.closest('tr');
+        if (!row) return;
+
+        if (event.target.classList.contains('item-service-category')) {
+            const categoryId = event.target.value;
+            const serviceSelect = row.querySelector('.item-service');
+            if (categoryId) {
+                // Filter services by category
+                const filtered = Object.entries(services).filter(([id, name]) => {
+                    const catId = serviceCategories[id]?.id;
+                    return catId === categoryId || !catId; // Show all if no category mapping
+                });
+                serviceSelect.innerHTML = '<option value="">-- Chọn dịch vụ --</option>' + filtered.map(([id,name]) => `<option value="${id}">${name}</option>`).join('');
+            } else {
+                serviceSelect.innerHTML = '<option value="">-- Chọn dịch vụ --</option>' + Object.entries(services).map(([id,name]) => `<option value="${id}">${name}</option>`).join('');
+            }
+            updateTotals();
+        }
+
+        if (event.target.classList.contains('item-garment-category')) {
+            const categoryId = event.target.value;
+            const garmentSelect = row.querySelector('.item-garment');
+            if (categoryId) {
+                // Filter garments by category
+                const filtered = Object.entries(garments).filter(([id, name]) => {
+                    // Note: garmentCategories in JS is just name lookup, we need to check from server data
+                    // For now, show all if category selected
+                    return true;
+                });
+                garmentSelect.innerHTML = '<option value="">-- Chọn loại đồ --</option>' + filtered.map(([id,name]) => `<option value="${id}">${name}</option>`).join('');
+            } else {
+                garmentSelect.innerHTML = '<option value="">-- Chọn loại đồ --</option>' + Object.entries(garments).map(([id,name]) => `<option value="${id}">${name}</option>`).join('');
+            }
+            updateTotals();
+        }
     });
 
     table.addEventListener('click', event => {

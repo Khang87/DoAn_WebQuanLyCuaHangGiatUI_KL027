@@ -6,6 +6,7 @@ use App\Http\Controllers\Concerns\RejectsSettledRecords;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\OrderItemRequest;
 use App\Models\OrderItem;
+use App\Models\Pricing;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -69,7 +70,32 @@ class OrderItemController extends Controller
 
         try {
             $data = $request->validated();
-            $data['subtotal'] = $data['price'] * $data['quantity'];
+
+            // Tự động điền đơn giá từ price_lists nếu form không gửi giá.
+            if (empty($data['price'])) {
+                $pricing = Pricing::getLatestPricing(
+                    (int) $data['service_id'],
+                    (int) ($data['garment_id'] ?? 0)
+                );
+                if ($pricing) {
+                    $data['price'] = $pricing->price;
+                }
+            }
+
+            // Tính thành tiền: đơn vị kg → quantity * price * weight;
+            // đơn vị khác → quantity * price (bỏ qua khối lượng).
+            $pricing = Pricing::getLatestPricing(
+                (int) $data['service_id'],
+                (int) ($data['garment_id'] ?? 0)
+            );
+            $isWeightUnit = Pricing::isWeightUnit($pricing?->unit);
+            $weight = max(0, (float) ($data['weight'] ?? 0));
+
+            if ($isWeightUnit && $weight > 0) {
+                $data['subtotal'] = round($data['price'] * $data['quantity'] * $weight, 2);
+            } else {
+                $data['subtotal'] = round($data['price'] * $data['quantity'], 2);
+            }
 
             OrderItem::create($data);
 
@@ -110,7 +136,33 @@ class OrderItemController extends Controller
 
         try {
             $data = $request->validated();
-            $data['subtotal'] = $data['price'] * $data['quantity'];
+
+            // Tự động điền đơn giá từ price_lists nếu form không gửi giá.
+            if (empty($data['price'])) {
+                $pricing = Pricing::getLatestPricing(
+                    (int) $data['service_id'],
+                    (int) ($data['garment_id'] ?? 0)
+                );
+                if ($pricing) {
+                    $data['price'] = $pricing->price;
+                }
+            }
+
+            // Tính thành tiền: đơn vị kg → quantity * price * weight;
+            // đơn vị khác → quantity * price (bỏ khối lượng).
+            $pricing = Pricing::getLatestPricing(
+                (int) $data['service_id'],
+                (int) ($data['garment_id'] ?? 0)
+            );
+            $isWeightUnit = Pricing::isWeightUnit($pricing?->unit);
+            $weight = max(0, (float) ($data['weight'] ?? 0));
+
+            if ($isWeightUnit && $weight > 0) {
+                $data['subtotal'] = round($data['price'] * $data['quantity'] * $weight, 2);
+            } else {
+                $data['subtotal'] = round($data['price'] * $data['quantity'], 2);
+            }
+
             $item->update($data);
 
             return redirect()->route('order-items.index')->with('success', 'Chi tiết đã được cập nhật.');

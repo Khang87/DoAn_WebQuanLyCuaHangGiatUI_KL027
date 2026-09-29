@@ -15,11 +15,15 @@
     :subtitle="$review->customer?->name ?: $review->order?->customer?->name"
 >
     <x-slot:badge>
-        <span class="badge bg-amber-subtle text-amber-emphasis border border-amber px-3 py-2 rounded-pill">
+        <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle px-3 py-2 rounded-pill d-inline-flex align-items-center gap-1">
             @for($star = 1; $star <= 5; $star++)
-                <i class="fas fa-star{{ $star <= $review->rating ? '' : '-regular' }}"></i>
+                @if ($star <= $review->rating)
+                    <i class="fas fa-star text-warning"></i>
+                @else
+                    <i class="far fa-star text-black-50 opacity-25"></i>
+                @endif
             @endfor
-            <span class="ms-1">{{ $review->rating }}/5</span>
+            <span class="ms-1 fw-bold text-dark">{{ $review->rating }}/5</span>
         </span>
         <x-admin.status-badge :status="$reviewStatus" :enum="\App\Enums\ReviewStatus::class" />
     </x-slot:badge>

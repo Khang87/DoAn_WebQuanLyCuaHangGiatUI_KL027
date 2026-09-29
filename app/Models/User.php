@@ -11,6 +11,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\Schema;
+use App\Models\Notification;
 
     #[Fillable(['name', 'email', 'password', 'role', 'role_id', 'phone', 'avatar'])]
 #[Hidden(['password', 'remember_token'])]
@@ -87,6 +88,14 @@ class User extends Authenticatable
     public function roleRole(): BelongsTo
     {
         return $this->belongsTo(Role::class, 'role_id');
+    }
+
+    /**
+     * Các thông báo gửi tới tài khoản này (bảng notifications custom).
+     */
+    public function notifications(): HasMany
+    {
+        return $this->hasMany(Notification::class, 'user_id');
     }
 
     /**

@@ -37,9 +37,6 @@
     </x-slot:badge>
 
     <x-slot:actions>
-        <a href="{{ route('notifications.edit', $notification->id) }}" class="btn btn-primary btn-sm">
-            <i class="bi bi-pencil me-1"></i>Chỉnh sửa
-        </a>
     </x-slot:actions>
 </x-admin.detail.page-header>
 

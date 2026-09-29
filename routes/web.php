@@ -69,7 +69,31 @@ Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
     Route::resource('customers', CustomerController::class)->middleware('permission:customers.view| customers.create| customers.edit| customers.delete');
 
     // Orders Management (Staff & Admin)
-    Route::resource('orders', OrderController::class)->middleware('permission:orders.view| orders.create| orders.edit| orders.delete| orders.update_status');
+    // Mỗi route ÁP DỤNG middleware permission riêng để tránh bypass: middleware
+    // gốc dùng "|" (OR) nên user chỉ cần có 1 trong các quyền là truy cập được
+    // tất cả route (ví dụ: chỉ có orders.view vẫn truy cập được orders.create).
+    // Route "/orders/create" phải được đăng ký TRƯỚC "/orders/{order}" để
+    // Laravel không nhầm "/orders/create" là tham số {order} = "create".
+    Route::middleware('permission:orders.create')->group(function () {
+        Route::get('/orders/create', [OrderController::class, 'create'])->name('orders.create');
+        Route::post('/orders', [OrderController::class, 'store'])->name('orders.store');
+    });
+
+    Route::middleware('permission:orders.view')->group(function () {
+        Route::get('/orders', [OrderController::class, 'index'])->name('orders.index');
+        Route::get('/orders/{order}', [OrderController::class, 'show'])->name('orders.show');
+    });
+
+    Route::middleware('permission:orders.edit')->group(function () {
+        Route::get('/orders/{order}/edit', [OrderController::class, 'edit'])->name('orders.edit');
+        Route::put('/orders/{order}', [OrderController::class, 'update'])->name('orders.update');
+        Route::patch('/orders/{order}', [OrderController::class, 'update'])->name('orders.update');
+    });
+
+    Route::middleware('permission:orders.delete')->group(function () {
+        Route::delete('/orders/{order}', [OrderController::class, 'destroy'])->name('orders.destroy');
+    });
+
     Route::resource('order-items', OrderItemController::class)->middleware('permission:orders.view| orders.edit');
 
     // Delivery Management (Staff & Admin)
@@ -130,8 +154,14 @@ Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
         Route::post('accounts/{account}/toggle-status', [AccountController::class, 'toggleStatus'])->middleware('permission:accounts.edit')->name('accounts.toggle-status');
         Route::post('accounts/{account}/reset-password', [AccountController::class, 'resetPassword'])->middleware('permission:accounts.reset_password')->name('accounts.reset-password');
 
-        // Notifications Management
-        Route::resource('notifications', NotificationController::class)->middleware('permission:notifications.view| notifications.create| notifications.edit| notifications.delete');
+// Notifications Management
+            Route::resource('notifications', NotificationController::class)->middleware('permission:notifications.view| notifications.create| notifications.edit| notifications.delete');
+            Route::patch('notifications/{notification}/mark-read', [NotificationController::class, 'markAsRead'])
+                ->middleware('permission:notifications.edit')
+                ->name('notifications.mark-read');
+            Route::post('notifications/mark-all-read', [NotificationController::class, 'markAllAsRead'])
+                ->middleware('permission:notifications.edit')
+                ->name('notifications.mark-all-read');
 
         // ===== PHÂN QUYỀN ĐỘNG (RBAC) =====
         // Ma trận vai trò - quyền hạn, chỉ Chủ cửa hàng được phân quyền.

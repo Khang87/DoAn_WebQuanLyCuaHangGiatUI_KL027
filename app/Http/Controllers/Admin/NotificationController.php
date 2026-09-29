@@ -17,6 +17,13 @@ class NotificationController extends Controller
 
     public function index(Request $request)
     {
+        // Khi người dùng click vào một item trong dropdown (URL có ?id=X),
+        // đánh dấu thông báo đó là đã đọc trước khi hiển thị danh sách.
+        $requestedId = $request->input('id');
+        if (is_numeric($requestedId)) {
+            $this->notificationService->markAsRead((int) $requestedId);
+        }
+
         $notifications = $this->notificationService->getAll([
             'search' => $request->input('search'),
             'user_id' => $request->input('user_id'),
@@ -67,6 +74,12 @@ class NotificationController extends Controller
 
         if (!$notification) {
             abort(404);
+        }
+
+        // Tự động đánh dấu đã đọc khi người dùng mở chi tiết thông báo
+        if (! $notification->read_at) {
+            $this->notificationService->markAsRead($notification->id);
+            $notification = $this->notificationService->find($id);
         }
 
         return view('admin.notifications.show', compact('notification'));
@@ -138,5 +151,15 @@ class NotificationController extends Controller
         }
 
         return back()->with('success', 'Đã đánh dấu là đã đọc.');
+    }
+
+    public function markAllAsRead(Request $request)
+    {
+        $userId = $request->user()->id;
+        $count = $this->notificationService->markAllAsRead($userId);
+
+        return back()->with('success', $count > 0
+            ? "Đã đánh dấu {$count} thông báo là đã đọc."
+            : 'Không có thông báo mới nào cần đánh dấu.');
     }
 }
