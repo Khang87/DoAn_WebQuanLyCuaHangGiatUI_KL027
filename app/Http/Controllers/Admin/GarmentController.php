@@ -5,44 +5,47 @@ namespace App\Http\Controllers\Admin;
 use App\Enums\RecordStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\GarmentRequest;
-use App\Models\Garment;
-use App\Services\GarmentService;
+use App\Models\DichVu;
+use App\Models\LoaiDichVu;
+use App\Models\LoaiDoGiat;
+use App\Services\ServiceService;
 use Illuminate\Http\Request;
 
 class GarmentController extends Controller
 {
     public function __construct(
-        private GarmentService $garmentService,
+        private ServiceService $serviceService,
     ) {}
 
     public function index(Request $request)
     {
-        $garments = $this->garmentService->getAll([
+        $services = $this->serviceService->getAll([
             'search' => $request->input('search'),
             'category' => $request->input('category'),
             'status' => $request->input('status'),
             'sort' => $request->input('sort'),
         ]);
 
-        $categories = $this->garmentService->getCategoryOptions();
+        $categories = LoaiDichVu::where('TrangThai', 'Hoạt động')->orderBy('TenLoaiDichVu')->get();
         $statuses = RecordStatus::options();
 
-        return view('admin.garments.index', compact('garments', 'categories', 'statuses'));
+        return view('admin.garments.index', compact('services', 'categories', 'statuses'));
     }
 
     public function create()
     {
-        $categories = $this->garmentService->getCategoryOptions();
+        $categories = LoaiDichVu::where('TrangThai', 'Hoạt động')->orderBy('TenLoaiDichVu')->get();
+        $garmentTypes = LoaiDoGiat::where('TrangThai', 'Hoạt động')->orderBy('TenLoaiDoGiat')->get();
 
-        return view('admin.garments.create', compact('categories'));
+        return view('admin.garments.create', compact('categories', 'garmentTypes'));
     }
 
     public function store(GarmentRequest $request)
     {
         try {
-            $this->garmentService->create($request->validated());
+            $this->serviceService->create($request->validated());
 
-            return redirect()->route('garments.index')->with('success', 'Loại đồ giặt đã được thêm.');
+            return redirect()->route('garments.index')->with('success', 'Dịch vụ đã được thêm.');
         } catch (\Exception $e) {
             return redirect()->route('garments.create')->with('error', \App\Support\FriendlyError::message($e))->withInput();
         }
@@ -50,59 +53,58 @@ class GarmentController extends Controller
 
     public function show(int $id)
     {
-        $garment = $this->garmentService->find($id);
+        $service = $this->serviceService->find($id);
 
-        if (!$garment) {
+        if (!$service) {
             abort(404);
         }
 
-        $conditions = $garment->conditions()->latest()->paginate(10);
-
-        return view('admin.garments.show', compact('garment', 'conditions'));
+        return view('admin.garments.show', compact('service'));
     }
 
     public function edit(int $id)
     {
-        $garment = $this->garmentService->find($id);
+        $service = $this->serviceService->find($id);
 
-        if (!$garment) {
+        if (!$service) {
             abort(404);
         }
 
-        $categories = $this->garmentService->getCategoryOptions();
+        $categories = LoaiDichVu::where('TrangThai', 'Hoạt động')->orderBy('TenLoaiDichVu')->get();
+        $garmentTypes = LoaiDoGiat::where('TrangThai', 'Hoạt động')->orderBy('TenLoaiDoGiat')->get();
 
-        return view('admin.garments.edit', compact('garment', 'categories'));
+        return view('admin.garments.edit', compact('service', 'categories', 'garmentTypes'));
     }
 
     public function update(GarmentRequest $request, int $id)
     {
-        $garment = $this->garmentService->find($id);
+        $service = $this->serviceService->find($id);
 
-        if (!$garment) {
+        if (!$service) {
             abort(404);
         }
 
         try {
-            $this->garmentService->update($garment, $request->validated());
+            $this->serviceService->update($service, $request->validated());
 
-            return redirect()->route('garments.index')->with('success', 'Loại đồ giặt đã được cập nhật.');
+            return redirect()->route('garments.index')->with('success', 'Dịch vụ đã được cập nhật.');
         } catch (\Exception $e) {
-            return redirect()->route('garments.edit', $garment)->with('error', \App\Support\FriendlyError::message($e))->withInput();
+            return redirect()->route('garments.edit', $service)->with('error', \App\Support\FriendlyError::message($e))->withInput();
         }
     }
 
     public function destroy(int $id)
     {
-        $garment = $this->garmentService->find($id);
+        $service = $this->serviceService->find($id);
 
-        if (!$garment) {
+        if (!$service) {
             abort(404);
         }
 
         try {
-            $this->garmentService->delete($garment);
+            $this->serviceService->delete($service);
 
-            return redirect()->route('garments.index')->with('success', 'Loại đồ giặt đã được xóa.');
+            return redirect()->route('garments.index')->with('success', 'Dịch vụ đã được xóa.');
         } catch (\Exception $e) {
             return redirect()->route('garments.index')->with('error', \App\Support\FriendlyError::message($e));
         }

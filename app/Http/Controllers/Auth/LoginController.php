@@ -26,7 +26,15 @@ class LoginController extends Controller
             'password' => ['required'],
         ]);
 
-        if (Auth::attempt($credentials, $request->boolean('remember'))) {
+        // Bảng xác thực là `TaiKhoan` với cột `Email` (hoa chữ đầu). Provider
+        // Eloquent where thẳng key của mảng credentials thành tên cột, nên phải
+        // truyền đúng key `Email`, nếu không sẽ sinh SQL `where "email" = ?`.
+        $attempt = Auth::attempt([
+            'Email' => $credentials['email'],
+            'password' => $credentials['password'],
+        ], $request->boolean('remember'));
+
+        if ($attempt) {
             $request->session()->regenerate();
 
             $user = Auth::user();

@@ -16,7 +16,6 @@
 
 <x-admin.detail.page-header
     title="Khuyến mãi {{ $promotion->code }}"
-    :back="route('promotions.index')"
     :subtitle="$promotion->name"
 >
     <x-slot:badge>
@@ -26,15 +25,6 @@
             {{ $promotion->is_valid ? 'Đang áp dụng' : 'Không áp dụng' }}
         </span>
     </x-slot:badge>
-
-    <x-slot:actions>
-        <a href="{{ route('coupons.create') }}" class="btn btn-outline-primary btn-sm">
-            <i class="bi bi-plus-lg me-1"></i>Thêm mã giảm giá
-        </a>
-        <a href="{{ route('promotions.edit', $promotion) }}" class="btn btn-primary btn-sm">
-            <i class="bi bi-pencil me-1"></i>Chỉnh sửa
-        </a>
-    </x-slot:actions>
 </x-admin.detail.page-header>
 
 <div class="row g-4">
@@ -183,6 +173,28 @@
                 <x-admin.detail.info-item label="Mã đã phát" :value="($promotion->remainingCodes() === null ? 'Không giới hạn' : $promotion->remainingCodes() . ' mã còn lại')" />
             </x-admin.detail.info-grid>
         </x-admin.detail.panel>
+
+        <div class="card shadow-sm border-0 mt-3">
+            <div class="card-header bg-transparent border-bottom d-flex align-items-center gap-2 py-3">
+                <div class="bg-light rounded p-2 d-inline-flex align-items-center justify-content-center">
+                    <i class="fas fa-sliders-h text-secondary"></i>
+                </div>
+                <h5 class="card-title mb-0 fw-bold">Thao tác</h5>
+            </div>
+            <div class="card-body d-flex flex-column gap-2">
+                <a href="{{ route('promotions.edit', $promotion) }}" class="btn btn-primary w-100 py-2">
+                    <i class="fas fa-pencil-alt me-1"></i> Chỉnh sửa
+                </a>
+
+                <a href="{{ route('coupons.create') }}" class="btn btn-outline-primary w-100 py-2">
+                    <i class="fas fa-plus me-1"></i> Thêm mã giảm giá
+                </a>
+
+                <a href="{{ route('promotions.index') }}" class="btn btn-outline-secondary w-100 py-2 text-dark">
+                    <i class="fas fa-arrow-left me-1"></i> Quay lại danh sách
+                </a>
+            </div>
+        </div>
     </div>
 </div>
 @endsection

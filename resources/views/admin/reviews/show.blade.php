@@ -11,7 +11,6 @@
 
 <x-admin.detail.page-header
     title="Đánh giá #{{ $review->id }}"
-    :back="route('reviews.index')"
     :subtitle="$review->customer?->name ?: $review->order?->customer?->name"
 >
     <x-slot:badge>
@@ -27,22 +26,6 @@
         </span>
         <x-admin.status-badge :status="$reviewStatus" :enum="\App\Enums\ReviewStatus::class" />
     </x-slot:badge>
-
-    <x-slot:actions>
-        @if(auth()->user()?->isManager())
-            <x-admin.detail.confirm-form
-                :action="route('reviews.toggle', $review)"
-                method="PATCH"
-                title="{{ $isHidden ? 'Hiện' : 'Ẩn' }} đánh giá này?"
-                text="Trạng thái hiển thị của đánh giá sẽ thay đổi."
-                label="{{ $isHidden ? 'Hiện đánh giá' : 'Ẩn đánh giá' }}"
-                :icon="$isHidden ? 'bi-eye' : 'bi-eye-slash'"
-                variant="btn-outline-secondary"
-                color="#64748b"
-                :iconName="'question'"
-            />
-        @endif
-    </x-slot:actions>
 </x-admin.detail.page-header>
 
 <div class="row g-4">
@@ -112,6 +95,35 @@
                 </button>
             </form>
         </x-admin.detail.panel>
+
+        <div class="card shadow-sm border-0 mt-3">
+            <div class="card-header bg-transparent border-bottom d-flex align-items-center gap-2 py-3">
+                <div class="bg-light rounded p-2 d-inline-flex align-items-center justify-content-center">
+                    <i class="fas fa-sliders-h text-secondary"></i>
+                </div>
+                <h5 class="card-title mb-0 fw-bold">Thao tác</h5>
+            </div>
+            <div class="card-body d-flex flex-column gap-2">
+                @if(auth()->user()?->isManager())
+                    <x-admin.detail.confirm-form
+                        :action="route('reviews.toggle', $review)"
+                        method="PATCH"
+                        title="{{ $isHidden ? 'Hiện' : 'Ẩn' }} đánh giá này?"
+                        text="Trạng thái hiển thị của đánh giá sẽ thay đổi."
+                        label="{{ $isHidden ? 'Hiện đánh giá' : 'Ẩn đánh giá' }}"
+                        :icon="$isHidden ? 'bi-eye' : 'bi-eye-slash'"
+                        variant="btn-outline-secondary"
+                        color="#64748b"
+                        :iconName="'question'"
+                        :block="true"
+                    />
+                @endif
+
+                <a href="{{ route('reviews.index') }}" class="btn btn-outline-secondary w-100 py-2 text-dark">
+                    <i class="fas fa-arrow-left me-1"></i> Quay lại danh sách
+                </a>
+            </div>
+        </div>
     </div>
 </div>
 @endsection

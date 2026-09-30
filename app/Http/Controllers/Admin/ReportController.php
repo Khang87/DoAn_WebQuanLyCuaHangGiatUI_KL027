@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\DichVu;
 use App\Services\ReportService;
 
 class ReportController extends Controller
@@ -33,7 +34,7 @@ class ReportController extends Controller
     {
         $orderStatusCounts = $this->reportService->getOrderStatusCounts();
         $serviceCounts = $this->reportService->getOrderCountsByService();
-        $services = \App\Models\Service::orderBy('name')->get();
+        $services = DichVu::orderBy('TenDichVu')->get();
 
         return view('admin.reports.orders', compact('orderStatusCounts', 'serviceCounts', 'services'));
     }

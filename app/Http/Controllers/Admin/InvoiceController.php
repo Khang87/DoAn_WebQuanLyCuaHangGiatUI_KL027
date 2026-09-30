@@ -7,7 +7,7 @@ use App\Exceptions\SettledOrderException;
 use App\Http\Controllers\Concerns\RejectsSettledRecords;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\InvoiceRequest;
-use App\Models\Order;
+use App\Models\DonHang;
 use App\Services\InvoiceService;
 use Illuminate\Http\Request;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
@@ -39,10 +39,10 @@ class InvoiceController extends Controller
 
     public function create(Request $request)
     {
-        $orders = Order::where('status', '!=', 'cancelled')->orderBy('created_at', 'desc')->get();
+        $orders = DonHang::where('TrangThai', '!=', 'Đã hủy')->orderBy('NgayTao', 'desc')->get();
 
         $orderId = $request->query('order_id');
-        $preselectedOrder = $orderId ? Order::find($orderId) : null;
+        $preselectedOrder = $orderId ? DonHang::find($orderId) : null;
 
         return view('admin.invoices.create', compact('orders', 'preselectedOrder'));
     }
@@ -100,12 +100,12 @@ class InvoiceController extends Controller
         if ($invoice->isPaid() && ! $this->canOverrideSettled()) {
             return $this->denySettled(
                 $request,
-                'Hóa đơn '.$invoice->code.' đã thanh toán nên chỉ có thể xem.',
+                'Hóa đơn '.$invoice->MaHoaDon.' đã thanh toán nên chỉ có thể xem.',
                 route('invoices.show', $invoice)
             );
         }
 
-        $orders = Order::where('status', '!=', 'cancelled')->orderBy('created_at', 'desc')->get();
+        $orders = DonHang::where('TrangThai', '!=', 'Đã hủy')->orderBy('NgayTao', 'desc')->get();
 
         return view('admin.invoices.edit', compact('invoice', 'orders'));
     }
@@ -185,14 +185,14 @@ class InvoiceController extends Controller
         $row = 2;
         foreach ($invoices as $invoice) {
             $sheet->fromArray([[
-                $invoice->code,
-                $invoice->invoice_date?->format('d/m/Y') ?? $invoice->created_at?->format('d/m/Y'),
-                $invoice->order?->code,
-                $invoice->order?->customer?->name,
-                (float) $invoice->total_amount,
-                (float) $invoice->discount_amount,
-                (float) $invoice->delivery_fee,
-                (float) $invoice->grand_total,
+                $invoice->MaHoaDon,
+                $invoice->NgayLap?->format('d/m/Y') ?? $invoice->NgayTao?->format('d/m/Y'),
+                $invoice->donHang?->MaDonHang,
+                $invoice->donHang?->khachHang?->HoTen,
+                (float) $invoice->TongTien,
+                (float) $invoice->GiamGia,
+                (float) $invoice->PhiGiaoHang,
+                (float) $invoice->ThanhTien,
                 $invoice->getStatusLabel(),
             ]], null, 'A'.$row);
             $row++;
@@ -221,11 +221,11 @@ class InvoiceController extends Controller
             abort(404);
         }
 
-        $fileName = 'Hoa_Don_'.$invoice->code.'_'.now()->format('Y_m_d').'.xlsx';
+        $fileName = 'Hoa_Don_'.$invoice->MaHoaDon.'_'.now()->format('Y_m_d').'.xlsx';
 
         $spreadsheet = new Spreadsheet;
         $sheet = $spreadsheet->getActiveSheet();
-        $sheet->setTitle('Hóa đơn '.$invoice->code);
+        $sheet->setTitle('Hóa đơn '.$invoice->MaHoaDon);
 
         $sheet->fromArray([
             ['SKY LAUNDRY'],
@@ -233,12 +233,12 @@ class InvoiceController extends Controller
             ['Hotline: 0909.123.456'],
             [],
             ['HÓA ĐƠN DỊCH VỤ GIẶT ỦI'],
-            ['Mã hóa đơn:', $invoice->code],
-            ['Ngày lập:', $invoice->invoice_date?->format('d/m/Y') ?? now()->format('d/m/Y')],
-            ['Mã đơn:', $invoice->order?->code],
-            ['Khách hàng:', $invoice->order?->customer?->name],
-            ['SĐT:', $invoice->order?->customer?->phone],
-            ['Địa chỉ:', $invoice->order?->customer?->address],
+            ['Mã hóa đơn:', $invoice->MaHoaDon],
+            ['Ngày lập:', $invoice->NgayLap?->format('d/m/Y') ?? now()->format('d/m/Y')],
+            ['Mã đơn:', $invoice->donHang?->MaDonHang],
+            ['Khách hàng:', $invoice->donHang?->khachHang?->HoTen],
+            ['SĐT:', $invoice->donHang?->khachHang?->SoDienThoai],
+            ['Địa chỉ:', $invoice->donHang?->khachHang?->DiaChi],
             [],
         ], null, 'A1');
 
@@ -247,11 +247,11 @@ class InvoiceController extends Controller
         ], null, 'A14');
 
         $row = 15;
-        foreach ($invoice->order?->items ?? [] as $index => $item) {
+        foreach ($invoice->donHang?->chiTietDonHangs ?? [] as $index => $item) {
             $sheet->fromArray([[
                 $index + 1,
-                $item->service?->name ?: ($item->item_name ?: '-'),
-                $item->service?->unit ?: 'kg',
+                $item->dichVu?->TenDichVu ?: ($item->item_name ?: '-'),
+                $item->donViTinh?->KyHieu ?: 'kg',
                 $item->quantity ?? 0,
                 (float) ($item->price ?? 0),
                 (float) ($item->subtotal ?? 0),
@@ -260,10 +260,10 @@ class InvoiceController extends Controller
         }
 
         $sheet->fromArray([
-            ['', '', '', '', 'Tạm tính:', (float) $invoice->total_amount],
-            ['', '', '', '', 'Giảm giá:', (float) $invoice->discount_amount],
-            ['', '', '', '', 'Phí giao hàng:', (float) $invoice->delivery_fee],
-            ['', '', '', '', 'TỔNG CỘNG:', (float) $invoice->grand_total],
+            ['', '', '', '', 'Tạm tính:', (float) $invoice->TongTien],
+            ['', '', '', '', 'Giảm giá:', (float) $invoice->GiamGia],
+            ['', '', '', '', 'Phí giao hàng:', (float) $invoice->PhiGiaoHang],
+            ['', '', '', '', 'TỔNG CỘNG:', (float) $invoice->ThanhTien],
         ], null, 'A'.$row);
 
         $sheet->getStyle('A1:F13')->getFont()->setBold(true);

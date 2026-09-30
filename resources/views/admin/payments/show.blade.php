@@ -11,7 +11,6 @@
 
 <x-admin.detail.page-header
     title="Thanh toán {{ $paymentCode }}"
-    :back="route('payments.index')"
     :subtitle="$payment->getMethodLabel() . ' · ' . ($payment->paid_at?->format('d/m/Y H:i') ?: $payment->created_at?->format('d/m/Y H:i'))"
 >
     <x-slot:badge>
@@ -22,25 +21,6 @@
             </span>
         @endif
     </x-slot:badge>
-
-    <x-slot:actions>
-        @if($payment->can_edit)
-            <a href="{{ route('payments.edit', $payment->id) }}" class="btn btn-primary btn-sm">
-                <i class="bi bi-pencil me-1"></i>Chỉnh sửa
-            </a>
-        @endif
-
-        @if($payment->can_delete)
-            <x-admin.detail.confirm-form
-                :action="route('payments.destroy', $payment->id)"
-                title="Xóa phiếu thanh toán?"
-                text="Hành động này không thể hoàn tác."
-                label="Xóa"
-                icon="bi-trash"
-                variant="btn-outline-danger"
-            />
-        @endif
-    </x-slot:actions>
 </x-admin.detail.page-header>
 
 @if($isLocked)
@@ -115,6 +95,38 @@
                 <x-admin.detail.empty message="Chưa có thông tin khách hàng" icon="bi-person" />
             @endif
         </x-admin.detail.panel>
+
+        <div class="card shadow-sm border-0 mt-3">
+            <div class="card-header bg-transparent border-bottom d-flex align-items-center gap-2 py-3">
+                <div class="bg-light rounded p-2 d-inline-flex align-items-center justify-content-center">
+                    <i class="fas fa-sliders-h text-secondary"></i>
+                </div>
+                <h5 class="card-title mb-0 fw-bold">Thao tác</h5>
+            </div>
+            <div class="card-body d-flex flex-column gap-2">
+                @if($payment->can_edit)
+                    <a href="{{ route('payments.edit', $payment->id) }}" class="btn btn-primary w-100 py-2">
+                        <i class="fas fa-pencil-alt me-1"></i> Chỉnh sửa
+                    </a>
+                @endif
+
+                @if($payment->can_delete)
+                    <x-admin.detail.confirm-form
+                        :action="route('payments.destroy', $payment->id)"
+                        title="Xóa phiếu thanh toán?"
+                        text="Hành động này không thể hoàn tác."
+                        label="Xóa phiếu thanh toán"
+                        icon="bi-trash"
+                        variant="btn-outline-danger"
+                        :block="true"
+                    />
+                @endif
+
+                <a href="{{ route('payments.index') }}" class="btn btn-outline-secondary w-100 py-2 text-dark">
+                    <i class="fas fa-arrow-left me-1"></i> Quay lại danh sách
+                </a>
+            </div>
+        </div>
     </div>
 </div>
 @endsection

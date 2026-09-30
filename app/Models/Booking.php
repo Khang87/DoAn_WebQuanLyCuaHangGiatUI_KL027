@@ -2,110 +2,71 @@
 
 namespace App\Models;
 
-use App\Enums\BookingStatus;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
+use App\Models\NhanVien;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasOne;
-use Illuminate\Database\Eloquent\SoftDeletes;
-use Illuminate\Support\Facades\DB;
 
 class Booking extends Model
 {
-    use HasFactory, SoftDeletes;
+    protected $table = 'Booking';
+    protected $primaryKey = 'BookingID';
+    public $timestamps = false;
+    public static $snakeAttributes = false;
 
-    /** Tiền tố mã tham chiếu đặt lịch. */
-    public const CODE_PREFIX = 'DL';
+    /** Cột thời gian tiếng Việt thay cho created_at/updated_at. */
+    public const CREATED_AT = 'NgayTao';
+
+    public const UPDATED_AT = 'NgayCapNhat';
 
     protected $fillable = [
-        'code',
-        'customer_id',
-        'staff_id',
-        'method',
-        'scheduled_date',
-        'scheduled_time',
-        'notes',
-        'status',
-    ];
+        'MaBooking', 'KhachHangID', 'HinhThucNhanDo', 'DiaChiNhan',
+        'NgayHen', 'GioHen', 'GhiChu', 'TrangThai', 'NgayTao', 'NgayCapNhat',
+        'IdempotencyKey', 'DichVuID', 'LoaiDoGiatID', 'DonViTinhID',
+        'SoLuong', 'KhoiLuong', 'DonGia', 'ThanhTien', 'BookingID', 'NhanVienID'];
 
     protected $casts = [
-        'scheduled_date' => 'date',
-        'scheduled_time' => 'datetime',
-        'created_at' => 'datetime',
-        'updated_at' => 'datetime',
-        'deleted_at' => 'datetime',
+        'BookingID' => 'integer',
+        'KhachHangID' => 'integer',
+        'DichVuID' => 'integer',
+        'LoaiDoGiatID' => 'integer',
+        'DonViTinhID' => 'integer',
+        'NhanVienID' => 'integer',
+        'SoLuong' => 'decimal:2',
+        'KhoiLuong' => 'decimal:2',
+        'DonGia' => 'decimal:2',
+        'ThanhTien' => 'decimal:2',
+        'NgayHen' => 'date',
+        'GioHen' => 'datetime',
+        'NgayTao' => 'datetime',
+        'NgayCapNhat' => 'datetime',
     ];
 
-    /**
-     * Sinh mã tham chiếu kế tiếp, ví dụ DL0007.
-     * Dùng MAX(id) + 1 để không phụ thuộc sequence của cột id.
-     */
-    public static function nextCode(): string
+    public function khachHang()
     {
-        $next = ((int) static::withTrashed()->max('id')) + 1;
-
-        do {
-            $code = self::CODE_PREFIX . str_pad((string) $next, 4, '0', STR_PAD_LEFT);
-            $next++;
-        } while (static::withTrashed()->where('code', $code)->exists());
-
-        return $code;
+        return $this->belongsTo(KhachHang::class, 'KhachHangID');
     }
 
-    protected static function booted(): void
+    public function dichVu()
     {
-        // Mỗi lịch hẹn luôn có mã tham chiếu để đơn hàng trỏ về dễ dàng.
-        static::creating(function (Booking $booking) {
-            if (blank($booking->code)) {
-                $booking->code = self::nextCode();
-            }
-        });
+        return $this->belongsTo(DichVu::class, 'DichVuID');
     }
 
-    public function customer(): BelongsTo
+    public function loaiDoGiat()
     {
-        return $this->belongsTo(Customer::class)->withTrashed();
+        return $this->belongsTo(LoaiDoGiat::class, 'LoaiDoGiatID');
     }
 
-    public function staff(): BelongsTo
+    public function donViTinh()
     {
-        return $this->belongsTo(User::class, 'staff_id');
+        return $this->belongsTo(DonViTinh::class, 'DonViTinhID');
     }
 
-    /**
-     * Đơn hàng được tạo tự động từ lịch hẹn này (nếu đã xác nhận).
-     * withTrashed() vì đơn có thể đã bị xoá mềm nhưng liên kết vẫn còn.
-     */
-    public function order(): HasOne
+    public function donHangs()
     {
-        return $this->hasOne(Order::class)->withTrashed();
+        return $this->hasMany(DonHang::class, 'BookingID');
     }
 
-    public function hasOrder(): bool
+    public function nhanVien()
     {
-        return $this->order !== null;
-    }
-
-    /**
-     * Trạng thái có đủ điều kiện chuyển thành đơn hàng hay không.
-     * "Chờ xác nhận" (pending) chưa đủ; "Đã xác nhận" (confirmed) thì đã đủ.
-     */
-    public function isConvertibleToOrder(): bool
-    {
-        return BookingStatus::parse($this->status) === BookingStatus::Confirmed;
-    }
-
-    public function getMethodLabelAttribute(): string
-    {
-        return match ($this->method) {
-            'nhan_do' => 'Nhận đồ',
-            'giao_do' => 'Giao đồ',
-            default => 'Nhận đồ',
-        };
-    }
-
-    public function getStatusLabelAttribute(): string
-    {
-        return BookingStatus::labelFor($this->status);
+        return $this->belongsTo(NhanVien::class, 'NhanVienID');
     }
 }

@@ -8,15 +8,6 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('promotions_coupons', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('promotion_id')->constrained()->cascadeOnDelete();
-            $table->foreignId('coupon_id')->constrained()->cascadeOnDelete();
-            $table->timestamps();
-
-            $table->unique(['promotion_id', 'coupon_id']);
-        });
-
         Schema::create('coupons', function (Blueprint $table) {
             $table->id();
             $table->foreignId('promotion_id')->constrained()->cascadeOnDelete();
@@ -31,6 +22,15 @@ return new class extends Migration
             $table->softDeletes();
         });
 
+        Schema::create('promotions_coupons', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('promotion_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('coupon_id')->constrained()->cascadeOnDelete();
+            $table->timestamps();
+
+            $table->unique(['promotion_id', 'coupon_id']);
+        });
+
         Schema::table('promotions', function (Blueprint $table) {
             $table->softDeletes();
         });
@@ -38,8 +38,8 @@ return new class extends Migration
 
     public function down(): void
     {
-        Schema::dropIfExists('coupons');
         Schema::dropIfExists('promotions_coupons');
+        Schema::dropIfExists('coupons');
 
         Schema::table('promotions', function (Blueprint $table) {
             $table->dropSoftDeletes();

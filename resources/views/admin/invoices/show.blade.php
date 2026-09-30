@@ -18,7 +18,6 @@
 
 <x-admin.detail.page-header
     title="Hóa đơn {{ $invoice->code ?: '#' . $invoice->id }}"
-    :back="route('invoices.index')"
     :subtitle="$invoice->invoice_date?->format('d/m/Y')"
 >
     <x-slot:badge>
@@ -29,15 +28,6 @@
             </span>
         @endif
     </x-slot:badge>
-
-    <x-slot:actions>
-        <a href="{{ route('invoices.export-excel', $invoice->id) }}" class="btn btn-outline-success btn-sm">
-            <i class="bi bi-file-earmark-excel me-1"></i>Xuất excel
-        </a>
-        <button type="button" class="btn btn-outline-info btn-sm" onclick="window.print()">
-            <i class="bi bi-printer me-1"></i>In hóa đơn
-        </button>
-    </x-slot:actions>
 </x-admin.detail.page-header>
 
 @if($isPaid)
@@ -194,6 +184,28 @@
                 </div>
             @endif
         </x-admin.detail.panel>
+
+        <div class="card shadow-sm border-0 mt-3 no-print">
+            <div class="card-header bg-transparent border-bottom d-flex align-items-center gap-2 py-3">
+                <div class="bg-light rounded p-2 d-inline-flex align-items-center justify-content-center">
+                    <i class="fas fa-sliders-h text-secondary"></i>
+                </div>
+                <h5 class="card-title mb-0 fw-bold">Thao tác</h5>
+            </div>
+            <div class="card-body d-flex flex-column gap-2">
+                <a href="{{ route('invoices.export-excel', $invoice->id) }}" class="btn btn-outline-success w-100 py-2">
+                    <i class="fas fa-file-excel me-1"></i> Xuất excel
+                </a>
+
+                <button type="button" class="btn btn-outline-info w-100 py-2" onclick="window.print()">
+                    <i class="fas fa-print me-1"></i> In hóa đơn
+                </button>
+
+                <a href="{{ route('invoices.index') }}" class="btn btn-outline-secondary w-100 py-2 text-dark">
+                    <i class="fas fa-arrow-left me-1"></i> Quay lại danh sách
+                </a>
+            </div>
+        </div>
     </div>
 </div>
 @endsection
@@ -205,6 +217,7 @@
         .navbar-custom,
         .detail-header,
         .detail-panel__icon,
+        .no-print,
         .card.bg-light {
             display: none !important;
         }

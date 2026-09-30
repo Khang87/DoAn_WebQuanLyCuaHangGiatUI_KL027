@@ -120,8 +120,12 @@
                         </td>
                         <td>
                             <div class="d-flex gap-2">
-                                <a href="{{ route('reviews.show', $review) }}" class="btn btn-order-action view" title="Xem"><i class="bi bi-eye"></i></a>
-                                <a href="{{ route('reviews.show', $review) }}#phan-hoi" class="btn btn-order-action edit" title="Phản hồi"><i class="bi bi-reply"></i></a>
+                                @can('reviews.view')
+                                    <a href="{{ route('reviews.show', $review) }}" class="btn btn-order-action view" title="Xem"><i class="bi bi-eye"></i></a>
+                                @endcan
+                                @can('reviews.edit')
+                                    <a href="{{ route('reviews.show', $review) }}#phan-hoi" class="btn btn-order-action edit" title="Phản hồi"><i class="bi bi-reply"></i></a>
+                                @endcan
                             </div>
                         </td>
                     </tr>

@@ -5,13 +5,14 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Concerns\RejectsSettledRecords;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\OrderRequest;
-use App\Models\Customer;
-use App\Models\Garment;
-use App\Models\Pricing;
-use App\Models\Promotion;
-use App\Models\Service;
-use App\Models\ServiceCategory;
-use App\Models\User;
+use App\Models\DichVu;
+use App\Models\DonViTinh;
+use App\Models\KhachHang;
+use App\Models\KhuyenMai;
+use App\Models\LoaiDichVu;
+use App\Models\LoaiDoGiat;
+use App\Models\NhanVien;
+use App\Models\BangGia;
 use App\Services\GarmentService;
 use App\Services\OrderService;
 use Illuminate\Http\Request;
@@ -26,28 +27,31 @@ class OrderController extends Controller
     ) {}
 
     /**
-     * Bảng giá cho UI: mỗi cặp service_id + garment_id chỉ giữ bản giá lịch sử
-     * mới nhất, đúng thứ tự mà OrderService/Pricing::getLatestPricing() chọn.
+     * Bảng giá cho UI: mỗi cặp DichVuID + LoaiDoGiatID chỉ giữ bản giá lịch sử
+     * mới nhất, đúng thứ tự mà OrderService/BangGia::getLatestPricing() chọn.
      */
     private function pricingOptions()
     {
-        return Pricing::where('status', 'active')
-            ->orderByDesc('effective_date')
-            ->orderByDesc('id')
+        return BangGia::where('TrangThai', 'Hoạt động')
+            ->orderByDesc('NgayApDung')
+            ->orderByDesc('BangGiaID')
             ->get()
-            ->unique(fn ($pricing) => $pricing->service_id.'-'.$pricing->garment_id)
+            ->unique(fn ($pricing) => $pricing->DichVuID.'-'.$pricing->LoaiDoGiatID)
             ->values();
     }
 
     /**
-     * Danh sách nhóm dịch vụ và nhóm loại đồ đều lấy từ database, không hardcode.
+     * Danh sách nhóm dịch vụ, nhóm loại đồ và đơn vị tính đều lấy từ database,
+     * không hardcode.
      */
     private function categoryOptions(): array
     {
         return [
-            'serviceCategories' => ServiceCategory::where('status', 'active')->orderBy('name')->get(),
-            'garmentCategories' => $this->garmentService->getCategories(),
-            'units' => Pricing::unitOptions(),
+            'serviceCategories' => LoaiDichVu::where('TrangThai', 'Hoạt động')->orderBy('TenLoaiDichVu')->get(),
+            'garmentCategories' => $this->garmentService->getCategoryOptions(),
+            'units' => DonViTinh::where('TrangThai', 'Hoạt động')
+                ->orderBy('TenDonViTinh')
+                ->get(['DonViTinhID', 'TenDonViTinh', 'KyHieu']),
         ];
     }
 
@@ -55,14 +59,14 @@ class OrderController extends Controller
     {
         $orders = $this->orderService->getAll([
             'search' => $request->input('search'),
-            'customer_id' => $request->input('customer_id'),
+            'customer_id' => $request->input('KhachHangID', $request->input('customer_id')),
             'status' => $request->input('status'),
             'date_from' => $request->input('date_from'),
             'date_to' => $request->input('date_to'),
             'sort' => $request->input('sort'),
         ]);
 
-        $customers = Customer::orderBy('name')->get();
+        $customers = KhachHang::orderBy('HoTen')->get();
         $statusFlow = $this->orderService->getStatusFlow();
 
         return view('admin.orders.index', compact('orders', 'customers', 'statusFlow'));
@@ -70,11 +74,11 @@ class OrderController extends Controller
 
     public function create()
     {
-        $customers = Customer::orderBy('name')->get();
-        $services = Service::where('status', 'active')->orderBy('name')->get();
-        $garments = Garment::where('status', 'active')->orderBy('name')->get();
-        $promotions = Promotion::where('status', 'active')->get();
-        $employees = User::where('role', '!=', 'customer')->orderBy('name')->get();
+        $customers = KhachHang::orderBy('HoTen')->get();
+        $services = DichVu::where('TrangThai', 'Hoạt động')->orderBy('TenDichVu')->get();
+        $garments = LoaiDoGiat::where('TrangThai', 'Hoạt động')->orderBy('TenLoaiDoGiat')->get();
+        $promotions = KhuyenMai::where('TrangThai', 'Hoạt động')->get();
+        $employees = NhanVien::orderBy('HoTen')->get();
         $statusFlow = $this->orderService->getStatusFlow();
         $pricings = $this->pricingOptions();
 
@@ -139,7 +143,7 @@ class OrderController extends Controller
         if ($order->isPaid() && ! auth()->user()?->isOwner()) {
             return $this->denySettled(
                 $request,
-                "Đơn hàng {$order->code} đã thanh toán. Bạn không có quyền {$action}.",
+                "Đơn hàng {$order->MaDonHang} đã thanh toán. Bạn không có quyền {$action}.",
                 $action === 'xóa' ? route('orders.index') : route('orders.show', $order)
             );
         }
@@ -162,16 +166,16 @@ class OrderController extends Controller
         if ($order->isLocked() && ! $this->canOverrideSettled()) {
             return $this->denySettled(
                 $request,
-                'Đơn hàng '.$order->code.' đã quyết toán nên chỉ có thể xem, không thể sửa.',
+                'Đơn hàng '.$order->MaDonHang.' đã quyết toán nên chỉ có thể xem, không thể sửa.',
                 route('orders.show', $order)
             );
         }
 
-        $customers = Customer::orderBy('name')->get();
-        $services = Service::where('status', 'active')->orderBy('name')->get();
-        $garments = Garment::where('status', 'active')->orderBy('name')->get();
-        $promotions = Promotion::where('status', 'active')->get();
-        $employees = User::where('role', '!=', 'customer')->orderBy('name')->get();
+        $customers = KhachHang::orderBy('HoTen')->get();
+        $services = DichVu::where('TrangThai', 'Hoạt động')->orderBy('TenDichVu')->get();
+        $garments = LoaiDoGiat::where('TrangThai', 'Hoạt động')->orderBy('TenLoaiDoGiat')->get();
+        $promotions = KhuyenMai::where('TrangThai', 'Hoạt động')->get();
+        $employees = NhanVien::orderBy('HoTen')->get();
         $statusFlow = $this->orderService->getStatusFlow();
         $pricings = $this->pricingOptions();
 
@@ -199,7 +203,7 @@ class OrderController extends Controller
         if ($order->isLocked() && ! $override) {
             return $this->denySettled(
                 $request,
-                'Đơn hàng '.$order->code.' đã quyết toán nên không thể chỉnh sửa.',
+                'Đơn hàng '.$order->MaDonHang.' đã quyết toán nên không thể chỉnh sửa.',
                 route('orders.show', $order)
             );
         }
@@ -238,7 +242,7 @@ class OrderController extends Controller
         if ($order->isLocked() && ! $override) {
             return $this->denySettled(
                 $request,
-                'Đơn hàng '.$order->code.' đã quyết toán nên không thể xóa.',
+                'Đơn hàng '.$order->MaDonHang.' đã quyết toán nên không thể xóa.',
                 route('orders.index')
             );
         }
@@ -270,13 +274,13 @@ class OrderController extends Controller
         if ($order->isLocked() && ! $override) {
             return $this->denySettled(
                 $request,
-                'Đơn hàng '.$order->code.' đã quyết toán nên không thể đổi trạng thái.',
+                'Đơn hàng '.$order->MaDonHang.' đã quyết toán nên không thể đổi trạng thái.',
                 route('orders.show', $order)
             );
         }
 
         try {
-            $this->orderService->updateStatus($order, (string) $request->input('status'), $override);
+            $this->orderService->updateStatus($order, (string) $request->input('TrangThai', $request->input('status')), $override);
 
             return back()->with('success', 'Trạng thái đơn hàng đã được cập nhật.');
         } catch (\Exception $e) {

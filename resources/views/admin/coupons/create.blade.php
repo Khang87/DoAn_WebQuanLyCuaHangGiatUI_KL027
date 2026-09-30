@@ -17,60 +17,73 @@
             @csrf
             <div class="row g-4">
                 <div class="col-md-6">
-                    <label class="form-label">Chương trình khuyến mãi <span class="text-danger">*</span></label>
-                    <select class="form-select @error('promotion_id') is-invalid @enderror" name="promotion_id" required>
-                        <option value="">-- Chọn chương trình --</option>
-                        @foreach($promotions as $promotion)
-                        <option value="{{ $promotion->id }}">{{ $promotion->name }} ({{ $promotion->code }})</option>
-                        @endforeach
-                    </select>
-                    @error('promotion_id')
+                    <label class="form-label">Tên khuyến mãi <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control @error('TenKhuyenMai') is-invalid @enderror" name="TenKhuyenMai" value="{{ old('TenKhuyenMai') }}" placeholder="vd: Giảm giá VIP" required>
+                    @error('TenKhuyenMai')
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
                 </div>
                 <div class="col-md-6">
                     <label class="form-label">Mã coupon <span class="text-danger">*</span></label>
-                    <input type="text" class="form-control @error('code') is-invalid @enderror" name="code" value="{{ old('code') }}" placeholder="vd: VIP20" required>
-                    @error('code')
+                    <input type="text" class="form-control @error('MaKhuyenMai') is-invalid @enderror" name="MaKhuyenMai" value="{{ old('MaKhuyenMai') }}" placeholder="vd: VIP20" required>
+                    @error('MaKhuyenMai')
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
                 </div>
                 <div class="col-md-6">
                     <label class="form-label">Loại giảm giá <span class="text-danger">*</span></label>
-                    <select class="form-select @error('discount_type') is-invalid @enderror" name="discount_type" required>
-                        <option value="percent">Phần trăm (%)</option>
-                        <option value="fixed">Số tiền cố định</option>
-                        <option value="free_shipping">Miễn phí ship</option>
+                    <select class="form-select @error('LoaiKhuyenMai') is-invalid @enderror" name="LoaiKhuyenMai" required>
+                        <option value="Phần trăm">Phần trăm (%)</option>
+                        <option value="Tiền mặt">Số tiền cố định (VNĐ)</option>
                     </select>
-                    @error('discount_type')
+                    @error('LoaiKhuyenMai')
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
                 </div>
                 <div class="col-md-6">
                     <label class="form-label">Giá trị giảm giá <span class="text-danger">*</span></label>
-                    <input type="number" class="form-control @error('discount_value') is-invalid @enderror" name="discount_value" value="{{ old('discount_value') }}" min="0" required>
-                    @error('discount_value')
+                    <input type="number" class="form-control @error('GiaTriGiam') is-invalid @enderror" name="GiaTriGiam" value="{{ old('GiaTriGiam') }}" min="0" step="0.01" required>
+                    @error('GiaTriGiam')
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
                 </div>
                 <div class="col-md-6">
-                    <label class="form-label">Số lần sử dụng tối đa</label>
-                    <input type="number" class="form-control" name="max_uses" value="{{ old('max_uses') }}" min="1">
+                    <label class="form-label">Giá trị đơn tối thiểu</label>
+                    <input type="number" class="form-control" name="GiaTriDonToiThieu" value="{{ old('GiaTriDonToiThieu') }}" min="0" step="0.01">
                 </div>
                 <div class="col-md-6">
-                    <label class="form-label">Ngày hết hạn <span class="text-danger">*</span></label>
-                    <input type="date" class="form-control @error('expires_at') is-invalid @enderror" name="expires_at" value="{{ old('expires_at') }}" required>
-                    @error('expires_at')
+                    <label class="form-label">Mức giảm tối đa</label>
+                    <input type="number" class="form-control" name="MucGiamToiDa" value="{{ old('MucGiamToiDa') }}" min="0" step="0.01">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Số lượng mã phát hành</label>
+                    <input type="number" class="form-control" name="SoLuongSuDung" value="{{ old('SoLuongSuDung') }}" min="0">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Điều kiện áp dụng</label>
+                    <input type="text" class="form-control" name="DieuKienApDung" value="{{ old('DieuKienApDung') }}" placeholder="vd: first_order_only">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Ngày bắt đầu <span class="text-danger">*</span></label>
+                    <input type="date" class="form-control @error('NgayBatDau') is-invalid @enderror" name="NgayBatDau" value="{{ old('NgayBatDau') }}" required>
+                    @error('NgayBatDau')
+                        <div class="invalid-feedback">{{ $message }}</div>
+                    @enderror
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Ngày kết thúc <span class="text-danger">*</span></label>
+                    <input type="date" class="form-control @error('NgayKetThuc') is-invalid @enderror" name="NgayKetThuc" value="{{ old('NgayKetThuc') }}" required>
+                    @error('NgayKetThuc')
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
                 </div>
                 <div class="col-md-6">
                     <label class="form-label">Trạng thái</label>
                     <x-admin.status-select
-                        name="status"
+                        name="TrangThai"
                         :options="\App\Enums\RecordStatus::options()"
-                        selected="active"
-                        class="form-select @error('status') is-invalid @enderror"
+                        selected="Hoạt động"
+                        class="form-select @error('TrangThai') is-invalid @enderror"
                     />
                 </div>
             </div>

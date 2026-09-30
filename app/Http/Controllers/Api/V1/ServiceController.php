@@ -5,8 +5,8 @@ namespace App\Http\Controllers\Api\V1;
 use App\Enums\RecordStatus;
 use App\Http\Controllers\Api\ApiController;
 use App\Http\Resources\ServiceResource;
-use App\Models\Service;
-use App\Models\ServiceCategory;
+use App\Models\DichVu;
+use App\Models\LoaiDichVu;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -14,19 +14,19 @@ class ServiceController extends ApiController
 {
     public function index(Request $request): JsonResponse
     {
-        $paginator = Service::query()
-            ->with('category')
-            ->when($request->filled('category_id'), fn ($query) => $query->where('service_category_id', $request->integer('category_id')))
+        $paginator = DichVu::query()
+            ->with('loaiDichVu')
+            ->when($request->filled('category_id'), fn ($query) => $query->where('LoaiDichVuID', $request->integer('category_id')))
             ->when($request->filled('search'), function ($query) use ($request) {
                 $search = $request->string('search')->toString();
-                $query->where('name', 'like', "%{$search}%");
+                $query->where('TenDichVu', 'like', "%{$search}%");
             })
             ->when(
                 $request->filled('status'),
-                fn ($query) => $query->where('status', RecordStatus::parse($request->string('status'))->value),
-                fn ($query) => $query->where('status', RecordStatus::Active->value)
+                fn ($query) => $query->where('TrangThai', RecordStatus::parse($request->string('status'))->label()),
+                fn ($query) => $query->where('TrangThai', RecordStatus::Active->label())
             )
-            ->orderBy('name')
+            ->orderBy('TenDichVu')
             ->paginate($this->perPage($request))
             ->withQueryString();
 
@@ -38,9 +38,9 @@ class ServiceController extends ApiController
      */
     public function categories(): JsonResponse
     {
-        $categories = ServiceCategory::where('status', RecordStatus::Active->value)
-            ->orderBy('name')
-            ->get(['id', 'name', 'slug']);
+        $categories = LoaiDichVu::where('TrangThai', RecordStatus::Active->label())
+            ->orderBy('TenLoaiDichVu')
+            ->get(['LoaiDichVuID as id', 'TenLoaiDichVu as name']);
 
         return response()->json(['data' => $categories]);
     }

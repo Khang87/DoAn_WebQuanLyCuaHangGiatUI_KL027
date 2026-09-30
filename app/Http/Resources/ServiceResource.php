@@ -7,29 +7,26 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
- * @mixin \App\Models\Service
+ * @mixin \App\Models\DichVu
  */
 class ServiceResource extends JsonResource
 {
-    /**
-     * @return array<string, mixed>
-     */
     public function toArray(Request $request): array
     {
         return [
-            'id' => $this->id,
-            'name' => $this->name,
-            'type' => $this->type,
-            'unit' => $this->unit,
-            'price' => (float) $this->price,
-            'formatted_price' => format_currency($this->price),
-            'status' => $this->status,
-            'status_label' => RecordStatus::parse($this->status)->label(),
-            'category' => $this->whenLoaded('category', fn () => [
-                'id' => $this->category?->id,
-                'name' => $this->category?->name,
+            'id' => $this->DichVuID,
+            'name' => $this->TenDichVu,
+            'type' => $this->loaiDichVu?->TenLoaiDichVu,
+            'unit' => $this->donViTinh?->KyHieu,
+            'price' => (float) ($this->bangGia?->DonGia ?? 0),
+            'formatted_price' => isset($this->bangGia?->DonGia) ? format_currency($this->bangGia->DonGia) : null,
+            'status' => $this->TrangThai,
+            'status_label' => RecordStatus::parse($this->TrangThai)->label(),
+            'category' => $this->whenLoaded('loaiDichVu', fn () => [
+                'id' => $this->loaiDichVu?->LoaiDichVuID,
+                'name' => $this->loaiDichVu?->TenLoaiDichVu,
             ]),
-            'description' => $this->description,
+            'description' => $this->MoTa,
         ];
     }
 }

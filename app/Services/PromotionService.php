@@ -2,7 +2,7 @@
 
 namespace App\Services;
 
-use App\Models\Promotion;
+use App\Models\KhuyenMai;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 
@@ -10,7 +10,7 @@ class PromotionService
 {
     public function getAll(array $filters = []): LengthAwarePaginator
     {
-        $query = Promotion::query();
+        $query = KhuyenMai::query();
 
         if (!empty($filters['search'])) {
             $search = trim($filters['search']);
@@ -19,28 +19,28 @@ class PromotionService
                 if (!empty($numericPart)) {
                     $q->where('id', $numericPart);
                 }
-                $q->orWhere('code', 'LIKE', "%{$search}%")
-                    ->orWhere('name', 'LIKE', "%{$search}%")
-                    ->orWhere('discount_type', 'LIKE', "%{$search}%")
-                    ->orWhere('discount_value', 'LIKE', "%{$search}%");
+                $q->orWhere('MaKhuyenMai', 'LIKE', "%{$search}%")
+                    ->orWhere('TenKhuyenMai', 'LIKE', "%{$search}%")
+                    ->orWhere('LoaiKhuyenMai', 'LIKE', "%{$search}%")
+                    ->orWhere('GiaTriGiam', 'LIKE', "%{$search}%");
             });
         }
 
         if (!empty($filters['status'])) {
-            $query->where('status', $filters['status']);
+            $query->where('TrangThai', $filters['status']);
         }
 
         $sortMap = [
-            'created_at_desc' => ['created_at', 'desc'],
-            'created_at_asc' => ['created_at', 'asc'],
-            'name_asc' => ['name', 'asc'],
-            'name_desc' => ['name', 'desc'],
-            'code_asc' => ['code', 'asc'],
-            'code_desc' => ['code', 'desc'],
-            'discount_value_asc' => ['discount_value', 'asc'],
-            'discount_value_desc' => ['discount_value', 'desc'],
-            'expires_at_asc' => ['expires_at', 'asc'],
-            'expires_at_desc' => ['expires_at', 'desc'],
+            'created_at_desc' => ['NgayTao', 'desc'],
+            'created_at_asc' => ['NgayTao', 'asc'],
+            'name_asc' => ['TenKhuyenMai', 'asc'],
+            'name_desc' => ['TenKhuyenMai', 'desc'],
+            'code_asc' => ['MaKhuyenMai', 'asc'],
+            'code_desc' => ['MaKhuyenMai', 'desc'],
+            'discount_value_asc' => ['GiaTriGiam', 'asc'],
+            'discount_value_desc' => ['GiaTriGiam', 'desc'],
+            'expires_at_asc' => ['NgayKetThuc', 'asc'],
+            'expires_at_desc' => ['NgayKetThuc', 'desc'],
         ];
         $sort = $filters['sort'] ?? 'latest';
         [$sortBy, $sortOrder] = $sortMap[$sort] ?? ['created_at', 'desc'];
@@ -48,30 +48,30 @@ class PromotionService
         return $query->orderBy($sortBy, $sortOrder)->paginate(10)->withQueryString();
     }
 
-    public function find(int $id): ?Promotion
+    public function find(int $id): ?KhuyenMai
     {
-        return Promotion::withTrashed()->find($id);
+        return KhuyenMai::withTrashed()->find($id);
     }
 
-    public function create(array $data): Promotion
+    public function create(array $data): KhuyenMai
     {
-        return Promotion::create($data);
+        return KhuyenMai::create($data);
     }
 
-    public function update(Promotion $promotion, array $data): Promotion
+    public function update(KhuyenMai $promotion, array $data): KhuyenMai
     {
         $promotion->update($data);
         return $promotion->fresh();
     }
 
-    public function delete(Promotion $promotion): bool
+    public function delete(KhuyenMai $promotion): bool
     {
         return $promotion->delete();
     }
 
-    public function restore(int $id): ?Promotion
+    public function restore(int $id): ?KhuyenMai
     {
-        $promotion = Promotion::onlyTrashed()->find($id);
+        $promotion = KhuyenMai::onlyTrashed()->find($id);
         if ($promotion) {
             $promotion->restore();
         }
@@ -80,12 +80,12 @@ class PromotionService
 
     public function getActive(): Collection
     {
-        return Promotion::where('status', 'active')
+        return KhuyenMai::where('TrangThai', 'active')
             ->where(function ($query) {
-                $query->whereNull('starts_at')->orWhereDate('starts_at', '<=', today());
+                $query->whereNull('NgayBatDau')->orWhereDate('NgayBatDau', '<=', today());
             })
             ->where(function ($query) {
-                $query->whereNull('expires_at')->orWhereDate('expires_at', '>=', today());
+                $query->whereNull('NgayKetThuc')->orWhereDate('NgayKetThuc', '>=', today());
             })
             ->get();
     }

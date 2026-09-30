@@ -2,8 +2,8 @@
 
 namespace App\Services;
 
-use App\Models\Permission;
-use App\Models\Role;
+use App\Models\Quyen;
+use App\Models\VaiTro;
 use App\Support\PermissionRegistry;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -13,27 +13,27 @@ class RoleService
     /**
      * Vai trò kèm danh sách mã quyền đang được cấp.
      *
-     * @return Collection<int, Role>
+     * @return Collection<int, VaiTro>
      */
     public function getAllWithPermissions(): Collection
     {
-        return Role::query()
-            ->with('permissions')
-            ->orderByRaw("CASE slug WHEN 'owner' THEN 0 WHEN 'manager' THEN 1 WHEN 'staff' THEN 2 ELSE 3 END")
+        return VaiTro::query()
+            ->with('quyens')
+            ->orderByRaw("CASE TenVaiTro WHEN 'Chủ cửa hàng' THEN 0 WHEN 'Quản lý' THEN 1 WHEN 'Nhân viên' THEN 2 ELSE 3 END")
             ->get();
     }
 
     /**
      * Ma trận quyền: group => [code => ['name' => ..., 'owner_only' => bool]].
-     * Mỗi permission kèm danh sách slug của các vai trò đang được cấp quyền.
+     * Mỗi permission kèm danh sách tên của các vai trò đang được cấp quyền.
      *
      * @return array<string, array<string, array{name: string, owner_only: bool, roles: list<string>}>>
      */
     public function matrix(): array
     {
         $roles = $this->getAllWithPermissions();
-        $granted = $roles->mapWithKeys(fn (Role $role) => [
-            $role->slug => $role->permissions->pluck('code')->all(),
+        $granted = $roles->mapWithKeys(fn (VaiTro $role) => [
+            $role->TenVaiTro => $role->quyens->pluck('MaQuyen')->all(),
         ]);
 
         $rows = [];
@@ -42,7 +42,7 @@ class RoleService
             foreach ($items as $code => $name) {
                 $rows[$group][$code] = [
                     'name' => $name,
-                    'owner_only' => in_array($code, Role::OWNER_ONLY_PERMISSIONS, true),
+                    'owner_only' => in_array($code, VaiTro::OWNER_ONLY_PERMISSIONS, true),
                     'roles' => $granted
                         ->filter(fn (array $codes) => in_array($code, $codes, true))
                         ->keys()
@@ -58,17 +58,17 @@ class RoleService
     /**
      * Lưu ma trận quyền.
      *
-     * Quyền đặc biệt (Role::OWNER_ONLY_PERMISSIONS) bị ép buộc về đúng Chủ cửa hàng,
+     * Quyền đặc biệt (VaiTro::OWNER_ONLY_PERMISSIONS) bị ép buộc về đúng Chủ cửa hàng,
      * bất kể payload gửi lên, để không thể vô tình cấp quyền tài chính cho
      * Nhân viên / Quản lý.
      *
-     * @param  array<string, array<int, string>>  $matrix  role_slug => [permission_code, ...]
+     * @param  array<string, array<int, string>>  $matrix  role_name => [permission_code, ...]
      * @return array{granted: int, rejected: int}
      */
     public function syncPermissions(array $matrix): array
     {
-        $roles = Role::query()->get()->keyBy('slug');
-        $permissions = Permission::query()->get()->keyBy('code');
+        $roles = VaiTro::query()->get()->keyBy('TenVaiTro');
+        $permissions = Quyen::query()->get()->keyBy('MaQuyen');
 
         $granted = 0;
         $rejected = 0;
@@ -96,11 +96,11 @@ class RoleService
                         continue;
                     }
 
-                    $ids[] = $permission->id;
+                    $ids[] = $permission->QuyenID;
                     $granted++;
                 }
 
-                $role->permissions()->sync($ids);
+                $role->quyens()->sync($ids);
             }
         });
 

@@ -5,7 +5,8 @@ namespace App\Http\Controllers\Admin;
 use App\Enums\RecordStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\ServiceRequest;
-use App\Models\Service;
+use App\Models\DichVu;
+use App\Models\LoaiDichVu;
 use App\Services\ServiceService;
 use Illuminate\Http\Request;
 
@@ -24,7 +25,7 @@ class ServiceController extends Controller
             'sort' => $request->input('sort'),
         ]);
 
-        $categories = \App\Models\ServiceCategory::where('status', 'active')->orderBy('name')->get();
+        $categories = LoaiDichVu::where('TrangThai', 'Hoạt động')->orderBy('TenLoaiDichVu')->get();
         $statuses = RecordStatus::options();
 
         return view('admin.services.index', compact('services', 'categories', 'statuses'));
@@ -32,7 +33,7 @@ class ServiceController extends Controller
 
     public function create()
     {
-        $categories = \App\Models\ServiceCategory::where('status', 'active')->orderBy('name')->get();
+        $categories = LoaiDichVu::where('TrangThai', 'Hoạt động')->orderBy('TenLoaiDichVu')->get();
 
         return view('admin.services.create', compact('categories'));
     }
@@ -67,7 +68,7 @@ class ServiceController extends Controller
             abort(404);
         }
 
-        $categories = \App\Models\ServiceCategory::where('status', 'active')->orderBy('name')->get();
+        $categories = LoaiDichVu::where('TrangThai', 'Hoạt động')->orderBy('TenLoaiDichVu')->get();
 
         return view('admin.services.edit', compact('service', 'categories'));
     }

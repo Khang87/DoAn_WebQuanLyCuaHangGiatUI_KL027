@@ -2,74 +2,74 @@
 
 namespace App\Services;
 
-use App\Models\ServiceCategory;
+use App\Models\LoaiDichVu;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Str;
 
 class ServiceCategoryService
 {
     public function getAll(array $filters = []): LengthAwarePaginator
     {
-        $query = ServiceCategory::query();
+        $query = LoaiDichVu::query();
 
         if (!empty($filters['search'])) {
             $search = trim($filters['search']);
             $query->where(function ($q) use ($search) {
                 $numericPart = preg_replace('/[^0-9]/', '', $search);
                 if (!empty($numericPart)) {
-                    $q->where('id', $numericPart);
+                    $q->where('LoaiDichVuID', $numericPart);
                 }
-                $q->orWhere('slug', 'LIKE', "%{$search}%")
-                    ->orWhere('name', 'LIKE', "%{$search}%")
-                    ->orWhere('description', 'LIKE', "%{$search}%");
+                $q->orWhere('TenLoaiDichVu', 'LIKE', "%{$search}%")
+                    ->orWhere('MoTa', 'LIKE', "%{$search}%");
             });
         }
 
         if (!empty($filters['status'])) {
-            $query->where('status', $filters['status']);
+            $query->where('TrangThai', $filters['status']);
         }
 
         $sortMap = [
-            'created_at_desc' => ['created_at', 'desc'],
-            'created_at_asc' => ['created_at', 'asc'],
-            'name_asc' => ['name', 'asc'],
-            'name_desc' => ['name', 'desc'],
+            'created_at_desc' => ['NgayTao', 'desc'],
+            'created_at_asc' => ['NgayTao', 'asc'],
+            'name_asc' => ['TenLoaiDichVu', 'asc'],
+            'name_desc' => ['TenLoaiDichVu', 'desc'],
         ];
         $sort = $filters['sort'] ?? 'latest';
-        [$sortBy, $sortOrder] = $sortMap[$sort] ?? ['created_at', 'desc'];
+        [$sortBy, $sortOrder] = $sortMap[$sort] ?? ['NgayTao', 'desc'];
 
         return $query->orderBy($sortBy, $sortOrder)->paginate(10)->withQueryString();
     }
 
-    public function find(int $id): ?ServiceCategory
+    public function find(int $id): ?LoaiDichVu
     {
-        return ServiceCategory::withTrashed()->find($id);
+        return LoaiDichVu::withTrashed()->find($id);
     }
 
-    public function create(array $data): ServiceCategory
+    public function create(array $data): LoaiDichVu
     {
-        if (empty($data['slug'])) {
-            $data['slug'] = \Str::slug($data['name']);
+        if (empty($data['TenLoaiDichVu'])) {
+            return null;
         }
-        if (empty($data['status'])) {
-            $data['status'] = 'active';
+        if (empty($data['TrangThai'])) {
+            $data['TrangThai'] = 'Hoạt động';
         }
-        return ServiceCategory::create($data);
+        return LoaiDichVu::create($data);
     }
 
-    public function update(ServiceCategory $category, array $data): ServiceCategory
+    public function update(LoaiDichVu $category, array $data): LoaiDichVu
     {
         $category->update($data);
         return $category->fresh();
     }
 
-    public function delete(ServiceCategory $category): bool
+    public function delete(LoaiDichVu $category): bool
     {
         return $category->delete();
     }
 
-    public function restore(int $id): ?ServiceCategory
+    public function restore(int $id): ?LoaiDichVu
     {
-        $category = ServiceCategory::onlyTrashed()->find($id);
+        $category = LoaiDichVu::onlyTrashed()->find($id);
         if ($category) {
             $category->restore();
         }

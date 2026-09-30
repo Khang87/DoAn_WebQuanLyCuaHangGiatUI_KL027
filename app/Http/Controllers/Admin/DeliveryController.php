@@ -4,9 +4,9 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\DeliveryRequest;
-use App\Models\Customer;
-use App\Models\User;
-use App\Models\Order;
+use App\Models\DonHang;
+use App\Models\KhachHang;
+use App\Models\NhanVien;
 use App\Services\DeliveryService;
 use Illuminate\Http\Request;
 
@@ -27,17 +27,17 @@ class DeliveryController extends Controller
             'sort_order' => $request->input('sort_order'),
         ]);
 
-        $customers = Customer::orderBy('name')->get();
-        $employees = User::where('role', '!=', 'customer')->orderBy('name')->get();
+        $customers = KhachHang::orderBy('HoTen')->get();
+        $employees = NhanVien::where('TrangThai', 'Hoạt động')->orderBy('HoTen')->get();
 
         return view('admin.deliveries.index', compact('deliveries', 'customers', 'employees'));
     }
 
     public function create()
     {
-        $customers = Customer::orderBy('name')->get();
-        $employees = User::where('role', '!=', 'customer')->orderBy('name')->get();
-        $orders = Order::whereDoesntHave('delivery')->where('status', '!=', 'cancelled')->orderBy('created_at', 'desc')->get();
+        $customers = KhachHang::orderBy('HoTen')->get();
+        $employees = NhanVien::where('TrangThai', 'Hoạt động')->orderBy('HoTen')->get();
+        $orders = DonHang::whereDoesntHave('giaoNhans')->where('TrangThai', '!=', 'Đã hủy')->orderBy('NgayTao', 'desc')->get();
 
         return view('admin.deliveries.create', compact('customers', 'employees', 'orders'));
     }
@@ -72,9 +72,9 @@ class DeliveryController extends Controller
             abort(404);
         }
 
-        $customers = Customer::orderBy('name')->get();
-        $employees = User::where('role', '!=', 'customer')->orderBy('name')->get();
-        $orders = Order::whereDoesntHave('delivery')->where('status', '!=', 'cancelled')->orderBy('created_at', 'desc')->get();
+        $customers = KhachHang::orderBy('HoTen')->get();
+        $employees = NhanVien::where('TrangThai', 'Hoạt động')->orderBy('HoTen')->get();
+        $orders = DonHang::whereDoesntHave('giaoNhans')->where('TrangThai', '!=', 'Đã hủy')->orderBy('NgayTao', 'desc')->get();
 
         return view('admin.deliveries.edit', compact('delivery', 'customers', 'employees', 'orders'));
     }

@@ -4,7 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\CustomerRequest;
-use App\Models\Customer;
+use App\Models\KhachHang;
 use App\Services\CustomerService;
 use Illuminate\Http\Request;
 

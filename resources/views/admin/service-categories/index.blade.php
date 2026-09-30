@@ -51,7 +51,6 @@
                         <th class="fw-bold text-dark">STT</th>
                         <th class="fw-bold text-dark">Mã danh mục</th>
                         <th class="fw-bold text-dark">Tên danh mục</th>
-                        <th class="fw-bold text-dark">Icon</th>
                         <th class="fw-bold text-dark">Mô tả</th>
                         <th class="fw-bold text-dark">Trạng thái</th>
                         <th class="fw-bold text-dark">Thao tác</th>
@@ -60,35 +59,34 @@
                 <tbody>
                     @forelse($categories as $category)
                     @php $stt = $categories->firstItem() + $loop->index; @endphp
-                    <tr data-id="{{ $category->id }}">
+                    <tr data-id="{{ $category->LoaiDichVuID }}">
                         <td>{{ $stt }}</td>
-                        <td>{{ $category->code ?? 'DV' . str_pad($category->id, 4, '0', STR_PAD_LEFT) }}</td>
-                        <td><strong>{{ $category->name ?: '-' }}</strong></td>
+                        <td>{{ 'DV' . str_pad($category->LoaiDichVuID, 4, '0', STR_PAD_LEFT) }}</td>
+                        <td><strong>{{ $category->TenLoaiDichVu ?: '-' }}</strong></td>
+                        <td>{{ \Illuminate\Support\Str::limit($category->MoTa, 50) ?: '-' }}</td>
                         <td>
-                            @if($category->icon)
-                                <i class="{{ $category->icon }} fs-5 text-dark" title="{{ $category->icon }}"></i>
-                            @else
-                                <span class="text-muted">-</span>
-                            @endif
-                        </td>
-                        <td>{{ \Illuminate\Support\Str::limit($category->description, 50) ?: '-' }}</td>
-                        <td>
-                            <x-admin.status-badge :status="$category->status" :enum="\App\Enums\RecordStatus::class" />
+                            <x-admin.status-badge :status="$category->TrangThai" :enum="\App\Enums\RecordStatus::class" />
                         </td>
                         <td class="text-center">
                             <div class="d-flex gap-2 justify-content-center">
-                                <a href="{{ route('service-categories.show', $category) }}" class="btn btn-order-action view" title="Xem"><i class="bi bi-eye"></i></a>
-                                <a href="{{ route('service-categories.edit', $category) }}" class="btn btn-order-action edit" title="Sửa"><i class="bi bi-pencil"></i></a>
-                                <form action="{{ route('service-categories.destroy', $category) }}" method="POST" class="d-inline" id="deleteCategoryForm_{{ $category->id }}">
-                                    @csrf @method('DELETE')
-                                    <button type="submit" class="btn btn-order-action delete" title="Xóa"><i class="bi bi-trash"></i></button>
-                                </form>
+                                @can('service_categories.view')
+                                    <a href="{{ route('service-categories.show', $category) }}" class="btn btn-order-action view" title="Xem"><i class="bi bi-eye"></i></a>
+                                @endcan
+                                @can('service_categories.edit')
+                                    <a href="{{ route('service-categories.edit', $category) }}" class="btn btn-order-action edit" title="Sửa"><i class="bi bi-pencil"></i></a>
+                                @endcan
+                                @can('service_categories.delete')
+                                    <form action="{{ route('service-categories.destroy', $category) }}" method="POST" class="d-inline" id="deleteCategoryForm_{{ $category->LoaiDichVuID }}">
+                                        @csrf @method('DELETE')
+                                        <button type="submit" class="btn btn-order-action delete" title="Xóa"><i class="bi bi-trash"></i></button>
+                                    </form>
+                                @endcan
                             </div>
                         </td>
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="7" class="text-center text-muted py-4">Chưa có dữ liệu nào</td>
+                        <td colspan="6" class="text-center text-muted py-4">Chưa có dữ liệu nào</td>
                     </tr>
                     @endempty
                 </tbody>

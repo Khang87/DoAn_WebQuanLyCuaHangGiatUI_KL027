@@ -17,29 +17,34 @@ class CouponRequest extends FormRequest
         $id = $this->route('coupon') ?? $this->route('id') ?? null;
 
         return [
-            'code' => ['required', 'string', 'max:50', 'unique:coupons,code,' . ($id ?? '')],
-            'promotion_id' => ['required', 'exists:promotions,id'],
-            'discount_type' => ['required', 'in:percent,fixed,free_shipping'],
-            'discount_value' => ['required', 'numeric', 'min:0'],
-            'max_uses' => ['nullable', 'integer', 'min:1'],
-            'expires_at' => ['required', 'date'],
-            'status' => ['required', 'in:'.implode(',', RecordStatus::values())],
+            'MaKhuyenMai' => ['required', 'string', 'max:50', 'unique:KhuyenMai,MaKhuyenMai,' . ($id ?? ''), 'KhuyenMaiID'],
+            'TenKhuyenMai' => ['required', 'string', 'max:255'],
+            'LoaiKhuyenMai' => ['required', 'in:Phần trăm,Tiền mặt'],
+            'GiaTriGiam' => ['required', 'numeric', 'min:0'],
+            'GiaTriDonToiThieu' => ['nullable', 'numeric', 'min:0'],
+            'MucGiamToiDa' => ['nullable', 'numeric', 'min:0'],
+            'SoLuongSuDung' => ['nullable', 'integer', 'min:0'],
+            'DieuKienApDung' => ['nullable', 'string', 'max:255'],
+            'NgayBatDau' => ['required', 'date'],
+            'NgayKetThuc' => ['required', 'date'],
+            'TrangThai' => ['required', 'in:'.implode(',', RecordStatus::values())],
         ];
     }
 
     public function messages(): array
     {
         return [
-            'code.required' => 'MÃ£ coupon lÃ  báº¯t buá»™c.',
-            'code.unique' => 'MÃ£ coupon Ä‘Ã£ tá»“n táº¡i.',
-            'promotion_id.required' => 'ChÆ°Æ¡ng trÃ¬nh khuyáº¿n mÃ£i lÃ  báº¯t buá»™c.',
-            'promotion_id.exists' => 'ChÆ°Æ¡ng trÃ¬nh khÃ´ng tá»“n táº¡i.',
-            'discount_type.required' => 'Loáº¡i giáº£m giÃ¡ lÃ  báº¯t buá»™c.',
-            'discount_value.required' => 'GiÃ¡ trá»‹ giáº£m giÃ¡ lÃ  báº¯t buá»™c.',
-            'discount_value.numeric' => 'GiÃ¡ trá»‹ pháº£i lÃ  sá»‘.',
-            'max_uses.integer' => 'Sá»‘ láº§n sá»­ dá»¥ng pháº£i lÃ  sá»‘ nguyÃªn.',
-            'expires_at.required' => 'NgÃ y háº¿t háº¡n lÃ  báº¯t buá»™c.',
-            'status.required' => 'Tráº¡ng thÃ¡i lÃ  báº¯t buá»™c.',
+            'MaKhuyenMai.required' => 'Mã coupon là bắt buộc.',
+            'MaKhuyenMai.unique' => 'Mã coupon đã tồn tại.',
+            'TenKhuyenMai.required' => 'Tên khuyến mãi là bắt buộc.',
+            'LoaiKhuyenMai.required' => 'Loại giảm giá là bắt buộc.',
+            'LoaiKhuyenMai.in' => 'Loại giảm giá không hợp lệ.',
+            'GiaTriGiam.required' => 'Giá trị giảm giá là bắt buộc.',
+            'GiaTriGiam.numeric' => 'Giá trị phải là số.',
+            'SoLuongSuDung.integer' => 'Số lượng phải là số nguyên.',
+            'NgayBatDau.required' => 'Ngày bắt đầu là bắt buộc.',
+            'NgayKetThuc.required' => 'Ngày kết thúc là bắt buộc.',
+            'TrangThai.required' => 'Trạng thái là bắt buộc.',
         ];
     }
 }

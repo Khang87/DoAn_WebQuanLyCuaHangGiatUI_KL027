@@ -2,85 +2,90 @@
 
 namespace App\Services;
 
-use App\Models\Notification;
+use App\Models\ThongBao;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 
 class NotificationService
 {
     public function getAll(array $filters = []): LengthAwarePaginator
     {
-        $query = Notification::query();
+        $query = ThongBao::query();
 
         if (!empty($filters['user_id'])) {
-            $query->where('user_id', $filters['user_id']);
+            $query->where('TaiKhoanID', $filters['user_id']);
         }
 
         if (!empty($filters['type'])) {
-            $query->where('type', $filters['type']);
+            $query->where('LoaiThongBao', $filters['type']);
         }
 
         if (!empty($filters['order_id'])) {
-            $query->where('order_id', $filters['order_id']);
+            $query->where('DonHangID', $filters['order_id']);
         }
 
         if (!empty($filters['search'])) {
             $search = $filters['search'];
             $query->where(function ($q) use ($search) {
-                $q->where('type', 'LIKE', "%{$search}%")
-                    ->orWhere('message', 'LIKE', "%{$search}%");
+                $q->where('LoaiThongBao', 'LIKE', "%{$search}%")
+                    ->orWhere('NoiDung', 'LIKE', "%{$search}%");
             });
         }
 
         if (!empty($filters['read'])) {
             $filters['read'] === 'unread'
-                ? $query->whereNull('read_at')
-                : $query->whereNotNull('read_at');
+                ? $query->where('DaDoc', false)
+                : $query->where('DaDoc', true);
         }
 
-        return $query->with('user', 'order')
-            // Thông báo chưa đọc luôn được ưu tiên đẩy lên trên, đã đọc nằm sau
-            ->orderByRaw('CASE WHEN read_at IS NULL THEN 0 ELSE 1 END')
-            ->orderByDesc('created_at')
+        return $query->with(['taiKhoan', 'donHang'])
+            // Thông báo chưa đọc luôn được ưu tiên đẩy lên trên, đã đọc nằm sau.
+            // `DaDoc` là kiểu boolean nên so sánh với FALSE chứ không phải 0, và cần
+            // nháy kép vì raw SQL không qua wrapper của Eloquent.
+            ->orderByRaw('CASE WHEN "DaDoc" = FALSE THEN 0 ELSE 1 END')
+            ->orderByDesc('ThoiGianGui')
             ->paginate(10);
     }
 
-    public function find(int $id): ?Notification
+    public function find(int $id): ?ThongBao
     {
-        return Notification::withTrashed()->find($id);
+        return ThongBao::withTrashed()->find($id);
     }
 
-    public function create(array $data): Notification
+    public function create(array $data): ThongBao
     {
         if (empty($data['sent_at'])) {
-            $data['sent_at'] = now();
+            $data['ThoiGianGui'] = now();
+        } else {
+            $data['ThoiGianGui'] = $data['sent_at'];
         }
-        return Notification::create($data);
+
+        return ThongBao::create($data);
     }
 
-    public function update(Notification $notification, array $data): Notification
+    public function update(ThongBao $notification, array $data): ThongBao
     {
         $notification->update($data);
         return $notification->fresh();
     }
 
-    public function delete(Notification $notification): bool
+    public function delete(ThongBao $notification): bool
     {
         return $notification->delete();
     }
 
-    public function markAsRead(int $id): ?Notification
+    public function markAsRead(int $id): ?ThongBao
     {
-        $notification = Notification::find($id);
+        $notification = ThongBao::find($id);
         if ($notification) {
-            $notification->update(['read_at' => now()]);
+            $notification->update(['DaDoc' => true]);
         }
         return $notification;
     }
 
     public function markAllAsRead(int $userId): int
     {
-        return Notification::where('user_id', $userId)
-            ->whereNull('read_at')
-            ->update(['read_at' => now()]);
+        return ThongBao::where('TaiKhoanID', $userId)
+            ->where('DaDoc', false)
+            ->update(['DaDoc' => true]);
     }
 }

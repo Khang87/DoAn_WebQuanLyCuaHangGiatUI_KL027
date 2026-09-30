@@ -5,9 +5,9 @@ namespace App\Http\Controllers\Admin;
 use App\Enums\RecordStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\PricingRequest;
-use App\Models\Pricing;
-use App\Models\Service;
-use App\Models\Garment;
+use App\Models\BangGia;
+use App\Models\DichVu;
+use App\Models\LoaiDoGiat;
 use App\Services\PricingService;
 use Illuminate\Http\Request;
 
@@ -28,18 +28,18 @@ class PricingController extends Controller
             'sort_order' => $request->input('sort_order'),
         ]);
 
-        $services = Service::where('status', 'active')->orderBy('name')->get();
-        $garments = Garment::where('status', 'active')->orderBy('name')->get();
+        $services = DichVu::where('TrangThai', 'Hoạt động')->orderBy('TenDichVu')->get();
+        $garments = LoaiDoGiat::where('TrangThai', 'Hoạt động')->orderBy('TenLoaiDoGiat')->get();
         $statuses = RecordStatus::options();
-        $units = Pricing::unitOptions();
+        $units = BangGia::unitOptions();
 
         return view('admin.pricings.index', compact('pricings', 'services', 'garments', 'statuses', 'units'));
     }
 
     public function create()
     {
-        $services = Service::where('status', 'active')->orderBy('name')->get();
-        $garments = Garment::where('status', 'active')->orderBy('name')->get();
+        $services = DichVu::where('TrangThai', 'Hoạt động')->orderBy('TenDichVu')->get();
+        $garments = LoaiDoGiat::where('TrangThai', 'Hoạt động')->orderBy('TenLoaiDoGiat')->get();
 
         return view('admin.pricings.create', compact('services', 'garments'));
     }
@@ -74,8 +74,8 @@ class PricingController extends Controller
             abort(404);
         }
 
-        $services = Service::where('status', 'active')->orderBy('name')->get();
-        $garments = Garment::where('status', 'active')->orderBy('name')->get();
+        $services = DichVu::where('TrangThai', 'Hoạt động')->orderBy('TenDichVu')->get();
+        $garments = LoaiDoGiat::where('TrangThai', 'Hoạt động')->orderBy('TenLoaiDoGiat')->get();
 
         return view('admin.pricings.edit', compact('pricing', 'services', 'garments'));
     }

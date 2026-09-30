@@ -2,9 +2,9 @@
 
 namespace App\Services;
 
-use App\Models\Pricing;
-use App\Models\Service;
-use App\Models\Garment;
+use App\Models\BangGia;
+use App\Models\DichVu;
+use App\Models\LoaiDoGiat;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 
@@ -12,62 +12,61 @@ class PricingService
 {
     public function getAll(array $filters = []): LengthAwarePaginator
     {
-        $query = Pricing::query();
+        $query = BangGia::query();
 
         if (!empty($filters['search'])) {
             $search = $filters['search'];
             $query->where(function ($q) use ($search) {
-                $q->where('name', 'LIKE', "%{$search}%")
-                  ->orWhereHas('service', fn($s) => $s->where('name', 'LIKE', "%{$search}%"))
-                  ->orWhereHas('garment', fn($g) => $g->where('name', 'LIKE', "%{$search}%"));
+                $q->whereHas('dichVu', fn($s) => $s->where('TenDichVu', 'LIKE', "%{$search}%"))
+                  ->orWhereHas('loaiDoGiat', fn($g) => $g->where('TenLoaiDoGiat', 'LIKE', "%{$search}%"));
             });
         }
 
         if (!empty($filters['service_id'])) {
-            $query->where('service_id', $filters['service_id']);
+            $query->where('DichVuID', $filters['service_id']);
         }
 
         if (!empty($filters['garment_id'])) {
-            $query->where('garment_id', $filters['garment_id']);
+            $query->where('LoaiDoGiatID', $filters['garment_id']);
         }
 
         if (!empty($filters['status'])) {
-            $query->where('status', $filters['status']);
+            $query->where('TrangThai', $filters['status']);
         }
 
-        $allowedSorts = ['id', 'name', 'unit', 'price', 'effective_date', 'status', 'created_at'];
-        $sortBy = in_array($filters['sort_by'] ?? null, $allowedSorts) ? $filters['sort_by'] : 'created_at';
+        $allowedSorts = ['BangGiaID', 'DonViTinhID', 'DonGia', 'NgayApDung', 'TrangThai', 'NgayTao'];
+        $sortBy = in_array($filters['sort_by'] ?? null, $allowedSorts) ? $filters['sort_by'] : 'NgayApDung';
         $sortOrder = ($filters['sort_order'] ?? 'desc') === 'asc' ? 'asc' : 'desc';
 
-        return $query->with(['service', 'garment'])->orderBy($sortBy, $sortOrder)->paginate(10);
+        return $query->with(['dichVu', 'loaiDoGiat'])->orderBy($sortBy, $sortOrder)->paginate(10);
     }
 
-    public function find(int $id): ?Pricing
+    public function find(int $id): ?BangGia
     {
-        return Pricing::withTrashed()->with(['service', 'garment'])->find($id);
+        return BangGia::withTrashed()->with(['dichVu', 'loaiDoGiat'])->find($id);
     }
 
-    public function create(array $data): Pricing
+    public function create(array $data): BangGia
     {
         return DB::transaction(function () use ($data) {
-            return Pricing::create($data);
+            return BangGia::create($data);
         });
     }
 
-    public function update(Pricing $pricing, array $data): Pricing
+    public function update(BangGia $pricing, array $data): BangGia
     {
         $pricing->update($data);
         return $pricing->fresh();
     }
 
-    public function delete(Pricing $pricing): bool
+    public function delete(BangGia $pricing): bool
     {
         return $pricing->delete();
     }
 
-    public function restore(int $id): ?Pricing
+    public function restore(int $id): ?BangGia
     {
-        $pricing = Pricing::onlyTrashed()->find($id);
+        $pricing = BangGia::onlyTrashed()->find($id);
         if ($pricing) {
             $pricing->restore();
         }
@@ -76,6 +75,6 @@ class PricingService
 
     public function getLatestPrice(int $serviceId, int $garmentId): ?float
     {
-        return Pricing::getLatestPrice($serviceId, $garmentId);
+        return BangGia::getLatestPrice($serviceId, $garmentId);
     }
 }

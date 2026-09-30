@@ -62,111 +62,133 @@
             <div class="sidebar-menu-section">
                 <div class="sidebar-menu-title">Quản lý</div>
                 <ul class="sidebar-menu-list">
+                    @can('customers.view')
                     <li class="sidebar-menu-item">
                         <a href="{{ route('customers.index') }}" class="sidebar-menu-link {{ request()->routeIs('customers.*') ? 'active' : '' }}">
                             <i class="bi bi-people"></i>
                             <span>Khách hàng</span>
                         </a>
                     </li>
-                    @if(auth()->user()?->isStaff())
+                    @endcan
+                    @can('orders.view')
                     <li class="sidebar-menu-item">
                         <a href="{{ route('orders.index') }}" class="sidebar-menu-link {{ request()->routeIs('orders.*') ? 'active' : '' }}">
                             <i class="bi bi-receipt"></i>
                             <span>Đơn hàng</span>
                         </a>
                     </li>
-                    @endif
-                    @if(auth()->user()?->isManager())
+                    @endcan
+                    @can('service_categories.view')
                     <li class="sidebar-menu-item">
                         <a href="{{ route('service-categories.index') }}" class="sidebar-menu-link {{ request()->routeIs('service-categories.*') ? 'active' : '' }}">
                             <i class="bi bi-folder-fill"></i>
                             <span>Danh mục DV</span>
                         </a>
                     </li>
+                    @endcan
+                    @can('services.view')
                     <li class="sidebar-menu-item">
                         <a href="{{ route('services.index') }}" class="sidebar-menu-link {{ request()->routeIs('services.*') ? 'active' : '' }}">
                             <i class="bi bi-briefcase"></i>
                             <span>Dịch vụ</span>
                         </a>
                     </li>
+                    @endcan
+                    @can('laundry_categories.view')
                     <li class="sidebar-menu-item">
                         <a href="{{ route('laundry-categories.index') }}" class="sidebar-menu-link {{ request()->routeIs('laundry-categories.*') ? 'active' : '' }}">
                             <i class="bi bi-tags"></i>
                             <span>Danh mục loại đồ</span>
                         </a>
                     </li>
+                    @endcan
+                    @can('garments.view')
                     <li class="sidebar-menu-item">
                         <a href="{{ route('garments.index') }}" class="sidebar-menu-link {{ request()->routeIs('garments.*') ? 'active' : '' }}">
                             <i class="fa-solid fa-shirt"></i>
                             <span>Loại đồ giặt</span>
                         </a>
                     </li>
+                    @endcan
+                    @can('pricings.view')
                     <li class="sidebar-menu-item">
                         <a href="{{ route('pricings.index') }}" class="sidebar-menu-link {{ request()->routeIs('pricings.*') ? 'active' : '' }}">
                             <i class="bi bi-currency-dollar"></i>
                             <span>Bảng giá</span>
                         </a>
                     </li>
-                    @endif
+                    @endcan
                 </ul>
             </div>
 
-            <!-- Giao nhan & Thanh toan (Staff & Admin) -->
+<!-- Giao nhan & Thanh toan (Staff & Admin) -->
             <div class="sidebar-menu-section">
                 <div class="sidebar-menu-title">Giao nhận & Thanh toán</div>
                 <ul class="sidebar-menu-list">
+                    @can('deliveries.view')
                     <li class="sidebar-menu-item">
                         <a href="{{ route('deliveries.index') }}" class="sidebar-menu-link {{ request()->routeIs('deliveries.*') ? 'active' : '' }}">
                             <i class="bi bi-truck"></i>
                             <span>Giao nhận</span>
                         </a>
                     </li>
+                    @endcan
+                    @can('reviews.view')
                     <li class="sidebar-menu-item">
                         <a href="{{ route('reviews.index') }}" class="sidebar-menu-link {{ request()->routeIs('reviews.*') ? 'active' : '' }}">
                             <i class="fas fa-star"></i>
                             <span>Đánh giá</span>
                         </a>
                     </li>
+                    @endcan
+                    @can('bookings.view')
                     <li class="sidebar-menu-item">
                         <a href="{{ route('bookings.index') }}" class="sidebar-menu-link {{ request()->routeIs('bookings.*') ? 'active' : '' }}">
                             <i class="bi bi-calendar-check"></i>
                             <span>Đặt lịch</span>
                         </a>
                     </li>
-                    @if(auth()->user()?->isManager())
+                    @endcan
+                    @can('payments.view')
                     <li class="sidebar-menu-item">
                         <a href="{{ route('payments.index') }}" class="sidebar-menu-link {{ request()->routeIs('payments.*') ? 'active' : '' }}">
                             <i class="bi bi-credit-card"></i>
                             <span>Thanh toán</span>
                         </a>
                     </li>
+                    @endcan
+                    @can('invoices.view')
                     <li class="sidebar-menu-item">
                         <a href="{{ route('invoices.index') }}" class="sidebar-menu-link {{ request()->routeIs('invoices.*') ? 'active' : '' }}">
                             <i class="bi bi-file-earmark-text"></i>
-                              <span>Hóa đơn</span>
+                            <span>Hóa đơn</span>
                         </a>
                     </li>
-                    @endif
+                    @endcan
                 </ul>
             </div>
 
-            @if(auth()->user()?->isManager())
+@if(auth()->user()?->isManager() || auth()->user()?->can('promotions.view'))
             <!-- Khuyen mai & Bao cao (Chi quan ly) -->
             <div class="sidebar-menu-section">
                 <div class="sidebar-menu-title">Khuyến mãi & Báo cáo</div>
                 <ul class="sidebar-menu-list">
+                    @can('promotions.view')
                     <li class="sidebar-menu-item">
                         <a href="{{ route('promotions.index') }}" class="sidebar-menu-link {{ request()->routeIs('promotions.*') ? 'active' : '' }}">
                             <i class="bi bi-gift"></i>
                             <span>Khuyến mãi</span>
                         </a>
                     </li>
+                    @endcan
+                    @can('reports.view')
                     <li class="sidebar-menu-item">
                         <a href="{{ route('reports.index') }}" class="sidebar-menu-link {{ request()->routeIs('reports.*') ? 'active' : '' }}">
                             <i class="bi bi-graph-up-arrow"></i>
                             <span>Báo cáo & Thống kê</span>
                         </a>
                     </li>
+                    @endcan
                 </ul>
             </div>
 
@@ -174,18 +196,22 @@
             <div class="sidebar-menu-section">
                 <div class="sidebar-menu-title">Hệ thống</div>
                 <ul class="sidebar-menu-list">
+                    @can('accounts.view')
                     <li class="sidebar-menu-item">
                         <a href="{{ route('accounts.index') }}" class="sidebar-menu-link {{ request()->routeIs('accounts.*') ? 'active' : '' }}">
                             <i class="bi bi-person-gear"></i>
                             <span>Tài khoản</span>
                         </a>
                     </li>
+                    @endcan
+                    @can('notifications.view')
                     <li class="sidebar-menu-item">
                         <a href="{{ route('notifications.index') }}" class="sidebar-menu-link {{ request()->routeIs('notifications.*') ? 'active' : '' }}">
                             <i class="bi bi-bell"></i>
                             <span>Thông báo</span>
                         </a>
                     </li>
+                    @endcan
                     @can('roles.manage')
                     <li class="sidebar-menu-item">
                         <a href="{{ route('roles.index') }}" class="sidebar-menu-link {{ request()->routeIs('roles.*') ? 'active' : '' }}">

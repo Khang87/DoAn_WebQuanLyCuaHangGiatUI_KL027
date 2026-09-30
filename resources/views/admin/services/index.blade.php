@@ -93,8 +93,12 @@
                 </div>
                 @endif
                 <div class="d-flex gap-2">
-                    <a href="{{ route('services.show', $service) }}" class="btn btn-order-action view" title="Xem"><i class="bi bi-eye"></i></a>
-                    <a href="{{ route('services.edit', $service) }}" class="btn btn-order-action edit" title="Sửa"><i class="bi bi-pencil"></i></a>
+                    @can('services.view')
+                        <a href="{{ route('services.show', $service) }}" class="btn btn-order-action view" title="Xem"><i class="bi bi-eye"></i></a>
+                    @endcan
+                    @can('services.edit')
+                        <a href="{{ route('services.edit', $service) }}" class="btn btn-order-action edit" title="Sửa"><i class="bi bi-pencil"></i></a>
+                    @endcan
                 </div>
             </div>
         </div>

@@ -6,8 +6,8 @@ use App\Exceptions\SettledOrderException;
 use App\Http\Controllers\Concerns\RejectsSettledRecords;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\PaymentRequest;
-use App\Models\Invoice;
-use App\Models\Order;
+use App\Models\DonHang;
+use App\Models\HoaDon;
 use App\Services\PaymentService;
 use Illuminate\Http\Request;
 
@@ -65,13 +65,13 @@ class PaymentController extends Controller
 
     public function create(Request $request)
     {
-        $orders = Order::where('status', '!=', 'cancelled')->orderBy('created_at', 'desc')->get();
-        $invoices = Invoice::where('status', '!=', 'paid')->orderBy('created_at', 'desc')->get();
+        $orders = DonHang::where('TrangThai', '!=', 'Đã hủy')->orderBy('NgayTao', 'desc')->get();
+        $invoices = HoaDon::where('TrangThai', '!=', 'paid')->orderBy('NgayLap', 'desc')->get();
 
         $orderId = $request->query('order_id');
         $invoiceId = $request->query('invoice_id');
-        $preselectedOrder = $orderId ? Order::find($orderId) : null;
-        $preselectedInvoice = $invoiceId ? Invoice::find($invoiceId) : null;
+        $preselectedOrder = $orderId ? DonHang::find($orderId) : null;
+        $preselectedInvoice = $invoiceId ? HoaDon::find($invoiceId) : null;
 
         return view('admin.payments.create', compact('orders', 'invoices', 'preselectedOrder', 'preselectedInvoice'));
     }
@@ -119,8 +119,8 @@ class PaymentController extends Controller
             );
         }
 
-        $orders = Order::where('status', '!=', 'cancelled')->orderBy('created_at', 'desc')->get();
-        $invoices = Invoice::where('status', '!=', 'paid')->orderBy('created_at', 'desc')->get();
+        $orders = DonHang::where('TrangThai', '!=', 'Đã hủy')->orderBy('NgayTao', 'desc')->get();
+        $invoices = HoaDon::where('TrangThai', '!=', 'paid')->orderBy('NgayLap', 'desc')->get();
 
         return view('admin.payments.edit', compact('payment', 'orders', 'invoices'));
     }

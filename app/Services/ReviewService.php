@@ -2,8 +2,8 @@
 
 namespace App\Services;
 
-use App\Models\Review;
-use App\Models\Order;
+use App\Models\DanhGia;
+use App\Models\DonHang;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 
@@ -11,33 +11,33 @@ class ReviewService
 {
     public function getAll(array $filters = []): LengthAwarePaginator
     {
-        $query = Review::query();
+        $query = DanhGia::query();
 
         if (!empty($filters['rating'])) {
-            $query->where('rating', $filters['rating']);
+            $query->where('SoSao', $filters['rating']);
         }
 
         if (!empty($filters['status'])) {
-            $query->where('status', $filters['status']);
+            $query->where('TrangThai', $filters['status']);
         }
 
         if (!empty($filters['customer_id'])) {
-            $query->where('customer_id', $filters['customer_id']);
+            $query->where('KhachHangID', $filters['customer_id']);
         }
 
         if (!empty($filters['search'])) {
             $search = $filters['search'];
             $query->where(function ($q) use ($search) {
-                $q->whereHas('customer', fn($c) => $c->where('name', 'LIKE', "%{$search}%"))
-                    ->orWhere('content', 'LIKE', "%{$search}%");
+                $q->whereHas('khachHang', fn($c) => $c->where('HoTen', 'LIKE', "%{$search}%"))
+                    ->orWhere('BinhLuan', 'LIKE', "%{$search}%");
             });
         }
 
-        $allowedSorts = ['id', 'rating', 'status', 'reviewed_at', 'created_at'];
+        $allowedSorts = ['id', 'SoSao', 'TrangThai', 'NgayDanhGia', 'NgayTao'];
         $sortBy = in_array($filters['sort_by'] ?? null, $allowedSorts) ? $filters['sort_by'] : 'created_at';
         $sortOrder = ($filters['sort_order'] ?? 'desc') === 'asc' ? 'asc' : 'desc';
 
-        return $query->with('customer', 'order')
+        return $query->with(['khachHang', 'donHang'])
             ->orderBy($sortBy, $sortOrder)
             ->latest('id')
             ->paginate(10);
@@ -49,24 +49,24 @@ class ReviewService
      */
     public function getAverageRating(): float
     {
-        return round((float) (Review::where('status', 'visible')->avg('rating') ?? 0), 1);
+        return round((float) (DanhGia::where('TrangThai', 'visible')->avg('SoSao') ?? 0), 1);
     }
 
     public function getTotalReviews(): int
     {
-        return Review::where('status', 'visible')->count();
+        return DanhGia::where('TrangThai', 'visible')->count();
     }
 
-    public function find(int $id): ?Review
+    public function find(int $id): ?DanhGia
     {
-        return Review::withTrashed()->with(['customer', 'order'])->find($id);
+        return DanhGia::withTrashed()->with(['khachHang', 'donHang'])->find($id);
     }
 
-    public function create(array $data): Review
+    public function create(array $data): DanhGia
     {
         return DB::transaction(function () use ($data) {
             // Check if order exists and is completed
-            $order = Order::find($data['order_id']);
+            $order = DonHang::find($data['order_id']);
             if (!$order) {
                 throw new \InvalidArgumentException('Đơn hàng không tồn tại.');
             }
@@ -76,7 +76,7 @@ class ReviewService
             }
 
             // Check if review already exists for this order
-            if (Review::where('order_id', $data['order_id'])->exists()) {
+            if (DanhGia::where('DonHangID', $data['order_id'])->exists()) {
                 throw new \InvalidArgumentException('Đơn hàng này đã được đánh giá.');
             }
 
@@ -84,25 +84,25 @@ class ReviewService
                 $data['reviewed_at'] = now();
             }
 
-            return Review::create($data);
+            return DanhGia::create($data);
         });
     }
 
-    public function update(Review $review, array $data): Review
+    public function update(DanhGia $review, array $data): DanhGia
     {
         $review->update($data);
         return $review->fresh();
     }
 
-    public function delete(Review $review): bool
+    public function delete(DanhGia $review): bool
     {
         return $review->delete();
     }
 
-    public function toggleStatus(Review $review): Review
+    public function toggleStatus(DanhGia $review): DanhGia
     {
         $review->update([
-            'status' => $review->status === 'visible' ? 'hidden' : 'visible'
+            'TrangThai' => $review->TrangThai === 'visible' ? 'hidden' : 'visible'
         ]);
         return $review->fresh();
     }

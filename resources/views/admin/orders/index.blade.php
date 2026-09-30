@@ -98,15 +98,21 @@
                         <td class="text-dark">{{ $order->created_at?->format('d/m/Y') }}</td>
                         <td>
                             <div class="d-flex gap-2">
-                                <a href="{{ route('orders.show', $order) }}" class="btn btn-order-action view" title="Xem"><i class="bi bi-eye"></i></a>
+                                @can('orders.view')
+                                    <a href="{{ route('orders.show', $order) }}" class="btn btn-order-action view" title="Xem"><i class="bi bi-eye"></i></a>
+                                @endcan
                                 @if($order->can_edit)
-                                    <a href="{{ route('orders.edit', $order) }}" class="btn btn-order-action edit" title="Sửa"><i class="bi bi-pencil"></i></a>
+                                    @can('orders.edit')
+                                        <a href="{{ route('orders.edit', $order) }}" class="btn btn-order-action edit" title="Sửa"><i class="bi bi-pencil"></i></a>
+                                    @endcan
                                 @endif
                                 @if($order->can_delete)
-                                    <form action="{{ route('orders.destroy', $order) }}" method="POST" class="d-inline" id="deleteOrderForm_{{ $order->id }}">
-                                        @csrf @method('DELETE')
-                                        <button type="submit" class="btn btn-order-action delete" title="Xóa"><i class="bi bi-trash"></i></button>
-                                    </form>
+                                    @can('orders.delete')
+                                        <form action="{{ route('orders.destroy', $order) }}" method="POST" class="d-inline" id="deleteOrderForm_{{ $order->id }}">
+                                            @csrf @method('DELETE')
+                                            <button type="submit" class="btn btn-order-action delete" title="Xóa"><i class="bi bi-trash"></i></button>
+                                        </form>
+                                    @endcan
                                 @endif
                                 @if(!$order->can_edit && !$order->can_delete)
                                     <span class="badge bg-secondary-subtle text-secondary-emphasis border border-secondary px-3 py-2 rounded-pill d-flex align-items-center" title="Đã quyết toán">

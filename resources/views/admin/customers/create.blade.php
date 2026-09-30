@@ -18,36 +18,36 @@
             <div class="row g-4">
                 <div class="col-md-6">
                     <label class="form-label">Họ tên <span class="text-danger ms-1">*</span></label>
-                    <input type="text" class="form-control @error('name') is-invalid @enderror" name="name" placeholder="Nhập họ tên" required>
-                    @error('name')
+                    <input type="text" class="form-control @error('HoTen') is-invalid @enderror" name="HoTen" placeholder="Nhập họ tên" required>
+                    @error('HoTen')
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
                 </div>
                 <div class="col-md-6">
                     <label class="form-label">Email</label>
-                    <input type="email" class="form-control @error('email') is-invalid @enderror" name="email" placeholder="Nhập email">
-                    @error('email')
+                    <input type="email" class="form-control @error('Email') is-invalid @enderror" name="Email" placeholder="Nhập email">
+                    @error('Email')
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
                 </div>
                 <div class="col-md-6">
                     <label class="form-label">Số điện thoại</label>
-                    <input type="text" class="form-control @error('phone') is-invalid @enderror" name="phone" placeholder="Nhập số điện thoại">
-                    @error('phone')
+                    <input type="text" class="form-control @error('SoDienThoai') is-invalid @enderror" name="SoDienThoai" placeholder="Nhập số điện thoại">
+                    @error('SoDienThoai')
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
                 </div>
                 <div class="col-md-6">
                     <label class="form-label">Điểm tích lũy</label>
-                    <input type="number" class="form-control @error('points') is-invalid @enderror" name="points" value="0" min="0" placeholder="Điểm tích lũy">
-                    @error('points')
+                    <input type="number" class="form-control @error('DiemHienTai') is-invalid @enderror" name="DiemHienTai" value="0" min="0" placeholder="Điểm tích lũy">
+                    @error('DiemHienTai')
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
                 </div>
                 <div class="col-12">
                     <label class="form-label">Địa chỉ</label>
-                    <textarea class="form-control @error('address') is-invalid @enderror" name="address" rows="3" placeholder="Nhập địa chỉ"></textarea>
-                    @error('address')
+                    <textarea class="form-control @error('DiaChi') is-invalid @enderror" name="DiaChi" rows="3" placeholder="Nhập địa chỉ"></textarea>
+                    @error('DiaChi')
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
                 </div>

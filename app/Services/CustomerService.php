@@ -2,103 +2,116 @@
 
 namespace App\Services;
 
-use App\Models\Customer;
+use App\Models\DiemTichLuy;
+use App\Models\KhachHang;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 
 class CustomerService
 {
     public function getAll(array $filters = []): LengthAwarePaginator
     {
-        $query = Customer::query();
+        $query = KhachHang::query();
 
         if (!empty($filters['search'])) {
             $search = $filters['search'];
-            $query->where('name', 'like', "%{$search}%")
-                  ->orWhere('phone', 'like', "%{$search}%")
+            $query->where('HoTen', 'like', "%{$search}%")
+                  ->orWhere('SoDienThoai', 'like', "%{$search}%")
                   ->orWhere('code', 'like', "%{$search}%");
         }
 
         $sortMap = [
-            'latest' => ['created_at', 'desc'],
-            'oldest' => ['created_at', 'asc'],
-            'name_asc' => ['name', 'asc'],
-            'name_desc' => ['name', 'desc'],
-            'points_desc' => ['points', 'desc'],
-            'points_asc' => ['points', 'asc'],
+            'latest' => ['NgayTao', 'desc'],
+            'oldest' => ['NgayTao', 'asc'],
+            'name_asc' => ['HoTen', 'asc'],
+            'name_desc' => ['HoTen', 'desc'],
         ];
         $sort = $filters['sort'] ?? 'latest';
-        [$sortBy, $sortOrder] = $sortMap[$sort] ?? ['created_at', 'desc'];
 
-        return $query->orderBy($sortBy, $sortOrder)->paginate(10);
+        if (in_array($sort, ['points_desc', 'points_asc'])) {
+            $direction = $sort === 'points_desc' ? 'desc' : 'asc';
+            $query->leftJoin('DiemTichLuy', 'DiemTichLuy.KhachHangID', '=', 'KhachHang.KhachHangID')
+                  ->select('KhachHang.*')
+                  ->orderBy('DiemHienTai', $direction);
+        } else {
+            [$sortBy, $sortOrder] = $sortMap[$sort] ?? ['NgayTao', 'desc'];
+            $query->orderBy($sortBy, $sortOrder);
+        }
+
+        return $query->paginate(10);
     }
 
-    public function find(int $id): ?Customer
+    public function find(int $id): ?KhachHang
     {
-        return Customer::withTrashed()->find($id);
+        return KhachHang::find($id);
     }
 
-    public function findByCode(string $code): ?Customer
+    public function findByCode(string $code): ?KhachHang
     {
-        return Customer::where('code', $code)->first();
+        return KhachHang::where('code', $code)->first();
     }
 
-    public function create(array $data): Customer
+    public function create(array $data): KhachHang
     {
         if (empty($data['code'])) {
-            $data['code'] = 'KH' . str_pad((string) ((Customer::max('id') ?? 0) + 1), 3, '0', STR_PAD_LEFT);
+            $data['code'] = 'KH' . str_pad((string) ((KhachHang::max('KhachHangID') ?? 0) + 1), 3, '0', STR_PAD_LEFT);
         }
-        if (empty($data['points'])) {
-            $data['points'] = 0;
-        }
-        $customer = Customer::create($data);
+        $points = !empty($data['DiemHienTai']) ? $data['DiemHienTai'] : 0;
+        unset($data['DiemHienTai']);
+        $customer = KhachHang::create($data);
+        DiemTichLuy::create([
+            'KhachHangID' => $customer->KhachHangID,
+            'DiemHienTai' => $points,
+        ]);
         return $customer->fresh();
     }
 
-    public function update(Customer $customer, array $data): Customer
+    public function update(KhachHang $customer, array $data): KhachHang
     {
-        if (isset($data['points'])) {
-            $customer->points = $data['points'];
-            unset($data['points']);
+        if (isset($data['DiemHienTai'])) {
+            $points = $data['DiemHienTai'];
+            unset($data['DiemHienTai']);
         }
         $customer->update($data);
+        if (isset($points)) {
+            DiemTichLuy::updateOrCreate(
+                ['KhachHangID' => $customer->KhachHangID],
+                ['DiemHienTai' => $points, 'NgayCapNhat' => now()]
+            );
+        }
         return $customer->fresh();
     }
 
-    public function delete(Customer $customer): bool
+    public function delete(KhachHang $customer): bool
     {
         return $customer->delete();
     }
 
-    public function restore(int $id): ?Customer
+    public function restore(int $id): ?KhachHang
     {
-        $customer = Customer::onlyTrashed()->find($id);
-        if ($customer) {
-            $customer->restore();
-        }
-        return $customer;
+        return KhachHang::find($id);
     }
 
-    public function getTotalSpent(Customer $customer): float
+    public function getTotalSpent(KhachHang $customer): float
     {
         return (float) $customer->orders()->sum('total_amount');
     }
 
-    public function getOrderCount(Customer $customer): int
+    public function getOrderCount(KhachHang $customer): int
     {
         return (int) $customer->orders()->count();
     }
 
-    public function deductPoints(Customer $customer, int $points): bool
+    public function deductPoints(KhachHang $customer, int $points): bool
     {
         if ($customer->points >= $points) {
-            $customer->decrement('points', $points);
+            $customer->deductPoints($points);
             return true;
         }
         return false;
     }
 
-    public function addPoints(Customer $customer, int $points): void
+    public function addPoints(KhachHang $customer, int $points): void
     {
-        $customer->increment('points', $points);
+        $customer->addPoints($points);
     }
 }

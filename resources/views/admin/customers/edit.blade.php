@@ -18,36 +18,36 @@
             <div class="row g-4">
                 <div class="col-md-6">
                     <label class="form-label">Họ tên <span class="text-danger ms-1">*</span></label>
-                    <input type="text" class="form-control @error('name') is-invalid @enderror" name="name" value="{{ old('name', $customer->name) }}" required>
-                    @error('name')
+                    <input type="text" class="form-control @error('HoTen') is-invalid @enderror" name="HoTen" value="{{ old('HoTen', $customer->name) }}" required>
+                    @error('HoTen')
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
                 </div>
                 <div class="col-md-6">
                     <label class="form-label">Email</label>
-                    <input type="email" class="form-control @error('email') is-invalid @enderror" name="email" value="{{ old('email', $customer->email) }}">
-                    @error('email')
+                    <input type="email" class="form-control @error('Email') is-invalid @enderror" name="Email" value="{{ old('Email', $customer->email) }}">
+                    @error('Email')
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
                 </div>
                 <div class="col-md-6">
                     <label class="form-label">Số điện thoại</label>
-                    <input type="text" class="form-control @error('phone') is-invalid @enderror" name="phone" value="{{ old('phone', $customer->phone) }}">
-                    @error('phone')
+                    <input type="text" class="form-control @error('SoDienThoai') is-invalid @enderror" name="SoDienThoai" value="{{ old('SoDienThoai', $customer->phone) }}">
+                    @error('SoDienThoai')
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
                 </div>
                 <div class="col-md-6">
                     <label class="form-label">Điểm tích lũy</label>
-                    <input type="number" class="form-control @error('points') is-invalid @enderror" name="points" value="{{ old('points', $customer->points) }}" min="0">
-                    @error('points')
+                    <input type="number" class="form-control @error('DiemHienTai') is-invalid @enderror" name="DiemHienTai" value="{{ old('DiemHienTai', $customer->points) }}" min="0">
+                    @error('DiemHienTai')
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
                 </div>
                 <div class="col-12">
                     <label class="form-label">Địa chỉ</label>
-                    <textarea class="form-control @error('address') is-invalid @enderror" name="address" rows="3">{{ old('address', $customer->address) }}</textarea>
-                    @error('address')
+                    <textarea class="form-control @error('DiaChi') is-invalid @enderror" name="DiaChi" rows="3">{{ old('DiaChi', $customer->address) }}</textarea>
+                    @error('DiaChi')
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
                 </div>

@@ -17,26 +17,28 @@ class GarmentRequest extends FormRequest
         $id = $this->route('garment') ?? $this->route('id') ?? null;
 
         return [
-            'name' => ['required', 'string', 'max:255', 'unique:garments,name,' . ($id ?? '')],
-            'category' => ['nullable', 'string', 'max:255'],
-            'price' => ['required', 'numeric', 'min:0'],
-            'condition_note' => ['nullable', 'string', 'max:1000'],
-            'status' => ['required', 'in:'.implode(',', RecordStatus::values())],
+            'TenDichVu' => ['required', 'string', 'max:255', 'unique:DichVu,TenDichVu,' . ($id ?? '') . ',DichVuID'],
+            'LoaiDichVuID' => ['nullable', 'integer', 'exists:LoaiDichVu,LoaiDichVuID'],
+            'LoaiDoGiatID' => ['nullable', 'integer', 'exists:LoaiDoGiat,LoaiDoGiatID'],
+            'ThoiGianDuKien' => ['required', 'integer', 'min:1'],
+            'MoTa' => ['nullable', 'string', 'max:1000'],
+            'TrangThai' => ['required', 'in:'.implode(',', RecordStatus::values())],
         ];
     }
 
     public function messages(): array
     {
         return [
-            'name.required' => 'TÃªn loáº¡i Ä‘á»“ giáº·t lÃ  báº¯t buá»™c.',
-            'name.unique' => 'TÃªn Ä‘Ã£ tá»“n táº¡i.',
-            'price.required' => 'GiÃ¡ lÃ  báº¯t buá»™c.',
-            'price.numeric' => 'GiÃ¡ pháº£i lÃ  sá»‘.',
-            'price.min' => 'GiÃ¡ khÃ´ng Ä‘Æ°á»£c nhá» hÆ¡n 0.',
-            'category.max' => 'KhÃ´ng quÃ¡ 255 kÃ½ tá»±.',
-            'condition_note.max' => 'KhÃ´ng quÃ¡ 1000 kÃ½ tá»±.',
-            'status.required' => 'Tráº¡ng thÃ¡i báº¯t buá»™c.',
-            'status.in' => 'Tráº¡ng thÃ¡i khÃ´ng há»£p lá»‡.',
+            'TenDichVu.required' => 'Tên dịch vụ là bắt buộc.',
+            'TenDichVu.unique' => 'Tên dịch vụ đã tồn tại.',
+            'ThoiGianDuKien.required' => 'Thời gian ước tính là bắt buộc.',
+            'ThoiGianDuKien.integer' => 'Thời gian phải là số nguyên.',
+            'ThoiGianDuKien.min' => 'Thời gian không được nhỏ hơn 1 phút.',
+            'LoaiDichVuID.exists' => 'Danh mục dịch vụ không tồn tại.',
+            'LoaiDoGiatID.exists' => 'Loại đồ giặt không tồn tại.',
+            'MoTa.max' => 'Không quá 1000 ký tự.',
+            'TrangThai.required' => 'Trạng thái là bắt buộc.',
+            'TrangThai.in' => 'Trạng thái không hợp lệ.',
         ];
     }
 }

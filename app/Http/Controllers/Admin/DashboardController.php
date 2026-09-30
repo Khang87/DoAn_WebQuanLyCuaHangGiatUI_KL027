@@ -3,12 +3,12 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\Customer;
-use App\Models\Invoice;
-use App\Models\Order;
-use App\Models\Payment;
-use App\Models\Review;
-use App\Models\Service;
+use App\Models\DanhGia;
+use App\Models\DichVu;
+use App\Models\DonHang;
+use App\Models\HoaDon;
+use App\Models\KhachHang;
+use App\Models\ThanhToan;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -59,17 +59,23 @@ class DashboardController extends Controller
 
         // --- KPI: Tổng số đơn hàng (theo trạng thái) ---
         $statusCounts = [
-            'completed' => Order::where('status', 'completed')->count(),
-            'processing' => Order::whereIn('status', ['pending', 'received', 'sorting', 'processing', 'washed', 'delivering'])->count(),
-            'cancelled' => Order::where('status', 'cancelled')->count(),
+            'completed' => DonHang::whereIn('TrangThai', \App\Enums\OrderStatus::settledValues())->count(),
+            'processing' => DonHang::whereIn('TrangThai', [
+                \App\Enums\OrderStatus::Pending->value,
+                \App\Enums\OrderStatus::Received->value,
+                \App\Enums\OrderStatus::Washing->value,
+                \App\Enums\OrderStatus::Washed->value,
+                \App\Enums\OrderStatus::Delivering->value,
+            ])->count(),
+            'cancelled' => DonHang::where('TrangThai', \App\Enums\OrderStatus::Cancelled->value)->count(),
         ];
 
-        $totalOrders = Order::count();
+        $totalOrders = DonHang::count();
 
         // --- KPI: Khách hàng ---
-        $totalCustomers = Customer::count();
-        $newCustomersMonth = Customer::whereMonth('created_at', $thisMonth)
-            ->whereYear('created_at', $thisYear)
+        $totalCustomers = KhachHang::count();
+        $newCustomersMonth = KhachHang::whereMonth('NgayTao', $thisMonth)
+            ->whereYear('NgayTao', $thisYear)
             ->count();
 
         // --- KPI: Điểm đánh giá trung bình & tổng số lượt đánh giá ---
@@ -100,30 +106,32 @@ class DashboardController extends Controller
         })->values();
 
         // --- Biểu đồ tròn: Tỷ lệ đơn hàng theo trạng thái ---
-        $statusDistribution = Order::selectRaw('status, COUNT(*) as count')
-            ->groupBy('status')
-            ->pluck('count', 'status');
+        // Nháy kép là bắt buộc: raw SQL không qua wrapper của Eloquent nên
+        // PostgreSQL sẽ hạ `TrangThai` xuống `trangthai` và báo thiếu cột.
+        $statusDistribution = DonHang::selectRaw('"TrangThai", COUNT(*) as count')
+            ->groupBy('TrangThai')
+            ->pluck('count', 'TrangThai');
 
         // --- Biểu đồ cột: Top dịch vụ được đặt nhiều nhất ---
-        $topServices = Service::withCount('orders')
-            ->orderByDesc('orders_count')
+        $topServices = DichVu::withCount('chiTietDonHangs')
+            ->orderByDesc('chi_tiet_don_hangs_count')
             ->limit(5)
             ->get()
-            ->map(fn (Service $service) => [
-                'name' => $service->name,
-                'orders_count' => $service->orders_count,
+            ->map(fn (DichVu $service) => [
+                'name' => $service->TenDichVu,
+                'orders_count' => $service->chi_tiet_don_hangs_count,
             ]);
 
         // --- Bảng: Đơn hàng mới nhất (top 10) ---
-        $recentOrders = Order::with(['customer', 'service', 'employee'])
-            ->orderBy('created_at', 'desc')
+        $recentOrders = DonHang::with(['khachHang', 'nhanVien'])
+            ->orderBy('NgayTao', 'desc')
             ->limit(10)
             ->get();
 
         // --- Bảng: Đánh giá mới nhất cần phản hồi ---
-        $latestReviews = Review::with(['customer', 'order'])
-            ->whereNull('shop_response')
-            ->orderBy('created_at', 'desc')
+        $latestReviews = DanhGia::with(['khachHang', 'donHang'])
+            ->whereNull('TrangThai')
+            ->orderBy('NgayDanhGia', 'desc')
             ->limit(10)
             ->get();
 
@@ -155,14 +163,14 @@ class DashboardController extends Controller
      */
     private function revenueBetween(Carbon $from, Carbon $to): float
     {
-        return (float) Order::whereBetween('created_at', [$from, $to])
+        return (float) DonHang::whereBetween('NgayTao', [$from, $to])
             ->where(function ($query) {
-                $query->where('status', 'completed')
-                    ->orWhereHas('invoice', function ($q) {
-                        $q->where('status', 'paid');
+                $query->whereIn('TrangThai', \App\Enums\OrderStatus::settledValues())
+                    ->orWhereHas('hoaDons', function ($q) {
+                        $q->where('TrangThai', 'paid');
                     });
             })
-            ->sum('total_amount');
+            ->sum('ThanhTien');
     }
 
     /**
@@ -170,31 +178,31 @@ class DashboardController extends Controller
      */
     public function collectCashPayment(Request $request, int $invoice)
     {
-        $invoice = Invoice::with('order')->find($invoice);
+        $invoice = HoaDon::with('donHang')->find($invoice);
 
         if (!$invoice) {
             return response()->json(['success' => false, 'message' => 'Không tìm thấy hóa đơn.'], 404);
         }
 
-        if ($invoice->status === 'paid') {
+        if ($invoice->TrangThai === 'paid') {
             return response()->json(['success' => false, 'message' => 'Hóa đơn đã được thanh toán.'], 400);
         }
 
         DB::transaction(function () use ($invoice) {
-            $invoice->update(['status' => 'paid']);
+            $invoice->update(['TrangThai' => 'paid']);
 
-            Payment::create([
-                'order_id' => $invoice->order_id,
-                'amount' => $invoice->total,
-                'method' => 'cash',
-                'status' => 'paid',
+            ThanhToan::create([
+                'DonHangID' => $invoice->DonHangID,
+                'SoTien' => $invoice->ThanhTien,
+                'PhuongThuc' => 'cash',
+                'TrangThai' => 'paid',
             ]);
         });
 
         return response()->json([
             'success' => true,
             'message' => 'Thu tiền mặt thành công.',
-            'invoice_id' => $invoice->id,
+            'invoice_id' => $invoice->HoaDonID,
         ]);
     }
 

@@ -4,7 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\ServiceCategoryRequest;
-use App\Models\ServiceCategory;
+use App\Models\LoaiDichVu;
 use App\Services\ServiceCategoryService;
 use Illuminate\Http\Request;
 
@@ -51,7 +51,7 @@ class ServiceCategoryController extends Controller
 
         return view('admin.service-categories.show', [
             'category' => $category,
-            'services' => $category->services()->latest()->paginate(10),
+            'services' => $category->dichVus()->latest()->paginate(10),
         ]);
     }
 
@@ -109,7 +109,7 @@ class ServiceCategoryController extends Controller
         }
 
         try {
-            $category->update(['status' => $category->status === 'active' ? 'inactive' : 'active']);
+            $category->update(['TrangThai' => $category->TrangThai === 'Hoạt động' ? 'Không hoạt động' : 'Hoạt động']);
 
             return back()->with('success', 'Trạng thái danh mục đã được cập nhật.');
         } catch (\Exception $e) {

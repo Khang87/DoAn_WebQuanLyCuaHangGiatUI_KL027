@@ -89,6 +89,13 @@ class AccountController extends Controller
 
         $this->authorize('update', [User::class, $account]);
 
+        // CHỈ CHO PHÉP ĐỔI MẬT KHẨU NẾU LÀ TÀI KHOẢN CỦA CHÍNH MÌNH
+        if ($request->filled('password') && auth()->id() !== $account->id) {
+            return back()->withInput()->withErrors([
+                'password' => 'Bạn không có quyền thay đổi mật khẩu của tài khoản khác!'
+            ]);
+        }
+
         try {
             $this->userService->update($account, $request->validated());
 

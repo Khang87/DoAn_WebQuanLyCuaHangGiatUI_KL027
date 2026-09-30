@@ -103,9 +103,13 @@
                         <td>{{ $account->created_at?->format('d/m/Y') }}</td>
                         <td>
                             <div class="d-flex gap-2">
-                                <a href="{{ route('accounts.show', $account->id) }}" class="btn btn-order-action view" title="Xem"><i class="bi bi-eye"></i></a>
-                                @can('update', $account)
-                                <a href="{{ route('accounts.edit', $account->id) }}" class="btn btn-order-action edit" title="Sửa"><i class="bi bi-pencil"></i></a>
+                                @can('accounts.view')
+                                    <a href="{{ route('accounts.show', $account->id) }}" class="btn btn-order-action view" title="Xem"><i class="bi bi-eye"></i></a>
+                                @endcan
+                                @can('accounts.edit')
+                                    @can('update', $account)
+                                    <a href="{{ route('accounts.edit', $account->id) }}" class="btn btn-order-action edit" title="Sửa"><i class="bi bi-pencil"></i></a>
+                                    @endcan
                                 @endcan
                             </div>
                         </td>

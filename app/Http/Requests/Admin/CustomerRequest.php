@@ -16,26 +16,26 @@ class CustomerRequest extends FormRequest
         $id = $this->route('customer') ?? $this->route('id') ?? null;
 
         return [
-            'name' => ['required', 'string', 'max:255'],
-            'email' => ['nullable', 'email', 'max:255', 'unique:customers,email,' . ($id ?? '')],
-            'phone' => ['nullable', 'string', 'max:30'],
-            'address' => ['nullable', 'string', 'max:500'],
-            'points' => ['nullable', 'integer', 'min:0'],
+            'HoTen' => ['required', 'string', 'max:255'],
+            'Email' => ['nullable', 'email', 'max:255', 'unique:KhachHang,Email,' . ($id ?? '')],
+            'SoDienThoai' => ['nullable', 'string', 'max:30'],
+            'DiaChi' => ['nullable', 'string', 'max:500'],
+            'DiemHienTai' => ['nullable', 'integer', 'min:0'],
         ];
     }
 
     public function messages(): array
     {
         return [
-            'name.required' => 'Họ tên là bắt buộc.',
-            'name.string' => 'Họ tên phải là chuỗi ký tự.',
-            'name.max' => 'Họ tên không được vượt quá 255 ký tự.',
-            'email.email' => 'Định dạng email không hợp lệ.',
-            'email.unique' => 'Email đã tồn tại.',
-            'phone.max' => 'Số điện thoại không được vượt quá 30 ký tự.',
-            'address.max' => 'Địa chỉ không được vượt quá 500 ký tự.',
-            'points.integer' => 'Điểm phải là số nguyên.',
-            'points.min' => 'Điểm không được nhỏ hơn 0.',
+            'HoTen.required' => 'Họ tên là bắt buộc.',
+            'HoTen.string' => 'Họ tên phải là chuỗi ký tự.',
+            'HoTen.max' => 'Họ tên không được vượt quá 255 ký tự.',
+            'Email.email' => 'Định dạng email không hợp lệ.',
+            'Email.unique' => 'Email đã tồn tại.',
+            'SoDienThoai.max' => 'Số điện thoại không được vượt quá 30 ký tự.',
+            'DiaChi.max' => 'Địa chỉ không được vượt quá 500 ký tự.',
+            'DiemHienTai.integer' => 'Điểm phải là số nguyên.',
+            'DiemHienTai.min' => 'Điểm không được nhỏ hơn 0.',
         ];
     }
 }

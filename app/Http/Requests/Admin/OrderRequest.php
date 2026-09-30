@@ -14,43 +14,45 @@ class OrderRequest extends FormRequest
 
     public function rules(): array
     {
-        $id = $this->route('order') ?? $this->route('id') ?? null;
+        $id = $this->route('order')?->DonHangID
+            ?? $this->route('order')
+            ?? $this->route('id')
+            ?? null;
 
         return [
-            'code' => ['nullable', 'string', 'max:50', 'unique:orders,code,' . ($id ?? '')],
-            'customer_id' => ['required', 'exists:customers,id'],
-            'employee_id' => ['nullable', 'exists:users,id'],
-            'promotion_id' => ['nullable', 'exists:promotions,id'],
-            'promotion_code' => ['nullable', 'string', 'max:100'],
-            'points_used' => ['nullable', 'integer', 'min:0'],
-            'weight_kg' => ['nullable', 'string', 'max:50'],
-            'quantity_items' => ['nullable', 'string', 'max:255'],
-            'status' => ['required', 'in:'.implode(',', OrderStatus::values())],
-            'notes' => ['nullable', 'string', 'max:1000'],
+            'MaDonHang' => ['nullable', 'string', 'max:30', 'unique:DonHang,MaDonHang,' . ($id ?? '')],
+            'KhachHangID' => ['required', 'integer', 'exists:KhachHang,KhachHangID'],
+            'NhanVienID' => ['nullable', 'integer', 'exists:NhanVien,NhanVienID'],
+            'BookingID' => ['nullable', 'integer', 'exists:Booking,BookingID'],
+            'KhuyenMaiID' => ['nullable', 'integer', 'exists:KhuyenMai,KhuyenMaiID'],
+            'promotion_code' => ['nullable', 'string', 'max:50'],
+            'DiemSuDung' => ['nullable', 'integer', 'min:0'],
+            'PhiGiaoHang' => ['nullable', 'numeric', 'min:0'],
+            'TrangThai' => ['required', 'in:'.implode(',', OrderStatus::values())],
+            'GhiChu' => ['nullable', 'string', 'max:500'],
             'items' => ['nullable', 'array'],
-            'items.*.service_id' => ['nullable', 'exists:services,id'],
-            'items.*.garment_id' => ['nullable', 'exists:garments,id'],
-            'items.*.item_name' => ['nullable', 'string', 'max:255'],
-            'items.*.item_type' => ['nullable', 'in:garment,service'],
-            'items.*.price' => ['nullable', 'numeric', 'min:0'],
-            'items.*.quantity' => ['nullable', 'integer', 'min:0'],
-            'items.*.weight' => ['nullable', 'numeric', 'min:0'],
-            'items.*.notes' => ['nullable', 'string', 'max:1000'],
+            'items.*.DichVuID' => ['nullable', 'integer', 'exists:DichVu,DichVuID'],
+            'items.*.LoaiDoGiatID' => ['nullable', 'integer', 'exists:LoaiDoGiat,LoaiDoGiatID'],
+            'items.*.DonViTinhID' => ['nullable', 'integer', 'exists:DonViTinh,DonViTinhID'],
+            'items.*.DonGia' => ['nullable', 'numeric', 'min:0'],
+            'items.*.SoLuong' => ['nullable', 'numeric', 'min:0'],
+            'items.*.KhoiLuong' => ['nullable', 'numeric', 'min:0'],
+            'items.*.GhiChu' => ['nullable', 'string', 'max:500'],
         ];
     }
 
     public function messages(): array
     {
         return [
-            'customer_id.required' => 'Khách hàng là bắt buộc.',
-            'customer_id.exists' => 'Khách hàng không tồn tại.',
-            'employee_id.exists' => 'Nhân viên không tồn tại.',
-            'promotion_id.exists' => 'Chương trình khuyến mãi không tồn tại.',
-            'status.required' => 'Trạng thái là bắt buộc.',
-            'status.in' => 'Trạng thái không hợp lệ.',
-            'notes.max' => 'Ghi chú không quá 1000 ký tự.',
-            'items.*.quantity.integer' => 'Số lượng phải là số nguyên.',
-            'items.*.quantity.min' => 'Số lượng không được nhỏ hơn 0.',
+            'KhachHangID.required' => 'Khách hàng là bắt buộc.',
+            'KhachHangID.exists' => 'Khách hàng không tồn tại.',
+            'NhanVienID.exists' => 'Nhân viên không tồn tại.',
+            'KhuyenMaiID.exists' => 'Chương trình khuyến mãi không tồn tại.',
+            'TrangThai.required' => 'Trạng thái là bắt buộc.',
+            'TrangThai.in' => 'Trạng thái không hợp lệ.',
+            'GhiChu.max' => 'Ghi chú không quá 500 ký tự.',
+            'items.*.SoLuong.numeric' => 'Số lượng phải là số.',
+            'items.*.SoLuong.min' => 'Số lượng không được nhỏ hơn 0.',
         ];
     }
 }

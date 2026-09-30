@@ -16,7 +16,6 @@
 
 <x-admin.detail.page-header
     title="Đơn hàng {{ $order->code }}"
-    :back="route('orders.index')"
     :subtitle="$order->created_at?->format('d/m/Y H:i')"
 >
     <x-slot:badge>
@@ -27,23 +26,6 @@
             </span>
         @endif
     </x-slot:badge>
-
-    <x-slot:actions>
-        @if($order->invoice)
-            <a href="{{ route('invoices.show', $order->invoice->id) }}" class="btn btn-outline-info btn-sm">
-                <i class="fas fa-file-invoice me-1"></i>Xem hóa đơn
-            </a>
-        @elseif(in_array($order->status, ['completed', 'ready_for_pickup', 'processing']))
-            <a href="{{ route('invoices.create', ['order_id' => $order->id]) }}" class="btn btn-outline-info btn-sm">
-                <i class="fas fa-file-invoice me-1"></i>Tạo hóa đơn
-            </a>
-        @endif
-        @if($canEdit)
-            <a href="{{ route('orders.edit', $order->id) }}" class="btn btn-primary btn-sm">
-                <i class="bi bi-pencil me-1"></i>Chỉnh sửa
-            </a>
-        @endif
-    </x-slot:actions>
 </x-admin.detail.page-header>
 
 @if($order->is_locked)
@@ -51,7 +33,6 @@
 @endif
 
 <div class="row g-4">
-    {{-- ============ CỘT CHÍNH (8/12) ============ --}}
     <div class="col-lg-8">
         <x-admin.detail.panel title="Thông tin đơn hàng" icon="bi-receipt" :iconClass="'bg-primary-subtle text-primary'">
             <x-admin.detail.info-grid :columns="2">
@@ -211,6 +192,42 @@
                 <x-admin.detail.empty message="Đơn hàng chưa có lịch giao nhận" icon="bi-truck" />
             @endif
         </x-admin.detail.panel>
+    </div>
+
+    <div class="col-lg-4">
+        <div class="card shadow-sm border-0 sticky-top" style="top: 20px;">
+            <div class="card-header bg-transparent border-bottom d-flex align-items-center gap-2 py-3">
+                <div class="bg-light rounded p-2 d-inline-flex align-items-center justify-content-center">
+                    <i class="fas fa-sliders-h text-secondary"></i>
+                </div>
+                <h5 class="card-title mb-0 fw-bold">Thao tác</h5>
+            </div>
+            <div class="card-body d-flex flex-column gap-2">
+                @if($canEdit)
+                    @can('orders.edit')
+                        <a href="{{ route('orders.edit', $order->id) }}" class="btn btn-primary w-100 py-2">
+                            <i class="fas fa-pencil-alt me-1"></i> Chỉnh sửa
+                        </a>
+                    @endcan
+                @endif
+
+                @if($order->invoice)
+                    <a href="{{ route('invoices.show', $order->invoice->id) }}" class="btn btn-outline-info w-100 py-2">
+                        <i class="fas fa-file-invoice me-1"></i> Xem hóa đơn
+                    </a>
+                @elseif(in_array($order->status, ['completed', 'ready_for_pickup', 'processing']))
+                    @can('invoices.create')
+                        <a href="{{ route('invoices.create', ['order_id' => $order->id]) }}" class="btn btn-outline-info w-100 py-2">
+                            <i class="fas fa-file-invoice me-1"></i> Tạo hóa đơn
+                        </a>
+                    @endcan
+                @endif
+
+                <a href="{{ route('orders.index') }}" class="btn btn-outline-secondary w-100 py-2 text-dark">
+                    <i class="fas fa-arrow-left me-1"></i> Quay lại danh sách
+                </a>
+            </div>
+        </div>
     </div>
 </div>
 @endsection

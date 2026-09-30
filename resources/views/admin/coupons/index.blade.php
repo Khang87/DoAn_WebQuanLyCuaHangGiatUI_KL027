@@ -27,7 +27,7 @@
         <select name="promotion_id" class="form-select form-select-sm filter-select shadow-sm rounded-3" onchange="this.form.submit()">
             <option value="">-- Tất cả chương trình --</option>
             @foreach($promotions as $promo)
-                <option value="{{ $promo->id }}" @selected(request('promotion_id') == $promo->id)>{{ $promo->name }}</option>
+                <option value="{{ $promo->KhuyenMaiID }}" @selected(request('promotion_id') == $promo->KhuyenMaiID)>{{ $promo->TenKhuyenMai }}</option>
             @endforeach
         </select>
     </div>
@@ -53,29 +53,36 @@
                 <tbody>
                     @forelse($coupons as $coupon)
                     <tr>
-                        <td>{{ $coupon->id }}</td>
+                        <td>{{ $coupon->KhuyenMaiID }}</td>
                         <td><strong>{{ $coupon->code }}</strong></td>
-                        <td>{{ $coupon->promotion?->name }}</td>
-                        <td>{{ $coupon->discount_type === 'percent' ? '%' : '₫' }} {{ $coupon->discount_type === 'percent' ? $coupon->discount_value . '%' : number_format($coupon->discount_value) }}</td>
-                        <td>{{ $coupon->expires_at?->format('d/m/Y') }}</td>
-                        <td>{{ $coupon->used_count }}/{{ $coupon->max_uses ?? '∞' }}</td>
+                        <td>{{ $coupon->TenKhuyenMai }}</td>
+                        <td>{{ $coupon->discountTypeLabel() }}</td>
+                        <td>{{ $coupon->discountValueLabel() }}</td>
+                        <td>{{ $coupon->NgayKetThuc?->format('d/m/Y') }}</td>
+                        <td>{{ $coupon->usageLabel() }}</td>
                         <td>
-                            <x-admin.status-badge :status="$coupon->status" :enum="\App\Enums\RecordStatus::class" />
+                            <x-admin.status-badge :status="$coupon->statusLabel" :enum="\App\Enums\RecordStatus::class" />
                         </td>
                         <td>
                             <div class="d-flex gap-2">
-                                <a href="{{ route('coupons.show', $coupon) }}" class="btn btn-order-action view" title="Xem"><i class="bi bi-eye"></i></a>
-                                <a href="{{ route('coupons.edit', $coupon) }}" class="btn btn-order-action edit" title="Sửa"><i class="bi bi-pencil"></i></a>
-                                <form action="{{ route('coupons.destroy', $coupon) }}" method="POST" class="d-inline" id="deleteCouponForm_{{ $coupon->id }}">
-                                    @csrf @method('DELETE')
-                                    <button type="submit" class="btn btn-order-action delete" title="Xóa"><i class="bi bi-trash"></i></button>
-                                </form>
+                                @can('coupons.view')
+                                    <a href="{{ route('coupons.show', $coupon) }}" class="btn btn-order-action view" title="Xem"><i class="bi bi-eye"></i></a>
+                                @endcan
+                                @can('coupons.edit')
+                                    <a href="{{ route('coupons.edit', $coupon) }}" class="btn btn-order-action edit" title="Sửa"><i class="bi bi-pencil"></i></a>
+                                @endcan
+                                @can('coupons.delete')
+                                    <form action="{{ route('coupons.destroy', $coupon) }}" method="POST" class="d-inline" id="deleteCouponForm_{{ $coupon->KhuyenMaiID }}">
+                                        @csrf @method('DELETE')
+                                        <button type="submit" class="btn btn-order-action delete" title="Xóa"><i class="bi bi-trash"></i></button>
+                                    </form>
+                                @endcan
                             </div>
                         </td>
                     </tr>
                     @empty
                     <tr><td colspan="9" class="text-center text-muted py-4">Chưa có mã giảm giá</td></tr>
-        @endforelse
+            @endforelse
             </tbody>
         </table>
     </div>

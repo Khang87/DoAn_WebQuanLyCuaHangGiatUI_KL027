@@ -2,7 +2,8 @@
 
 namespace App\Services;
 
-use App\Models\Order;
+use App\Models\ChiTietDonHang;
+use App\Models\DonHang;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 
@@ -17,7 +18,16 @@ class ReportService
             default => '%Y-%m',
         };
 
-        $query = Order::selectRaw("SUM(total_amount) as total, strftime('{$format}', created_at) as period")
+        // `strftime` là hàm của SQLite; PostgreSQL cần `to_char`. Cột `NgayTao`
+        // cũng phải có nháy kép vì đây là raw SQL.
+        $format = match ($period) {
+            'day' => 'DD',
+            'week' => 'WW',
+            'year' => 'YYYY',
+            default => 'YYYY-MM',
+        };
+
+        $query = DonHang::selectRaw("SUM(\"ThanhTien\") as total, to_char(\"NgayTao\", '{$format}') as period")
             ->groupBy('period');
 
         return $query->orderBy('period')->get()->map(fn ($item) => [
@@ -28,17 +38,19 @@ class ReportService
 
     public function getOrderStatusCounts(): array
     {
-        return Order::selectRaw('status, COUNT(*) as count')
-            ->groupBy('status')
-            ->pluck('count', 'status')
+        // `TrangThai` phải được đặt trong nháy kép: raw SQL không đi qua wrapper
+        // của Eloquent nên PostgreSQL sẽ hạ `TrangThai` thành `trangthai`.
+        return DonHang::selectRaw('"TrangThai", COUNT(*) as count')
+            ->groupBy('TrangThai')
+            ->pluck('count', 'TrangThai')
             ->toArray();
     }
 
     public function getTopCustomers(int $limit = 10): Collection
     {
-        return Order::selectRaw('customer_id, SUM(total_amount) as total_spent, COUNT(*) as order_count')
-            ->where('status', '!=', 'cancelled')
-            ->groupBy('customer_id')
+        return DonHang::selectRaw('"KhachHangID", SUM("ThanhTien") as total_spent, COUNT(*) as order_count')
+            ->where('TrangThai', '!=', 'cancelled')
+            ->groupBy('KhachHangID')
             ->orderByDesc('total_spent')
             ->limit($limit)
             ->with('customer')
@@ -48,32 +60,34 @@ class ReportService
 
     public function getOrderCountsByService(): array
     {
-        return Order::selectRaw('service_id, COUNT(*) as count')
-            ->groupBy('service_id')
-            ->pluck('count', 'service_id')
+        // Dịch vụ nằm ở bảng chi tiết đơn (`ChiTietDonHang.DichVuID`), không có
+        // trong `DonHang`.
+        return ChiTietDonHang::selectRaw('"DichVuID", COUNT(*) as count')
+            ->groupBy('DichVuID')
+            ->pluck('count', 'DichVuID')
             ->toArray();
     }
 
     public function getRevenueSummary(): array
     {
         return [
-            'total_revenue' => (float) Order::where('status', '!=', 'cancelled')->sum('total_amount'),
-            'total_orders' => Order::count(),
-            'completed_orders' => Order::where('status', 'completed')->count(),
-            'cancelled_orders' => Order::where('status', 'cancelled')->count(),
-            'pending_orders' => Order::where('status', 'pending')->count(),
-            'processing_orders' => Order::where('status', 'processing')->count(),
-            'today_revenue' => (float) Order::whereDate('created_at', today())->sum('total_amount'),
-            'month_revenue' => (float) Order::whereMonth('created_at', now()->month)->sum('total_amount'),
+            'total_revenue' => (float) DonHang::where('TrangThai', '!=', 'cancelled')->sum('ThanhTien'),
+            'total_orders' => DonHang::count(),
+            'completed_orders' => DonHang::where('TrangThai', 'completed')->count(),
+            'cancelled_orders' => DonHang::where('TrangThai', 'cancelled')->count(),
+            'pending_orders' => DonHang::where('TrangThai', 'pending')->count(),
+            'processing_orders' => DonHang::where('TrangThai', 'processing')->count(),
+            'today_revenue' => (float) DonHang::whereDate('NgayTao', today())->sum('ThanhTien'),
+            'month_revenue' => (float) DonHang::whereMonth('NgayTao', now()->month)->sum('ThanhTien'),
         ];
     }
 
     public function getMonthlyRevenue(): array
     {
         return collect(range(1, 12))->map(function ($month) {
-            $revenue = Order::whereMonth('created_at', $month)
-                ->where('status', '!=', 'cancelled')
-                ->sum('total_amount');
+            $revenue = DonHang::whereMonth('NgayTao', $month)
+                ->where('TrangThai', '!=', 'cancelled')
+                ->sum('ThanhTien');
 
             return round($revenue / 1000000, 2);
         })->values()->toArray();

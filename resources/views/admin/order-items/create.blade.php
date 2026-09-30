@@ -18,7 +18,7 @@
             <div class="row g-4">
                 <div class="col-md-6">
                     <label class="form-label">Đơn hàng</label>
-                    <select class="form-select" name="order_id">
+                    <select class="form-select" name="DonHangID">
                         <option value="">-- Chọn đơn hàng --</option>
                         @foreach($orders as $order)
                         <option value="{{ $order->id }}">{{ $order->code }} - {{ $order->customer?->name }}</option>
@@ -27,7 +27,7 @@
                 </div>
                 <div class="col-md-6">
                     <label class="form-label">Dịch vụ</label>
-                    <select class="form-select" name="service_id">
+                    <select class="form-select" name="DichVuID">
                         <option value="">-- Chọn dịch vụ --</option>
                         @foreach($services as $service)
                         <option value="{{ $service->id }}">{{ $service->name }}</option>
@@ -47,15 +47,15 @@
                 </div>
                 <div class="col-md-6">
                     <label class="form-label">Đơn giá <span class="text-danger ms-1">*</span></label>
-                    <input type="number" class="form-control" name="price" placeholder="25000" min="0" required>
+                    <input type="number" class="form-control" name="DonGia" placeholder="25000" min="0" required>
                 </div>
                 <div class="col-md-6">
                     <label class="form-label">Số lượng <span class="text-danger ms-1">*</span></label>
-                    <input type="number" class="form-control" name="quantity" value="1" min="1" required>
+                    <input type="number" class="form-control" name="SoLuong" value="1" min="1" required>
                 </div>
                 <div class="col-12">
                     <label class="form-label">Ghi chú</label>
-                    <textarea class="form-control" name="notes" rows="2"></textarea>
+                    <textarea class="form-control" name="GhiChu" rows="2"></textarea>
                 </div>
             </div>
             <div class="d-flex justify-content-end gap-2 mt-4">

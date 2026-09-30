@@ -10,18 +10,11 @@
 
 <x-admin.detail.page-header
     title="Bảng giá {{ $pricingName }}"
-    :back="route('pricings.index')"
     :subtitle="$pricing->effective_date?->format('d/m/Y')"
 >
     <x-slot:badge>
         <x-admin.status-badge :status="$pricing->status" :enum="\App\Enums\RecordStatus::class" />
     </x-slot:badge>
-
-    <x-slot:actions>
-        <a href="{{ route('pricings.edit', $pricing) }}" class="btn btn-primary btn-sm">
-            <i class="bi bi-pencil me-1"></i>Chỉnh sửa
-        </a>
-    </x-slot:actions>
 </x-admin.detail.page-header>
 
 <div class="row g-4">
@@ -76,6 +69,24 @@
                 <x-admin.detail.empty message="Bảng giá không gắn với dịch vụ nào" icon="bi-box" />
             @endif
         </x-admin.detail.panel>
+
+        <div class="card shadow-sm border-0 mt-3">
+            <div class="card-header bg-transparent border-bottom d-flex align-items-center gap-2 py-3">
+                <div class="bg-light rounded p-2 d-inline-flex align-items-center justify-content-center">
+                    <i class="fas fa-sliders-h text-secondary"></i>
+                </div>
+                <h5 class="card-title mb-0 fw-bold">Thao tác</h5>
+            </div>
+            <div class="card-body d-flex flex-column gap-2">
+                <a href="{{ route('pricings.edit', $pricing) }}" class="btn btn-primary w-100 py-2">
+                    <i class="fas fa-pencil-alt me-1"></i> Chỉnh sửa
+                </a>
+
+                <a href="{{ route('pricings.index') }}" class="btn btn-outline-secondary w-100 py-2 text-dark">
+                    <i class="fas fa-arrow-left me-1"></i> Quay lại danh sách
+                </a>
+            </div>
+        </div>
     </div>
 </div>
 @endsection

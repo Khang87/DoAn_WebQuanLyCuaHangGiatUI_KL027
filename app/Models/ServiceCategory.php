@@ -1,25 +1,49 @@
 <?php
 
+/**
+ * Created by Reliese Model.
+ */
+
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
+/**
+ * Class ServiceCategory
+ * 
+ * @property int $id
+ * @property string $name
+ * @property string $slug
+ * @property string|null $description
+ * @property string|null $icon
+ * @property string $status
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
+ * @property string|null $deleted_at
+ * 
+ * @property Collection|Service[] $services
+ *
+ * @package App\Models
+ */
 class ServiceCategory extends Model
 {
-    use HasFactory, SoftDeletes;
+	use SoftDeletes;
+	protected $table = 'service_categories';
+	public static $snakeAttributes = false;
 
-    protected $fillable = ['code', 'name', 'slug', 'description', 'icon', 'status'];
+	protected $fillable = [
+		'name',
+		'slug',
+		'description',
+		'icon',
+		'status'
+	];
 
-    protected $casts = [
-        'created_at' => 'datetime',
-        'updated_at' => 'datetime',
-        'deleted_at' => 'datetime',
-    ];
-
-    public function services()
-    {
-        return $this->hasMany(Service::class);
-    }
+	public function services()
+	{
+		return $this->hasMany(Service::class);
+	}
 }

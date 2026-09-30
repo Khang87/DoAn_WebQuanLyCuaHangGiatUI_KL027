@@ -6,7 +6,6 @@
 @section('content')
 <x-admin.detail.page-header
     title="Khách hàng {{ $customer->name }}"
-    :back="route('customers.index')"
     :subtitle="$customer->code"
 >
     <x-slot:badge>
@@ -15,12 +14,6 @@
             :enum="\App\Enums\RecordStatus::class"
         />
     </x-slot:badge>
-
-    <x-slot:actions>
-        <a href="{{ route('customers.edit', $customer->id) }}" class="btn btn-primary btn-sm">
-            <i class="bi bi-pencil me-1"></i>Chỉnh sửa
-        </a>
-    </x-slot:actions>
 </x-admin.detail.page-header>
 
 @if($customer->deleted_at)
@@ -28,7 +21,6 @@
 @endif
 
 <div class="row g-4">
-    {{-- ============ CỘT CHÍNH (8/12) ============ --}}
     <div class="col-lg-8">
         <x-admin.detail.panel title="Thông tin khách hàng" icon="bi-person" :iconClass="'bg-primary-subtle text-primary'">
             <div class="d-flex align-items-center gap-3 mb-4 pb-3 border-bottom">
@@ -116,12 +108,39 @@
                 </x-admin.detail.info-item>
                 <x-admin.detail.info-item label="Tổng số đơn hàng" :value="number_format($orderCount)" />
                 <x-admin.detail.info-item label="Điểm tích lũy">
-                    <span class="badge bg-amber-subtle text-amber-emphasis border border-amber px-3 py-2 rounded-pill">
-                        <i class="bi bi-star-fill me-1"></i>{{ number_format($customer->points) }} điểm
+                    <span class="badge rounded-pill px-3 py-2 fs-6 fw-bold d-inline-flex align-items-center gap-1"
+                          style="background-color: #fef3c7; color: #b45309; border: 1px solid #fde68a;">
+                        <i class="bi bi-star-fill me-1"></i>{{ number_format($customer->points ?? 0) }} điểm
                     </span>
                 </x-admin.detail.info-item>
             </x-admin.detail.info-grid>
         </x-admin.detail.panel>
+
+        <div class="card shadow-sm border-0 mt-3">
+            <div class="card-header bg-transparent border-bottom d-flex align-items-center gap-2 py-3">
+                <div class="bg-light rounded p-2 d-inline-flex align-items-center justify-content-center">
+                    <i class="fas fa-sliders-h text-secondary"></i>
+                </div>
+                <h5 class="card-title mb-0 fw-bold">Thao tác</h5>
+            </div>
+            <div class="card-body d-flex flex-column gap-2">
+                @can('customers.edit')
+                    <a href="{{ route('customers.edit', $customer->id) }}" class="btn btn-primary w-100 py-2">
+                        <i class="fas fa-pencil-alt me-1"></i> Chỉnh sửa
+                    </a>
+                @endcan
+
+                @can('orders.create')
+                    <a href="{{ route('orders.create', ['customer_id' => $customer->id]) }}" class="btn btn-outline-primary w-100 py-2">
+                        <i class="fas fa-plus me-1"></i> Tạo đơn hàng mới
+                    </a>
+                @endcan
+
+                <a href="{{ route('customers.index') }}" class="btn btn-outline-secondary w-100 py-2 text-dark">
+                    <i class="fas fa-arrow-left me-1"></i> Quay lại danh sách
+                </a>
+            </div>
+        </div>
     </div>
 </div>
 @endsection

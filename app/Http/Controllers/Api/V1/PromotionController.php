@@ -4,7 +4,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Api\ApiController;
 use App\Http\Resources\PromotionResource;
-use App\Models\Promotion;
+use App\Models\KhuyenMai;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -15,26 +15,23 @@ class PromotionController extends ApiController
      */
     public function index(Request $request): JsonResponse
     {
-        $paginator = Promotion::query()
-            ->where('status', 'active')
+        $paginator = KhuyenMai::query()
+            ->where('TrangThai', 'Hoạt động')
             ->where(function ($query) {
-                $query->whereNull('starts_at')->orWhereDate('starts_at', '<=', today());
+                $query->whereNull('NgayBatDau')->orWhereDate('NgayBatDau', '<=', today());
             })
             ->where(function ($query) {
-                $query->whereNull('expires_at')->orWhereDate('expires_at', '>=', today());
+                $query->whereNull('NgayKetThuc')->orWhereDate('NgayKetThuc', '>=', today());
             })
             ->where(function ($query) {
-                $query->whereNull('usage_limit')->orWhereColumn('used_count', '<', 'usage_limit');
-            })
-            ->where(function ($query) {
-                $query->whereNull('quantity')->orWhereColumn('used_count', '<', 'quantity');
+                $query->whereNull('SoLuongSuDung')->orWhere('SoLuongSuDung', '>', 0);
             })
             ->when($request->filled('search'), function ($query) use ($request) {
                 $search = $request->string('search')->toString();
-                $query->where('code', 'like', "%{$search}%")
-                    ->orWhere('name', 'like', "%{$search}%");
+                $query->where('MaKhuyenMai', 'like', "%{$search}%")
+                    ->orWhere('TenKhuyenMai', 'like', "%{$search}%");
             })
-            ->orderBy('id')
+            ->orderBy('KhuyenMaiID')
             ->paginate($this->perPage($request))
             ->withQueryString();
 

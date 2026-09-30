@@ -88,11 +88,18 @@
                         </td>
                         <td>
                             <div class="d-flex gap-2">
-                                <a href="{{ route('promotions.edit', $promotion) }}" class="btn btn-order-action edit" title="Sửa"><i class="bi bi-pencil"></i></a>
-                                <form action="{{ route('promotions.destroy', $promotion) }}" method="POST" class="d-inline" id="deletePromotionForm_{{ $promotion->id }}">
-                                    @csrf @method('DELETE')
-                                    <button type="submit" class="btn btn-order-action delete" title="Xóa"><i class="bi bi-trash"></i></button>
-                                </form>
+                                @can('promotions.view')
+                                    <a href="{{ route('promotions.show', $promotion) }}" class="btn btn-order-action view" title="Xem"><i class="bi bi-eye"></i></a>
+                                @endcan
+                                @can('promotions.edit')
+                                    <a href="{{ route('promotions.edit', $promotion) }}" class="btn btn-order-action edit" title="Sửa"><i class="bi bi-pencil"></i></a>
+                                @endcan
+                                @can('promotions.delete')
+                                    <form action="{{ route('promotions.destroy', $promotion) }}" method="POST" class="d-inline" id="deletePromotionForm_{{ $promotion->id }}">
+                                        @csrf @method('DELETE')
+                                        <button type="submit" class="btn btn-order-action delete" title="Xóa"><i class="bi bi-trash"></i></button>
+                                    </form>
+                                @endcan
                             </div>
                         </td>
                      </tr>

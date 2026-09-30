@@ -3,8 +3,8 @@
 namespace App\Services;
 
 use App\Models\Booking;
-use App\Models\Order;
-use App\Models\OrderItem;
+use App\Models\DonHang;
+use App\Models\ChiTietDonHang;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 
@@ -15,15 +15,15 @@ class BookingService
         $query = Booking::query();
 
         if (!empty($filters['customer_id'])) {
-            $query->where('customer_id', $filters['customer_id']);
+            $query->where('KhachHangID', $filters['customer_id']);
         }
 
         if (!empty($filters['method'])) {
-            $query->where('method', $filters['method']);
+            $query->where('HinhThucNhanDo', $filters['method']);
         }
 
         if (!empty($filters['status'])) {
-            $query->where('status', $filters['status']);
+            $query->where('TrangThai', $filters['status']);
         }
 
         if (!empty($filters['search'])) {
@@ -33,24 +33,24 @@ class BookingService
                 if (!empty($numericPart)) {
                     $q->where('id', $numericPart);
                 }
-                $q->orWhereHas('customer', function ($sub) use ($search) {
-                    $sub->where('name', 'LIKE', "%{$search}%")
-                        ->orWhere('phone', 'LIKE', "%{$search}%");
+                $q->orWhereHas('khachHang', function ($sub) use ($search) {
+                    $sub->where('HoTen', 'LIKE', "%{$search}%")
+                        ->orWhere('SoDienThoai', 'LIKE', "%{$search}%");
                 });
-                $q->orWhere('address', 'LIKE', "%{$search}%");
+                $q->orWhere('DiaChiNhan', 'LIKE', "%{$search}%");
             });
         }
 
-        $allowedSorts = ['id', 'customer_id', 'method', 'status', 'scheduled_date', 'created_at'];
-        $sortBy = in_array($filters['sort_by'] ?? null, $allowedSorts) ? $filters['sort_by'] : 'created_at';
+        $allowedSorts = ['id', 'KhachHangID', 'HinhThucNhanDo', 'TrangThai', 'NgayHen', 'NgayTao'];
+        $sortBy = in_array($filters['sort_by'] ?? null, $allowedSorts) ? $filters['sort_by'] : 'NgayTao';
         $sortOrder = ($filters['sort_order'] ?? 'desc') === 'asc' ? 'asc' : 'desc';
 
-        return $query->with(['customer', 'staff', 'order'])->orderBy($sortBy, $sortOrder)->paginate(10)->withQueryString();
+        return $query->with(['khachHang', 'donHangs'])->orderBy($sortBy, $sortOrder)->paginate(10)->withQueryString();
     }
 
     public function find(int $id): ?Booking
     {
-        return Booking::withTrashed()->with(['customer', 'staff', 'order'])->find($id);
+        return Booking::withTrashed()->with(['khachHang', 'donHangs'])->find($id);
     }
 
     public function create(array $data): Booking
@@ -68,7 +68,7 @@ class BookingService
      */
     public function update(Booking $booking, array $data): Booking
     {
-        $previousStatus = $booking->status;
+        $previousStatus = $booking->TrangThai;
 
         $booking->update($data);
 
@@ -83,7 +83,7 @@ class BookingService
      * Nếu lịch hẹn vừa chuyển sang trạng thái "đủ điều kiện có đơn" thì tạo đơn.
      * Trả về đơn vừa tạo, hoặc null nếu không cần tạo.
      */
-    public function syncOrderOnStatusChange(Booking $booking, ?string $previousStatus = null): ?Order
+    public function syncOrderOnStatusChange(Booking $booking, ?string $previousStatus = null): ?DonHang
     {
         if (! $booking->isConvertibleToOrder()) {
             return null;
@@ -121,7 +121,7 @@ class BookingService
      * đơn trùng. Toàn bộ việc tạo đơn + tạo phiếu giao chạy trong một
      * transaction nên thất bại giữa chừng sẽ rollback trọn vẹn.
      */
-    public function confirmAndCreateOrder(Booking $booking): ?Order
+    public function confirmAndCreateOrder(Booking $booking): ?DonHang
     {
         $existing = $this->findOrderForBooking($booking);
 
@@ -129,7 +129,7 @@ class BookingService
             return $existing;
         }
 
-        if ($booking->status !== 'confirmed') {
+        if ($booking->TrangThai !== 'confirmed') {
             return null;
         }
 
@@ -148,7 +148,7 @@ class BookingService
      * Tạo đơn + phiếu giao cho lịch hẹn, KHÔNG đụng tới trạng thái lịch hẹn.
      * Dùng cho đường tự động hoá theo trạng thái.
      */
-    private function createOrderFor(Booking $booking): Order
+    private function createOrderFor(Booking $booking): DonHang
     {
         return DB::transaction(function () use ($booking) {
             $existing = $this->findOrderForBooking($booking, true);
@@ -166,30 +166,30 @@ class BookingService
      * Bản ghi đơn luôn chứa mã tham chiếu của lịch đặt: qua quan hệ
      * `orders.booking_id` và qua mã ghi trong phần ghi chú.
      */
-    private function insertOrderAndDelivery(Booking $booking): Order
+    private function insertOrderAndDelivery(Booking $booking): DonHang
     {
-        $bookingCode = $booking->code ?: Booking::nextCode();
+        $bookingCode = $booking->MaBooking ?: Booking::nextCode();
 
-        $order = Order::create([
-            'code' => 'DH' . str_pad((string) ((Order::max('id') ?? 0) + 1), 3, '0', STR_PAD_LEFT),
-            'customer_id' => $booking->customer_id,
-            'employee_id' => $booking->staff_id,
-            'booking_id' => $booking->id,
-            'status' => 'pending',
-            'notes' => $this->buildOrderNotes($booking, $bookingCode),
-            'total_amount' => 0,
+        $order = DonHang::create([
+            'MaDonHang' => 'DH' . str_pad((string) ((DonHang::max('DonHangID') ?? 0) + 1), 3, '0', STR_PAD_LEFT),
+            'KhachHangID' => $booking->KhachHangID,
+            'NhanVienID' => $booking->staff_id,
+            'BookingID' => $booking->BookingID,
+            'TrangThai' => 'pending',
+            'GhiChu' => $this->buildOrderNotes($booking, $bookingCode),
+            'ThanhTien' => 0,
             'weight_kg' => '',
             'quantity_items' => '',
         ]);
 
-        \App\Models\Delivery::create([
-            'code' => 'GH' . str_pad((string) ((\App\Models\Delivery::max('id') ?? 0) + 1), 4, '0', STR_PAD_LEFT),
-            'order_id' => $order->id,
-            'customer_id' => $booking->customer_id,
-            'employee_id' => $booking->staff_id,
-            'method' => $booking->method,
-            'status' => 'pending',
-            'notes' => $booking->notes,
+        \App\Models\GiaoNhan::create([
+            'code' => 'GH' . str_pad((string) ((\App\Models\GiaoNhan::max('GiaoNhanID') ?? 0) + 1), 4, '0', STR_PAD_LEFT),
+            'DonHangID' => $order->DonHangID,
+            'KhachHangID' => $booking->KhachHangID,
+            'NhanVienID' => $booking->staff_id,
+            'HinhThuc' => $booking->HinhThucNhanDo,
+            'TrangThai' => 'pending',
+            'GhiChu' => $booking->GhiChu,
         ]);
 
         return $order;
@@ -203,10 +203,10 @@ class BookingService
     {
         $reference = 'Tự động tạo từ đặt lịch ' . $bookingCode
             . ' (' . $booking->method_label . ' ngày '
-            . ($booking->scheduled_date?->format('d/m/Y') ?? '—') . ')';
+            . ($booking->NgayHen?->format('d/m/Y') ?? '—') . ')';
 
-        return $booking->notes
-            ? $reference . ' | ' . $booking->notes
+        return $booking->GhiChu
+            ? $reference . ' | ' . $booking->GhiChu
             : $reference;
     }
 
@@ -221,9 +221,9 @@ class BookingService
     /**
      * Đơn hàng đã được tạo từ đặt lịch này (nếu có).
      */
-    private function findOrderForBooking(Booking $booking, bool $lockForUpdate = false): ?Order
+    private function findOrderForBooking(Booking $booking, bool $lockForUpdate = false): ?DonHang
     {
-        $query = Order::withTrashed()->where('booking_id', $booking->id);
+        $query = DonHang::withTrashed()->where('BookingID', $booking->BookingID);
 
         if ($lockForUpdate) {
             $query->lockForUpdate();

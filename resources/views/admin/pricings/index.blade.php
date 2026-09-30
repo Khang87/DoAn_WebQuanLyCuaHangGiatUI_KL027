@@ -50,23 +50,29 @@
                     @forelse($pricings as $pricing)
                     <tr>
                         <td>{{ $loop->iteration }}</td>
-                        <td>{{ $pricing->code ?? 'PG' . str_pad($pricing->id, 4, '0', STR_PAD_LEFT) }}</td>
-                        <td><strong>{{ $pricing->service?->name ?: $pricing->name ?: '—' }}</strong></td>
-                        <td>{{ $pricing->garment?->name ?: $pricing->garment_name ?: '—' }}</td>
-                        <td>{{ $pricing->unit ?: 'kg' }}</td>
-                                <td class="fw-semibold text-dark">{{ number_format($pricing->price) }} VNĐ</td>
-                        <td>{{ $pricing->effective_date?->format('d/m/Y') ?: $pricing->created_at?->format('d/m/Y') ?: '—' }}</td>
+                        <td>{{ $pricing->MaBangGia ?? 'PG' . str_pad($pricing->BangGiaID, 4, '0', STR_PAD_LEFT) }}</td>
+                        <td><strong>{{ $pricing->dichVu?->TenDichVu ?: $pricing->loaiDoGiat?->TenLoaiDoGiat ?: '—' }}</strong></td>
+                        <td>{{ $pricing->loaiDoGiat?->TenLoaiDoGiat ?: '—' }}</td>
+                        <td>{{ $pricing->donViTinh?->KyHieu ?? $pricing->donViTinh?->TenDonViTinh ?: 'kg' }}</td>
+                        <td class="fw-semibold text-dark">{{ number_format($pricing->DonGia) }} VNĐ</td>
+                        <td>{{ $pricing->NgayApDung?->format('d/m/Y') ?: '—' }}</td>
                         <td>
-                            <x-admin.status-badge :status="$pricing->status" :enum="\App\Enums\RecordStatus::class" />
+                            <x-admin.status-badge :status="$pricing->TrangThai" :enum="\App\Enums\RecordStatus::class" />
                         </td>
                         <td>
                             <div class="d-flex gap-2">
-                                <a href="{{ route('pricings.show', $pricing) }}" class="btn btn-order-action view" title="Xem"><i class="bi bi-eye"></i></a>
-                                <a href="{{ route('pricings.edit', $pricing) }}" class="btn btn-order-action edit" title="Sửa"><i class="bi bi-pencil"></i></a>
-                                <form action="{{ route('pricings.destroy', $pricing) }}" method="POST" class="d-inline" id="deletePricingForm_{{ $pricing->id }}">
-                                    @csrf @method('DELETE')
-                                    <button type="submit" class="btn btn-order-action delete" title="Xóa"><i class="bi bi-trash"></i></button>
-                                </form>
+                                @can('pricings.view')
+                                    <a href="{{ route('pricings.show', $pricing) }}" class="btn btn-order-action view" title="Xem"><i class="bi bi-eye"></i></a>
+                                @endcan
+                                @can('pricings.edit')
+                                    <a href="{{ route('pricings.edit', $pricing) }}" class="btn btn-order-action edit" title="Sửa"><i class="bi bi-pencil"></i></a>
+                                @endcan
+                                @can('pricings.delete')
+                                    <form action="{{ route('pricings.destroy', $pricing) }}" method="POST" class="d-inline" id="deletePricingForm_{{ $pricing->BangGiaID }}">
+                                        @csrf @method('DELETE')
+                                        <button type="submit" class="btn btn-order-action delete" title="Xóa"><i class="bi bi-trash"></i></button>
+                                    </form>
+                                @endcan
                             </div>
                         </td>
                     </tr>
@@ -99,7 +105,7 @@
             @if ($pricings->onLastPage())
                 <li class="page-item disabled"><span class="page-link"><i class="bi bi-chevron-right"></i></span></li>
             @else
-                <li class="page-item"><a class="page-link" href="{{ $pricings->appends(request()->query())->url($pricings->currentPage() + 1) }}"><i class="bi bi-chevron-right"></i></a></li>
+                <li class="page-item"><a class="page-link" href="{{ $pricings->appends(request()->query())->url($pricings->currentPage() + 1) }}">{{ $page }}</a></li>
             @endif
         </ul>
     </div>

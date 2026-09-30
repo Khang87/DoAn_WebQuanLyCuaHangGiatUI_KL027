@@ -4,8 +4,10 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\BookingRequest;
-use App\Models\Customer;
-use App\Models\User;
+use App\Models\KhachHang;
+use App\Models\NhanVien;
+use App\Models\TaiKhoan;
+use App\Models\VaiTro;
 use App\Services\BookingService;
 use Illuminate\Http\Request;
 
@@ -26,8 +28,9 @@ class BookingController extends Controller
             'sort_order' => $request->input('sort_order'),
         ]);
 
-        $customers = Customer::orderBy('name')->get();
-        $employees = User::where('role', '!=', 'customer')->orderBy('name')->get();
+        $customers = KhachHang::orderBy('HoTen')->get();
+        // Lấy nhân viên từ bảng NhanVien (không dùng User/TaiKhoan vì role là quan hệ many-to-many)
+        $employees = NhanVien::where('TrangThai', 'Hoạt động')->orderBy('HoTen')->get();
 
         return view('admin.bookings.index', compact('bookings', 'customers', 'employees'));
     }
@@ -53,8 +56,8 @@ class BookingController extends Controller
             abort(404);
         }
 
-        $customers = Customer::orderBy('name')->get();
-        $employees = User::where('role', '!=', 'customer')->orderBy('name')->get();
+        $customers = KhachHang::orderBy('HoTen')->get();
+        $employees = NhanVien::where('TrangThai', 'Hoạt động')->orderBy('HoTen')->get();
 
         return view('admin.bookings.edit', compact('booking', 'customers', 'employees'));
     }
@@ -72,12 +75,12 @@ class BookingController extends Controller
 
             // Lịch hẹn vừa chuyển sang "Đã xác nhận" nên đã được sinh đơn tự động.
             $booking = $this->bookingService->find($id);
-            $order = $booking?->order;
+            $order = $booking?->donHangs()->orderByDesc('DonHangID')->first();
 
             if ($order) {
                 return redirect()->route('bookings.index')->with(
                     'success',
-                    'Đặt lịch ' . ($booking?->code ?? '') . ' đã được cập nhật và tự động tạo đơn hàng ' . $order->code . '.'
+                    'Đặt lịch ' . ($booking?->MaBooking ?? '') . ' đã được cập nhật và tự động tạo đơn hàng ' . $order->MaDonHang . '.'
                 );
             }
 

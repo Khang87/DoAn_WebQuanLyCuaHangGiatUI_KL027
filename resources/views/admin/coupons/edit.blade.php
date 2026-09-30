@@ -13,49 +13,77 @@
             </a>
         </div>
 
-        <form action="{{ route('coupons.update', $coupon->id) }}" method="POST">
+        <form action="{{ route('coupons.update', $coupon->KhuyenMaiID) }}" method="POST">
             @csrf @method('PUT')
             <div class="row g-4">
                 <div class="col-md-6">
-                    <label class="form-label">Chương trình</label>
-                    <select class="form-select" name="promotion_id">
-                        <option value="">-- Chọn chương trình --</option>
-                        @foreach($promotions as $promotion)
-                        <option value="{{ $promotion->id }}" {{ $coupon->promotion_id === $promotion->id ? 'selected' : '' }}>{{ $promotion->name }}</option>
-                        @endforeach
+                    <label class="form-label">Tên khuyến mãi <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control @error('TenKhuyenMai') is-invalid @enderror" name="TenKhuyenMai" value="{{ old('TenKhuyenMai', $coupon->TenKhuyenMai) }}" required>
+                    @error('TenKhuyenMai')
+                        <div class="invalid-feedback">{{ $message }}</div>
+                    @enderror
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Mã coupon <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control @error('MaKhuyenMai') is-invalid @enderror" name="MaKhuyenMai" value="{{ old('MaKhuyenMai', $coupon->MaKhuyenMai) }}" required>
+                    @error('MaKhuyenMai')
+                        <div class="invalid-feedback">{{ $message }}</div>
+                    @enderror
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Loại giảm giá <span class="text-danger">*</span></label>
+                    <select class="form-select @error('LoaiKhuyenMai') is-invalid @enderror" name="LoaiKhuyenMai" required>
+                        <option value="Phần trăm" {{ $coupon->LoaiKhuyenMai === 'Phần trăm' ? 'selected' : '' }}>Phần trăm (%)</option>
+                        <option value="Tiền mặt" {{ $coupon->LoaiKhuyenMai === 'Tiền mặt' ? 'selected' : '' }}>Số tiền cố định (VNĐ)</option>
                     </select>
+                    @error('LoaiKhuyenMai')
+                        <div class="invalid-feedback">{{ $message }}</div>
+                    @enderror
                 </div>
                 <div class="col-md-6">
-                    <label class="form-label">Mã coupon <span class="text-danger ms-1">*</span></label>
-                    <input type="text" class="form-control" name="code" value="{{ old('code', $coupon->code) }}" required>
+                    <label class="form-label">Giá trị giảm giá <span class="text-danger">*</span></label>
+                    <input type="number" class="form-control @error('GiaTriGiam') is-invalid @enderror" name="GiaTriGiam" value="{{ old('GiaTriGiam', $coupon->GiaTriGiam) }}" min="0" step="0.01" required>
+                    @error('GiaTriGiam')
+                        <div class="invalid-feedback">{{ $message }}</div>
+                    @enderror
                 </div>
                 <div class="col-md-6">
-                    <label class="form-label">Loại giảm giá</label>
-                    <select class="form-select" name="discount_type">
-                        <option value="percent" {{ $coupon->discount_type === 'percent' ? 'selected' : '' }}>Phần trăm</option>
-                        <option value="fixed" {{ $coupon->discount_type === 'fixed' ? 'selected' : '' }}>Cố định</option>
-                        <option value="free_shipping" {{ $coupon->discount_type === 'free_shipping' ? 'selected' : '' }}>Miễn phí ship</option>
-                    </select>
+                    <label class="form-label">Giá trị đơn tối thiểu</label>
+                    <input type="number" class="form-control" name="GiaTriDonToiThieu" value="{{ old('GiaTriDonToiThieu', $coupon->GiaTriDonToiThieu) }}" min="0" step="0.01">
                 </div>
                 <div class="col-md-6">
-                    <label class="form-label">Giá trị</label>
-                    <input type="number" class="form-control" name="discount_value" value="{{ old('discount_value', (float) $coupon->discount_value) }}" min="0">
+                    <label class="form-label">Mức giảm tối đa</label>
+                    <input type="number" class="form-control" name="MucGiamToiDa" value="{{ old('MucGiamToiDa', $coupon->MucGiamToiDa) }}" min="0" step="0.01">
                 </div>
                 <div class="col-md-6">
-                    <label class="form-label">Số lần tối đa</label>
-                    <input type="number" class="form-control" name="max_uses" value="{{ old('max_uses', $coupon->max_uses) }}" min="1">
+                    <label class="form-label">Số lượng mã phát hành</label>
+                    <input type="number" class="form-control" name="SoLuongSuDung" value="{{ old('SoLuongSuDung', $coupon->SoLuongSuDung) }}" min="0">
                 </div>
                 <div class="col-md-6">
-                    <label class="form-label">Hết hạn</label>
-                    <input type="date" class="form-control" name="expires_at" value="{{ old('expires_at', $coupon->expires_at) }}">
+                    <label class="form-label">Điều kiện áp dụng</label>
+                    <input type="text" class="form-control" name="DieuKienApDung" value="{{ old('DieuKienApDung', $coupon->DieuKienApDung) }}" placeholder="vd: first_order_only">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Ngày bắt đầu <span class="text-danger">*</span></label>
+                    <input type="date" class="form-control @error('NgayBatDau') is-invalid @enderror" name="NgayBatDau" value="{{ old('NgayBatDau', $coupon->NgayBatDau) }}" required>
+                    @error('NgayBatDau')
+                        <div class="invalid-feedback">{{ $message }}</div>
+                    @enderror
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Ngày kết thúc <span class="text-danger">*</span></label>
+                    <input type="date" class="form-control @error('NgayKetThuc') is-invalid @enderror" name="NgayKetThuc" value="{{ old('NgayKetThuc', $coupon->NgayKetThuc) }}" required>
+                    @error('NgayKetThuc')
+                        <div class="invalid-feedback">{{ $message }}</div>
+                    @enderror
                 </div>
                 <div class="col-md-6">
                     <label class="form-label">Trạng thái</label>
                     <x-admin.status-select
-                        name="status"
+                        name="TrangThai"
                         :options="\App\Enums\RecordStatus::options()"
-                        :selected="$coupon->status"
-                        class="form-select @error('status') is-invalid @enderror"
+                        :selected="$coupon->TrangThai"
+                        class="form-select @error('TrangThai') is-invalid @enderror"
                     />
                 </div>
             </div>

@@ -4,34 +4,30 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\CouponRequest;
-use App\Models\Coupon;
-use App\Models\Promotion;
-use App\Services\CouponService;
+use App\Models\KhuyenMai;
 use App\Services\PromotionService;
 use Illuminate\Http\Request;
 
 class CouponController extends Controller
 {
     public function __construct(
-        private CouponService $couponService,
         private PromotionService $promotionService,
     ) {}
 
     public function index(Request $request)
     {
-        $coupons = $this->couponService->getAll([
-            'promotion_id' => $request->input('promotion_id'),
+        $coupons = $this->promotionService->getAll([
             'status' => $request->input('status'),
         ]);
 
-        $promotions = Promotion::where('status', 'active')->orderBy('name')->get();
+        $promotions = KhuyenMai::where('TrangThai', 'Hoạt động')->orderBy('TenKhuyenMai')->get();
 
         return view('admin.coupons.index', compact('coupons', 'promotions'));
     }
 
     public function create()
     {
-        $promotions = Promotion::where('status', 'active')->orderBy('name')->get();
+        $promotions = KhuyenMai::where('TrangThai', 'Hoạt động')->orderBy('TenKhuyenMai')->get();
 
         return view('admin.coupons.create', compact('promotions'));
     }
@@ -39,7 +35,7 @@ class CouponController extends Controller
     public function store(CouponRequest $request)
     {
         try {
-            $this->couponService->create($request->validated());
+            $this->promotionService->create($request->validated());
 
             return redirect()->route('coupons.index')->with('success', 'Mã giảm giá đã được tạo.');
         } catch (\Exception $e) {
@@ -49,7 +45,7 @@ class CouponController extends Controller
 
     public function show(int $id)
     {
-        $coupon = $this->couponService->find($id);
+        $coupon = $this->promotionService->find($id);
 
         if (!$coupon) {
             abort(404);
@@ -60,8 +56,8 @@ class CouponController extends Controller
 
     public function edit(int $id)
     {
-        $coupon = $this->couponService->find($id);
-        $promotions = Promotion::where('status', 'active')->orderBy('name')->get();
+        $coupon = $this->promotionService->find($id);
+        $promotions = KhuyenMai::where('TrangThai', 'Hoạt động')->orderBy('TenKhuyenMai')->get();
 
         if (!$coupon) {
             abort(404);
@@ -72,14 +68,14 @@ class CouponController extends Controller
 
     public function update(CouponRequest $request, int $id)
     {
-        $coupon = $this->couponService->find($id);
+        $coupon = $this->promotionService->find($id);
 
         if (!$coupon) {
             abort(404);
         }
 
         try {
-            $this->couponService->update($coupon, $request->validated());
+            $this->promotionService->update($coupon, $request->validated());
 
             return redirect()->route('coupons.index')->with('success', 'Mã giảm giá đã được cập nhật.');
         } catch (\Exception $e) {
@@ -89,11 +85,11 @@ class CouponController extends Controller
 
     public function destroy(int $id)
     {
-        $coupon = $this->couponService->find($id);
+        $coupon = $this->promotionService->find($id);
 
         if ($coupon) {
             try {
-                $this->couponService->delete($coupon);
+                $this->promotionService->delete($coupon);
             } catch (\Exception $e) {
                 return redirect()->route('coupons.index')->with('error', \App\Support\FriendlyError::message($e));
             }

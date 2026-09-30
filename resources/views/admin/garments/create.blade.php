@@ -1,13 +1,13 @@
 @extends('layouts.app')
 
-@section('title', 'Thêm loại đồ Giặt - Sky Laundry')
-@section('page-title', 'Thêm loại đồ Giặt & Hiện trạng')
+@section('title', 'Thêm dịch vụ - Sky Laundry')
+@section('page-title', 'Thêm dịch vụ giặt ủi')
 
 @section('content')
 <div class="card">
     <div class="card-body">
         <div class="d-flex justify-content-between align-items-center mb-4">
-            <h5 class="mb-0">Thông tin loại đồ giặt</h5>
+            <h5 class="mb-0">Thông tin dịch vụ</h5>
             <a href="{{ route('garments.index') }}" class="btn btn-outline-secondary btn-sm">
                 <i class="bi bi-arrow-left me-1"></i>Quay lại
             </a>
@@ -17,47 +17,59 @@
             @csrf
             <div class="row g-4">
                 <div class="col-md-6">
-                    <label class="form-label fw-semibold">Tên loại đồ giặt / sản phẩm <span class="text-danger ms-1">*</span></label>
-                    <input type="text" class="form-control @error('name') is-invalid @enderror" name="name" value="{{ old('name') }}" placeholder="VD: Áo dài, Váy cưới, Áo khoác dạ..." required>
-                    @error('name')
+                    <label class="form-label fw-semibold">Tên dịch vụ <span class="text-danger ms-1">*</span></label>
+                    <input type="text" class="form-control @error('TenDichVu') is-invalid @enderror" name="TenDichVu" value="{{ old('TenDichVu') }}" placeholder="VD: Giặt thường, Giặt khô, ủi..." required>
+                    @error('TenDichVu')
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
                 </div>
                 <div class="col-md-6">
-                    <label class="form-label fw-semibold">Danh mục loại đồ</label>
-                    <select class="form-select @error('category') is-invalid @enderror" name="category">
+                    <label class="form-label fw-semibold">Danh mục dịch vụ</label>
+                    <select class="form-select @error('LoaiDichVuID') is-invalid @enderror" name="LoaiDichVuID">
                         <option value="">-- Chọn danh mục --</option>
                         @foreach($categories as $id => $name)
-                            <option value="{{ $id }}" @selected(old('category') == $id)>{{ $name }}</option>
+                            <option value="{{ $id }}" @selected(old('LoaiDichVuID') == $id)>{{ $name }}</option>
                         @endforeach
                     </select>
-                    @error('category')
+                    @error('LoaiDichVuID')
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
                 </div>
                 <div class="col-md-6">
-                    <label class="form-label fw-semibold">Đơn giá dịch vụ (VNĐ) <span class="text-danger ms-1">*</span></label>
-                    <input type="number" class="form-control @error('price') is-invalid @enderror" name="price" value="{{ old('price') }}" placeholder="50000" min="0" required>
-                    @error('price')
+                    <label class="form-label fw-semibold">Loại đồ giặt</label>
+                    <select class="form-select @error('LoaiDoGiatID') is-invalid @enderror" name="LoaiDoGiatID">
+                        <option value="">-- Chọn loại đồ --</option>
+                        @foreach($garmentTypes as $id => $name)
+                            <option value="{{ $id }}" @selected(old('LoaiDoGiatID') == $id)>{{ $name }}</option>
+                        @endforeach
+                    </select>
+                    @error('LoaiDoGiatID')
+                        <div class="invalid-feedback">{{ $message }}</div>
+                    @enderror
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold">Thời gian ước tính (phút) <span class="text-danger ms-1">*</span></label>
+                    <input type="number" class="form-control @error('ThoiGianDuKien') is-invalid @enderror" name="ThoiGianDuKien" value="{{ old('ThoiGianDuKien') }}" placeholder="60" min="1" required>
+                    @error('ThoiGianDuKien')
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
                 </div>
                 <div class="col-md-6">
                     <label class="form-label fw-semibold">Trạng thái</label>
                     <x-admin.status-select
-                        name="status"
+                        name="TrangThai"
                         :options="\App\Enums\RecordStatus::options()"
-                        selected="active"
-                        class="form-select @error('status') is-invalid @enderror"
+                        selected="Hoạt động"
+                        class="form-select @error('TrangThai') is-invalid @enderror"
                     />
-                    @error('status')
+                    @error('TrangThai')
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
                 </div>
                 <div class="col-12">
-                    <label class="form-label fw-semibold">Mô tả hiện trạng trước khi giặt (Ghi chú rách, ố, cũ, sờn...)</label>
-                    <textarea class="form-control @error('condition_note') is-invalid @enderror" name="condition_note" rows="4" placeholder="Nhập mô tả tình trạng sản phẩm trước khi tiếp nhận giặt...">{{ old('condition_note') }}</textarea>
-                    @error('condition_note')
+                    <label class="form-label fw-semibold">Mô tả dịch vụ</label>
+                    <textarea class="form-control @error('MoTa') is-invalid @enderror" name="MoTa" rows="4" placeholder="Nhập mô tả chi tiết về dịch vụ...">{{ old('MoTa') }}</textarea>
+                    @error('MoTa')
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
                 </div>

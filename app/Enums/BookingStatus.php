@@ -29,7 +29,7 @@ enum BookingStatus: string
     {
         return match ($this) {
             self::Pending => 'bg-warning-subtle text-warning-emphasis border border-warning',
-            self::Confirmed => 'bg-primary-subtle text-primary-emphasis border border-primary',
+            self::Confirmed => 'bg-success-subtle text-success-emphasis border border-success',
             self::Cancelled => 'bg-danger-subtle text-danger-emphasis border border-danger',
         };
     }

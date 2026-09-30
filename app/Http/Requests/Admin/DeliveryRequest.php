@@ -17,9 +17,9 @@ class DeliveryRequest extends FormRequest
         $id = $this->route('delivery') ?? $this->route('id') ?? null;
 
         return [
-            'customer_id' => ['required', 'exists:customers,id'],
-            'order_id' => ['required', 'exists:orders,id'],
-            'employee_id' => ['nullable', 'exists:users,id'],
+            'customer_id' => ['required', 'exists:KhachHang,KhachHangID'],
+            'order_id' => ['required', 'exists:DonHang,DonHangID'],
+            'employee_id' => ['nullable', 'exists:NhanVien,NhanVienID'],
             'method' => ['required', 'in:nhan_do,giao_do'],
             'address' => ['nullable', 'string', 'max:500'],
             'pickup_date' => ['required', 'date'],

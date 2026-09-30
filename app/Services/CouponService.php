@@ -2,55 +2,55 @@
 
 namespace App\Services;
 
-use App\Models\Coupon;
+use App\Models\KhuyenMai;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 
 class CouponService
 {
     public function getAll(array $filters = []): LengthAwarePaginator
     {
-        $query = Coupon::query();
+        $query = KhuyenMai::query();
 
         if (!empty($filters['promotion_id'])) {
-            $query->where('promotion_id', $filters['promotion_id']);
+            $query->where('KhuyenMaiID', $filters['promotion_id']);
         }
 
         if (!empty($filters['status'])) {
-            $query->where('status', $filters['status']);
+            $query->where('TrangThai', $filters['status']);
         }
 
-        return $query->with('promotion')->latest()->paginate(10);
+        return $query->latest()->paginate(10);
     }
 
-    public function find(int $id): ?Coupon
+    public function find(int $id): ?KhuyenMai
     {
-        return Coupon::withTrashed()->find($id);
+        return KhuyenMai::withTrashed()->find($id);
     }
 
-    public function findByCode(string $code): ?Coupon
+    public function findByCode(string $code): ?KhuyenMai
     {
-        return Coupon::where('code', $code)->where('status', 'active')->first();
+        return KhuyenMai::where('MaKhuyenMai', $code)->where('TrangThai', 'Hoạt động')->first();
     }
 
-    public function create(array $data): Coupon
+    public function create(array $data): KhuyenMai
     {
-        return Coupon::create($data);
+        return KhuyenMai::create($data);
     }
 
-    public function update(Coupon $coupon, array $data): Coupon
+    public function update(KhuyenMai $coupon, array $data): KhuyenMai
     {
         $coupon->update($data);
         return $coupon->fresh();
     }
 
-    public function delete(Coupon $coupon): bool
+    public function delete(KhuyenMai $coupon): bool
     {
         return $coupon->delete();
     }
 
-    public function restore(int $id): ?Coupon
+    public function restore(int $id): ?KhuyenMai
     {
-        $coupon = Coupon::onlyTrashed()->find($id);
+        $coupon = KhuyenMai::onlyTrashed()->find($id);
         if ($coupon) {
             $coupon->restore();
         }

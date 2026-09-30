@@ -5,12 +5,16 @@ namespace App\Http\Controllers\Admin;
 use App\Enums\RecordStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\PromotionRequest;
-use App\Models\Promotion;
 use App\Services\PromotionService;
 use Illuminate\Http\Request;
 
 class PromotionController extends Controller
 {
+    /**
+     * Mã điều kiện "chỉ đơn hàng đầu tiên" (Promotion::CONDITION_FIRST_ORDER_ONLY cũ).
+     */
+    private const CONDITION_FIRST_ORDER_ONLY = 'first_order_only';
+
     public function __construct(
         private PromotionService $promotionService,
     ) {}
@@ -98,8 +102,8 @@ class PromotionController extends Controller
     {
         $data = $request->validated();
 
-        $data['conditions'] = $request->boolean('conditions.' . Promotion::CONDITION_FIRST_ORDER_ONLY)
-            ? [Promotion::CONDITION_FIRST_ORDER_ONLY => true]
+        $data['conditions'] = $request->boolean('conditions.' . self::CONDITION_FIRST_ORDER_ONLY)
+            ? [self::CONDITION_FIRST_ORDER_ONLY => true]
             : [];
 
         return $data;

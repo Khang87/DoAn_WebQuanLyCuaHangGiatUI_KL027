@@ -14,7 +14,7 @@
             $garmentOptions = $garments ?? $garmentTypes ?? \App\Models\Garment::where('status', 'active')->orderBy('name')->get();
             $employeeOptions = $employees ?? $staffUsers ?? \App\Models\User::where('role', 'staff')->orderBy('name')->get();
             $priceOptions = $pricings ?? $priceLists ?? \App\Models\Pricing::where('status', 'active')->get();
-            $items = old('items', [['service_id' => '', 'garment_id' => '', 'quantity' => 1, 'weight' => 0, 'price' => 0]]);
+            $items = old('items', [['DichVuID' => '', 'LoaiDoGiatID' => '', 'SoLuong' => 1, 'KhoiLuong' => 0, 'DonGia' => 0]]);
             $pricesJson = $priceOptions->map(fn($p) => ['service_id' => $p->service_id, 'garment_id' => $p->garment_id, 'price' => $p->price, 'unit' => $p->unit])->values()->toJson();
             $customerPointsJson = $customers->mapWithKeys(fn($c) => [$c->id => (int) $c->points])->toJson();
 
@@ -40,30 +40,30 @@
             <div class="row g-4">
                 <div class="col-md-6">
                     <label class="form-label" for="code">Mã đơn hàng <span class="text-danger ms-1">*</span></label>
-                    <input type="text" class="form-control" id="code" name="code" value="{{ old('code') }}" placeholder="VD: DH001" required>
+                    <input type="text" class="form-control" id="code" name="MaDonHang" value="{{ old('MaDonHang') }}" placeholder="VD: DH001" required>
                 </div>
                 <div class="col-md-6">
                     <label class="form-label" for="customer_id">Khách hàng <span class="text-danger ms-1">*</span></label>
-                    <select class="form-select" id="customer_id" name="customer_id" required>
+                    <select class="form-select" id="customer_id" name="KhachHangID" required>
                         <option value="">-- Chọn khách hàng --</option>
                         @foreach($customers as $customer)
-                            <option value="{{ $customer->id }}" @selected(old('customer_id') == $customer->id)>{{ $customer->name }} ({{ $customer->code }})</option>
+                            <option value="{{ $customer->id }}" @selected(old('KhachHangID') == $customer->id)>{{ $customer->name }} ({{ $customer->code }})</option>
                         @endforeach
                     </select>
                 </div>
                 <div class="col-md-6">
                     <label class="form-label" for="employee_id">Nhân viên phụ trách</label>
-                    <select class="form-select" id="employee_id" name="employee_id">
+                    <select class="form-select" id="employee_id" name="NhanVienID">
                         <option value="">-- Chọn nhân viên --</option>
                         @foreach($employeeOptions as $employee)
-                            <option value="{{ $employee->id }}" @selected(old('employee_id') == $employee->id)>{{ $employee->name }}</option>
+                            <option value="{{ $employee->id }}" @selected(old('NhanVienID') == $employee->id)>{{ $employee->name }}</option>
                         @endforeach
                     </select>
                 </div>
                 <div class="col-md-6">
                     <label class="form-label" for="status">Trạng thái <span class="text-danger ms-1">*</span></label>
                     <x-admin.status-select
-                        name="status"
+                        name="TrangThai"
                         id="status"
                         :options="$statusFlow ?? \App\Enums\OrderStatus::options()"
                         selected="pending"
@@ -83,12 +83,12 @@
                                 @foreach($items as $index => $item)
                                     <tr>
                                         <td><select class="form-select js-icon-select item-service-category" name="items[{{ $index }}][service_category_id]"><option value="">-- Danh mục --</option>@foreach($serviceCategories as $cat)<option value="{{ $cat->id }}" data-icon="{{ $cat->icon }}" @selected(($item['service_category_id'] ?? '') == $cat->id)>{{ $cat->name }}</option>@endforeach</select><i class="icon-preview" hidden></i></td>
-                                        <td><select class="form-select item-service" name="items[{{ $index }}][service_id]" required><option value="">-- Chọn dịch vụ --</option>@foreach($services as $service)<option value="{{ $service->id }}" @selected(($item['service_id'] ?? '') == $service->id)>{{ $service->name }}</option>@endforeach</select></td>
+                                        <td><select class="form-select item-service" name="items[{{ $index }}][DichVuID]" required><option value="">-- Chọn dịch vụ --</option>@foreach($services as $service)<option value="{{ $service->id }}" @selected(($item['service_id'] ?? '') == $service->id)>{{ $service->name }}</option>@endforeach</select></td>
                                         <td><select class="form-select item-garment-category" name="items[{{ $index }}][garment_category_id]"><option value="">-- Danh mục --</option>@foreach($garmentCategories as $cat)<option value="{{ $cat->id }}" @selected(($item['garment_category_id'] ?? '') == $cat->id)>{{ $cat->name }}</option>@endforeach</select></td>
-                                        <td><select class="form-select item-garment" name="items[{{ $index }}][garment_id]" required><option value="">-- Chọn loại đồ --</option>@foreach($garmentOptions as $garment)<option value="{{ $garment->id }}" @selected(($item['garment_id'] ?? '') == $garment->id)>{{ $garment->name }}</option>@endforeach</select></td>
-                                        <td><input type="number" class="form-control item-quantity" name="items[{{ $index }}][quantity]" value="{{ $item['quantity'] ?? 1 }}" min="1" required></td>
-                                        <td><input type="number" step="0.01" class="form-control item-weight" name="items[{{ $index }}][weight]" value="{{ $item['weight'] ?? 0 }}" min="0.01" step="0.01"></td>
-                                        <td><input type="number" class="form-control item-price" name="items[{{ $index }}][price]" value="{{ $item['price'] ?? 0 }}" min="0" step="100" data-touched="1"></td>
+                                        <td><select class="form-select item-garment" name="items[{{ $index }}][LoaiDoGiatID]" required><option value="">-- Chọn loại đồ --</option>@foreach($garmentOptions as $garment)<option value="{{ $garment->id }}" @selected(($item['garment_id'] ?? '') == $garment->id)>{{ $garment->name }}</option>@endforeach</select></td>
+                                        <td><input type="number" class="form-control item-quantity" name="items[{{ $index }}][SoLuong]" value="{{ $item['quantity'] ?? 1 }}" min="1" required></td>
+                                        <td><input type="number" step="0.01" class="form-control item-weight" name="items[{{ $index }}][KhoiLuong]" value="{{ $item['weight'] ?? 0 }}" min="0.01" step="0.01"></td>
+                                        <td><input type="number" class="form-control item-price" name="items[{{ $index }}][DonGia]" value="{{ $item['price'] ?? 0 }}" min="0" step="100" data-touched="1"></td>
                                         <td><input type="number" class="form-control item-subtotal" value="{{ $item['subtotal'] ?? 0 }}" readonly></td>
                                         <td><button type="button" class="btn btn-sm btn-outline-danger remove-item" title="Xóa mặt hàng"><i class="bi bi-trash"></i></button></td>
                                     </tr>
@@ -107,7 +107,7 @@
                             <div class="row g-3 align-items-end">
                                 <div class="col-md-4">
                                     <label class="form-label" for="promotion_id">Mã giảm giá (Voucher)</label>
-                                    <select class="form-select" id="promotion_id" name="promotion_id">
+                                    <select class="form-select" id="promotion_id" name="KhuyenMaiID">
                                         <option value="">-- Không dùng voucher --</option>
                                         @foreach($promotions as $promotion)
                                             <option value="{{ $promotion->id }}"
@@ -116,7 +116,7 @@
                                                     data-value="{{ (float) $promotion->discount_value }}"
                                                     data-min="{{ (float) $promotion->min_order_amount }}"
                                                     data-max="{{ (float) ($promotion->max_discount ?? 0) }}"
-                                                    @selected(old('promotion_id') == $promotion->id)>
+                                                    @selected(old('KhuyenMaiID') == $promotion->id)>
                                                 {{ $promotion->name }} ({{ $promotion->code }})
                                             </option>
                                         @endforeach
@@ -127,7 +127,7 @@
                                 </div>
                                 <div class="col-md-4">
                                     <label class="form-label" for="points_used">Số điểm sử dụng</label>
-                                    <input type="number" class="form-control" id="points_used" name="points_used" value="{{ old('points_used', 0) }}" min="0">
+                                    <input type="number" class="form-control" id="points_used" name="DiemSuDung" value="{{ old('DiemSuDung', 0) }}" min="0">
                                     <div class="form-text" id="customerPointsText">1 điểm = 1,000 VNĐ</div>
                                 </div>
                             </div>
@@ -166,7 +166,7 @@
                         </div>
                     </div>
                 </div>
-                <div class="col-12"><label class="form-label" for="notes">Ghi chú</label><textarea class="form-control" id="notes" name="notes" rows="3">{{ old('notes') }}</textarea></div>
+                <div class="col-12"><label class="form-label" for="notes">Ghi chú</label><textarea class="form-control" id="notes" name="GhiChu" rows="3">{{ old('GhiChu') }}</textarea></div>
             </div>
             <div class="d-flex justify-content-end gap-2 mt-4"><button type="reset" class="btn btn-outline-secondary">Làm mới</button><button type="submit" class="btn btn-primary"><i class="bi bi-check-lg me-1"></i>Lưu đơn hàng</button></div>
         </form>
@@ -311,7 +311,7 @@
     document.getElementById('addItem').addEventListener('click', () => {
         const index = table.tBodies[0].rows.length;
         const row = table.tBodies[0].insertRow();
-        row.innerHTML = `<td><select class="form-select js-icon-select item-service-category" name="items[${index}][service_category_id]"><option value="">-- Danh mục --</option>${Object.entries(serviceCategories).map(([id,cat]) => `<option value="${id}" data-icon="${cat.icon || ''}">${cat.name}</option>`).join('')}</select><i class="icon-preview" hidden></i></td><td><select class="form-select item-service" name="items[${index}][service_id]" required><option value="">-- Chọn dịch vụ --</option>${Object.entries(services).map(([id,name]) => `<option value="${id}">${name}</option>`).join('')}</select></td><td><select class="form-select item-garment-category" name="items[${index}][garment_category_id]"><option value="">-- Danh mục --</option>${Object.entries(garmentCategories).map(([id,name]) => `<option value="${id}">${name}</option>`).join('')}</select></td><td><select class="form-select item-garment" name="items[${index}][garment_id]" required><option value="">-- Chọn loại đồ --</option>${Object.entries(garments).map(([id,name]) => `<option value="${id}">${name}</option>`).join('')}</select></td><td><input type="number" class="form-control item-quantity" name="items[${index}][quantity]" value="1" min="1" required></td><td><input type="number" step="0.01" class="form-control item-weight" name="items[${index}][weight]" value="0" min="0.01" step="0.01"></td><td><input type="number" class="form-control item-price" name="items[${index}][price]" value="0" min="0" step="100" data-touched="1"></td><td><input type="number" class="form-control item-subtotal" value="0" readonly></td><td><button type="button" class="btn btn-sm btn-outline-danger remove-item"><i class="bi bi-trash"></i></button></td>`;
+        row.innerHTML = `<td><select class="form-select js-icon-select item-service-category" name="items[${index}][service_category_id]"><option value="">-- Danh mục --</option>${Object.entries(serviceCategories).map(([id,cat]) => `<option value="${id}" data-icon="${cat.icon || ''}">${cat.name}</option>`).join('')}</select><i class="icon-preview" hidden></i></td><td><select class="form-select item-service" name="items[${index}][DichVuID]" required><option value="">-- Chọn dịch vụ --</option>${Object.entries(services).map(([id,name]) => `<option value="${id}">${name}</option>`).join('')}</select></td><td><select class="form-select item-garment-category" name="items[${index}][garment_category_id]"><option value="">-- Danh mục --</option>${Object.entries(garmentCategories).map(([id,name]) => `<option value="${id}">${name}</option>`).join('')}</select></td><td><select class="form-select item-garment" name="items[${index}][LoaiDoGiatID]" required><option value="">-- Chọn loại đồ --</option>${Object.entries(garments).map(([id,name]) => `<option value="${id}">${name}</option>`).join('')}</select></td><td><input type="number" class="form-control item-quantity" name="items[${index}][SoLuong]" value="1" min="1" required></td><td><input type="number" step="0.01" class="form-control item-weight" name="items[${index}][KhoiLuong]" value="0" min="0.01" step="0.01"></td><td><input type="number" class="form-control item-price" name="items[${index}][DonGia]" value="0" min="0" step="100" data-touched="1"></td><td><input type="number" class="form-control item-subtotal" value="0" readonly></td><td><button type="button" class="btn btn-sm btn-outline-danger remove-item"><i class="bi bi-trash"></i></button></td>`;
         updateTotals();
     });
 

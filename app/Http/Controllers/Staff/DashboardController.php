@@ -3,9 +3,10 @@
 namespace App\Http\Controllers\Staff;
 
 use App\Http\Controllers\Controller;
+use App\Enums\OrderStatus;
 use App\Models\Booking;
-use App\Models\Delivery;
-use App\Models\Order;
+use App\Models\DonHang;
+use App\Models\GiaoNhan;
 use App\Services\OrderService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -23,50 +24,60 @@ class DashboardController extends Controller
     public function index()
     {
         $user = auth()->user();
+        $nhanVienId = $user->nhanVien?->NhanVienID;
         $today = Carbon::today();
         $statusFlow = $this->orderService->getStatusFlow();
 
         // --- KPI: Đơn hàng chờ tiếp nhận / kiểm tra đồ ---
-        $waitingReceiveCount = Order::where('status', 'pending')->count();
+        $waitingReceiveCount = DonHang::where('TrangThai', OrderStatus::Pending->value)->count();
 
         // --- KPI: Đơn hàng đang giặt / đang xử lý ---
-        $washingCount = Order::whereIn('status', ['received', 'sorting', 'processing'])
-            ->count();
+        $washingCount = DonHang::whereIn('TrangThai', [
+            OrderStatus::Received->value,
+            OrderStatus::Washing->value,
+        ])->count();
 
         // --- KPI: Đơn hàng đã giặt xong (chờ giao/khách đến lấy) ---
-        $readyCount = Order::whereIn('status', ['washed', 'delivering'])->count();
+        $readyCount = DonHang::whereIn('TrangThai', [
+            OrderStatus::Washed->value,
+            OrderStatus::Delivering->value,
+        ])->count();
 
         // --- KPI: Lượng nhận đồ / giao đồ được phân công hôm nay ---
-        $todayDeliveries = Delivery::whereDate('pickup_date', $today)
-            ->where('employee_id', $user->id)
-            ->whereNotIn('status', ['cancelled'])
-            ->with(['customer', 'order'])
+        $todayDeliveries = GiaoNhan::whereDate('ThoiGianDuKien', $today)
+            ->when($nhanVienId, fn ($q) => $q->where('NhanVienID', $nhanVienId))
+            ->whereNotIn('TrangThai', [OrderStatus::Cancelled->value])
+            ->with(['donHang.khachHang', 'nhanVien'])
             ->get();
 
-        $pickupCount = $todayDeliveries->where('method', 'nhan_do')->count();
-        $deliveryCount = $todayDeliveries->where('method', 'giao_do')->count();
+        $pickupCount = $todayDeliveries->where('HinhThuc', 'nhan_do')->count();
+        $deliveryCount = $todayDeliveries->where('HinhThuc', 'giao_do')->count();
 
         // --- Danh sách: Đơn hàng cần xử lý ---
-        $processingOrders = Order::with(['customer', 'service', 'employee'])
-            ->whereIn('status', ['pending', 'received', 'sorting', 'processing'])
-            ->orderBy('created_at', 'asc')
+        $processingOrders = DonHang::with(['khachHang', 'nhanVien'])
+            ->whereIn('TrangThai', [
+                OrderStatus::Pending->value,
+                OrderStatus::Received->value,
+                OrderStatus::Washing->value,
+            ])
+            ->orderBy('NgayTao', 'asc')
             ->limit(50)
             ->get();
 
         // --- Lịch nhận đồ / giao đồ hôm nay ---
-        $todaySchedule = Delivery::whereDate('pickup_date', $today)
-            ->where('employee_id', $user->id)
-            ->whereNotIn('status', ['completed', 'cancelled'])
-            ->with(['customer', 'order'])
-            ->orderBy('pickup_time', 'asc')
+        $todaySchedule = GiaoNhan::whereDate('ThoiGianDuKien', $today)
+            ->when($nhanVienId, fn ($q) => $q->where('NhanVienID', $nhanVienId))
+            ->whereNotIn('TrangThai', [OrderStatus::Cancelled->value, OrderStatus::Delivered->value])
+            ->with(['donHang.khachHang', 'nhanVien'])
+            ->orderBy('ThoiGianDuKien', 'asc')
             ->get();
 
         // --- Lịch hẹn sắp tới (Bookings) ---
-        $upcomingBookings = Booking::whereDate('scheduled_date', '>=', $today)
-            ->whereIn('status', ['pending', 'confirmed'])
-            ->with(['customer', 'staff'])
-            ->orderBy('scheduled_date', 'asc')
-            ->orderBy('scheduled_time', 'asc')
+        $upcomingBookings = Booking::whereDate('NgayHen', '>=', $today)
+            ->whereIn('TrangThai', ['Chờ xác nhận', 'Đã xác nhận'])
+            ->with('khachHang')
+            ->orderBy('NgayHen', 'asc')
+            ->orderBy('GioHen', 'asc')
             ->limit(10)
             ->get();
 
@@ -86,11 +97,17 @@ class DashboardController extends Controller
     /**
      * Cập nhật trạng thái đơn hàng nhanh từ dashboard nhân viên (AJAX).
      */
-    public function updateOrderStatus(Request $request, Order $order)
+    public function updateOrderStatus(Request $request, DonHang $order)
     {
         $newStatus = $request->input('status');
 
-        $allowed = ['pending', 'received', 'sorting', 'processing', 'washed', 'delivering'];
+        $allowed = [
+            OrderStatus::Pending->value,
+            OrderStatus::Received->value,
+            OrderStatus::Washing->value,
+            OrderStatus::Washed->value,
+            OrderStatus::Delivering->value,
+        ];
 
         if (!in_array($newStatus, $allowed)) {
             return response()->json([
@@ -103,17 +120,17 @@ class DashboardController extends Controller
         if ($order->isLocked()) {
             return response()->json([
                 'success' => false,
-                'message' => 'Đơn hàng '.$order->code.' đã quyết toán nên không thể đổi trạng thái.',
+                'message' => 'Đơn hàng '.$order->MaDonHang.' đã quyết toán nên không thể đổi trạng thái.',
             ], 409);
         }
 
-        $order->update(['status' => $newStatus]);
+        $order->update(['TrangThai' => $newStatus]);
 
         return response()->json([
             'success' => true,
             'message' => 'Trạng thái đơn hàng đã được cập nhật.',
-            'status' => $order->status,
-            'status_label' => $this->orderService->getStatusFlow()[$order->status] ?? $order->status,
+            'status' => $order->TrangThai,
+            'status_label' => $this->orderService->getStatusFlow()[$order->TrangThai] ?? $order->TrangThai,
         ]);
     }
 }

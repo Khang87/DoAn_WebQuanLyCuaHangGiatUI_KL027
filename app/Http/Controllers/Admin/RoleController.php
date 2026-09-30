@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\Role;
 use App\Services\RoleService;
 use App\Support\PermissionRegistry;
 use Illuminate\Http\Request;
@@ -11,6 +10,23 @@ use Illuminate\Support\Facades\Gate;
 
 class RoleController extends Controller
 {
+    /**
+     * Quyền đặc biệt chỉ Chủ cửa hàng được giữ (Role::OWNER_ONLY_PERMISSIONS cũ).
+     *
+     * @var list<string>
+     */
+    private const OWNER_ONLY_PERMISSIONS = [
+        'orders.edit_completed',
+        'orders.delete_completed',
+        'invoices.edit_paid',
+        'invoices.delete_paid',
+        'orders.refund',
+        'payments.refund',
+        'payments.edit_paid',
+        'payments.delete_paid',
+        'roles.manage',
+    ];
+
     public function __construct(
         private RoleService $roleService,
     ) {}
@@ -26,7 +42,7 @@ class RoleController extends Controller
             'roles' => $this->roleService->getAllWithPermissions(),
             'matrix' => $this->roleService->matrix(),
             'groups' => array_keys(PermissionRegistry::groups()),
-            'ownerOnly' => Role::OWNER_ONLY_PERMISSIONS,
+            'ownerOnly' => self::OWNER_ONLY_PERMISSIONS,
         ]);
     }
 

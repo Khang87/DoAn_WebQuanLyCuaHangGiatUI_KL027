@@ -24,7 +24,6 @@
 
 <x-admin.detail.page-header
     title="Thông báo #{{ $notification->id }}"
-    :back="route('notifications.index')"
     :subtitle="$notification->created_at?->format('d/m/Y H:i')"
 >
     <x-slot:badge>
@@ -35,9 +34,6 @@
             {{ $notification->read_at ? 'Đã đọc' : 'Chưa đọc' }}
         </span>
     </x-slot:badge>
-
-    <x-slot:actions>
-    </x-slot:actions>
 </x-admin.detail.page-header>
 
 <div class="row g-4">

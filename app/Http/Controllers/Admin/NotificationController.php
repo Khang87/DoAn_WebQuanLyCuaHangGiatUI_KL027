@@ -3,9 +3,9 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\Notification;
-use App\Models\User;
-use App\Models\Order;
+use App\Models\DonHang;
+use App\Models\ThongBao;
+use App\Models\TaiKhoan;
 use App\Services\NotificationService;
 use Illuminate\Http\Request;
 
@@ -32,16 +32,16 @@ class NotificationController extends Controller
             'read' => $request->input('read'),
         ]);
 
-        $users = User::orderBy('name')->get();
-        $orders = Order::orderBy('created_at', 'desc')->get();
+        $users = TaiKhoan::where('TrangThai', 'Hoạt động')->orderBy('TenDangNhap')->get();
+        $orders = DonHang::orderBy('NgayTao', 'desc')->get();
 
         return view('admin.notifications.index', compact('notifications', 'users', 'orders'));
     }
 
     public function create()
     {
-        $users = User::orderBy('name')->get();
-        $orders = Order::orderBy('created_at', 'desc')->get();
+        $users = TaiKhoan::where('TrangThai', 'Hoạt động')->orderBy('TenDangNhap')->get();
+        $orders = DonHang::orderBy('NgayTao', 'desc')->get();
 
         return view('admin.notifications.create', compact('users', 'orders'));
     }
@@ -49,18 +49,18 @@ class NotificationController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'user_id' => 'required|exists:users,id',
-            'type' => 'nullable|string|max:100',
-            'message' => 'required|string|max:1000',
-            'order_id' => 'nullable|exists:orders,id',
-            'sent_at' => 'nullable|date',
+            'TaiKhoanID' => 'required|exists:TaiKhoan,TaiKhoanID',
+            'LoaiThongBao' => 'nullable|string|max:100',
+            'NoiDung' => 'required|string|max:1000',
+            'DonHangID' => 'nullable|exists:DonHang,DonHangID',
+            'ThoiGianGui' => 'nullable|date',
         ]);
 
         try {
-            if (empty($validated['sent_at'])) {
-                $validated['sent_at'] = now();
+            if (empty($validated['ThoiGianGui'])) {
+                $validated['ThoiGianGui'] = now();
             }
-            Notification::create($validated);
+            ThongBao::create($validated);
 
             return redirect()->route('notifications.index')->with('success', 'Thông báo đã được tạo thành công.');
         } catch (\Exception $e) {
@@ -77,8 +77,8 @@ class NotificationController extends Controller
         }
 
         // Tự động đánh dấu đã đọc khi người dùng mở chi tiết thông báo
-        if (! $notification->read_at) {
-            $this->notificationService->markAsRead($notification->id);
+        if (! $notification->DaDoc) {
+            $this->notificationService->markAsRead($notification->ThongBaoID);
             $notification = $this->notificationService->find($id);
         }
 
@@ -93,8 +93,8 @@ class NotificationController extends Controller
             abort(404);
         }
 
-        $users = User::orderBy('name')->get();
-        $orders = Order::orderBy('created_at', 'desc')->get();
+        $users = TaiKhoan::where('TrangThai', 'Hoạt động')->orderBy('TenDangNhap')->get();
+        $orders = DonHang::orderBy('NgayTao', 'desc')->get();
 
         return view('admin.notifications.edit', compact('notification', 'users', 'orders'));
     }
@@ -108,12 +108,12 @@ class NotificationController extends Controller
         }
 
         $validated = $request->validate([
-            'user_id' => 'required|exists:users,id',
-            'type' => 'nullable|string|max:100',
-            'message' => 'required|string|max:1000',
-            'order_id' => 'nullable|exists:orders,id',
-            'sent_at' => 'nullable|date',
-            'read_at' => 'nullable|date',
+            'TaiKhoanID' => 'required|exists:TaiKhoan,TaiKhoanID',
+            'LoaiThongBao' => 'nullable|string|max:100',
+            'NoiDung' => 'required|string|max:1000',
+            'DonHangID' => 'nullable|exists:DonHang,DonHangID',
+            'ThoiGianGui' => 'nullable|date',
+            'DaDoc' => 'nullable|boolean',
         ]);
 
         try {
@@ -155,7 +155,7 @@ class NotificationController extends Controller
 
     public function markAllAsRead(Request $request)
     {
-        $userId = $request->user()->id;
+        $userId = $request->user()->getKey();
         $count = $this->notificationService->markAllAsRead($userId);
 
         return back()->with('success', $count > 0

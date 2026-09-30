@@ -4,7 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\ReviewRequest;
-use App\Models\Review;
+use App\Models\DanhGia;
 use App\Services\ReviewService;
 use Illuminate\Http\Request;
 

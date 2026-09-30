@@ -5,75 +5,62 @@ namespace Database\Seeders;
 use App\Models\User;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 
+/**
+ * Nạp tài khoản mẫu vào bảng `TaiKhoan`.
+ *
+ * Vai trò không phải cột của `TaiKhoan` mà nằm ở bảng nối `TaiKhoan_VaiTro`,
+ * nên mỗi tài khoản được gán thêm qua `assignRole()`.
+ */
 class UserSeeder extends Seeder
 {
     use WithoutModelEvents;
 
+    /**
+     * Mật khẩu chung cho các tài khoản nhân viên/quản lý.
+     */
+    public const PASSWORD = '123456';
+
+    /**
+     * @var array<string, string> slug vai trò => tên hiển thị trong bảng `VaiTro`
+     */
+    private const ROLE_LABELS = [
+        'owner' => 'Chủ cửa hàng',
+        'manager' => 'Quản lý',
+        'staff' => 'Nhân viên',
+        'customer' => 'Khách hàng',
+    ];
+
+    /**
+     * Tài khoản quản trị: Chủ cửa hàng, quản lý và nhân viên.
+     *
+     * @var list<array{username: string, email: string, phone: string, role: string}>
+     */
+    public const STAFF_ACCOUNTS = [
+        ['username' => 'owner', 'email' => 'admin@gmail.com', 'phone' => '0900000001', 'role' => 'owner'],
+        ['username' => 'quanly', 'email' => 'manager@gmail.com', 'phone' => '0900000002', 'role' => 'manager'],
+        ['username' => 'nhanvien1', 'email' => 'staff@gmail.com', 'phone' => '0900000003', 'role' => 'staff'],
+    ];
+
     public function run(): void
     {
-        // Tài khoản mẫu dùng updateOrCreate theo email để chạy lại seeder
-        // không bị lỗi unique và không làm mất role_id đã gán.
-        // Cột `role` sẽ được User::booted() tự đồng bộ sang bảng `roles`.
+        foreach (self::STAFF_ACCOUNTS as $account) {
+            $this->createUser($account);
+        }
 
-        // Chủ cửa hàng (admin) - toàn quyền, kể cả đơn đã quyết toán
-        User::updateOrCreate(['email' => 'admin@gmail.com'], [
-            'name' => 'Chủ cửa hàng',
-            'password' => Hash::make('123456'),
-            'phone' => '0900000001',
-            'role' => 'admin',
-        ]);
-
-        // Quản lý (manager) - không được sửa/xóa đơn đã quyết toán
-        User::updateOrCreate(['email' => 'manager@gmail.com'], [
-            'name' => 'Quản lý cửa hàng',
-            'password' => Hash::make('123456'),
-            'phone' => '0900000002',
-            'role' => 'manager',
-        ]);
-
-        User::updateOrCreate(['email' => 'quanly@gmail.com'], [
-            'name' => 'Quản lý',
-            'password' => Hash::make('123456'),
-            'phone' => '0900000012',
-            'role' => 'manager',
-        ]);
-
-        // Nhân viên (staff)
-        User::updateOrCreate(['email' => 'staff@gmail.com'], [
-            'name' => 'Nhân viên',
-            'password' => Hash::make('123456'),
-            'phone' => '0900000003',
-            'role' => 'staff',
-        ]);
-
-        // 'employee' là bí danh lịch sử, được ánh xạ về vai trò staff
-        User::updateOrCreate(['email' => 'nhanvien@gmail.com'], [
-            'name' => 'Nhân viên',
-            'password' => Hash::make('123456'),
-            'phone' => '0900000004',
-            'role' => 'employee',
-        ]);
-
-        // Các nhân viên khác (giữ lại để test)
+        // Nhân viên còn lại, giữ lại để test có đủ dữ liệu.
         $staffNames = [
-            ['name' => 'Nhân viên 1', 'email' => 'staff1@giatui.com', 'phone' => '0900000005'],
-            ['name' => 'Nhân viên 2', 'email' => 'staff2@giatui.com', 'phone' => '0900000006'],
-            ['name' => 'Nhân viên 3', 'email' => 'staff3@giatui.com', 'phone' => '0900000007'],
+            ['username' => 'nhanvien2', 'email' => 'staff1@giatui.com', 'phone' => '0900000005'],
+            ['username' => 'nhanvien3', 'email' => 'staff2@giatui.com', 'phone' => '0900000006'],
+            ['username' => 'nhanvien4', 'email' => 'staff3@giatui.com', 'phone' => '0900000007'],
         ];
 
         foreach ($staffNames as $staff) {
-            User::factory()->create([
-                'name' => $staff['name'],
-                'email' => $staff['email'],
-                'password' => Hash::make('123456'),
-                'phone' => $staff['phone'],
-                'role' => 'staff',
-            ]);
+            $this->createUser($staff + ['role' => 'staff']);
         }
 
-        // Khách hàng
         $customerNames = [
             'Nguyễn Văn A', 'Trần Thị B', 'Phạm Thị C', 'Lê Văn D', 'Hoàng Thị E',
             'Đặng Minh F', 'Bùi Thu G', 'Vũ Văn H', 'Trần Lee I', 'Lương Văn J',
@@ -92,13 +79,64 @@ class UserSeeder extends Seeder
         ];
 
         foreach ($customerNames as $index => $name) {
-            User::factory()->create([
-                'name' => $name,
+            $this->createUser([
+                'username' => $name,
                 'email' => $emails[$index],
-                'password' => Hash::make('password'),
                 'phone' => $phones[$index],
                 'role' => 'customer',
             ]);
         }
+    }
+
+    /**
+     * Tạo (hoặc cập nhật) một tài khoản rồi gán vai trò tương ứng.
+     *
+     * Dùng `updateOrCreate` theo `Email` để chạy lại seeder không vi phạm ràng
+     * buộc duy nhất và không mất vai trò đã gán.
+     *
+     * @param  array{username: string, email: string, phone: string, role: string}  $account
+     */
+    private function createUser(array $account): void
+    {
+        $user = User::updateOrCreate(
+            ['Email' => $account['email']],
+            [
+                'TenDangNhap' => $account['username'],
+                'MatKhau' => Hash::make(self::PASSWORD),
+                'SoDienThoai' => $account['phone'],
+                'TrangThai' => 'Hoạt động',
+                'NgayTao' => now(),
+            ],
+        );
+
+        $this->assignRole($user, $account['role']);
+    }
+
+    /**
+     * Ghi vai trò vào bảng nối `TaiKhoan_VaiTro`.
+     */
+    private function assignRole(User $user, string $slug): void
+    {
+        $role = DB::table('VaiTro')
+            ->where('TenVaiTro', self::ROLE_LABELS[$slug] ?? $slug)
+            ->first();
+
+        if (! $role) {
+            return;
+        }
+
+        $exists = DB::table('TaiKhoan_VaiTro')
+            ->where('TaiKhoanID', $user->getKey())
+            ->where('VaiTroID', $role->VaiTroID)
+            ->exists();
+
+        if ($exists) {
+            return;
+        }
+
+        DB::table('TaiKhoan_VaiTro')->insert([
+            'TaiKhoanID' => $user->getKey(),
+            'VaiTroID' => $role->VaiTroID,
+        ]);
     }
 }

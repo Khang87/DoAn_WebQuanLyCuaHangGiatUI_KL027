@@ -43,35 +43,43 @@
                 @forelse($bookings as $booking)
                     <tr>
                         <td>{{ $loop->iteration }}</td>
-                        <td><strong>{{ $booking->code ?: 'BK' . str_pad($booking->id, 4, '0', STR_PAD_LEFT) }}</strong></td>
-                        <td><div class="fw-semibold">{{ $booking->customer?->name ?: '-' }}</div><small class="text-muted">{{ $booking->customer?->phone ?: 'Chưa có SĐT' }}</small></td>
-                        <td>{{ $booking->staff?->name ?: 'Chưa phân công' }}</td>
+                        <td><strong>{{ $booking->MaBooking ?: 'BK' . str_pad($booking->BookingID, 4, '0', STR_PAD_LEFT) }}</strong></td>
+                        <td><div class="fw-semibold">{{ $booking->khachHang?->HoTen ?: '-' }}</div><small class="text-muted">{{ $booking->khachHang?->SoDienThoai ?: 'Chưa có SĐT' }}</small></td>
+                        <td>{{ $booking->nhanVien?->HoTen ?: 'Chưa phân công' }}</td>
                         <td>
-                            @if($booking->method === 'nhan_do')
+                            @if($booking->HinhThucNhanDo === 'nhan_do')
                                 <i class="bi bi-box-arrow-in-down me-1"></i>Nhận đồ
                             @else
                                 <i class="bi bi-truck me-1"></i>Giao đồ
                             @endif
                         </td>
-                        <td>{{ $booking->scheduled_date?->format('d/m/Y') ?: '-' }} {{ $booking->scheduled_time?->format('H:i') ?: '' }}</td>
-                        <td><x-admin.status-badge :status="$booking->status" :enum="\App\Enums\BookingStatus::class" /></td>
+                        <td>{{ $booking->NgayHen?->format('d/m/Y') ?: '-' }} {{ $booking->GioHen?->format('H:i') ?: '' }}</td>
+                        <td><x-admin.status-badge :status="$booking->TrangThai" :enum="\App\Enums\BookingStatus::class" /></td>
                         <td><div class="d-flex gap-2">
-                            <a href="{{ route('bookings.show', $booking) }}" class="btn btn-order-action view" title="Xem"><i class="bi bi-eye"></i></a>
-                            <a href="{{ route('bookings.edit', $booking) }}" class="btn btn-order-action edit" title="Sửa"><i class="bi bi-pencil"></i></a>
-                            @if($booking->status === 'pending')
-                                <span class="btn btn-order-action" disabled title="Đơn hàng sẽ tự động được tạo khi chuyển sang trạng thái Đã xác nhận"><i class="bi bi-hourglass-split"></i></span>
-                            @elseif(! $booking->order && $booking->status === 'confirmed')
-                                <form action="{{ route('bookings.confirm', $booking) }}" method="POST" class="d-inline" id="confirmBookingForm_{{ $booking->id }}">
-                                    @csrf
-                                    <button type="submit" class="btn btn-order-action view" title="Tạo đơn hàng"><i class="bi bi-cart-plus"></i></button>
+                            @can('bookings.view')
+                                <a href="{{ route('bookings.show', $booking) }}" class="btn btn-order-action view" title="Xem"><i class="bi bi-eye"></i></a>
+                            @endcan
+                            @can('bookings.edit')
+                                <a href="{{ route('bookings.edit', $booking) }}" class="btn btn-order-action edit" title="Sửa"><i class="bi bi-pencil"></i></a>
+                                @if($booking->TrangThai === 'pending')
+                                    <span class="btn btn-order-action" disabled title="Đơn hàng sẽ tự động được tạo khi chuyển sang trạng thái Đã xác nhận"><i class="bi bi-hourglass-split"></i></span>
+                                @elseif(! $booking->donHangs->first() && $booking->TrangThai === 'confirmed')
+                                    @can('orders.view')
+                                        <form action="{{ route('bookings.confirm', $booking) }}" method="POST" class="d-inline" id="confirmBookingForm_{{ $booking->BookingID }}">
+                                            @csrf
+                                            <button type="submit" class="btn btn-order-action view" title="Tạo đơn hàng"><i class="bi bi-cart-plus"></i></button>
+                                        </form>
+                                    @endcan
+                                @elseif($booking->donHangs->first())
+                                    <a href="{{ route('orders.show', $booking->donHangs->first()) }}" class="btn btn-order-action view" title="Xem đơn hàng {{ $booking->donHangs->first()->MaDonHang }}"><i class="bi bi-box-arrow-up-right"></i></a>
+                                @endif
+                            @endcan
+                            @can('bookings.delete')
+                                <form action="{{ route('bookings.destroy', $booking) }}" method="POST" class="d-inline" id="deleteBookingForm_{{ $booking->BookingID }}">
+                                    @csrf @method('DELETE')
+                                    <button type="submit" class="btn btn-order-action delete" title="Xóa"><i class="bi bi-trash"></i></button>
                                 </form>
-                            @elseif($booking->order)
-                                <a href="{{ route('orders.show', $booking->order) }}" class="btn btn-order-action view" title="Xem đơn hàng {{ $booking->order->code }}"><i class="bi bi-box-arrow-up-right"></i></a>
-                            @endif
-                            <form action="{{ route('bookings.destroy', $booking) }}" method="POST" class="d-inline" id="deleteBookingForm_{{ $booking->id }}">
-                                @csrf @method('DELETE')
-                                <button type="submit" class="btn btn-order-action delete" title="Xóa"><i class="bi bi-trash"></i></button>
-                            </form>
+                            @endcan
                         </div></td>
                     </tr>
                 @empty

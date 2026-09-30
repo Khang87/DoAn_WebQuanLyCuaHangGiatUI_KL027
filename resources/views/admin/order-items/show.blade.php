@@ -10,7 +10,6 @@
 
 <x-admin.detail.page-header
     title="Chi tiết mặt hàng"
-    :back="route('order-items.index')"
     :subtitle="$item->item_name"
 >
     <x-slot:badge>
@@ -20,23 +19,6 @@
             </span>
         @endif
     </x-slot:badge>
-
-    <x-slot:actions>
-        @unless($isLocked)
-            <a href="{{ route('order-items.edit', $item) }}" class="btn btn-primary btn-sm">
-                <i class="bi bi-pencil me-1"></i>Chỉnh sửa
-            </a>
-
-            <x-admin.detail.confirm-form
-                :action="route('order-items.destroy', $item)"
-                title="Xóa chi tiết đơn hàng?"
-                text="Hành động này không thể hoàn tác."
-                label="Xóa"
-                icon="bi-trash"
-                variant="btn-outline-danger"
-            />
-        @endunless
-    </x-slot:actions>
 </x-admin.detail.page-header>
 
 @if($isLocked)
@@ -108,6 +90,36 @@
                 </div>
             @endif
         </x-admin.detail.panel>
+
+        <div class="card shadow-sm border-0 mt-3">
+            <div class="card-header bg-transparent border-bottom d-flex align-items-center gap-2 py-3">
+                <div class="bg-light rounded p-2 d-inline-flex align-items-center justify-content-center">
+                    <i class="fas fa-sliders-h text-secondary"></i>
+                </div>
+                <h5 class="card-title mb-0 fw-bold">Thao tác</h5>
+            </div>
+            <div class="card-body d-flex flex-column gap-2">
+                @unless($isLocked)
+                    <a href="{{ route('order-items.edit', $item) }}" class="btn btn-primary w-100 py-2">
+                        <i class="fas fa-pencil-alt me-1"></i> Chỉnh sửa
+                    </a>
+
+                    <x-admin.detail.confirm-form
+                        :action="route('order-items.destroy', $item)"
+                        title="Xóa chi tiết đơn hàng?"
+                        text="Hành động này không thể hoàn tác."
+                        label="Xóa chi tiết đơn hàng"
+                        icon="bi-trash"
+                        variant="btn-outline-danger"
+                        :block="true"
+                    />
+                @endunless
+
+                <a href="{{ route('order-items.index') }}" class="btn btn-outline-secondary w-100 py-2 text-dark">
+                    <i class="fas fa-arrow-left me-1"></i> Quay lại danh sách
+                </a>
+            </div>
+        </div>
     </div>
 </div>
 @endsection

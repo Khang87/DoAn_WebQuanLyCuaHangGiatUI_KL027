@@ -6,27 +6,11 @@
 @section('content')
 <x-admin.detail.page-header
     title="Hiện trạng #{{ $condition->id }}"
-    :back="route('garment-conditions.index')"
     :subtitle="$condition->garment?->name"
 >
     <x-slot:badge>
         <x-admin.status-badge :status="$condition->status ?: 'active'" :enum="\App\Enums\RecordStatus::class" />
     </x-slot:badge>
-
-    <x-slot:actions>
-        <a href="{{ route('garment-conditions.edit', $condition) }}" class="btn btn-primary btn-sm">
-            <i class="bi bi-pencil me-1"></i>Chỉnh sửa
-        </a>
-
-        <x-admin.detail.confirm-form
-            :action="route('garment-conditions.destroy', $condition)"
-            title="Xóa bản ghi hiện trạng?"
-            text="Hành động này không thể hoàn tác."
-            label="Xóa"
-            icon="bi-trash"
-            variant="btn-outline-danger"
-        />
-    </x-slot:actions>
 </x-admin.detail.page-header>
 
 <div class="row g-4">
@@ -77,6 +61,36 @@
                 <x-admin.detail.empty message="Bản ghi chưa gắn loại đồ giặt" icon="bi-tag" />
             @endif
         </x-admin.detail.panel>
+
+        <div class="card shadow-sm border-0 mt-3">
+            <div class="card-header bg-transparent border-bottom d-flex align-items-center gap-2 py-3">
+                <div class="bg-light rounded p-2 d-inline-flex align-items-center justify-content-center">
+                    <i class="fas fa-sliders-h text-secondary"></i>
+                </div>
+                <h5 class="card-title mb-0 fw-bold">Thao tác</h5>
+            </div>
+            <div class="card-body d-flex flex-column gap-2">
+                <a href="{{ route('garment-conditions.edit', $condition) }}" class="btn btn-primary w-100 py-2">
+                    <i class="fas fa-pencil-alt me-1"></i> Chỉnh sửa
+                </a>
+
+                <x-admin.detail.confirm-form
+                    :action="route('garment-conditions.destroy', $condition)"
+                    title="Xóa bản ghi hiện trạng?"
+                    text="Hành động này không thể hoàn tác."
+                    label="Xóa"
+                    icon="bi-trash"
+                    variant="btn-outline-danger"
+                    :block="true"
+                >
+                    Xóa bản ghi hiện trạng
+                </x-admin.detail.confirm-form>
+
+                <a href="{{ route('garment-conditions.index') }}" class="btn btn-outline-secondary w-100 py-2 text-dark">
+                    <i class="fas fa-arrow-left me-1"></i> Quay lại danh sách
+                </a>
+            </div>
+        </div>
     </div>
 </div>
 @endsection

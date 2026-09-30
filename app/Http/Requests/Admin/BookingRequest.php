@@ -17,8 +17,8 @@ class BookingRequest extends FormRequest
         $id = $this->route('booking') ?? $this->route('id') ?? null;
 
         return [
-            'customer_id' => ['required', 'exists:customers,id'],
-            'staff_id' => ['nullable', 'exists:users,id'],
+            'customer_id' => ['required', 'exists:KhachHang,KhachHangID'],
+            'staff_id' => ['nullable', 'exists:NhanVien,NhanVienID'],
             'method' => ['required', 'in:nhan_do,giao_do'],
             'scheduled_date' => ['required', 'date'],
             'scheduled_time' => ['required', 'date_format:H:i'],

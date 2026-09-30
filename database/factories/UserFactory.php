@@ -4,73 +4,131 @@ namespace Database\Factories;
 
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Str;
 
 /**
+ * Sinh dữ liệu cho bảng `TaiKhoan`.
+ *
+ * Vai trò không nằm trên bảng `TaiKhoan` mà nằm ở bảng nối `TaiKhoan_VaiTro`,
+ * nên các state vai trò gán quan hệ sau khi tạo bản ghi.
+ *
  * @extends Factory<User>
  */
 class UserFactory extends Factory
 {
     /**
-     * The current password being used by the factory.
+     * Mật khẩu dùng chung cho mọi bản ghi sinh ra.
      */
-    protected static ?string $password;
+    protected static ?string $password = null;
 
     /**
-     * Define the model's default state.
+     * Người tạo dùng email làm khoá nhận diện, cần khác nhau giữa các bản ghi.
+     *
+     * @var list<string>
+     */
+    private const ROLE_LABELS = [
+        'owner' => 'Chủ cửa hàng',
+        'manager' => 'Quản lý',
+        'staff' => 'Nhân viên',
+        'customer' => 'Khách hàng',
+    ];
+
+    /**
+     * Cột của bảng `TaiKhoan`.
      *
      * @return array<string, mixed>
      */
     public function definition(): array
     {
         return [
-            'name' => fake()->name(),
-            'email' => fake()->unique()->safeEmail(),
-            'email_verified_at' => now(),
-            'password' => static::$password ??= Hash::make('password'),
-            'remember_token' => Str::random(10),
-            'role' => fake()->randomElement(['admin', 'staff', 'customer']),
+            'TenDangNhap' => fake()->unique()->userName(),
+            'Email' => fake()->unique()->safeEmail(),
+            'MatKhau' => static::$password ??= Hash::make('password'),
+            'SoDienThoai' => fake()->unique()->numerify('09########'),
+            'TrangThai' => 'Hoạt động',
+            'NgayTao' => now(),
         ];
     }
 
     /**
-     * Indicate that the model's email address should be unverified.
+     * Gán một vai trò cho tài khoản vừa tạo.
+     *
+     * Bảng `TaiKhoan` không có cột `role`, nên phải ghi vào `TaiKhoan_VaiTro`.
      */
-    public function unverified(): static
+    private function attachRole(string $slug): static
     {
-        return $this->state(fn (array $attributes) => [
-            'email_verified_at' => null,
-        ]);
+        return $this->afterCreating(function (User $user) use ($slug) {
+            $role = DB::table('VaiTro')
+                ->where('TenVaiTro', self::ROLE_LABELS[$slug] ?? $slug)
+                ->first();
+
+            if (! $role) {
+                return;
+            }
+
+            $exists = DB::table('TaiKhoan_VaiTro')
+                ->where('TaiKhoanID', $user->getKey())
+                ->where('VaiTroID', $role->VaiTroID)
+                ->exists();
+
+            if ($exists) {
+                return;
+            }
+
+            DB::table('TaiKhoan_VaiTro')->insert([
+                'TaiKhoanID' => $user->getKey(),
+                'VaiTroID' => $role->VaiTroID,
+            ]);
+        });
     }
 
     /**
-     * Indicate the user is an admin.
+     * Tài khoản Chủ cửa hàng (toàn quyền).
+     */
+    public function owner(): static
+    {
+        return $this->attachRole('owner');
+    }
+
+    /**
+     * Tên cũ của `owner()`, giữ lại cho các test cũ.
      */
     public function admin(): static
     {
-        return $this->state(fn (array $attributes) => [
-            'role' => 'admin',
-        ]);
+        return $this->owner();
     }
 
-    /**
-     * Indicate the user is staff.
-     */
+    public function manager(): static
+    {
+        return $this->attachRole('manager');
+    }
+
     public function staff(): static
     {
-        return $this->state(fn (array $attributes) => [
-            'role' => 'staff',
-        ]);
+        return $this->attachRole('staff');
     }
 
     /**
-     * Indicate the user is customer.
+     * Tên cũ của `staff()`, giữ lại cho các test cũ.
      */
+    public function employee(): static
+    {
+        return $this->staff();
+    }
+
     public function customer(): static
     {
+        return $this->attachRole('customer');
+    }
+
+    /**
+     * Tài khoản đã bị khoá.
+     */
+    public function locked(): static
+    {
         return $this->state(fn (array $attributes) => [
-            'role' => 'customer',
+            'TrangThai' => 'Đã khóa',
         ]);
     }
 }

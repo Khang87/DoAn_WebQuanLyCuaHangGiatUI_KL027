@@ -2,7 +2,7 @@
 
 namespace Tests;
 
-use App\Models\Role;
+use App\Models\VaiTro;
 use Database\Seeders\RoleAndPermissionSeeder;
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
 use Illuminate\Support\Facades\Schema;
@@ -22,11 +22,11 @@ abstract class TestCase extends BaseTestCase
      */
     private function seedRbacIfNeeded(): void
     {
-        if (! Schema::hasTable('roles')) {
+        if (! Schema::hasTable('VaiTro')) {
             return;
         }
 
-        if (Role::query()->exists()) {
+        if (VaiTro::query()->exists()) {
             return;
         }
 

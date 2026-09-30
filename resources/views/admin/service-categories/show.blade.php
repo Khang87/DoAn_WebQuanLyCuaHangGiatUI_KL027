@@ -6,7 +6,6 @@
 @section('content')
 <x-admin.detail.page-header
     title="Danh mục {{ $category->name }}"
-    :back="route('service-categories.index')"
     :subtitle="$category->slug"
 >
     <x-slot:badge>
@@ -17,12 +16,6 @@
             </span>
         @endif
     </x-slot:badge>
-
-    <x-slot:actions>
-        <a href="{{ route('service-categories.edit', $category->id) }}" class="btn btn-primary btn-sm">
-            <i class="bi bi-pencil me-1"></i>Chỉnh sửa
-        </a>
-    </x-slot:actions>
 </x-admin.detail.page-header>
 
 @if($category->deleted_at)
@@ -102,19 +95,27 @@
 
     {{-- ============ CỘT PHỤ (4/12) ============ --}}
     <div class="col-lg-4">
-        <x-admin.detail.panel title="Thao tác" icon="bi-sliders" :iconClass="'bg-secondary-subtle text-secondary'">
-            <div class="d-grid gap-2">
-                <a href="{{ route('service-categories.edit', $category->id) }}" class="btn btn-primary btn-sm">
-                    <i class="bi bi-pencil me-1"></i>Chỉnh sửa
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-transparent border-bottom d-flex align-items-center gap-2 py-3">
+                <div class="bg-light rounded p-2 d-inline-flex align-items-center justify-content-center">
+                    <i class="fas fa-sliders-h text-secondary"></i>
+                </div>
+                <h5 class="card-title mb-0 fw-bold">Thao tác</h5>
+            </div>
+            <div class="card-body d-flex flex-column gap-2">
+                <a href="{{ route('service-categories.edit', $category->id) }}" class="btn btn-primary w-100 py-2">
+                    <i class="fas fa-pencil-alt me-1"></i> Chỉnh sửa
                 </a>
-                <a href="{{ route('services.create') }}" class="btn btn-outline-primary btn-sm">
-                    <i class="bi bi-plus-lg me-1"></i>Thêm dịch vụ
+
+                <a href="{{ route('services.create') }}" class="btn btn-outline-primary w-100 py-2">
+                    <i class="fas fa-plus me-1"></i> Thêm dịch vụ
                 </a>
-                <a href="{{ route('service-categories.index') }}" class="btn btn-outline-secondary btn-sm">
-                    <i class="bi bi-arrow-left me-1"></i>Quay lại danh sách
+
+                <a href="{{ route('service-categories.index') }}" class="btn btn-outline-secondary w-100 py-2 text-dark">
+                    <i class="fas fa-arrow-left me-1"></i> Quay lại danh sách
                 </a>
             </div>
-        </x-admin.detail.panel>
+        </div>
     </div>
 </div>
 @endsection

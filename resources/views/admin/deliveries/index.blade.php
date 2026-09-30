@@ -55,32 +55,38 @@
                     @forelse($deliveries as $delivery)
                     <tr>
                         <td>{{ $loop->iteration }}</td>
-                        <td><strong>{{ $delivery->code ?: ('GH' . str_pad($delivery->id, 3, '0', STR_PAD_LEFT)) }}</strong></td>
-                        <td><span class="text-dark">{{ $delivery->order?->code ?: '—' }}</span></td>
-                        <td>{{ $delivery->customer?->name ?: $delivery->order?->customer?->name ?: '—' }}</td>
+                        <td><strong>{{ $delivery->MaGiaoNhan ?: ('GH' . str_pad($delivery->GiaoNhanID, 3, '0', STR_PAD_LEFT)) }}</strong></td>
+                        <td><span class="text-dark">{{ $delivery->donHang?->MaDonHang ?: '—' }}</span></td>
+                        <td>{{ $delivery->donHang?->khachHang?->HoTen ?: $delivery->nhanVien?->HoTen ?: '—' }}</td>
                         <td>
-                            @if($delivery->method === 'nhan_do')
+                            @if($delivery->HinhThuc === 'nhan_do')
                                 <i class="bi bi-box-arrow-in-down me-1"></i>Nhận đồ
                             @else
                                 <i class="bi bi-truck me-1"></i>Giao đồ
                             @endif
                         </td>
-                        <td>{{ $delivery->employee?->name ?: $delivery->employee_name ?: 'Chưa phân công' }}</td>
+                        <td>{{ $delivery->nhanVien?->HoTen ?: 'Chưa phân công' }}</td>
                         <td>
-                            {{ $delivery->pickup_date?->format('d/m/Y') ?: '—' }}
-                            <br><small class="text-muted">{{ $delivery->pickup_time?->format('H:i') ?: '—' }}</small>
+                            {{ $delivery->ThoiGianDuKien?->format('d/m/Y') ?: '—' }}
+                            <br><small class="text-muted">{{ $delivery->ThoiGianDuKien?->format('H:i') ?: '—' }}</small>
                         </td>
                         <td>
-                            <x-admin.status-badge :status="$delivery->status" :enum="\App\Enums\DeliveryStatus::class" />
+                            <x-admin.status-badge :status="$delivery->TrangThai" :enum="\App\Enums\DeliveryStatus::class" />
                         </td>
                         <td class="text-center">
                             <div class="d-flex gap-2 justify-content-center">
-                                <a href="{{ route('deliveries.show', $delivery) }}" class="btn btn-order-action view" title="Xem"><i class="bi bi-eye"></i></a>
-                                <a href="{{ route('deliveries.edit', $delivery) }}" class="btn btn-order-action edit" title="Sửa"><i class="bi bi-pencil"></i></a>
-                                <form action="{{ route('deliveries.destroy', $delivery) }}" method="POST" class="d-inline" id="deleteDeliveryForm_{{ $delivery->id }}">
-                                    @csrf @method('DELETE')
-                                    <button type="submit" class="btn btn-order-action delete" title="Xóa"><i class="bi bi-trash"></i></button>
-                                </form>
+                                @can('deliveries.view')
+                                    <a href="{{ route('deliveries.show', $delivery) }}" class="btn btn-order-action view" title="Xem"><i class="bi bi-eye"></i></a>
+                                @endcan
+                                @can('deliveries.edit')
+                                    <a href="{{ route('deliveries.edit', $delivery) }}" class="btn btn-order-action edit" title="Sửa"><i class="bi bi-pencil"></i></a>
+                                @endcan
+                                @can('deliveries.delete')
+                                    <form action="{{ route('deliveries.destroy', $delivery) }}" method="POST" class="d-inline" id="deleteDeliveryForm_{{ $delivery->GiaoNhanID }}">
+                                        @csrf @method('DELETE')
+                                        <button type="submit" class="btn btn-order-action delete" title="Xóa"><i class="bi bi-trash"></i></button>
+                                    </form>
+                                @endcan
                             </div>
                         </td>
                     </tr>
@@ -113,7 +119,7 @@
             @if ($deliveries->onLastPage())
                 <li class="page-item disabled"><span class="page-link"><i class="bi bi-chevron-right"></i></span></li>
             @else
-                <li class="page-item"><a class="page-link" href="{{ $deliveries->appends(request()->query())->url($deliveries->currentPage() + 1) }}"><i class="bi bi-chevron-right"></i></a></li>
+                <li class="page-item"><a class="page-link" href="{{ $deliveries->appends(request()->query())->url($deliveries->currentPage() + 1) }}">{{ $page }}</a></li>
             @endif
         </ul>
     </div>

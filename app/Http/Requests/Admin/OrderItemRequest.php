@@ -14,51 +14,49 @@ class OrderItemRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'order_id' => ['required', 'exists:orders,id'],
-            'service_category_id' => ['nullable', 'exists:service_categories,id'],
-            'service_id' => ['required', 'exists:services,id'],
-            'garment_category_id' => ['nullable', 'exists:garment_categories,id'],
-            'garment_id' => ['required', 'exists:garments,id'],
-            'item_name' => ['required', 'string', 'max:255'],
-            'item_type' => ['required', 'in:garment,service'],
-            'price' => ['required', 'numeric', 'min:0'],
-            'quantity' => ['required', 'integer', 'min:1'],
-            'weight' => ['nullable', 'regex:/^\d+(\.\d+)?$/', 'gt:0'],
-            'notes' => ['nullable', 'string', 'max:1000'],
+            'DonHangID' => ['required', 'integer', 'exists:DonHang,DonHangID'],
+            'DichVuID' => ['required', 'integer', 'exists:DichVu,DichVuID'],
+            'LoaiDoGiatID' => ['required', 'integer', 'exists:LoaiDoGiat,LoaiDoGiatID'],
+            'DonViTinhID' => ['required', 'integer', 'exists:DonViTinh,DonViTinhID'],
+            'DonGia' => ['required', 'numeric', 'min:0'],
+            'SoLuong' => ['required', 'numeric', 'min:1'],
+            'KhoiLuong' => ['nullable', 'regex:/^\d+(\.\d+)?$/', 'gt:0'],
+            'GhiChu' => ['nullable', 'string', 'max:500'],
         ];
     }
 
     public function messages(): array
     {
         return [
-            'service_id.required' => 'Dịch vụ là bắt buộc.',
-            'service_id.exists' => 'Dịch vụ không tồn tại.',
-            'garment_id.required' => 'Loại đồ giặt là bắt buộc.',
-            'garment_id.exists' => 'Loại đồ giặt không tồn tại.',
-            'item_name.required' => 'Tên mặt hàng là bắt buộc.',
-            'item_name.max' => 'Tên mặt hàng không quá 255 ký tự.',
-            'item_type.required' => 'Loại mặt hàng là bắt buộc.',
-            'item_type.in' => 'Loại mặt hàng không hợp lệ.',
-            'price.required' => 'Đơn giá là bắt buộc.',
-            'price.numeric' => 'Đơn giá phải là số.',
-            'price.min' => 'Đơn giá không được nhỏ hơn 0.',
-            'quantity.required' => 'Số lượng là bắt buộc.',
-            'quantity.integer' => 'Số lượng phải là số nguyên.',
-            'quantity.min' => 'Số lượng phải lớn hơn hoặc bằng 1.',
-            'weight.regex' => 'Khối lượng chỉ được nhập số dương và số thập phân (VD: 0.5, 1.2).',
-            'weight.gt' => 'Khối lượng phải lớn hơn 0.',
-            'notes.max' => 'Ghi chú không quá 1000 ký tự.',
+            'DonHangID.required' => 'Đơn hàng là bắt buộc.',
+            'DonHangID.exists' => 'Đơn hàng không tồn tại.',
+            'DichVuID.required' => 'Dịch vụ là bắt buộc.',
+            'DichVuID.exists' => 'Dịch vụ không tồn tại.',
+            'LoaiDoGiatID.required' => 'Loại đồ giặt là bắt buộc.',
+            'LoaiDoGiatID.exists' => 'Loại đồ giặt không tồn tại.',
+            'DonViTinhID.required' => 'Đơn vị tính là bắt buộc.',
+            'DonViTinhID.exists' => 'Đơn vị tính không tồn tại.',
+            'DonGia.required' => 'Đơn giá là bắt buộc.',
+            'DonGia.numeric' => 'Đơn giá phải là số.',
+            'DonGia.min' => 'Đơn giá không được nhỏ hơn 0.',
+            'SoLuong.required' => 'Số lượng là bắt buộc.',
+            'SoLuong.numeric' => 'Số lượng phải là số.',
+            'SoLuong.min' => 'Số lượng phải lớn hơn hoặc bằng 1.',
+            'KhoiLuong.regex' => 'Khối lượng chỉ được nhập số dương và số thập phân (VD: 0.5, 1.2).',
+            'KhoiLuong.gt' => 'Khối lượng phải lớn hơn 0.',
+            'GhiChu.max' => 'Ghi chú không quá 500 ký tự.',
         ];
     }
 
     /**
-     * Chuẩn bị dữ liệu trước khi validate: đảm bảo weight là số nếu rỗng.
+     * Chuẩn bị dữ liệu trước khi validate: đảm bảo KhoiLuong là số nếu rỗng.
      */
     protected function prepareForValidation(): void
     {
-        $weight = $this->input('weight');
+        $weight = $this->input('KhoiLuong');
+
         if ($weight === '' || $weight === null) {
-            $this->merge(['weight' => 0]);
+            $this->merge(['KhoiLuong' => 0]);
         }
     }
 }
