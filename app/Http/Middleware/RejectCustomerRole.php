@@ -12,7 +12,11 @@ class RejectCustomerRole
     {
         $user = $request->user();
 
-        if ($user && $user->role === 'customer') {
+        if ($user && ! $user->isActive()) {
+            abort(403, 'Tài khoản không hoạt động.');
+        }
+
+        if ($user && $user->isCustomer()) {
             abort(403, 'Khách hàng chỉ truy cập ứng dụng di động.');
         }
 

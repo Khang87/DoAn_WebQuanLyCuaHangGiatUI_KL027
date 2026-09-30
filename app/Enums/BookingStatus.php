@@ -3,24 +3,33 @@
 namespace App\Enums;
 
 /**
- * Trạng thái lịch hẹn nhận/giao đồ (3 trạng thái chuẩn).
+ * Trạng thái lịch hẹn nhận/giao đồ.
  *
- * Quy trình:
- *   pending   -> Chờ xác nhận
- *   confirmed -> Đã xác nhận (tự động tạo Order status=pending)
- *   cancelled -> Đã hủy
+ * Giá trị lưu trong database (bảng `Booking`, cột `TrangThai`) là tiếng Việt
+ * không dấu, khớp với ràng buộc CHECK `booking_trangthai_check`:
+ *
+ *   ChoTiepNhan -> DaXacNhan -> HoanThanh
+ *   DaHuy
+ *
+ * Quy trình nghiệp vụ:
+ *   ChoTiepNhan -> Chờ xác nhận
+ *   DaXacNhan   -> Đã xác nhận (tự động tạo DonHang ở trạng thái Chờ tiếp nhận)
+ *   HoanThanh   -> Hoàn thành
+ *   DaHuy       -> Đã hủy
  */
 enum BookingStatus: string
 {
-    case Pending = 'pending';
-    case Confirmed = 'confirmed';
-    case Cancelled = 'cancelled';
+    case Pending = 'ChoTiepNhan';
+    case Confirmed = 'DaXacNhan';
+    case Completed = 'HoanThanh';
+    case Cancelled = 'DaHuy';
 
     public function label(): string
     {
         return match ($this) {
             self::Pending => 'Chờ xác nhận',
             self::Confirmed => 'Đã xác nhận',
+            self::Completed => 'Hoàn thành',
             self::Cancelled => 'Đã hủy',
         };
     }
@@ -30,6 +39,7 @@ enum BookingStatus: string
         return match ($this) {
             self::Pending => 'bg-warning-subtle text-warning-emphasis border border-warning',
             self::Confirmed => 'bg-success-subtle text-success-emphasis border border-success',
+            self::Completed => 'bg-primary-subtle text-primary-emphasis border border-primary',
             self::Cancelled => 'bg-danger-subtle text-danger-emphasis border border-danger',
         };
     }
@@ -39,6 +49,7 @@ enum BookingStatus: string
         return match ($this) {
             self::Pending => 'clock',
             self::Confirmed => 'check-circle',
+            self::Completed => 'check2-all',
             self::Cancelled => 'x-circle',
         };
     }
@@ -77,10 +88,13 @@ enum BookingStatus: string
 
         $normalized = mb_strtolower(trim((string) $value));
 
-        // Map legacy values
+        // Map giá trị cũ (trước khi đổi sang tiếng Việt không dấu)
         return match ($normalized) {
-            'arrived', 'completed' => self::Confirmed,
-            default => self::tryFrom($normalized) ?? $default,
+            'pending', 'chờ xác nhận' => self::Pending,
+            'confirmed', 'arrived', 'đã xác nhận' => self::Confirmed,
+            'completed', 'hoàn thành' => self::Completed,
+            'cancelled', 'đã hủy' => self::Cancelled,
+            default => self::tryFrom((string) $value) ?? $default,
         };
     }
 

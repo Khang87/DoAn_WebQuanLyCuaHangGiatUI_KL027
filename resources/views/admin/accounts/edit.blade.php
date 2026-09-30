@@ -13,7 +13,7 @@
             </a>
         </div>
 
-        <form action="{{ route('accounts.update', $account->id) }}" method="POST">
+        <form action="{{ route('accounts.update', $account->getKey()) }}" method="POST">
             @csrf @method('PUT')
             <div class="row g-4">
                 <div class="col-md-6">
@@ -44,7 +44,7 @@
                     />
                 </div>
 
-                @if(auth()->id() === $account->id)
+                @if(auth()->id() === $account->getKey())
                 <div class="col-md-6">
                     <label class="form-label">Mật khẩu mới</label>
                     <input type="password" class="form-control @error('password') is-invalid @endif" name="password" placeholder="Nhập mật khẩu mới (bỏ trống nếu không đổi)">

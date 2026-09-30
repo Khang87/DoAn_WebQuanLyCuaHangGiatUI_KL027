@@ -6,9 +6,11 @@
 @section('content')
 <!-- Page Actions: nút "Thêm" luôn nằm góc trên bên trái -->
 <div class="page-toolbar">
-    <a href="{{ route('customers.create') }}" class="btn btn-create">
-        <i class="bi bi-plus-lg"></i>Thêm khách hàng
-    </a>
+    @can('customers.create')
+        <a href="{{ route('customers.create') }}" class="btn btn-create">
+            <i class="bi bi-plus-lg"></i>Thêm khách hàng
+        </a>
+    @endcan
     <p class="text-muted page-toolbar__desc">Danh sách khách hàng đã gửi đồ giặt, kèm thông tin liên hệ và lịch sử sử dụng.</p>
 </div>
 <form method="GET" action="{{ url()->current() }}" class="row g-3 align-items-center mb-4">
@@ -39,7 +41,7 @@
                 <thead>
                     <tr>
                         <th class="fw-bold text-dark">STT</th>
-                        <th class="fw-bold text-dark">Mã khách hàng</th>
+                        <th class="fw-bold text-dark">ID khách hàng</th>
                         <th class="fw-bold text-dark">Khách hàng</th>
                         <th class="fw-bold text-dark">Email</th>
                         <th class="fw-bold text-dark">Số điện thoại</th>
@@ -53,26 +55,21 @@
                     @forelse($customers as $customer)
                     <tr>
                         <td class="text-dark">{{ $loop->iteration }}</td>
-                        <td class="text-dark">{{ $customer->code }}</td>
-                            <td>
-                            <div class="d-flex align-items-center">
-                                <img src="{{ $customer->avatar_url }}" alt="Avatar" class="rounded-circle me-2 avatar-cover" style="width: 40px; height: 40px;">
-                                <div>
-                                    <div class="fw-semibold text-dark">{{ $customer->name }}</div>
-                                    <small class="text-muted">{{ $customer->phone ?: 'Chưa có số điện thoại' }}</small>
-                                </div>
-                            </div>
+                        <td class="text-dark">{{ $customer->KhachHangID }}</td>
+                        <td>
+                            <div class="fw-semibold text-dark">{{ $customer->HoTen }}</div>
+                            <small class="text-muted">{{ $customer->SoDienThoai ?: 'Chưa có số điện thoại' }}</small>
                         </td>
-                        <td class="text-dark">{{ $customer->email ?: '-' }}</td>
-                        <td class="text-dark">{{ $customer->phone ?: '-' }}</td>
-                        <td class="text-dark">{{ $customer->address ?: '-' }}</td>
-                        <td class="text-dark">{{ number_format($customer->points) }} điểm</td>
-                        <td class="text-dark">{{ $customer->created_at?->format('d/m/Y') }}</td>
+                        <td class="text-dark">{{ $customer->Email ?: '-' }}</td>
+                        <td class="text-dark">{{ $customer->SoDienThoai ?: '-' }}</td>
+                        <td class="text-dark">{{ $customer->DiaChi ?: '-' }}</td>
+                        <td class="text-dark">{{ number_format((int) ($customer->diemTichLuy?->DiemHienTai ?? 0)) }} điểm</td>
+                        <td class="text-dark">{{ $customer->NgayTao?->format('d/m/Y') ?: '-' }}</td>
                         <td>
                             <div class="d-flex gap-2">
-                                <a href="{{ route('customers.show', $customer) }}" class="btn btn-outline-secondary btn-sm" title="Xem"><i class="bi bi-eye"></i></a>
-                                <a href="{{ route('customers.edit', $customer) }}" class="btn btn-outline-secondary btn-sm" title="Sửa"><i class="bi bi-pencil"></i></a>
-                                <form action="{{ route('customers.destroy', $customer) }}" method="POST" class="d-inline" id="deleteCustomerForm_{{ $customer->id }}">
+                                <a href="{{ route('customers.show', $customer->KhachHangID) }}" class="btn btn-outline-secondary btn-sm" title="Xem"><i class="bi bi-eye"></i></a>
+                                <a href="{{ route('customers.edit', $customer->KhachHangID) }}" class="btn btn-outline-secondary btn-sm" title="Sửa"><i class="bi bi-pencil"></i></a>
+                                <form action="{{ route('customers.destroy', $customer->KhachHangID) }}" method="POST" class="d-inline" id="deleteCustomerForm_{{ $customer->KhachHangID }}">
                                     @csrf @method('DELETE')
                                     <button type="submit" class="btn btn-outline-secondary btn-sm" title="Xóa"><i class="bi bi-trash"></i></button>
                                 </form>
@@ -90,30 +87,10 @@
     </div>
 
 @if($customers->hasPages())
-<nav class="mt-4">
-    <div class="d-flex justify-content-between align-items-center">
-        <div class="text-muted small">Hiển thị {{ $customers->firstItem() }} - {{ $customers->lastItem() }} của {{ $customers->total() }} khách hàng</div>
-        <ul class="pagination mb-0">
-            @if ($customers->onFirstPage())
-                <li class="page-item disabled"><span class="page-link"><i class="bi bi-chevron-left"></i></span></li>
-            @else
-                <li class="page-item"><a class="page-link" href="{{ $customers->appends(request()->query())->url($customers->currentPage() - 1) }}"><i class="bi bi-chevron-left"></i></a></li>
-            @endif
-            @foreach ($customers->getUrlRange(max(1, $customers->currentPage() - 2), min($customers->lastPage(), $customers->currentPage() + 2)) as $page => $url)
-                @if ($page == $customers->currentPage())
-                    <li class="page-item active"><span class="page-link">{{ $page }}</span></li>
-                @else
-                    <li class="page-item"><a class="page-link" href="{{ $customers->appends(request()->query())->url($page) }}">{{ $page }}</a></li>
-                @endif
-            @endforeach
-            @if ($customers->onLastPage())
-                <li class="page-item disabled"><span class="page-link"><i class="bi bi-chevron-right"></i></span></li>
-            @else
-                <li class="page-item"><a class="page-link" href="{{ $customers->appends(request()->query())->url($customers->currentPage() + 1) }}">{{ $page }}</a></li>
-            @endif
-        </ul>
-    </div>
-</nav>
+<div class="mt-4 d-flex justify-content-between align-items-center">
+    <small class="text-muted">Hiển thị {{ $customers->firstItem() }} - {{ $customers->lastItem() }} của {{ $customers->total() }} khách hàng</small>
+    {{ $customers->links('pagination::bootstrap-5') }}
+</div>
 @endif
 @endsection
 

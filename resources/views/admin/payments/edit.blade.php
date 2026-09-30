@@ -13,27 +13,25 @@
 
         <form action="{{ route('payments.update', $payment) }}" method="POST">
             @csrf @method('PUT')
+            <input type="hidden" name="order_id" value="{{ $payment->DonHangID }}">
             <div class="row g-4">
                 <div class="col-md-6">
                     <label class="form-label">Mã đơn hàng</label>
-                    <input type="text" class="form-control" value="{{ $payment->order?->code ?? 'Chưa có' }}" disabled>
+                    <input type="text" class="form-control" value="{{ $payment->donHang?->MaDonHang ?? 'Chưa có' }}" disabled>
                 </div>
                 <div class="col-md-6">
                     <label class="form-label">Hóa đơn</label>
-                    <input type="text" class="form-control" value="{{ $payment->invoice?->code ?: 'Chưa liên kết' }}" disabled>
+                    <input type="text" class="form-control" value="{{ $payment->donHang?->hoaDons?->first()?->MaHoaDon ?: 'Chưa liên kết' }}" disabled>
                 </div>
                 <div class="col-md-6">
                     <label class="form-label">Số tiền <span class="text-danger ms-1">*</span></label>
-                    <input type="number" class="form-control" name="amount" value="{{ old('amount', (int) round((float) $payment->amount)) }}" min="0" step="1000" required>
+                    <input type="number" class="form-control" name="amount" value="{{ old('amount', (int) round((float) $payment->SoTien)) }}" min="0" step="1000" required>
                 </div>
                 <div class="col-md-6">
                     <label class="form-label">Phương thức <span class="text-danger ms-1">*</span></label>
                     <select class="form-select" name="method" required>
-                        <option value="cash" {{ $payment->method === 'cash' ? 'selected' : '' }}>Tiền mặt</option>
-                        <option value="bank_transfer" {{ $payment->method === 'bank_transfer' ? 'selected' : '' }}>Chuyển khoản / QR</option>
-                        <option value="momo" {{ $payment->method === 'momo' ? 'selected' : '' }}>Ví MoMo</option>
-                        <option value="credit_card" {{ $payment->method === 'credit_card' ? 'selected' : '' }}>Thẻ ATM / Credit</option>
-                        <option value="e_wallet" {{ $payment->method === 'e_wallet' ? 'selected' : '' }}>Ví điện tử</option>
+                        <option value="cash" {{ $payment->PhuongThuc === 'Tiền mặt' ? 'selected' : '' }}>Tiền mặt</option>
+                        <option value="bank_transfer" {{ $payment->PhuongThuc === 'Chuyển khoản' ? 'selected' : '' }}>Chuyển khoản / QR</option>
                     </select>
                 </div>
                 <div class="col-md-6">
@@ -41,18 +39,18 @@
                     <x-admin.status-select
                         name="status"
                         :options="\App\Enums\PaymentStatus::options()"
-                        :selected="$payment->status"
+                        :selected="$payment->TrangThai"
                         class="form-select @error('status') is-invalid @enderror"
                         required
                     />
                 </div>
                 <div class="col-md-6">
                     <label class="form-label">Ngày thanh toán</label>
-                    <input type="datetime-local" class="form-control" name="paid_at" value="{{ $payment->paid_at?->format('Y-m-d\TH:i') ?? now()->format('Y-m-d\TH:i') }}">
+                    <input type="datetime-local" class="form-control" name="paid_at" value="{{ $payment->ThoiGian?->format('Y-m-d\TH:i') ?? now()->format('Y-m-d\TH:i') }}">
                 </div>
                 <div class="col-md-6">
                     <label class="form-label">Mã giao dịch</label>
-                    <input type="text" class="form-control" name="transaction_code" value="{{ $payment->transaction_code ?? '' }}" placeholder="Mã GD từ ngân hàng / ví">
+                    <input type="text" class="form-control" name="transaction_code" value="{{ $payment->MaGiaoDich ?? '' }}" placeholder="Mã GD từ ngân hàng / ví">
                 </div>
             </div>
             <div class="d-flex justify-content-end gap-2 mt-4">

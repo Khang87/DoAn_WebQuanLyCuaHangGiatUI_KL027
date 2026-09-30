@@ -6,8 +6,8 @@
 @section('content')
 @php
     $isPaid = $order->is_paid;
-    $isOwner = auth()->user()?->isOwner();
-    $canEdit = (! $isPaid || $isOwner) && $order->can_edit;
+    $isOwner = auth()->user()?->isOwner() ?? false;
+    $canEdit = ! $isPaid || $isOwner;
 
     // Tính trước để tránh dấu ">" trong biểu thức thuộc tính của thẻ Blade.
     $hasPromotionDiscount = (float) $order->discount_by_promotion > 0;
@@ -20,15 +20,16 @@
 >
     <x-slot:badge>
         <x-admin.status-badge :status="$order->status" :enum="\App\Enums\OrderStatus::class" />
-        @if($order->is_locked)
-            <span class="badge bg-secondary-subtle text-secondary-emphasis border border-secondary px-3 py-2 rounded-pill">
-                <i class="bi bi-lock-fill me-1"></i>Đã quyết toán
+        @if($isPaid)
+            <span class="badge {{ $isOwner ? 'bg-success-subtle text-success-emphasis border-success' : 'bg-secondary-subtle text-secondary-emphasis border-secondary' }} border px-3 py-2 rounded-pill">
+                <i class="bi {{ $isOwner ? 'bi-shield-check' : 'bi-lock-fill' }} me-1"></i>
+                {{ $isOwner ? 'Đã quyết toán · Chủ cửa hàng được phép điều chỉnh' : 'Đã quyết toán' }}
             </span>
         @endif
     </x-slot:badge>
 </x-admin.detail.page-header>
 
-@if($order->is_locked)
+@if($order->is_locked && ! $isOwner)
     <x-admin.detail.locked text="Đơn hàng đã quyết toán nên bị khóa sửa/xóa. Liên hệ Chủ cửa hàng nếu cần điều chỉnh." />
 @endif
 
@@ -42,7 +43,7 @@
                 </x-admin.detail.info-item>
                 <x-admin.detail.info-item label="Khách hàng">
                     @if($order->customer)
-                        <a href="{{ route('customers.show', $order->customer->id) }}" class="text-decoration-none">
+                        <a href="{{ route('customers.show', $order->customer->getKey()) }}" class="text-decoration-none">
                             {{ $order->customer->name }}
                         </a>
                     @else
@@ -75,10 +76,10 @@
 
         <x-admin.detail.panel title="Chi tiết mặt hàng" icon="bi-list-check" :iconClass="'bg-info-subtle text-info'" flush>
             <x-slot:header>
-                <span class="text-muted small">{{ $order->items->count() }} mục</span>
+                <span class="text-muted small">{{ $order->chiTietDonHangs->count() }} mục</span>
             </x-slot:header>
 
-            @if($order->items->isEmpty())
+            @if($order->chiTietDonHangs->isEmpty())
                 <x-admin.detail.empty message="Đơn hàng chưa có mặt hàng nào" icon="bi-bag" />
             @else
                 <div class="table-responsive">
@@ -94,14 +95,14 @@
                             </tr>
                         </thead>
                         <tbody>
-                            @foreach($order->items as $item)
+                            @foreach($order->chiTietDonHangs as $item)
                                 <tr>
-                                    <td class="fw-semibold">{{ $item->service?->name ?: $item->item_name }}</td>
-                                    <td>{{ $item->garment?->name ?: $item->item_type }}</td>
-                                    <td class="text-end">{{ $item->weight !== null ? format_weight($item->weight) : '—' }}</td>
-                                    <td class="text-end"><x-admin.detail.money :value="$item->price" /></td>
-                                    <td class="text-end">{{ number_format($item->quantity) }}</td>
-                                    <td class="text-end fw-semibold"><x-admin.detail.money :value="$item->subtotal" /></td>
+                                    <td class="fw-semibold">{{ $item->dichVu?->TenDichVu ?: '—' }}</td>
+                                    <td>{{ $item->loaiDoGiat?->TenLoaiDoGiat ?: '—' }}</td>
+                                    <td class="text-end">{{ $item->KhoiLuong !== null ? format_weight($item->KhoiLuong) : '—' }}</td>
+                                    <td class="text-end"><x-admin.detail.money :value="$item->DonGia" /></td>
+                                    <td class="text-end">{{ number_format((float) $item->SoLuong, 2) }}</td>
+                                    <td class="text-end fw-semibold"><x-admin.detail.money :value="$item->ThanhTien" /></td>
                                 </tr>
                             @endforeach
                         </tbody>
@@ -184,7 +185,7 @@
                 @endif
 
                 <div class="mt-3">
-                    <a href="{{ route('deliveries.show', $order->delivery->id) }}" class="btn btn-outline-secondary btn-sm w-100">
+                    <a href="{{ route('deliveries.show', $order->delivery->getKey()) }}" class="btn btn-outline-secondary btn-sm w-100">
                         <i class="bi bi-box-arrow-up-right me-1"></i>Chi tiết phiếu giao nhận
                     </a>
                 </div>
@@ -205,19 +206,19 @@
             <div class="card-body d-flex flex-column gap-2">
                 @if($canEdit)
                     @can('orders.edit')
-                        <a href="{{ route('orders.edit', $order->id) }}" class="btn btn-primary w-100 py-2">
+                        <a href="{{ route('orders.edit', $order->getKey()) }}" class="btn btn-primary w-100 py-2">
                             <i class="fas fa-pencil-alt me-1"></i> Chỉnh sửa
                         </a>
                     @endcan
                 @endif
 
                 @if($order->invoice)
-                    <a href="{{ route('invoices.show', $order->invoice->id) }}" class="btn btn-outline-info w-100 py-2">
+                    <a href="{{ route('invoices.show', $order->invoice->getKey()) }}" class="btn btn-outline-info w-100 py-2">
                         <i class="fas fa-file-invoice me-1"></i> Xem hóa đơn
                     </a>
                 @elseif(in_array($order->status, ['completed', 'ready_for_pickup', 'processing']))
                     @can('invoices.create')
-                        <a href="{{ route('invoices.create', ['order_id' => $order->id]) }}" class="btn btn-outline-info w-100 py-2">
+                        <a href="{{ route('invoices.create', ['order_id' => $order->getKey()]) }}" class="btn btn-outline-info w-100 py-2">
                             <i class="fas fa-file-invoice me-1"></i> Tạo hóa đơn
                         </a>
                     @endcan

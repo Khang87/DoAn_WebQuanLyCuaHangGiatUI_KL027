@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Enums\BookingStatus;
 use App\Enums\OrderStatus;
 use App\Models\Booking;
 use App\Models\ChiTietDonHang;
@@ -62,10 +63,10 @@ class ReportsService
     /**
      * Trạng thái booking được tính là "đã xác nhận".
      *
-     * Bảng `Booking.TrangThai` lưu dạng PascalCase không dấu (`DaXacNhan`),
-     * khác với giá trị trong `BookingStatus` (`confirmed`), nên không dùng enum.
+     * Bảng `Booking.TrangThai` lưu PascalCase không dấu, khớp với
+     * `BookingStatus::Confirmed`.
      */
-    private const CONFIRMED_BOOKING_STATUS = 'DaXacNhan';
+    private const CONFIRMED_BOOKING_STATUS = BookingStatus::Confirmed->value;
 
     /**
      * Lấy khoảng thời gian lọc.
@@ -200,7 +201,7 @@ class ReportsService
             while ($current->lte($to)) {
                 $item = $data->firstWhere('week', (int) $current->format('oW'));
 
-                $labels[] = $current->format('d/m') . '-' . $current->copy()->endOfWeek()->format('d/m');
+                $labels[] = $current->format('d/m').'-'.$current->copy()->endOfWeek()->format('d/m');
                 $revenue[] = $item ? (float) $item->revenue : 0;
                 $orders[] = $item ? (int) $item->order_count : 0;
 

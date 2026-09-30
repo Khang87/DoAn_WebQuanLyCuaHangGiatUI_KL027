@@ -3,12 +3,12 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\Admin\BookingRequest;
+use App\Http\Requests\Admin\LuuBookingRequest;
 use App\Models\KhachHang;
 use App\Models\NhanVien;
 use App\Models\TaiKhoan;
-use App\Models\VaiTro;
 use App\Services\BookingService;
+use App\Support\FriendlyError;
 use Illuminate\Http\Request;
 
 class BookingController extends Controller
@@ -41,7 +41,7 @@ class BookingController extends Controller
     {
         $booking = $this->bookingService->find($id);
 
-        if (!$booking) {
+        if (! $booking) {
             abort(404);
         }
 
@@ -52,7 +52,7 @@ class BookingController extends Controller
     {
         $booking = $this->bookingService->find($id);
 
-        if (!$booking) {
+        if (! $booking) {
             abort(404);
         }
 
@@ -62,11 +62,11 @@ class BookingController extends Controller
         return view('admin.bookings.edit', compact('booking', 'customers', 'employees'));
     }
 
-    public function update(BookingRequest $request, int $id)
+    public function update(LuuBookingRequest $request, int $id)
     {
         $booking = $this->bookingService->find($id);
 
-        if (!$booking) {
+        if (! $booking) {
             abort(404);
         }
 
@@ -80,13 +80,13 @@ class BookingController extends Controller
             if ($order) {
                 return redirect()->route('bookings.index')->with(
                     'success',
-                    'Đặt lịch ' . ($booking?->MaBooking ?? '') . ' đã được cập nhật và tự động tạo đơn hàng ' . $order->MaDonHang . '.'
+                    'Đặt lịch '.($booking?->MaBooking ?? '').' đã được cập nhật và tự động tạo đơn hàng '.$order->MaDonHang.'.'
                 );
             }
 
             return redirect()->route('bookings.index')->with('success', 'Đặt lịch đã được cập nhật.');
         } catch (\Exception $e) {
-            return redirect()->route('bookings.edit', $booking)->with('error', \App\Support\FriendlyError::message($e))->withInput();
+            return redirect()->route('bookings.edit', $booking)->with('error', FriendlyError::message($e))->withInput();
         }
     }
 
@@ -94,7 +94,7 @@ class BookingController extends Controller
     {
         $booking = $this->bookingService->find($id);
 
-        if (!$booking) {
+        if (! $booking) {
             abort(404);
         }
 
@@ -103,7 +103,7 @@ class BookingController extends Controller
 
             return redirect()->route('bookings.index')->with('success', 'Đã xóa đặt lịch.');
         } catch (\Exception $e) {
-            return redirect()->route('bookings.index')->with('error', \App\Support\FriendlyError::message($e));
+            return redirect()->route('bookings.index')->with('error', FriendlyError::message($e));
         }
     }
 
@@ -111,7 +111,7 @@ class BookingController extends Controller
     {
         $booking = $this->bookingService->find($id);
 
-        if (!$booking) {
+        if (! $booking) {
             abort(404);
         }
 
@@ -132,7 +132,7 @@ class BookingController extends Controller
 
             return redirect()->route('bookings.index')->with('error', 'Chỉ đặt lịch đã xác nhận mới chuyển thành đơn hàng được.');
         } catch (\Exception $e) {
-            return redirect()->route('bookings.index')->with('error', \App\Support\FriendlyError::message($e));
+            return redirect()->route('bookings.index')->with('error', FriendlyError::message($e));
         }
     }
 }

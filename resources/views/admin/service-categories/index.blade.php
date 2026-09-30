@@ -6,9 +6,11 @@
 @section('content')
 <!-- Page Actions: nút "Thêm" luôn nằm góc trên bên trái -->
 <div class="page-toolbar">
-    <a href="{{ route('service-categories.create') }}" class="btn btn-create">
-        <i class="bi bi-plus-lg"></i>Thêm danh mục
-    </a>
+    @can('service_categories.create')
+        <a href="{{ route('service-categories.create') }}" class="btn btn-create">
+            <i class="bi bi-plus-lg"></i>Thêm danh mục
+        </a>
+    @endcan
     <p class="text-muted page-toolbar__desc">Nhóm các dịch vụ giặt ủi để khách hàng dễ tìm kiếm và đặt dịch vụ.</p>
 </div>
 <form action="{{ url()->current() }}" method="GET" class="row g-3 align-items-center mb-4">
@@ -17,14 +19,14 @@
             <span class="input-group-text bg-white border-end-0 ps-3">
                 <i class="fas fa-search text-muted"></i>
             </span>
-            <input type="text" name="search" class="form-control form-control-sm border-start-0 ps-2" placeholder="Tìm theo ID, mã danh mục, tên dịch vụ..." value="{{ request('search') }}">
+            <input type="text" name="search" class="form-control form-control-sm border-start-0 ps-2" placeholder="Tìm theo ID, tên danh mục..." value="{{ request('search') }}">
         </div>
     </div>
     <div class="col-12 col-sm-6 col-md-auto">
         <x-admin.status-select
             name="status"
             id="filter-status"
-            :options="$statuses ?? \App\Enums\RecordStatus::options()"
+            :options="$statuses"
             placeholder="-- Tất cả trạng thái --"
             class="form-select form-select-sm filter-select shadow-sm rounded-3"
             submit

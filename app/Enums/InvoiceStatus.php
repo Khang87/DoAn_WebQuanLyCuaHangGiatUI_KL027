@@ -3,24 +3,24 @@
 namespace App\Enums;
 
 /**
- * Trạng thái hóa đơn (3 trạng thái chuẩn).
+ * Trạng thái hóa đơn theo ràng buộc của bảng `HoaDon`.
  *
- *   unpaid   -> Chờ thanh toán
- *   partial  -> Thanh toán một phần
- *   paid     -> Đã thanh toán (KHÓA CHỈ ĐỌC - chỉ Owner can thiệp ngoại lệ)
+ *   Chưa thanh toán
+ *   Đã thanh toán
+ *   Đã hủy
  */
 enum InvoiceStatus: string
 {
-    case Unpaid = 'unpaid';
-    case Partial = 'partial';
-    case Paid = 'paid';
+    case Unpaid = 'Chưa thanh toán';
+    case Paid = 'Đã thanh toán';
+    case Cancelled = 'Đã hủy';
 
     public function label(): string
     {
         return match ($this) {
-            self::Unpaid => 'Chờ thanh toán',
-            self::Partial => 'Thanh toán một phần',
+            self::Unpaid => 'Chưa thanh toán',
             self::Paid => 'Đã thanh toán',
+            self::Cancelled => 'Đã hủy',
         };
     }
 
@@ -28,8 +28,8 @@ enum InvoiceStatus: string
     {
         return match ($this) {
             self::Unpaid => 'bg-warning-subtle text-warning-emphasis border border-warning',
-            self::Partial => 'bg-info-subtle text-info-emphasis border border-info',
             self::Paid => 'bg-success-subtle text-success-emphasis border border-success',
+            self::Cancelled => 'bg-danger-subtle text-danger-emphasis border border-danger',
         };
     }
 
@@ -37,8 +37,8 @@ enum InvoiceStatus: string
     {
         return match ($this) {
             self::Unpaid => 'hourglass',
-            self::Partial => 'circle-half',
             self::Paid => 'check-circle',
+            self::Cancelled => 'times-circle',
         };
     }
 
@@ -76,7 +76,7 @@ enum InvoiceStatus: string
      */
     public static function paidValues(): array
     {
-        return [self::Paid->value, 'completed'];
+        return [self::Paid->value];
     }
 
     /**
@@ -84,7 +84,7 @@ enum InvoiceStatus: string
      */
     public static function valueIsPaid(mixed $value): bool
     {
-        return in_array(mb_strtolower(trim((string) $value)), self::paidValues(), true);
+        return self::parse($value)->isPaid();
     }
 
     public static function parse(mixed $value, self $default = self::Unpaid): self
@@ -97,14 +97,12 @@ enum InvoiceStatus: string
             return $default;
         }
 
-        $normalized = mb_strtolower(trim((string) $value));
-
-        // Map legacy values to paid
-        if (in_array($normalized, ['completed'], true)) {
-            return self::Paid;
-        }
-
-        return self::tryFrom($normalized) ?? $default;
+        return match (mb_strtolower(trim((string) $value))) {
+            'unpaid', 'pending', 'chưa thanh toán' => self::Unpaid,
+            'paid', 'completed', 'đã thanh toán' => self::Paid,
+            'cancelled', 'đã hủy' => self::Cancelled,
+            default => self::tryFrom((string) $value) ?? $default,
+        };
     }
 
     public static function labelFor(mixed $value, self $default = self::Unpaid): string

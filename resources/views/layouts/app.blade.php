@@ -328,9 +328,11 @@
                             <i class="bi bi-gift me-2"></i>Tạo khuyến mãi
                         </a>
                         @endcan
+                        @can('deliveries.create')
                         <a class="dropdown-item py-2" href="{{ route('deliveries.create') }}">
                             <i class="bi bi-truck me-2"></i>Tạo lịch giao nhận
                         </a>
+                        @endcan
                     </div>
                 </div>
                 @endif

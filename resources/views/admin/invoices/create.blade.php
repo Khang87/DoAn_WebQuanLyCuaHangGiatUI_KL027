@@ -21,8 +21,8 @@
                     <select class="form-select" name="order_id" required>
                         <option value="">-- Chọn đơn hàng --</option>
                         @foreach($orders as $order)
-                        <option value="{{ $order->id }}" {{ $preselectedOrder && $preselectedOrder->id == $order->id ? 'selected' : '' }}>
-                            {{ $order->code }} - {{ $order->customer?->name }}
+                        <option value="{{ $order->DonHangID }}" {{ $preselectedOrder && $preselectedOrder->DonHangID == $order->DonHangID ? 'selected' : '' }}>
+                            {{ $order->MaDonHang }} - {{ $order->khachHang?->HoTen }}
                         </option>
                         @endforeach
                     </select>

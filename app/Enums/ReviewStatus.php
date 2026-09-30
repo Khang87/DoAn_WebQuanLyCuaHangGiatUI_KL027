@@ -6,7 +6,7 @@ namespace App\Enums;
  * Trạng thái hiển thị của đánh giá khách hàng.
  *
  * Nguồn duy nhất cho module Đánh giá: dropdown lọc ngoài bảng, form chỉnh sửa
- * và badge trong cột Trạng thái. Tập giá trị khớp với ReviewRequest
+ * và badge trong cột Trạng thái. Tập giá trị khớp với LuuDanhGiaRequest
  * ('in:visible,hidden').
  */
 enum ReviewStatus: string

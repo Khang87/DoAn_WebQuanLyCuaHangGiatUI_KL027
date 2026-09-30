@@ -11,29 +11,26 @@
             <a href="{{ route('orders.index') }}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left me-1"></i>Quay lại</a>
         </div>
         @php
-            $garmentOptions = $garments ?? $garmentTypes ?? \App\Models\Garment::where('status', 'active')->orderBy('name')->get();
-            $employeeOptions = $employees ?? $staffUsers ?? \App\Models\User::where('role', 'staff')->orderBy('name')->get();
-            $priceOptions = $pricings ?? $priceLists ?? \App\Models\Pricing::where('status', 'active')->get();
+            $garmentOptions = $garments;
+            $employeeOptions = $employees;
+            $priceOptions = $pricings;
+            $minimumWeight = (float) config('giatui.khoi_luong_toi_thieu', 3.0);
             $items = old('items', [['DichVuID' => '', 'LoaiDoGiatID' => '', 'SoLuong' => 1, 'KhoiLuong' => 0, 'DonGia' => 0]]);
-            $pricesJson = $priceOptions->map(fn($p) => ['service_id' => $p->service_id, 'garment_id' => $p->garment_id, 'price' => $p->price, 'unit' => $p->unit])->values()->toJson();
-            $customerPointsJson = $customers->mapWithKeys(fn($c) => [$c->id => (int) $c->points])->toJson();
+            $pricesJson = $priceOptions->map(fn ($pricing) => [
+                'service_id' => $pricing->DichVuID,
+                'garment_id' => $pricing->LoaiDoGiatID,
+                'price' => $pricing->DonGia,
+                'unit' => $pricing->unit,
+                'unit_id' => $pricing->DonViTinhID,
+            ])->values()->toJson();
+            $customerPointsJson = $customers->mapWithKeys(fn ($customer) => [
+                $customer->KhachHangID => (int) ($customer->diemTichLuy?->DiemHienTai ?? 0),
+            ])->toJson();
 
-            // Controller có thể trả danh mục dưới dạng model (service_categories)
-            // hoặc mảng chuỗi (category của garments). Chuẩn hoá về {id, name}.
-            $normalizeCategories = function ($categories) {
-                return collect($categories ?? [])->map(function ($category) {
-                    if (is_object($category) && isset($category->id)) {
-                        return $category;
-                    }
-
-                    $value = is_object($category) ? ($category->id ?? $category->name) : $category;
-
-                    return (object) ['id' => $value, 'name' => $value, 'icon' => is_object($category) ? ($category->icon ?? null) : null];
-                })->values();
-            };
-            $serviceCategories = $normalizeCategories($serviceCategories ?? []);
-            $garmentCategories = $normalizeCategories($garmentCategories ?? []);
-            $units = collect($units ?? []);
+            $units = collect($units);
+            $unitLabels = $units->mapWithKeys(fn ($unit) => [
+                $unit->DonViTinhID => $unit->KyHieu ?: $unit->TenDonViTinh,
+            ])->all();
         @endphp
         <form action="{{ route('orders.store') }}" method="POST" id="orderForm">
             @csrf
@@ -47,7 +44,7 @@
                     <select class="form-select" id="customer_id" name="KhachHangID" required>
                         <option value="">-- Chọn khách hàng --</option>
                         @foreach($customers as $customer)
-                            <option value="{{ $customer->id }}" @selected(old('KhachHangID') == $customer->id)>{{ $customer->name }} ({{ $customer->code }})</option>
+                            <option value="{{ $customer->KhachHangID }}" @selected(old('KhachHangID') == $customer->KhachHangID)>{{ $customer->HoTen }} (ID {{ $customer->KhachHangID }})</option>
                         @endforeach
                     </select>
                 </div>
@@ -56,7 +53,7 @@
                     <select class="form-select" id="employee_id" name="NhanVienID">
                         <option value="">-- Chọn nhân viên --</option>
                         @foreach($employeeOptions as $employee)
-                            <option value="{{ $employee->id }}" @selected(old('NhanVienID') == $employee->id)>{{ $employee->name }}</option>
+                            <option value="{{ $employee->NhanVienID }}" @selected(old('NhanVienID') == $employee->NhanVienID)>{{ $employee->HoTen }}</option>
                         @endforeach
                     </select>
                 </div>
@@ -66,7 +63,7 @@
                         name="TrangThai"
                         id="status"
                         :options="$statusFlow ?? \App\Enums\OrderStatus::options()"
-                        selected="pending"
+                        :selected="\App\Enums\OrderStatus::Pending->value"
                         class="form-select"
                         required
                     />
@@ -78,17 +75,17 @@
                     </div>
                     <div class="table-responsive">
                         <table class="table table-bordered align-middle mb-2" id="itemsTable">
-                            <thead class="table-light"><tr><th>Danh mục dịch vụ</th><th>Dịch vụ <span class="text-danger">*</span></th><th>Danh mục đồ giặt</th><th>Loại đồ giặt <span class="text-danger">*</span></th><th>Số lượng <span class="text-danger">*</span></th><th>Khối lượng (kg)</th><th>Đơn giá</th><th>Thành tiền</th><th></th></tr></thead>
+                            <thead class="table-light"><tr><th>Danh mục dịch vụ</th><th>Dịch vụ <span class="text-danger">*</span></th><th>Loại đồ giặt <span class="text-danger">*</span></th><th>ĐVT</th><th>Số lượng</th><th>Khối lượng (kg)</th><th>Đơn giá</th><th>Thành tiền</th><th></th></tr></thead>
                             <tbody>
                                 @foreach($items as $index => $item)
                                     <tr>
-                                        <td><select class="form-select js-icon-select item-service-category" name="items[{{ $index }}][service_category_id]"><option value="">-- Danh mục --</option>@foreach($serviceCategories as $cat)<option value="{{ $cat->id }}" data-icon="{{ $cat->icon }}" @selected(($item['service_category_id'] ?? '') == $cat->id)>{{ $cat->name }}</option>@endforeach</select><i class="icon-preview" hidden></i></td>
-                                        <td><select class="form-select item-service" name="items[{{ $index }}][DichVuID]" required><option value="">-- Chọn dịch vụ --</option>@foreach($services as $service)<option value="{{ $service->id }}" @selected(($item['service_id'] ?? '') == $service->id)>{{ $service->name }}</option>@endforeach</select></td>
-                                        <td><select class="form-select item-garment-category" name="items[{{ $index }}][garment_category_id]"><option value="">-- Danh mục --</option>@foreach($garmentCategories as $cat)<option value="{{ $cat->id }}" @selected(($item['garment_category_id'] ?? '') == $cat->id)>{{ $cat->name }}</option>@endforeach</select></td>
-                                        <td><select class="form-select item-garment" name="items[{{ $index }}][LoaiDoGiatID]" required><option value="">-- Chọn loại đồ --</option>@foreach($garmentOptions as $garment)<option value="{{ $garment->id }}" @selected(($item['garment_id'] ?? '') == $garment->id)>{{ $garment->name }}</option>@endforeach</select></td>
-                                        <td><input type="number" class="form-control item-quantity" name="items[{{ $index }}][SoLuong]" value="{{ $item['quantity'] ?? 1 }}" min="1" required></td>
-                                        <td><input type="number" step="0.01" class="form-control item-weight" name="items[{{ $index }}][KhoiLuong]" value="{{ $item['weight'] ?? 0 }}" min="0.01" step="0.01"></td>
-                                        <td><input type="number" class="form-control item-price" name="items[{{ $index }}][DonGia]" value="{{ $item['price'] ?? 0 }}" min="0" step="100" data-touched="1"></td>
+                                        <td><select class="form-select item-service-category" name="items[{{ $index }}][service_category_id]"><option value="">-- Danh mục --</option>@foreach($serviceCategories as $category)<option value="{{ $category->LoaiDichVuID }}" @selected(($item['service_category_id'] ?? '') == $category->LoaiDichVuID)>{{ $category->TenLoaiDichVu }}</option>@endforeach</select></td>
+                                        <td><select class="form-select item-service" name="items[{{ $index }}][DichVuID]" required><option value="">-- Chọn dịch vụ --</option>@foreach($services as $service)<option value="{{ $service->DichVuID }}" data-category-id="{{ $service->LoaiDichVuID }}" @selected(($item['DichVuID'] ?? $item['service_id'] ?? '') == $service->DichVuID)>{{ $service->TenDichVu }}</option>@endforeach</select></td>
+                                        <td><select class="form-select item-garment" name="items[{{ $index }}][LoaiDoGiatID]" required><option value="">-- Chọn loại đồ --</option>@foreach($garmentOptions as $garment)<option value="{{ $garment->LoaiDoGiatID }}" @selected(($item['LoaiDoGiatID'] ?? $item['garment_id'] ?? '') == $garment->LoaiDoGiatID)>{{ $garment->TenLoaiDoGiat }}</option>@endforeach</select></td>
+                                        <td><span class="badge text-bg-light item-unit">—</span><input type="hidden" class="item-unit-value" name="items[{{ $index }}][DonViTinhID]" value="{{ $item['DonViTinhID'] ?? '' }}"></td>
+                                        <td><input type="number" class="form-control item-quantity" name="items[{{ $index }}][SoLuong]" value="{{ $item['SoLuong'] ?? $item['quantity'] ?? 1 }}" min="1" required></td>
+                                        <td><input type="number" step="0.01" class="form-control item-weight" name="items[{{ $index }}][KhoiLuong]" value="{{ $item['KhoiLuong'] ?? $item['weight'] ?? 0 }}" min="0"></td>
+                                        <td><input type="number" class="form-control item-price" name="items[{{ $index }}][DonGia]" value="{{ $item['DonGia'] ?? $item['price'] ?? 0 }}" min="0" step="100"></td>
                                         <td><input type="number" class="form-control item-subtotal" value="{{ $item['subtotal'] ?? 0 }}" readonly></td>
                                         <td><button type="button" class="btn btn-sm btn-outline-danger remove-item" title="Xóa mặt hàng"><i class="bi bi-trash"></i></button></td>
                                     </tr>
@@ -96,7 +93,7 @@
                             </tbody>
                         </table>
                     </div>
-                    <div class="form-text">Dịch vụ có đơn vị <strong>kg</strong> sẽ tính tiền theo <strong>Khối lượng</strong>, các đơn vị khác tính theo <strong>Số lượng</strong>.</div>
+                    <div class="form-text">Dịch vụ có đơn vị <strong>kg</strong> sẽ tính theo khối lượng, tối thiểu {{ number_format($minimumWeight, 1) }} kg; các đơn vị khác tính theo số lượng.</div>
                 </div>
 
                 {{-- ======== Ưu đãi: Voucher + Điểm tích lũy ======== --}}
@@ -110,14 +107,14 @@
                                     <select class="form-select" id="promotion_id" name="KhuyenMaiID">
                                         <option value="">-- Không dùng voucher --</option>
                                         @foreach($promotions as $promotion)
-                                            <option value="{{ $promotion->id }}"
-                                                    data-code="{{ $promotion->code }}"
-                                                    data-type="{{ $promotion->discount_type }}"
-                                                    data-value="{{ (float) $promotion->discount_value }}"
-                                                    data-min="{{ (float) $promotion->min_order_amount }}"
-                                                    data-max="{{ (float) ($promotion->max_discount ?? 0) }}"
-                                                    @selected(old('KhuyenMaiID') == $promotion->id)>
-                                                {{ $promotion->name }} ({{ $promotion->code }})
+                                            <option value="{{ $promotion->KhuyenMaiID }}"
+                                                    data-code="{{ $promotion->MaKhuyenMai }}"
+                                                    data-type="{{ $promotion->LoaiKhuyenMai }}"
+                                                    data-value="{{ (float) $promotion->GiaTriGiam }}"
+                                                    data-min="{{ (float) ($promotion->GiaTriDonToiThieu ?? 0) }}"
+                                                    data-max="{{ (float) ($promotion->MucGiamToiDa ?? 0) }}"
+                                                    @selected(old('KhuyenMaiID') == $promotion->KhuyenMaiID)>
+                                                {{ $promotion->TenKhuyenMai }} ({{ $promotion->MaKhuyenMai }})
                                             </option>
                                         @endforeach
                                     </select>
@@ -178,12 +175,15 @@
 <script>
 (function () {
     const POINT_VALUE = {{ App\Services\OrderService::POINT_VALUE }};
+    const minimumWeight = @json($minimumWeight);
     const prices = {!! $pricesJson !!};
+    const unitLabels = @json($unitLabels);
     const customerPoints = {!! $customerPointsJson !!};
-    const services = @json($services->pluck('name', 'id'));
-    const garments = @json($garmentOptions->pluck('name', 'id'));
-    const serviceCategories = @json($serviceCategories->map(fn($c) => ['id' => $c->id, 'name' => $c->name, 'icon' => $c->icon ?? null])->keyBy('id'));
-    const garmentCategories = @json($garmentCategories->pluck('name', 'id'));
+    const services = @json($services->mapWithKeys(fn ($service) => [
+        $service->DichVuID => ['name' => $service->TenDichVu, 'category_id' => $service->LoaiDichVuID],
+    ]));
+    const garments = @json($garmentOptions->pluck('TenLoaiDoGiat', 'LoaiDoGiatID'));
+    const serviceCategories = @json($serviceCategories->pluck('TenLoaiDichVu', 'LoaiDichVuID'));
 
     const table = document.getElementById('itemsTable');
     const promotionSelect = document.getElementById('promotion_id');
@@ -208,30 +208,78 @@
 
     const fmt = value => new Intl.NumberFormat('vi-VN').format(Math.round(Number(value) || 0));
 
-    function updateRow(row) {
+    function selectedPricing(row) {
         const service = row.querySelector('.item-service').value;
         const garment = row.querySelector('.item-garment').value;
-        const priceInput = row.querySelector('.item-price');
-        const match = prices.find(p => String(p.service_id) === service && String(p.garment_id) === garment);
+        return prices.find(price => String(price.service_id) === service && String(price.garment_id) === garment) || null;
+    }
 
-        // Chỉ ghi đè đơn giá khi người dùng chưa tự nhập.
-        if (match && priceInput.dataset.touched !== '1') {
-            priceInput.value = match.price;
+    function updateRowState(row, refreshPrice = false) {
+        const match = selectedPricing(row);
+        const priceInput = row.querySelector('.item-price');
+        const quantityInput = row.querySelector('.item-quantity');
+        const weightInput = row.querySelector('.item-weight');
+        const unitLabel = row.querySelector('.item-unit');
+        const unitValue = row.querySelector('.item-unit-value');
+        const unitIdInput = unitValue;
+        if (refreshPrice && !match) {
+            unitIdInput.value = '';
+            row.dataset.dvt = '';
+            priceInput.value = '0';
+            delete priceInput.dataset.autoFilled;
+        }
+        const unitId = match?.unit_id || unitIdInput.value;
+        const unit = String(match?.unit || unitLabels[unitId] || row.dataset.dvt || '').trim();
+        const isKg = ['kg', 'kgs', 'kilogram'].includes(unit.toLowerCase());
+
+        unitLabel.textContent = unit || '—';
+        unitValue.value = unitId || '';
+        row.querySelector('.item-service').selectedOptions[0]?.setAttribute('data-dvt', unit);
+        row.querySelector('.item-service').selectedOptions[0]?.setAttribute('data-dongia', match?.price ?? '');
+        row.querySelector('.item-garment').selectedOptions[0]?.setAttribute('data-dvt', unit);
+        row.querySelector('.item-garment').selectedOptions[0]?.setAttribute('data-dongia', match?.price ?? '');
+        if (!match) {
+            row.querySelector('.item-service').selectedOptions[0]?.removeAttribute('data-dvt');
+            row.querySelector('.item-service').selectedOptions[0]?.removeAttribute('data-dongia');
+            row.querySelector('.item-garment').selectedOptions[0]?.removeAttribute('data-dvt');
+            row.querySelector('.item-garment').selectedOptions[0]?.removeAttribute('data-dongia');
         }
 
-        const price = Number(priceInput.value) || 0;
+        quantityInput.disabled = isKg;
+        quantityInput.required = !isKg;
+        if (isKg) {
+            quantityInput.value = '1';
+        }
+
+        weightInput.disabled = !isKg;
+        weightInput.required = isKg;
+        if (!isKg) {
+            weightInput.value = '0';
+        }
+
+        if (match && (refreshPrice || priceInput.dataset.autoFilled !== '1')) {
+            if (refreshPrice || !priceInput.value || Number(priceInput.value) === 0) {
+                priceInput.value = match.price;
+            }
+            priceInput.dataset.autoFilled = '1';
+        }
+
+        return { match, isKg };
+    }
+
+    function calculateRowTotal(row) {
+        const { isKg } = updateRowState(row);
+        const price = Number(row.querySelector('.item-price').value) || 0;
         const quantity = Math.max(1, Number(row.querySelector('.item-quantity').value) || 1);
         const weight = Math.max(0, Number(row.querySelector('.item-weight').value) || 0);
-
-        // Đơn vị "kg" nhân với số lượng VÀ khối lượng, đơn vị khác nhân với số lượng
-        // (khớp với OrderService::buildItems()).
-        const unit = String((match && match.unit) || '').trim().toLowerCase();
-        const isKg = ['kg', 'kgs', 'kilogram'].includes(unit);
-        const multiplier = (isKg && weight > 0) ? quantity * weight : quantity;
-
-        const amount = price * multiplier;
+        const amount = Math.round(price * (isKg ? Math.max(weight, minimumWeight) : quantity));
         row.querySelector('.item-subtotal').value = amount;
         return amount;
+    }
+
+    function updateRow(row, refreshPrice = false) {
+        updateRowState(row, refreshPrice);
+        return calculateRowTotal(row);
     }
 
     function promotionDiscountFor(subtotal) {
@@ -245,7 +293,7 @@
 
         if (subtotal < minOrder) return 0;
 
-        let discount = type === 'percentage' ? subtotal * (value / 100) : value;
+        let discount = type === 'Phần trăm' ? subtotal * (value / 100) : value;
         if (maxDiscount > 0 && discount > maxDiscount) discount = maxDiscount;
 
         return Math.min(discount, subtotal);
@@ -276,10 +324,15 @@
     }
 
     table.addEventListener('input', event => {
-        if (event.target.classList.contains('item-price')) event.target.dataset.touched = '1';
         if (event.target.closest('tr')) updateTotals();
     });
-    table.addEventListener('change', event => { if (event.target.closest('tr')) updateTotals(); });
+    table.addEventListener('change', event => {
+        const row = event.target.closest('tr');
+        if (!row) return;
+        const isSelection = event.target.matches('.item-service, .item-garment');
+        updateRow(row, isSelection);
+        updateTotals();
+    });
     pointsInput.addEventListener('input', updateTotals);
     promotionSelect.addEventListener('change', () => {
         const option = promotionSelect.options[promotionSelect.selectedIndex];
@@ -311,11 +364,12 @@
     document.getElementById('addItem').addEventListener('click', () => {
         const index = table.tBodies[0].rows.length;
         const row = table.tBodies[0].insertRow();
-        row.innerHTML = `<td><select class="form-select js-icon-select item-service-category" name="items[${index}][service_category_id]"><option value="">-- Danh mục --</option>${Object.entries(serviceCategories).map(([id,cat]) => `<option value="${id}" data-icon="${cat.icon || ''}">${cat.name}</option>`).join('')}</select><i class="icon-preview" hidden></i></td><td><select class="form-select item-service" name="items[${index}][DichVuID]" required><option value="">-- Chọn dịch vụ --</option>${Object.entries(services).map(([id,name]) => `<option value="${id}">${name}</option>`).join('')}</select></td><td><select class="form-select item-garment-category" name="items[${index}][garment_category_id]"><option value="">-- Danh mục --</option>${Object.entries(garmentCategories).map(([id,name]) => `<option value="${id}">${name}</option>`).join('')}</select></td><td><select class="form-select item-garment" name="items[${index}][LoaiDoGiatID]" required><option value="">-- Chọn loại đồ --</option>${Object.entries(garments).map(([id,name]) => `<option value="${id}">${name}</option>`).join('')}</select></td><td><input type="number" class="form-control item-quantity" name="items[${index}][SoLuong]" value="1" min="1" required></td><td><input type="number" step="0.01" class="form-control item-weight" name="items[${index}][KhoiLuong]" value="0" min="0.01" step="0.01"></td><td><input type="number" class="form-control item-price" name="items[${index}][DonGia]" value="0" min="0" step="100" data-touched="1"></td><td><input type="number" class="form-control item-subtotal" value="0" readonly></td><td><button type="button" class="btn btn-sm btn-outline-danger remove-item"><i class="bi bi-trash"></i></button></td>`;
+        row.innerHTML = `<td><select class="form-select item-service-category" name="items[${index}][service_category_id]"><option value="">-- Danh mục --</option>${Object.entries(serviceCategories).map(([id,name]) => `<option value="${id}">${name}</option>`).join('')}</select></td><td><select class="form-select item-service" name="items[${index}][DichVuID]" required><option value="">-- Chọn dịch vụ --</option>${Object.entries(services).map(([id,service]) => `<option value="${id}" data-category-id="${service.category_id}">${service.name}</option>`).join('')}</select></td><td><select class="form-select item-garment" name="items[${index}][LoaiDoGiatID]" required><option value="">-- Chọn loại đồ --</option>${Object.entries(garments).map(([id,name]) => `<option value="${id}">${name}</option>`).join('')}</select></td><td><span class="badge text-bg-light item-unit">—</span><input type="hidden" class="item-unit-value" name="items[${index}][DonViTinhID]"></td><td><input type="number" class="form-control item-quantity" name="items[${index}][SoLuong]" value="1" min="1" required></td><td><input type="number" step="0.01" class="form-control item-weight" name="items[${index}][KhoiLuong]" value="0" min="0"></td><td><input type="number" class="form-control item-price" name="items[${index}][DonGia]" value="0" min="0" step="100"></td><td><input type="number" class="form-control item-subtotal" value="0" readonly></td><td><button type="button" class="btn btn-sm btn-outline-danger remove-item" title="Xóa mặt hàng"><i class="bi bi-trash"></i></button></td>`;
+        updateRowState(row);
         updateTotals();
     });
 
-    // Cascading dropdowns: Service Category -> Services, Garment Category -> Garments
+    // Filter services by their related service category.
     table.addEventListener('change', event => {
         const row = event.target.closest('tr');
         if (!row) return;
@@ -325,31 +379,17 @@
             const serviceSelect = row.querySelector('.item-service');
             if (categoryId) {
                 // Filter services by category
-                const filtered = Object.entries(services).filter(([id, name]) => {
-                    const catId = serviceCategories[id]?.id;
-                    return catId === categoryId || !catId; // Show all if no category mapping
+                const filtered = Object.entries(services).filter(([, service]) => {
+                    return String(service.category_id) === categoryId;
                 });
-                serviceSelect.innerHTML = '<option value="">-- Chọn dịch vụ --</option>' + filtered.map(([id,name]) => `<option value="${id}">${name}</option>`).join('');
+                serviceSelect.innerHTML = '<option value="">-- Chọn dịch vụ --</option>' + filtered.map(([id,service]) => `<option value="${id}" data-category-id="${service.category_id}">${service.name}</option>`).join('');
             } else {
-                serviceSelect.innerHTML = '<option value="">-- Chọn dịch vụ --</option>' + Object.entries(services).map(([id,name]) => `<option value="${id}">${name}</option>`).join('');
+                serviceSelect.innerHTML = '<option value="">-- Chọn dịch vụ --</option>' + Object.entries(services).map(([id,service]) => `<option value="${id}" data-category-id="${service.category_id}">${service.name}</option>`).join('');
             }
-            updateTotals();
-        }
-
-        if (event.target.classList.contains('item-garment-category')) {
-            const categoryId = event.target.value;
-            const garmentSelect = row.querySelector('.item-garment');
-            if (categoryId) {
-                // Filter garments by category
-                const filtered = Object.entries(garments).filter(([id, name]) => {
-                    // Note: garmentCategories in JS is just name lookup, we need to check from server data
-                    // For now, show all if category selected
-                    return true;
-                });
-                garmentSelect.innerHTML = '<option value="">-- Chọn loại đồ --</option>' + filtered.map(([id,name]) => `<option value="${id}">${name}</option>`).join('');
-            } else {
-                garmentSelect.innerHTML = '<option value="">-- Chọn loại đồ --</option>' + Object.entries(garments).map(([id,name]) => `<option value="${id}">${name}</option>`).join('');
-            }
+            serviceSelect.value = '';
+            row.querySelector('.item-unit-value').value = '';
+            row.querySelector('.item-price').value = '0';
+            delete row.querySelector('.item-price').dataset.autoFilled;
             updateTotals();
         }
     });
@@ -367,6 +407,7 @@
         if (selected && selected.value) promotionCodeInput.value = selected.dataset.code || '';
     }
 
+    table.querySelectorAll('tbody tr').forEach(row => updateRow(row));
     updateCustomerPointsHint();
     updateTotals();
 })();

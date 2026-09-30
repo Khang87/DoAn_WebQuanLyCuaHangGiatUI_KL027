@@ -32,6 +32,7 @@ class LoginController extends Controller
         $attempt = Auth::attempt([
             'Email' => $credentials['email'],
             'password' => $credentials['password'],
+            'TrangThai' => 'Hoạt động',
         ], $request->boolean('remember'));
 
         if ($attempt) {

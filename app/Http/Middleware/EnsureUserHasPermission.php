@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Support\PermissionCache;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -9,8 +10,10 @@ use Symfony\Component\HttpFoundation\Response;
 /**
  * Chặn truy cập theo mã quyền động, ví dụ: ->middleware('permission:orders.edit').
  *
- * Khác với `role:` (dựa trên cột `role` cũ), middleware này tra bảng
- * `role_has_permissions` nên Chủ cửa hàng có thể tuỳ biến ma trận quyền.
+ * Khác với `role:` (chỉ so tên vai trò), middleware này tra chuỗi
+ * `TaiKhoan_VaiTro` -> `VaiTro_Quyen` -> `Quyen` nên Chủ cửa hàng có thể tuỳ
+ * biến ma trận quyền. Danh sách mã quyền được đọc từ {@see PermissionCache}
+ * nên mỗi request chỉ query một lần.
  */
 class EnsureUserHasPermission
 {
@@ -28,7 +31,7 @@ class EnsureUserHasPermission
             ->filter()
             ->all();
 
-        if ($user) {
+        if ($user && $user->isActive()) {
             foreach ($codes as $code) {
                 if ($user->canPermission($code)) {
                     return $next($request);

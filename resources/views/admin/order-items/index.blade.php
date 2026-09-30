@@ -46,7 +46,7 @@
                             <div class="d-flex gap-2">
                                 @if(! $item->order?->isLocked())
                                     <a href="{{ route('order-items.edit', $item) }}" class="btn btn-sm btn-outline-warning">Sửa</a>
-                                    <form action="{{ route('order-items.destroy', $item) }}" method="POST" class="d-inline" id="deleteOrderItemForm_{{ $item->id }}">
+                                    <form action="{{ route('order-items.destroy', $item) }}" method="POST" class="d-inline" id="deleteOrderItemForm_{{ $item->getKey() }}">
                                         @csrf @method('DELETE')
                                         <button type="submit" class="btn btn-sm btn-outline-danger">Xóa</button>
                                     </form>

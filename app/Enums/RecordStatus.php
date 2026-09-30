@@ -71,6 +71,27 @@ enum RecordStatus: string
     }
 
     /**
+     * Values allowed by the live PostgreSQL status constraints.
+     *
+     * @return array<string, string>
+     */
+    public static function databaseOptions(): array
+    {
+        return [
+            'Hoạt động' => 'Hoạt động',
+            'Tạm ngưng' => 'Tạm ngưng',
+        ];
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    public static function databaseValues(): array
+    {
+        return array_keys(self::databaseOptions());
+    }
+
+    /**
      * Chuyển giá trị bất kỳ (kể cả giá trị cũ) về enum, không ném lỗi.
      */
     public static function parse(mixed $value, self $default = self::Inactive): self
@@ -84,6 +105,14 @@ enum RecordStatus: string
         }
 
         $normalized = mb_strtolower(trim((string) $value));
+
+        if (in_array($normalized, ['hoạt động', 'dang hoat dong', 'đang hoạt động'], true)) {
+            return self::Active;
+        }
+
+        if (in_array($normalized, ['tạm ngưng', 'tam ngung'], true)) {
+            return self::Inactive;
+        }
 
         return self::tryFrom($normalized)
             ?? self::legacyFrom($normalized)

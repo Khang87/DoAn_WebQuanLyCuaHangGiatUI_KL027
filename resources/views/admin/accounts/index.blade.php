@@ -6,11 +6,19 @@
 @section('content')
 <!-- Page Actions: nút "Thêm" luôn nằm góc trên bên trái -->
 <div class="page-toolbar">
-    <a href="{{ route('accounts.create') }}" class="btn btn-create">
-        <i class="bi bi-plus-lg"></i>Thêm tài khoản
-    </a>
-    <p class="text-muted page-toolbar__desc">Quản lý tài khoản nhân viên và chủ cửa hàng, bao gồm trạng thái và quyền truy cập.</p>
+    @can('accounts.create')
+        <a href="{{ route('accounts.create') }}" class="btn btn-create">
+            <i class="bi bi-plus-lg"></i>Thêm tài khoản
+        </a>
+    @endcan
+    <p class="text-muted page-toolbar__desc">Quản lý tài khoản đăng nhập, bao gồm người dùng liên kết Google và quyền truy cập.</p>
 </div>
+@if(session('success'))
+    <div class="alert alert-success">{{ session('success') }}</div>
+@endif
+@if($errors->any())
+    <div class="alert alert-danger">{{ $errors->first() }}</div>
+@endif
 <form action="{{ url()->current() }}" method="GET" class="row g-3 align-items-center mb-4">
     <div class="col-12 col-md-auto flex-grow-1">
         <div class="input-group input-group-sm shadow-sm rounded-3 overflow-hidden">
@@ -21,11 +29,11 @@
         </div>
     </div>
     <div class="col-12 col-sm-6 col-md-auto">
-        <select name="role" class="form-select form-select-sm filter-select shadow-sm rounded-3" onchange="this.form.submit()">
+        <select name="role_id" class="form-select form-select-sm filter-select shadow-sm rounded-3" onchange="this.form.submit()">
             <option value="">-- Tất cả vai trò --</option>
-            <option value="manager" @selected(request('role') === 'manager' || request('role') === 'admin')>Quản lý</option>
-            <option value="staff" @selected(request('role') === 'staff')>Nhân viên</option>
-            <option value="customer" @selected(request('role') === 'customer')>Khách hàng</option>
+            @foreach($roles as $role)
+                <option value="{{ $role->VaiTroID }}" @selected((string) request('role_id') === (string) $role->VaiTroID)>{{ $role->TenVaiTro }}</option>
+            @endforeach
         </select>
     </div>
     <div class="col-12 col-sm-6 col-md-auto">
@@ -59,64 +67,78 @@
                 <thead>
                     <tr>
                         <th class="fw-bold text-dark">STT</th>
-                        <th class="fw-bold text-dark">Mã nhân viên</th>
-                        <th class="fw-bold text-dark">Người dùng</th>
-                        <th class="fw-bold text-dark">Email / SĐT</th>
-                        <th class="fw-bold text-dark">Vai trò phân quyền</th>
+                        <th class="fw-bold text-dark">Tên / Email</th>
+                        <th class="fw-bold text-dark">Phương thức đăng nhập</th>
+                        <th class="fw-bold text-dark">Vai trò hiện tại</th>
                         <th class="fw-bold text-dark">Trạng thái</th>
                         <th class="fw-bold text-dark">Ngày tạo</th>
-                        <th class="fw-bold text-dark">Thao tác</th>
+                        <th class="fw-bold text-dark">Hành động</th>
                     </tr>
                 </thead>
                 <tbody>
                     @forelse($accounts as $account)
                     <tr>
-                        <td>{{ $loop->iteration }}</td>
-                        <td>{{ $account->code ?? 'TK' . str_pad($account->id, 4, '0', STR_PAD_LEFT) }}</td>
+                        <td>{{ $accounts->firstItem() + $loop->index }}</td>
                         <td>
-                            <div class="d-flex align-items-center">
-                                <img src="{{ $account->avatar_url }}" alt="Avatar" class="rounded-circle me-2 avatar-cover" style="width: 36px; height: 36px;">
-                                <strong class="fw-semibold text-dark">{{ $account->name }}</strong>
-                            </div>
+                            <strong class="fw-semibold text-dark">{{ $account->name }}</strong>
+                            <br><small class="text-muted">{{ $account->Email }}</small>
                         </td>
                         <td>
-                            {{ $account->email }}
-                            @if($account->phone)
-                                <br><small class="text-muted">{{ $account->phone }}</small>
-                            @endif
-                        </td>
-                        <td>
-                            @if($account->isManager())
-                                <span class="badge bg-danger-subtle text-danger-emphasis border border-danger px-3 py-2 rounded-pill"><i class="fas fa-shield-alt me-1"></i>Quản lý</span>
-                            @elseif($account->role === 'staff')
-                                <span class="badge bg-primary-subtle text-primary-emphasis border border-primary px-3 py-2 rounded-pill"><i class="fas fa-user-tie me-1"></i>Nhân viên</span>
+                            @if($account->UserAuthId)
+                                <span class="badge bg-primary-subtle text-primary-emphasis border border-primary">Google</span>
                             @else
-                                <span class="badge bg-success-subtle text-success-emphasis border border-success px-3 py-2 rounded-pill"><i class="fas fa-user me-1"></i>Khách hàng</span>
+                                <span class="badge bg-secondary-subtle text-secondary-emphasis border border-secondary">Mặc định</span>
                             @endif
                         </td>
                         <td>
-                            <x-admin.status-badge
-                                :status="$account->deleted_at ? 'inactive' : 'active'"
-                                :enum="\App\Enums\RecordStatus::class"
-                            />
+                            @forelse($account->vaiTros as $role)
+                                @php
+                                    $roleBadgeClass = match ((int) $role->VaiTroID) {
+                                        1 => 'bg-danger-subtle text-danger-emphasis border border-danger',
+                                        2 => 'bg-warning-subtle text-warning-emphasis border border-warning',
+                                        3 => 'bg-primary-subtle text-primary-emphasis border border-primary',
+                                        default => 'bg-success-subtle text-success-emphasis border border-success',
+                                    };
+                                @endphp
+                                <span class="badge {{ $roleBadgeClass }} me-1 mb-1">{{ $role->TenVaiTro }}</span>
+                            @empty
+                                <span class="text-muted">Chưa gán vai trò</span>
+                            @endforelse
                         </td>
-                        <td>{{ $account->created_at?->format('d/m/Y') }}</td>
+                        <td>
+                            <span class="badge {{ $account->TrangThai === 'Hoạt động' ? 'bg-success-subtle text-success-emphasis border border-success' : 'bg-secondary-subtle text-secondary-emphasis border border-secondary' }}">
+                                {{ $account->TrangThai }}
+                            </span>
+                        </td>
+                        <td>{{ $account->NgayTao?->format('d/m/Y') }}</td>
                         <td>
                             <div class="d-flex gap-2">
                                 @can('accounts.view')
-                                    <a href="{{ route('accounts.show', $account->id) }}" class="btn btn-order-action view" title="Xem"><i class="bi bi-eye"></i></a>
+                                    <a href="{{ route('accounts.show', $account->getKey()) }}" class="btn btn-order-action view" title="Xem"><i class="bi bi-eye"></i></a>
                                 @endcan
                                 @can('accounts.edit')
                                     @can('update', $account)
-                                    <a href="{{ route('accounts.edit', $account->id) }}" class="btn btn-order-action edit" title="Sửa"><i class="bi bi-pencil"></i></a>
+                                    <a href="{{ route('accounts.edit', $account->getKey()) }}" class="btn btn-order-action edit" title="Sửa"><i class="bi bi-pencil"></i></a>
                                     @endcan
                                 @endcan
+                                @if($canManageRoles && auth()->id() !== $account->getKey())
+                                    <button
+                                        type="button"
+                                        class="btn btn-order-action edit"
+                                        title="Đổi vai trò"
+                                        data-bs-toggle="modal"
+                                        data-bs-target="#updateRoleModal"
+                                        data-account-name="{{ $account->name }}"
+                                        data-account-roles="{{ $account->vaiTros->pluck('VaiTroID')->implode(',') }}"
+                                        data-update-url="{{ route('accounts.update-role', $account->getKey()) }}"
+                                    ><i class="bi bi-shield-lock"></i></button>
+                                @endif
                             </div>
                         </td>
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="8" class="text-center text-muted py-4">Chưa có tài khoản nào.</td>
+                        <td colspan="7" class="text-center text-muted py-4">Chưa có tài khoản nào.</td>
                     </tr>
                     @endforelse
                 </tbody>
@@ -130,11 +152,60 @@
     {{ $accounts->appends(request()->query())->links('pagination::bootstrap-5') }}
 </div>
 @endif
+
+@if($canManageRoles)
+<div class="modal fade" id="updateRoleModal" tabindex="-1" aria-labelledby="updateRoleModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST" id="updateRoleForm">
+                @csrf
+                <div class="modal-header">
+                    <h5 class="modal-title" id="updateRoleModalLabel">Đổi vai trò tài khoản</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Chọn vai trò mới cho <strong id="roleAccountName"></strong>:</p>
+                    @foreach($roles as $role)
+                        <div class="form-check mb-2">
+                            <input class="form-check-input role-option" type="checkbox" name="vai_tro_ids[]" value="{{ $role->VaiTroID }}" id="role-{{ $role->VaiTroID }}">
+                            <label class="form-check-label" for="role-{{ $role->VaiTroID }}">{{ $role->TenVaiTro }}</label>
+                        </div>
+                    @endforeach
+                    <small class="text-muted">Đổi vai trò sẽ đăng xuất các phiên hiện tại của tài khoản để áp dụng quyền mới.</small>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Hủy</button>
+                    <button type="submit" class="btn btn-primary">Lưu thay đổi</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+@endif
 @endsection
 
 @push('scripts')
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function () {
+    const modal = document.getElementById('updateRoleModal');
+
+    if (!modal) {
+        return;
+    }
+
+    modal.addEventListener('show.bs.modal', function (event) {
+        const button = event.relatedTarget;
+        const selectedRoles = (button.dataset.accountRoles || '')
+            .split(',')
+            .filter(Boolean);
+
+        document.getElementById('roleAccountName').textContent = button.dataset.accountName;
+        document.getElementById('updateRoleForm').action = button.dataset.updateUrl;
+
+        modal.querySelectorAll('.role-option').forEach(function (checkbox) {
+            checkbox.checked = selectedRoles.includes(checkbox.value);
+        });
     });
+});
 </script>
 @endpush

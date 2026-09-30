@@ -4,9 +4,11 @@
 @section('content')
 <!-- Page Actions: nút "Thêm" luôn nằm góc trên bên trái -->
 <div class="page-toolbar">
-    <a href="{{ route('pricings.create') }}" class="btn btn-create">
-        <i class="bi bi-plus-lg"></i>Thêm bảng giá
-    </a>
+    @can('pricings.create')
+        <a href="{{ route('pricings.create') }}" class="btn btn-create">
+            <i class="bi bi-plus-lg"></i>Thêm bảng giá
+        </a>
+    @endcan
     <p class="text-muted page-toolbar__desc">Giá dịch vụ theo loại đồ và đơn vị tính.</p>
 </div>
 

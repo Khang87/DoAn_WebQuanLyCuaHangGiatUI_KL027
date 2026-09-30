@@ -4,12 +4,13 @@
 @section('page-title', 'Danh mục loại đồ giặt')
 
 @section('content')
-<!-- Page Actions: nút "Thêm" luôn nằm góc trên bên trái -->
 <div class="page-toolbar">
-    <a href="{{ route('laundry-categories.create') }}" class="btn btn-create">
-        <i class="bi bi-plus-lg"></i>Thêm danh mục
-    </a>
-    <p class="text-muted page-toolbar__desc">Danh mục loại đồ giặt dùng chung cho hệ thống, có mã và biểu tượng nhận diện.</p>
+    @can('laundry_categories.create')
+        <a href="{{ route('laundry-categories.create') }}" class="btn btn-create">
+            <i class="bi bi-plus-lg"></i>Thêm danh mục
+        </a>
+    @endcan
+    <p class="text-muted page-toolbar__desc">Danh mục dịch vụ được lưu trong bảng LoaiDichVu.</p>
 </div>
 <form action="{{ url()->current() }}" method="GET" class="row g-3 align-items-center mb-4">
     <div class="col-12 col-md-auto flex-grow-1">
@@ -17,7 +18,7 @@
             <span class="input-group-text bg-white border-end-0 ps-3">
                 <i class="fas fa-search text-muted"></i>
             </span>
-            <input type="text" name="search" class="form-control form-control-sm border-start-0 ps-2" placeholder="Tìm theo ID, mã danh mục, tên..." value="{{ request('search') }}">
+            <input type="text" name="search" class="form-control form-control-sm border-start-0 ps-2" placeholder="Tìm theo ID, tên hoặc mô tả..." value="{{ request('search') }}">
         </div>
     </div>
     <div class="col-12 col-sm-6 col-md-auto">
@@ -32,9 +33,9 @@
     </div>
     <div class="col-12 col-sm-6 col-md-auto">
         <select name="sort" class="form-select form-select-sm filter-select shadow-sm rounded-3" onchange="this.form.submit()">
-            <option value="">-- Tất cả cách sắp xếp --</option>
-            <option value="created_at_desc" @selected(request('sort') === 'created_at_desc')>Mới nhất</option>
-            <option value="created_at_asc" @selected(request('sort') === 'created_at_asc')>Cũ nhất</option>
+            <option value="">-- Sắp xếp theo mã --</option>
+            <option value="id_desc" @selected(in_array(request('sort'), ['', 'id_desc', 'created_at_desc'], true))>Mã giảm dần</option>
+            <option value="id_asc" @selected(in_array(request('sort'), ['id_asc', 'created_at_asc'], true))>Mã tăng dần</option>
             <option value="name_asc" @selected(request('sort') === 'name_asc')>Tên A-Z</option>
             <option value="name_desc" @selected(request('sort') === 'name_desc')>Tên Z-A</option>
         </select>
@@ -49,9 +50,7 @@
                 <thead>
                     <tr>
                         <th class="fw-bold text-dark">STT</th>
-                        <th class="fw-bold text-dark">Mã danh mục</th>
                         <th class="fw-bold text-dark">Tên danh mục</th>
-                        <th class="fw-bold text-dark">Icon</th>
                         <th class="fw-bold text-dark">Mô tả</th>
                         <th class="fw-bold text-dark">Trạng thái</th>
                         <th class="fw-bold text-dark">Thao tác</th>
@@ -60,20 +59,12 @@
                 <tbody>
                     @forelse($categories as $category)
                     @php $stt = $categories->firstItem() + $loop->index; @endphp
-                    <tr data-id="{{ $category->id }}">
+                    <tr data-id="{{ $category->getKey() }}">
                         <td>{{ $stt }}</td>
-                        <td>{{ $category->code }}</td>
-                        <td><strong>{{ $category->name ?: '-' }}</strong></td>
+                        <td><strong>{{ $category->TenLoaiDichVu ?: '-' }}</strong></td>
+                        <td>{{ \Illuminate\Support\Str::limit($category->MoTa, 50) ?: '-' }}</td>
                         <td>
-                            @if($category->icon)
-                                <i class="{{ $category->icon }} fs-5 text-dark" title="{{ $category->icon }}"></i>
-                            @else
-                                <span class="text-muted">-</span>
-                            @endif
-                        </td>
-                        <td>{{ \Illuminate\Support\Str::limit($category->description, 50) ?: '-' }}</td>
-                        <td>
-                            <x-admin.status-badge :status="$category->status" :enum="\App\Enums\RecordStatus::class" />
+                            <x-admin.status-badge :status="$category->TrangThai" :enum="\App\Enums\RecordStatus::class" />
                         </td>
                         <td class="text-center">
                             <div class="d-flex gap-2 justify-content-center">
@@ -84,7 +75,7 @@
                                     <a href="{{ route('laundry-categories.edit', $category) }}" class="btn btn-order-action edit" title="Sửa"><i class="bi bi-pencil"></i></a>
                                 @endcan
                                 @can('laundry_categories.delete')
-                                    <form action="{{ route('laundry-categories.destroy', $category) }}" method="POST" class="d-inline" id="deleteCategoryForm_{{ $category->id }}">
+                                    <form action="{{ route('laundry-categories.destroy', $category) }}" method="POST" class="d-inline" id="deleteCategoryForm_{{ $category->getKey() }}">
                                         @csrf @method('DELETE')
                                         <button type="submit" class="btn btn-order-action delete" title="Xóa"><i class="bi bi-trash"></i></button>
                                     </form>
@@ -94,7 +85,7 @@
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="7" class="text-center text-muted py-4">Chưa có dữ liệu nào</td>
+                        <td colspan="5" class="text-center text-muted py-4">Chưa có dữ liệu nào</td>
                     </tr>
                     @endempty
                 </tbody>

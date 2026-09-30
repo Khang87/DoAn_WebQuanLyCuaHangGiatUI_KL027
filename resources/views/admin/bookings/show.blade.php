@@ -10,7 +10,7 @@
 
 <x-admin.detail.page-header
     title="Lịch hẹn {{ $bookingCode }}"
-    :subtitle="$booking->HinhThucNhanDo === 'nhan_do' ? 'Nhận đồ' : 'Giao đồ' . ' ngày ' . ($booking->NgayHen?->format('d/m/Y') ?: '—')"
+    :subtitle="$booking->method_label . ' ngày ' . ($booking->NgayHen?->format('d/m/Y') ?: '—')"
 >
     <x-slot:badge>
         <x-admin.status-badge :status="$booking->TrangThai" :enum="\App\Enums\BookingStatus::class" />
@@ -31,7 +31,7 @@
                 </x-admin.detail.info-item>
                 <x-admin.detail.info-item label="Hình thức">
                     <span class="badge bg-primary-subtle text-primary-emphasis border border-primary px-3 py-2 rounded-pill">
-                        <i class="bi {{ $booking->HinhThucNhanDo === 'nhan_do' ? 'bi-box-arrow-in-down' : 'bi-truck' }} me-1"></i>{{ $booking->HinhThucNhanDo === 'nhan_do' ? 'Nhận đồ' : 'Giao đồ' }}
+                        <i class="bi {{ $booking->method_icon }} me-1"></i>{{ $booking->method_label }}
                     </span>
                 </x-admin.detail.info-item>
                 <x-admin.detail.info-item label="Nhân viên phụ trách" :value="$booking->nhanVien?->HoTen ?? 'Chưa phân công'" />
@@ -109,12 +109,12 @@
                     <a href="{{ route('orders.show', $order) }}" class="btn btn-outline-info w-100 py-2">
                         <i class="bi bi-receipt me-1"></i> Xem đơn {{ $order->MaDonHang }}
                     </a>
-                @elseif($booking->TrangThai === 'pending')
+                @elseif($booking->statusEnum() === \App\Enums\BookingStatus::Pending)
                     <span class="btn btn-outline-secondary py-2 disabled w-100"
                           title="Đơn hàng sẽ tự động được tạo khi lịch chuyển sang trạng thái Đã xác nhận">
                         <i class="bi bi-hourglass-split me-1"></i> Chờ xác nhận
                     </span>
-                @elseif($booking->TrangThai === 'confirmed')
+                @elseif($booking->statusEnum() === \App\Enums\BookingStatus::Confirmed)
                     <x-admin.detail.confirm-form
                         :action="route('bookings.confirm', $booking)"
                         method="POST"

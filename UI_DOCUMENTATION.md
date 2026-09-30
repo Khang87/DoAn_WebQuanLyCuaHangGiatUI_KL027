@@ -239,11 +239,8 @@ DB_USERNAME=root
 DB_PASSWORD=
 ```
 
-### 4. Chạy migrations và seeders
-```bash
-php artisan migrate
-php artisan db:seed
-```
+### 4. Cơ sở dữ liệu
+Kết nối tới cơ sở dữ liệu đã được provision sẵn với schema hiện có. Không chạy migration, lệnh DDL hoặc seeder trên Supabase.
 
 ### 5. Chạy ứng dụng
 ```bash

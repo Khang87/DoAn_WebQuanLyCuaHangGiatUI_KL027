@@ -6,9 +6,11 @@
 @section('content')
 <!-- Page Actions: nút "Thêm" luôn nằm góc trên bên trái -->
 <div class="page-toolbar">
-    <a href="{{ route('services.create') }}" class="btn btn-create">
-        <i class="bi bi-plus-lg"></i>Thêm dịch vụ
-    </a>
+    @can('services.create')
+        <a href="{{ route('services.create') }}" class="btn btn-create">
+            <i class="bi bi-plus-lg"></i>Thêm dịch vụ
+        </a>
+    @endcan
     <p class="text-muted page-toolbar__desc">Danh mục các dịch vụ giặt ủi đang cung cấp kèm đơn giá và thời gian xử lý.</p>
 </div>
 <form action="{{ url()->current() }}" method="GET" class="row g-3 align-items-center mb-4">
@@ -24,8 +26,8 @@
         <select id="category-filter" name="category_id" class="form-select form-select-sm filter-select shadow-sm rounded-3 js-icon-select" onchange="this.form.submit()">
             <option value="">-- Tất cả danh mục --</option>
             @foreach($categories as $category)
-                <option value="{{ $category->id }}" data-icon="{{ $category->icon }}" @selected(request('category_id') == $category->id)>
-                    {{ $category->name }}
+                <option value="{{ $category->LoaiDichVuID }}" @selected(request('category_id') == $category->LoaiDichVuID)>
+                    {{ $category->TenLoaiDichVu }}
                 </option>
             @endforeach
         </select>
@@ -46,8 +48,8 @@
             <option value="">-- Tất cả cách sắp xếp --</option>
             <option value="created_at_desc" @selected(request('sort') === 'created_at_desc')>Mới nhất</option>
             <option value="created_at_asc" @selected(request('sort') === 'created_at_asc')>Cũ nhất</option>
-            <option value="price_asc" @selected(request('sort') === 'price_asc')>Giá tăng dần</option>
-            <option value="price_desc" @selected(request('sort') === 'price_desc')>Giá giảm dần</option>
+            <option value="duration_asc" @selected(request('sort') === 'duration_asc')>Thời gian tăng dần</option>
+            <option value="duration_desc" @selected(request('sort') === 'duration_desc')>Thời gian giảm dần</option>
             <option value="name_asc" @selected(request('sort') === 'name_asc')>Tên A-Z</option>
             <option value="name_desc" @selected(request('sort') === 'name_desc')>Tên Z-A</option>
             <option value="status_asc" @selected(request('sort') === 'status_asc')>Trạng thái A-Z</option>
@@ -65,30 +67,23 @@
             <div class="card-body">
                 <div class="d-flex align-items-center mb-3">
                     <div class="rounded-3 d-flex align-items-center justify-content-center text-white me-3" style="width: 48px; height: 48px; background-color: #00c4cc; flex-shrink: 0;">
-                        @if(!empty($service->icon))
-                            <i class="{{ $service->icon }} fs-4"></i>
-                        @else
-                            <i class="bi bi-water fs-4"></i>
-                        @endif
+                        <i class="bi bi-water fs-4"></i>
                     </div>
                     <div>
-                         <h5 class="card-title mb-1">{{ $service->name }}</h5>
+                         <h5 class="card-title mb-1">{{ $service->TenDichVu }}</h5>
                         <div class="d-flex gap-1 flex-wrap mt-1">
-                            @if($service->category)
-                                <span class="badge bg-secondary-subtle text-secondary-emphasis border border-secondary px-2 py-1 rounded-pill text-xs">{{ $service->category->name }}</span>
+                            @if($service->loaiDichVu)
+                                <span class="badge bg-secondary-subtle text-secondary-emphasis border border-secondary px-2 py-1 rounded-pill text-xs">{{ $service->loaiDichVu->TenLoaiDichVu }}</span>
                             @endif
-                            <x-admin.status-badge :status="$service->status" :enum="\App\Enums\RecordStatus::class" size="px-2 py-1" class="text-xs" />
+                            <x-admin.status-badge :status="$service->TrangThai" :enum="\App\Enums\RecordStatus::class" size="px-2 py-1" class="text-xs" />
                         </div>
                     </div>
                 </div>
-                <p class="text-muted mb-3">{{ $service->description ?: 'Chưa có mô tả chi tiết.' }}</p>
-                    <div class="mb-3">
-                        <strong>Giá cơ bản:</strong> <span class="text-dark">{{ number_format($service->price) }} VNĐ/{{ $service->unit ?: 'kg' }}</span>
-                    </div>
-                @if($service->processing_time)
+                <p class="text-muted mb-3">{{ $service->MoTa ?: 'Chưa có mô tả chi tiết.' }}</p>
+                @if($service->ThoiGianDuKien)
                 <div class="mb-2">
                     <span class="badge rounded-pill px-2.5 py-1 fw-medium" style="background-color: #fef3c7 !important; color: #b45309 !important; border: 1px solid #fde68a !important; font-size: 0.8125rem; display: inline-flex; align-items: center; width: fit-content;">
-                        <i class="bi bi-clock me-1" style="color: #b45309;"></i> {{ $service->formatted_processing_time }}
+                        <i class="bi bi-clock me-1" style="color: #b45309;"></i> {{ $service->ThoiGianDuKien }} phút
                     </span>
                 </div>
                 @endif
@@ -111,29 +106,9 @@
 </div>
 
 @if($services->hasPages())
-<nav class="mt-4">
-    <div class="d-flex justify-content-between align-items-center">
-        <div class="text-muted small">Hiển thị {{ $services->firstItem() }} - {{ $services->lastItem() }} của {{ $services->total() }} dịch vụ</div>
-        <ul class="pagination mb-0">
-            @if ($services->onFirstPage())
-                <li class="page-item disabled"><span class="page-link"><i class="bi bi-chevron-left"></i></span></li>
-            @else
-                <li class="page-item"><a class="page-link" href="{{ $services->appends(request()->query())->url($services->currentPage() - 1) }}"><i class="bi bi-chevron-left"></i></a></li>
-            @endif
-            @foreach ($services->getUrlRange(max(1, $services->currentPage() - 2), min($services->lastPage(), $services->currentPage() + 2)) as $page => $url)
-                @if ($page == $services->currentPage())
-                    <li class="page-item active"><span class="page-link">{{ $page }}</span></li>
-                @else
-                    <li class="page-item"><a class="page-link" href="{{ $services->appends(request()->query())->url($page) }}">{{ $page }}</a></li>
-                @endif
-            @endforeach
-            @if ($services->onLastPage())
-                <li class="page-item disabled"><span class="page-link"><i class="bi bi-chevron-right"></i></span></li>
-            @else
-                <li class="page-item"><a class="page-link" href="{{ $services->appends(request()->query())->url($services->currentPage() + 1) }}"><i class="bi bi-chevron-right"></i></a></li>
-            @endif
-        </ul>
-    </div>
-</nav>
+<div class="mt-4 d-flex justify-content-between align-items-center">
+    <small class="text-muted">Hiển thị {{ $services->firstItem() }} - {{ $services->lastItem() }} của {{ $services->total() }} dịch vụ</small>
+    {{ $services->links('pagination::bootstrap-5') }}
+</div>
 @endif
 @endsection

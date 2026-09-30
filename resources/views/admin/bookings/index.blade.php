@@ -28,8 +28,9 @@
     <div class="col-12 col-sm-6 col-md-auto">
         <select name="method" class="form-select form-select-sm filter-select shadow-sm rounded-3" onchange="this.form.submit()">
             <option value="">-- Tất cả hình thức --</option>
-            <option value="nhan_do" @selected(request('method') === 'nhan_do')>Nhận đồ</option>
-            <option value="giao_do" @selected(request('method') === 'giao_do')>Giao đồ</option>
+            @foreach(\App\Enums\BookingMethod::options() as $value => $label)
+                <option value="{{ $value }}" @selected(request('method') === $value)>{{ $label }}</option>
+            @endforeach
         </select>
     </div>
 </form>
@@ -43,15 +44,11 @@
                 @forelse($bookings as $booking)
                     <tr>
                         <td>{{ $loop->iteration }}</td>
-                        <td><strong>{{ $booking->MaBooking ?: 'BK' . str_pad($booking->BookingID, 4, '0', STR_PAD_LEFT) }}</strong></td>
+                        <td><strong>{{ $booking->MaBooking }}</strong></td>
                         <td><div class="fw-semibold">{{ $booking->khachHang?->HoTen ?: '-' }}</div><small class="text-muted">{{ $booking->khachHang?->SoDienThoai ?: 'Chưa có SĐT' }}</small></td>
                         <td>{{ $booking->nhanVien?->HoTen ?: 'Chưa phân công' }}</td>
                         <td>
-                            @if($booking->HinhThucNhanDo === 'nhan_do')
-                                <i class="bi bi-box-arrow-in-down me-1"></i>Nhận đồ
-                            @else
-                                <i class="bi bi-truck me-1"></i>Giao đồ
-                            @endif
+                            <i class="bi {{ $booking->method_icon }} me-1"></i>{{ $booking->HinhThucNhanDo }}
                         </td>
                         <td>{{ $booking->NgayHen?->format('d/m/Y') ?: '-' }} {{ $booking->GioHen?->format('H:i') ?: '' }}</td>
                         <td><x-admin.status-badge :status="$booking->TrangThai" :enum="\App\Enums\BookingStatus::class" /></td>
@@ -61,9 +58,9 @@
                             @endcan
                             @can('bookings.edit')
                                 <a href="{{ route('bookings.edit', $booking) }}" class="btn btn-order-action edit" title="Sửa"><i class="bi bi-pencil"></i></a>
-                                @if($booking->TrangThai === 'pending')
+                                @if($booking->statusEnum() === \App\Enums\BookingStatus::Pending)
                                     <span class="btn btn-order-action" disabled title="Đơn hàng sẽ tự động được tạo khi chuyển sang trạng thái Đã xác nhận"><i class="bi bi-hourglass-split"></i></span>
-                                @elseif(! $booking->donHangs->first() && $booking->TrangThai === 'confirmed')
+                                @elseif(! $booking->donHangs->first() && $booking->statusEnum() === \App\Enums\BookingStatus::Confirmed)
                                     @can('orders.view')
                                         <form action="{{ route('bookings.confirm', $booking) }}" method="POST" class="d-inline" id="confirmBookingForm_{{ $booking->BookingID }}">
                                             @csrf
@@ -92,30 +89,10 @@
 </div>
 
 @if($bookings->hasPages())
-<nav class="mt-4">
-    <div class="d-flex justify-content-between align-items-center">
-        <div class="text-muted small">Hiển thị {{ $bookings->firstItem() }} - {{ $bookings->lastItem() }} của {{ $bookings->total() }} lịch hẹn</div>
-        <ul class="pagination mb-0">
-            @if ($bookings->onFirstPage())
-                <li class="page-item disabled"><span class="page-link"><i class="bi bi-chevron-left"></i></span></li>
-            @else
-                <li class="page-item"><a class="page-link" href="{{ $bookings->appends(request()->query())->url($bookings->currentPage() - 1) }}"><i class="bi bi-chevron-left"></i></a></li>
-            @endif
-            @foreach ($bookings->getUrlRange(max(1, $bookings->currentPage() - 2), min($bookings->lastPage(), $bookings->currentPage() + 2)) as $page => $url)
-                @if ($page == $bookings->currentPage())
-                    <li class="page-item active"><span class="page-link">{{ $page }}</span></li>
-                @else
-                    <li class="page-item"><a class="page-link" href="{{ $bookings->appends(request()->query())->url($page) }}">{{ $page }}</a></li>
-                @endif
-            @endforeach
-            @if ($bookings->onLastPage())
-                <li class="page-item disabled"><span class="page-link"><i class="bi bi-chevron-right"></i></span></li>
-            @else
-                <li class="page-item"><a class="page-link" href="{{ $bookings->appends(request()->query())->url($bookings->currentPage() + 1) }}">{{ $page }}</a></li>
-            @endif
-        </ul>
-    </div>
-</nav>
+<div class="mt-4 d-flex justify-content-between align-items-center">
+    <small class="text-muted">Hiển thị {{ $bookings->firstItem() }} - {{ $bookings->lastItem() }} của {{ $bookings->total() }} lịch hẹn</small>
+    {{ $bookings->links('pagination::bootstrap-5') }}
+</div>
 @endif
 @endsection
 

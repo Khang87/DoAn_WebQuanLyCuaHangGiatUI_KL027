@@ -3,9 +3,10 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\Admin\CouponRequest;
+use App\Http\Requests\Admin\LuuCouponRequest;
 use App\Models\KhuyenMai;
 use App\Services\PromotionService;
+use App\Support\FriendlyError;
 use Illuminate\Http\Request;
 
 class CouponController extends Controller
@@ -32,14 +33,14 @@ class CouponController extends Controller
         return view('admin.coupons.create', compact('promotions'));
     }
 
-    public function store(CouponRequest $request)
+    public function store(LuuCouponRequest $request)
     {
         try {
             $this->promotionService->create($request->validated());
 
             return redirect()->route('coupons.index')->with('success', 'Mã giảm giá đã được tạo.');
         } catch (\Exception $e) {
-            return redirect()->route('coupons.create')->with('error', \App\Support\FriendlyError::message($e))->withInput();
+            return redirect()->route('coupons.create')->with('error', FriendlyError::message($e))->withInput();
         }
     }
 
@@ -47,7 +48,7 @@ class CouponController extends Controller
     {
         $coupon = $this->promotionService->find($id);
 
-        if (!$coupon) {
+        if (! $coupon) {
             abort(404);
         }
 
@@ -59,18 +60,18 @@ class CouponController extends Controller
         $coupon = $this->promotionService->find($id);
         $promotions = KhuyenMai::where('TrangThai', 'Hoạt động')->orderBy('TenKhuyenMai')->get();
 
-        if (!$coupon) {
+        if (! $coupon) {
             abort(404);
         }
 
         return view('admin.coupons.edit', compact('coupon', 'promotions'));
     }
 
-    public function update(CouponRequest $request, int $id)
+    public function update(LuuCouponRequest $request, int $id)
     {
         $coupon = $this->promotionService->find($id);
 
-        if (!$coupon) {
+        if (! $coupon) {
             abort(404);
         }
 
@@ -79,7 +80,7 @@ class CouponController extends Controller
 
             return redirect()->route('coupons.index')->with('success', 'Mã giảm giá đã được cập nhật.');
         } catch (\Exception $e) {
-            return redirect()->route('coupons.edit', $coupon)->with('error', \App\Support\FriendlyError::message($e))->withInput();
+            return redirect()->route('coupons.edit', $coupon)->with('error', FriendlyError::message($e))->withInput();
         }
     }
 
@@ -91,7 +92,7 @@ class CouponController extends Controller
             try {
                 $this->promotionService->delete($coupon);
             } catch (\Exception $e) {
-                return redirect()->route('coupons.index')->with('error', \App\Support\FriendlyError::message($e));
+                return redirect()->route('coupons.index')->with('error', FriendlyError::message($e));
             }
         }
 

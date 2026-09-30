@@ -2,86 +2,70 @@
 
 namespace Database\Seeders;
 
-use App\Models\Customer;
-use App\Models\Delivery;
-use App\Models\Order;
-use Carbon\Carbon;
+use App\Enums\OrderStatus;
+use App\Models\DonHang;
+use App\Models\GiaoNhan;
+use App\Models\KhachHang;
+use App\Models\NhanVien;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
+/**
+ * Sinh phiếu giao nhận trong `GiaoNhan` cho từng đơn hàng.
+ *
+ * `HinhThuc` nhận 'Tại cửa hàng'/'Tại nhà', `LoaiGiaoNhan` nhận
+ * 'NHAN_DO'/'GIAO_DO' và `TrangThai` nhận 'Chờ thực hiện'/'Đang thực hiện'/
+ * 'Hoàn thành'/'Đã hủy'.
+ */
 class DeliverySeeder extends Seeder
 {
     use WithoutModelEvents;
 
     public function run(): void
     {
-        $customers = Customer::all();
-        $orders = Order::all();
+        $orders = DonHang::with(['giaoNhans', 'khachHang'])->get();
 
-        if ($customers->isEmpty() || $orders->isEmpty()) {
-            $this->command->error('Lỗi: Cần tạo dữ liệu Customers và Orders trước!');
+        if ($orders->isEmpty()) {
+            $this->command?->warn('Chưa có đơn hàng nào để sinh phiếu giao nhận.');
+
             return;
         }
 
-        $addresses = [
-            '140 Lê Trọng Tấn, Phường Tây Thạnh, Quận Tân Phú, TP.HCM',
-            '54/12 Chế Lan Viên, Phường Tây Thạnh, Quận Tân Phú, TP.HCM',
-            '102 Trường Chinh, Phường 12, Quận Tân Bình, TP.HCM',
-            '215 Tân Sơn Nhì, Phường Tân Sơn Nhì, Quận Tân Phú, TP.HCM',
-            '88 Bình Long, Phường Phú Thạnh, Quận Tân Phú, TP.HCM',
-            '45 Nguyễn Văn Lượng, Phường Tây Thạnh, Quận Tân Phú, TP.HCM',
-            '78/42 Lê Đức Thọ, Phường 15, Quận Tân Bình, TP.HCM',
-            '300/14 Đỗ Thúc Tĩnh, Phường Tây Thạnh, Quận Tân Phú, TP.HCM',
-            '126 Trường Đinh, Phường 12, Quận Tân Bình, TP.HCM',
-            '999 Lê Văn Sỹ, Phường 14, Quận 3, TP.HCM',
-        ];
+        $staff = NhanVien::where('TrangThai', 'Hoạt động')->get();
+        $created = 0;
 
-        $cancelReasons = [
-            'Khách đổi lịch bận',
-            'Cửa hàng quá tải khung giờ',
-            'Địa chỉ giao hàng không chính xác',
-            'Khách hủy chuyến đi cuối tuần',
-            'Thời gian không phù hợp với giờ mở cửa',
-        ];
-
-        $methods = ['nhan_do', 'giao_do'];
-        $statuses = ['pending', 'picking', 'delivering', 'completed', 'cancelled'];
-
-        $methodStatusMap = [
-            'nhan_do' => ['pending', 'picking', 'completed', 'cancelled'],
-            'giao_do' => ['pending', 'delivering', 'completed', 'cancelled'],
-        ];
-
-        for ($i = 1; $i <= 15; $i++) {
-            $method = $methods[($i - 1) % count($methods)];
-            $availableStatuses = $methodStatusMap[$method];
-            $status = $availableStatuses[($i - 1) % count($availableStatuses)];
-            $customer = $customers[($i - 1) % $customers->count()];
-            $order = $orders[($i - 1) % $orders->count()];
-
-            $pickupDate = ($i <= 4)
-                ? Carbon::today()->format('Y-m-d')
-                : Carbon::now()->addDays(rand(0, 5))->format('Y-m-d');
-            $pickupTime = sprintf('%02d:00:00', rand(9, 17));
-
-            $notes = '';
-            if ($status === 'cancelled') {
-                $notes = $cancelReasons[array_rand($cancelReasons)];
+        foreach ($orders as $order) {
+            if ($order->giaoNhans->isNotEmpty()) {
+                continue;
             }
 
-            Delivery::create([
-                'code' => 'GH' . str_pad((string) $i, 3, '0', STR_PAD_LEFT),
-                'order_id' => $order->id,
-                'customer_id' => $customer->id,
-                'method' => $method,
-                'address' => $addresses[($i - 1) % count($addresses)],
-                'pickup_date' => $pickupDate,
-                'pickup_time' => $pickupTime,
-                'notes' => $notes,
-                'status' => $status,
-                'created_at' => Carbon::now()->subDays(rand(0, 30)),
-                'updated_at' => Carbon::now()->subDays(rand(0, 30)),
+            $customer = $order->khachHang ?? KhachHang::find($order->KhachHangID);
+            $deliverToHome = ($order->DonHangID % 3) !== 0;
+            $status = match ($order->TrangThai) {
+                OrderStatus::Cancelled->value => 'Đã hủy',
+                OrderStatus::Washed->value, OrderStatus::Delivering->value => 'Đang thực hiện',
+                OrderStatus::Delivered->value, OrderStatus::Paid->value => 'Hoàn thành',
+                default => 'Chờ thực hiện',
+            };
+
+            GiaoNhan::create([
+                'DonHangID' => $order->DonHangID,
+                'NhanVienID' => $order->NhanVienID ?: ($staff->isNotEmpty() ? $staff->random()->NhanVienID : null),
+                'LoaiGiaoNhan' => $deliverToHome ? 'GIAO_DO' : 'NHAN_DO',
+                'HinhThuc' => $deliverToHome ? 'Tại nhà' : 'Tại cửa hàng',
+                'DiaChi' => $customer?->DiaChi,
+                'ThoiGianDuKien' => ($order->NgayTao ?? now())->copy()->addDay()->setTime(random_int(9, 17), 0),
+                'ThoiGianThucTe' => in_array($status, ['Hoàn thành'], true)
+                    ? ($order->NgayTao ?? now())->copy()->addDay()->setTime(random_int(9, 18), 0)
+                    : null,
+                'PhiGiaoHang' => (float) $order->PhiGiaoHang,
+                'TrangThai' => $status,
+                'GhiChu' => null,
             ]);
+
+            $created++;
         }
+
+        $this->command?->info("Đã tạo {$created} phiếu giao nhận.");
     }
 }

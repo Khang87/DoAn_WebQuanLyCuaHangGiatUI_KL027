@@ -3,13 +3,17 @@
 namespace App\Providers;
 
 use App\Models\Booking;
-use App\Observers\BookingObserver;
 use App\Models\User;
+use App\Observers\BookingObserver;
 use App\Policies\UserPolicy;
 use App\Support\PermissionRegistry;
+use Illuminate\Console\Events\CommandStarting;
 use Illuminate\Pagination\Paginator;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
+use LogicException;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -32,6 +36,20 @@ class AppServiceProvider extends ServiceProvider
     {
         require_once base_path('app/Support/helpers.php');
 
+        DB::prohibitDestructiveCommands();
+
+        Event::listen(CommandStarting::class, function (CommandStarting $event): void {
+            if (
+                $event->command === 'migrate'
+                || str_starts_with($event->command, 'migrate:')
+                || in_array($event->command, ['db:seed', 'make:migration', 'schema:dump'], true)
+            ) {
+                throw new LogicException(
+                    "Artisan command [{$event->command}] is disabled to protect the live database schema and data."
+                );
+            }
+        });
+
         Gate::policy(User::class, UserPolicy::class);
 
         Booking::observe(BookingObserver::class);
@@ -51,6 +69,10 @@ class AppServiceProvider extends ServiceProvider
     private function registerPermissionGates(): void
     {
         Gate::before(function (User $user, string $ability) {
+            if (! $user->isActive()) {
+                return false;
+            }
+
             if (in_array($ability, self::RESERVED_ABILITIES, true)) {
                 return null;
             }

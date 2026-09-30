@@ -1,179 +1,145 @@
-# 🧺 Hệ Thống Quản Lý Cửa Hàng Giặt Ủi (Laundry Management System)
+# Sky Laundry
 
-> **Phiên bản v2.0** — Hệ thống quản lý toàn diện dịch vụ giặt ủi kết hợp Web Admin Control Panel và Restful API phục vụ ứng dụng Mobile (Flutter). Tích hợp Phân quyền động (Dynamic RBAC), Khóa giao dịch tài chính, Tự động hóa quy trình nghiệp vụ và Chuẩn hóa UI/UX.
+Sky Laundry is a laundry-shop management system for customer, staff, manager, and shop-owner workflows. It provides a Laravel web application and a versioned JSON API, backed by the existing Supabase PostgreSQL schema.
 
----
+## Technology stack
 
-## 📖 1. Giới Thiệu Dự Án
+- PHP 8.3+
+- Laravel 13.x (`laravel/framework` `^13.17`)
+- PostgreSQL on Supabase
+- Blade, Bootstrap-based UI, Tailwind CSS 4, and Vite
+- PHPUnit 12
 
-Hệ thống Quản lý Cửa hàng Giặt ủi được phát triển nhằm tối ưu hóa toàn bộ quy trình vận hành dịch vụ giặt ủi từ khâu Đặt lịch (Booking) của khách hàng, Tiếp nhận đồ, Xử lý giặt sấy, Thanh toán, Quản lý khuyến mãi, Báo cáo thống kê đến Chăm sóc khách hàng.
+The versions above reflect the dependency manifests in this repository; they are not Laravel 10 / PHP 8.1 requirements.
 
-### 🌟 Tính năng nổi bật chính:
-- **Quản lý đa kênh**: Kết nối liền mạch giữa Web Quản trị (Admin/Manager/Staff) và App Di động (Khách hàng).
-- **Phân quyền nâng cao (Dynamic RBAC)**: Phân cấp rõ ràng giữa **Chủ cửa hàng (Admin)**, **Quản lý (Manager)**, **Nhân viên (Staff)** và **Khách hàng (Customer)**.
-- **Khóa an toàn dữ liệu tài chính**: Đơn hàng/Hóa đơn đã thanh toán bị khóa cứng đối với Quản lý & Nhân viên để chống gian lận, chỉ duy nhất Chủ cửa hàng được quyền điều chỉnh ngoại lệ.
-- **Tự động hóa luồng làm việc**: Tự động sinh Đơn hàng (`Order`) ngay khi duyệt Lịch đặt (`Booking`).
-- **Danh mục dịch vụ động**: Cho phép cấu hình Dịch vụ, Loại đồ giặt và Bảng giá linh hoạt trực tiếp từ giao diện quản trị.
+## Core features
 
----
+- Role- and permission-based access checks at route middleware, controller/Gate, and Blade presentation layers.
+- Multiple roles per account through `TaiKhoan_VaiTro`, with grants through `VaiTro_Quyen` and `Quyen`.
+- Inactive accounts (`TaiKhoan.TrangThai`) do not receive owner bypass or permission access.
+- Order, booking, invoice, payment, delivery, customer, service, pricing, promotion, and reporting workflows.
+- Order line totals support weight-based pricing with a configurable minimum weight, and piece-based pricing for units such as item, pair, set, or blanket.
+- PostgreSQL identifiers retain their schema-defined PascalCase names.
+- Destructive Artisan commands are guarded to protect the provisioned database schema.
 
-## 👑 2. Sơ Đồ Phân Quyền Hệ Thống (RBAC Matrix)
+## Development progress
 
-| Chức năng / Module | Admin (Chủ cửa hàng) | Manager (Quản lý) | Staff (Nhân viên) | Customer (Khách hàng) |
-| :--- | :---: | :---: | :---: | :---: |
-| Quản lý Cấu hình System / RBAC / Roles | 🟢 Full | 🔴 Khóa | 🔴 Khóa | 🔴 Khóa |
-| Xem Dashboard & Báo cáo Doanh thu | 🟢 Full | 🟢 Full | 🟡 Giới hạn | 🔴 Khóa |
-| Sửa / Xóa Đơn hàng & Hóa đơn **ĐÃ THANH TOÁN** | 🟢 **Quyền duy nhất** | 🔴 Khóa | 🔴 Khóa | 🔴 Khóa |
-| Xem / Thêm / Sửa Đơn hàng **CHƯA THANH TOÁN** | 🟢 Full | 🟢 Full | 🟢 Full | 🔴 Khóa |
-| Quản lý Lịch đặt (Booking) | 🟢 Full | 🟢 Full | 🟢 Full | 🟡 Tạo / Xem lịch cá nhân |
-| Quản lý Dịch vụ / Loại đồ / Khuyến mãi | 🟢 Full | 🟢 Full | 🟢 Chỉ xem | 🟢 Chỉ xem |
-| Quản lý Tài khoản / Khách hàng | 🟢 Full | 🟢 Full | 🟡 Xem danh sách | 🟡 Sửa hồ sơ cá nhân |
+### Completed
 
----
+- Implemented the dynamic RBAC path over `TaiKhoan_VaiTro`, `VaiTro_Quyen`, and `Quyen`, using the existing PascalCase schema.
+- Added request-scoped permission lookup and cache invalidation after role-permission changes.
+- Added active-account checks to the owner bypass, role middleware, and permission middleware.
+- Split resource authorization by action and added per-permission checks to protected API endpoints.
+- Added regression coverage for customer admin/API denial and action-level permission boundaries.
+- Added order-form state switching and line-total calculation for weight and piece-based units, with server-side calculation in `TinhTienGiatUiService`.
+- Kept unsupported garment-condition functionality explicit rather than writing to a table absent from the current schema.
 
-## 📦 3. Các Module Chức Năng Chính
+### Fixed issues
 
-1. **Dashboard & Thống Kê**:
-   - Thẻ biểu đồ doanh thu theo ngày/tháng/năm, top dịch vụ đặt nhiều nhất, số lượng đơn hàng theo trạng thái.
-   - Lối tắt truy cập nhanh trên thanh Header.
-2. **Quản Lý Đặt Lịch (Bookings)**:
-   - Tiếp nhận yêu cầu giặt từ App Khách hàng. Duyệt lịch đặt $\rightarrow$ Tự động sinh đơn hàng tương ứng.
-3. **Quản Lý Đơn Hàng (Orders)**:
-   - Quản lý vòng đời đơn giặt: *Mới tạo $\rightarrow$ Đang xử lý $\rightarrow$ Đang giặt/sấy $\rightarrow$ Chờ giao $\rightarrow$ Đã thanh toán / Hoàn thành*.
-   - Khóa nút Sửa/Xóa khi đơn hàng chuyển sang trạng thái **Đã thanh toán** đối với `manager` và `staff`.
-4. **Quản Lý Dịch Vụ & Bảng Giá (Services & Prices)**:
-   - Cấu hình Loại dịch vụ (Giặt sấy, Giặt hấp, Giặt rèm/chăn mền...), Loại đồ giặt và Đơn giá theo Kg hoặc Chiếc.
-5. **Quản Lý Mã Giảm Giá (Vouchers/Promotions)**:
-   - Tạo mã giảm giá theo %, thời gian hiệu lực và số lượng phát hành.
-6. **Quản Lý Thông Báo (Notifications)**:
-   - Gửi thông báo tự động khi thay đổi trạng thái đơn hàng. Phân biệt trực quan thông báo chưa đọc (in đậm) và đã đọc.
-7. **Hệ Thống API RESTful**:
-   - Cung cấp API xác thực (Sanctum), lấy danh sách dịch vụ, đặt lịch, tra cứu đơn hàng, nhận thông báo cho ứng dụng Flutter.
+- Corrected route parameter usage and PascalCase database mappings in the areas previously refactored.
+- Corrected the garment-category detail relationship to use schema-backed `LoaiDoGiat` and pricing data.
+- Removed confirmed unused compatibility wrappers, duplicate reporting code, unreachable views, and default example tests.
+- Closed authorization bypasses caused by OR-combined resource permissions and missing API permission checks.
 
----
+### Regression-test status
 
-## 🔑 4. Tài Khoản Demo Hệ Thống
+After the cleanup, the full suite reports 216 tests, 24 passed, 192 skipped, and 239 assertions. The six focused authorization regression tests pass. Many skipped cases are legacy tests built for an older English-named schema; skipped tests are not counted as passing coverage.
 
-Sau khi chạy Seeder, hệ thống sẽ tự động khởi tạo các tài khoản kiểm thử đại diện cho từng vai trò:
+### Roadmap
 
-| Vai trò (Role) | Tài khoản (Email) | Mật khẩu | Mục đích kiểm thử |
-| :--- | :--- | :--- | :--- |
-| **Admin (Chủ cửa hàng)** | `admin@gmail.com` | `123456` | Toàn quyền, test xử lý ngoại lệ đơn đã thanh toán. |
-| **Manager (Quản lý)** | `manager@gmail.com` | `123456` | Test vận hành cửa hàng, kiểm tra bị khóa đơn đã thanh toán. |
-| **Manager (Quản lý)** | `quanly@gmail.com` | `123456` | Tài khoản quản lý phụ trợ, cùng quyền với manager trên. |
-| **Staff (Nhân viên)** | `staff@gmail.com` | `123456` | Test xử lý đơn hàng/tiếp nhận đồ hàng ngày. |
-| **Staff (Nhân viên)** | `nhanvien@gmail.com` | `123456` | Tài khoản nhân viên phụ trợ (role cũ 'employee' tự động ánh xạ về staff). |
-| **Staff (Nhân viên 1/2/3)** | `staff1@giatui.com` / `staff2@giatui.com` / `staff3@giatui.com` | `123456` | Các nhân viên mẫu để test phân công đơn hàng. |
-| **Customer (Khách hàng)** | `customer1@email.com` (đến `customer10@email.com`) | `password` | Test giao diện khách hàng / Đặt lịch online. |
+- Continue auditing `DonHang`, `ChiTietDonHang`, and `HoaDon` mappings against the latest `schema.sql` snapshot and runtime queries.
+- Exercise order-entry calculations across create/edit and server validation paths, including null, zero, and minimum-weight cases.
+- Add a customer-facing order portal only with ownership enforcement that scopes every order by the authenticated account's `KhachHangID`.
+- Reduce the skipped legacy test backlog and add regression tests against the supported schema without connecting tests to Supabase Live.
 
-> 💡 **Lưu ý**: Tất cả tài khoản trên được tạo bởi `UserSeeder.php`. Chạy `php artisan migrate:fresh --seed` để khởi tạo lại toàn bộ dữ liệu mẫu.
+## Architecture and database safety
 
----
+- **Read-only DDL:** Treat `schema.sql` as the reference snapshot. Do not edit it, run migrations, or issue DDL against Supabase.
+- **No live test writes:** Never point automated tests, seeders, or local setup commands at the live Supabase database.
+- `phpunit.xml` configures tests to use SQLite `:memory:`. Some existing feature tests use `RefreshDatabase`; this is isolated to that in-memory test connection and must not be redirected to the live database.
+- Do not commit `.env` credentials or expose database connection strings.
+- Do not run seeders against Supabase Live.
 
-## 📁 5. Cấu Trúc Thư Mục Dự Án (Directory Structure)
+## Project structure
 
 ```text
-Laravel_Web_QuanLyCuaHangGiatUi/
+.
 ├── app/
+│   ├── Enums/
+│   ├── Exceptions/
+│   ├── Exports/
 │   ├── Http/
-│   │   ├── Controllers/
-│   │   │   ├── Admin/           # Controllers quản trị Web (Orders, Services, Bookings, RBAC...)
-│   │   │   └── Api/             # Controllers API cho Mobile App (Auth, BookingApi, OrderApi...)
-│   │   └── Middleware/          # Middleware kiểm tra Phân quyền & Role
-│   ├── Models/                  # Eloquent Models (User, Order, Service, Booking, Voucher...)
-│   └── Policies/                # Gate Policies kiểm soát quyền thao tác dữ liệu
+│   │   ├── Controllers/       # Admin, API, Auth, and Staff
+│   │   ├── Middleware/        # Role and permission guards
+│   │   ├── Requests/          # Validated request inputs
+│   │   └── Resources/         # API response resources
+│   ├── Models/                # Schema-backed Eloquent models
+│   ├── Observers/
+│   ├── Policies/
+│   ├── Providers/
+│   ├── Services/              # Business logic and calculations
+│   └── Support/               # Permission cache, mappings, and helpers
+├── bootstrap/
+├── config/
 ├── database/
-│   ├── migrations/              # Database schema migrations
-│   └── seeders/                 # Seeders tạo Roles, Permissions, Admin & Dữ liệu mẫu
+│   ├── factories/
+│   ├── migrations/            # Existing files; do not run against Supabase
+│   └── seeders/
 ├── resources/
-│   ├── views/
-│   │   ├── admin/               # Blade Templates giao diện Admin Panel (Dashboard, Orders...)
-│   │   ├── components/          # Reusable UI components (Modals, Buttons, Badges)
-│   │   └── layouts/             # Master Layouts (Header, Sidebar, Footer)
+│   └── views/                  # Admin, staff, auth, layouts, components
 ├── routes/
-│   ├── web.php                  # Routes dành cho Giao diện Web Admin
-│   └── api.php                  # Routes dành cho RESTful API Mobile
+│   ├── api.php
+│   └── web.php
+├── schema.sql                  # Read-only schema snapshot
 ├── tests/
-│   └── Feature/
-│       └── PaidRecordsAreLockedTest.php # Automated Test Suite kiểm thử khóa đơn đã thanh toán
-└── README.md
+│   ├── Feature/
+│   └── Unit/
+├── composer.json
+├── package.json
+└── phpunit.xml
 ```
 
----
+## Getting started
 
-## 🛠️ 6. Hướng Dẫn Cài Đặt & Chạy Hệ Thống
+Requirements: PHP 8.3+, Composer, Node.js/npm, and access to an already-provisioned PostgreSQL database that matches `schema.sql`.
 
-### ⚙️ Yêu cầu môi trường:
+1. Install PHP and frontend dependencies:
 
-* PHP >= 8.1
-* Composer >= 2.0
-* MySQL / MariaDB >= 8.0
-* Web Server: Laragon / XAMPP / Nginx
+   ```sh
+   composer install
+   npm install
+   ```
 
-### 🚀 Các bước cài đặt:
+2. Create a local environment file and application key:
 
-1. **Clone repository & Cài đặt dependencies**:
-```bash
-git clone <repository_url>
-cd Laravel_Web_QuanLyCuaHangGiatUi
-composer install
-npm install && npm run build
+   ```sh
+   cp .env.example .env
+   php artisan key:generate
+   ```
 
+   On Windows PowerShell, use `Copy-Item .env.example .env` instead of `cp`.
+
+3. Configure the local `.env` with the provisioned database connection values. Keep credentials private. Do not run migration, schema, or seeding commands against Supabase.
+
+4. Build frontend assets and start the local server:
+
+   ```sh
+   npm run build
+   php artisan serve
+   ```
+
+   For frontend development with hot reload, run `npm run dev` in a separate terminal.
+
+## Verification commands
+
+Run tests using the SQLite in-memory settings in `phpunit.xml`:
+
+```sh
+php artisan test
 ```
 
-2. **Cấu hình môi trường (`.env`)**:
-```bash
-cp .env.example .env
-php artisan key:generate
+Inspect registered routes without connecting to or changing the database:
 
+```sh
+php artisan route:list
 ```
-
-*Cập nhật thông số kết nối CSDL trong file `.env`:*
-```env
-DB_CONNECTION=mysql
-DB_HOST=127.0.0.1
-DB_PORT=3306
-DB_DATABASE=db_quanlygiatui
-DB_USERNAME=root
-DB_PASSWORD=
-
-```
-
-3. **Khởi tạo Database & Dữ liệu mẫu (Seeders)**:
-```bash
-php artisan migrate:fresh --seed
-
-```
-
-4. **Chạy ứng dụng Local**:
-```bash
-php artisan serve
-
-```
-
-*Truy cập Web Admin tại:* `http://127.0.0.1:8000`
-
----
-
-## 🧪 7. Chạy Kiểm Thử Tự Động (Automated Testing)
-
-Dự án đi kèm bộ test suite kiểm thử chặt chẽ quy tắc khóa dữ liệu tài chính và phân quyền:
-
-```bash
-# Chạy bộ test kiểm thử đặc quyền Chủ cửa hàng & Khóa đơn đối với Quản lý
-php artisan test --filter=PaidRecordsAreLockedTest
-
-```
-
----
-
-## 📝 8. Nhật Ký Cập Nhật Phiên Bản (Changelog v2.0)
-
-* 🎨 **UI/UX**: Đồng nhất font chữ, chuẩn hóa màu sắc gradient Dashboard, cố định vị trí các nút hành động, thay thế confirm mặc định bằng SweetAlert2.
-* 🔒 **Security & RBAC**: Triển khai mô hình Dynamic RBAC với Spatie Permissions (`roles`, `permissions`). Khóa quyền Sửa/Xóa đơn đã thanh toán với Manager/Staff.
-* ⚙️ **Automation**: Tự động sinh `Order` khi duyệt `Booking`. Chuẩn hóa danh mục Dịch vụ - Giá đẻ lưu động trong CSDL.
-* 🌐 **API**: Tối ưu hóa chuỗi trả về JSON, refactor mối quan hệ Eloquent `->customer`, `->order` phục vụ đồng bộ dữ liệu Web & Mobile.
-
----
-
-⚠️ **LƯU Ý:** Sau khi ghi nội dung file `README.md`, TUYỆT ĐỐI CHƯA thực hiện lệnh `git commit` hay `git push`.

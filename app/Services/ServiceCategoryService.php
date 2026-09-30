@@ -4,7 +4,6 @@ namespace App\Services;
 
 use App\Models\LoaiDichVu;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
-use Illuminate\Support\Str;
 
 class ServiceCategoryService
 {
@@ -12,11 +11,11 @@ class ServiceCategoryService
     {
         $query = LoaiDichVu::query();
 
-        if (!empty($filters['search'])) {
+        if (! empty($filters['search'])) {
             $search = trim($filters['search']);
             $query->where(function ($q) use ($search) {
                 $numericPart = preg_replace('/[^0-9]/', '', $search);
-                if (!empty($numericPart)) {
+                if (! empty($numericPart)) {
                     $q->where('LoaiDichVuID', $numericPart);
                 }
                 $q->orWhere('TenLoaiDichVu', 'LIKE', "%{$search}%")
@@ -24,55 +23,55 @@ class ServiceCategoryService
             });
         }
 
-        if (!empty($filters['status'])) {
+        if (! empty($filters['status'])) {
             $query->where('TrangThai', $filters['status']);
         }
 
         $sortMap = [
-            'created_at_desc' => ['NgayTao', 'desc'],
-            'created_at_asc' => ['NgayTao', 'asc'],
+            'latest' => ['LoaiDichVuID', 'desc'],
+            'oldest' => ['LoaiDichVuID', 'asc'],
             'name_asc' => ['TenLoaiDichVu', 'asc'],
             'name_desc' => ['TenLoaiDichVu', 'desc'],
         ];
         $sort = $filters['sort'] ?? 'latest';
-        [$sortBy, $sortOrder] = $sortMap[$sort] ?? ['NgayTao', 'desc'];
+        [$sortBy, $sortOrder] = $sortMap[$sort] ?? ['LoaiDichVuID', 'desc'];
 
         return $query->orderBy($sortBy, $sortOrder)->paginate(10)->withQueryString();
     }
 
     public function find(int $id): ?LoaiDichVu
     {
-        return LoaiDichVu::withTrashed()->find($id);
+        return LoaiDichVu::find($id);
     }
 
     public function create(array $data): LoaiDichVu
     {
-        if (empty($data['TenLoaiDichVu'])) {
-            return null;
-        }
         if (empty($data['TrangThai'])) {
             $data['TrangThai'] = 'Hoạt động';
         }
+
         return LoaiDichVu::create($data);
     }
 
     public function update(LoaiDichVu $category, array $data): LoaiDichVu
     {
         $category->update($data);
+
         return $category->fresh();
     }
 
     public function delete(LoaiDichVu $category): bool
     {
-        return $category->delete();
+        return $category->update(['TrangThai' => 'Tạm ngưng']);
     }
 
     public function restore(int $id): ?LoaiDichVu
     {
-        $category = LoaiDichVu::onlyTrashed()->find($id);
+        $category = LoaiDichVu::find($id);
         if ($category) {
-            $category->restore();
+            $category->update(['TrangThai' => 'Hoạt động']);
         }
+
         return $category;
     }
 }

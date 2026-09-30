@@ -5,9 +5,11 @@
 @section('content')
 <!-- Page Actions: nút "Thêm" luôn nằm góc trên bên trái -->
 <div class="page-toolbar">
-    <a href="{{ route('invoices.create') }}" class="btn btn-create">
-        <i class="bi bi-plus-lg"></i>Thêm hóa đơn
-    </a>
+    @can('invoices.create')
+        <a href="{{ route('invoices.create') }}" class="btn btn-create">
+            <i class="bi bi-plus-lg"></i>Thêm hóa đơn
+        </a>
+    @endcan
     <p class="text-muted page-toolbar__desc">Quản lý hóa đơn và biên nhận của khách hàng.</p>
 </div>
 
@@ -59,23 +61,23 @@
                 <tbody>
                     @forelse($invoices as $invoice)
                     <tr>
-                        <td><strong>{{ $invoice->code }}</strong></td>
-                        <td>{{ $invoice->order?->customer?->name ?: '-' }}</td>
+                        <td><strong>{{ $invoice->MaHoaDon }}</strong></td>
+                        <td>{{ $invoice->donHang?->khachHang?->HoTen ?: '-' }}</td>
                         <td>
-                            @if($invoice->order)
-                                {{ $invoice->order->code }}
+                            @if($invoice->donHang)
+                                {{ $invoice->donHang->MaDonHang }}
                             @else
                                 -
                             @endif
                         </td>
-                        <td>{{ number_format($invoice->total_amount) }} VNĐ</td>
-                        <td class="text-danger">{{ number_format($invoice->discount_amount) }} VNĐ</td>
-                        <td>{{ number_format($invoice->delivery_fee) }} VNĐ</td>
-                        <td class="fw-semibold text-dark">{{ number_format($invoice->grand_total) }} VNĐ</td>
-                        <td>{{ $invoice->invoice_date?->format('d/m/Y') ?? $invoice->created_at?->format('d/m/Y') }}</td>
+                        <td>{{ number_format($invoice->TongTien) }} VNĐ</td>
+                        <td class="text-danger">{{ number_format($invoice->GiamGia) }} VNĐ</td>
+                        <td>{{ number_format($invoice->PhiGiaoHang) }} VNĐ</td>
+                        <td class="fw-semibold text-dark">{{ number_format($invoice->ThanhTien) }} VNĐ</td>
+                        <td>{{ $invoice->NgayLap?->format('d/m/Y') }}</td>
                         <td class="align-middle">
                             <div class="d-flex align-items-center justify-content-start gap-2 flex-wrap">
-                                <x-admin.status-badge :status="$invoice->status" :enum="\App\Enums\InvoiceStatus::class" />
+                                <x-admin.status-badge :status="$invoice->TrangThai" :enum="\App\Enums\InvoiceStatus::class" />
                             </div>
                         </td>
                         <td>
@@ -88,7 +90,7 @@
                                         <a href="{{ route('invoices.edit', $invoice) }}" class="btn btn-order-action edit" title="Sửa"><i class="bi bi-pencil"></i></a>
                                     @endcan
                                     @can('invoices.delete')
-                                        <form action="{{ route('invoices.destroy', $invoice) }}" method="POST" class="d-inline" id="deleteInvoiceForm_{{ $invoice->id }}">
+                                        <form action="{{ route('invoices.destroy', $invoice) }}" method="POST" class="d-inline" id="deleteInvoiceForm_{{ $invoice->HoaDonID }}">
                                             @csrf @method('DELETE')
                                             <button type="submit" class="btn btn-order-action delete" title="Xóa"><i class="bi bi-trash"></i></button>
                                         </form>
@@ -98,7 +100,7 @@
                                         <a href="{{ route('invoices.edit', $invoice) }}" class="btn btn-order-action edit" title="Sửa hóa đơn đã thanh toán (Chủ cửa hàng)"><i class="bi bi-pencil"></i></a>
                                     @endcan
                                     @can('invoices.delete')
-                                        <form action="{{ route('invoices.destroy', $invoice) }}" method="POST" class="d-inline" id="deleteInvoiceForm_{{ $invoice->id }}">
+                                        <form action="{{ route('invoices.destroy', $invoice) }}" method="POST" class="d-inline" id="deleteInvoiceForm_{{ $invoice->HoaDonID }}">
                                             @csrf @method('DELETE')
                                             <button type="submit" class="btn btn-order-action delete" title="Xóa hóa đơn đã thanh toán (Chủ cửa hàng)"><i class="bi bi-trash"></i></button>
                                         </form>

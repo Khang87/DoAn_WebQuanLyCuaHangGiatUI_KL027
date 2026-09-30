@@ -4,8 +4,8 @@ namespace App\Services;
 
 use App\Enums\InvoiceStatus;
 use App\Exceptions\SettledOrderException;
-use App\Models\HoaDon;
 use App\Models\DonHang;
+use App\Models\HoaDon;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 
@@ -39,21 +39,21 @@ class InvoiceService
             });
         }
 
-        return $query->with('donHang.khachHang')->latest()->paginate(10);
+        return $query->with('donHang.khachHang')->orderBy('NgayLap', 'desc')->paginate(10);
     }
 
     public function find(int|string $id): ?HoaDon
     {
-        return HoaDon::withTrashed()
-            ->where('id', $id)
+        return HoaDon::query()
+            ->where('HoaDonID', $id)
             ->orWhere('MaHoaDon', $id)
             ->first();
     }
 
     public function findDetailed(int|string $id): ?HoaDon
     {
-        return HoaDon::withTrashed()
-            ->where('id', $id)
+        return HoaDon::query()
+            ->where('HoaDonID', $id)
             ->orWhere('MaHoaDon', $id)
             ->first()
             ?->load(['donHang.khachHang', 'donHang.chiTietDonHangs.dichVu', 'donHang.chiTietDonHangs.loaiDoGiat', 'donHang.thanhToans']);
@@ -61,29 +61,25 @@ class InvoiceService
 
     public function create(array $data): HoaDon
     {
-        if (! empty($data['order_id']) && DonHang::find($data['order_id'])?->isLocked()) {
-            throw SettledOrderException::forOrder($data['order_id']);
+        $orderId = $data['order_id'] ?? $data['DonHangID'] ?? null;
+        if (! empty($orderId) && DonHang::find($orderId)?->isLocked()) {
+            throw SettledOrderException::forOrder($orderId);
         }
 
-        return DB::transaction(function () use ($data) {
-            if (empty($data['code'])) {
-                $data['code'] = 'HD'.str_pad((string) (HoaDon::max('HoaDonID') ?? 0) + 1, 3, '0', STR_PAD_LEFT);
+        return DB::transaction(function () use ($data, $orderId) {
+            if (empty($data['MaHoaDon']) && empty($data['code'])) {
+                $data['MaHoaDon'] = 'HD'.str_pad((string) (HoaDon::max('HoaDonID') ?? 0) + 1, 3, '0', STR_PAD_LEFT);
             }
 
-            if (empty($data['invoice_date'])) {
-                $data['invoice_date'] = now()->toDateString();
-            }
+            $data['DonHangID'] = $orderId;
+            $data['MaHoaDon'] = $data['MaHoaDon'] ?? $data['code'] ?? null;
+            $data['NgayLap'] = $data['NgayLap'] ?? $data['invoice_date'] ?? now();
+            $data['TrangThai'] = InvoiceStatus::parse($data['TrangThai'] ?? $data['status'] ?? InvoiceStatus::Unpaid->value)->value;
+            $data['GhiChu'] = $data['GhiChu'] ?? $data['notes'] ?? $invoice->GhiChu;
 
             $data = $this->normalizeAmounts($data);
 
             $invoice = HoaDon::create($data);
-
-            if (! empty($data['order_id'])) {
-                $order = DonHang::find($data['order_id']);
-                if ($order) {
-                    $order->update(['TrangThai' => 'completed']);
-                }
-            }
 
             return $invoice->fresh();
         });
@@ -101,12 +97,12 @@ class InvoiceService
                 'DonHangID' => $order->DonHangID,
                 'MaHoaDon' => 'HD'.str_pad((string) (HoaDon::max('HoaDonID') ?? 0) + 1, 3, '0', STR_PAD_LEFT),
                 'NgayLap' => now()->toDateString(),
-                'TongTien' => $order->total_amount,
+                'TongTien' => $order->TongTien,
                 'GiamGia' => $order->discount_by_promotion + $order->discount_by_points,
                 'PhiGiaoHang' => 0,
-                'ThanhTien' => $order->total_amount,
-                'TrangThai' => 'unpaid',
-                'GhiChu' => $order->notes,
+                'ThanhTien' => $order->ThanhTien,
+                'TrangThai' => InvoiceStatus::Unpaid->value,
+                'GhiChu' => $order->GhiChu,
             ]);
 
             return $invoice->fresh();
@@ -115,6 +111,9 @@ class InvoiceService
 
     public function update(HoaDon $invoice, array $data, bool $overrideSettled = false): HoaDon
     {
+        $data['TrangThai'] = InvoiceStatus::parse($data['TrangThai'] ?? $data['status'] ?? $invoice->TrangThai)->value;
+        $data['NgayLap'] = $data['NgayLap'] ?? $data['invoice_date'] ?? $invoice->NgayLap;
+        $data['GhiChu'] = $data['GhiChu'] ?? $data['notes'] ?? null;
         $this->guardSettledInvoice($invoice, $data, $overrideSettled);
 
         $data = $this->normalizeAmounts($data, $invoice);
@@ -136,21 +135,25 @@ class InvoiceService
             return;
         }
 
-        if (array_key_exists('status', $data)
-            && $data['status'] !== null
-            && InvoiceStatus::parse($data['status']) !== InvoiceStatus::Paid) {
+        if (array_key_exists('TrangThai', $data)
+            && $data['TrangThai'] !== null
+            && InvoiceStatus::parse($data['TrangThai']) !== InvoiceStatus::Paid) {
             throw SettledOrderException::forInvoice($invoice->MaHoaDon);
         }
 
         $columnMap = [
-            'total' => 'TongTien',
+            'total' => 'ThanhTien',
             'total_amount' => 'TongTien',
             'discount_amount' => 'GiamGia',
             'delivery_fee' => 'PhiGiaoHang',
             'grand_total' => 'ThanhTien',
+            'TongTien' => 'TongTien',
+            'GiamGia' => 'GiamGia',
+            'PhiGiaoHang' => 'PhiGiaoHang',
+            'ThanhTien' => 'ThanhTien',
         ];
 
-        foreach (['total', 'total_amount', 'discount_amount', 'delivery_fee', 'grand_total'] as $key) {
+        foreach (array_keys($columnMap) as $key) {
             if (! array_key_exists($key, $data) || $data[$key] === null || $data[$key] === '') {
                 continue;
             }
@@ -187,23 +190,32 @@ class InvoiceService
      */
     private function normalizeAmounts(array $data, ?HoaDon $invoice = null): array
     {
-        $totalAmount = $data['total_amount'] ?? $invoice?->TongTien;
-        $discount = $data['discount_amount'] ?? $invoice?->GiamGia ?? 0;
-        $deliveryFee = $data['delivery_fee'] ?? $invoice?->PhiGiaoHang ?? 0;
+        $totalAmount = $data['TongTien'] ?? $data['total_amount'] ?? $invoice?->TongTien;
+        $discount = $data['GiamGia'] ?? $data['discount_amount'] ?? $invoice?->GiamGia ?? 0;
+        $deliveryFee = $data['PhiGiaoHang'] ?? $data['delivery_fee'] ?? $invoice?->PhiGiaoHang ?? 0;
 
-        $total = array_key_exists('total', $data) && $data['total'] !== null && $data['total'] !== ''
-            ? (float) $data['total']
+        $totalInput = $data['ThanhTien'] ?? $data['grand_total'] ?? $data['total'] ?? null;
+        $total = $totalInput !== null && $totalInput !== ''
+            ? (float) $totalInput
             : (float) ($totalAmount ?? 0) - (float) $discount + (float) $deliveryFee;
 
-        $data['TongTien'] = max(0, round($total, 2));
-        $data['ThanhTien'] = $data['TongTien'];
-
-        if ($totalAmount !== null) {
-            $data['TongTien'] = (float) $totalAmount;
-        }
+        $data['TongTien'] = max(0, round((float) ($totalAmount ?? $total), 2));
+        $data['ThanhTien'] = max(0, round($total, 2));
 
         $data['GiamGia'] = (float) $discount;
         $data['PhiGiaoHang'] = (float) $deliveryFee;
+        unset(
+            $data['order_id'],
+            $data['code'],
+            $data['invoice_date'],
+            $data['total'],
+            $data['total_amount'],
+            $data['discount_amount'],
+            $data['delivery_fee'],
+            $data['grand_total'],
+            $data['status'],
+            $data['notes']
+        );
 
         return $data;
     }

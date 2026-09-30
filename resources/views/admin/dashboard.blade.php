@@ -54,30 +54,6 @@
 @endpush
 
 @section('content')
-@php
-    $orderStatusLabels = [
-        'pending'    => 'Chờ tiếp nhận',
-        'received'   => 'Đã nhận đồ',
-        'sorting'    => 'Đang phân loại',
-        'processing' => 'Đang giặt / Xử lý',
-        'washed'     => 'Đã giặt xong',
-        'delivering' => 'Đang giao đồ',
-        'completed'  => 'Hoàn thành',
-        'cancelled'  => 'Đã hủy',
-    ];
-
-    $statusBadgeMap = [
-        'pending'    => 'bg-warning-subtle text-warning-emphasis border border-warning rounded-pill',
-        'received'   => 'bg-primary-subtle text-primary-emphasis border border-primary rounded-pill',
-        'sorting'    => 'bg-purple-subtle text-purple-emphasis border border-purple rounded-pill',
-        'processing' => 'bg-primary-subtle text-primary-emphasis border border-primary-subtle fw-semibold rounded-pill',
-        'washed'     => 'bg-teal-subtle text-teal-emphasis border border-teal rounded-pill',
-        'delivering' => 'bg-indigo-subtle text-indigo-emphasis border border-indigo rounded-pill',
-        'completed'  => 'bg-success-subtle text-success-emphasis border border-success rounded-pill',
-        'cancelled'  => 'bg-danger-subtle text-danger-emphasis border border-danger rounded-pill',
-    ];
-@endphp
-
 <!-- ===== KPI Cards Row (2 rows x 3 cols = 6 cards) ===== -->
 <div class="row g-4 mb-4">
     <!-- 1. Doanh thu hôm nay -->
@@ -278,17 +254,11 @@
                         <tbody>
                             @forelse($recentOrders as $order)
                             <tr>
-                                <td><strong>{{ $order->code }}</strong></td>
-                                <td>{{ $order->customer?->name ?: '-' }}</td>
-                                <td>{{ $order->employee?->name ?: '-' }}</td>
-                                <td><strong>{{ number_format($order->total_amount) }} VNĐ</strong></td>
-                                <td>
-                                    @php
-                                        $label = $orderStatusLabels[$order->status] ?? 'Chờ tiếp nhận';
-                                        $badge = $statusBadgeMap[$order->status] ?? 'bg-secondary-subtle text-secondary border-secondary';
-                                    @endphp
-                                    <span class="badge {{ $badge }} px-3 py-2 rounded-pill">{{ $label }}</span>
-                                </td>
+                                <td><strong>{{ $order->MaDonHang }}</strong></td>
+                                <td>{{ $order->khachHang?->HoTen ?: '-' }}</td>
+                                <td>{{ $order->nhanVien?->HoTen ?: '-' }}</td>
+                                <td><strong>{{ number_format((float) $order->ThanhTien) }} đ</strong></td>
+                                <td><x-admin.status-badge :status="$order->TrangThai" :enum="\App\Enums\OrderStatus::class" /></td>
                                 <td><a href="{{ route('orders.show', $order) }}" class="btn btn-order-action view" title="Xem"><i class="bi bi-eye"></i></a></td>
                             </tr>
                             @empty
@@ -301,11 +271,11 @@
         </div>
     </div>
 
-    <!-- Đánh giá mới nhất chưa phản hồi -->
+    <!-- Đánh giá mới nhất -->
     <div class="col-12 col-xl-5">
         <div class="card h-100">
             <div class="card-header d-flex justify-content-between align-items-center">
-                <h5 class="card-title mb-0">Đánh giá chưa phản hồi</h5>
+                <h5 class="card-title mb-0">Đánh giá mới nhất</h5>
                 <a href="{{ route('reviews.index') }}" class="btn btn-sm btn-outline-primary">Xem tất cả</a>
             </div>
             <div class="card-body">
@@ -314,18 +284,18 @@
                     <div class="flex-grow-1">
                         <div class="review-stars d-flex align-items-center gap-1 mb-1">
                             @for ($i = 1; $i <= 5; $i++)
-                                @if ($i <= $review->rating)
+                                @if ($i <= $review->SoSao)
                                     <i class="fas fa-star text-warning"></i>
                                 @else
                                     <i class="far fa-star text-black-50 opacity-25"></i>
                                 @endif
                             @endfor
                         </div>
-                        <div class="fw-semibold">{{ $review->customer?->name ?: 'Khách hàng ẩn danh' }}</div>
-                        <small class="text-muted">{{ Str::limit($review->content, 100) }}</small>
+                        <div class="fw-semibold">{{ $review->khachHang?->HoTen ?: 'Khách hàng ẩn danh' }}</div>
+                        <small class="text-muted">{{ Str::limit($review->BinhLuan ?: '', 100) }}</small>
                     </div>
                     <div class="text-end">
-                        <small class="text-muted">{{ $review->created_at?->format('d/m H:i') }}</small>
+                        <small class="text-muted">{{ $review->NgayDanhGia?->format('d/m H:i') }}</small>
                     </div>
                 </div>
                 @empty
@@ -401,7 +371,7 @@
             fontFamily: 'Plus Jakarta Sans, sans-serif'
         },
         colors: ['#F59E0B', '#3B82F6', '#22C55E', '#EF4444', '#8B5CF6', '#10B981'],
-        labels: @json(collect($statusDistribution->keys()->all())->map(fn($k) => $orderStatusLabels[$k] ?? $k)->all()),
+        labels: @json(collect($statusDistribution->keys()->all())->map(fn ($status) => \App\Enums\OrderStatus::labelFor($status))->all()),
         plotOptions: {
             pie: {
                 donut: {
@@ -511,4 +481,3 @@
     });
 </script>
 @endpush
-

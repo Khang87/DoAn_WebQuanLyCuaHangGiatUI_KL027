@@ -2,13 +2,17 @@
 
 namespace App\Models;
 
+use App\Support\CatalogCache;
 use Illuminate\Database\Eloquent\Model;
 
 class BangGia extends Model
 {
     protected $table = 'BangGia';
+
     protected $primaryKey = 'BangGiaID';
+
     public $timestamps = false;
+
     public static $snakeAttributes = false;
 
     protected $fillable = [
@@ -123,11 +127,11 @@ class BangGia extends Model
      */
     public static function unitOptions(): array
     {
-        return DonViTinh::query()
+        return CatalogCache::units(fn (): array => DonViTinh::query()
             ->where('TrangThai', 'Hoạt động')
             ->orderBy('TenDonViTinh')
             ->pluck('TenDonViTinh', 'DonViTinhID')
-            ->all();
+            ->all());
     }
 
     public function getStatusLabelAttribute(): string

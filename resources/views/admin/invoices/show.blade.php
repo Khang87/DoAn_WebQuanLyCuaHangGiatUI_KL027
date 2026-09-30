@@ -5,11 +5,10 @@
 
 @section('content')
 @php
-    $customer = $invoice->order?->customer;
-    $totalPaid = $invoice->total_paid;
-    $balance = $invoice->balance;
+    $order = $invoice->donHang;
+    $customer = $order?->khachHang;
     $isPaid = $invoice->isPaid();
-    $hasDiscount = (float) $invoice->discount_amount > 0;
+    $hasDiscount = (float) $invoice->GiamGia > 0;
 
     // Tính trước: dấu ">" trong biểu thức thuộc tính của thẻ Blade sẽ làm hỏng
     // trình phân tích thẻ, nên không được đặt trực tiếp trong class="...".
@@ -17,11 +16,11 @@
 @endphp
 
 <x-admin.detail.page-header
-    title="Hóa đơn {{ $invoice->code ?: '#' . $invoice->id }}"
-    :subtitle="$invoice->invoice_date?->format('d/m/Y')"
+    title="Hóa đơn {{ $invoice->MaHoaDon ?: '#' . $invoice->HoaDonID }}"
+    :subtitle="$invoice->NgayLap?->format('d/m/Y')"
 >
     <x-slot:badge>
-        <x-admin.status-badge :status="$invoice->status" :enum="\App\Enums\InvoiceStatus::class" />
+        <x-admin.status-badge :status="$invoice->TrangThai" :enum="\App\Enums\InvoiceStatus::class" />
         @if($isPaid)
             <span class="badge bg-secondary-subtle text-secondary-emphasis border border-secondary px-3 py-2 rounded-pill">
                 <i class="bi bi-lock-fill me-1"></i>Đã quyết toán
@@ -39,10 +38,10 @@
     <div class="col-lg-8">
         <x-admin.detail.panel title="Dịch vụ đã thực hiện" icon="bi-list-check" :iconClass="'bg-primary-subtle text-primary'" flush>
             <x-slot:header>
-                <span class="text-muted small">{{ $invoice->order?->items?->count() ?? 0 }} mục</span>
+                <span class="text-muted small">{{ $order?->chiTietDonHangs?->count() ?? 0 }} mục</span>
             </x-slot:header>
 
-            @if($invoice->order?->items?->isEmpty())
+            @if($order?->chiTietDonHangs?->isEmpty())
                 <x-admin.detail.empty message="Chưa có dữ liệu dịch vụ" icon="bi-bag" />
             @else
                 <div class="table-responsive">
@@ -58,14 +57,14 @@
                             </tr>
                         </thead>
                         <tbody>
-                            @foreach(($invoice->order?->items ?? []) as $index => $item)
+                            @foreach(($order?->chiTietDonHangs ?? []) as $index => $item)
                                 <tr>
                                     <td>{{ $index + 1 }}</td>
-                                    <td class="fw-semibold">{{ $item->service?->name ?: ($item->item_name ?: '—') }}</td>
-                                    <td class="text-end">{{ $item->service?->unit ?: 'kg' }}</td>
-                                    <td class="text-end">{{ $item->quantity ?? 0 }}</td>
-                                    <td class="text-end"><x-admin.detail.money :value="$item->price ?? 0" /></td>
-                                    <td class="text-end fw-semibold"><x-admin.detail.money :value="$item->subtotal ?? 0" /></td>
+                                    <td class="fw-semibold">{{ $item->dichVu?->TenDichVu ?: ($item->loaiDoGiat?->TenLoaiDoGiat ?: '—') }}</td>
+                                    <td class="text-end">{{ $item->donViTinh?->KyHieu ?? $item->donViTinh?->TenDonViTinh ?? '—' }}</td>
+                                    <td class="text-end">{{ $item->SoLuong ?? 0 }}</td>
+                                    <td class="text-end"><x-admin.detail.money :value="$item->DonGia ?? 0" /></td>
+                                    <td class="text-end fw-semibold"><x-admin.detail.money :value="$item->ThanhTien ?? 0" /></td>
                                 </tr>
                             @endforeach
                         </tbody>
@@ -83,7 +82,7 @@
                     </div>
                     <div class="mt-3">
                         <span class="detail-field__label">Nội dung chuyển khoản</span>
-                        <div class="fw-semibold">Thanh toan hoa don {{ $invoice->code }}</div>
+                        <div class="fw-semibold">Thanh toan hoa don {{ $invoice->MaHoaDon }}</div>
                     </div>
                 </div>
             </x-admin.detail.panel>
@@ -97,20 +96,20 @@
             <x-admin.detail.panel title="Tổng hợp" icon="bi-receipt-cutoff" :iconClass="'bg-success-subtle text-success'">
                 <div class="d-flex justify-content-between align-items-center py-2">
                     <span class="detail-summary__label">Tạm tính</span>
-                    <x-admin.detail.money :value="$invoice->total_amount" class="fw-semibold" />
+                    <x-admin.detail.money :value="$invoice->TongTien" class="fw-semibold" />
                 </div>
                 <div class="d-flex justify-content-between align-items-center py-2">
                     <span class="detail-summary__label">Giảm giá (Voucher + Điểm)</span>
-                    <x-admin.detail.money :value="$invoice->discount_amount" :negative="$hasDiscount" class="text-danger" />
+                    <x-admin.detail.money :value="$invoice->GiamGia" :negative="$hasDiscount" class="text-danger" />
                 </div>
                 <div class="d-flex justify-content-between align-items-center py-2">
                     <span class="detail-summary__label">Phí giao hàng</span>
-                    <x-admin.detail.money :value="$invoice->delivery_fee" class="fw-semibold" />
+                    <x-admin.detail.money :value="$invoice->PhiGiaoHang" class="fw-semibold" />
                 </div>
 
                 <div class="detail-summary d-flex justify-content-between align-items-center">
                     <span class="detail-summary__total">Tổng cộng</span>
-                    <x-admin.detail.money :value="$invoice->grand_total" class="detail-summary__total text-primary" />
+                    <x-admin.detail.money :value="$invoice->ThanhTien" class="detail-summary__total text-primary" />
                 </div>
 
                 @if($totalPaid > 0)
@@ -138,7 +137,7 @@
                     :block="true"
                 >
                     <x-slot:hidden>
-                        <input type="hidden" name="status" value="paid">
+                        <input type="hidden" name="status" value="{{ \App\Enums\InvoiceStatus::Paid->value }}">
                     </x-slot:hidden>
                 </x-admin.detail.confirm-form>
             @endunless
@@ -146,41 +145,41 @@
 
         <x-admin.detail.panel title="Thông tin hóa đơn" icon="bi-file-earmark-text" :iconClass="'bg-secondary-subtle text-secondary'">
             <x-admin.detail.info-grid :columns="1">
-                <x-admin.detail.info-item label="Mã hóa đơn" :value="$invoice->code" />
-                <x-admin.detail.info-item label="Ngày lập" :value="$invoice->invoice_date?->format('d/m/Y') ?: now()->format('d/m/Y')" />
+                <x-admin.detail.info-item label="Mã hóa đơn" :value="$invoice->MaHoaDon" />
+                <x-admin.detail.info-item label="Ngày lập" :value="$invoice->NgayLap?->format('d/m/Y') ?: now()->format('d/m/Y')" />
                 <x-admin.detail.info-item label="Đơn hàng">
-                    @if($invoice->order)
-                        <a href="{{ route('orders.show', $invoice->order->id) }}" class="text-decoration-none">
-                            {{ $invoice->order->code }}
+                    @if($order)
+                        <a href="{{ route('orders.show', $order->DonHangID) }}" class="text-decoration-none">
+                            {{ $order->MaDonHang }}
                         </a>
                     @else
                         <span class="detail-empty-value">—</span>
                     @endif
                 </x-admin.detail.info-item>
                 <x-admin.detail.info-item label="Trạng thái">
-                    <x-admin.status-badge :status="$invoice->status" :enum="\App\Enums\InvoiceStatus::class" :pill="false" />
+                    <x-admin.status-badge :status="$invoice->TrangThai" :enum="\App\Enums\InvoiceStatus::class" :pill="false" />
                 </x-admin.detail.info-item>
             </x-admin.detail.info-grid>
 
-            @if($invoice->notes)
+            @if($invoice->GhiChu)
                 <div class="mt-3">
                     <div class="detail-field__label mb-2">Ghi chú hóa đơn</div>
-                    <div class="detail-text">{{ $invoice->notes }}</div>
+                    <div class="detail-text">{{ $invoice->GhiChu }}</div>
                 </div>
             @endif
         </x-admin.detail.panel>
 
         <x-admin.detail.panel title="Khách hàng" icon="bi-person" :iconClass="'bg-info-subtle text-info'">
             <x-admin.detail.info-grid :columns="1">
-                <x-admin.detail.info-item label="Họ và tên" :value="$customer?->name" />
-                <x-admin.detail.info-item label="Số điện thoại" :value="$customer?->phone" />
-                <x-admin.detail.info-item label="Địa chỉ" :value="$customer?->address" />
+                <x-admin.detail.info-item label="Họ và tên" :value="$customer?->HoTen" />
+                <x-admin.detail.info-item label="Số điện thoại" :value="$customer?->SoDienThoai" />
+                <x-admin.detail.info-item label="Địa chỉ" :value="$customer?->DiaChi" />
             </x-admin.detail.info-grid>
 
-            @if($invoice->order?->notes)
+            @if($order?->GhiChu)
                 <div class="mt-3">
                     <div class="detail-field__label mb-2">Ghi chú đơn hàng</div>
-                    <div class="detail-text">{{ $invoice->order->notes }}</div>
+                    <div class="detail-text">{{ $order->GhiChu }}</div>
                 </div>
             @endif
         </x-admin.detail.panel>
@@ -193,7 +192,7 @@
                 <h5 class="card-title mb-0 fw-bold">Thao tác</h5>
             </div>
             <div class="card-body d-flex flex-column gap-2">
-                <a href="{{ route('invoices.export-excel', $invoice->id) }}" class="btn btn-outline-success w-100 py-2">
+                <a href="{{ route('invoices.export-excel', $invoice->HoaDonID) }}" class="btn btn-outline-success w-100 py-2">
                     <i class="fas fa-file-excel me-1"></i> Xuất excel
                 </a>
 

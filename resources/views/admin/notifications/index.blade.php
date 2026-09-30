@@ -3,11 +3,13 @@
 @section('page-title', 'Thông báo')
 
 @section('content')
-<!-- Page Actions: nút "Them" luôn nằm góc trên bên trái -->
+<!-- Page Actions: nút "Thêm" luôn nằm góc trên bên trái -->
 <div class="page-toolbar">
-    <a href="{{ route('notifications.create') }}" class="btn btn-create">
-        <i class="bi bi-plus-lg"></i>Them thông báo
-    </a>
+    @can('notifications.create')
+        <a href="{{ route('notifications.create') }}" class="btn btn-create">
+            <i class="bi bi-plus-lg"></i>Thêm thông báo
+        </a>
+    @endcan
     <p class="text-muted page-toolbar__desc">Các cập nhật mới từ hoạt động cửa hàng.</p>
     <div class="page-toolbar__actions ms-auto">
         <form action="{{ route('notifications.mark-all-read') }}" method="POST" class="d-inline">
@@ -42,18 +44,18 @@
         <div class="list-group list-group-flush">
             @forelse($notifications as $notification)
             {{-- Chưa đọc: in đậm + nền nhấn mạnh. Đã đọc: chữ thường, màu nhạt. --}}
-            <a href="{{ route('notifications.show', $notification->id) }}"
-               id="notification-{{ $notification->id }}"
-               class="list-group-item notification-row px-0 d-flex gap-3 {{ $notification->read_at ? 'is-read' : 'is-unread' }} notification-link">
-                <i class="bi bi-bell-fill fs-4 {{ $notification->read_at ? 'notification-icon-read' : 'notification-icon-unread' }}"></i>
+            <a href="{{ route('notifications.show', $notification->ThongBaoID) }}"
+               id="notification-{{ $notification->ThongBaoID }}"
+               class="list-group-item notification-row px-0 d-flex gap-3 {{ $notification->DaDoc ? 'is-read' : 'is-unread' }} notification-link">
+                <i class="bi bi-bell-fill fs-4 {{ $notification->DaDoc ? 'notification-icon-read' : 'notification-icon-unread' }}"></i>
                 <div class="flex-grow-1">
-                    <div class="notification-title">{{ $notification->title }}</div>
-                    <small class="notification-body d-block">{{ Str::limit($notification->message, 80) }}</small>
+                    <div class="notification-title">{{ $notification->TieuDe }}</div>
+                    <small class="notification-body d-block">{{ Str::limit($notification->NoiDung, 80) }}</small>
                 </div>
                 <div class="text-end">
-                    <small class="text-muted">{{ $notification->created_at?->format('d/m H:i') }}</small>
-                    @if(! $notification->read_at)
-                        <span class="badge bg-warning-subtle text-warning-emphasis border border-warning ms-2">Moi</span>
+                    <small class="text-muted">{{ $notification->ThoiGianGui?->format('d/m H:i') }}</small>
+                    @if(! $notification->DaDoc)
+                        <span class="badge bg-warning-subtle text-warning-emphasis border border-warning ms-2">Mới</span>
                     @endif
                 </div>
             </a>
@@ -84,7 +86,7 @@
             @if ($notifications->onLastPage())
                 <li class="page-item disabled"><span class="page-link"><i class="bi bi-chevron-right"></i></span></li>
             @else
-                <li class="page-item"><a class="page-link" href="{{ $notifications->appends(request()->query())->url($notifications->currentPage() + 1) }}"><i class="bi bi-chevron-right"></i></a></li>
+                <li class="page-item"><a class="page-link" href="{{ $notifications->appends(request()->query())->url($notifications->currentPage() + 1) }}">{{ $page }}</a></li>
             @endif
         </ul>
     </div>

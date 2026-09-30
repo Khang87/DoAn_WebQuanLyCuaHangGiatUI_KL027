@@ -4,10 +4,6 @@
 @section('page-title', 'Chi tiết dịch vụ')
 
 @section('content')
-@php
-    $serviceIcon = $service->icon();
-@endphp
-
 <x-admin.detail.page-header
     title="Dịch vụ {{ $service->TenDichVu }}"
     :subtitle="$service->loaiDichVu?->TenLoaiDichVu"
@@ -22,7 +18,7 @@
     <div class="col-lg-8">
         <x-admin.detail.panel
             title="Thông tin dịch vụ"
-            :icon="$serviceIcon"
+            icon="bi-basket2"
             :iconClass="'bg-primary-subtle text-primary'"
         >
             <x-admin.detail.info-grid :columns="2">
@@ -44,12 +40,14 @@
 
         <x-admin.detail.panel title="Bảng giá liên quan" icon="bi-currency-dollar" :iconClass="'bg-success-subtle text-success'" flush>
             <x-slot:header>
-                <a href="{{ route('pricings.create') }}" class="btn btn-sm btn-outline-primary">
-                    <i class="bi bi-plus-lg me-1"></i>Thêm bảng giá
-                </a>
+                @can('pricings.create')
+                    <a href="{{ route('pricings.create') }}" class="btn btn-sm btn-outline-primary">
+                        <i class="bi bi-plus-lg me-1"></i>Thêm bảng giá
+                    </a>
+                @endcan
             </x-slot:header>
 
-            @if($service->bangGias->isEmpty())
+            @if($pricings->isEmpty())
                 <x-admin.detail.empty message="Chưa có bảng giá nào cho dịch vụ này" icon="bi-currency-dollar" />
             @else
                 <div class="table-responsive">
@@ -64,7 +62,7 @@
                             </tr>
                         </thead>
                         <tbody>
-                            @foreach($service->bangGias as $pricing)
+                            @foreach($pricings as $pricing)
                                 <tr>
                                     <td class="fw-semibold">{{ $pricing->loaiDoGiat?->TenLoaiDoGiat ?? '—' }}</td>
                                     <td>{{ $pricing->donViTinh?->TenDonViTinh ?? '—' }}</td>
@@ -79,8 +77,8 @@
                     </table>
                 </div>
 
-                @if($service->bangGias->hasPages())
-                    <div class="p-3">{{ $service->bangGias->links() }}</div>
+                @if($pricings->hasPages())
+                    <div class="p-3">{{ $pricings->links() }}</div>
                 @endif
             @endif
         </x-admin.detail.panel>

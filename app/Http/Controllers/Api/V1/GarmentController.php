@@ -4,7 +4,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Enums\RecordStatus;
 use App\Http\Controllers\Api\ApiController;
-use App\Http\Resources\ServiceResource;
+use App\Http\Resources\DichVuResource;
 use App\Models\DichVu;
 use App\Models\LoaiDichVu;
 use Illuminate\Http\JsonResponse;
@@ -30,7 +30,7 @@ class GarmentController extends ApiController
             ->paginate($this->perPage($request))
             ->withQueryString();
 
-        return $this->paginatedResponse($request, ServiceResource::collection($paginator), $paginator);
+        return $this->paginatedResponse($request, DichVuResource::collection($paginator), $paginator);
     }
 
     /**

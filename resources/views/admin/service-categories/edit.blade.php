@@ -27,7 +27,7 @@
                     <label class="form-label">Trạng thái</label>
                     <x-admin.status-select
                         name="TrangThai"
-                        :options="\App\Enums\RecordStatus::options()"
+                        :options="\App\Enums\RecordStatus::databaseOptions()"
                         :selected="$category->TrangThai"
                         class="form-select @error('TrangThai') is-invalid @enderror"
                     />

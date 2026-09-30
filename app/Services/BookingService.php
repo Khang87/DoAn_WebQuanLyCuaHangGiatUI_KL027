@@ -2,9 +2,11 @@
 
 namespace App\Services;
 
+use App\Enums\DeliveryStatus;
+use App\Enums\OrderStatus;
 use App\Models\Booking;
 use App\Models\DonHang;
-use App\Models\ChiTietDonHang;
+use App\Models\GiaoNhan;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 
@@ -14,43 +16,47 @@ class BookingService
     {
         $query = Booking::query();
 
-        if (!empty($filters['customer_id'])) {
+        if (! empty($filters['customer_id'])) {
             $query->where('KhachHangID', $filters['customer_id']);
         }
 
-        if (!empty($filters['method'])) {
+        if (! empty($filters['method'])) {
             $query->where('HinhThucNhanDo', $filters['method']);
         }
 
-        if (!empty($filters['status'])) {
+        if (! empty($filters['status'])) {
             $query->where('TrangThai', $filters['status']);
         }
 
-        if (!empty($filters['search'])) {
+        if (! empty($filters['search'])) {
             $search = trim($filters['search']);
             $query->where(function ($q) use ($search) {
                 $numericPart = preg_replace('/[^0-9]/', '', $search);
-                if (!empty($numericPart)) {
-                    $q->where('id', $numericPart);
+                if (! empty($numericPart)) {
+                    $q->where('BookingID', $numericPart);
                 }
+                $q->orWhere('MaBooking', 'LIKE', "%{$search}%");
+                $q->orWhere('DiaChiNhan', 'LIKE', "%{$search}%");
                 $q->orWhereHas('khachHang', function ($sub) use ($search) {
                     $sub->where('HoTen', 'LIKE', "%{$search}%")
                         ->orWhere('SoDienThoai', 'LIKE', "%{$search}%");
                 });
-                $q->orWhere('DiaChiNhan', 'LIKE', "%{$search}%");
             });
         }
 
-        $allowedSorts = ['id', 'KhachHangID', 'HinhThucNhanDo', 'TrangThai', 'NgayHen', 'NgayTao'];
+        $allowedSorts = ['BookingID', 'MaBooking', 'KhachHangID', 'HinhThucNhanDo', 'TrangThai', 'NgayHen', 'NgayTao'];
         $sortBy = in_array($filters['sort_by'] ?? null, $allowedSorts) ? $filters['sort_by'] : 'NgayTao';
         $sortOrder = ($filters['sort_order'] ?? 'desc') === 'asc' ? 'asc' : 'desc';
 
-        return $query->with(['khachHang', 'donHangs'])->orderBy($sortBy, $sortOrder)->paginate(10)->withQueryString();
+        return $query->with(['khachHang', 'nhanVien', 'donHangs'])
+            ->orderBy($sortBy, $sortOrder)
+            ->paginate(10)
+            ->withQueryString();
     }
 
     public function find(int $id): ?Booking
     {
-        return Booking::withTrashed()->with(['khachHang', 'donHangs'])->find($id);
+        return Booking::query()->with(['khachHang', 'donHangs'])->find($id);
     }
 
     public function create(array $data): Booking
@@ -70,13 +76,40 @@ class BookingService
     {
         $previousStatus = $booking->TrangThai;
 
-        $booking->update($data);
+        $booking->update($this->mapRequestData($data));
 
         $booking = $booking->fresh();
 
         $this->syncOrderOnStatusChange($booking, $previousStatus);
 
         return $booking;
+    }
+
+    /**
+     * Form quản trị gửi tên field tiếng Anh, cột trong bảng lại là tiếng Việt
+     * nên phải đổi tên trước khi ghi xuống model.
+     */
+    private function mapRequestData(array $data): array
+    {
+        $map = [
+            'customer_id' => 'KhachHangID',
+            'staff_id' => 'NhanVienID',
+            'method' => 'HinhThucNhanDo',
+            'scheduled_date' => 'NgayHen',
+            'scheduled_time' => 'GioHen',
+            'notes' => 'GhiChu',
+            'status' => 'TrangThai',
+        ];
+
+        $mapped = [];
+
+        foreach ($map as $key => $column) {
+            if (array_key_exists($key, $data)) {
+                $mapped[$column] = $data[$key];
+            }
+        }
+
+        return $mapped;
     }
 
     /**
@@ -102,17 +135,6 @@ class BookingService
         return $booking->delete();
     }
 
-    public function restore(int $id): ?Booking
-    {
-        $booking = Booking::onlyTrashed()->find($id);
-
-        if ($booking) {
-            $booking->restore();
-        }
-
-        return $booking;
-    }
-
     /**
      * Xác nhận đặt lịch và chuyển thành đơn hàng.
      *
@@ -129,7 +151,7 @@ class BookingService
             return $existing;
         }
 
-        if ($booking->TrangThai !== 'confirmed') {
+        if (! $booking->isConvertibleToOrder()) {
             return null;
         }
 
@@ -171,24 +193,23 @@ class BookingService
         $bookingCode = $booking->MaBooking ?: Booking::nextCode();
 
         $order = DonHang::create([
-            'MaDonHang' => 'DH' . str_pad((string) ((DonHang::max('DonHangID') ?? 0) + 1), 3, '0', STR_PAD_LEFT),
+            'MaDonHang' => 'DH'.str_pad((string) ((DonHang::max('DonHangID') ?? 0) + 1), 3, '0', STR_PAD_LEFT),
             'KhachHangID' => $booking->KhachHangID,
             'NhanVienID' => $booking->staff_id,
             'BookingID' => $booking->BookingID,
-            'TrangThai' => 'pending',
+            'TrangThai' => OrderStatus::Pending->value,
             'GhiChu' => $this->buildOrderNotes($booking, $bookingCode),
             'ThanhTien' => 0,
-            'weight_kg' => '',
-            'quantity_items' => '',
         ]);
 
-        \App\Models\GiaoNhan::create([
-            'code' => 'GH' . str_pad((string) ((\App\Models\GiaoNhan::max('GiaoNhanID') ?? 0) + 1), 4, '0', STR_PAD_LEFT),
+        GiaoNhan::create([
+            'code' => 'GH'.str_pad((string) ((GiaoNhan::max('GiaoNhanID') ?? 0) + 1), 4, '0', STR_PAD_LEFT),
             'DonHangID' => $order->DonHangID,
             'KhachHangID' => $booking->KhachHangID,
             'NhanVienID' => $booking->staff_id,
-            'HinhThuc' => $booking->HinhThucNhanDo,
-            'TrangThai' => 'pending',
+            'HinhThuc' => $booking->methodEnum()->value,
+            'LoaiGiaoNhan' => $booking->methodEnum()->deliveryType(),
+            'TrangThai' => DeliveryStatus::Pending->dbValue(),
             'GhiChu' => $booking->GhiChu,
         ]);
 
@@ -201,12 +222,12 @@ class BookingService
      */
     private function buildOrderNotes(Booking $booking, string $bookingCode): string
     {
-        $reference = 'Tự động tạo từ đặt lịch ' . $bookingCode
-            . ' (' . $booking->method_label . ' ngày '
-            . ($booking->NgayHen?->format('d/m/Y') ?? '—') . ')';
+        $reference = 'Tự động tạo từ đặt lịch '.$bookingCode
+            .' ('.$booking->method_label.' ngày '
+            .($booking->NgayHen?->format('d/m/Y') ?? '—').')';
 
         return $booking->GhiChu
-            ? $reference . ' | ' . $booking->GhiChu
+            ? $reference.' | '.$booking->GhiChu
             : $reference;
     }
 
@@ -223,7 +244,7 @@ class BookingService
      */
     private function findOrderForBooking(Booking $booking, bool $lockForUpdate = false): ?DonHang
     {
-        $query = DonHang::withTrashed()->where('BookingID', $booking->BookingID);
+        $query = DonHang::where('BookingID', $booking->BookingID);
 
         if ($lockForUpdate) {
             $query->lockForUpdate();

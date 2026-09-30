@@ -17,49 +17,27 @@
             @csrf
             <div class="row g-4">
                 <div class="col-md-6">
-                    <label class="form-label">Mã danh mục <span class="text-danger">*</span></label>
-                    <input type="text" class="form-control @error('code') is-invalid @enderror" name="code" value="{{ old('code', 'DM' . str_pad(1, 3, '0', STR_PAD_LEFT)) }}" required>
-                    @error('code')
-                        <div class="invalid-feedback">{{ $message }}</div>
-                    @enderror
-                </div>
-                <div class="col-md-6">
                     <label class="form-label">Tên danh mục <span class="text-danger">*</span></label>
-                    <input type="text" class="form-control @error('name') is-invalid @enderror" name="name" value="{{ old('name') }}" required>
-                    @error('name')
+                    <input type="text" class="form-control @error('TenLoaiDichVu') is-invalid @enderror" name="TenLoaiDichVu" value="{{ old('TenLoaiDichVu') }}" required>
+                    @error('TenLoaiDichVu')
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
                 </div>
                 <div class="col-md-6">
-                    <label class="form-label">Slug <span class="text-danger">*</span></label>
-                    <input type="text" class="form-control @error('slug') is-invalid @enderror" name="slug" value="{{ old('slug') }}" required>
-                    @error('slug')
-                        <div class="invalid-feedback">{{ $message }}</div>
-                    @enderror
-                </div>
-                <div class="col-md-6">
-                    <x-admin.icon-picker
-                        name="icon"
-                        label="Icon"
-                        :default="'fa-solid fa-tags'"
-                    />
-                </div>
-                <div class="col-md-6">
-                    <label class="form-label">Trạng thái</label>
-                    <x-admin.status-select
-                        name="status"
-                        :options="\App\Enums\RecordStatus::options()"
-                        selected="active"
-                        class="form-select @error('status') is-invalid @enderror"
-                    />
-                    @error('status')
+                    <label class="form-label">Trạng thái <span class="text-danger">*</span></label>
+                    <select name="TrangThai" class="form-select @error('TrangThai') is-invalid @enderror" required>
+                        @foreach($statuses as $value => $label)
+                            <option value="{{ $value }}" @selected(old('TrangThai', 'Hoạt động') === $value)>{{ $label }}</option>
+                        @endforeach
+                    </select>
+                    @error('TrangThai')
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
                 </div>
                 <div class="col-12">
                     <label class="form-label">Mô tả</label>
-                    <textarea class="form-control @error('description') is-invalid @enderror" name="description" rows="3">{{ old('description') }}</textarea>
-                    @error('description')
+                    <textarea class="form-control @error('MoTa') is-invalid @enderror" name="MoTa" rows="3">{{ old('MoTa') }}</textarea>
+                    @error('MoTa')
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
                 </div>

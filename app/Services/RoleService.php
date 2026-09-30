@@ -4,10 +4,17 @@ namespace App\Services;
 
 use App\Models\Quyen;
 use App\Models\VaiTro;
-use App\Support\PermissionRegistry;
+use App\Support\PermissionCache;
+use App\Support\QuyenMapper;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
+/**
+ * Đọc và ghi ma trận quyền trên các bảng `VaiTro`, `Quyen`, `VaiTro_Quyen`.
+ *
+ * Mọi thao tác ở đây dùng đúng tên bảng/cột tiếng Việt của Supabase
+ * (VaiTro, Quyen, VaiTro_Quyen, TenVaiTro, MaQuyen, VaiTroID, QuyenID).
+ */
 class RoleService
 {
     /**
@@ -19,90 +26,103 @@ class RoleService
     {
         return VaiTro::query()
             ->with('quyens')
-            ->orderByRaw("CASE TenVaiTro WHEN 'Chủ cửa hàng' THEN 0 WHEN 'Quản lý' THEN 1 WHEN 'Nhân viên' THEN 2 ELSE 3 END")
+            ->orderByRaw(
+                'CASE "TenVaiTro" WHEN \'Chủ cửa hàng\' THEN 0 WHEN \'Quản lý\' THEN 1'
+                .' WHEN \'Nhân viên\' THEN 2 ELSE 3 END'
+            )
             ->get();
     }
 
     /**
-     * Ma trận quyền: group => [code => ['name' => ..., 'owner_only' => bool]].
-     * Mỗi permission kèm danh sách tên của các vai trò đang được cấp quyền.
-     *
-     * @return array<string, array<string, array{name: string, owner_only: bool, roles: list<string>}>>
+     * @return Collection<int, Quyen>
      */
-    public function matrix(): array
+    public function getAllPermissions(): Collection
     {
-        $roles = $this->getAllWithPermissions();
-        $granted = $roles->mapWithKeys(fn (VaiTro $role) => [
-            $role->TenVaiTro => $role->quyens->pluck('MaQuyen')->all(),
-        ]);
-
-        $rows = [];
-
-        foreach (PermissionRegistry::groups() as $group => $items) {
-            foreach ($items as $code => $name) {
-                $rows[$group][$code] = [
-                    'name' => $name,
-                    'owner_only' => in_array($code, VaiTro::OWNER_ONLY_PERMISSIONS, true),
-                    'roles' => $granted
-                        ->filter(fn (array $codes) => in_array($code, $codes, true))
-                        ->keys()
-                        ->values()
-                        ->all(),
-                ];
-            }
-        }
-
-        return $rows;
+        return Quyen::query()
+            ->orderBy('MaQuyen')
+            ->get(['QuyenID', 'MaQuyen', 'TenQuyen', 'MoTa', 'TrangThai']);
     }
 
     /**
      * Lưu ma trận quyền.
      *
-     * Quyền đặc biệt (VaiTro::OWNER_ONLY_PERMISSIONS) bị ép buộc về đúng Chủ cửa hàng,
-     * bất kể payload gửi lên, để không thể vô tình cấp quyền tài chính cho
-     * Nhân viên / Quản lý.
+     * Quyền chỉ dành cho Chủ cửa hàng bị từ chối với mọi vai trò khác. Các quyền
+     * đang ngừng hoạt động được giữ nguyên nhưng không thể cấp mới từ giao diện.
      *
-     * @param  array<string, array<int, string>>  $matrix  role_name => [permission_code, ...]
+     * @param  array<string, array<int, int>>  $matrix  slug vai trò => [QuyenID, ...]
      * @return array{granted: int, rejected: int}
      */
     public function syncPermissions(array $matrix): array
     {
-        $roles = VaiTro::query()->get()->keyBy('TenVaiTro');
-        $permissions = Quyen::query()->get()->keyBy('MaQuyen');
+        $permissions = Quyen::query()->get(['QuyenID', 'MaQuyen', 'TrangThai']);
+        $activeIds = $permissions
+            ->where('TrangThai', 'Hoạt động')
+            ->pluck('QuyenID')
+            ->map(fn ($id) => (int) $id)
+            ->all();
+        $inactiveIds = $permissions
+            ->filter(
+                fn (Quyen $quyen) => $quyen->TrangThai !== 'Hoạt động'
+                    && ! QuyenMapper::isOwnerOnlyMaQuyen((string) $quyen->MaQuyen)
+            )
+            ->pluck('QuyenID')
+            ->map(fn ($id) => (int) $id)
+            ->all();
+        $ownerOnlyIds = $permissions
+            ->filter(fn (Quyen $quyen) => QuyenMapper::isOwnerOnlyMaQuyen((string) $quyen->MaQuyen))
+            ->pluck('QuyenID')
+            ->map(fn ($id) => (int) $id)
+            ->all();
+
+        // Ma trận gửi lên dùng slug vai trò (`quan-ly`) nên keyBy theo slug.
+        $roles = $this->getAllWithPermissions()->keyBy(fn (VaiTro $vaiTro) => $vaiTro->slug);
 
         $granted = 0;
         $rejected = 0;
 
-        DB::transaction(function () use ($matrix, $roles, $permissions, &$granted, &$rejected) {
-            foreach ($matrix as $slug => $codes) {
-                $role = $roles->get($slug);
+        DB::transaction(function () use ($matrix, $roles, $activeIds, $inactiveIds, $ownerOnlyIds, &$granted, &$rejected) {
+            foreach ($matrix as $slug => $permissionIds) {
+                $vaiTro = $roles->get($slug);
 
-                if (! $role) {
+                // Vai trò không tồn tại, hoặc là Chủ cửa hàng (luôn có toàn quyền).
+                if (! $vaiTro || $vaiTro->isOwner()) {
                     continue;
                 }
 
                 $ids = [];
 
-                foreach (array_unique((array) $codes) as $code) {
-                    $permission = $permissions->get($code);
-
-                    if (! $permission) {
+                foreach (array_unique(array_map('intval', (array) $permissionIds)) as $permissionId) {
+                    if (! in_array($permissionId, $activeIds, true)) {
                         continue;
                     }
 
-                    if (! $role->mayHold($code)) {
+                    if (in_array($permissionId, $ownerOnlyIds, true)) {
                         $rejected++;
 
                         continue;
                     }
 
-                    $ids[] = $permission->QuyenID;
-                    $granted++;
+                    $ids[$permissionId] = true;
                 }
 
-                $role->quyens()->sync($ids);
+                $preservedInactiveIds = DB::table('VaiTro_Quyen')
+                    ->where('VaiTroID', $vaiTro->getKey())
+                    ->whereIn('QuyenID', $inactiveIds)
+                    ->pluck('QuyenID')
+                    ->map(fn ($id) => (int) $id)
+                    ->all();
+
+                $vaiTro->quyens()->sync(array_values(array_unique([
+                    ...array_map('intval', array_keys($ids)),
+                    ...$preservedInactiveIds,
+                ])));
+
+                $granted += count($ids);
             }
         });
+
+        // Quyền được cache trong request nên request tiếp theo sẽ đọc trạng thái mới.
+        PermissionCache::forgetAll();
 
         return ['granted' => $granted, 'rejected' => $rejected];
     }

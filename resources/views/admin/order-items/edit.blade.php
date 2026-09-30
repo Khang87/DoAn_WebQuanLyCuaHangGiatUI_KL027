@@ -13,7 +13,7 @@
             </a>
         </div>
 
-        <form action="{{ route('order-items.update', $item->id) }}" method="POST">
+        <form action="{{ route('order-items.update', $item->getKey()) }}" method="POST">
             @csrf @method('PUT')
             <div class="row g-4">
                 <div class="col-md-6">

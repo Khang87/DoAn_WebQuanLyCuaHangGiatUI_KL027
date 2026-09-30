@@ -2,21 +2,24 @@
 
 namespace App\Services;
 
-use App\Exceptions\SettledOrderException;
 use App\Enums\OrderStatus;
+use App\Exceptions\SettledOrderException;
+use App\Models\BangGia;
 use App\Models\ChiTietDonHang;
-use App\Models\DichVu;
 use App\Models\DonHang;
 use App\Models\DonViTinh;
 use App\Models\KhachHang;
 use App\Models\KhuyenMai;
-use App\Models\LoaiDoGiat;
-use App\Models\BangGia;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class OrderService
 {
+    public function __construct(
+        private TinhTienGiatUiService $tinhTienGiatUiService,
+    ) {}
+
     /**
      * Quy ước 1 điểm tích lũy thành tiền.
      */
@@ -77,25 +80,87 @@ class OrderService
      * Tạo các dòng mặt hàng từ dữ liệu form, chốt Đơn giá lịch sử và tính tạm tính.
      *
      * Đơn vị tính tiền lấy từ BangGia theo cặp DichVuID + LoaiDoGiatID:
-     *   - Đơn vị "kg"  → Tạm tính = Khối lượng × Đơn giá
-     *   - Đơn vị khác  → Tạm tính = Số lượng   × Đơn giá
+     *   - Đơn vị "kg"  → Tạm tính = max(Khối lượng, mức tối thiểu) × Đơn giá
+     *   - Đơn vị khác  → Tạm tính = Số lượng × Đơn giá
      *
      * @return array{0: array<int, array<string, mixed>>, 1: float}
      */
     private function buildItems(?array $rawItems): array
     {
         $rows = [];
-        $subtotal = 0.0;
+        $calculationItems = [];
+        $items = $rawItems ?? [];
+        $pricingPairs = [];
+        $unitIds = [];
 
-        foreach ($rawItems ?? [] as $item) {
+        foreach ($items as $item) {
             $serviceId = $item['DichVuID'] ?? $item['service_id'] ?? null;
             $garmentId = $item['LoaiDoGiatID'] ?? $item['garment_id'] ?? null;
             $unitId = $item['DonViTinhID'] ?? $item['unit_id'] ?? null;
 
-            // Giá lịch sử mới nhất theo cặp dịch vụ + loại đồ giặt.
-            $pricing = ($serviceId && $garmentId)
-                ? BangGia::getLatestPricing((int) $serviceId, (int) $garmentId, $unitId !== null ? (int) $unitId : null)
-                : null;
+            if ($serviceId && $garmentId) {
+                $pricingPairs[(int) $serviceId.':'.(int) $garmentId] = [
+                    'DichVuID' => (int) $serviceId,
+                    'LoaiDoGiatID' => (int) $garmentId,
+                ];
+            }
+
+            if ($unitId !== null && $unitId !== '') {
+                $unitIds[] = (int) $unitId;
+            }
+        }
+
+        $pricingByPair = [];
+        $pricingByPairAndUnit = [];
+
+        if ($pricingPairs !== []) {
+            $pricingRows = BangGia::query()
+                ->select(['BangGiaID', 'DichVuID', 'LoaiDoGiatID', 'DonViTinhID', 'DonGia', 'NgayApDung'])
+                ->with('donViTinh:DonViTinhID,KyHieu,TenDonViTinh')
+                ->where('TrangThai', 'Hoạt động')
+                ->where(function ($dateQuery): void {
+                    $dateQuery->whereNull('NgayApDung')->orWhereDate('NgayApDung', '<=', today());
+                })
+                ->where(function ($dateQuery): void {
+                    $dateQuery->whereNull('NgayKetThuc')->orWhereDate('NgayKetThuc', '>=', today());
+                })
+                ->where(function ($pairQuery) use ($pricingPairs): void {
+                    foreach ($pricingPairs as $pair) {
+                        $pairQuery->orWhere(function ($query) use ($pair): void {
+                            $query->where('DichVuID', $pair['DichVuID'])
+                                ->where('LoaiDoGiatID', $pair['LoaiDoGiatID']);
+                        });
+                    }
+                })
+                ->orderByDesc('NgayApDung')
+                ->orderByDesc('BangGiaID')
+                ->get();
+
+            foreach ($pricingRows as $pricing) {
+                $pairKey = $pricing->DichVuID.':'.$pricing->LoaiDoGiatID;
+                $pricingByPair[$pairKey] ??= $pricing;
+                $pricingByPairAndUnit[$pairKey.':'.$pricing->DonViTinhID] ??= $pricing;
+            }
+        }
+
+        $units = $unitIds === []
+            ? collect()
+            : DonViTinh::query()
+                ->select(['DonViTinhID', 'KyHieu', 'TenDonViTinh'])
+                ->whereIn('DonViTinhID', array_values(array_unique($unitIds)))
+                ->get()
+                ->keyBy('DonViTinhID');
+
+        foreach ($items as $itemIndex => $item) {
+            $serviceId = $item['DichVuID'] ?? $item['service_id'] ?? null;
+            $garmentId = $item['LoaiDoGiatID'] ?? $item['garment_id'] ?? null;
+            $unitId = $item['DonViTinhID'] ?? $item['unit_id'] ?? null;
+            $pairKey = $serviceId && $garmentId ? (int) $serviceId.':'.(int) $garmentId : null;
+            $pricing = $pairKey === null
+                ? null
+                : ($unitId !== null && $unitId !== ''
+                    ? ($pricingByPairAndUnit[$pairKey.':'.(int) $unitId] ?? null)
+                    : ($pricingByPair[$pairKey] ?? null));
 
             // Ưu tiên giá gửi lên; nếu thiếu thì lấy giá lịch sử từ bảng BangGia.
             $price = $item['DonGia'] ?? $item['price'] ?? null;
@@ -104,34 +169,47 @@ class OrderService
             }
 
             $price = (float) ($price ?? 0);
-            $quantity = max(0, (float) ($item['SoLuong'] ?? $item['quantity'] ?? 0));
+            $quantity = max(0, (int) ($item['SoLuong'] ?? $item['quantity'] ?? 0));
             $weight = max(0, (float) ($item['KhoiLuong'] ?? $item['weight'] ?? 0));
 
-            // Đơn vị tính theo kg dùng khối lượng làm Đơn vị nhân với Đơn giá.
             $resolvedUnitId = $unitId ?: $pricing?->DonViTinhID;
-            $unit = $resolvedUnitId
-                ? DonViTinh::find($resolvedUnitId)?->KyHieu
-                : null;
-            $isWeightUnit = BangGia::isWeightUnit($unit ?? $pricing?->unit);
+            $unitRecord = $resolvedUnitId ? $units->get((int) $resolvedUnitId) : null;
+            $unit = $unitRecord?->KyHieu
+                ?? $unitRecord?->TenDonViTinh
+                ?? $pricing?->unit;
+            $isWeightUnit = BangGia::isWeightUnit($unit);
+            if (! $isWeightUnit && $quantity < 1) {
+                throw ValidationException::withMessages([
+                    "items.{$itemIndex}.SoLuong" => 'Số lượng phải lớn hơn 0 đối với đơn vị tính theo số lượng.',
+                ]);
+            }
 
-            $multiplier = $isWeightUnit ? ($weight ?: $quantity) : $quantity;
-            $lineSubtotal = round($price * $multiplier, 2);
+            $minimumWeight = (float) config('giatui.khoi_luong_toi_thieu', 3.0);
+            $billableWeight = $isWeightUnit ? max($weight, $minimumWeight) : $weight;
+            $calculationItem = [
+                'SoLuong' => $quantity,
+                'KhoiLuong' => $weight,
+                'DonGia' => $price,
+                'TenDonViTinh' => $unit,
+                'MucToiThieu' => $minimumWeight,
+            ];
+            $lineSubtotal = $this->tinhTienGiatUiService->tinhThanhTienChiTiet($calculationItem);
+            $calculationItems[] = $calculationItem;
 
             $rows[] = [
                 'DichVuID' => $serviceId ?: null,
                 'LoaiDoGiatID' => $garmentId ?: null,
                 'DonViTinhID' => $resolvedUnitId ?: null,
                 'DonGia' => $price,
-                'SoLuong' => $quantity,
-                'KhoiLuong' => $weight,
+                'SoLuong' => $isWeightUnit ? null : $quantity,
+                'KhoiLuong' => $isWeightUnit ? $billableWeight : null,
                 'ThanhTien' => $lineSubtotal,
                 'GhiChu' => $item['GhiChu'] ?? $item['notes'] ?? null,
             ];
 
-            $subtotal += $lineSubtotal;
         }
 
-        return [$rows, round($subtotal, 2)];
+        return [$rows, $this->tinhTienGiatUiService->tinhTongTienHoaDon($calculationItems)];
     }
 
     public function getAll(array $filters = []): LengthAwarePaginator
@@ -140,9 +218,12 @@ class OrderService
 
         if (! empty($filters['search'])) {
             $search = $filters['search'];
-            $query->where('MaDonHang', 'like', "%{$search}%")
-                ->orWhereHas('khachHang', fn ($q) => $q->where('HoTen', 'like', "%{$search}%")
-                    ->orWhere('SoDienThoai', 'like', "%{$search}%"));
+            $query->where(function ($orderQuery) use ($search) {
+                $orderQuery->where('MaDonHang', 'like', "%{$search}%")
+                    ->orWhereHas('khachHang', fn ($customerQuery) => $customerQuery
+                        ->where('HoTen', 'like', "%{$search}%")
+                        ->orWhere('SoDienThoai', 'like', "%{$search}%"));
+            });
         }
 
         if (! empty($filters['customer_id'])) {
@@ -184,7 +265,8 @@ class OrderService
             'booking',
         ])
             ->orderBy($sortBy, $sortOrder)
-            ->paginate(10);
+            ->paginate(10)
+            ->withQueryString();
     }
 
     public function find(int $id): ?DonHang
@@ -432,7 +514,7 @@ class OrderService
     {
         $next = (int) (DonHang::max('DonHangID') ?? 0) + 1;
 
-        return 'DH' . str_pad((string) $next, 3, '0', STR_PAD_LEFT);
+        return 'DH'.str_pad((string) $next, 3, '0', STR_PAD_LEFT);
     }
 
     /**

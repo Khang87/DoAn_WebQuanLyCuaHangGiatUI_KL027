@@ -2,10 +2,11 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Enums\RecordStatus;
 use App\Http\Controllers\Controller;
-use App\Http\Requests\Admin\LaundryCategoryRequest;
-use App\Models\LaundryCategory;
+use App\Http\Requests\Admin\LuuLaundryCategoryRequest;
 use App\Services\LaundryCategoryService;
+use App\Support\FriendlyError;
 use Illuminate\Http\Request;
 
 class LaundryCategoryController extends Controller
@@ -22,22 +23,26 @@ class LaundryCategoryController extends Controller
             'sort' => $request->input('sort'),
         ]);
 
-        return view('admin.laundry-categories.index', compact('categories'));
+        $statuses = RecordStatus::databaseOptions();
+
+        return view('admin.laundry-categories.index', compact('categories', 'statuses'));
     }
 
     public function create()
     {
-        return view('admin.laundry-categories.create');
+        return view('admin.laundry-categories.create', [
+            'statuses' => RecordStatus::databaseOptions(),
+        ]);
     }
 
-    public function store(LaundryCategoryRequest $request)
+    public function store(LuuLaundryCategoryRequest $request)
     {
         try {
             $this->categoryService->create($request->validated());
 
             return redirect()->route('laundry-categories.index')->with('success', 'Danh mục loại đồ giặt đã được tạo thành công.');
         } catch (\Exception $e) {
-            return redirect()->route('laundry-categories.create')->with('error', \App\Support\FriendlyError::message($e))->withInput();
+            return redirect()->route('laundry-categories.create')->with('error', FriendlyError::message($e))->withInput();
         }
     }
 
@@ -45,17 +50,15 @@ class LaundryCategoryController extends Controller
     {
         $category = $this->categoryService->find($id);
 
-        if (!$category) {
+        if (! $category) {
             abort(404);
         }
 
-        $services = $category->services()->latest()->paginate(10);
-        $garments = $category->garments()->latest()->paginate(10);
+        $services = $category->dichVus()->orderBy('DichVuID')->paginate(10);
 
         return view('admin.laundry-categories.show', [
             'category' => $category,
             'services' => $services,
-            'garments' => $garments,
         ]);
     }
 
@@ -63,18 +66,21 @@ class LaundryCategoryController extends Controller
     {
         $category = $this->categoryService->find($id);
 
-        if (!$category) {
+        if (! $category) {
             abort(404);
         }
 
-        return view('admin.laundry-categories.edit', compact('category'));
+        return view('admin.laundry-categories.edit', [
+            'category' => $category,
+            'statuses' => RecordStatus::databaseOptions(),
+        ]);
     }
 
-    public function update(LaundryCategoryRequest $request, int $id)
+    public function update(LuuLaundryCategoryRequest $request, int $id)
     {
         $category = $this->categoryService->find($id);
 
-        if (!$category) {
+        if (! $category) {
             abort(404);
         }
 
@@ -83,7 +89,7 @@ class LaundryCategoryController extends Controller
 
             return redirect()->route('laundry-categories.index')->with('success', 'Danh mục loại đồ giặt đã được cập nhật.');
         } catch (\Exception $e) {
-            return redirect()->route('laundry-categories.edit', $category)->with('error', \App\Support\FriendlyError::message($e))->withInput();
+            return redirect()->route('laundry-categories.edit', $category)->with('error', FriendlyError::message($e))->withInput();
         }
     }
 
@@ -91,7 +97,7 @@ class LaundryCategoryController extends Controller
     {
         $category = $this->categoryService->find($id);
 
-        if (!$category) {
+        if (! $category) {
             abort(404);
         }
 
@@ -100,7 +106,7 @@ class LaundryCategoryController extends Controller
 
             return redirect()->route('laundry-categories.index')->with('success', 'Danh mục loại đồ giặt đã được xóa.');
         } catch (\Exception $e) {
-            return redirect()->route('laundry-categories.index')->with('error', \App\Support\FriendlyError::message($e));
+            return redirect()->route('laundry-categories.index')->with('error', FriendlyError::message($e));
         }
     }
 
@@ -108,16 +114,18 @@ class LaundryCategoryController extends Controller
     {
         $category = $this->categoryService->find($id);
 
-        if (!$category) {
+        if (! $category) {
             abort(404);
         }
 
         try {
-            $category->update(['status' => $category->status === 'active' ? 'inactive' : 'active']);
+            $category->update([
+                'TrangThai' => $category->TrangThai === 'Hoạt động' ? 'Tạm ngưng' : 'Hoạt động',
+            ]);
 
             return back()->with('success', 'Trạng thái danh mục đã được cập nhật.');
         } catch (\Exception $e) {
-            return back()->with('error', \App\Support\FriendlyError::message($e));
+            return back()->with('error', FriendlyError::message($e));
         }
     }
 }

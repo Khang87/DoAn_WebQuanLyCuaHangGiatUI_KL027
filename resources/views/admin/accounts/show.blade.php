@@ -65,14 +65,14 @@
             </div>
             <div class="card-body d-flex flex-column gap-2">
                 @can('accounts.edit')
-                    <a href="{{ route('accounts.edit', $account->id) }}" class="btn btn-primary w-100 py-2">
+                    <a href="{{ route('accounts.edit', $account->getKey()) }}" class="btn btn-primary w-100 py-2">
                         <i class="fas fa-pencil-alt me-1"></i> Chỉnh sửa
                     </a>
                 @endcan
 
 @unless($account->isManager())
             <x-admin.detail.confirm-form
-                :action="route('accounts.reset-password', $account->id)"
+                :action="route('accounts.reset-password', $account->getKey())"
                 method="POST"
                 title="Đặt lại mật khẩu?"
                 text="Mật khẩu sẽ được đặt lại về mặc định."
@@ -86,9 +86,9 @@
             />
         @endunless
 
-        @if($account->id !== auth()->id())
+        @if($account->getKey() !== auth()->id())
             <x-admin.detail.confirm-form
-                :action="route('accounts.toggle-status', $account->id)"
+                :action="route('accounts.toggle-status', $account->getKey())"
                 method="POST"
                 title="{{ $account->deleted_at ? 'Kích hoạt' : 'Tạm ngưng' }} tài khoản này?"
                 text="Tài khoản sẽ {{ $account->deleted_at ? 'được kích hoạt trở lại' : 'bị tạm ngưng' }}."
@@ -104,7 +104,7 @@
 
         @can('accounts.delete')
             <x-admin.detail.confirm-form
-                :action="route('accounts.destroy', $account->id)"
+                :action="route('accounts.destroy', $account->getKey())"
                 title="Xóa tài khoản?"
                 text="Hành động này không thể hoàn tác."
                 label="Xóa"

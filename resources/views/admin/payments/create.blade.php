@@ -21,8 +21,8 @@
                     <select class="form-select" name="order_id">
                         <option value="">-- Chọn đơn hàng --</option>
                         @foreach($orders as $order)
-                        <option value="{{ $order->id }}" {{ $preselectedOrder && $preselectedOrder->id == $order->id ? 'selected' : '' }}>
-                            {{ $order->code }} - {{ $order->customer?->name }}
+                        <option value="{{ $order->DonHangID }}" {{ $preselectedOrder && $preselectedOrder->DonHangID == $order->DonHangID ? 'selected' : '' }}>
+                            {{ $order->MaDonHang }} - {{ $order->khachHang?->HoTen }}
                         </option>
                         @endforeach
                     </select>
@@ -32,8 +32,8 @@
                     <select class="form-select" name="invoice_id">
                         <option value="">-- Chọn hóa đơn (tùy chọn) --</option>
                         @foreach($invoices as $inv)
-                        <option value="{{ $inv->id }}" {{ $preselectedInvoice && $preselectedInvoice->id == $inv->id ? 'selected' : '' }}>
-                            {{ $inv->code }} - {{ $inv->order?->customer?->name }}
+                        <option value="{{ $inv->HoaDonID }}" {{ $preselectedInvoice && $preselectedInvoice->HoaDonID == $inv->HoaDonID ? 'selected' : '' }}>
+                            {{ $inv->MaHoaDon }} - {{ $inv->donHang?->khachHang?->HoTen }}
                         </option>
                         @endforeach
                     </select>
@@ -47,9 +47,6 @@
                     <select class="form-select" name="method" required>
                         <option value="cash">Tiền mặt</option>
                         <option value="bank_transfer">Chuyển khoản / QR</option>
-                        <option value="momo">Ví MoMo</option>
-                        <option value="credit_card">Thẻ ATM / Credit</option>
-                        <option value="e_wallet">Ví điện tử</option>
                     </select>
                 </div>
                 <div class="col-md-6">
@@ -57,7 +54,7 @@
                     <x-admin.status-select
                         name="status"
                         :options="\App\Enums\PaymentStatus::options()"
-                        selected="paid"
+                        :selected="\App\Enums\PaymentStatus::Paid->value"
                         class="form-select @error('status') is-invalid @enderror"
                         required
                     />

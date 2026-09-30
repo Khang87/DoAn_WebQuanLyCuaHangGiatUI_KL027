@@ -2,12 +2,14 @@
 
 namespace Database\Seeders;
 
+use App\Enums\BookingMethod;
+use App\Enums\BookingStatus;
 use App\Models\Booking;
-use App\Models\Customer;
-use App\Models\User;
-use Carbon\Carbon;
+use App\Models\KhachHang;
+use App\Models\NhanVien;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Carbon;
 
 class BookingSeeder extends Seeder
 {
@@ -15,8 +17,14 @@ class BookingSeeder extends Seeder
 
     public function run(): void
     {
-        $customers = Customer::all();
-        $staff = User::whereIn('role', ['manager', 'staff'])->get();
+        $customers = KhachHang::all();
+        $staff = NhanVien::where('TrangThai', 'Hoạt động')->get();
+
+        if ($customers->isEmpty()) {
+            $this->command?->warn('Bảng KhachHang đang trống, bỏ qua seed đặt lịch.');
+
+            return;
+        }
 
         $addresses = [
             '140 Lê Trọng Tấn, Phường Tây Thạnh, Quận Tân Phú, TP.HCM',
@@ -27,7 +35,7 @@ class BookingSeeder extends Seeder
             '45 Nguyễn Văn Lượng, Phường Tây Thạnh, Quận Tân Phú, TP.HCM',
             '78/42 Lê Đức Thọ, Phường 15, Quận Tân Bình, TP.HCM',
             '300/14 Đỗ Thúc Tĩnh, Phường Tây Thạnh, Quận Tân Phú, TP.HCM',
-            '126 Trường Đinh, Phường 12, Quận Tân Bình, TP.HCM',
+            '126 Trường Đình, Phường 12, Quận Tân Bình, TP.HCM',
             '999 Lê Văn Sỹ, Phường 14, Quận 3, TP.HCM',
         ];
 
@@ -39,37 +47,43 @@ class BookingSeeder extends Seeder
             'Thời gian không phù hợp với giờ mở cửa',
         ];
 
-        $methods = ['nhan_do', 'giao_do'];
+        $methods = BookingMethod::values();
 
-        $statuses = ['pending', 'pending', 'pending', 'pending', 'confirmed', 'confirmed', 'confirmed', 'cancelled', 'cancelled', 'cancelled'];
+        $statuses = [
+            BookingStatus::Pending->value,
+            BookingStatus::Pending->value,
+            BookingStatus::Pending->value,
+            BookingStatus::Pending->value,
+            BookingStatus::Confirmed->value,
+            BookingStatus::Confirmed->value,
+            BookingStatus::Confirmed->value,
+            BookingStatus::Cancelled->value,
+            BookingStatus::Cancelled->value,
+            BookingStatus::Cancelled->value,
+        ];
 
         for ($i = 1; $i <= 10; $i++) {
             $status = $statuses[$i - 1];
             $customer = $customers[($i - 1) % $customers->count()];
 
             $scheduledDate = ($i <= 4)
-                ? Carbon::today()->format('Y-m-d')
-                : Carbon::now()->addDays(rand(0, 5))->format('Y-m-d');
-            $scheduledTime = sprintf('%02d:00:00', rand(9, 17));
+                ? Carbon::today()
+                : Carbon::now()->addDays(random_int(0, 5));
+            $scheduledTime = sprintf('%02d:00:00', random_int(9, 17));
 
-            $notes = '';
-            if ($status === 'cancelled') {
-                $notes = $cancelReasons[array_rand($cancelReasons)];
-            }
-
-            $staffId = $staff->isNotEmpty() ? $staff->random()->id : null;
+            $notes = $status === BookingStatus::Cancelled->value
+                ? $cancelReasons[array_rand($cancelReasons)]
+                : null;
 
             Booking::create([
-                'customer_id' => $customer->id,
-                'staff_id' => $staffId,
-                'method' => $methods[array_rand($methods)],
-                'scheduled_date' => $scheduledDate,
-                'scheduled_time' => $scheduledTime,
-                'address' => $addresses[($i - 1) % count($addresses)],
-                'notes' => $notes,
-                'status' => $status,
-                'created_at' => Carbon::now()->subDays(rand(0, 30)),
-                'updated_at' => Carbon::now()->subDays(rand(0, 30)),
+                'KhachHangID' => $customer->KhachHangID,
+                'NhanVienID' => $staff->isNotEmpty() ? $staff->random()->NhanVienID : null,
+                'HinhThucNhanDo' => $methods[array_rand($methods)],
+                'NgayHen' => $scheduledDate->format('Y-m-d'),
+                'GioHen' => $scheduledTime,
+                'DiaChiNhan' => $addresses[($i - 1) % count($addresses)],
+                'GhiChu' => $notes,
+                'TrangThai' => $status,
             ]);
         }
     }

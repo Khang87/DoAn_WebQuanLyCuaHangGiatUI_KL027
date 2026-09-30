@@ -4,30 +4,6 @@
 @section('page-title', 'Dashboard nhân viên')
 
 @section('content')
-@php
-    $orderStatusLabels = [
-        'pending'    => 'Chờ tiếp nhận',
-        'received'   => 'Đã nhận đồ',
-        'sorting'    => 'Đang phân loại',
-        'processing' => 'Đang giặt / Xử lý',
-        'washed'     => 'Đã giặt xong',
-        'delivering' => 'Đang giao đồ',
-        'completed'  => 'Hoàn thành',
-        'cancelled'  => 'Đã hủy',
-    ];
-
-    $statusBadgeMap = [
-        'pending'    => 'bg-warning-subtle text-warning-emphasis border border-warning',
-        'received'   => 'bg-primary-subtle text-primary-emphasis border border-primary',
-        'sorting'    => 'bg-purple-subtle text-purple-emphasis border border-purple',
-        'processing' => 'bg-primary-subtle text-primary-emphasis border border-primary-subtle fw-semibold',
-        'washed'     => 'bg-teal-subtle text-teal-emphasis border border-teal',
-        'delivering' => 'bg-indigo-subtle text-indigo-emphasis border border-indigo',
-        'completed'  => 'bg-success-subtle text-success-emphasis border border-success',
-        'cancelled'  => 'bg-danger-subtle text-danger-emphasis border border-danger',
-    ];
-@endphp
-
 <!-- ===== Operational KPI Cards Row ===== -->
 <div class="row g-4 mb-4">
     <!-- Đơn hàng chờ tiếp nhận -->
@@ -130,23 +106,17 @@
                         <tbody>
                             @forelse($processingOrders as $order)
                             <tr>
-                                <td><strong>{{ $order->code }}</strong></td>
-                                <td>{{ $order->customer?->name ?: '-' }}</td>
-                                <td>{{ $order->customer?->phone ?: '-' }}</td>
-                                <td>
-                                    @php
-                                        $label = $orderStatusLabels[$order->status] ?? 'Chờ tiếp nhận';
-                                        $badge = $statusBadgeMap[$order->status] ?? 'bg-secondary-subtle text-secondary border-secondary';
-                                    @endphp
-                                    <span class="badge {{ $badge }} px-3 py-2 rounded-pill">{{ $label }}</span>
-                                </td>
+                                <td><strong>{{ $order->MaDonHang }}</strong></td>
+                                <td>{{ $order->khachHang?->HoTen ?: '-' }}</td>
+                                <td>{{ $order->khachHang?->SoDienThoai ?: '-' }}</td>
+                                <td><x-admin.status-badge :status="$order->TrangThai" :enum="\App\Enums\OrderStatus::class" /></td>
                                 <td style="min-width: 200px;">
                                     <select class="form-select form-select-sm status-select"
-                                            data-order-id="{{ $order->id }}"
-                                            data-current-status="{{ $order->status }}">
+                                            data-order-id="{{ $order->DonHangID }}"
+                                            data-current-status="{{ $order->TrangThai }}">
                                         <option value="" selected disabled>Chuyển trạng thái...</option>
-                                        @foreach($statusFlow as $value => $label)
-                                            @if($value !== 'cancelled' && $value !== 'completed' && $value !== $order->status)
+                                        @foreach($quickStatusFlow as $value => $label)
+                                            @if($value !== $order->TrangThai)
                                                 <option value="{{ $value }}">{{ $label }}</option>
                                             @endif
                                         @endforeach
@@ -192,23 +162,32 @@
                         <tbody>
                             @forelse($todaySchedule as $delivery)
                             <tr>
-                                <td>{{ $delivery->customer?->name ?: '-' }}</td>
-                                <td>{{ $delivery->customer?->phone ?: '-' }}</td>
-                                <td>{{ $delivery->address ?: 'Chưa có địa chỉ' }}</td>
+                                <td>{{ $delivery->donHang?->khachHang?->HoTen ?: '-' }}</td>
+                                <td>{{ $delivery->donHang?->khachHang?->SoDienThoai ?: '-' }}</td>
+                                <td>{{ $delivery->DiaChi ?: 'Chưa có địa chỉ' }}</td>
                                 <td>
                                     @php
-                                        $typeLabel = match($delivery->method) {
-                                            'nhan_do' => 'Nhận đồ',
-                                            'giao_do' => 'Giao đồ',
-                                            default => 'Giao đồ',
+                                        $typeLabel = match($delivery->LoaiGiaoNhan) {
+                                            'NHAN_DO' => 'Nhận đồ',
+                                            'GIAO_DO' => 'Giao đồ',
+                                            default => $delivery->LoaiGiaoNhan,
                                         };
                                         $typeBadge = 'bg-primary-subtle text-primary-emphasis border border-primary';
                                     @endphp
                                     <span class="badge {{ $typeBadge }} px-2 py-1 rounded-pill">{{ $typeLabel }}</span>
                                 </td>
-                                <td>{{ $delivery->pickup_time?->format('H:i') ?: '-' }}</td>
+                                <td>{{ $delivery->ThoiGianDuKien?->format('H:i') ?: '-' }}</td>
                                 <td>
-                                    <x-admin.status-badge :status="$delivery->status" :enum="\App\Enums\DeliveryStatus::class" size="px-2 py-1" />
+                                    @php
+                                        [$deliveryStatusLabel, $deliveryStatusClass] = match ($delivery->TrangThai) {
+                                            'Chờ thực hiện' => ['Chờ thực hiện', 'bg-warning-subtle text-warning-emphasis border border-warning'],
+                                            'Đang thực hiện' => ['Đang thực hiện', 'bg-primary-subtle text-primary-emphasis border border-primary'],
+                                            'Hoàn thành' => ['Hoàn thành', 'bg-success-subtle text-success-emphasis border border-success'],
+                                            'Đã hủy' => ['Đã hủy', 'bg-danger-subtle text-danger-emphasis border border-danger'],
+                                            default => [$delivery->TrangThai, 'bg-secondary-subtle text-secondary-emphasis border border-secondary'],
+                                        };
+                                    @endphp
+                                    <span class="badge {{ $deliveryStatusClass }} px-2 py-1 rounded-pill">{{ $deliveryStatusLabel }}</span>
                                 </td>
                             </tr>
                             @empty
@@ -243,15 +222,15 @@
                         <tbody>
                             @forelse($upcomingBookings as $booking)
                             <tr>
-                                <td>{{ $booking->customer?->name ?: '-' }}</td>
-                                <td>{{ $booking->customer?->phone ?: '-' }}</td>
+                                <td>{{ $booking->khachHang?->HoTen ?: '-' }}</td>
+                                <td>{{ $booking->khachHang?->SoDienThoai ?: '-' }}</td>
                                 <td>
-                                    {{ $booking->scheduled_date?->format('d/m') }}
-                                    <small class="text-muted">{{ $booking->scheduled_time?->format('H:i') }}</small>
+                                    {{ $booking->NgayHen?->format('d/m') }}
+                                    <small class="text-muted">{{ $booking->GioHen?->format('H:i') }}</small>
                                 </td>
                                 <td>{{ $booking->method_label }}</td>
                                 <td>
-                                    <x-admin.status-badge :status="$booking->status" :enum="\App\Enums\BookingStatus::class" size="px-2 py-1" />
+                                    <x-admin.status-badge :status="$booking->TrangThai" :enum="\App\Enums\BookingStatus::class" size="px-2 py-1" />
                                 </td>
                             </tr>
                             @empty

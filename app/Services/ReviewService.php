@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Enums\OrderStatus;
 use App\Models\DanhGia;
 use App\Models\DonHang;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
@@ -13,33 +14,33 @@ class ReviewService
     {
         $query = DanhGia::query();
 
-        if (!empty($filters['rating'])) {
+        if (! empty($filters['rating'])) {
             $query->where('SoSao', $filters['rating']);
         }
 
-        if (!empty($filters['status'])) {
+        if (! empty($filters['status'])) {
             $query->where('TrangThai', $filters['status']);
         }
 
-        if (!empty($filters['customer_id'])) {
+        if (! empty($filters['customer_id'])) {
             $query->where('KhachHangID', $filters['customer_id']);
         }
 
-        if (!empty($filters['search'])) {
+        if (! empty($filters['search'])) {
             $search = $filters['search'];
             $query->where(function ($q) use ($search) {
-                $q->whereHas('khachHang', fn($c) => $c->where('HoTen', 'LIKE', "%{$search}%"))
+                $q->whereHas('khachHang', fn ($c) => $c->where('HoTen', 'LIKE', "%{$search}%"))
                     ->orWhere('BinhLuan', 'LIKE', "%{$search}%");
             });
         }
 
-        $allowedSorts = ['id', 'SoSao', 'TrangThai', 'NgayDanhGia', 'NgayTao'];
-        $sortBy = in_array($filters['sort_by'] ?? null, $allowedSorts) ? $filters['sort_by'] : 'created_at';
+        $allowedSorts = ['DanhGiaID', 'SoSao', 'TrangThai', 'NgayDanhGia'];
+        $sortBy = in_array($filters['sort_by'] ?? null, $allowedSorts, true) ? $filters['sort_by'] : 'NgayDanhGia';
         $sortOrder = ($filters['sort_order'] ?? 'desc') === 'asc' ? 'asc' : 'desc';
 
         return $query->with(['khachHang', 'donHang'])
             ->orderBy($sortBy, $sortOrder)
-            ->latest('id')
+            ->orderByDesc('DanhGiaID')
             ->paginate(10);
     }
 
@@ -49,17 +50,17 @@ class ReviewService
      */
     public function getAverageRating(): float
     {
-        return round((float) (DanhGia::where('TrangThai', 'visible')->avg('SoSao') ?? 0), 1);
+        return round((float) (DanhGia::where('TrangThai', 'Hiển thị')->avg('SoSao') ?? 0), 1);
     }
 
     public function getTotalReviews(): int
     {
-        return DanhGia::where('TrangThai', 'visible')->count();
+        return DanhGia::where('TrangThai', 'Hiển thị')->count();
     }
 
     public function find(int $id): ?DanhGia
     {
-        return DanhGia::withTrashed()->with(['khachHang', 'donHang'])->find($id);
+        return DanhGia::with(['khachHang', 'donHang'])->find($id);
     }
 
     public function create(array $data): DanhGia
@@ -67,11 +68,11 @@ class ReviewService
         return DB::transaction(function () use ($data) {
             // Check if order exists and is completed
             $order = DonHang::find($data['order_id']);
-            if (!$order) {
+            if (! $order) {
                 throw new \InvalidArgumentException('Đơn hàng không tồn tại.');
             }
 
-            if ($order->status !== 'completed') {
+            if (! in_array($order->TrangThai, [OrderStatus::Delivered->value, OrderStatus::Paid->value], true)) {
                 throw new \InvalidArgumentException('Chỉ có thể đánh giá đơn hàng đã hoàn thành.');
             }
 
@@ -91,6 +92,7 @@ class ReviewService
     public function update(DanhGia $review, array $data): DanhGia
     {
         $review->update($data);
+
         return $review->fresh();
     }
 
@@ -102,8 +104,9 @@ class ReviewService
     public function toggleStatus(DanhGia $review): DanhGia
     {
         $review->update([
-            'TrangThai' => $review->TrangThai === 'visible' ? 'hidden' : 'visible'
+            'TrangThai' => $review->TrangThai === 'Hiển thị' ? 'Ẩn' : 'Hiển thị',
         ]);
+
         return $review->fresh();
     }
 }

@@ -57,7 +57,7 @@
                         <th class="fw-bold text-dark">Dịch vụ</th>
                         <th class="fw-bold text-dark">Số lượng</th>
                         <th class="fw-bold text-dark">Ghi chú khách hàng</th>
-                        <th class="fw-bold text-dark">Tổng tiền</th>
+                        <th class="fw-bold text-dark">Thành tiền</th>
                         <th class="fw-bold text-dark">Trạng thái</th>
                         <th class="fw-bold text-dark">Ngày tạo</th>
                         <th class="fw-bold text-dark">Thao tác</th>
@@ -66,55 +66,59 @@
                 <tbody>
                     @forelse($orders as $order)
                     <tr>
-                        <td class="text-dark">{{ $order->code }}</td>
+                        <td class="text-dark">{{ $order->MaDonHang }}</td>
                         <td>
-                            @php
-                                $customer = $order->customer;
-                                $avatarUrl = asset('assets/images/user_' . ((($customer->id ?? 0) % 8) + 1) . '.jpg');
-                            @endphp
                             <div class="d-flex align-items-center">
-                                @if($order->customer)
-                                    <img src="{{ $avatarUrl }}" alt="Avatar" class="rounded-circle me-2 avatar-cover" style="width: 32px; height: 32px;">
-                                @else
-                                    <img src="{{ asset('assets/images/user_1.jpg') }}" alt="Avatar" class="rounded-circle me-2 avatar-cover" style="width: 32px; height: 32px;">
-                                @endif
                                 <div>
-                                    <div class="text-dark">{{ $order->customer?->name ?: '-' }}</div>
-                                    <small class="text-muted">{{ $order->customer?->phone ?: 'Chưa có số điện thoại' }}</small>
+                                    <div class="text-dark">{{ $order->khachHang?->HoTen ?: '-' }}</div>
+                                    <small class="text-muted">{{ $order->khachHang?->SoDienThoai ?: 'Chưa có số điện thoại' }}</small>
                                 </div>
                             </div>
                         </td>
-                        <td class="text-dark">{{ $order->customer?->phone ?: '-' }}</td>
-                        <td class="text-dark">{{ $order->items->pluck('service.name')->filter()->join(', ') ?: ($order->service?->name ?: '-') }}</td>
+                        <td class="text-dark">{{ $order->khachHang?->SoDienThoai ?: '-' }}</td>
+                        <td class="text-dark">{{ $order->chiTietDonHangs->map(fn ($item) => $item->dichVu?->TenDichVu)->filter()->unique()->join(', ') ?: '-' }}</td>
                         <td class="text-dark">
-                             {{ number_format((float)($order->items->sum('quantity') ?: ($order->quantity_items ?? $order->weight_kg ?? 0))) }}
-                             {{ $order->service?->unit ?? 'món' }}
+                            @php
+                                $itemQuantity = (float) $order->chiTietDonHangs->sum('SoLuong');
+                                $itemWeight = (float) $order->chiTietDonHangs->sum('KhoiLuong');
+                            @endphp
+                            @if($itemQuantity > 0 || $itemWeight > 0)
+                                @if($itemQuantity > 0)
+                                    {{ number_format($itemQuantity, 2) }} món
+                                @endif
+                                @if($itemWeight > 0)
+                                    {{ $itemQuantity > 0 ? ' · ' : '' }}{{ number_format($itemWeight, 2) }} kg
+                                @endif
+                            @else
+                                -
+                            @endif
                         </td>
-                        <td><small class="text-muted">{{ $order->notes ?: 'Không có ghi chú' }}</small></td>
-                        <td class="text-dark">{{ number_format($order->total_amount) }} VNĐ</td>
+                        <td><small class="text-muted">{{ $order->GhiChu ?: 'Không có ghi chú' }}</small></td>
+                        <td class="text-dark">{{ number_format((float) $order->ThanhTien) }} đ</td>
                         <td>
-                            <x-admin.status-badge :status="$order->status" :enum="\App\Enums\OrderStatus::class" />
+                            <x-admin.status-badge :status="$order->TrangThai" :enum="\App\Enums\OrderStatus::class" />
                         </td>
-                        <td class="text-dark">{{ $order->created_at?->format('d/m/Y') }}</td>
+                        <td class="text-dark">{{ $order->NgayTao?->format('d/m/Y H:i') ?: '-' }}</td>
                         <td>
                             <div class="d-flex gap-2">
+                                @php($canManageSettled = ! $order->isLocked() || auth()->user()?->isOwner())
                                 @can('orders.view')
                                     <a href="{{ route('orders.show', $order) }}" class="btn btn-order-action view" title="Xem"><i class="bi bi-eye"></i></a>
                                 @endcan
-                                @if($order->can_edit)
+                                @if($canManageSettled)
                                     @can('orders.edit')
                                         <a href="{{ route('orders.edit', $order) }}" class="btn btn-order-action edit" title="Sửa"><i class="bi bi-pencil"></i></a>
                                     @endcan
                                 @endif
-                                @if($order->can_delete)
+                                @if($canManageSettled)
                                     @can('orders.delete')
-                                        <form action="{{ route('orders.destroy', $order) }}" method="POST" class="d-inline" id="deleteOrderForm_{{ $order->id }}">
+                                        <form action="{{ route('orders.destroy', $order->DonHangID) }}" method="POST" class="d-inline" id="deleteOrderForm_{{ $order->DonHangID }}">
                                             @csrf @method('DELETE')
                                             <button type="submit" class="btn btn-order-action delete" title="Xóa"><i class="bi bi-trash"></i></button>
                                         </form>
                                     @endcan
                                 @endif
-                                @if(!$order->can_edit && !$order->can_delete)
+                                @if($order->isLocked() && ! auth()->user()?->isOwner())
                                     <span class="badge bg-secondary-subtle text-secondary-emphasis border border-secondary px-3 py-2 rounded-pill d-flex align-items-center" title="Đã quyết toán">
                                         <i class="bi bi-lock me-1"></i>Đã quyết toán
                                     </span>
@@ -134,32 +138,9 @@
 </div>
 
 @if($orders->hasPages())
-<!-- Pagination -->
-<nav class="mt-4">
-    <div class="d-flex justify-content-between align-items-center">
-        <div class="text-muted small">
-            Hiển thị {{ $orders->firstItem() }} - {{ $orders->lastItem() }} của {{ $orders->total() }} đơn hàng
-        </div>
-        <ul class="pagination mb-0">
-            @if ($orders->onFirstPage())
-                <li class="page-item disabled"><span class="page-link"><i class="bi bi-chevron-left"></i></span></li>
-            @else
-                <li class="page-item"><a class="page-link" href="{{ $orders->appends(request()->query())->url($orders->currentPage() - 1) }}"><i class="bi bi-chevron-left"></i></a></li>
-            @endif
-            @foreach ($orders->getUrlRange(max(1, $orders->currentPage() - 2), min($orders->lastPage(), $orders->currentPage() + 2)) as $page => $url)
-                @if ($page == $orders->currentPage())
-                    <li class="page-item active"><span class="page-link">{{ $page }}</span></li>
-                @else
-                    <li class="page-item"><a class="page-link" href="{{ $orders->appends(request()->query())->url($page) }}">{{ $page }}</a></li>
-                @endif
-            @endforeach
-            @if ($orders->onLastPage())
-                <li class="page-item disabled"><span class="page-link"><i class="bi bi-chevron-right"></i></span></li>
-            @else
-                <li class="page-item"><a class="page-link" href="{{ $orders->appends(request()->query())->url($orders->currentPage() + 1) }}"><i class="bi bi-chevron-right"></i></a></li>
-            @endif
-        </ul>
-    </div>
+<nav class="mt-4 d-flex justify-content-between align-items-center">
+    <small class="text-muted">Hiển thị {{ $orders->firstItem() }} - {{ $orders->lastItem() }} của {{ $orders->total() }} đơn hàng</small>
+    {{ $orders->links('pagination::bootstrap-5') }}
 </nav>
 @endif
 @endsection

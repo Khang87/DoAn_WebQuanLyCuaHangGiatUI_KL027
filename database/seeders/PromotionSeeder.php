@@ -2,11 +2,16 @@
 
 namespace Database\Seeders;
 
-use App\Models\Promotion;
-use Carbon\Carbon;
+use App\Models\KhuyenMai;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
+/**
+ * Nạp khuyến mãi vào bảng `KhuyenMai`.
+ *
+ * `LoaiKhuyenMai` chỉ nhận hai giá trị 'Phần trăm' hoặc 'Tiền mặt' theo ràng
+ * buộc `KhuyenMai_LoaiKhuyenMai_check`.
+ */
 class PromotionSeeder extends Seeder
 {
     use WithoutModelEvents;
@@ -15,48 +20,64 @@ class PromotionSeeder extends Seeder
     {
         $promotions = [
             [
-                'name' => 'Giảm 20% Đơn Đầu',
-                'code' => 'PROMO20',
-                'discount_type' => 'percentage',
-                'discount_value' => 20,
-                'min_order_amount' => 0,
-                'max_discount' => null,
-                'usage_limit' => null,
-                'conditions' => null,
-                'starts_at' => Carbon::now()->subMonth(),
-                'expires_at' => Carbon::now()->addMonths(2),
-                'status' => 'active',
+                'MaKhuyenMai' => 'KM20',
+                'TenKhuyenMai' => 'Giảm 20% đơn đầu',
+                'LoaiKhuyenMai' => 'Phần trăm',
+                'GiaTriGiam' => 20,
+                'GiaTriDonToiThieu' => 0,
+                'MucGiamToiDa' => 100000,
+                'SoLuongSuDung' => 100,
+                'DieuKienApDung' => 'Áp dụng cho đơn hàng đầu tiên của khách.',
+                'NgayBatDau' => now()->subMonth()->format('Y-m-d'),
+                'NgayKetThuc' => now()->addMonths(2)->format('Y-m-d'),
+                'TrangThai' => 'Hoạt động',
             ],
             [
-                'name' => 'Tặng 50K Đơn 500K',
-                'code' => 'PROMO500',
-                'discount_type' => 'fixed',
-                'discount_value' => 50000,
-                'min_order_amount' => 500000,
-                'max_discount' => null,
-                'usage_limit' => null,
-                'conditions' => null,
-                'starts_at' => Carbon::now()->subMonth(),
-                'expires_at' => Carbon::now()->addMonths(1),
-                'status' => 'active',
+                'MaKhuyenMai' => 'KM50K',
+                'TenKhuyenMai' => 'Giảm 50K đơn từ 500K',
+                'LoaiKhuyenMai' => 'Tiền mặt',
+                'GiaTriGiam' => 50000,
+                'GiaTriDonToiThieu' => 500000,
+                'MucGiamToiDa' => null,
+                'SoLuongSuDung' => 200,
+                'DieuKienApDung' => 'Đơn hàng từ 500.000đ trở lên.',
+                'NgayBatDau' => now()->subMonth()->format('Y-m-d'),
+                'NgayKetThuc' => now()->addMonth()->format('Y-m-d'),
+                'TrangThai' => 'Hoạt động',
             ],
             [
-                'name' => 'Miễn Phí Giao Hàng',
-                'code' => 'SHIPFREE',
-                'discount_type' => 'fixed',
-                'discount_value' => 0,
-                'min_order_amount' => 0,
-                'max_discount' => null,
-                'usage_limit' => null,
-                'conditions' => null,
-                'starts_at' => Carbon::now()->subMonth(),
-                'expires_at' => Carbon::now()->addMonths(3),
-                'status' => 'active',
+                'MaKhuyenMai' => 'FREESHIP',
+                'TenKhuyenMai' => 'Miễn phí giao hàng',
+                'LoaiKhuyenMai' => 'Tiền mặt',
+                'GiaTriGiam' => 30000,
+                'GiaTriDonToiThieu' => 200000,
+                'MucGiamToiDa' => null,
+                'SoLuongSuDung' => null,
+                'DieuKienApDung' => 'Giảm phí giao hàng cho đơn từ 200.000đ.',
+                'NgayBatDau' => now()->subMonth()->format('Y-m-d'),
+                'NgayKetThuc' => now()->addMonths(3)->format('Y-m-d'),
+                'TrangThai' => 'Hoạt động',
+            ],
+            [
+                'MaKhuyenMai' => 'KMDEC',
+                'TenKhuyenMai' => 'Ưu đãi cuối mùa',
+                'LoaiKhuyenMai' => 'Phần trăm',
+                'GiaTriGiam' => 10,
+                'GiaTriDonToiThieu' => 0,
+                'MucGiamToiDa' => 50000,
+                'SoLuongSuDung' => null,
+                'DieuKienApDung' => null,
+                'NgayBatDau' => now()->subWeeks(2)->format('Y-m-d'),
+                'NgayKetThuc' => now()->subDays(1)->format('Y-m-d'),
+                'TrangThai' => 'Hết hạn',
             ],
         ];
 
         foreach ($promotions as $promotion) {
-            Promotion::create($promotion);
+            KhuyenMai::updateOrCreate(
+                ['MaKhuyenMai' => $promotion['MaKhuyenMai']],
+                $promotion,
+            );
         }
     }
 }

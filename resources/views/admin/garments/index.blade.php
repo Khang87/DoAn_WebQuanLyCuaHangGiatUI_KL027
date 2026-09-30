@@ -6,9 +6,11 @@
 @section('content')
 <!-- Page Actions: nút "Thêm" luôn nằm góc trên bên trái -->
 <div class="page-toolbar">
-    <a href="{{ route('garments.create') }}" class="btn btn-create">
-        <i class="bi bi-plus-lg"></i>Thêm dịch vụ
-    </a>
+    @can('garments.create')
+        <a href="{{ route('garments.create') }}" class="btn btn-create">
+            <i class="bi bi-plus-lg"></i>Thêm dịch vụ
+        </a>
+    @endcan
     <p class="text-muted page-toolbar__desc">Danh sách dịch vụ giặt ủi cửa hàng cung cấp và trạng thái hiện tại.</p>
 </div>
 <form action="{{ url()->current() }}" method="GET" class="row g-3 align-items-center mb-4">
@@ -71,14 +73,13 @@
                 </thead>
                 <tbody>
                     @forelse($services as $service)
-                    @php $serviceIcon = $service->icon(); @endphp
                     <tr>
                         <td>{{ $loop->iteration }}</td>
                         <td>{{ $service->DichVuID }}</td>
                         <td>
                             <div class="d-flex align-items-center">
                                 <div class="bg-secondary-subtle text-secondary rounded-circle p-2 me-2 d-flex align-items-center justify-content-center" style="width: 36px; height: 36px;">
-                                    <i class="{{ $serviceIcon }}"></i>
+                                    <i class="bi bi-basket2"></i>
                                 </div>
                                 <strong class="fw-semibold">{{ $service->TenDichVu }}</strong>
                             </div>

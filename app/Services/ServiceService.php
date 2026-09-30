@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\DichVu;
 use App\Models\LoaiDichVu;
 use App\Models\LoaiDoGiat;
+use App\Support\CatalogCache;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 
 class ServiceService
@@ -13,22 +14,22 @@ class ServiceService
     {
         $query = DichVu::query()->with('loaiDichVu');
 
-        if (!empty($filters['search'])) {
+        if (! empty($filters['search'])) {
             $search = $filters['search'];
             $query->where(function ($q) use ($search) {
                 $q->where('TenDichVu', 'like', "%{$search}%")
-                  ->orWhere('MoTa', 'like', "%{$search}%")
-                  ->orWhereHas('loaiDichVu', function ($sub) use ($search) {
-                      $sub->where('TenLoaiDichVu', 'like', "%{$search}%");
-                  });
+                    ->orWhere('MoTa', 'like', "%{$search}%")
+                    ->orWhereHas('loaiDichVu', function ($sub) use ($search) {
+                        $sub->where('TenLoaiDichVu', 'like', "%{$search}%");
+                    });
             });
         }
 
-        if (!empty($filters['category'])) {
-            $query->where('LoaiDichVuID', $filters['category']);
+        if (! empty($filters['category_id'])) {
+            $query->where('LoaiDichVuID', $filters['category_id']);
         }
 
-        if (!empty($filters['status'])) {
+        if (! empty($filters['status'])) {
             $query->where('TrangThai', $filters['status']);
         }
 
@@ -37,18 +38,20 @@ class ServiceService
             'created_at_asc' => ['NgayTao', 'asc'],
             'name_asc' => ['TenDichVu', 'asc'],
             'name_desc' => ['TenDichVu', 'desc'],
-            'price_asc' => ['ThoiGianDuKien', 'asc'],
-            'price_desc' => ['ThoiGianDuKien', 'desc'],
+            'duration_asc' => ['ThoiGianDuKien', 'asc'],
+            'duration_desc' => ['ThoiGianDuKien', 'desc'],
+            'status_asc' => ['TrangThai', 'asc'],
+            'status_desc' => ['TrangThai', 'desc'],
         ];
         $sort = $filters['sort'] ?? 'latest';
         [$sortBy, $sortOrder] = $sortMap[$sort] ?? ['NgayTao', 'desc'];
 
-        return $query->orderBy($sortBy, $sortOrder)->paginate(10);
+        return $query->orderBy($sortBy, $sortOrder)->paginate(10)->withQueryString();
     }
 
     public function find(int $id): ?DichVu
     {
-        return DichVu::with(['loaiDichVu', 'bangGias'])->find($id);
+        return DichVu::with('loaiDichVu')->find($id);
     }
 
     public function create(array $data): DichVu
@@ -59,6 +62,7 @@ class ServiceService
     public function update(DichVu $service, array $data): DichVu
     {
         $service->update($data);
+
         return $service->fresh(['loaiDichVu']);
     }
 
@@ -73,48 +77,35 @@ class ServiceService
         if ($service) {
             $service->restore();
         }
+
         return $service;
     }
 
     public function getCategories(): array
     {
-        return LoaiDichVu::where('TrangThai', 'Hoạt động')
+        return CatalogCache::serviceCategories(fn (): array => LoaiDichVu::query()
+            ->where('TrangThai', 'Hoạt động')
             ->orderBy('TenLoaiDichVu')
             ->pluck('TenLoaiDichVu', 'LoaiDichVuID')
-            ->toArray();
+            ->all());
     }
 
     public function getGarmentTypes(): array
     {
-        return LoaiDoGiat::where('TrangThai', 'Hoạt động')
+        return CatalogCache::garmentTypes(fn (): array => LoaiDoGiat::query()
+            ->where('TrangThai', 'Hoạt động')
             ->orderBy('TenLoaiDoGiat')
             ->pluck('TenLoaiDoGiat', 'LoaiDoGiatID')
-            ->toArray();
+            ->all());
     }
 
     public function getCategoryOptions(): array
     {
-        $categories = LoaiDichVu::where('TrangThai', 'Hoạt động')
-            ->orderBy('TenLoaiDichVu')
-            ->get();
-
-        if ($categories->isEmpty()) {
-            return [];
-        }
-
-        return $categories->pluck('TenLoaiDichVu', 'LoaiDichVuID')->toArray();
+        return $this->getCategories();
     }
 
     public function getGarmentTypeOptions(): array
     {
-        $garmentTypes = LoaiDoGiat::where('TrangThai', 'Hoạt động')
-            ->orderBy('TenLoaiDoGiat')
-            ->get();
-
-        if ($garmentTypes->isEmpty()) {
-            return [];
-        }
-
-        return $garmentTypes->pluck('TenLoaiDoGiat', 'LoaiDoGiatID')->toArray();
+        return $this->getGarmentTypes();
     }
 }

@@ -2,76 +2,57 @@
 
 namespace App\Services;
 
-use App\Models\GarmentCategory;
+use App\Models\LoaiDoGiat;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
-use Illuminate\Support\Str;
 
 class GarmentCategoryService
 {
     public function getAll(array $filters = []): LengthAwarePaginator
     {
-        $query = GarmentCategory::query();
+        $query = LoaiDoGiat::query();
 
-        if (!empty($filters['search'])) {
+        if (! empty($filters['search'])) {
             $search = $filters['search'];
-            $query->where('name', 'like', "%{$search}%")
-                  ->orWhere('slug', 'like', "%{$search}%");
+            $query->where(function ($query) use ($search): void {
+                $query->where('TenLoaiDoGiat', 'like', "%{$search}%")
+                    ->orWhere('MoTa', 'like', "%{$search}%");
+            });
         }
 
-        if (!empty($filters['status'])) {
-            $query->where('status', $filters['status']);
+        if (! empty($filters['status'])) {
+            $query->where('TrangThai', $filters['status']);
         }
 
-        $allowedSorts = ['id', 'name', 'sort_order', 'created_at'];
-        $sortBy = in_array($filters['sort_by'] ?? null, $allowedSorts) ? $filters['sort_by'] : 'sort_order';
+        $allowedSorts = ['LoaiDoGiatID', 'TenLoaiDoGiat', 'TrangThai'];
+        $sortBy = in_array($filters['sort_by'] ?? null, $allowedSorts) ? $filters['sort_by'] : 'LoaiDoGiatID';
         $sortOrder = ($filters['sort_order'] ?? 'asc') === 'asc' ? 'asc' : 'desc';
 
-        return $query->orderBy($sortBy, $sortOrder)->paginate(10);
+        return $query->orderBy($sortBy, $sortOrder)->paginate(10)->withQueryString();
     }
 
-    public function find(int $id): ?GarmentCategory
+    public function find(int $id): ?LoaiDoGiat
     {
-        return GarmentCategory::withTrashed()->find($id);
+        return LoaiDoGiat::query()->find($id);
     }
 
-    public function create(array $data): GarmentCategory
+    public function create(array $data): LoaiDoGiat
     {
-        if (empty($data['slug'])) {
-            $data['slug'] = Str::slug($data['name']);
+        if (empty($data['TrangThai'])) {
+            $data['TrangThai'] = 'Hoạt động';
         }
 
-        return GarmentCategory::create($data);
+        return LoaiDoGiat::create($data);
     }
 
-    public function update(GarmentCategory $category, array $data): GarmentCategory
+    public function update(LoaiDoGiat $category, array $data): LoaiDoGiat
     {
-        if (empty($data['slug'])) {
-            $data['slug'] = Str::slug($data['name']);
-        }
-
         $category->update($data);
+
         return $category->fresh();
     }
 
-    public function delete(GarmentCategory $category): bool
+    public function delete(LoaiDoGiat $category): bool
     {
         return $category->delete();
-    }
-
-    public function restore(int $id): ?GarmentCategory
-    {
-        $category = GarmentCategory::onlyTrashed()->find($id);
-        if ($category) {
-            $category->restore();
-        }
-        return $category;
-    }
-
-    public function getActiveCategories(): \Illuminate\Database\Eloquent\Collection
-    {
-        return GarmentCategory::where('status', 'active')
-            ->orderBy('sort_order')
-            ->orderBy('name')
-            ->get();
     }
 }

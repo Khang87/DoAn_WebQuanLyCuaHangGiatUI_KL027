@@ -2,8 +2,10 @@
 
 namespace App\Http\Controllers\Staff;
 
-use App\Http\Controllers\Controller;
+use App\Enums\BookingStatus;
+use App\Enums\DeliveryStatus;
 use App\Enums\OrderStatus;
+use App\Http\Controllers\Controller;
 use App\Models\Booking;
 use App\Models\DonHang;
 use App\Models\GiaoNhan;
@@ -27,6 +29,13 @@ class DashboardController extends Controller
         $nhanVienId = $user->nhanVien?->NhanVienID;
         $today = Carbon::today();
         $statusFlow = $this->orderService->getStatusFlow();
+        $quickStatusFlow = collect([
+            OrderStatus::Pending,
+            OrderStatus::Received,
+            OrderStatus::Washing,
+            OrderStatus::Washed,
+            OrderStatus::Delivering,
+        ])->mapWithKeys(fn (OrderStatus $status) => [$status->value => $status->label()]);
 
         // --- KPI: Đơn hàng chờ tiếp nhận / kiểm tra đồ ---
         $waitingReceiveCount = DonHang::where('TrangThai', OrderStatus::Pending->value)->count();
@@ -46,12 +55,12 @@ class DashboardController extends Controller
         // --- KPI: Lượng nhận đồ / giao đồ được phân công hôm nay ---
         $todayDeliveries = GiaoNhan::whereDate('ThoiGianDuKien', $today)
             ->when($nhanVienId, fn ($q) => $q->where('NhanVienID', $nhanVienId))
-            ->whereNotIn('TrangThai', [OrderStatus::Cancelled->value])
+            ->where('TrangThai', '!=', DeliveryStatus::Cancelled->dbValue())
             ->with(['donHang.khachHang', 'nhanVien'])
             ->get();
 
-        $pickupCount = $todayDeliveries->where('HinhThuc', 'nhan_do')->count();
-        $deliveryCount = $todayDeliveries->where('HinhThuc', 'giao_do')->count();
+        $pickupCount = $todayDeliveries->where('LoaiGiaoNhan', 'NHAN_DO')->count();
+        $deliveryCount = $todayDeliveries->where('LoaiGiaoNhan', 'GIAO_DO')->count();
 
         // --- Danh sách: Đơn hàng cần xử lý ---
         $processingOrders = DonHang::with(['khachHang', 'nhanVien'])
@@ -67,14 +76,17 @@ class DashboardController extends Controller
         // --- Lịch nhận đồ / giao đồ hôm nay ---
         $todaySchedule = GiaoNhan::whereDate('ThoiGianDuKien', $today)
             ->when($nhanVienId, fn ($q) => $q->where('NhanVienID', $nhanVienId))
-            ->whereNotIn('TrangThai', [OrderStatus::Cancelled->value, OrderStatus::Delivered->value])
+            ->whereNotIn('TrangThai', [
+                DeliveryStatus::Cancelled->dbValue(),
+                DeliveryStatus::Completed->dbValue(),
+            ])
             ->with(['donHang.khachHang', 'nhanVien'])
             ->orderBy('ThoiGianDuKien', 'asc')
             ->get();
 
         // --- Lịch hẹn sắp tới (Bookings) ---
         $upcomingBookings = Booking::whereDate('NgayHen', '>=', $today)
-            ->whereIn('TrangThai', ['Chờ xác nhận', 'Đã xác nhận'])
+            ->whereIn('TrangThai', [BookingStatus::Pending->value, BookingStatus::Confirmed->value])
             ->with('khachHang')
             ->orderBy('NgayHen', 'asc')
             ->orderBy('GioHen', 'asc')
@@ -83,6 +95,7 @@ class DashboardController extends Controller
 
         return view('staff.dashboard', [
             'statusFlow' => $statusFlow,
+            'quickStatusFlow' => $quickStatusFlow,
             'waitingReceiveCount' => $waitingReceiveCount,
             'washingCount' => $washingCount,
             'readyCount' => $readyCount,
@@ -109,7 +122,7 @@ class DashboardController extends Controller
             OrderStatus::Delivering->value,
         ];
 
-        if (!in_array($newStatus, $allowed)) {
+        if (! in_array($newStatus, $allowed)) {
             return response()->json([
                 'success' => false,
                 'message' => 'Trạng thái không hợp lệ.',

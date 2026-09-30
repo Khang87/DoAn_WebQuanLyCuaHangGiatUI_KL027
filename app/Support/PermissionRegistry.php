@@ -6,9 +6,9 @@ namespace App\Support;
  * Danh mục mã quyền chuẩn của hệ thống.
  *
  * Đây là nguồn sự thật duy nhất (single source of truth) dùng cho cả:
- *   - Seeder tạo bảng `permissions`
  *   - Gate::define() khi khởi động ứng dụng (không query DB lúc boot)
  *   - Validate ma trận phân quyền trên giao diện
+ *   - Quy đổi sang mã `Quyen.MaQuyen` trên Supabase qua {@see QuyenMapper}
  */
 final class PermissionRegistry
 {
@@ -79,6 +79,14 @@ final class PermissionRegistry
                 'garments.create' => 'Thêm loại đồ giặt',
                 'garments.edit' => 'Sửa loại đồ giặt',
                 'garments.delete' => 'Xóa loại đồ giặt',
+                'garment_categories.view' => 'Xem danh mục loại đồ giặt',
+                'garment_categories.create' => 'Thêm danh mục loại đồ giặt',
+                'garment_categories.edit' => 'Sửa danh mục loại đồ giặt',
+                'garment_categories.delete' => 'Xóa danh mục loại đồ giặt',
+                'laundry_categories.view' => 'Xem danh mục loại đồ',
+                'laundry_categories.create' => 'Thêm danh mục loại đồ',
+                'laundry_categories.edit' => 'Sửa danh mục loại đồ',
+                'laundry_categories.delete' => 'Xóa danh mục loại đồ',
                 'garment_conditions.view' => 'Xem điều kiện đồ giặt',
                 'garment_conditions.create' => 'Thêm điều kiện đồ giặt',
                 'garment_conditions.edit' => 'Sửa điều kiện đồ giặt',
@@ -131,12 +139,12 @@ final class PermissionRegistry
     public static function codes(): array
     {
         return array_values(array_unique(array_merge(
-            ...array_values(array_map('array_keys', static::groups()))
+            ...array_values(array_map('array_keys', self::groups()))
         )));
     }
 
     public static function isValidCode(string $code): bool
     {
-        return in_array($code, static::codes(), true);
+        return in_array($code, self::codes(), true);
     }
 }

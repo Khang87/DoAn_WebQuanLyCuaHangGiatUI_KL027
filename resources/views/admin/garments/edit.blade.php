@@ -26,25 +26,13 @@
                 </div>
                 <div class="col-md-6">
                     <label class="form-label fw-semibold">Danh mục dịch vụ</label>
-                    <select class="form-select @error('LoaiDichVuID') is-invalid @enderror" name="LoaiDichVuID">
+                    <select class="form-select @error('LoaiDichVuID') is-invalid @enderror" name="LoaiDichVuID" required>
                         <option value="">-- Chọn danh mục --</option>
                         @foreach($categories as $id => $name)
                             <option value="{{ $id }}" @selected(old('LoaiDichVuID', $service->LoaiDichVuID) == $id)>{{ $name }}</option>
                         @endforeach
                     </select>
                     @error('LoaiDichVuID')
-                        <div class="invalid-feedback">{{ $message }}</div>
-                    @enderror
-                </div>
-                <div class="col-md-6">
-                    <label class="form-label fw-semibold">Loại đồ giặt</label>
-                    <select class="form-select @error('LoaiDoGiatID') is-invalid @enderror" name="LoaiDoGiatID">
-                        <option value="">-- Chọn loại đồ --</option>
-                        @foreach($garmentTypes as $id => $name)
-                            <option value="{{ $id }}" @selected(old('LoaiDoGiatID', $service->LoaiDoGiatID) == $id)>{{ $name }}</option>
-                        @endforeach
-                    </select>
-                    @error('LoaiDoGiatID')
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
                 </div>
@@ -59,7 +47,7 @@
                     <label class="form-label fw-semibold">Trạng thái</label>
                     <x-admin.status-select
                         name="TrangThai"
-                        :options="\App\Enums\RecordStatus::options()"
+                        :options="\App\Enums\RecordStatus::databaseOptions()"
                         :selected="$service->TrangThai"
                         class="form-select @error('TrangThai') is-invalid @enderror"
                     />

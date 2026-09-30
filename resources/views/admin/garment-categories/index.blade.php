@@ -6,9 +6,11 @@
 @section('content')
 <!-- Page Actions: nút "Thêm" luôn nằm góc trên bên trái -->
 <div class="page-toolbar">
-    <a href="{{ route('garment-categories.create') }}" class="btn btn-create">
-        <i class="bi bi-plus-lg"></i>Thêm danh mục
-    </a>
+    @can('garment_categories.create')
+        <a href="{{ route('garment-categories.create') }}" class="btn btn-create">
+            <i class="bi bi-plus-lg"></i>Thêm danh mục
+        </a>
+    @endcan
     <p class="text-muted page-toolbar__desc">Nhóm các loại đồ giặt để phân loại và tra cứu nhanh trong đơn hàng.</p>
 </div>
 <form action="{{ url()->current() }}" method="GET" class="row g-3 align-items-center mb-4">
@@ -24,7 +26,7 @@
         <x-admin.status-select
             name="status"
             id="filter-status"
-            :options="$statuses ?? \App\Enums\RecordStatus::options()"
+            :options="$statuses ?? \App\Enums\RecordStatus::databaseOptions()"
             placeholder="-- Tất cả trạng thái --"
             class="form-select form-select-sm filter-select shadow-sm rounded-3"
             submit
@@ -40,10 +42,8 @@
                 <thead>
                     <tr>
                         <th class="fw-bold text-dark">STT</th>
-                        <th class="fw-bold text-dark">Tên danh mục</th>
-                        <th class="fw-bold text-dark">Slug</th>
-                        <th class="fw-bold text-dark">Icon</th>
-                        <th class="fw-bold text-dark">Thứ tự</th>
+                        <th class="fw-bold text-dark">Tên loại đồ giặt</th>
+                        <th class="fw-bold text-dark">Mô tả</th>
                         <th class="fw-bold text-dark">Trạng thái</th>
                         <th class="fw-bold text-dark">Thao tác</th>
                     </tr>
@@ -52,24 +52,16 @@
                     @forelse($categories as $category)
                     <tr>
                         <td class="text-dark">{{ $loop->iteration }}</td>
-                        <td class="text-dark">{{ $category->name }}</td>
-                        <td class="text-dark">{{ $category->slug }}</td>
+                        <td class="text-dark">{{ $category->TenLoaiDoGiat }}</td>
+                        <td class="text-dark">{{ $category->MoTa ?: '—' }}</td>
                         <td>
-                            @if($category->icon)
-                                <i class="{{ $category->icon }} fa-2x text-primary"></i>
-                            @else
-                                <span class="text-muted">Chưa có icon</span>
-                            @endif
-                        </td>
-                        <td class="text-dark">{{ $category->sort_order }}</td>
-                        <td>
-                            <x-admin.status-badge :status="$category->status" :enum="\App\Enums\RecordStatus::class" />
+                            <x-admin.status-badge :status="$category->TrangThai" :enum="\App\Enums\RecordStatus::class" />
                         </td>
                         <td>
                             <div class="d-flex gap-2">
                                 <a href="{{ route('garment-categories.show', $category) }}" class="btn btn-outline-secondary btn-sm" title="Xem"><i class="bi bi-eye"></i></a>
                                 <a href="{{ route('garment-categories.edit', $category) }}" class="btn btn-outline-secondary btn-sm" title="Sửa"><i class="bi bi-pencil"></i></a>
-                                <form action="{{ route('garment-categories.destroy', $category) }}" method="POST" class="d-inline" id="deleteCategoryForm_{{ $category->id }}">
+                                <form action="{{ route('garment-categories.destroy', $category) }}" method="POST" class="d-inline" id="deleteCategoryForm_{{ $category->getKey() }}">
                                     @csrf @method('DELETE')
                                     <button type="submit" class="btn btn-outline-secondary btn-sm" title="Xóa"><i class="bi bi-trash"></i></button>
                                 </form>
@@ -78,7 +70,7 @@
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="7" class="text-center text-muted py-4">Chưa có danh mục loại đồ giặt nào</td>
+                        <td colspan="5" class="text-center text-muted py-4">Chưa có loại đồ giặt nào</td>
                     </tr>
                     @endforelse
                 </tbody>

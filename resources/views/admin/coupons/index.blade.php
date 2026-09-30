@@ -6,9 +6,11 @@
 @section('content')
 <!-- Page Actions: nút "Thêm" luôn là phần tử đầu tiên ở góc trên bên trái -->
 <div class="page-toolbar">
-    <a href="{{ route('coupons.create') }}" class="btn btn-create">
-        <i class="bi bi-plus-lg"></i>Thêm coupon
-    </a>
+    @can('coupons.create')
+        <a href="{{ route('coupons.create') }}" class="btn btn-create">
+            <i class="bi bi-plus-lg"></i>Thêm coupon
+        </a>
+    @endcan
     <a href="{{ route('promotions.index') }}" class="btn btn-outline-secondary">
         <i class="bi bi-arrow-left me-1"></i>Quay lại Khuyến mãi
     </a>

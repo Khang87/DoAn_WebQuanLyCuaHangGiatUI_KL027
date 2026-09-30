@@ -5,9 +5,8 @@ namespace App\Enums;
 /**
  * Trạng thái giao nhận đồ.
  *
- * Nguồn duy nhất cho module Giao hàng: dropdown trong form chỉnh sửa, dropdown
- * lọc ngoài bảng và badge trong cột Trạng thái. Tập giá trị khớp với
- * DeliveryRequest ('in:pending,picking,delivering,completed,cancelled').
+ * Nguồn duy nhất cho module Giao hàng: dropdown, bộ lọc và badge. Giá trị DB
+ * được ánh xạ qua dbValue() theo CHECK của bảng `GiaoNhan`.
  */
 enum DeliveryStatus: string
 {
@@ -51,6 +50,21 @@ enum DeliveryStatus: string
     }
 
     /**
+     * Giá trị ghi vào database (bảng `GiaoNhan`, cột `TrangThai`), khớp với
+     * ràng buộc CHECK `GiaoNhan_TrangThai_check`.
+     */
+    public function dbValue(): string
+    {
+        return match ($this) {
+            self::Pending => 'Chờ thực hiện',
+            self::Picking => 'Đang thực hiện',
+            self::Delivering => 'Đang thực hiện',
+            self::Completed => 'Hoàn thành',
+            self::Cancelled => 'Đã hủy',
+        };
+    }
+
+    /**
      * @return array<int, string>
      */
     public static function values(): array
@@ -82,7 +96,13 @@ enum DeliveryStatus: string
             return $default;
         }
 
-        return self::tryFrom(mb_strtolower(trim((string) $value))) ?? $default;
+        return match (mb_strtolower(trim((string) $value))) {
+            'pending', 'chờ thực hiện' => self::Pending,
+            'picking', 'delivering', 'đang thực hiện' => self::Delivering,
+            'completed', 'hoàn thành' => self::Completed,
+            'cancelled', 'đã hủy' => self::Cancelled,
+            default => self::tryFrom(mb_strtolower(trim((string) $value))) ?? $default,
+        };
     }
 
     public static function labelFor(mixed $value, self $default = self::Pending): string

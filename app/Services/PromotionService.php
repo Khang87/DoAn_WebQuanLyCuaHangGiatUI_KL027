@@ -12,12 +12,12 @@ class PromotionService
     {
         $query = KhuyenMai::query();
 
-        if (!empty($filters['search'])) {
+        if (! empty($filters['search'])) {
             $search = trim($filters['search']);
             $query->where(function ($q) use ($search) {
                 $numericPart = preg_replace('/[^0-9]/', '', $search);
-                if (!empty($numericPart)) {
-                    $q->where('id', $numericPart);
+                if (! empty($numericPart)) {
+                    $q->where('KhuyenMaiID', $numericPart);
                 }
                 $q->orWhere('MaKhuyenMai', 'LIKE', "%{$search}%")
                     ->orWhere('TenKhuyenMai', 'LIKE', "%{$search}%")
@@ -26,13 +26,13 @@ class PromotionService
             });
         }
 
-        if (!empty($filters['status'])) {
+        if (! empty($filters['status'])) {
             $query->where('TrangThai', $filters['status']);
         }
 
         $sortMap = [
-            'created_at_desc' => ['NgayTao', 'desc'],
-            'created_at_asc' => ['NgayTao', 'asc'],
+            'created_at_desc' => ['KhuyenMaiID', 'desc'],
+            'created_at_asc' => ['KhuyenMaiID', 'asc'],
             'name_asc' => ['TenKhuyenMai', 'asc'],
             'name_desc' => ['TenKhuyenMai', 'desc'],
             'code_asc' => ['MaKhuyenMai', 'asc'],
@@ -43,7 +43,7 @@ class PromotionService
             'expires_at_desc' => ['NgayKetThuc', 'desc'],
         ];
         $sort = $filters['sort'] ?? 'latest';
-        [$sortBy, $sortOrder] = $sortMap[$sort] ?? ['created_at', 'desc'];
+        [$sortBy, $sortOrder] = $sortMap[$sort] ?? ['KhuyenMaiID', 'desc'];
 
         return $query->orderBy($sortBy, $sortOrder)->paginate(10)->withQueryString();
     }
@@ -61,6 +61,7 @@ class PromotionService
     public function update(KhuyenMai $promotion, array $data): KhuyenMai
     {
         $promotion->update($data);
+
         return $promotion->fresh();
     }
 
@@ -75,6 +76,7 @@ class PromotionService
         if ($promotion) {
             $promotion->restore();
         }
+
         return $promotion;
     }
 

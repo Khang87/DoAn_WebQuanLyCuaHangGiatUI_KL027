@@ -5,51 +5,31 @@
 
 @section('content')
 <x-admin.detail.page-header
-    title="Khách hàng {{ $customer->name }}"
-    :subtitle="$customer->code"
+    title="Khách hàng {{ $customer->HoTen }}"
+    :subtitle="'ID ' . $customer->KhachHangID"
 >
     <x-slot:badge>
-        <x-admin.status-badge
-            :status="$customer->deleted_at ? 'inactive' : 'active'"
-            :enum="\App\Enums\RecordStatus::class"
-        />
+        <span class="badge bg-secondary-subtle text-secondary-emphasis border border-secondary">{{ $customer->TrangThai }}</span>
     </x-slot:badge>
 </x-admin.detail.page-header>
-
-@if($customer->deleted_at)
-    <x-admin.detail.locked text="Khách hàng đã bị xóa mềm nên không thể sửa hoặc xóa. Hãy khôi phục nếu cần." />
-@endif
 
 <div class="row g-4">
     <div class="col-lg-8">
         <x-admin.detail.panel title="Thông tin khách hàng" icon="bi-person" :iconClass="'bg-primary-subtle text-primary'">
             <div class="d-flex align-items-center gap-3 mb-4 pb-3 border-bottom">
-                <img src="{{ $customer->avatar_url }}" alt="{{ $customer->name }}"
-                    class="rounded-circle object-fit-cover border border-2 border-light-subtle shadow-sm"
-                    width="70" height="70">
-                <div>
-                    <h4 class="mb-1 text-dark fw-bold">{{ $customer->name }}</h4>
-                    <span class="badge bg-secondary-subtle text-secondary-emphasis border border-secondary">{{ $customer->code }}</span>
+                <div class="rounded-circle bg-primary-subtle text-primary d-flex align-items-center justify-content-center fw-bold" style="width: 70px; height: 70px;">
+                    {{ mb_substr($customer->HoTen, 0, 1) }}
                 </div>
+                <h4 class="mb-1 text-dark fw-bold">{{ $customer->HoTen }}</h4>
             </div>
             <x-admin.detail.info-grid :columns="2">
-                <x-admin.detail.info-item label="Mã khách hàng" :value="$customer->code" />
-                <x-admin.detail.info-item label="Họ và tên" :value="$customer->name" />
-                <x-admin.detail.info-item label="Email" :value="$customer->email" />
-                <x-admin.detail.info-item label="Số điện thoại" :value="$customer->phone" />
-                <x-admin.detail.info-item label="Địa chỉ" :value="$customer->address" />
-                <x-admin.detail.info-item label="Ngày đăng ký" :value="$customer->created_at?->format('d/m/Y H:i')" />
-                <x-admin.detail.info-item label="Trạng thái">
-                    @if($customer->deleted_at)
-                        <span class="badge bg-danger-subtle text-danger-emphasis border border-danger px-3 py-2 rounded-pill">
-                            <i class="fas fa-trash me-1"></i>Đã xóa
-                        </span>
-                    @else
-                        <span class="badge bg-success-subtle text-success-emphasis border border-success px-3 py-2 rounded-pill">
-                            <i class="fas fa-check-circle me-1"></i>Hoạt động
-                        </span>
-                    @endif
-                </x-admin.detail.info-item>
+                <x-admin.detail.info-item label="ID khách hàng" :value="$customer->KhachHangID" />
+                <x-admin.detail.info-item label="Họ và tên" :value="$customer->HoTen" />
+                <x-admin.detail.info-item label="Email" :value="$customer->Email ?: '—'" />
+                <x-admin.detail.info-item label="Số điện thoại" :value="$customer->SoDienThoai" />
+                <x-admin.detail.info-item label="Địa chỉ" :value="$customer->DiaChi ?: '—'" />
+                <x-admin.detail.info-item label="Ngày đăng ký" :value="$customer->NgayTao?->format('d/m/Y H:i')" />
+                <x-admin.detail.info-item label="Trạng thái" :value="$customer->TrangThai" />
             </x-admin.detail.info-grid>
         </x-admin.detail.panel>
 
@@ -76,16 +56,14 @@
                             @foreach($orders as $order)
                                 <tr>
                                     <td>
-                                        <span class="fw-semibold">
-                                            {{ $order->code }}
-                                        </span>
+                                        <span class="fw-semibold">{{ $order->MaDonHang }}</span>
                                     </td>
-                                    <td>{{ $order->service?->name ?: '—' }}</td>
-                                    <td class="text-end"><x-admin.detail.money :value="$order->total_amount" /></td>
+                                    <td>{{ $order->chiTietDonHangs->map(fn ($item) => $item->dichVu?->TenDichVu)->filter()->unique()->join(', ') ?: '—' }}</td>
+                                    <td class="text-end"><x-admin.detail.money :value="$order->ThanhTien" /></td>
                                     <td>
-                                        <x-admin.status-badge :status="$order->status" :enum="\App\Enums\OrderStatus::class" size="px-2 py-1" />
+                                        <x-admin.status-badge :status="$order->TrangThai" :enum="\App\Enums\OrderStatus::class" size="px-2 py-1" />
                                     </td>
-                                    <td class="text-end">{{ $order->created_at?->format('d/m/Y') }}</td>
+                                    <td class="text-end">{{ $order->NgayTao?->format('d/m/Y') ?: '-' }}</td>
                                 </tr>
                             @endforeach
                         </tbody>
@@ -125,13 +103,13 @@
             </div>
             <div class="card-body d-flex flex-column gap-2">
                 @can('customers.edit')
-                    <a href="{{ route('customers.edit', $customer->id) }}" class="btn btn-primary w-100 py-2">
+                    <a href="{{ route('customers.edit', $customer->getKey()) }}" class="btn btn-primary w-100 py-2">
                         <i class="fas fa-pencil-alt me-1"></i> Chỉnh sửa
                     </a>
                 @endcan
 
                 @can('orders.create')
-                    <a href="{{ route('orders.create', ['customer_id' => $customer->id]) }}" class="btn btn-outline-primary w-100 py-2">
+                    <a href="{{ route('orders.create', ['customer_id' => $customer->getKey()]) }}" class="btn btn-outline-primary w-100 py-2">
                         <i class="fas fa-plus me-1"></i> Tạo đơn hàng mới
                     </a>
                 @endcan

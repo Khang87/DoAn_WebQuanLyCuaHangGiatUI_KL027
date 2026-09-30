@@ -25,7 +25,7 @@ class EnsureUserHasRole
         $user = $request->user();
         $message = 'Bạn không có quyền truy cập chức năng này.';
 
-        if ($user && in_array($user->role, $allowedRoles, true)) {
+        if ($user && $user->isActive() && in_array($user->role, $allowedRoles, true)) {
             return $next($request);
         }
 

@@ -3,29 +3,21 @@
 namespace App\Enums;
 
 /**
- * Trạng thái giao dịch thanh toán (5 trạng thái chuẩn).
+ * Trạng thái giao dịch thanh toán theo ràng buộc của bảng `ThanhToan`.
  *
- *   pending  -> Chờ thanh toán
- *   partial  -> Thanh toán một phần
- *   paid     -> Đã thanh toán
- *   failed   -> Thất bại
- *   refunded -> Đã hoàn tiền
- *
- * Lưu ý: Enum này khớp với InvoiceStatus để hiển thị nhất quán.
+ *   Chờ thanh toán, Thành công, Thất bại, Đã hoàn tiền
  */
 enum PaymentStatus: string
 {
-    case Pending = 'pending';
-    case Partial = 'partial';
-    case Paid = 'paid';
-    case Failed = 'failed';
-    case Refunded = 'refunded';
+    case Pending = 'Chờ thanh toán';
+    case Paid = 'Thành công';
+    case Failed = 'Thất bại';
+    case Refunded = 'Đã hoàn tiền';
 
     public function label(): string
     {
         return match ($this) {
             self::Pending => 'Chờ thanh toán',
-            self::Partial => 'Thanh toán một phần',
             self::Paid => 'Đã thanh toán',
             self::Failed => 'Thất bại',
             self::Refunded => 'Đã hoàn tiền',
@@ -36,7 +28,6 @@ enum PaymentStatus: string
     {
         return match ($this) {
             self::Pending => 'bg-warning-subtle text-warning-emphasis border border-warning',
-            self::Partial => 'bg-info-subtle text-info-emphasis border border-info',
             self::Paid => 'bg-success-subtle text-success-emphasis border border-success',
             self::Failed => 'bg-danger-subtle text-danger-emphasis border border-danger',
             self::Refunded => 'bg-secondary-subtle text-secondary-emphasis border border-secondary',
@@ -47,7 +38,6 @@ enum PaymentStatus: string
     {
         return match ($this) {
             self::Pending => 'hourglass',
-            self::Partial => 'circle-half',
             self::Paid => 'check-circle',
             self::Failed => 'times-circle',
             self::Refunded => 'undo',
@@ -91,9 +81,13 @@ enum PaymentStatus: string
             return $default;
         }
 
-        $normalized = mb_strtolower(trim((string) $value));
-
-        return self::tryFrom($normalized) ?? $default;
+        return match (mb_strtolower(trim((string) $value))) {
+            'pending', 'chờ thanh toán' => self::Pending,
+            'paid', 'success', 'thành công' => self::Paid,
+            'failed', 'thất bại' => self::Failed,
+            'refunded', 'đã hoàn tiền' => self::Refunded,
+            default => self::tryFrom((string) $value) ?? $default,
+        };
     }
 
     public static function labelFor(mixed $value, self $default = self::Pending): string

@@ -4,9 +4,11 @@
 @section('content')
 <!-- Page Actions: nút "Thêm" luôn nằm góc trên bên trái -->
 <div class="page-toolbar">
-    <a href="{{ route('deliveries.create') }}" class="btn btn-create">
-        <i class="bi bi-plus-lg"></i>Thêm lịch giao nhận
-    </a>
+    @can('deliveries.create')
+        <a href="{{ route('deliveries.create') }}" class="btn btn-create">
+            <i class="bi bi-plus-lg"></i>Thêm lịch giao nhận
+        </a>
+    @endcan
     <p class="text-muted page-toolbar__desc">Theo dõi lịch nhận và giao đồ cho khách hàng.</p>
 </div>
 <form action="{{ url()->current() }}" method="GET" class="row g-3 align-items-center mb-4">

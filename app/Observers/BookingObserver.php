@@ -2,6 +2,7 @@
 
 namespace App\Observers;
 
+use App\Enums\BookingStatus;
 use App\Models\Booking;
 use App\Services\BookingService;
 use Illuminate\Support\Facades\Log;
@@ -14,19 +15,20 @@ class BookingObserver
 
     public function updated(Booking $booking): void
     {
-        if ($booking->isDirty('status') && $booking->status === 'confirmed') {
-            $originalStatus = $booking->getOriginal('status');
+        if ($booking->isDirty('TrangThai')
+            && $booking->TrangThai === BookingStatus::Confirmed->value) {
+            $originalStatus = $booking->getOriginal('TrangThai');
 
-            if ($originalStatus === 'pending') {
+            if ($originalStatus === BookingStatus::Pending->value) {
                 try {
                     $this->bookingService->confirmAndCreateOrder($booking);
                     Log::info('Auto-created order from booking', [
-                        'booking_id' => $booking->id,
-                        'booking_code' => 'BK' . str_pad((string) $booking->id, 4, '0', STR_PAD_LEFT),
+                        'booking_id' => $booking->BookingID,
+                        'booking_code' => $booking->MaBooking,
                     ]);
                 } catch (\Throwable $e) {
                     Log::error('Failed to auto-create order from booking', [
-                        'booking_id' => $booking->id,
+                        'booking_id' => $booking->BookingID,
                         'error' => $e->getMessage(),
                     ]);
                 }

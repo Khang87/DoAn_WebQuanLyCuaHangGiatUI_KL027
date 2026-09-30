@@ -5,9 +5,11 @@
 @section('content')
 <!-- Page Actions: nút "Thêm" luôn nằm góc trên bên trái -->
 <div class="page-toolbar">
-    <a href="{{ route('payments.create') }}" class="btn btn-create">
-        <i class="bi bi-plus-lg"></i>Thêm thanh toán
-    </a>
+    @can('payments.create')
+        <a href="{{ route('payments.create') }}" class="btn btn-create">
+            <i class="bi bi-plus-lg"></i>Thêm thanh toán
+        </a>
+    @endcan
     <p class="text-muted page-toolbar__desc">Theo dõi các khoản thu của đơn hàng.</p>
 </div>
 
@@ -71,48 +73,51 @@
                 <tbody>
                     @forelse($payments as $payment)
                     <tr>
-                        <td><strong>TT{{ $payment->id }}</strong></td>
-                        <td><span class="text-dark">{{ $payment->order?->code ?: $payment->order_id }}</span></td>
+                        <td><strong>TT{{ $payment->ThanhToanID }}</strong></td>
+                        <td><span class="text-dark">{{ $payment->donHang?->MaDonHang ?: $payment->DonHangID }}</span></td>
                         <td>
                             <div class="d-flex align-items-center">
-                                @php
-                                    $avatarUrl = $payment->order?->customer?->avatar_url ?? asset('assets/images/user_1.jpg');
-                                @endphp
-                                <img src="{{ asset($avatarUrl) }}" alt="Ảnh khách hàng" class="rounded-circle me-2 avatar-cover" style="width: 40px; height: 40px;">
+                                <img src="{{ asset('assets/images/user_1.jpg') }}" alt="Ảnh khách hàng" class="rounded-circle me-2 avatar-cover" style="width: 40px; height: 40px;">
                                 <div>
-                                    <div class="fw-semibold">{{ $payment->order?->customer?->name ?: '-' }}</div>
-                                    <small class="text-muted">{{ $payment->order?->customer?->phone ?: 'Chưa có SĐT' }}</small>
+                                    <div class="fw-semibold">{{ $payment->donHang?->khachHang?->HoTen ?: '-' }}</div>
+                                    <small class="text-muted">{{ $payment->donHang?->khachHang?->SoDienThoai ?: 'Chưa có SĐT' }}</small>
                                 </div>
                             </div>
                         </td>
-                        <td class="fw-semibold">{{ number_format($payment->amount) }} VNĐ</td>
+                        <td class="fw-semibold">{{ number_format($payment->SoTien) }} VNĐ</td>
                         <td>
                             <i class="bi {{ $payment->getMethodIcon() }} me-1"></i>{{ $payment->getMethodLabel() }}
                         </td>
                         <td>
-                            <x-admin.status-badge :status="$payment->status" :enum="\App\Enums\PaymentStatus::class" />
+                            <x-admin.status-badge :status="$payment->TrangThai" :enum="\App\Enums\PaymentStatus::class" />
                         </td>
-                        <td>{{ $payment->paid_at?->format('d/m/Y H:i') ?? $payment->created_at?->format('d/m/Y H:i') }}</td>
+                        <td>{{ $payment->ThoiGian?->format('d/m/Y H:i') }}</td>
                         <td>
                             <div class="d-flex gap-2">
+                                @php($canManageSettled = ! $payment->isLocked() || auth()->user()?->isOwner())
                                 @can('payments.view')
                                     <a href="{{ route('payments.show', $payment) }}" class="btn btn-order-action view" title="Xem"><i class="bi bi-eye"></i></a>
                                 @endcan
-                                @if($payment->can_edit)
+                                @if($canManageSettled)
                                     @can('payments.edit')
                                         <a href="{{ route('payments.edit', $payment) }}" class="btn btn-order-action edit" title="Sửa"><i class="bi bi-pencil"></i></a>
                                     @endcan
                                 @endif
-                                @if($payment->can_delete)
+                                @if($canManageSettled)
                                     @can('payments.delete')
-                                        <form action="{{ route('payments.destroy', $payment) }}" method="POST" class="d-inline" id="deletePaymentForm_{{ $payment->id }}">
+                                        <form action="{{ route('payments.destroy', $payment) }}" method="POST" class="d-inline" id="deletePaymentForm_{{ $payment->ThanhToanID }}">
                                             @csrf @method('DELETE')
                                             <button type="submit" class="btn btn-order-action delete" title="Xóa"><i class="bi bi-trash"></i></button>
                                         </form>
                                     @endcan
-                                @else
+                                @elseif($payment->isLocked())
                                     <span class="badge bg-success-subtle text-success-emphasis border border-success px-3 py-2 rounded-pill" title="Đã thanh toán nên không thể sửa hoặc xóa">
                                         <i class="bi bi-lock me-1"></i>Đã thanh toán
+                                    </span>
+                                @endif
+                                @if($payment->isLocked() && auth()->user()?->isOwner())
+                                    <span class="badge bg-success-subtle text-success-emphasis border border-success px-3 py-2 rounded-pill" title="Chủ cửa hàng được phép điều chỉnh khoản thu đã thanh toán">
+                                        <i class="bi bi-shield-check me-1"></i>Đã thanh toán
                                     </span>
                                 @endif
                             </div>

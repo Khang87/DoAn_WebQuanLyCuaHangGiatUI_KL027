@@ -5,45 +5,34 @@
 
 @section('content')
 <x-admin.detail.page-header
-    title="Danh mục {{ $category->name }}"
-    :subtitle="$category->slug"
+    title="Danh mục {{ $category->TenLoaiDichVu }}"
+    :subtitle="$category->MoTa"
 >
     <x-slot:badge>
-        <x-admin.status-badge :status="$category->status" :enum="\App\Enums\RecordStatus::class" />
-        @if($category->deleted_at)
-            <span class="badge bg-danger-subtle text-danger border border-danger px-3 py-2 rounded-pill">
-                <i class="fas fa-ban me-1"></i>Đã xóa
-            </span>
-        @endif
+        <x-admin.status-badge :status="$category->TrangThai" :enum="\App\Enums\RecordStatus::class" />
     </x-slot:badge>
 </x-admin.detail.page-header>
-
-@if($category->deleted_at)
-    <x-admin.detail.locked text="Danh mục đã bị xóa mềm nên không thể sửa hoặc xóa. Hãy khôi phục nếu cần." />
-@endif
 
 <div class="row g-4">
     {{-- ============ CỘT CHÍNH (8/12) ============ --}}
     <div class="col-lg-8">
         <x-admin.detail.panel
             title="Thông tin danh mục"
-            :icon="$category->icon ?: 'bi-folder'"
+            :icon="'bi-folder'"
             :iconClass="'bg-primary-subtle text-primary'"
         >
             <x-admin.detail.info-grid :columns="2">
-                <x-admin.detail.info-item label="Tên danh mục" :value="$category->name" />
-                <x-admin.detail.info-item label="Mã danh mục" :value="$category->code" />
-                <x-admin.detail.info-item label="Slug" :value="$category->slug" />
-                <x-admin.detail.info-item label="Số dịch vụ" :value="$category->services->count()" />
-                <x-admin.detail.info-item label="Ngày tạo" :value="$category->created_at?->format('d/m/Y')" />
+                <x-admin.detail.info-item label="Tên danh mục" :value="$category->TenLoaiDichVu" />
+                <x-admin.detail.info-item label="Mã danh mục" :value="'DV' . str_pad($category->LoaiDichVuID, 4, '0', STR_PAD_LEFT)" />
+                <x-admin.detail.info-item label="Số dịch vụ" :value="$category->dichVus()->count()" />
                 <x-admin.detail.info-item label="Trạng thái">
-                    <x-admin.status-badge :status="$category->status" :enum="\App\Enums\RecordStatus::class" :pill="false" />
+                    <x-admin.status-badge :status="$category->TrangThai" :enum="\App\Enums\RecordStatus::class" :pill="false" />
                 </x-admin.detail.info-item>
             </x-admin.detail.info-grid>
 
             <div class="mt-4">
                 <div class="detail-field__label mb-2">Mô tả</div>
-                <div class="detail-text">{{ $category->description ?: 'Chưa có mô tả.' }}</div>
+                <div class="detail-text">{{ $category->MoTa ?: 'Chưa có mô tả.' }}</div>
             </div>
         </x-admin.detail.panel>
 
@@ -61,8 +50,7 @@
                             <tr>
                                 <th>Tên dịch vụ</th>
                                 <th>Loại</th>
-                                <th class="text-end">Đơn giá</th>
-                                <th class="text-end">Đơn vị</th>
+                                <th class="text-end">Thời gian dự kiến</th>
                                 <th>Trạng thái</th>
                             </tr>
                         </thead>
@@ -71,14 +59,13 @@
                                 <tr>
                                     <td>
                                         <span class="fw-semibold">
-                                            {{ $service->name }}
+                                            {{ $service->TenDichVu }}
                                         </span>
                                     </td>
-                                    <td>{{ $service->type ?: '—' }}</td>
-                                    <td class="text-end"><x-admin.detail.money :value="$service->price" /></td>
-                                    <td class="text-end">{{ $service->unit ?: 'kg' }}</td>
+                                    <td>{{ $service->loaiDichVu?->TenLoaiDichVu ?: '—' }}</td>
+                                    <td class="text-end">{{ $service->ThoiGianDuKien ? $service->ThoiGianDuKien.' phút' : '—' }}</td>
                                     <td>
-                                        <x-admin.status-badge :status="$service->status" :enum="\App\Enums\RecordStatus::class" size="px-2 py-1" />
+                                        <x-admin.status-badge :status="$service->TrangThai" :enum="\App\Enums\RecordStatus::class" size="px-2 py-1" />
                                     </td>
                                 </tr>
                             @endforeach
@@ -103,13 +90,15 @@
                 <h5 class="card-title mb-0 fw-bold">Thao tác</h5>
             </div>
             <div class="card-body d-flex flex-column gap-2">
-                <a href="{{ route('service-categories.edit', $category->id) }}" class="btn btn-primary w-100 py-2">
+                <a href="{{ route('service-categories.edit', $category->LoaiDichVuID) }}" class="btn btn-primary w-100 py-2">
                     <i class="fas fa-pencil-alt me-1"></i> Chỉnh sửa
                 </a>
 
-                <a href="{{ route('services.create') }}" class="btn btn-outline-primary w-100 py-2">
-                    <i class="fas fa-plus me-1"></i> Thêm dịch vụ
-                </a>
+                @can('services.create')
+                    <a href="{{ route('services.create') }}" class="btn btn-outline-primary w-100 py-2">
+                        <i class="fas fa-plus me-1"></i> Thêm dịch vụ
+                    </a>
+                @endcan
 
                 <a href="{{ route('service-categories.index') }}" class="btn btn-outline-secondary w-100 py-2 text-dark">
                     <i class="fas fa-arrow-left me-1"></i> Quay lại danh sách

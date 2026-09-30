@@ -2,6 +2,9 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Enums\InvoiceStatus;
+use App\Enums\OrderStatus;
+use App\Enums\PaymentStatus;
 use App\Http\Controllers\Controller;
 use App\Models\DanhGia;
 use App\Models\DichVu;
@@ -9,6 +12,7 @@ use App\Models\DonHang;
 use App\Models\HoaDon;
 use App\Models\KhachHang;
 use App\Models\ThanhToan;
+use App\Services\ReviewService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -16,7 +20,7 @@ use Illuminate\Support\Facades\DB;
 class DashboardController extends Controller
 {
     public function __construct(
-        private \App\Services\ReviewService $reviewService,
+        private ReviewService $reviewService,
     ) {}
 
     /**
@@ -28,46 +32,54 @@ class DashboardController extends Controller
         $today = Carbon::today();
         $thisMonth = now()->month;
         $thisYear = now()->year;
+        $weekStart = $today->copy()->startOfWeek(Carbon::MONDAY);
+        $prevWeekStart = $weekStart->copy()->subWeek();
+        $monthStart = $today->copy()->startOfMonth();
+        $prevMonthStart = $monthStart->copy()->subMonth();
+        $revenueChartStart = Carbon::today()->subMonths(11)->startOfMonth();
+        $dailyRevenue = $this->getDailyRevenueTotals($revenueChartStart, $today);
 
         // --- KPI: Doanh thu hôm nay ---
-        $todayRevenue = $this->revenueBetween($today->copy()->startOfDay(), $today->copy()->endOfDay());
+        $todayRevenue = $this->sumDailyRevenue($dailyRevenue, $today, $today);
 
-        $prevDayRevenue = $this->revenueBetween(
-            $today->copy()->subDay()->startOfDay(),
-            $today->copy()->subDay()->endOfDay()
-        );
+        $previousDay = $today->copy()->subDay();
+        $prevDayRevenue = $this->sumDailyRevenue($dailyRevenue, $previousDay, $previousDay);
 
         $todayRevenueChange = $this->percentChange($todayRevenue, $prevDayRevenue);
 
         // --- KPI: Doanh thu tuần này (từ thứ 2) ---
-        $weekStart = $today->copy()->startOfWeek(Carbon::MONDAY);
-        $weekRevenue = $this->revenueBetween($weekStart, $today->copy()->endOfDay());
+        $weekRevenue = $this->sumDailyRevenue($dailyRevenue, $weekStart, $today);
 
-        $prevWeekStart = $weekStart->copy()->subWeek();
-        $prevWeekRevenue = $this->revenueBetween($prevWeekStart, $prevWeekStart->copy()->endOfWeek(Carbon::SUNDAY));
+        $prevWeekRevenue = $this->sumDailyRevenue(
+            $dailyRevenue,
+            $prevWeekStart,
+            $prevWeekStart->copy()->endOfWeek(Carbon::SUNDAY)
+        );
 
         $weekRevenueChange = $this->percentChange($weekRevenue, $prevWeekRevenue);
 
         // --- KPI: Doanh thu tháng này ---
-        $monthStart = $today->copy()->startOfMonth();
-        $monthRevenue = $this->revenueBetween($monthStart, $today->copy()->endOfDay());
+        $monthRevenue = $this->sumDailyRevenue($dailyRevenue, $monthStart, $today);
 
-        $prevMonthStart = $monthStart->copy()->subMonth();
-        $prevMonthRevenue = $this->revenueBetween($prevMonthStart, $prevMonthStart->copy()->endOfMonth());
+        $prevMonthRevenue = $this->sumDailyRevenue(
+            $dailyRevenue,
+            $prevMonthStart,
+            $prevMonthStart->copy()->endOfMonth()
+        );
 
         $monthRevenueChange = $this->percentChange($monthRevenue, $prevMonthRevenue);
 
         // --- KPI: Tổng số đơn hàng (theo trạng thái) ---
         $statusCounts = [
-            'completed' => DonHang::whereIn('TrangThai', \App\Enums\OrderStatus::settledValues())->count(),
+            'completed' => DonHang::whereIn('TrangThai', OrderStatus::settledValues())->count(),
             'processing' => DonHang::whereIn('TrangThai', [
-                \App\Enums\OrderStatus::Pending->value,
-                \App\Enums\OrderStatus::Received->value,
-                \App\Enums\OrderStatus::Washing->value,
-                \App\Enums\OrderStatus::Washed->value,
-                \App\Enums\OrderStatus::Delivering->value,
+                OrderStatus::Pending->value,
+                OrderStatus::Received->value,
+                OrderStatus::Washing->value,
+                OrderStatus::Washed->value,
+                OrderStatus::Delivering->value,
             ])->count(),
-            'cancelled' => DonHang::where('TrangThai', \App\Enums\OrderStatus::Cancelled->value)->count(),
+            'cancelled' => DonHang::where('TrangThai', OrderStatus::Cancelled->value)->count(),
         ];
 
         $totalOrders = DonHang::count();
@@ -83,22 +95,23 @@ class DashboardController extends Controller
         $totalReviews = $this->reviewService->getTotalReviews();
 
         // --- Biểu đồ: Doanh thu 7 ngày gần nhất ---
-        $last7DaysRevenue = collect(range(6, 0))->map(function ($daysAgo) {
+        $last7DaysRevenue = collect(range(6, 0))->map(function ($daysAgo) use ($dailyRevenue) {
             $date = Carbon::today()->subDays($daysAgo);
 
             return [
                 'date' => $date->format('d/m'),
-                'revenue' => $this->revenueBetween($date->copy()->startOfDay(), $date->copy()->endOfDay()),
+                'revenue' => $this->sumDailyRevenue($dailyRevenue, $date, $date),
             ];
         })->values();
 
         // --- Biểu đồ: Doanh thu 12 tháng gần nhất (cuộn tròn, có giới hạn năm) ---
-        $last12Months = collect(range(11, 0))->map(function ($monthsAgo) {
+        $last12Months = collect(range(11, 0))->map(function ($monthsAgo) use ($dailyRevenue) {
             $month = Carbon::today()->subMonths($monthsAgo);
 
             return [
-                'label' => 'T' . $month->month,
-                'revenue' => $this->revenueBetween(
+                'label' => 'T'.$month->month,
+                'revenue' => $this->sumDailyRevenue(
+                    $dailyRevenue,
                     $month->copy()->startOfMonth(),
                     $month->copy()->endOfMonth()
                 ),
@@ -128,9 +141,9 @@ class DashboardController extends Controller
             ->limit(10)
             ->get();
 
-        // --- Bảng: Đánh giá mới nhất cần phản hồi ---
+        // --- Bảng: Đánh giá mới nhất đang hiển thị ---
         $latestReviews = DanhGia::with(['khachHang', 'donHang'])
-            ->whereNull('TrangThai')
+            ->where('TrangThai', 'Hiển thị')
             ->orderBy('NgayDanhGia', 'desc')
             ->limit(10)
             ->get();
@@ -158,16 +171,54 @@ class DashboardController extends Controller
         ]);
     }
 
-/**
+    /**
+     * @return array<string, float>
+     */
+    private function getDailyRevenueTotals(Carbon $from, Carbon $to): array
+    {
+        return DonHang::query()
+            ->selectRaw('DATE("NgayTao") AS revenue_date, SUM("ThanhTien") AS total')
+            ->whereBetween('NgayTao', [$from->copy()->startOfDay(), $to->copy()->endOfDay()])
+            ->where(function ($query): void {
+                $query->whereIn('TrangThai', OrderStatus::settledValues())
+                    ->orWhereHas('hoaDons', function ($invoiceQuery): void {
+                        $invoiceQuery->where('TrangThai', InvoiceStatus::Paid->value);
+                    });
+            })
+            ->groupByRaw('DATE("NgayTao")')
+            ->orderBy('revenue_date')
+            ->get()
+            ->mapWithKeys(fn ($row): array => [(string) $row->revenue_date => (float) $row->total])
+            ->all();
+    }
+
+    /**
+     * @param  array<string, float>  $dailyRevenue
+     */
+    private function sumDailyRevenue(array $dailyRevenue, Carbon $from, Carbon $to): float
+    {
+        $total = 0.0;
+        $date = $from->copy()->startOfDay();
+        $lastDate = $to->copy()->startOfDay();
+
+        while ($date->lessThanOrEqualTo($lastDate)) {
+            $total += $dailyRevenue[$date->toDateString()] ?? 0.0;
+            $date->addDay();
+        }
+
+        return $total;
+    }
+
+    /**
      * Tổng doanh thu từ đơn hàng đã hoàn thành hoặc đã thanh toán trong khoảng thời gian.
      */
     private function revenueBetween(Carbon $from, Carbon $to): float
     {
         return (float) DonHang::whereBetween('NgayTao', [$from, $to])
             ->where(function ($query) {
-                $query->whereIn('TrangThai', \App\Enums\OrderStatus::settledValues())
+                $query->whereIn('TrangThai', OrderStatus::settledValues())
                     ->orWhereHas('hoaDons', function ($q) {
-                        $q->where('TrangThai', 'paid');
+                        $q->where('TrangThai', InvoiceStatus::Paid->value);
                     });
             })
             ->sum('ThanhTien');
@@ -180,22 +231,22 @@ class DashboardController extends Controller
     {
         $invoice = HoaDon::with('donHang')->find($invoice);
 
-        if (!$invoice) {
+        if (! $invoice) {
             return response()->json(['success' => false, 'message' => 'Không tìm thấy hóa đơn.'], 404);
         }
 
-        if ($invoice->TrangThai === 'paid') {
+        if ($invoice->isPaid()) {
             return response()->json(['success' => false, 'message' => 'Hóa đơn đã được thanh toán.'], 400);
         }
 
         DB::transaction(function () use ($invoice) {
-            $invoice->update(['TrangThai' => 'paid']);
+            $invoice->update(['TrangThai' => InvoiceStatus::Paid->value]);
 
             ThanhToan::create([
                 'DonHangID' => $invoice->DonHangID,
                 'SoTien' => $invoice->ThanhTien,
-                'PhuongThuc' => 'cash',
-                'TrangThai' => 'paid',
+                'PhuongThuc' => 'Tiền mặt',
+                'TrangThai' => PaymentStatus::Paid->value,
             ]);
         });
 
@@ -265,7 +316,7 @@ class DashboardController extends Controller
                 // Doanh thu 12 tháng trong năm hiện tại
                 for ($month = 1; $month <= 12; $month++) {
                     $date = Carbon::create($thisYear, $month, 1);
-                    $labels[] = 'Tháng ' . $month;
+                    $labels[] = 'Tháng '.$month;
                     $data[] = $this->revenueBetween($date->copy()->startOfMonth(), $date->copy()->endOfMonth());
                 }
                 break;
@@ -296,9 +347,8 @@ class DashboardController extends Controller
             'today' => 'Doanh thu hôm nay',
             '7_days' => 'Doanh thu 7 ngày gần nhất',
             'this_month' => 'Doanh thu tháng này',
-            'this_year' => 'Doanh thu năm ' . now()->year,
+            'this_year' => 'Doanh thu năm '.now()->year,
             default => 'Doanh thu 7 ngày gần nhất',
         };
     }
 }
-

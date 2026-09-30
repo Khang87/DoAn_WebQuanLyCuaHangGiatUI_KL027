@@ -2,69 +2,64 @@
 
 namespace Database\Seeders;
 
-use App\Models\Order;
-use App\Models\Payment;
+use App\Enums\OrderStatus;
+use App\Models\DonHang;
+use App\Models\ThanhToan;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
+/**
+ * Sinh giao dịch thanh toán cho các đơn đã quyết toán trong `ThanhToan`.
+ *
+ * `PhuongThuc` chỉ nhận 'Tiền mặt' hoặc 'Chuyển khoản', `TrangThai` nhận
+ * 'Chờ thanh toán' / 'Thành công' / 'Thất bại' / 'Đã hoàn tiền'.
+ */
 class PaymentSeeder extends Seeder
 {
     use WithoutModelEvents;
 
     public function run(): void
     {
-        $orders = Order::where('status', 'completed')->get();
-        $methods = ['cash', 'bank_transfer', 'momo', 'credit_card', 'e_wallet'];
-        $statuses = ['paid', 'paid', 'paid', 'paid', 'pending', 'failed', 'refunded'];
+        $orders = DonHang::whereIn('TrangThai', [
+            OrderStatus::Delivered->value,
+            OrderStatus::Paid->value,
+            OrderStatus::Cancelled->value,
+        ])->get();
+
+        if ($orders->isEmpty()) {
+            $this->command?->warn('Chưa có đơn hàng phù hợp để sinh thanh toán.');
+
+            return;
+        }
+
+        $created = 0;
 
         foreach ($orders as $order) {
-            $paymentStatus = $statuses[array_rand($statuses)];
-            $paidAt = null;
-            $transactionCode = null;
-
-            if ($paymentStatus === 'paid') {
-                $paidAt = $order->created_at ? $order->created_at->copy()->addHours(rand(1, 48)) : now();
-                $transactionCode = 'TXN' . str_pad($order->id, 6, '0', STR_PAD_LEFT);
+            if ($order->thanhToans()->exists()) {
+                continue;
             }
 
-            Payment::create([
-                'order_id' => $order->id,
-                'amount' => $order->total_amount,
-                'method' => $methods[array_rand($methods)],
-                'paid_at' => $paidAt,
-                'status' => $paymentStatus,
-                'transaction_code' => $transactionCode,
-                'created_at' => $order->created_at,
-                'updated_at' => $order->created_at,
+            $isPaid = $order->TrangThai === OrderStatus::Paid->value;
+            $isCancelled = $order->TrangThai === OrderStatus::Cancelled->value;
+            $isCash = $order->DonHangID % 2 === 0;
+
+            ThanhToan::create([
+                'DonHangID' => $order->DonHangID,
+                'SoTien' => max(1, (float) $order->ThanhTien),
+                'PhuongThuc' => $isCash ? 'Tiền mặt' : 'Chuyển khoản',
+                'MaGiaoDich' => $isPaid ? 'TXN'.str_pad((string) $order->DonHangID, 6, '0', STR_PAD_LEFT) : null,
+                'ThoiGian' => $order->NgayTao?->copy()->addHours(random_int(2, 48)) ?? now(),
+                'TrangThai' => match (true) {
+                    $isPaid => 'Thành công',
+                    $isCancelled => 'Đã hoàn tiền',
+                    default => 'Chờ thanh toán',
+                },
+                'GhiChu' => null,
             ]);
+
+            $created++;
         }
 
-        $otherOrders = Order::whereNotIn('status', ['completed'])->get();
-        foreach ($otherOrders->take(5) as $order) {
-            Payment::create([
-                'order_id' => $order->id,
-                'amount' => $order->total_amount / 2,
-                'method' => $methods[array_rand($methods)],
-                'paid_at' => null,
-                'status' => $statuses[array_rand($statuses)],
-                'transaction_code' => null,
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
-        }
-
-        $pendingOrders = Order::where('status', 'processing')->take(3)->get();
-        foreach ($pendingOrders as $order) {
-            Payment::create([
-                'order_id' => $order->id,
-                'amount' => $order->total_amount,
-                'method' => $methods[array_rand($methods)],
-                'paid_at' => null,
-                'status' => 'pending',
-                'transaction_code' => null,
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
-        }
+        $this->command?->info("Đã tạo {$created} giao dịch thanh toán.");
     }
 }

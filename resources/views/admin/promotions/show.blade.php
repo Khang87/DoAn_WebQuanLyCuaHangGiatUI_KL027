@@ -92,9 +92,11 @@
 
         <x-admin.detail.panel title="Mã giảm giá liên quan" icon="bi-ticket-perforated" :iconClass="'bg-secondary-subtle text-secondary'" flush>
             <x-slot:header>
-                <a href="{{ route('coupons.create') }}" class="btn btn-sm btn-outline-primary">
-                    <i class="bi bi-plus-lg me-1"></i>Thêm mã
-                </a>
+                @can('coupons.create')
+                    <a href="{{ route('coupons.create') }}" class="btn btn-sm btn-outline-primary">
+                        <i class="bi bi-plus-lg me-1"></i>Thêm mã
+                    </a>
+                @endcan
             </x-slot:header>
 
             @if($coupons->isEmpty())
@@ -186,9 +188,11 @@
                     <i class="fas fa-pencil-alt me-1"></i> Chỉnh sửa
                 </a>
 
-                <a href="{{ route('coupons.create') }}" class="btn btn-outline-primary w-100 py-2">
-                    <i class="fas fa-plus me-1"></i> Thêm mã giảm giá
-                </a>
+                @can('coupons.create')
+                    <a href="{{ route('coupons.create') }}" class="btn btn-outline-primary w-100 py-2">
+                        <i class="fas fa-plus me-1"></i> Thêm mã giảm giá
+                    </a>
+                @endcan
 
                 <a href="{{ route('promotions.index') }}" class="btn btn-outline-secondary w-100 py-2 text-dark">
                     <i class="fas fa-arrow-left me-1"></i> Quay lại danh sách

@@ -4,9 +4,9 @@ namespace App\Http\Controllers\Admin;
 
 use App\Enums\RecordStatus;
 use App\Http\Controllers\Controller;
-use App\Http\Requests\Admin\GarmentCategoryRequest;
-use App\Models\GarmentCategory;
+use App\Http\Requests\Admin\LuuGarmentCategoryRequest;
 use App\Services\GarmentCategoryService;
+use App\Support\FriendlyError;
 use Illuminate\Http\Request;
 
 class GarmentCategoryController extends Controller
@@ -24,7 +24,7 @@ class GarmentCategoryController extends Controller
             'sort_order' => $request->input('sort_order'),
         ]);
 
-        $statuses = RecordStatus::options();
+        $statuses = RecordStatus::databaseOptions();
 
         return view('admin.garment-categories.index', compact('categories', 'statuses'));
     }
@@ -34,14 +34,14 @@ class GarmentCategoryController extends Controller
         return view('admin.garment-categories.create');
     }
 
-    public function store(GarmentCategoryRequest $request)
+    public function store(LuuGarmentCategoryRequest $request)
     {
         try {
             $this->garmentCategoryService->create($request->validated());
 
             return redirect()->route('garment-categories.index')->with('success', 'Danh mục loại đồ giặt đã được tạo thành công.');
         } catch (\Exception $e) {
-            return redirect()->route('garment-categories.create')->with('error', \App\Support\FriendlyError::message($e))->withInput();
+            return redirect()->route('garment-categories.create')->with('error', FriendlyError::message($e))->withInput();
         }
     }
 
@@ -49,31 +49,36 @@ class GarmentCategoryController extends Controller
     {
         $category = $this->garmentCategoryService->find($id);
 
-        if (!$category) {
+        if (! $category) {
             abort(404);
         }
 
-        $garments = $category->garments()->latest()->paginate(10);
+        $pricings = $category->bangGias()
+            ->with(['dichVu', 'donViTinh'])
+            ->orderByDesc('NgayApDung')
+            ->orderByDesc('BangGiaID')
+            ->paginate(10)
+            ->withQueryString();
 
-        return view('admin.garment-categories.show', compact('category', 'garments'));
+        return view('admin.garment-categories.show', compact('category', 'pricings'));
     }
 
     public function edit(int $id)
     {
         $category = $this->garmentCategoryService->find($id);
 
-        if (!$category) {
+        if (! $category) {
             abort(404);
         }
 
         return view('admin.garment-categories.edit', compact('category'));
     }
 
-    public function update(GarmentCategoryRequest $request, int $id)
+    public function update(LuuGarmentCategoryRequest $request, int $id)
     {
         $category = $this->garmentCategoryService->find($id);
 
-        if (!$category) {
+        if (! $category) {
             abort(404);
         }
 
@@ -82,7 +87,7 @@ class GarmentCategoryController extends Controller
 
             return redirect()->route('garment-categories.index')->with('success', 'Danh mục loại đồ giặt đã được cập nhật.');
         } catch (\Exception $e) {
-            return redirect()->route('garment-categories.edit', $category)->with('error', \App\Support\FriendlyError::message($e))->withInput();
+            return redirect()->route('garment-categories.edit', $category)->with('error', FriendlyError::message($e))->withInput();
         }
     }
 
@@ -90,7 +95,7 @@ class GarmentCategoryController extends Controller
     {
         $category = $this->garmentCategoryService->find($id);
 
-        if (!$category) {
+        if (! $category) {
             abort(404);
         }
 
@@ -99,7 +104,7 @@ class GarmentCategoryController extends Controller
 
             return redirect()->route('garment-categories.index')->with('success', 'Danh mục loại đồ giặt đã được xóa.');
         } catch (\Exception $e) {
-            return redirect()->route('garment-categories.index')->with('error', \App\Support\FriendlyError::message($e));
+            return redirect()->route('garment-categories.index')->with('error', FriendlyError::message($e));
         }
     }
 }

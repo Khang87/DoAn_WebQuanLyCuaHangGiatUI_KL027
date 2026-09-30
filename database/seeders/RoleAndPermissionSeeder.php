@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Models\NhanVien;
 use App\Models\Quyen;
 use App\Models\User;
 use App\Models\VaiTro;
@@ -222,16 +223,26 @@ class RoleAndPermissionSeeder extends Seeder
                 continue;
             }
 
+            // Ràng buộc CK_TaiKhoan_DoiTuong bắt mỗi tài khoản phải trỏ về
+            // một nhân viên hoặc một khách hàng, nên tài khoản quản trị phải
+            // gắn với bản ghi NhanVien cùng email (do NhanVienSeeder tạo).
+            $staff = NhanVien::where('Email', $account['email'])->first();
+
             $user = User::updateOrCreate(
                 ['Email' => $account['email']],
                 [
                     'TenDangNhap' => $account['username'],
                     'MatKhau' => Hash::make(self::STANDARD_PASSWORD),
                     'SoDienThoai' => $account['phone'],
+                    'NhanVienID' => $staff?->NhanVienID,
                     'TrangThai' => 'Hoạt động',
                     'NgayTao' => now(),
                 ],
             );
+
+            if ($user->NhanVienID === null && $staff !== null) {
+                $user->forceFill(['NhanVienID' => $staff->NhanVienID])->save();
+            }
 
             $exists = DB::table('TaiKhoan_VaiTro')
                 ->where('TaiKhoanID', $user->getKey())

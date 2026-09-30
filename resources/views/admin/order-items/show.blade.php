@@ -59,7 +59,7 @@
             @if($item->order)
                 <x-admin.detail.info-grid :columns="1">
                     <x-admin.detail.info-item label="Mã đơn hàng">
-                        <a href="{{ route('orders.show', $item->order->id) }}" class="text-decoration-none">
+                        <a href="{{ route('orders.show', $item->order->getKey()) }}" class="text-decoration-none">
                             {{ $item->order->code }}
                         </a>
                     </x-admin.detail.info-item>

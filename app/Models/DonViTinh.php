@@ -2,16 +2,26 @@
 
 namespace App\Models;
 
+use App\Support\CatalogCache;
 use Illuminate\Database\Eloquent\Model;
 
 class DonViTinh extends Model
 {
     protected $table = 'DonViTinh';
+
     protected $primaryKey = 'DonViTinhID';
+
     public $timestamps = false;
+
     public static $snakeAttributes = false;
 
     protected $fillable = ['TenDonViTinh', 'KyHieu', 'TrangThai', 'DonViTinhID'];
+
+    protected static function booted(): void
+    {
+        static::saved(static fn () => CatalogCache::forgetUnits());
+        static::deleted(static fn () => CatalogCache::forgetUnits());
+    }
 
     public function bangGias()
     {

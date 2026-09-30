@@ -17,7 +17,7 @@
             </a>
         </div>
 
-        <form action="{{ route('promotions.update', $promotion->id) }}" method="POST">
+        <form action="{{ route('promotions.update', $promotion->getKey()) }}" method="POST">
             @csrf @method('PUT')
             <div class="row g-4">
                 <div class="col-md-6">

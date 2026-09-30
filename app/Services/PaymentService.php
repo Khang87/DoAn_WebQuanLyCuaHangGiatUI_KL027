@@ -2,12 +2,16 @@
 
 namespace App\Services;
 
+use App\Enums\InvoiceStatus;
+use App\Enums\OrderStatus;
+use App\Enums\PaymentStatus;
 use App\Exceptions\SettledOrderException;
-use App\Models\HoaDon;
 use App\Models\DonHang;
+use App\Models\HoaDon;
 use App\Models\ThanhToan;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class PaymentService
 {
@@ -20,11 +24,16 @@ class PaymentService
         }
 
         if (! empty($filters['invoice_id'])) {
-            $query->where('DonHangID', $filters['invoice_id']);
+            $query->whereHas('donHang.hoaDons', fn ($invoiceQuery) => $invoiceQuery->where('HoaDonID', $filters['invoice_id']));
         }
 
         if (! empty($filters['method'])) {
-            $query->where('PhuongThuc', $filters['method']);
+            $method = match ($filters['method']) {
+                'cash' => 'Tiền mặt',
+                'bank_transfer' => 'Chuyển khoản',
+                default => $filters['method'],
+            };
+            $query->where('PhuongThuc', $method);
         }
 
         if (! empty($filters['status'])) {
@@ -36,15 +45,15 @@ class PaymentService
             $query->where(function ($q) use ($search) {
                 $numericPart = preg_replace('/[^0-9]/', '', $search);
                 if (! empty($numericPart)) {
-                    $q->where('id', $numericPart);
+                    $q->where('ThanhToanID', $numericPart);
                 }
                 $q->orWhereHas('donHang', function ($sub) use ($search) {
                     $sub->where('MaDonHang', 'LIKE', "%{$search}%")
-                        ->orWhereHas('customer', function ($cust) use ($search) {
+                        ->orWhereHas('khachHang', function ($cust) use ($search) {
                             $cust->where('HoTen', 'LIKE', "%{$search}%")
                                 ->orWhere('SoDienThoai', 'LIKE', "%{$search}%");
                         })
-                        ->orWhereHas('invoice', function ($inv) use ($search) {
+                        ->orWhereHas('hoaDons', function ($inv) use ($search) {
                             $inv->where('MaHoaDon', 'LIKE', "%{$search}%");
                         });
                 });
@@ -58,45 +67,40 @@ class PaymentService
             'oldest' => ['ThoiGian', 'asc'],
             'amount_desc' => ['SoTien', 'desc'],
             'amount_asc' => ['SoTien', 'asc'],
-            'id_desc' => ['id', 'desc'],
-            'id_asc' => ['id', 'asc'],
+            'id_desc' => ['ThanhToanID', 'desc'],
+            'id_asc' => ['ThanhToanID', 'asc'],
         ];
         $sort = $filters['sort'] ?? 'latest';
         [$sortBy, $sortOrder] = $sortMap[$sort] ?? ['ThoiGian', 'desc'];
 
-        return $query->with(['donHang.customer', 'donHang.hoaDons', 'donHang.thanhToans'])->orderBy($sortBy, $sortOrder)->paginate(10)->withQueryString();
+        return $query->with(['donHang.khachHang', 'donHang.hoaDons', 'donHang.thanhToans'])->orderBy($sortBy, $sortOrder)->paginate(10)->withQueryString();
     }
 
     public function find(int $id): ?ThanhToan
     {
-        return ThanhToan::withTrashed()->with('donHang.khachHang', 'donHang.hoaDons')->find($id);
+        return ThanhToan::with('donHang.khachHang', 'donHang.hoaDons')->find($id);
     }
 
     public function create(array $data): ThanhToan
     {
-        // Đơn đã quyết toán thì không được ghi thêm khoản thu: bước cập nhật
-        // trạng thái bên dưới có thể hạ 'completed' về 'processing' và mở khoá đơn.
-        $targetOrderId = $data['order_id'] ?? null;
-        if (empty($targetOrderId) && ! empty($data['invoice_id'])) {
-            $targetOrderId = HoaDon::find($data['invoice_id'])?->DonHangID;
+        // Đơn đã quyết toán thì không được ghi thêm khoản thu.
+        $invoice = ! empty($data['invoice_id']) ? HoaDon::find($data['invoice_id']) : null;
+        $targetOrderId = $data['order_id'] ?? $invoice?->DonHangID;
+
+        if ($invoice && ! empty($data['order_id']) && (int) $data['order_id'] !== (int) $invoice->DonHangID) {
+            throw ValidationException::withMessages([
+                'invoice_id' => 'Hóa đơn không thuộc đơn hàng đã chọn.',
+            ]);
         }
 
         if (! empty($targetOrderId) && DonHang::find($targetOrderId)?->isLocked()) {
             throw SettledOrderException::forOrder($targetOrderId);
         }
 
-        return DB::transaction(function () use ($data) {
-            // If invoice_id is provided, get order_id from invoice
-            if (! empty($data['invoice_id']) && empty($data['order_id'])) {
-                $invoice = HoaDon::find($data['invoice_id']);
-                if ($invoice) {
-                    $data['order_id'] = $invoice->DonHangID;
-                }
-            }
+        return DB::transaction(function () use ($data, $targetOrderId) {
+            $data['order_id'] = $targetOrderId;
 
-            $data['ThoiGian'] = $data['paid_at'] ?? now();
-
-            $payment = ThanhToan::create($data);
+            $payment = ThanhToan::create($this->mapInput($data));
 
             $invoice = $payment->donHang?->hoaDons?->first();
             $order = $payment->donHang;
@@ -109,12 +113,10 @@ class PaymentService
             if ($order) {
                 // Update order status based on payment
                 $totalPaid = $this->paidTotalFor($order);
-                $grandTotal = $order->hoaDons?->first()?->ThanhTien ?? $order->total_amount;
+                $grandTotal = $order->hoaDons?->first()?->ThanhTien ?? $order->ThanhTien;
 
                 if ($totalPaid >= $grandTotal) {
-                    $order->update(['TrangThai' => 'completed']);
-                } elseif ($totalPaid > 0) {
-                    $order->update(['TrangThai' => 'processing']);
+                    $order->update(['TrangThai' => OrderStatus::Paid->value]);
                 }
             }
 
@@ -124,11 +126,26 @@ class PaymentService
 
     public function update(ThanhToan $payment, array $data, bool $override = false): ThanhToan
     {
+        if (isset($data['order_id']) && (int) $data['order_id'] !== (int) $payment->DonHangID) {
+            throw ValidationException::withMessages([
+                'order_id' => 'Không thể chuyển khoản thanh toán sang đơn hàng khác.',
+            ]);
+        }
+
+        if (! empty($data['invoice_id'])) {
+            $invoice = HoaDon::find($data['invoice_id']);
+            if ($invoice && (int) $invoice->DonHangID !== (int) $payment->DonHangID) {
+                throw ValidationException::withMessages([
+                    'invoice_id' => 'Hóa đơn không thuộc đơn hàng của khoản thanh toán.',
+                ]);
+            }
+        }
+
         if (! $override) {
             $this->guardSettledPayment($payment);
         }
 
-        $payment->update($data);
+        $payment->update($this->mapInput($data));
 
         $invoice = $payment->donHang?->hoaDons?->first();
         if ($invoice) {
@@ -138,16 +155,42 @@ class PaymentService
         $order = $payment->donHang;
         if ($order) {
             $totalPaid = $this->paidTotalFor($order);
-            $grandTotal = $order->hoaDons?->first()?->ThanhTien ?? $order->total_amount;
+            $grandTotal = $order->hoaDons?->first()?->ThanhTien ?? $order->ThanhTien;
 
             if ($totalPaid >= $grandTotal) {
-                $order->update(['TrangThai' => 'completed']);
-            } elseif ($totalPaid > 0) {
-                $order->update(['TrangThai' => 'processing']);
+                $order->update(['TrangThai' => OrderStatus::Paid->value]);
             }
         }
 
         return $payment->fresh();
+    }
+
+    /**
+     * Map form/API names to the exact PostgreSQL column names.
+     *
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    private function mapInput(array $data): array
+    {
+        $method = $data['PhuongThuc'] ?? $data['method'] ?? null;
+        $method = match ($method) {
+            'cash' => 'Tiền mặt',
+            'bank_transfer' => 'Chuyển khoản',
+            default => $method,
+        };
+
+        $mapped = [
+            'DonHangID' => $data['DonHangID'] ?? $data['order_id'] ?? null,
+            'SoTien' => $data['SoTien'] ?? $data['amount'] ?? null,
+            'PhuongThuc' => $method,
+            'MaGiaoDich' => $data['MaGiaoDich'] ?? $data['transaction_code'] ?? null,
+            'ThoiGian' => $data['ThoiGian'] ?? $data['paid_at'] ?? now(),
+            'TrangThai' => PaymentStatus::parse($data['TrangThai'] ?? $data['status'] ?? PaymentStatus::Pending->value)->value,
+            'GhiChu' => $data['GhiChu'] ?? $data['notes'] ?? null,
+        ];
+
+        return array_filter($mapped, static fn (mixed $value): bool => $value !== null);
     }
 
     /**
@@ -165,12 +208,12 @@ class PaymentService
         if ($payment->isSettled()) {
             throw new SettledOrderException(sprintf(
                 'Khoản thu %s đã ghi nhận tiền nên chỉ có thể xem, không thể chỉnh sửa hoặc xóa.',
-                $payment->MaGiaoDich ?: ('#' . $payment->id)
+                $payment->MaGiaoDich ?: ('#'.$payment->ThanhToanID)
             ));
         }
 
         if ($payment->donHang?->isLocked()) {
-            throw SettledOrderException::forOrder($payment->donHang->code);
+            throw SettledOrderException::forOrder($payment->donHang->MaDonHang);
         }
     }
 
@@ -181,22 +224,20 @@ class PaymentService
     private function paidTotalFor(DonHang $order): float
     {
         return (float) $order->thanhToans()
-            ->where('TrangThai', 'paid')
+            ->where('TrangThai', PaymentStatus::Paid->value)
             ->sum('SoTien');
     }
 
     private function updateInvoiceStatus(HoaDon $invoice): void
     {
         $donHang = $invoice->donHang;
-        $totalPaid = $donHang ? $donHang->thanhToans()->where('TrangThai', 'paid')->sum('SoTien') : 0;
+        $totalPaid = $donHang ? $donHang->thanhToans()->where('TrangThai', PaymentStatus::Paid->value)->sum('SoTien') : 0;
         $grandTotal = $invoice->ThanhTien;
 
         if ($totalPaid >= $grandTotal) {
-            $invoice->update(['TrangThai' => 'paid']);
-        } elseif ($totalPaid > 0) {
-            $invoice->update(['TrangThai' => 'partial']);
+            $invoice->update(['TrangThai' => InvoiceStatus::Paid->value]);
         } else {
-            $invoice->update(['TrangThai' => 'unpaid']);
+            $invoice->update(['TrangThai' => InvoiceStatus::Unpaid->value]);
         }
     }
 
@@ -217,14 +258,12 @@ class PaymentService
 
         if ($order) {
             $totalPaid = $this->paidTotalFor($order);
-            $grandTotal = $order->hoaDons?->first()?->ThanhTien ?? $order->total_amount;
+            $grandTotal = $order->hoaDons?->first()?->ThanhTien ?? $order->ThanhTien;
 
             if ($totalPaid >= $grandTotal) {
-                $order->update(['TrangThai' => 'completed']);
-            } elseif ($totalPaid > 0) {
-                $order->update(['TrangThai' => 'processing']);
-            } else {
-                $order->update(['TrangThai' => 'pending']);
+                $order->update(['TrangThai' => OrderStatus::Paid->value]);
+            } elseif ($order->TrangThai === OrderStatus::Paid->value) {
+                $order->update(['TrangThai' => OrderStatus::Delivered->value]);
             }
         }
 

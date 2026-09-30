@@ -2,13 +2,17 @@
 
 namespace App\Models;
 
+use App\Enums\InvoiceStatus;
 use Illuminate\Database\Eloquent\Model;
 
 class HoaDon extends Model
 {
     protected $table = 'HoaDon';
+
     protected $primaryKey = 'HoaDonID';
+
     public $timestamps = false;
+
     public static $snakeAttributes = false;
 
     /** Cột thời gian tiếng Việt thay cho created_at/updated_at. */
@@ -35,5 +39,10 @@ class HoaDon extends Model
     public function lichSuThayDoiHoaDons()
     {
         return $this->hasMany(LichSuThayDoiHoaDon::class, 'HoaDonID');
+    }
+
+    public function isPaid(): bool
+    {
+        return InvoiceStatus::valueIsPaid($this->TrangThai);
     }
 }

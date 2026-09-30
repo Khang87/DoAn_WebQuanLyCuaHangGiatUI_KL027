@@ -1,118 +1,87 @@
 @extends('layouts.app')
 
-@section('title', 'Chi tiết Danh mục loại đồ giặt - Sky Laundry')
-@section('page-title', 'Chi tiết Danh mục loại đồ giặt')
+@section('title', 'Chi tiết Loại đồ giặt - Sky Laundry')
+@section('page-title', 'Chi tiết Loại đồ giặt')
 
 @section('content')
 <x-admin.detail.page-header
-    title="Danh mục {{ $category->name }}"
-    :subtitle="$category->slug"
+    :title="$category->TenLoaiDoGiat"
+    :subtitle="'Mã loại đồ giặt: '.$category->LoaiDoGiatID"
 >
     <x-slot:badge>
-        <x-admin.status-badge :status="$category->status" :enum="\App\Enums\RecordStatus::class" />
+        <x-admin.status-badge :status="$category->TrangThai" :enum="\App\Enums\RecordStatus::class" />
     </x-slot:badge>
 </x-admin.detail.page-header>
 
-<div class="card shadow-sm border-0 mb-4">
-    <div class="card-header bg-transparent border-bottom d-flex align-items-center gap-2 py-3">
-        <div class="bg-light rounded p-2 d-inline-flex align-items-center justify-content-center">
-            <i class="fas fa-sliders-h text-secondary"></i>
-        </div>
-        <h5 class="card-title mb-0 fw-bold">Thao tác</h5>
-    </div>
-    <div class="card-body d-flex flex-column gap-2">
-        <a href="{{ route('garment-categories.edit', $category) }}" class="btn btn-primary w-100 py-2">
-            <i class="fas fa-pencil-alt me-1"></i> Chỉnh sửa
-        </a>
-
-        <a href="{{ route('garment-categories.index') }}" class="btn btn-outline-secondary w-100 py-2 text-dark">
-            <i class="fas fa-arrow-left me-1"></i> Quay lại danh sách
-        </a>
-    </div>
-</div>
-
 <div class="card mb-4">
-    <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
-        <h5 class="mb-0">{{ $category->name }}</h5>
-        @if($category->icon)
-            <i class="{{ $category->icon }} fa-2x"></i>
-        @endif
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">{{ $category->TenLoaiDoGiat }}</h5>
+        <a href="{{ route('garment-categories.edit', $category->LoaiDoGiatID) }}" class="btn btn-primary btn-sm">
+            <i class="bi bi-pencil me-1"></i>Chỉnh sửa
+        </a>
     </div>
     <div class="card-body">
-        <div class="row">
-            <div class="col-md-6">
-                <table class="table table-borderless">
-                    <tr><td><strong>Slug</strong></td><td>{{ $category->slug }}</td></tr>
-                    <tr><td><strong>Trạng thái</strong></td>
-                        <td>
-                            <x-admin.status-badge :status="$category->status" :enum="\App\Enums\RecordStatus::class" />
-                        </td>
-                    </tr>
-                    <tr><td><strong>Thứ tự</strong></td><td>{{ $category->sort_order }}</td></tr>
-                    <tr><td><strong>Ngày tạo</strong></td><td>{{ $category->created_at?->format('d/m/Y H:i') }}</td></tr>
-                    <tr><td><strong>Cập nhật lần cuối</strong></td><td>{{ $category->updated_at?->format('d/m/Y H:i') }}</td></tr>
-                </table>
-            </div>
-            <div class="col-md-6">
-                @if($category->description)
-                <table class="table table-borderless">
-                    <tr><td colspan="2"><strong>Mô tả</strong></td></tr>
-                    <tr><td colspan="2">{{ $category->description }}</td></tr>
-                </table>
-                @endif
-            </div>
-        </div>
+        <dl class="row mb-0">
+            <dt class="col-sm-3">Mã loại đồ giặt</dt>
+            <dd class="col-sm-9">{{ $category->LoaiDoGiatID }}</dd>
+
+            <dt class="col-sm-3">Trạng thái</dt>
+            <dd class="col-sm-9">
+                <x-admin.status-badge :status="$category->TrangThai" :enum="\App\Enums\RecordStatus::class" />
+            </dd>
+
+            <dt class="col-sm-3">Mô tả</dt>
+            <dd class="col-sm-9">{{ $category->MoTa ?: '—' }}</dd>
+        </dl>
     </div>
 </div>
 
 <div class="card">
-    <div class="card-header"><h5 class="mb-0">Các loại đồ giặt trong danh mục này</h5></div>
+    <div class="card-header">
+        <h5 class="mb-0">Bảng giá áp dụng cho loại đồ giặt này</h5>
+    </div>
     <div class="card-body p-0">
         <div class="table-responsive">
             <table class="table-custom mb-0">
                 <thead>
                     <tr>
-                        <th class="fw-bold text-dark">STT</th>
-                        <th class="fw-bold text-dark">Tên loại đồ</th>
-                        <th class="fw-bold text-dark">Giá dịch vụ</th>
-                        <th class="fw-bold text-dark">Trạng thái</th>
-                        <th class="fw-bold text-dark">Thao tác</th>
+                        <th>STT</th>
+                        <th>Dịch vụ</th>
+                        <th>Đơn vị tính</th>
+                        <th>Đơn giá</th>
+                        <th>Ngày áp dụng</th>
+                        <th>Trạng thái</th>
                     </tr>
                 </thead>
                 <tbody>
-                    @forelse($garments as $garment)
-                    @php $garmentIcon = $garment->icon(); @endphp
-                    <tr>
-                        <td class="text-dark">{{ $loop->iteration }}</td>
-                        <td>
-                            <div class="d-flex align-items-center">
-                                <div class="bg-primary-subtle text-primary rounded-circle p-2 me-2 d-flex align-items-center justify-content-center" style="width: 36px; height: 36px;">
-                                    <i class="{{ $garmentIcon }}"></i>
-                                </div>
-                                <span class="text-dark">{{ $garment->name }}</span>
-                            </div>
-                        </td>
-                        <td class="text-dark"><strong>{{ number_format($garment->price) }} VNĐ</strong></td>
-                        <td>
-                            <x-admin.status-badge :status="$garment->status" :enum="\App\Enums\RecordStatus::class" />
-                        </td>
-                        <td>
-                            <a href="{{ route('garments.show', $garment) }}" class="btn btn-outline-secondary btn-sm" title="Xem"><i class="bi bi-eye"></i></a>
-                        </td>
-                    </tr>
+                    @forelse($pricings as $pricing)
+                        <tr>
+                            <td>{{ $pricings->firstItem() + $loop->index }}</td>
+                            <td>{{ $pricing->dichVu?->TenDichVu ?? '—' }}</td>
+                            <td>{{ $pricing->donViTinh?->TenDonViTinh ?? '—' }}</td>
+                            <td>{{ number_format((float) $pricing->DonGia, 0, ',', '.') }} đ</td>
+                            <td>{{ $pricing->NgayApDung?->format('d/m/Y') ?? '—' }}</td>
+                            <td>{{ $pricing->TrangThai }}</td>
+                        </tr>
                     @empty
-                    <tr>
-                        <td colspan="5" class="text-center text-muted py-4">Chưa có loại đồ giặt nào trong danh mục này</td>
-                    </tr>
+                        <tr>
+                            <td colspan="6" class="text-center text-muted py-4">
+                                Chưa có bảng giá cho loại đồ giặt này.
+                            </td>
+                        </tr>
                     @endforelse
                 </tbody>
             </table>
         </div>
     </div>
-    @if($garments->hasPages())
-    <nav class="p-3">
-        {{ $garments->appends(request()->query())->links('pagination::bootstrap-5') }}
-    </nav>
+    @if($pricings->hasPages())
+        <div class="card-footer">
+            {{ $pricings->links() }}
+        </div>
     @endif
 </div>
+
+<a href="{{ route('garment-categories.index') }}" class="btn btn-outline-secondary mt-3">
+    <i class="bi bi-arrow-left me-1"></i>Quay lại danh sách
+</a>
 @endsection

@@ -6,9 +6,11 @@
 @section('content')
 <!-- Page Actions: nút "Thêm" luôn nằm góc trên bên trái -->
 <div class="page-toolbar">
-    <a href="{{ route('promotions.create') }}" class="btn btn-create">
-        <i class="bi bi-plus-lg"></i>Thêm chương trình
-    </a>
+    @can('promotions.create')
+        <a href="{{ route('promotions.create') }}" class="btn btn-create">
+            <i class="bi bi-plus-lg"></i>Thêm chương trình
+        </a>
+    @endcan
     <p class="text-muted page-toolbar__desc">Các chương trình khuyến mãi đang chạy, phát mã giảm giá cho khách hàng.</p>
 </div>
 <form action="{{ url()->current() }}" method="GET" class="row g-3 align-items-center mb-4">
@@ -65,25 +67,25 @@
                 <tbody>
                     @forelse($promotions as $promotion)
                     @php
-                        $isExpired = $promotion->expires_at && $promotion->expires_at->lt(today());
+                        $isExpired = $promotion->NgayKetThuc && $promotion->NgayKetThuc->lt(today());
                     @endphp
                     <tr>
-                        <td><strong>{{ $promotion->id }}</strong></td>
-                        <td><strong>{{ $promotion->name ?: '-' }}</strong></td>
-                        <td>{{ $promotion->code ?: '-' }}</td>
+                        <td><strong>{{ $promotion->KhuyenMaiID }}</strong></td>
+                        <td><strong>{{ $promotion->TenKhuyenMai ?: '-' }}</strong></td>
+                        <td>{{ $promotion->MaKhuyenMai ?: '-' }}</td>
                         <td>
                             <div>{{ $promotion->discountSummary() }}</div>
                             <small class="text-muted">{{ $promotion->discountTypeLabel() }}</small>
                         </td>
                         <td>
                             <div>{{ $promotion->usageLabel() }}</div>
-                            <small class="text-muted">Hết hạn: {{ $promotion->expires_at?->format('d/m/Y') ?: 'Không hạn' }}</small>
+                            <small class="text-muted">Hết hạn: {{ $promotion->NgayKetThuc?->format('d/m/Y') ?: 'Không hạn' }}</small>
                         </td>
                         <td>
                             @if($isExpired)
                                 <span class="badge bg-secondary-subtle text-secondary-emphasis border border-secondary px-3 py-2 rounded-pill"><i class="far fa-hourglass me-1"></i>Đã hết hạn</span>
                             @else
-                                <x-admin.status-badge :status="$promotion->status" :enum="\App\Enums\RecordStatus::class" />
+                                <x-admin.status-badge :status="$promotion->TrangThai" :enum="\App\Enums\RecordStatus::class" />
                             @endif
                         </td>
                         <td>
@@ -95,7 +97,7 @@
                                     <a href="{{ route('promotions.edit', $promotion) }}" class="btn btn-order-action edit" title="Sửa"><i class="bi bi-pencil"></i></a>
                                 @endcan
                                 @can('promotions.delete')
-                                    <form action="{{ route('promotions.destroy', $promotion) }}" method="POST" class="d-inline" id="deletePromotionForm_{{ $promotion->id }}">
+                                    <form action="{{ route('promotions.destroy', $promotion->KhuyenMaiID) }}" method="POST" class="d-inline" id="deletePromotionForm_{{ $promotion->KhuyenMaiID }}">
                                         @csrf @method('DELETE')
                                         <button type="submit" class="btn btn-order-action delete" title="Xóa"><i class="bi bi-trash"></i></button>
                                     </form>
@@ -115,30 +117,10 @@
 </div>
 
 @if($promotions->hasPages())
-<nav class="mt-4">
-    <div class="d-flex justify-content-between align-items-center">
-        <div class="text-muted small">Hiển thị {{ $promotions->firstItem() }} - {{ $promotions->lastItem() }} của {{ $promotions->total() }} khuyến mãi</div>
-        <ul class="pagination mb-0">
-            @if ($promotions->onFirstPage())
-                <li class="page-item disabled"><span class="page-link"><i class="bi bi-chevron-left"></i></span></li>
-            @else
-                <li class="page-item"><a class="page-link" href="{{ $promotions->appends(request()->query())->url($promotions->currentPage() - 1) }}"><i class="bi bi-chevron-left"></i></a></li>
-            @endif
-            @foreach ($promotions->getUrlRange(max(1, $promotions->currentPage() - 2), min($promotions->lastPage(), $promotions->currentPage() + 2)) as $page => $url)
-                @if ($page == $promotions->currentPage())
-                    <li class="page-item active"><span class="page-link">{{ $page }}</span></li>
-                @else
-                    <li class="page-item"><a class="page-link" href="{{ $promotions->appends(request()->query())->url($page) }}">{{ $page }}</a></li>
-                @endif
-            @endforeach
-            @if ($promotions->onLastPage())
-                <li class="page-item disabled"><span class="page-link"><i class="bi bi-chevron-right"></i></span></li>
-            @else
-                <li class="page-item"><a class="page-link" href="{{ $promotions->appends(request()->query())->url($promotions->currentPage() + 1) }}"><i class="bi bi-chevron-right"></i></a></li>
-            @endif
-        </ul>
-    </div>
-</nav>
+<div class="mt-4 d-flex justify-content-between align-items-center">
+    <small class="text-muted">Hiển thị {{ $promotions->firstItem() }} - {{ $promotions->lastItem() }} của {{ $promotions->total() }} khuyến mãi</small>
+    {{ $promotions->links('pagination::bootstrap-5') }}
+</div>
 @endif
 @endsection
 

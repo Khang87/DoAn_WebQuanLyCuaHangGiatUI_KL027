@@ -2,31 +2,37 @@
 
 namespace Database\Seeders;
 
-use App\Models\User;
+use App\Models\KhachHang;
+use App\Models\NhanVien;
+use App\Models\TaiKhoan;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 
 /**
- * Nạp tài khoản mẫu vào bảng `TaiKhoan`.
+ * Nạp tài khoản vào bảng `TaiKhoan`.
  *
- * Vai trò không phải cột của `TaiKhoan` mà nằm ở bảng nối `TaiKhoan_VaiTro`,
- * nên mỗi tài khoản được gán thêm qua `assignRole()`.
+ * Ràng buộc `CK_TaiKhoan_DoiTuong` bắt buộc mỗi tài khoản trỏ về đúng một
+ * nhân viên HOẶC một khách hàng, nên tài khoản được nối theo email của
+ * NhanVienSeeder / CustomerSeeder.
+ *
+ * Vai trò không phải cột của `TaiKhoan` mà nằm ở bảng nối `TaiKhoan_VaiTro`.
  */
 class UserSeeder extends Seeder
 {
     use WithoutModelEvents;
 
-    /**
-     * Mật khẩu chung cho các tài khoản nhân viên/quản lý.
-     */
+    /** Mật khẩu chung cho các tài khoản nhân viên/quản lý. */
     public const PASSWORD = '123456';
 
     /**
-     * @var array<string, string> slug vai trò => tên hiển thị trong bảng `VaiTro`
+     * Mã vai trò => tên vai trò trong bảng `VaiTro`.
+     *
+     * @var array<string, string>
      */
-    private const ROLE_LABELS = [
+    private const ROLE_NAMES = [
         'owner' => 'Chủ cửa hàng',
         'manager' => 'Quản lý',
         'staff' => 'Nhân viên',
@@ -34,57 +40,44 @@ class UserSeeder extends Seeder
     ];
 
     /**
-     * Tài khoản quản trị: Chủ cửa hàng, quản lý và nhân viên.
-     *
      * @var list<array{username: string, email: string, phone: string, role: string}>
      */
-    public const STAFF_ACCOUNTS = [
+    private const STAFF_ACCOUNTS = [
         ['username' => 'owner', 'email' => 'admin@gmail.com', 'phone' => '0900000001', 'role' => 'owner'],
         ['username' => 'quanly', 'email' => 'manager@gmail.com', 'phone' => '0900000002', 'role' => 'manager'],
         ['username' => 'nhanvien1', 'email' => 'staff@gmail.com', 'phone' => '0900000003', 'role' => 'staff'],
+        ['username' => 'nhanvien2', 'email' => 'staff1@giatui.com', 'phone' => '0900000005', 'role' => 'staff'],
+        ['username' => 'nhanvien3', 'email' => 'staff2@giatui.com', 'phone' => '0900000006', 'role' => 'staff'],
+        ['username' => 'nhanvien4', 'email' => 'staff3@giatui.com', 'phone' => '0900000007', 'role' => 'staff'],
     ];
 
     public function run(): void
     {
         foreach (self::STAFF_ACCOUNTS as $account) {
-            $this->createUser($account);
+            $staff = NhanVien::where('Email', $account['email'])->first();
+
+            if (! $staff) {
+                $this->command?->warn("Chưa có nhân viên cho {$account['email']}, bỏ qua tài khoản.");
+
+                continue;
+            }
+
+            $this->createAccount([
+                'TenDangNhap' => $account['username'],
+                'Email' => $account['email'],
+                'SoDienThoai' => $account['phone'],
+                'NhanVienID' => $staff->NhanVienID,
+            ], $account['role']);
         }
 
-        // Nhân viên còn lại, giữ lại để test có đủ dữ liệu.
-        $staffNames = [
-            ['username' => 'nhanvien2', 'email' => 'staff1@giatui.com', 'phone' => '0900000005'],
-            ['username' => 'nhanvien3', 'email' => 'staff2@giatui.com', 'phone' => '0900000006'],
-            ['username' => 'nhanvien4', 'email' => 'staff3@giatui.com', 'phone' => '0900000007'],
-        ];
-
-        foreach ($staffNames as $staff) {
-            $this->createUser($staff + ['role' => 'staff']);
-        }
-
-        $customerNames = [
-            'Nguyễn Văn A', 'Trần Thị B', 'Phạm Thị C', 'Lê Văn D', 'Hoàng Thị E',
-            'Đặng Minh F', 'Bùi Thu G', 'Vũ Văn H', 'Trần Lee I', 'Lương Văn J',
-        ];
-
-        $emails = [
-            'customer1@email.com', 'customer2@email.com', 'customer3@email.com',
-            'customer4@email.com', 'customer5@email.com', 'customer6@email.com',
-            'customer7@email.com', 'customer8@email.com', 'customer9@email.com',
-            'customer10@email.com',
-        ];
-
-        $phones = [
-            '0901234567', '0912345678', '0923456789', '0934567890', '0945678901',
-            '0956789012', '0967890123', '0978901234', '0989012345', '0990123456',
-        ];
-
-        foreach ($customerNames as $index => $name) {
-            $this->createUser([
-                'username' => $name,
-                'email' => $emails[$index],
-                'phone' => $phones[$index],
-                'role' => 'customer',
-            ]);
+        // Khách hàng đã có trong CustomerSeeder được nối thẳng vào tài khoản.
+        foreach (KhachHang::whereNotNull('Email')->get() as $customer) {
+            $this->createAccount([
+                'TenDangNhap' => $this->usernameFromEmail($customer->Email),
+                'Email' => $customer->Email,
+                'SoDienThoai' => $customer->SoDienThoai,
+                'KhachHangID' => $customer->KhachHangID,
+            ], 'customer');
         }
     }
 
@@ -93,32 +86,20 @@ class UserSeeder extends Seeder
      *
      * Dùng `updateOrCreate` theo `Email` để chạy lại seeder không vi phạm ràng
      * buộc duy nhất và không mất vai trò đã gán.
-     *
-     * @param  array{username: string, email: string, phone: string, role: string}  $account
      */
-    private function createUser(array $account): void
+    private function createAccount(array $attributes, string $roleSlug): void
     {
-        $user = User::updateOrCreate(
-            ['Email' => $account['email']],
-            [
-                'TenDangNhap' => $account['username'],
+        $account = TaiKhoan::updateOrCreate(
+            ['Email' => $attributes['Email']],
+            $attributes + [
                 'MatKhau' => Hash::make(self::PASSWORD),
-                'SoDienThoai' => $account['phone'],
                 'TrangThai' => 'Hoạt động',
                 'NgayTao' => now(),
             ],
         );
 
-        $this->assignRole($user, $account['role']);
-    }
-
-    /**
-     * Ghi vai trò vào bảng nối `TaiKhoan_VaiTro`.
-     */
-    private function assignRole(User $user, string $slug): void
-    {
         $role = DB::table('VaiTro')
-            ->where('TenVaiTro', self::ROLE_LABELS[$slug] ?? $slug)
+            ->where('TenVaiTro', self::ROLE_NAMES[$roleSlug] ?? $roleSlug)
             ->first();
 
         if (! $role) {
@@ -126,7 +107,7 @@ class UserSeeder extends Seeder
         }
 
         $exists = DB::table('TaiKhoan_VaiTro')
-            ->where('TaiKhoanID', $user->getKey())
+            ->where('TaiKhoanID', $account->getKey())
             ->where('VaiTroID', $role->VaiTroID)
             ->exists();
 
@@ -135,8 +116,16 @@ class UserSeeder extends Seeder
         }
 
         DB::table('TaiKhoan_VaiTro')->insert([
-            'TaiKhoanID' => $user->getKey(),
+            'TaiKhoanID' => $account->getKey(),
             'VaiTroID' => $role->VaiTroID,
         ]);
+    }
+
+    /**
+     * `customer1@email.com` => `customer1`.
+     */
+    private function usernameFromEmail(string $email): string
+    {
+        return Str::before($email, '@');
     }
 }

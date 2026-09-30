@@ -20,6 +20,10 @@
     @csrf
     @method('PUT')
 
+    @foreach($roles as $role)
+        <input type="hidden" name="role_slugs[]" value="{{ $role->slug }}">
+    @endforeach
+
     <div class="card">
         <div class="card-body p-0">
             <div class="table-responsive">
@@ -27,7 +31,7 @@
                     <thead>
                         <tr>
                             <th class="rbac-matrix__module-col">
-                                Quyền hạn
+                                Quyền trên cơ sở dữ liệu
                             </th>
                             @foreach($roles as $role)
                             <th class="text-center rbac-matrix__role-col">
@@ -38,49 +42,57 @@
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach($groups as $group)
-                            <tr class="rbac-matrix__group-row">
-                                <th colspan="{{ $roles->count() + 1 }}" class="text-uppercase small fw-bold text-secondary">
-                                    <i class="bi bi-folder2-open me-1"></i>{{ $group }}
-                                </th>
-                            </tr>
+                        @foreach($permissions as $permission)
+                            @php
+                                $ownerOnlyPermission = in_array($permission->MaQuyen, $ownerOnly, true);
+                                $permissionActive = $permission->TrangThai === 'Hoạt động';
+                            @endphp
+                            <tr>
+                                <td class="rbac-matrix__label">
+                                    <div class="fw-semibold">{{ $permission->TenQuyen }}</div>
+                                    <div class="small text-muted"><code>{{ $permission->MaQuyen }}</code></div>
+                                    @if($permission->MoTa)
+                                        <div class="small text-muted">{{ $permission->MoTa }}</div>
+                                    @endif
+                                    @if($ownerOnlyPermission)
+                                        <span class="badge bg-warning-subtle text-warning border border-warning">
+                                            Chỉ Chủ cửa hàng
+                                        </span>
+                                    @endif
+                                    @unless($permissionActive)
+                                        <span class="badge bg-secondary-subtle text-secondary border border-secondary">
+                                            Ngừng hoạt động
+                                        </span>
+                                    @endunless
+                                </td>
 
-                            @foreach($matrix[$group] ?? [] as $code => $meta)
-                                <tr>
-                                    <td class="rbac-matrix__label">
-                                        <div class="fw-semibold">{{ $meta['name'] }}</div>
-                                        <div class="small text-muted"><code>{{ $code }}</code></div>
-                                        @if($meta['owner_only'])
-                                            <span class="badge bg-warning-subtle text-warning border border-warning">
-                                                Chỉ Chủ cửa hàng
-                                            </span>
+                                @foreach($roles as $role)
+                                    @php
+                                        $checked = $role->quyens->contains(
+                                            fn ($grantedPermission) => (int) $grantedPermission->QuyenID === (int) $permission->QuyenID
+                                        );
+                                    @endphp
+                                    <td class="text-center">
+                                        @if($role->isOwner())
+                                            <input type="checkbox" class="form-check-input" checked disabled
+                                                   title="Chủ cửa hàng luôn có toàn bộ quyền">
+                                        @elseif($ownerOnlyPermission)
+                                            <input type="checkbox" class="form-check-input" disabled
+                                                   title="Chỉ Chủ cửa hàng được cấp quyền này">
+                                            <i class="bi bi-lock-fill small text-muted d-block mt-1"></i>
+                                        @elseif(! $permissionActive)
+                                            <input type="checkbox" class="form-check-input" disabled
+                                                   @checked($checked)
+                                                   title="Quyền đang ngừng hoạt động; trạng thái hiện tại được giữ nguyên">
+                                        @else
+                                            <input type="checkbox" class="form-check-input js-rbac-check"
+                                                   name="quyen_ids[{{ $role->slug }}][]"
+                                                   value="{{ $permission->QuyenID }}"
+                                                   @checked($checked)>
                                         @endif
                                     </td>
-
-                                    @foreach($roles as $role)
-                                        @php
-                                            $checked = in_array($role->slug, $meta['roles'], true);
-                                            $locked = $meta['owner_only'] && ! $role->isOwner();
-                                            $isOwnerRole = $role->isOwner();
-                                        @endphp
-                                        <td class="text-center">
-                                            @if($locked)
-                                                <input type="checkbox" class="form-check-input" disabled
-                                                       title="Chỉ Chủ cửa hàng được cấp quyền này">
-                                                <i class="bi bi-lock-fill small text-muted d-block mt-1"></i>
-                                            @elseif($isOwnerRole)
-                                                <input type="checkbox" class="form-check-input" checked disabled
-                                                       title="Chủ cửa hàng luôn có toàn bộ quyền">
-                                            @else
-                                                <input type="checkbox" class="form-check-input js-rbac-check"
-                                                       name="permissions[{{ $role->slug }}][]"
-                                                       value="{{ $code }}"
-                                                       @checked($checked)>
-                                            @endif
-                                        </td>
-                                    @endforeach
-                                </tr>
-                            @endforeach
+                                @endforeach
+                            </tr>
                         @endforeach
                     </tbody>
                 </table>
