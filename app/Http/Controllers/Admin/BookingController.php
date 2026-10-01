@@ -4,12 +4,15 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\LuuBookingRequest;
+use App\Models\DichVu;
+use App\Models\DonViTinh;
 use App\Models\KhachHang;
+use App\Models\LoaiDoGiat;
 use App\Models\NhanVien;
-use App\Models\TaiKhoan;
 use App\Services\BookingService;
 use App\Support\FriendlyError;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 
 class BookingController extends Controller
 {
@@ -58,8 +61,20 @@ class BookingController extends Controller
 
         $customers = KhachHang::orderBy('HoTen')->get();
         $employees = NhanVien::where('TrangThai', 'Hoạt động')->orderBy('HoTen')->get();
+        $services = DichVu::query()
+            ->where(fn ($query) => $query->where('TrangThai', 'Hoạt động')->orWhere('DichVuID', $booking->DichVuID))
+            ->orderBy('TenDichVu')
+            ->get();
+        $garments = LoaiDoGiat::query()
+            ->where(fn ($query) => $query->where('TrangThai', 'Hoạt động')->orWhere('LoaiDoGiatID', $booking->LoaiDoGiatID))
+            ->orderBy('TenLoaiDoGiat')
+            ->get();
+        $units = DonViTinh::query()
+            ->where(fn ($query) => $query->where('TrangThai', 'Hoạt động')->orWhere('DonViTinhID', $booking->DonViTinhID))
+            ->orderBy('TenDonViTinh')
+            ->get();
 
-        return view('admin.bookings.edit', compact('booking', 'customers', 'employees'));
+        return view('admin.bookings.edit', compact('booking', 'customers', 'employees', 'services', 'garments', 'units'));
     }
 
     public function update(LuuBookingRequest $request, int $id)
@@ -85,6 +100,8 @@ class BookingController extends Controller
             }
 
             return redirect()->route('bookings.index')->with('success', 'Đặt lịch đã được cập nhật.');
+        } catch (ValidationException $e) {
+            return redirect()->route('bookings.edit', $booking)->withErrors($e->errors())->withInput();
         } catch (\Exception $e) {
             return redirect()->route('bookings.edit', $booking)->with('error', FriendlyError::message($e))->withInput();
         }
@@ -100,12 +117,14 @@ class BookingController extends Controller
 
         try {
             $deleted = $this->bookingService->delete($booking);
+            if (! $deleted) {
+                return redirect()->route('bookings.index')->with(
+                    'error',
+                    'Không thể xóa đặt lịch vì đã có đơn hàng liên kết. Hãy xử lý đơn hàng trước.',
+                );
+            }
 
-            $message = $deleted && $booking->TrangThai === 'DaHuy'
-                ? 'Đặt lịch đã có đơn hàng liên quan nên được chuyển sang trạng thái đã hủy.'
-                : 'Đã xóa đặt lịch.';
-
-            return redirect()->route('bookings.index')->with('success', $message);
+            return redirect()->route('bookings.index')->with('success', 'Đã xóa đặt lịch.');
         } catch (\Exception $e) {
             return redirect()->route('bookings.index')->with('error', FriendlyError::message($e));
         }
@@ -135,6 +154,8 @@ class BookingController extends Controller
             }
 
             return redirect()->route('bookings.index')->with('error', 'Chỉ đặt lịch đã xác nhận mới chuyển thành đơn hàng được.');
+        } catch (ValidationException $e) {
+            return redirect()->route('bookings.edit', $booking)->withErrors($e->errors())->withInput();
         } catch (\Exception $e) {
             return redirect()->route('bookings.index')->with('error', FriendlyError::message($e));
         }

@@ -31,6 +31,8 @@ class BookingObserver
                         'booking_id' => $booking->BookingID,
                         'error' => $e->getMessage(),
                     ]);
+
+                    throw $e;
                 }
             }
         }

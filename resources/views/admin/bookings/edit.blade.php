@@ -12,14 +12,51 @@
             <div class="row g-4">
                 <div class="col-md-6"><label class="form-label">Khách hàng <span class="text-danger ms-1">*</span></label><select class="form-select @error('customer_id') is-invalid @enderror" name="customer_id" required><option value="">-- Chọn khách hàng --</option>@foreach($customers as $customer)<option value="{{ $customer->KhachHangID }}" @selected(old('customer_id', $booking->KhachHangID) == $customer->KhachHangID)>{{ $customer->HoTen }}</option>@endforeach</select>@error('customer_id')<div class="invalid-feedback">{{ $message }}</div>@enderror</div>
                 <div class="col-md-6"><label class="form-label">Nhân viên phụ trách</label><select class="form-select @error('staff_id') is-invalid @enderror" name="staff_id"><option value="">-- Chưa phân công --</option>@foreach($employees as $employee)<option value="{{ $employee->NhanVienID }}" @selected(old('staff_id', $booking->NhanVienID ?? '') == $employee->NhanVienID)>{{ $employee->HoTen }}</option>@endforeach</select>@error('staff_id')<div class="invalid-feedback">{{ $message }}</div>@enderror</div>
-                <div class="col-md-6"><label class="form-label">Hình thức <span class="text-danger ms-1">*</span></label><select class="form-select @error('method') is-invalid @enderror" name="method" required>@foreach(\App\Enums\BookingMethod::options() as $value => $label)<option value="{{ $value }}" @selected(old('method', $booking->HinhThucNhanDo) === $value)>{{ $label }}</option>@endforeach</select>@error('method')<div class="invalid-feedback">{{ $message }}</div>@enderror</div>
+                <div class="col-md-6"><label class="form-label">Hình thức <span class="text-danger ms-1">*</span></label><select class="form-select @error('method') is-invalid @enderror" name="method" id="booking-method" required>@foreach(\App\Enums\BookingMethod::options() as $value => $label)<option value="{{ $value }}" @selected(old('method', $booking->HinhThucNhanDo) === $value)>{{ $label }}</option>@endforeach</select>@error('method')<div class="invalid-feedback">{{ $message }}</div>@enderror</div>
+                <div class="col-md-6"><label class="form-label">Địa chỉ nhận đồ</label><input type="text" class="form-control @error('address') is-invalid @enderror" name="address" value="{{ old('address', $booking->DiaChiNhan) }}" maxlength="255" @required(old('method', $booking->HinhThucNhanDo) === \App\Enums\BookingMethod::GiaoDo->value)>@error('address')<div class="invalid-feedback">{{ $message }}</div>@enderror</div>
                 <div class="col-md-6"><label class="form-label">Ngày hẹn <span class="text-danger ms-1">*</span></label><input type="date" class="form-control @error('scheduled_date') is-invalid @enderror" name="scheduled_date" value="{{ old('scheduled_date', $booking->NgayHen?->format('Y-m-d')) }}" required>@error('scheduled_date')<div class="invalid-feedback">{{ $message }}</div>@enderror</div>
                 <div class="col-md-6"><label class="form-label">Giờ hẹn <span class="text-danger ms-1">*</span></label><input type="time" class="form-control @error('scheduled_time') is-invalid @enderror" name="scheduled_time" value="{{ old('scheduled_time', $booking->GioHen?->format('H:i')) }}" required>@error('scheduled_time')<div class="invalid-feedback">{{ $message }}</div>@enderror</div>
+                <div class="col-12"><hr class="my-1"><h6 class="mb-0">Dịch vụ dự kiến</h6><small class="text-muted">Mỗi đặt lịch lưu tối đa một dòng theo cấu trúc schema hiện tại. Đơn giá và thành tiền được tính lại từ bảng giá hiệu lực khi lưu.</small></div>
+                <div class="col-md-4"><label class="form-label">Dịch vụ</label><select class="form-select @error('service_id') is-invalid @enderror" name="service_id"><option value="">-- Chọn dịch vụ --</option>@foreach($services as $service)<option value="{{ $service->DichVuID }}" @selected((string) old('service_id', $booking->DichVuID) === (string) $service->DichVuID)>{{ $service->TenDichVu }}</option>@endforeach</select>@error('service_id')<div class="invalid-feedback">{{ $message }}</div>@enderror</div>
+                <div class="col-md-4"><label class="form-label">Loại đồ giặt</label><select class="form-select @error('garment_id') is-invalid @enderror" name="garment_id"><option value="">-- Chọn loại đồ --</option>@foreach($garments as $garment)<option value="{{ $garment->LoaiDoGiatID }}" @selected((string) old('garment_id', $booking->LoaiDoGiatID) === (string) $garment->LoaiDoGiatID)>{{ $garment->TenLoaiDoGiat }}</option>@endforeach</select>@error('garment_id')<div class="invalid-feedback">{{ $message }}</div>@enderror</div>
+                <div class="col-md-4"><label class="form-label">Đơn vị tính</label><select class="form-select @error('unit_id') is-invalid @enderror" name="unit_id" id="booking-unit"><option value="">-- Chọn đơn vị --</option>@foreach($units as $unit)<option value="{{ $unit->DonViTinhID }}" data-unit="{{ $unit->KyHieu ?: $unit->TenDonViTinh }}" @selected((string) old('unit_id', $booking->DonViTinhID) === (string) $unit->DonViTinhID)>{{ $unit->TenDonViTinh }}{{ $unit->KyHieu ? ' ('.$unit->KyHieu.')' : '' }}</option>@endforeach</select>@error('unit_id')<div class="invalid-feedback">{{ $message }}</div>@enderror</div>
+                <div class="col-md-6"><label class="form-label">Số lượng</label><input type="number" step="0.01" min="0.01" class="form-control @error('quantity') is-invalid @enderror" name="quantity" id="booking-quantity" value="{{ old('quantity', $booking->SoLuong) }}">@error('quantity')<div class="invalid-feedback">{{ $message }}</div>@enderror</div>
+                <div class="col-md-6"><label class="form-label">Khối lượng (kg)</label><input type="number" step="0.01" min="0.01" class="form-control @error('weight') is-invalid @enderror" name="weight" id="booking-weight" value="{{ old('weight', $booking->KhoiLuong) }}">@error('weight')<div class="invalid-feedback">{{ $message }}</div>@enderror</div>
                 <div class="col-md-6"><label class="form-label">Trạng thái</label><x-admin.status-select name="status" :options="\App\Enums\BookingStatus::options()" :selected="$booking->TrangThai" class="form-select @error('status') is-invalid @enderror" />@error('status')<div class="invalid-feedback">{{ $message }}</div>@enderror</div>
-                <div class="col-12"><label class="form-label">Ghi chú</label><textarea class="form-control" name="notes" rows="3">{{ old('notes', $booking->GhiChu) }}</textarea></div>
+                <div class="col-12"><label class="form-label">Ghi chú</label><textarea class="form-control @error('notes') is-invalid @enderror" name="notes" rows="3" maxlength="500">{{ old('notes', $booking->GhiChu) }}</textarea>@error('notes')<div class="invalid-feedback">{{ $message }}</div>@enderror</div>
             </div>
             <div class="d-flex justify-content-end gap-2 mt-4"><button type="reset" class="btn btn-outline-secondary">Làm mới</button><button type="submit" class="btn btn-primary">Cập nhật</button></div>
         </form>
     </div>
 </div>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const method = document.getElementById('booking-method');
+        const address = document.querySelector('[name="address"]');
+        const unit = document.getElementById('booking-unit');
+        const quantity = document.getElementById('booking-quantity');
+        const weight = document.getElementById('booking-weight');
+
+        function updateAddressRequirement() {
+            address.required = method.value === @json(\App\Enums\BookingMethod::GiaoDo->value);
+        }
+
+        function updateQuantityFields() {
+            const selectedUnit = unit.options[unit.selectedIndex];
+            const isWeight = /^(kg|kgs|kilogram)$/.test(selectedUnit?.dataset.unit?.trim().toLowerCase() ?? '');
+            quantity.readOnly = isWeight;
+            weight.readOnly = !isWeight;
+            if (isWeight) {
+                quantity.value = '';
+            } else {
+                weight.value = '';
+            }
+        }
+
+        method.addEventListener('change', updateAddressRequirement);
+        unit.addEventListener('change', updateQuantityFields);
+        updateAddressRequirement();
+        updateQuantityFields();
+    });
+</script>
 @endsection

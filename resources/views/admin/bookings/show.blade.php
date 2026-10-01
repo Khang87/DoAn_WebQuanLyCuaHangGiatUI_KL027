@@ -37,6 +37,25 @@
                 <x-admin.detail.info-item label="Nhân viên phụ trách" :value="$booking->nhanVien?->HoTen ?? 'Chưa phân công'" />
                 <x-admin.detail.info-item label="Ngày hẹn" :value="$booking->NgayHen?->format('d/m/Y')" />
                 <x-admin.detail.info-item label="Giờ hẹn" :value="$booking->GioHen?->format('H:i')" />
+                <x-admin.detail.info-item label="Địa chỉ nhận đồ" :value="$booking->DiaChiNhan ?: '—'" />
+                <x-admin.detail.info-item label="Dịch vụ dự kiến" :value="$booking->dichVu?->TenDichVu ?: 'Chưa chọn'" />
+                <x-admin.detail.info-item label="Loại đồ giặt" :value="$booking->loaiDoGiat?->TenLoaiDoGiat ?: 'Chưa chọn'" />
+                <x-admin.detail.info-item label="Đơn vị tính" :value="$booking->donViTinh?->TenDonViTinh ?: '—'" />
+                <x-admin.detail.info-item label="Số lượng / khối lượng">
+                    @if($booking->SoLuong !== null)
+                        {{ number_format((float) $booking->SoLuong, 2, ',', '.') }} {{ $booking->donViTinh?->KyHieu ?: $booking->donViTinh?->TenDonViTinh }}
+                    @elseif($booking->KhoiLuong !== null)
+                        {{ number_format((float) $booking->KhoiLuong, 2, ',', '.') }} {{ $booking->donViTinh?->KyHieu ?: $booking->donViTinh?->TenDonViTinh }}
+                    @else
+                        —
+                    @endif
+                </x-admin.detail.info-item>
+                <x-admin.detail.info-item label="Đơn giá dự kiến">
+                    {{ $booking->DonGia !== null ? number_format((float) $booking->DonGia, 0, ',', '.').' VNĐ' : '—' }}
+                </x-admin.detail.info-item>
+                <x-admin.detail.info-item label="Thành tiền dự kiến">
+                    {{ $booking->ThanhTien !== null ? number_format((float) $booking->ThanhTien, 0, ',', '.').' VNĐ' : '—' }}
+                </x-admin.detail.info-item>
             </x-admin.detail.info-grid>
 
             @if($booking->GhiChu)
