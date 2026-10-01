@@ -12,7 +12,7 @@ use Illuminate\Database\Seeder;
  *   -> đặt lịch, thông báo, đánh giá.
  *
  * Các seeder không được gọi ở đây (CategorySeeder, ServiceCategorySeeder,
- * LaundryCategorySeeder, CouponSeeder) vẫn dùng các bảng legacy chưa có trong
+ * CouponSeeder) vẫn dùng các bảng legacy chưa có trong
  * schema hiện tại nên không được nạp vào Supabase.
  * GarmentSeeder chỉ còn ghi vào bảng schema-backed `LoaiDoGiat`.
  */

@@ -29,6 +29,7 @@
             <option value="name_asc" @selected(request('sort') === 'name_asc')>Tên A → Z</option>
             <option value="name_desc" @selected(request('sort') === 'name_desc')>Tên Z → A</option>
             <option value="points_desc" @selected(request('sort') === 'points_desc')>Điểm tích lũy cao → thấp</option>
+            <option value="points_asc" @selected(request('sort') === 'points_asc')>Điểm tích lũy thấp → cao</option>
         </select>
     </div>
 </form>

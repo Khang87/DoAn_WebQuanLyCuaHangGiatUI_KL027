@@ -51,8 +51,11 @@
                     @endif
                 </x-admin.detail.info-item>
                 <x-admin.detail.info-item label="Số điện thoại" :value="$order->customer?->phone" />
-                <x-admin.detail.info-item label="Nhân viên phụ trách" :value="$order->employee?->name" />
-                <x-admin.detail.info-item label="Dịch vụ" :value="$order->service?->name" />
+                <x-admin.detail.info-item label="Nhân viên phụ trách" :value="$order->employee?->HoTen ?: '—'" />
+                <x-admin.detail.info-item
+                    label="Dịch vụ"
+                    :value="$order->chiTietDonHangs->map(fn ($item) => $item->dichVu?->TenDichVu)->filter()->unique()->join(', ') ?: '—'"
+                />
                 <x-admin.detail.info-item label="Nguồn đơn">
                     @if($order->booking)
                         <a href="{{ route('bookings.show', $order->booking) }}" class="text-decoration-none">
@@ -63,7 +66,10 @@
                     @endif
                 </x-admin.detail.info-item>
                 <x-admin.detail.info-item label="Ngày tạo" :value="$order->created_at?->format('d/m/Y H:i')" />
-                <x-admin.detail.info-item label="Thanh toán" :value="$order->payment_status_label" />
+                <x-admin.detail.info-item
+                    label="Tình trạng hóa đơn"
+                    :value="$order->hoaDons->first()?->TrangThai ?: 'Chưa lập hóa đơn'"
+                />
             </x-admin.detail.info-grid>
 
             @if($order->notes)
@@ -90,7 +96,7 @@
                                 <th>Loại đồ giặt</th>
                                 <th class="text-end">Khối lượng (kg)</th>
                                 <th class="text-end">Đơn giá</th>
-                                <th class="text-end">Số lượng</th>
+                                <th class="text-end">Số lượng / ĐVT</th>
                                 <th class="text-end">Thành tiền</th>
                             </tr>
                         </thead>
@@ -101,7 +107,14 @@
                                     <td>{{ $item->loaiDoGiat?->TenLoaiDoGiat ?: '—' }}</td>
                                     <td class="text-end">{{ $item->KhoiLuong !== null ? format_weight($item->KhoiLuong) : '—' }}</td>
                                     <td class="text-end"><x-admin.detail.money :value="$item->DonGia" /></td>
-                                    <td class="text-end">{{ number_format((float) $item->SoLuong, 2) }}</td>
+                                    <td class="text-end">
+                                        @if($item->SoLuong !== null)
+                                            {{ number_format((float) $item->SoLuong, 2) }}
+                                            {{ $item->donViTinh?->KyHieu ?: $item->donViTinh?->TenDonViTinh }}
+                                        @else
+                                            —
+                                        @endif
+                                    </td>
                                     <td class="text-end fw-semibold"><x-admin.detail.money :value="$item->ThanhTien" /></td>
                                 </tr>
                             @endforeach
@@ -162,33 +175,38 @@
         </x-admin.detail.panel>
 
         <x-admin.detail.panel title="Thông tin giao nhận" icon="bi-truck" :iconClass="'bg-warning-subtle text-warning-emphasis'">
-            @if($order->delivery)
-                <x-admin.detail.info-grid :columns="1">
-                    <x-admin.detail.info-item label="Hình thức">
-                        <span class="badge bg-primary-subtle text-primary-emphasis border border-primary px-3 py-2 rounded-pill">
-                            <i class="fas {{ in_array($order->delivery->method, ['home_pickup', 'pickup', 'nhan_do']) ? 'fa-home' : 'fa-truck' }} me-1"></i>
-                            {{ $order->delivery->type_label }}
-                        </span>
-                    </x-admin.detail.info-item>
-                    <x-admin.detail.info-item label="Trạng thái">
-                        <x-admin.status-badge :status="$order->delivery->status" :enum="\App\Enums\DeliveryStatus::class" :pill="false" />
-                    </x-admin.detail.info-item>
-                    <x-admin.detail.info-item label="Ngày giao dự kiến" :value="$order->delivery->pickup_date?->format('d/m/Y')" />
-                    <x-admin.detail.info-item label="Địa chỉ giao hàng" :value="$order->delivery->address" />
-                </x-admin.detail.info-grid>
+            @if($order->giaoNhans->isNotEmpty())
+                @foreach($order->giaoNhans as $delivery)
+                    <div class="{{ $loop->first ? '' : 'border-top pt-3 mt-3' }}">
+                        <x-admin.detail.info-grid :columns="1">
+                            <x-admin.detail.info-item label="Loại giao nhận">
+                                <span class="badge bg-primary-subtle text-primary-emphasis border border-primary px-3 py-2 rounded-pill">
+                                    <i class="fas {{ $delivery->LoaiGiaoNhan === 'NHAN_DO' ? 'fa-box-open' : 'fa-truck' }} me-1"></i>
+                                    {{ $delivery->LoaiGiaoNhan === 'NHAN_DO' ? 'Nhận đồ' : 'Giao đồ' }}
+                                </span>
+                            </x-admin.detail.info-item>
+                            <x-admin.detail.info-item label="Hình thức" :value="$delivery->HinhThuc" />
+                            <x-admin.detail.info-item label="Trạng thái">
+                                <x-admin.status-badge :status="$delivery->TrangThai" :enum="\App\Enums\DeliveryStatus::class" :pill="false" />
+                            </x-admin.detail.info-item>
+                            <x-admin.detail.info-item label="Thời gian dự kiến" :value="$delivery->ThoiGianDuKien?->format('d/m/Y H:i')" />
+                            <x-admin.detail.info-item label="Địa chỉ" :value="$delivery->DiaChi ?: '—'" />
+                        </x-admin.detail.info-grid>
 
-                @if($order->delivery->notes)
-                    <div class="mt-3">
-                        <div class="detail-field__label mb-2">Ghi chú giao nhận</div>
-                        <div class="detail-text">{{ $order->delivery->notes }}</div>
+                        @if($delivery->GhiChu)
+                            <div class="mt-3">
+                                <div class="detail-field__label mb-2">Ghi chú giao nhận</div>
+                                <div class="detail-text">{{ $delivery->GhiChu }}</div>
+                            </div>
+                        @endif
+
+                        <div class="mt-3">
+                            <a href="{{ route('deliveries.show', $delivery->GiaoNhanID) }}" class="btn btn-outline-secondary btn-sm w-100">
+                                <i class="bi bi-box-arrow-up-right me-1"></i>Chi tiết phiếu giao nhận
+                            </a>
+                        </div>
                     </div>
-                @endif
-
-                <div class="mt-3">
-                    <a href="{{ route('deliveries.show', $order->delivery->getKey()) }}" class="btn btn-outline-secondary btn-sm w-100">
-                        <i class="bi bi-box-arrow-up-right me-1"></i>Chi tiết phiếu giao nhận
-                    </a>
-                </div>
+                @endforeach
             @else
                 <x-admin.detail.empty message="Đơn hàng chưa có lịch giao nhận" icon="bi-truck" />
             @endif
@@ -212,11 +230,11 @@
                     @endcan
                 @endif
 
-                @if($order->invoice)
-                    <a href="{{ route('invoices.show', $order->invoice->getKey()) }}" class="btn btn-outline-info w-100 py-2">
+                @if($order->hoaDons->isNotEmpty())
+                    <a href="{{ route('invoices.show', $order->hoaDons->first()->HoaDonID) }}" class="btn btn-outline-info w-100 py-2">
                         <i class="fas fa-file-invoice me-1"></i> Xem hóa đơn
                     </a>
-                @elseif(in_array($order->status, ['completed', 'ready_for_pickup', 'processing']))
+                @elseif(in_array($order->TrangThai, ['Hoàn thành giặt', 'Đang giao', 'Đã giao'], true))
                     @can('invoices.create')
                         <a href="{{ route('invoices.create', ['order_id' => $order->getKey()]) }}" class="btn btn-outline-info w-100 py-2">
                             <i class="fas fa-file-invoice me-1"></i> Tạo hóa đơn

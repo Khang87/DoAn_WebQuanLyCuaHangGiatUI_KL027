@@ -3,7 +3,9 @@
 namespace App\Http\Requests\Admin;
 
 use App\Enums\OrderStatus;
+use App\Models\DonHang;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class LuuDonHangRequest extends FormRequest
 {
@@ -14,13 +16,13 @@ class LuuDonHangRequest extends FormRequest
 
     public function rules(): array
     {
-        $id = $this->route('order')?->DonHangID
-            ?? $this->route('order')
-            ?? $this->route('id')
-            ?? null;
+        $order = $this->route('order');
+        $id = $order instanceof DonHang
+            ? $order->getKey()
+            : ($order ?? $this->route('id'));
 
         return [
-            'MaDonHang' => ['nullable', 'string', 'max:30', 'unique:DonHang,MaDonHang,'.($id ?? '')],
+            'MaDonHang' => ['nullable', 'string', 'max:30', Rule::unique('DonHang', 'MaDonHang')->ignore($id, 'DonHangID')],
             'KhachHangID' => ['required', 'integer', 'exists:KhachHang,KhachHangID'],
             'NhanVienID' => ['nullable', 'integer', 'exists:NhanVien,NhanVienID'],
             'BookingID' => ['nullable', 'integer', 'exists:Booking,BookingID'],

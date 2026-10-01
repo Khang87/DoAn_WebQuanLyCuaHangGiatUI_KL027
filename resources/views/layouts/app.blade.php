@@ -94,18 +94,10 @@
                         </a>
                     </li>
                     @endcan
-                    @can('laundry_categories.view')
+                    @can('garment_categories.view')
                     <li class="sidebar-menu-item">
-                        <a href="{{ route('laundry-categories.index') }}" class="sidebar-menu-link {{ request()->routeIs('laundry-categories.*') ? 'active' : '' }}">
+                        <a href="{{ route('loaidogiat.index') }}" class="sidebar-menu-link {{ request()->routeIs('loaidogiat.*') ? 'active' : '' }}">
                             <i class="bi bi-tags"></i>
-                            <span>Danh mục loại đồ</span>
-                        </a>
-                    </li>
-                    @endcan
-                    @can('garments.view')
-                    <li class="sidebar-menu-item">
-                        <a href="{{ route('garments.index') }}" class="sidebar-menu-link {{ request()->routeIs('garments.*') ? 'active' : '' }}">
-                            <i class="fa-solid fa-shirt"></i>
                             <span>Loại đồ giặt</span>
                         </a>
                     </li>
@@ -168,7 +160,7 @@
                 </ul>
             </div>
 
-@if(auth()->user()?->isManager() || auth()->user()?->can('promotions.view'))
+@if(auth()->user()?->can('promotions.view') || auth()->user()?->can('reports.view'))
             <!-- Khuyen mai & Bao cao (Chi quan ly) -->
             <div class="sidebar-menu-section">
                 <div class="sidebar-menu-title">Khuyến mãi & Báo cáo</div>
@@ -227,7 +219,7 @@
 
         <!-- Sidebar Profile -->
         <div class="sidebar-profile">
-            <img src="{{ $authAvatarUrl }}" alt="{{ $authName }}" class="sidebar-profile-img"
+            <img src="{{ $authAvatarUrl }}" alt="{{ $authName }}" class="sidebar-profile-img" data-user-avatar
                 onerror="this.src='{{ asset('assets/images/user_1.jpg') }}'">
             <div class="sidebar-profile-info">
                 <div class="sidebar-profile-name">{{ $authName }}</div>
@@ -340,7 +332,7 @@
                 <!-- User Menu -->
                 <div class="dropdown">
                     <button class="navbar-action-btn dropdown-toggle user-profile-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" title="{{ $authName }}">
-                        <img src="{{ $authAvatarUrl }}" alt="{{ $authName }}" class="rounded-circle border avatar-cover"
+                        <img src="{{ $authAvatarUrl }}" alt="{{ $authName }}" class="rounded-circle border avatar-cover" data-user-avatar
                             onerror="this.src='{{ asset('assets/images/user_1.jpg') }}'">
                     </button>
                     <ul class="dropdown-menu dropdown-menu-end">

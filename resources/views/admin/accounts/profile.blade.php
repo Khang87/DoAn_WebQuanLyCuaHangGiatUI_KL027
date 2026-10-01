@@ -25,15 +25,10 @@
             </div>
         @endif
 
-@php
-    $avatarUrl = (!empty($account->avatar) && file_exists(public_path($account->avatar)))
-        ? asset($account->avatar)
-        : asset('assets/images/user_' . (($account->id % 8) + 1) . '.jpg');
-@endphp
         <div class="d-flex justify-content-center mb-4">
             <div class="position-relative d-inline-block">
                 <label for="avatarInput" class="d-block" style="cursor: pointer;">
-                    <img id="avatarPreview" src="{{ $avatarUrl }}" alt="Avatar" class="rounded-circle shadow-sm avatar-cover" style="width: 180px; height: 180px; border: 4px solid #e9ecef;">
+                    <img id="avatarPreview" src="{{ $account->avatar_url }}" alt="Avatar" class="rounded-circle shadow-sm avatar-cover" data-user-avatar style="width: 180px; height: 180px; border: 4px solid #e9ecef;">
                 </label>
                 <span class="position-absolute bottom-0 end-0 translate-middle badge rounded-circle bg-primary border-2 border-white" style="width: 34px; height: 34px; display: flex; align-items: center; justify-content: center;">
                     <i class="bi bi-camera" style="font-size: 14px;"></i>
@@ -61,8 +56,8 @@
                     @enderror
                 </div>
                 <div class="col-md-6">
-                    <label class="form-label">Số điện thoại</label>
-                    <input type="text" class="form-control @error('phone') is-invalid @enderror" name="phone" value="{{ old('phone', $account->phone) }}" placeholder="VD: 0909123456">
+                    <label class="form-label">Số điện thoại @if($account->NhanVienID)<span class="text-danger ms-1">*</span>@endif</label>
+                    <input type="text" class="form-control @error('phone') is-invalid @enderror" name="phone" value="{{ old('phone', $account->phone ?: ($account->nhanVien?->SoDienThoai ?? $account->khachHang?->SoDienThoai)) }}" placeholder="VD: 0909123456">
                     @error('phone')
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
@@ -173,7 +168,7 @@
             .then(data => {
                 if (data.success) {
                     // Sync header (navbar) and sidebar avatar images
-                    document.querySelectorAll('.sidebar-profile-img, .avatar-cover').forEach(function(img) {
+                    document.querySelectorAll('[data-user-avatar]').forEach(function(img) {
                         img.src = data.avatar_url;
                     });
                 } else {

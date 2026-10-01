@@ -11,11 +11,11 @@ class CouponService
     {
         $query = KhuyenMai::query();
 
-        if (!empty($filters['promotion_id'])) {
+        if (! empty($filters['promotion_id'])) {
             $query->where('KhuyenMaiID', $filters['promotion_id']);
         }
 
-        if (!empty($filters['status'])) {
+        if (! empty($filters['status'])) {
             $query->where('TrangThai', $filters['status']);
         }
 
@@ -24,7 +24,7 @@ class CouponService
 
     public function find(int $id): ?KhuyenMai
     {
-        return KhuyenMai::withTrashed()->find($id);
+        return KhuyenMai::find($id);
     }
 
     public function findByCode(string $code): ?KhuyenMai
@@ -40,20 +40,12 @@ class CouponService
     public function update(KhuyenMai $coupon, array $data): KhuyenMai
     {
         $coupon->update($data);
+
         return $coupon->fresh();
     }
 
     public function delete(KhuyenMai $coupon): bool
     {
         return $coupon->delete();
-    }
-
-    public function restore(int $id): ?KhuyenMai
-    {
-        $coupon = KhuyenMai::onlyTrashed()->find($id);
-        if ($coupon) {
-            $coupon->restore();
-        }
-        return $coupon;
     }
 }

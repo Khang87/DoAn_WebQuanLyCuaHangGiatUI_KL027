@@ -27,13 +27,35 @@ class DonHangController extends Controller
     ) {}
 
     /**
-     * Bảng giá cho UI: mỗi cặp DichVuID + LoaiDoGiatID chỉ giữ bản giá lịch sử
-     * mới nhất, đúng thứ tự mà OrderService/BangGia::getLatestPricing() chọn.
+     * Bảng giá đang hiệu lực cho UI: mỗi cặp dịch vụ + loại đồ chỉ giữ một
+     * mức giá mới nhất, cùng tiêu chí với OrderService.
      */
     private function pricingOptions()
     {
         return BangGia::with('donViTinh')
             ->where('TrangThai', 'Hoạt động')
+            ->whereNotNull('DonGia')
+            ->whereHas('donViTinh', function ($query): void {
+                $query->where('TrangThai', 'Hoạt động')
+                    ->where(function ($unitQuery): void {
+                        $unitQuery->where(function ($labelQuery): void {
+                            $labelQuery->whereNotNull('KyHieu')
+                                ->where('KyHieu', '<>', '');
+                        })->orWhere(function ($labelQuery): void {
+                            $labelQuery->whereNotNull('TenDonViTinh')
+                                ->where('TenDonViTinh', '<>', '');
+                        });
+                    });
+            })
+            ->where(function ($query): void {
+                $query->whereNull('NgayApDung')
+                    ->orWhereDate('NgayApDung', '<=', today());
+            })
+            ->where(function ($query): void {
+                $query->whereNull('NgayKetThuc')
+                    ->orWhereDate('NgayKetThuc', '>=', today());
+            })
+            ->orderByRaw('CASE WHEN "NgayApDung" IS NULL THEN 1 ELSE 0 END')
             ->orderByDesc('NgayApDung')
             ->orderByDesc('BangGiaID')
             ->get()

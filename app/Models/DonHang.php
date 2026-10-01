@@ -8,8 +8,11 @@ use Illuminate\Database\Eloquent\Model;
 class DonHang extends Model
 {
     protected $table = 'DonHang';
+
     protected $primaryKey = 'DonHangID';
+
     public $timestamps = false;
+
     public static $snakeAttributes = false;
 
     /** Cột thời gian tiếng Việt thay cho created_at/updated_at. */
@@ -129,16 +132,6 @@ class DonHang extends Model
     public function payments()
     {
         return $this->thanhToans();
-    }
-
-    public function invoice()
-    {
-        return $this->hoaDons()->first();
-    }
-
-    public function delivery()
-    {
-        return $this->giaoNhans()->first();
     }
 
     /* ---------------------------------------------------------------------

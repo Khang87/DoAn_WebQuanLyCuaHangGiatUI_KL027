@@ -3,42 +3,29 @@
 namespace App\Services;
 
 use App\Enums\BookingStatus;
+use App\Enums\InvoiceStatus;
 use App\Enums\OrderStatus;
 use App\Models\Booking;
 use App\Models\ChiTietDonHang;
-use App\Models\DichVu;
 use App\Models\DonHang;
+use App\Models\HoaDon;
 use App\Models\ThanhToan;
 use Carbon\Carbon;
 use Carbon\CarbonPeriod;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
-use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Collection as BaseCollection;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Số liệu cho trang Báo cáo, đọc trên schema tiếng Việt của PostgreSQL.
  *
- * Quy ước ánh xạ từ schema cũ:
- *   orders            -> DonHang
- *   order_items       -> ChiTietDonHang
- *   services          -> DichVu
- *   service_categories-> LoaiDichVu
- *   payments          -> ThanhToan
- *   created_at        -> NgayTao
- *   total_amount      -> ThanhTien
- *   status            -> TrangThai (giá trị tiếng Việt, xem OrderStatus)
+ * Doanh thu lấy từ hóa đơn đã thanh toán; số lượng và phân loại đơn lấy từ
+ * DonHang. Tên bảng/cột trong truy vấn tuân thủ schema PascalCase.
  */
 class ReportsService
 {
-    /**
-     * Trạng thái được coi là đã thu tiền (nằm trong doanh thu).
-     *
-     * @var list<string>
-     */
-    private const REVENUE_STATUSES = [
-        OrderStatus::Paid->value,
-        OrderStatus::Delivered->value,
-    ];
+    private const REPORT_TIMEZONE = 'Asia/Ho_Chi_Minh';
 
     /**
      * Trạng thái đang xử lý.
@@ -61,27 +48,29 @@ class ReportsService
     private const PAID_PAYMENT_STATUS = 'Thành công';
 
     /**
-     * Trạng thái booking được tính là "đã xác nhận".
-     *
-     * Bảng `Booking.TrangThai` lưu PascalCase không dấu, khớp với
-     * `BookingStatus::Confirmed`.
-     */
-    private const CONFIRMED_BOOKING_STATUS = BookingStatus::Confirmed->value;
-
-    /**
      * Lấy khoảng thời gian lọc.
      *
-     * @return array{from: Carbon, to: Carbon}
+     * @return array{from: Carbon|null, to: Carbon|null, local_from: Carbon|null, local_to: Carbon|null, range: string}
      */
     public function getDateRange(array $filters): array
     {
-        $range = $filters['range'] ?? 'this_month';
+        $range = $filters['range'] ?? 'all_time';
         $from = $filters['date_from'] ?? null;
         $to = $filters['date_to'] ?? null;
 
-        $now = Carbon::now();
+        $now = Carbon::now(self::REPORT_TIMEZONE);
 
-        return match ($range) {
+        if ($range === 'all_time') {
+            return [
+                'from' => null,
+                'to' => null,
+                'local_from' => null,
+                'local_to' => null,
+                'range' => $range,
+            ];
+        }
+
+        $localDates = match ($range) {
             'today' => [
                 'from' => $now->copy()->startOfDay(),
                 'to' => $now->copy()->endOfDay(),
@@ -99,14 +88,23 @@ class ReportsService
                 'to' => $now->copy()->subMonth()->endOfMonth(),
             ],
             'custom' => [
-                'from' => $from ? Carbon::parse($from)->startOfDay() : $now->copy()->startOfMonth(),
-                'to' => $to ? Carbon::parse($to)->endOfDay() : $now->copy()->endOfMonth(),
+                'from' => $from ? Carbon::parse($from, self::REPORT_TIMEZONE)->startOfDay() : $now->copy()->startOfMonth(),
+                'to' => $to ? Carbon::parse($to, self::REPORT_TIMEZONE)->endOfDay() : $now->copy()->endOfMonth(),
             ],
             default => [
                 'from' => $now->copy()->startOfMonth(),
                 'to' => $now->copy()->endOfMonth(),
             ],
         };
+
+        return [
+            // Supabase timestamps are WITHOUT TIME ZONE and contain UTC wall time.
+            'from' => $localDates['from']->copy()->utc(),
+            'to' => $localDates['to']->copy()->utc(),
+            'local_from' => $localDates['from'],
+            'local_to' => $localDates['to'],
+            'range' => $range,
+        ];
     }
 
     /**
@@ -118,16 +116,23 @@ class ReportsService
         $from = $dates['from'];
         $to = $dates['to'];
 
-        $base = DonHang::whereBetween('NgayTao', [$from, $to]);
+        $base = DonHang::query();
+        $paidInvoices = HoaDon::query()->where('TrangThai', InvoiceStatus::Paid->value);
 
-        $totalRevenue = (float) (clone $base)
-            ->whereIn('TrangThai', self::REVENUE_STATUSES)
-            ->sum('ThanhTien');
+        if ($from !== null && $to !== null) {
+            $base->whereBetween('NgayTao', [$from, $to]);
+            $paidInvoices->whereBetween('NgayLap', [$from, $to]);
+        }
+
+        $totalRevenue = (float) (clone $paidInvoices)->sum('ThanhTien');
 
         $totalOrders = (clone $base)->count();
 
         $completedOrders = (clone $base)
-            ->whereIn('TrangThai', self::REVENUE_STATUSES)
+            ->whereIn('TrangThai', [
+                OrderStatus::Delivered->value,
+                OrderStatus::Paid->value,
+            ])
             ->count();
 
         $processingOrders = (clone $base)
@@ -138,9 +143,13 @@ class ReportsService
             ->where('TrangThai', OrderStatus::Cancelled->value)
             ->count();
 
-        $newBookings = Booking::whereBetween('NgayTao', [$from, $to])
-            ->where('TrangThai', self::CONFIRMED_BOOKING_STATUS)
-            ->count();
+        $bookings = Booking::query()->where('TrangThai', BookingStatus::Pending->value);
+
+        if ($from !== null && $to !== null) {
+            $bookings->whereBetween('NgayTao', [$from, $to]);
+        }
+
+        $newBookings = $bookings->count();
 
         $avgOrderValue = $completedOrders > 0 ? round($totalRevenue / $completedOrders, 2) : 0;
 
@@ -164,21 +173,35 @@ class ReportsService
         $from = $dates['from'];
         $to = $dates['to'];
 
-        $groupByDay = $from->diffInDays($to) <= 31;
+        $localFrom = $dates['local_from'];
+        $localTo = $dates['local_to'];
+        $groupBy = $dates['range'] === 'all_time'
+            ? 'month'
+            : ($localFrom->diffInDays($localTo) <= 31 ? 'day' : 'week');
 
-        $query = DonHang::whereBetween('NgayTao', [$from, $to])
-            ->whereIn('TrangThai', self::REVENUE_STATUSES);
+        $query = HoaDon::query()->where('TrangThai', InvoiceStatus::Paid->value);
 
-        if ($groupByDay) {
-            // `DATE(...)` của PostgreSQL trên cột nguyên bản, không cần ép kiểu.
-            $query->selectRaw('DATE("NgayTao") as date, SUM("ThanhTien") as revenue, COUNT(*) as order_count')
+        if ($from !== null && $to !== null) {
+            $query->whereBetween('NgayLap', [$from, $to]);
+        }
+
+        $localTimestamp = $this->localTimestampExpression('"NgayLap"');
+
+        if ($groupBy === 'day') {
+            $localDateExpression = $this->localDateExpression($localTimestamp);
+            $query->selectRaw($localDateExpression.' as date, SUM("ThanhTien") as revenue, COUNT(*) as order_count')
                 ->groupBy('date')
                 ->orderBy('date');
-        } else {
-            // Tương đương YEARWEEK() của MySQL: tuần ISO gồm năm và số tuần.
-            $query->selectRaw('EXTRACT(ISOYEAR FROM "NgayTao")::int * 100 + EXTRACT(WEEK FROM "NgayTao")::int as week, SUM("ThanhTien") as revenue, COUNT(*) as order_count')
+        } elseif ($groupBy === 'week') {
+            $localWeekExpression = $this->localWeekExpression($localTimestamp);
+            $query->selectRaw($localWeekExpression.' as week, SUM("ThanhTien") as revenue, COUNT(*) as order_count')
                 ->groupBy('week')
                 ->orderBy('week');
+        } else {
+            $localMonthExpression = $this->localMonthExpression($localTimestamp);
+            $query->selectRaw($localMonthExpression.' as month, SUM("ThanhTien") as revenue, COUNT(*) as order_count')
+                ->groupBy('month')
+                ->orderBy('month');
         }
 
         $data = $query->get();
@@ -187,18 +210,18 @@ class ReportsService
         $revenue = [];
         $orders = [];
 
-        if ($groupByDay) {
-            foreach (CarbonPeriod::create($from, $to) as $date) {
+        if ($groupBy === 'day') {
+            foreach (CarbonPeriod::create($localFrom, $localTo) as $date) {
                 $item = $data->firstWhere('date', $date->format('Y-m-d'));
 
                 $labels[] = $date->format('d/m');
                 $revenue[] = $item ? (float) $item->revenue : 0;
                 $orders[] = $item ? (int) $item->order_count : 0;
             }
-        } else {
-            $current = $from->copy()->startOfWeek();
+        } elseif ($groupBy === 'week') {
+            $current = $localFrom->copy()->startOfWeek();
 
-            while ($current->lte($to)) {
+            while ($current->lte($localTo)) {
                 $item = $data->firstWhere('week', (int) $current->format('oW'));
 
                 $labels[] = $current->format('d/m').'-'.$current->copy()->endOfWeek()->format('d/m');
@@ -206,6 +229,12 @@ class ReportsService
                 $orders[] = $item ? (int) $item->order_count : 0;
 
                 $current->addWeek();
+            }
+        } else {
+            foreach ($data as $item) {
+                $labels[] = Carbon::parse((string) $item->month.'-01', self::REPORT_TIMEZONE)->format('m/Y');
+                $revenue[] = (float) $item->revenue;
+                $orders[] = (int) $item->order_count;
             }
         }
 
@@ -227,19 +256,26 @@ class ReportsService
 
         $data = ChiTietDonHang::query()
             ->join('DonHang', 'DonHang.DonHangID', '=', 'ChiTietDonHang.DonHangID')
+            ->join('HoaDon', 'HoaDon.DonHangID', '=', 'DonHang.DonHangID')
             ->join('DichVu', 'DichVu.DichVuID', '=', 'ChiTietDonHang.DichVuID')
             ->leftJoin('LoaiDichVu', 'LoaiDichVu.LoaiDichVuID', '=', 'DichVu.LoaiDichVuID')
-            ->whereBetween('DonHang.NgayTao', [$from, $to])
-            ->whereIn('DonHang.TrangThai', self::REVENUE_STATUSES)
-            ->selectRaw('COALESCE("LoaiDichVu"."TenLoaiDichVu", \'Khác\') as category, SUM("ChiTietDonHang"."ThanhTien") as revenue, COUNT(*) as count')
+            ->leftJoin('LoaiDoGiat', 'LoaiDoGiat.LoaiDoGiatID', '=', 'ChiTietDonHang.LoaiDoGiatID')
+            ->where('HoaDon.TrangThai', InvoiceStatus::Paid->value)
+            ->selectRaw('COALESCE("LoaiDichVu"."TenLoaiDichVu", "DichVu"."TenDichVu", "LoaiDoGiat"."TenLoaiDoGiat", \'Khác\') as category, SUM("ChiTietDonHang"."ThanhTien") as revenue, COUNT(*) as count')
             ->groupBy('category')
             ->orderByDesc('revenue')
+            ->when($from !== null && $to !== null, fn ($query) => $query->whereBetween('HoaDon.NgayLap', [$from, $to]))
             ->get();
+
+        $totalRevenue = (float) $data->sum('revenue');
 
         return [
             'labels' => $data->pluck('category')->toArray(),
             'revenue' => $data->pluck('revenue')->map(fn ($v) => (float) $v)->toArray(),
             'counts' => $data->pluck('count')->map(fn ($v) => (int) $v)->toArray(),
+            'percentages' => $data->pluck('revenue')
+                ->map(fn ($value) => $totalRevenue > 0 ? round((float) $value / $totalRevenue * 100, 1) : 0)
+                ->toArray(),
         ];
     }
 
@@ -259,16 +295,15 @@ class ReportsService
         // Vì vậy lấy ra tên cột trung tính rồi đổi tên ở tầng PHP cho chắc chắn.
         return ChiTietDonHang::query()
             ->join('DonHang', 'DonHang.DonHangID', '=', 'ChiTietDonHang.DonHangID')
+            ->join('HoaDon', 'HoaDon.DonHangID', '=', 'DonHang.DonHangID')
             ->join('DichVu', 'DichVu.DichVuID', '=', 'ChiTietDonHang.DichVuID')
             ->leftJoin('DonViTinh', 'DonViTinh.DonViTinhID', '=', 'ChiTietDonHang.DonViTinhID')
-            ->whereBetween('DonHang.NgayTao', [$from, $to])
-            ->whereIn('DonHang.TrangThai', self::REVENUE_STATUSES)
-            // `SoLuong` có thể NULL với dịch vụ tính theo cân (chỉ có `KhoiLuong`),
-            // nên COALESCE để tổng số lượng luôn là số chứ không rơi về NULL.
-            ->selectRaw('"DichVu"."TenDichVu" as service_name, "DonViTinh"."KyHieu" as unit_symbol, COALESCE(SUM("ChiTietDonHang"."SoLuong"), SUM("ChiTietDonHang"."KhoiLuong"), 0) as total_qty, SUM("ChiTietDonHang"."ThanhTien") as total_revenue')
-            ->groupBy('DichVu.TenDichVu', 'DonViTinh.KyHieu')
+            ->where('HoaDon.TrangThai', InvoiceStatus::Paid->value)
+            ->selectRaw('"DichVu"."TenDichVu" as service_name, CASE WHEN COUNT(DISTINCT "DonViTinh"."KyHieu") > 1 THEN \'Nhiều ĐVT\' ELSE MAX("DonViTinh"."KyHieu") END as unit_symbol, SUM(COALESCE("ChiTietDonHang"."SoLuong", "ChiTietDonHang"."KhoiLuong", 0)) as total_qty, SUM("ChiTietDonHang"."ThanhTien") as total_revenue')
+            ->groupBy('DichVu.DichVuID', 'DichVu.TenDichVu')
             ->orderByDesc('total_revenue')
             ->limit($limit)
+            ->when($from !== null && $to !== null, fn ($query) => $query->whereBetween('HoaDon.NgayLap', [$from, $to]))
             ->get()
             // Trả về object thuần với đúng key view dùng: name, unit, total_qty,
             // total_revenue.
@@ -283,21 +318,26 @@ class ReportsService
     /**
      * Doanh thu theo phương thức thanh toán.
      */
-    public function getRevenueByPaymentMethod(array $filters): Collection
+    public function getRevenueByPaymentMethod(array $filters): BaseCollection
     {
         $dates = $this->getDateRange($filters);
         $from = $dates['from'];
         $to = $dates['to'];
 
-        return ThanhToan::query()
-            ->whereBetween('ThoiGian', [$from, $to])
-            ->where('TrangThai', self::PAID_PAYMENT_STATUS)
-            // `PhuongThuc` lưu tiếng Việt, view tự có nhãn tra theo mã.
-            ->selectRaw('"PhuongThuc" as method, SUM("SoTien") as total_amount, COUNT(*) as transaction_count')
-            ->groupBy('PhuongThuc')
+        $query = ThanhToan::query()
+            ->join('HoaDon', 'HoaDon.DonHangID', '=', 'ThanhToan.DonHangID')
+            ->where('ThanhToan.TrangThai', self::PAID_PAYMENT_STATUS)
+            ->where('HoaDon.TrangThai', InvoiceStatus::Paid->value)
+            ->selectRaw('COALESCE(NULLIF(TRIM("ThanhToan"."PhuongThuc"), \'\'), \'Khác\') as method, SUM("ThanhToan"."SoTien") as total_amount, COUNT("ThanhToan"."ThanhToanID") as transaction_count')
+            ->groupBy('method');
+
+        if ($from !== null && $to !== null) {
+            $query->whereBetween('ThanhToan.ThoiGian', [$from, $to]);
+        }
+
+        return $query
             ->orderByDesc('total_amount')
             ->get()
-            // Cột `numeric` của PostgreSQL trả về chuỗi, ép về số cho view format.
             ->each(function ($row) {
                 $row->setAttribute('total_amount', (float) $row->total_amount);
                 $row->setAttribute('transaction_count', (int) $row->transaction_count);
@@ -313,10 +353,73 @@ class ReportsService
         $from = $dates['from'];
         $to = $dates['to'];
 
-        return DonHang::with(['khachHang', 'chiTietDonHangs.dichVu'])
-            ->whereBetween('NgayTao', [$from, $to])
-            ->orderByDesc('NgayTao')
+        $query = DonHang::with([
+            'khachHang',
+            'chiTietDonHangs.dichVu',
+            'chiTietDonHangs.loaiDoGiat',
+            'chiTietDonHangs.donViTinh',
+        ]);
+
+        if ($from !== null && $to !== null) {
+            $query->whereBetween('NgayTao', [$from, $to]);
+        }
+
+        return $query->orderByDesc('NgayTao')
             ->paginate(10)
             ->withQueryString();
+    }
+
+    /**
+     * Hóa đơn đã thanh toán trong kỳ, kèm đơn hàng và khách hàng để xuất báo cáo.
+     */
+    public function getExportOrdersQuery(array $filters): Builder
+    {
+        $dates = $this->getDateRange($filters);
+
+        $query = HoaDon::query()
+            ->join('DonHang', 'DonHang.DonHangID', '=', 'HoaDon.DonHangID')
+            ->leftJoin('KhachHang', 'KhachHang.KhachHangID', '=', 'DonHang.KhachHangID')
+            ->where('HoaDon.TrangThai', InvoiceStatus::Paid->value)
+            ->select([
+                'DonHang.MaDonHang as order_code',
+                'KhachHang.HoTen as customer_name',
+                'DonHang.TrangThai as order_status',
+                'HoaDon.NgayLap as invoice_date',
+                'HoaDon.ThanhTien as revenue',
+            ])
+            ->orderBy('HoaDon.NgayLap')
+            ->orderBy('HoaDon.HoaDonID');
+
+        if ($dates['from'] !== null && $dates['to'] !== null) {
+            $query->whereBetween('HoaDon.NgayLap', [$dates['from'], $dates['to']]);
+        }
+
+        return $query->toBase();
+    }
+
+    private function localTimestampExpression(string $column): string
+    {
+        return DB::connection()->getDriverName() === 'sqlite'
+            ? "datetime({$column}, '+7 hours')"
+            : "({$column} + INTERVAL '7 hours')";
+    }
+
+    private function localDateExpression(string $timestamp): string
+    {
+        return "DATE({$timestamp})";
+    }
+
+    private function localWeekExpression(string $timestamp): string
+    {
+        return DB::connection()->getDriverName() === 'sqlite'
+            ? "(CAST(strftime('%Y', {$timestamp}) AS INTEGER) * 100 + CAST(strftime('%W', {$timestamp}) AS INTEGER))"
+            : "(EXTRACT(ISOYEAR FROM {$timestamp})::int * 100 + EXTRACT(WEEK FROM {$timestamp})::int)";
+    }
+
+    private function localMonthExpression(string $timestamp): string
+    {
+        return DB::connection()->getDriverName() === 'sqlite'
+            ? "strftime('%Y-%m', {$timestamp})"
+            : "TO_CHAR({$timestamp}, 'YYYY-MM')";
     }
 }

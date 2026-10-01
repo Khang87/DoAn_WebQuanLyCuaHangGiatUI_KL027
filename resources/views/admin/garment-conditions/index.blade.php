@@ -10,7 +10,7 @@
         Supabase chưa có bảng lưu điều kiện đồ giặt. Để tránh ghi dữ liệu vào một bảng khác
         hoặc làm thay đổi cấu trúc cơ sở dữ liệu, chức năng thêm, sửa và xóa hiện không khả dụng.
     </p>
-    <a href="{{ route('garment-categories.index') }}" class="btn btn-outline-primary">
+    <a href="{{ route('loaidogiat.index') }}" class="btn btn-outline-primary">
         <i class="bi bi-arrow-left me-1"></i>Quản lý loại đồ giặt
     </a>
 </div>

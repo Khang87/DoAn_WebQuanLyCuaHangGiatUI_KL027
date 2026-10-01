@@ -179,6 +179,14 @@ class User extends Authenticatable
     public function getAvatarUrlAttribute(): string
     {
         $seed = ($this->getKey() % 8) + 1;
+        $avatarDirectory = public_path('uploads/avatars');
+        $avatarFiles = glob($avatarDirectory.DIRECTORY_SEPARATOR.'avatar_'.$this->getKey().'.*') ?: [];
+
+        foreach ($avatarFiles as $avatarFile) {
+            if (is_file($avatarFile)) {
+                return asset('uploads/avatars/'.basename($avatarFile)).'?v='.filemtime($avatarFile);
+            }
+        }
 
         return asset('assets/images/user_'.$seed.'.jpg');
     }

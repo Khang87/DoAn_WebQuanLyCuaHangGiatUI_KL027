@@ -3,8 +3,7 @@
 @section('title', 'Báo cáo & Thống kê kinh doanh - Sky Laundry')
 @section('page-title', 'Báo cáo & Thống kê kinh doanh')
 
-@section('styles')
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+@push('styles')
 <style>
     .kpi-card {
         transition: transform 0.2s ease, box-shadow 0.2s ease;
@@ -19,10 +18,16 @@
         width: 100%;
         min-height: 320px;
     }
-    .chart-container canvas {
-        display: block;
-        width: 100% !important;
-        height: 100% !important;
+    .chart-container > div:first-child {
+        width: 100%;
+        height: 100%;
+    }
+    .report-chart-empty {
+        height: 100%;
+        display: grid;
+        place-items: center;
+        color: #64748b;
+        font-size: 0.875rem;
     }
     .stat-icon {
         width: 48px;
@@ -191,7 +196,7 @@
         margin-bottom: 0;
     }
 </style>
-@endsection
+@endpush
 
 @section('content')
 <!-- Page Header + Global Filter Bar -->
@@ -204,6 +209,7 @@
         <div class="flex-grow-1" style="min-width: 180px;">
             <label class="form-label mb-1 small fw-medium">Khoảng thời gian</label>
             <select name="range" class="form-select form-select-sm" id="rangeSelect" onchange="toggleCustomDate(this)">
+                <option value="all_time" {{ $filters['range'] === 'all_time' ? 'selected' : '' }}>Toàn thời gian</option>
                 <option value="today" {{ $filters['range'] === 'today' ? 'selected' : '' }}>Hôm nay</option>
                 <option value="7_days" {{ $filters['range'] === '7_days' ? 'selected' : '' }}>7 ngày qua</option>
                 <option value="this_month" {{ $filters['range'] === 'this_month' ? 'selected' : '' }}>Tháng này</option>
@@ -213,16 +219,16 @@
         </div>
         <div id="customFromGroup" class="{{ $filters['range'] === 'custom' ? '' : 'd-none' }}" style="min-width: 140px;">
             <label class="form-label mb-1 small fw-medium">Từ ngày</label>
-            <input type="date" name="date_from" class="form-control form-control-sm flatpickr-date" value="{{ $filters['date_from'] ?? '' }}">
+            <input type="date" name="date_from" class="form-control form-control-sm" value="{{ $filters['date_from'] ?? '' }}">
         </div>
         <div id="customToGroup" class="{{ $filters['range'] === 'custom' ? '' : 'd-none' }}" style="min-width: 140px;">
             <label class="form-label mb-1 small fw-medium">Đến ngày</label>
-            <input type="date" name="date_to" class="form-control form-control-sm flatpickr-date" value="{{ $filters['date_to'] ?? '' }}">
+            <input type="date" name="date_to" class="form-control form-control-sm" value="{{ $filters['date_to'] ?? '' }}">
         </div>
-        <button type="submit" class="btn btn-primary btn-sm">
+        <button type="submit" class="btn btn-outline-secondary btn-sm">
             <i class="bi bi-filter me-1"></i>Lọc dữ liệu
         </button>
-        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="exportToExcel()">
+        <button type="submit" formaction="{{ route('reports.export') }}" formmethod="GET" class="btn btn-outline-secondary btn-sm">
             <i class="bi bi-file-earmark-excel me-1"></i>Xuất Excel
         </button>
         <a href="{{ route('reports.index') }}" class="btn btn-outline-secondary btn-sm">
@@ -241,7 +247,7 @@
                     <i class="bi bi-currency-dollar"></i>
                 </div>
                 <div class="ms-3">
-                    <div class="stat-value text-dark">{{ number_format($kpi['total_revenue']) }} VNĐ</div>
+                    <div class="stat-value text-dark">{{ number_format($kpi['total_revenue'], 0, ',', '.') }} VNĐ</div>
                     <div class="stat-label text-muted">Tổng doanh thu</div>
                 </div>
             </div>
@@ -256,7 +262,7 @@
                     <i class="bi bi-receipt"></i>
                 </div>
                 <div class="ms-3 flex-grow-1 min-w-0">
-                    <div class="stat-value text-dark">{{ number_format($kpi['total_orders']) }}</div>
+                    <div class="stat-value text-dark">{{ number_format($kpi['total_orders'], 0, ',', '.') }}</div>
                     <div class="stat-label d-flex flex-wrap gap-1 align-items-center mt-1">
                         <span class="text-muted">Tổng đơn hàng</span>
                         <span class="badge bg-success-subtle text-success-emphasis badge-breakdown">{{ $kpi['completed_orders'] }} HT</span>
@@ -276,7 +282,7 @@
                     <i class="bi bi-calendar-check"></i>
                 </div>
                 <div class="ms-3">
-                    <div class="stat-value text-dark">{{ number_format($kpi['new_bookings']) }}</div>
+                    <div class="stat-value text-dark">{{ number_format($kpi['new_bookings'], 0, ',', '.') }}</div>
                     <div class="stat-label text-muted">Đơn đặt lịch mới</div>
                 </div>
             </div>
@@ -291,7 +297,7 @@
                     <i class="bi bi-graph-up-arrow"></i>
                 </div>
                 <div class="ms-3">
-                    <div class="stat-value text-dark">{{ number_format($kpi['avg_order_value']) }} VNĐ</div>
+                    <div class="stat-value text-dark">{{ number_format($kpi['avg_order_value'], 0, ',', '.') }} VNĐ</div>
                     <div class="stat-label text-muted">Giá trị đơn TB (AOV)</div>
                 </div>
             </div>
@@ -306,14 +312,18 @@
         <div class="card h-100 shadow-sm border-0">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <span>Xu hướng doanh thu</span>
-                <select id="chartType" class="form-select form-select-sm" style="width: auto; min-width: 100px;" onchange="renderRevenueChart()">
+                <select id="chartType" class="form-select form-select-sm" style="width: auto; min-width: 100px;">
                     <option value="bar">Cột</option>
                     <option value="line">Đường</option>
                 </select>
             </div>
             <div class="card-body p-3">
                 <div class="chart-container" style="position: relative; height: 320px; width: 100%;">
-                    <canvas id="revenueChart"></canvas>
+                    @if(array_sum($chartData['revenue'] ?? []) > 0 || array_sum($chartData['orders'] ?? []) > 0)
+                    <div id="revenueChart"></div>
+                    @else
+                    <div class="report-chart-empty">Chưa có doanh thu trong khoảng thời gian này</div>
+                    @endif
                 </div>
             </div>
         </div>
@@ -327,17 +337,24 @@
             </div>
             <div class="card-body p-3">
                 <div class="chart-container" style="position: relative; height: 320px; width: 100%;">
-                    <canvas id="compositionChart"></canvas>
+                    @if(array_sum($compositionData['revenue'] ?? []) > 0)
+                    <div id="compositionChart"></div>
+                    @else
+                    <div class="report-chart-empty">Chưa có dữ liệu dịch vụ</div>
+                    @endif
                 </div>
+                @if(!empty($compositionData['labels']))
                 <div class="mt-3 pt-3 border-top w-100">
                     @foreach($compositionData['labels'] as $index => $label)
                     <div class="d-flex align-items-center mb-2">
                         <span class="me-2 rounded-circle" style="width: 10px; height: 10px; background-color: {{ $chartColors[$index] ?? '#ccc' }};"></span>
                         <span class="small fw-semibold flex-grow-1">{{ $label }}</span>
-                        <span class="ms-auto small text-muted">{{ number_format($compositionData['revenue'][$index] ?? 0) }} VNĐ</span>
+                        <span class="ms-2 small text-muted">{{ number_format($compositionData['percentages'][$index] ?? 0, 1, ',', '.') }}%</span>
+                        <span class="ms-auto small text-muted">{{ number_format($compositionData['revenue'][$index] ?? 0, 0, ',', '.') }} VNĐ</span>
                     </div>
                     @endforeach
                 </div>
+                @endif
             </div>
         </div>
     </div>
@@ -356,26 +373,24 @@
                     <table class="table table-hover align-middle mb-0 reports-table">
                         <thead class="table-light">
                             <tr>
-                                <th class="fw-bold text-dark" style="width: 40px;">#</th>
                                 <th class="fw-bold text-dark">Dịch vụ</th>
                                 <th class="fw-bold text-dark text-center" style="width: 80px;">SL bán</th>
                                 <th class="fw-bold text-dark text-end" style="width: 150px;">Doanh thu</th>
                             </tr>
                         </thead>
                         <tbody>
-                            @forelse($topServices as $index => $service)
+                            @forelse($topServices as $service)
                             <tr>
-                                <td class="fw-semibold text-primary">{{ $index + 1 }}</td>
                                 <td>
                                     <span class="fw-semibold">{{ $service->name }}</span>
-                                    <small class="text-muted d-block">({{ $service->unit ?: 'kg' }})</small>
+                                    <small class="text-muted d-block">({{ $service->unit ?: 'ĐVT' }})</small>
                                 </td>
-                                <td class="text-center">{{ number_format($service->total_qty) }}</td>
-                                <td class="text-end fw-semibold text-primary">{{ number_format($service->total_revenue) }} VNĐ</td>
+                                <td class="text-center">{{ number_format($service->total_qty, 2, ',', '.') }}</td>
+                                <td class="text-end fw-semibold text-primary">{{ number_format($service->total_revenue, 0, ',', '.') }} VNĐ</td>
                             </tr>
                             @empty
                             <tr>
-                                <td colspan="4" class="text-center text-muted py-4">Chưa có dữ liệu</td>
+                                <td colspan="3" class="text-center text-muted py-4">Chưa có dữ liệu</td>
                             </tr>
                             @endforelse
                         </tbody>
@@ -406,11 +421,11 @@
                             <tr>
                                 <td>
                                     <span class="badge {{ $paymentMethodColors[$method->method] ?? 'bg-light text-dark border' }} px-3 py-2 rounded-pill">
-                                        {{ $paymentMethodLabels[$method->method] ?? ucfirst(str_replace('_', ' ', $method->method)) }}
+                                        {{ $paymentMethodLabels[$method->method] ?? $method->method }}
                                     </span>
                                 </td>
                                 <td class="text-center">{{ $method->transaction_count }}</td>
-                                <td class="text-end fw-semibold text-primary">{{ number_format($method->total_amount) }} VNĐ</td>
+                                <td class="text-end fw-semibold text-primary">{{ number_format($method->total_amount, 0, ',', '.') }} VNĐ</td>
                             </tr>
                             @empty
                             <tr>
@@ -448,6 +463,7 @@
                         </thead>
                         <tbody class="fs-7">
                             @forelse($recentOrders as $order)
+                            @php($createdAt = $order->created_at?->copy()->setTimezone('Asia/Ho_Chi_Minh'))
                             <tr>
                                 <td class="ps-3 fw-bold text-primary">{{ $order->code }}</td>
                                 <td class="fw-medium text-dark">{{ $order->customer?->name ?: '-' }}</td>
@@ -455,10 +471,10 @@
                                 <td class="text-center">
                                     <x-admin.status-badge :status="$order->status" :enum="\App\Enums\OrderStatus::class" />
                                 </td>
-                                <td class="text-end fw-bold text-dark">{{ number_format($order->total_amount) }} VNĐ</td>
+                                <td class="text-end fw-bold text-dark">{{ number_format($order->total_amount, 0, ',', '.') }} VNĐ</td>
                                 <td class="text-center">
-                                    <div class="text-dark fw-medium">{{ $order->created_at?->format('d/m/Y') }}</div>
-                                    <small class="text-muted fs-8">{{ $order->created_at?->format('H:i') }}</small>
+                                    <div class="text-dark fw-medium">{{ $createdAt?->format('d/m/Y') ?? '-' }}</div>
+                                    <small class="text-muted fs-8">{{ $createdAt?->format('H:i') ?? '' }}</small>
                                 </td>
                                 <td class="text-center pe-3">
                                     <a href="{{ route('orders.show', $order) }}" class="btn btn-sm btn-light btn-active-light-primary btn-icon rounded-circle" title="Xem chi tiết">
@@ -485,297 +501,144 @@
 </div>
 @endsection
 
-@section('scripts')
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+@push('scripts')
+<script src="{{ asset('assets/libs/apexcharts/apexcharts.min.js') }}"></script>
 <script>
-    // Wait for Chart.js to load
-    function initCharts() {
-        if (typeof Chart === 'undefined') {
-            console.warn('Chart.js not loaded yet, retrying...');
-            setTimeout(initCharts, 100);
+    (function () {
+        const formatVnd = value => `${new Intl.NumberFormat('vi-VN').format(value || 0)} VNĐ`;
+        const revenueLabels = @json($chartData['labels'] ?? []);
+        const revenueValues = @json($chartData['revenue'] ?? []);
+        const orderValues = @json($chartData['orders'] ?? []);
+        const compositionLabels = @json($compositionData['labels'] ?? []);
+        const compositionValues = @json($compositionData['revenue'] ?? []);
+        const colors = ['#3b82f6', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899', '#14b8a6', '#f97316', '#6366f1'];
+
+        window.toggleCustomDate = function (select) {
+            document.getElementById('customFromGroup')?.classList.toggle('d-none', select.value !== 'custom');
+            document.getElementById('customToGroup')?.classList.toggle('d-none', select.value !== 'custom');
+        };
+
+        if (typeof window.ApexCharts === 'undefined') {
+            console.error('ApexCharts did not load; report charts cannot be rendered.');
             return;
         }
 
-        // Chart.js default config
-        Chart.defaults.font.family = "'Plus Jakarta Sans', sans-serif";
-        Chart.defaults.color = '#64748B';
-        Chart.defaults.plugins.legend.labels.usePointStyle = true;
-        Chart.defaults.plugins.legend.labels.padding = 16;
-
-        // Chart colors
-        const chartColors = [
-            '#3b82f6', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6',
-            '#06b6d4', '#ec4899', '#14b8a6', '#f97316', '#6366f1'
-        ];
-
-        // Revenue Chart Data
-        const revenueLabels = @json($chartData['labels'] ?? []);
-        const revenueData = @json($chartData['revenue'] ?? []);
-        const orderData = @json($chartData['orders'] ?? []);
-
         let revenueChart = null;
+        let compositionChart = null;
 
         function renderRevenueChart() {
-            try {
-                const type = document.getElementById('chartType')?.value || 'bar';
-                const canvas = document.getElementById('revenueChart');
-                if (!canvas) {
-                    console.error('revenueChart canvas not found');
-                    return;
-                }
-                const ctx = canvas.getContext('2d');
+            const element = document.getElementById('revenueChart');
+            if (!element) {
+                return;
+            }
 
-                // Ensure canvas has proper dimensions
-                const container = canvas.parentElement;
-                if (!container || container.clientWidth === 0) {
-                    console.warn('Revenue chart container not ready, retrying...');
-                    setTimeout(renderRevenueChart, 100);
-                    return;
-                }
-                canvas.width = container.clientWidth;
-                canvas.height = 320;
-
-                if (revenueChart) {
-                    revenueChart.destroy();
-                }
-
-                const isBar = type === 'bar';
-
-                revenueChart = new Chart(ctx, {
-                    type: isBar ? 'bar' : 'line',
-                    data: {
-                        labels: revenueLabels,
-                        datasets: [
-                            {
-                                label: 'Doanh thu (VNĐ)',
-                                data: revenueData,
-                                borderColor: '#3b82f6',
-                                backgroundColor: isBar ? 'rgba(59, 130, 246, 0.15)' : 'rgba(59, 130, 246, 0.1)',
-                                borderWidth: 2,
-                                fill: true,
-                                tension: isBar ? 0 : 0.3,
-                                yAxisID: 'y',
-                                borderDash: isBar ? [] : [2, 2],
-                            },
-                            {
-                                label: 'Số đơn',
-                                data: orderData,
-                                borderColor: '#22c55e',
-                                backgroundColor: 'rgba(34, 197, 94, 0.1)',
-                                borderWidth: 2,
-                                fill: false,
-                                tension: 0.3,
-                                yAxisID: 'y1',
-                                type: 'line',
-                                borderDash: [2, 2],
-                            }
-                        ]
+            revenueChart?.destroy();
+            const displayType = document.getElementById('chartType')?.value === 'line' ? 'line' : 'column';
+            revenueChart = new ApexCharts(element, {
+                series: [
+                    { name: 'Doanh thu', type: displayType, data: revenueValues.map(value => Number(value) || 0) },
+                    { name: 'Số đơn', type: 'line', data: orderValues.map(value => Number(value) || 0) },
+                ],
+                chart: {
+                    type: 'line',
+                    height: 320,
+                    fontFamily: 'Plus Jakarta Sans, sans-serif',
+                    toolbar: { show: false },
+                    animations: { enabled: false },
+                    zoom: { enabled: false },
+                },
+                colors: ['#3b82f6', '#22c55e'],
+                stroke: { curve: 'smooth', width: displayType === 'column' ? [0, 3] : [3, 3] },
+                fill: { opacity: [0.85, 1] },
+                plotOptions: { bar: { columnWidth: '48%', borderRadius: 3 } },
+                dataLabels: { enabled: false },
+                markers: { size: [0, 3], hover: { size: 5 } },
+                xaxis: {
+                    categories: revenueLabels,
+                    tickAmount: 12,
+                    labels: { rotate: 0, hideOverlappingLabels: true },
+                },
+                yaxis: [
+                    {
+                        seriesName: 'Doanh thu',
+                        min: 0,
+                        title: { text: 'Doanh thu' },
+                        labels: { formatter: value => new Intl.NumberFormat('vi-VN', { notation: 'compact' }).format(value) + ' đ' },
                     },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        interaction: {
-                            mode: 'index',
-                            intersect: false,
-                        },
-                        plugins: {
-                            legend: {
-                                position: 'top',
-                                labels: {
-                                    boxWidth: 12,
-                                    padding: 16,
-                                    font: { size: 11 }
-                                }
-                            },
-                            tooltip: {
-                                backgroundColor: '#1e293b',
-                                titleFont: { size: 12 },
-                                bodyFont: { size: 11 },
-                                padding: 10,
-                                cornerRadius: 8,
-                                callbacks: {
-                                    label: function(context) {
-                                        if (context.dataset.yAxisID === 'y') {
-                                            return context.dataset.label + ': ' + new Intl.NumberFormat('vi-VN').format(context.raw) + ' VNĐ';
-                                        }
-                                        return context.dataset.label + ': ' + context.raw + ' đơn';
-                                    }
-                                }
-                            }
-                        },
-                        scales: {
-                            y: {
-                                type: 'linear',
-                                display: true,
-                                position: 'left',
-                                beginAtZero: true,
-                                ticks: {
-                                    font: { size: 10 },
-                                    callback: function(value) {
-                                        return new Intl.NumberFormat('vi-VN', { notation: 'compact', compactDisplay: 'short' }).format(value) + 'đ';
-                                    }
-                                },
-                                grid: {
-                                    color: 'rgba(148, 163, 184, 0.15)',
-                                    borderDash: [2, 2],
-                                }
-                            },
-                            y1: {
-                                type: 'linear',
-                                display: true,
-                                position: 'right',
-                                beginAtZero: true,
-                                grid: {
-                                    drawOnChartArea: false,
-                                },
-                                ticks: {
-                                    font: { size: 10 },
-                                    stepSize: 1,
-                                    callback: function(value) {
-                                        return value + ' đơn';
-                                    }
-                                }
-                            },
-                            x: {
-                                grid: {
-                                    display: false,
-                                },
-                                ticks: {
-                                    font: { size: 10 },
-                                    maxRotation: 0,
-                                    autoSkip: true,
-                                    maxTicksLimit: 12
-                                }
-                            }
-                        }
-                    }
-                });
-                console.log('Revenue chart rendered successfully');
-            } catch (e) {
-                console.error('Error rendering revenue chart:', e);
-            }
-        }
-
-        // Composition Chart (Doughnut)
-        const compositionLabels = @json($compositionData['labels'] ?? []);
-        const compositionRevenue = @json($compositionData['revenue'] ?? []);
-        const compositionCounts = @json($compositionData['counts'] ?? []);
-
-        function initCompositionChart() {
-            try {
-                const canvas = document.getElementById('compositionChart');
-                if (!canvas) {
-                    console.error('compositionChart canvas not found');
-                    return;
-                }
-                const container = canvas.parentElement;
-                if (!container || container.clientWidth === 0) {
-                    console.warn('Composition chart container not ready, retrying...');
-                    setTimeout(initCompositionChart, 100);
-                    return;
-                }
-                canvas.width = Math.min(container.clientWidth, 400);
-                canvas.height = 320;
-                
-                const ctx = canvas.getContext('2d');
-                
-                new Chart(ctx, {
-                    type: 'doughnut',
-                    data: {
-                        labels: compositionLabels,
-                        datasets: [{
-                            data: compositionRevenue,
-                            backgroundColor: chartColors,
-                            borderWidth: 2,
-                            borderColor: '#fff',
-                            hoverOffset: 8,
-                        }]
+                    {
+                        seriesName: 'Số đơn',
+                        opposite: true,
+                        min: 0,
+                        forceNiceScale: true,
+                        title: { text: 'Số đơn' },
+                        labels: { formatter: value => Math.round(value) + ' đơn' },
                     },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        cutout: '65%',
-                        plugins: {
-                            legend: {
-                                display: false,
-                            },
-                            tooltip: {
-                                backgroundColor: '#1e293b',
-                                titleFont: { size: 12 },
-                                bodyFont: { size: 11 },
-                                padding: 10,
-                                cornerRadius: 8,
-                                callbacks: {
-                                    label: function(context) {
-                                        const total = context.dataset.data.reduce((a, b) => a + b, 0);
-                                        const percentage = ((context.raw / total) * 100).toFixed(1);
-                                        return context.label + ': ' + new Intl.NumberFormat('vi-VN').format(context.raw) + ' VNĐ (' + percentage + '%)';
-                                    }
-                                }
-                            }
-                        }
-                    }
-                });
-                console.log('Composition chart rendered successfully');
-            } catch (e) {
-                console.error('Error rendering composition chart:', e);
-            }
-        }
-
-        // Initialize flatpickr for date inputs
-        flatpickr('.flatpickr-date', {
-            dateFormat: 'Y-m-d',
-            locale: 'vi',
-            allowInput: true,
-        });
-
-        // Toggle custom date inputs
-        function toggleCustomDate(select) {
-            const fromGroup = document.getElementById('customFromGroup');
-            const toGroup = document.getElementById('customToGroup');
-            if (select.value === 'custom') {
-                fromGroup.classList.remove('d-none');
-                toGroup.classList.remove('d-none');
-            } else {
-                fromGroup.classList.add('d-none');
-                toGroup.classList.add('d-none');
-            }
-        }
-
-        // Render charts on load
-        document.addEventListener('DOMContentLoaded', function() {
-            console.log('DOM loaded, initializing charts...');
-            // Small delay to ensure layout is settled
-            setTimeout(() => {
-                renderRevenueChart();
-                initCompositionChart();
-            }, 100);
-        });
-
-        // Re-render charts on window resize
-        let resizeTimeout;
-        window.addEventListener('resize', function() {
-            clearTimeout(resizeTimeout);
-            resizeTimeout = setTimeout(() => {
-                if (revenueChart) renderRevenueChart();
-                initCompositionChart();
-            }, 150);
-        });
-
-        // Export to Excel (placeholder)
-        function exportToExcel() {
-            Swal.fire({
-                icon: 'info',
-                title: 'Tính năng đang phát triển',
-                text: 'Xuất Excel sẽ được cập nhật trong phiên bản tới.',
-                timer: 2000,
-                showConfirmButton: false
+                ],
+                grid: { borderColor: '#e2e8f0', strokeDashArray: 4 },
+                legend: { position: 'top', horizontalAlign: 'left' },
+                tooltip: {
+                    shared: true,
+                    y: {
+                        formatter: (value, { seriesIndex }) => seriesIndex === 0 ? formatVnd(value) : `${value} đơn`,
+                    },
+                },
+                noData: { text: 'Chưa có dữ liệu trong khoảng thời gian này' },
             });
+            revenueChart.render();
         }
-    }
 
-    // Start initialization
-    initCharts();
+        function renderCompositionChart() {
+            const element = document.getElementById('compositionChart');
+            if (!element) {
+                return;
+            }
+
+            compositionChart?.destroy();
+            compositionChart = new ApexCharts(element, {
+                series: compositionValues.map(value => Number(value) || 0),
+                labels: compositionLabels,
+                chart: {
+                    type: 'donut',
+                    height: 320,
+                    fontFamily: 'Plus Jakarta Sans, sans-serif',
+                    toolbar: { show: false },
+                    animations: { enabled: false },
+                },
+                colors,
+                stroke: { colors: ['#fff'], width: 2 },
+                dataLabels: {
+                    enabled: true,
+                    formatter: (percentage, { seriesIndex }) => `${percentage.toFixed(1)}%`,
+                },
+                legend: { show: false },
+                plotOptions: {
+                    pie: {
+                        donut: {
+                            size: '62%',
+                            labels: {
+                                show: true,
+                                total: {
+                                    show: true,
+                                    label: 'Doanh thu dịch vụ',
+                                    formatter: context => formatVnd(context.globals.seriesTotals.reduce((total, value) => total + value, 0)),
+                                },
+                            },
+                        },
+                    },
+                },
+                tooltip: {
+                    y: {
+                        formatter: value => formatVnd(value),
+                    },
+                },
+                noData: { text: 'Chưa có dữ liệu dịch vụ trong khoảng thời gian này' },
+            });
+            compositionChart.render();
+        }
+
+        document.getElementById('chartType')?.addEventListener('change', renderRevenueChart);
+        renderRevenueChart();
+        renderCompositionChart();
+    })();
 </script>
-@endsection
+@endpush

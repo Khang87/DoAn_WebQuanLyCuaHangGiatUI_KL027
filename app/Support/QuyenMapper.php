@@ -107,16 +107,14 @@ final class QuyenMapper
      *
      * Bảng `Quyen` là dữ liệu chỉ đọc và chỉ có 18 mã, nên phần lớn module vận
      * hành phải dùng chung mã `*_MANAGE` của mình. Không có bảng này thì các
-     * route/menu như `laundry-categories`, `garment-categories`, `bookings`,
-     * `coupons` sẽ bị chặn với mọi tài khoản trừ Chủ cửa hàng.
+     * route/menu như `garment-categories`, `bookings`, `coupons` sẽ bị chặn
+     * với mọi tài khoản trừ Chủ cửa hàng.
      *
      * @var array<string, string>
      */
     private const MODULE_MAQUYEN = [
-        'garments' => 'SERVICE_MANAGE',
         'garment_conditions' => 'SERVICE_MANAGE',
         'garment_categories' => 'SERVICE_MANAGE',
-        'laundry_categories' => 'SERVICE_MANAGE',
         'bookings' => 'DELIVERY_MANAGE',
         'coupons' => 'PROMOTION_MANAGE',
         'settings' => 'ACCOUNT_MANAGE',
@@ -139,10 +137,8 @@ final class QuyenMapper
         'customers' => 'CUSTOMER',
         'deliveries' => 'DELIVERY',
         'bookings' => 'BOOKING',
-        'garments' => 'GARMENT',
         'garment_conditions' => 'GARMENT_CONDITION',
         'garment_categories' => 'GARMENT_CATEGORY',
-        'laundry_categories' => 'LAUNDRY_CATEGORY',
         'pricings' => 'PRICE',
         'promotions' => 'PROMOTION',
         'coupons' => 'COUPON',
@@ -228,7 +224,7 @@ final class QuyenMapper
      *   1. `CODE_MAQUYEN` cho hành động có mã riêng;
      *   2. quy đổi trực tiếp `module` + `hành động` nếu mã đó có trong `Quyen`;
      *   3. `MODULE_MAQUYEN` khi module chỉ có một mã quyền duy nhất
-     *      (`garments.*` -> `SERVICE_MANAGE`);
+     *      (`garment_categories.*` -> `SERVICE_MANAGE`);
      *   4. mã `MODULE_MANAGE` suy ra từ tiền tố (`SERVICE_VIEW` -> `SERVICE_MANAGE`);
      *   5. null — mã quyền này không có mặt trên Supabase nên không ghi được.
      */

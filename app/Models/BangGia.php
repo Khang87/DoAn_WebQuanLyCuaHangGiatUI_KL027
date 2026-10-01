@@ -96,6 +96,7 @@ class BangGia extends Model
                 $query->whereNull('NgayKetThuc')
                     ->orWhereDate('NgayKetThuc', '>=', now());
             })
+            ->orderByRaw('CASE WHEN "NgayApDung" IS NULL THEN 1 ELSE 0 END')
             ->orderByDesc('NgayApDung')
             ->orderByDesc('BangGiaID')
             ->first();

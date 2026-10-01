@@ -57,10 +57,16 @@ class KhuyenMaiController extends Controller
             abort(404);
         }
 
+        $orders = $promotion->donHangs()
+            ->with('khachHang')
+            ->orderByDesc('NgayTao')
+            ->paginate(10);
+
         return view('admin.promotions.show', [
             'promotion' => $promotion,
-            // View chi tiết hiển thị bảng các mã giảm giá thuộc chương trình.
-            'coupons' => $promotion->coupons()->latest()->paginate(10),
+            'orders' => $orders,
+            'orderCount' => $promotion->donHangs()->count(),
+            'totalDiscount' => (float) $promotion->donHangs()->sum('TienGiamKhuyenMai'),
         ]);
     }
 

@@ -132,6 +132,7 @@ class OrderService
                         });
                     }
                 })
+                ->orderByRaw('CASE WHEN "NgayApDung" IS NULL THEN 1 ELSE 0 END')
                 ->orderByDesc('NgayApDung')
                 ->orderByDesc('BangGiaID')
                 ->get();

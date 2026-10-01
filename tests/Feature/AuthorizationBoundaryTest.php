@@ -108,5 +108,13 @@ class AuthorizationBoundaryTest extends TestCase
             'permission:orders.update_status',
             $routes->getByName('api.v1.orders.status')->getAction('middleware'),
         );
+        $this->assertContains(
+            'permission:reports.view',
+            $routes->getByName('reports.index')->getAction('middleware'),
+        );
+        $this->assertContains(
+            'permission:reports.view',
+            $routes->getByName('reports.export')->getAction('middleware'),
+        );
     }
 }

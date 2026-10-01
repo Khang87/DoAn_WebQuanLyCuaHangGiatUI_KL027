@@ -23,7 +23,7 @@ class TinhTienGiatUiService
             return round(max($khoiLuong, $mucToiThieu) * $donGia, 0);
         }
 
-        $soLuong = (int) ($item['SoLuong'] ?? 0);
+        $soLuong = (float) ($item['SoLuong'] ?? 0);
 
         return round($soLuong * $donGia, 0);
     }

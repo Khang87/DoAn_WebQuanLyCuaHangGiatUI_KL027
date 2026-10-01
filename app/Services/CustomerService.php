@@ -36,10 +36,12 @@ class CustomerService
             $direction = $sort === 'points_desc' ? 'desc' : 'asc';
             $query->leftJoin('DiemTichLuy', 'DiemTichLuy.KhachHangID', '=', 'KhachHang.KhachHangID')
                 ->select('KhachHang.*')
-                ->orderBy('DiemHienTai', $direction);
+                ->orderByRaw('COALESCE("DiemTichLuy"."DiemHienTai", 0) '.$direction)
+                ->orderBy('KhachHang.KhachHangID');
         } else {
             [$sortBy, $sortOrder] = $sortMap[$sort] ?? ['NgayTao', 'desc'];
-            $query->orderBy($sortBy, $sortOrder);
+            $query->orderBy($sortBy, $sortOrder)
+                ->orderBy('KhachHang.KhachHangID');
         }
 
         return $query->paginate(10)->withQueryString();

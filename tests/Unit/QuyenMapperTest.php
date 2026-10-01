@@ -39,10 +39,8 @@ class QuyenMapperTest extends TestCase
         // Module vận hành dùng chung mã `*_MANAGE` của mình vì bảng `Quyen` chỉ
         // có 18 mã. Không có phép ánh xạ này thì các route/menu này bị chặn với
         // mọi tài khoản trừ Chủ cửa hàng.
-        $this->assertSame('SERVICE_MANAGE', QuyenMapper::resolveMaQuyen('garments.view'));
         $this->assertSame('SERVICE_MANAGE', QuyenMapper::resolveMaQuyen('garment_conditions.edit'));
         $this->assertSame('SERVICE_MANAGE', QuyenMapper::resolveMaQuyen('garment_categories.view'));
-        $this->assertSame('SERVICE_MANAGE', QuyenMapper::resolveMaQuyen('laundry_categories.delete'));
         $this->assertSame('DELIVERY_MANAGE', QuyenMapper::resolveMaQuyen('bookings.edit'));
         $this->assertSame('PROMOTION_MANAGE', QuyenMapper::resolveMaQuyen('coupons.view'));
         $this->assertSame('ACCOUNT_MANAGE', QuyenMapper::resolveMaQuyen('settings.view'));
@@ -64,6 +62,8 @@ class QuyenMapperTest extends TestCase
         $this->assertNull(QuyenMapper::resolveMaQuyen('reviews.respond'));
         $this->assertNull(QuyenMapper::resolveMaQuyen('notifications.create'));
         $this->assertNull(QuyenMapper::resolveMaQuyen('invoices.create'));
+        $this->assertNull(QuyenMapper::resolveMaQuyen('garments.view'));
+        $this->assertNull(QuyenMapper::resolveMaQuyen('laundry_categories.view'));
         $this->assertFalse(QuyenMapper::isResolvable('notifications.create'));
     }
 

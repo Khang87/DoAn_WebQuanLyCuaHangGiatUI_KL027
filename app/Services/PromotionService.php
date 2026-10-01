@@ -50,7 +50,7 @@ class PromotionService
 
     public function find(int $id): ?KhuyenMai
     {
-        return KhuyenMai::withTrashed()->find($id);
+        return KhuyenMai::find($id);
     }
 
     public function create(array $data): KhuyenMai
@@ -68,16 +68,6 @@ class PromotionService
     public function delete(KhuyenMai $promotion): bool
     {
         return $promotion->delete();
-    }
-
-    public function restore(int $id): ?KhuyenMai
-    {
-        $promotion = KhuyenMai::onlyTrashed()->find($id);
-        if ($promotion) {
-            $promotion->restore();
-        }
-
-        return $promotion;
     }
 
     public function getActive(): Collection

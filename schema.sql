@@ -1,8 +1,32 @@
--- Read-only schema snapshot from PostgreSQL catalog metadata.
--- Source schema: public; captured 2026-09-30T09:44:54+00:00
--- DDL text only: this file was generated locally; no DDL was executed.
+-- SUPABASE SCHEMA UPDATED AT: 2026-10-01 08:45:31 +07:00
+-- Source: Supabase PostgreSQL catalog; public schema; transaction READ ONLY.
+-- Structure only: tables, columns, sequences, constraints, views, and indexes. No row data.
 
-CREATE TABLE "BangGia" (
+CREATE SEQUENCE "public"."BangGia_BangGiaID_seq" INCREMENT BY 1 MINVALUE 1 MAXVALUE 2147483647 START WITH 1 CACHE 1 NO CYCLE;
+CREATE SEQUENCE "public"."Booking_BookingID_seq" INCREMENT BY 1 MINVALUE 1 MAXVALUE 2147483647 START WITH 1 CACHE 1 NO CYCLE;
+CREATE SEQUENCE "public"."ChiTietDonHang_ChiTietDonHangID_seq" INCREMENT BY 1 MINVALUE 1 MAXVALUE 2147483647 START WITH 1 CACHE 1 NO CYCLE;
+CREATE SEQUENCE "public"."DanhGia_DanhGiaID_seq" INCREMENT BY 1 MINVALUE 1 MAXVALUE 2147483647 START WITH 1 CACHE 1 NO CYCLE;
+CREATE SEQUENCE "public"."DichVu_DichVuID_seq" INCREMENT BY 1 MINVALUE 1 MAXVALUE 2147483647 START WITH 1 CACHE 1 NO CYCLE;
+CREATE SEQUENCE "public"."DiemTichLuy_DiemTichLuyID_seq" INCREMENT BY 1 MINVALUE 1 MAXVALUE 2147483647 START WITH 1 CACHE 1 NO CYCLE;
+CREATE SEQUENCE "public"."DonHang_DonHangID_seq" INCREMENT BY 1 MINVALUE 1 MAXVALUE 2147483647 START WITH 1 CACHE 1 NO CYCLE;
+CREATE SEQUENCE "public"."DonViTinh_DonViTinhID_seq" INCREMENT BY 1 MINVALUE 1 MAXVALUE 2147483647 START WITH 1 CACHE 1 NO CYCLE;
+CREATE SEQUENCE "public"."GiaoNhan_GiaoNhanID_seq" INCREMENT BY 1 MINVALUE 1 MAXVALUE 2147483647 START WITH 1 CACHE 1 NO CYCLE;
+CREATE SEQUENCE "public"."HoaDon_HoaDonID_seq" INCREMENT BY 1 MINVALUE 1 MAXVALUE 2147483647 START WITH 1 CACHE 1 NO CYCLE;
+CREATE SEQUENCE "public"."KhachHang_KhachHangID_seq" INCREMENT BY 1 MINVALUE 1 MAXVALUE 2147483647 START WITH 1 CACHE 1 NO CYCLE;
+CREATE SEQUENCE "public"."KhuyenMai_KhuyenMaiID_seq" INCREMENT BY 1 MINVALUE 1 MAXVALUE 2147483647 START WITH 1 CACHE 1 NO CYCLE;
+CREATE SEQUENCE "public"."LichSuThayDoiHoaDon_LichSuID_seq" INCREMENT BY 1 MINVALUE 1 MAXVALUE 2147483647 START WITH 1 CACHE 1 NO CYCLE;
+CREATE SEQUENCE "public"."LoaiDichVu_LoaiDichVuID_seq" INCREMENT BY 1 MINVALUE 1 MAXVALUE 2147483647 START WITH 1 CACHE 1 NO CYCLE;
+CREATE SEQUENCE "public"."LoaiDoGiat_LoaiDoGiatID_seq" INCREMENT BY 1 MINVALUE 1 MAXVALUE 2147483647 START WITH 1 CACHE 1 NO CYCLE;
+CREATE SEQUENCE "public"."NhanVien_NhanVienID_seq" INCREMENT BY 1 MINVALUE 1 MAXVALUE 2147483647 START WITH 1 CACHE 1 NO CYCLE;
+CREATE SEQUENCE "public"."Quyen_QuyenID_seq" INCREMENT BY 1 MINVALUE 1 MAXVALUE 2147483647 START WITH 1 CACHE 1 NO CYCLE;
+CREATE SEQUENCE "public"."TaiKhoan_TaiKhoanID_seq" INCREMENT BY 1 MINVALUE 1 MAXVALUE 2147483647 START WITH 1 CACHE 1 NO CYCLE;
+CREATE SEQUENCE "public"."ThanhToan_ThanhToanID_seq" INCREMENT BY 1 MINVALUE 1 MAXVALUE 2147483647 START WITH 1 CACHE 1 NO CYCLE;
+CREATE SEQUENCE "public"."ThongBao_ThongBaoID_seq" INCREMENT BY 1 MINVALUE 1 MAXVALUE 2147483647 START WITH 1 CACHE 1 NO CYCLE;
+CREATE SEQUENCE "public"."TinNhan_TinNhanID_seq" INCREMENT BY 1 MINVALUE 1 MAXVALUE 2147483647 START WITH 1 CACHE 1 NO CYCLE;
+CREATE SEQUENCE "public"."VaiTro_VaiTroID_seq" INCREMENT BY 1 MINVALUE 1 MAXVALUE 2147483647 START WITH 1 CACHE 1 NO CYCLE;
+CREATE SEQUENCE "public"."bookings_id_seq" INCREMENT BY 1 MINVALUE 1 MAXVALUE 9223372036854775807 START WITH 1 CACHE 1 NO CYCLE;
+
+CREATE TABLE "public"."BangGia" (
     "BangGiaID" integer DEFAULT nextval('"BangGia_BangGiaID_seq"'::regclass) NOT NULL,
     "DichVuID" integer NOT NULL,
     "LoaiDoGiatID" integer NOT NULL,
@@ -10,17 +34,10 @@ CREATE TABLE "BangGia" (
     "DonGia" numeric(18,2) NOT NULL,
     "NgayApDung" date NOT NULL,
     "NgayKetThuc" date,
-    "TrangThai" character varying(30) DEFAULT 'Hoạt động'::character varying NOT NULL,
-    CONSTRAINT "BangGia_DichVuID_fkey" FOREIGN KEY ("DichVuID") REFERENCES "DichVu"("DichVuID"),
-    CONSTRAINT "BangGia_DonGia_check" CHECK (("DonGia" >= (0)::numeric)),
-    CONSTRAINT "BangGia_DonViTinhID_fkey" FOREIGN KEY ("DonViTinhID") REFERENCES "DonViTinh"("DonViTinhID"),
-    CONSTRAINT "BangGia_LoaiDoGiatID_fkey" FOREIGN KEY ("LoaiDoGiatID") REFERENCES "LoaiDoGiat"("LoaiDoGiatID"),
-    CONSTRAINT "BangGia_TrangThai_check" CHECK ((("TrangThai")::text = ANY ((ARRAY['Hoạt động'::character varying, 'Hết hiệu lực'::character varying, 'Tạm ngưng'::character varying])::text[]))),
-    CONSTRAINT "BangGia_pkey" PRIMARY KEY ("BangGiaID"),
-    CONSTRAINT "CK_BangGia_Ngay" CHECK ((("NgayKetThuc" IS NULL) OR ("NgayKetThuc" >= "NgayApDung")))
+    "TrangThai" character varying(30) DEFAULT 'Hoạt động'::character varying NOT NULL
 );
 
-CREATE TABLE "Booking" (
+CREATE TABLE "public"."Booking" (
     "BookingID" integer DEFAULT nextval('"Booking_BookingID_seq"'::regclass) NOT NULL,
     "MaBooking" character varying(30) NOT NULL,
     "KhachHangID" integer NOT NULL,
@@ -40,20 +57,10 @@ CREATE TABLE "Booking" (
     "KhoiLuong" numeric(10,2),
     "DonGia" numeric(18,2),
     "ThanhTien" numeric(18,2),
-    "NhanVienID" integer,
-    CONSTRAINT "Booking_DichVuID_fkey" FOREIGN KEY ("DichVuID") REFERENCES "DichVu"("DichVuID"),
-    CONSTRAINT "Booking_DonViTinhID_fkey" FOREIGN KEY ("DonViTinhID") REFERENCES "DonViTinh"("DonViTinhID"),
-    CONSTRAINT "Booking_HinhThucNhanDo_check" CHECK ((("HinhThucNhanDo")::text = ANY ((ARRAY['Tại cửa hàng'::character varying, 'Tại nhà'::character varying])::text[]))),
-    CONSTRAINT "Booking_KhachHangID_fkey" FOREIGN KEY ("KhachHangID") REFERENCES "KhachHang"("KhachHangID"),
-    CONSTRAINT "Booking_LoaiDoGiatID_fkey" FOREIGN KEY ("LoaiDoGiatID") REFERENCES "LoaiDoGiat"("LoaiDoGiatID"),
-    CONSTRAINT "Booking_MaBooking_key" UNIQUE ("MaBooking"),
-    CONSTRAINT "Booking_NhanVienID_fkey" FOREIGN KEY ("NhanVienID") REFERENCES "NhanVien"("NhanVienID") ON DELETE SET NULL,
-    CONSTRAINT "Booking_pkey" PRIMARY KEY ("BookingID"),
-    CONSTRAINT "booking_service_snapshot_check" CHECK (((("DichVuID" IS NULL) AND ("LoaiDoGiatID" IS NULL) AND ("DonViTinhID" IS NULL) AND ("SoLuong" IS NULL) AND ("KhoiLuong" IS NULL) AND ("DonGia" IS NULL) AND ("ThanhTien" IS NULL)) OR (("DichVuID" IS NOT NULL) AND ("LoaiDoGiatID" IS NOT NULL) AND ("DonViTinhID" IS NOT NULL) AND ("DonGia" IS NOT NULL) AND ("ThanhTien" IS NOT NULL) AND ("DonGia" >= (0)::numeric) AND ("ThanhTien" >= (0)::numeric) AND ((("SoLuong" > (0)::numeric) AND ("KhoiLuong" IS NULL)) OR (("KhoiLuong" > (0)::numeric) AND ("SoLuong" IS NULL)))))),
-    CONSTRAINT "booking_trangthai_check" CHECK ((("TrangThai")::text = ANY ((ARRAY['ChoTiepNhan'::character varying, 'DaXacNhan'::character varying, 'DaHuy'::character varying, 'HoanThanh'::character varying])::text[])))
+    "NhanVienID" integer
 );
 
-CREATE TABLE "ChiTietDonHang" (
+CREATE TABLE "public"."ChiTietDonHang" (
     "ChiTietDonHangID" integer DEFAULT nextval('"ChiTietDonHang_ChiTietDonHangID_seq"'::regclass) NOT NULL,
     "DonHangID" integer NOT NULL,
     "DichVuID" integer NOT NULL,
@@ -63,58 +70,37 @@ CREATE TABLE "ChiTietDonHang" (
     "KhoiLuong" numeric(10,2),
     "DonGia" numeric(18,2) NOT NULL,
     "ThanhTien" numeric(18,2) NOT NULL,
-    "GhiChu" character varying(500),
-    CONSTRAINT "CK_CTDH_SoLuongKhoiLuong" CHECK (((("SoLuong" IS NOT NULL) AND ("SoLuong" > (0)::numeric)) OR (("KhoiLuong" IS NOT NULL) AND ("KhoiLuong" > (0)::numeric)))),
-    CONSTRAINT "ChiTietDonHang_DichVuID_fkey" FOREIGN KEY ("DichVuID") REFERENCES "DichVu"("DichVuID"),
-    CONSTRAINT "ChiTietDonHang_DonGia_check" CHECK (("DonGia" >= (0)::numeric)),
-    CONSTRAINT "ChiTietDonHang_DonHangID_fkey" FOREIGN KEY ("DonHangID") REFERENCES "DonHang"("DonHangID"),
-    CONSTRAINT "ChiTietDonHang_DonViTinhID_fkey" FOREIGN KEY ("DonViTinhID") REFERENCES "DonViTinh"("DonViTinhID"),
-    CONSTRAINT "ChiTietDonHang_LoaiDoGiatID_fkey" FOREIGN KEY ("LoaiDoGiatID") REFERENCES "LoaiDoGiat"("LoaiDoGiatID"),
-    CONSTRAINT "ChiTietDonHang_ThanhTien_check" CHECK (("ThanhTien" >= (0)::numeric)),
-    CONSTRAINT "ChiTietDonHang_pkey" PRIMARY KEY ("ChiTietDonHangID")
+    "GhiChu" character varying(500)
 );
 
-CREATE TABLE "DanhGia" (
+CREATE TABLE "public"."DanhGia" (
     "DanhGiaID" integer DEFAULT nextval('"DanhGia_DanhGiaID_seq"'::regclass) NOT NULL,
     "DonHangID" integer NOT NULL,
     "KhachHangID" integer NOT NULL,
     "SoSao" integer NOT NULL,
     "BinhLuan" character varying(1000),
     "NgayDanhGia" timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    "TrangThai" character varying(30) DEFAULT 'Hiển thị'::character varying NOT NULL,
-    CONSTRAINT "DanhGia_DonHangID_fkey" FOREIGN KEY ("DonHangID") REFERENCES "DonHang"("DonHangID"),
-    CONSTRAINT "DanhGia_DonHangID_key" UNIQUE ("DonHangID"),
-    CONSTRAINT "DanhGia_KhachHangID_fkey" FOREIGN KEY ("KhachHangID") REFERENCES "KhachHang"("KhachHangID"),
-    CONSTRAINT "DanhGia_SoSao_check" CHECK ((("SoSao" >= 1) AND ("SoSao" <= 5))),
-    CONSTRAINT "DanhGia_TrangThai_check" CHECK ((("TrangThai")::text = ANY ((ARRAY['Hiển thị'::character varying, 'Ẩn'::character varying])::text[]))),
-    CONSTRAINT "DanhGia_pkey" PRIMARY KEY ("DanhGiaID")
+    "TrangThai" character varying(30) DEFAULT 'Hiển thị'::character varying NOT NULL
 );
 
-CREATE TABLE "DichVu" (
+CREATE TABLE "public"."DichVu" (
     "DichVuID" integer DEFAULT nextval('"DichVu_DichVuID_seq"'::regclass) NOT NULL,
     "LoaiDichVuID" integer NOT NULL,
     "TenDichVu" character varying(150) NOT NULL,
     "MoTa" character varying(500),
     "ThoiGianDuKien" integer,
     "TrangThai" character varying(30) DEFAULT 'Hoạt động'::character varying NOT NULL,
-    "NgayTao" timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    CONSTRAINT "DichVu_LoaiDichVuID_fkey" FOREIGN KEY ("LoaiDichVuID") REFERENCES "LoaiDichVu"("LoaiDichVuID"),
-    CONSTRAINT "DichVu_TrangThai_check" CHECK ((("TrangThai")::text = ANY ((ARRAY['Hoạt động'::character varying, 'Tạm ngưng'::character varying])::text[]))),
-    CONSTRAINT "DichVu_pkey" PRIMARY KEY ("DichVuID")
+    "NgayTao" timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
 
-CREATE TABLE "DiemTichLuy" (
+CREATE TABLE "public"."DiemTichLuy" (
     "DiemTichLuyID" integer DEFAULT nextval('"DiemTichLuy_DiemTichLuyID_seq"'::regclass) NOT NULL,
     "KhachHangID" integer NOT NULL,
     "DiemHienTai" integer DEFAULT 0 NOT NULL,
-    "NgayCapNhat" timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    CONSTRAINT "DiemTichLuy_DiemHienTai_check" CHECK (("DiemHienTai" >= 0)),
-    CONSTRAINT "DiemTichLuy_KhachHangID_fkey" FOREIGN KEY ("KhachHangID") REFERENCES "KhachHang"("KhachHangID"),
-    CONSTRAINT "DiemTichLuy_KhachHangID_key" UNIQUE ("KhachHangID"),
-    CONSTRAINT "DiemTichLuy_pkey" PRIMARY KEY ("DiemTichLuyID")
+    "NgayCapNhat" timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
 
-CREATE TABLE "DonHang" (
+CREATE TABLE "public"."DonHang" (
     "DonHangID" integer DEFAULT nextval('"DonHang_DonHangID_seq"'::regclass) NOT NULL,
     "MaDonHang" character varying(30) NOT NULL,
     "BookingID" integer,
@@ -131,33 +117,17 @@ CREATE TABLE "DonHang" (
     "GhiChu" character varying(500),
     "NgayTao" timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
     "NgayCapNhat" timestamp without time zone,
-    "IdempotencyKey" uuid,
-    CONSTRAINT "DonHang_BookingID_fkey" FOREIGN KEY ("BookingID") REFERENCES "Booking"("BookingID"),
-    CONSTRAINT "DonHang_DiemSuDung_check" CHECK (("DiemSuDung" >= 0)),
-    CONSTRAINT "DonHang_KhachHangID_fkey" FOREIGN KEY ("KhachHangID") REFERENCES "KhachHang"("KhachHangID"),
-    CONSTRAINT "DonHang_KhuyenMaiID_fkey" FOREIGN KEY ("KhuyenMaiID") REFERENCES "KhuyenMai"("KhuyenMaiID"),
-    CONSTRAINT "DonHang_MaDonHang_key" UNIQUE ("MaDonHang"),
-    CONSTRAINT "DonHang_NhanVienID_fkey" FOREIGN KEY ("NhanVienID") REFERENCES "NhanVien"("NhanVienID"),
-    CONSTRAINT "DonHang_PhiGiaoHang_check" CHECK (("PhiGiaoHang" >= (0)::numeric)),
-    CONSTRAINT "DonHang_ThanhTien_check" CHECK (("ThanhTien" >= (0)::numeric)),
-    CONSTRAINT "DonHang_TienGiamDoDiem_check" CHECK (("TienGiamDoDiem" >= (0)::numeric)),
-    CONSTRAINT "DonHang_TienGiamKhuyenMai_check" CHECK (("TienGiamKhuyenMai" >= (0)::numeric)),
-    CONSTRAINT "DonHang_TongTien_check" CHECK (("TongTien" >= (0)::numeric)),
-    CONSTRAINT "DonHang_TrangThai_check" CHECK ((("TrangThai")::text = ANY ((ARRAY['Chờ tiếp nhận'::character varying, 'Đã tiếp nhận'::character varying, 'Đang giặt'::character varying, 'Hoàn thành giặt'::character varying, 'Đang giao'::character varying, 'Đã giao'::character varying, 'Đã thanh toán'::character varying, 'Đã hủy'::character varying])::text[]))),
-    CONSTRAINT "DonHang_pkey" PRIMARY KEY ("DonHangID")
+    "IdempotencyKey" uuid
 );
 
-CREATE TABLE "DonViTinh" (
+CREATE TABLE "public"."DonViTinh" (
     "DonViTinhID" integer DEFAULT nextval('"DonViTinh_DonViTinhID_seq"'::regclass) NOT NULL,
     "TenDonViTinh" character varying(50) NOT NULL,
     "KyHieu" character varying(20),
-    "TrangThai" character varying(30) DEFAULT 'Hoạt động'::character varying NOT NULL,
-    CONSTRAINT "DonViTinh_TenDonViTinh_key" UNIQUE ("TenDonViTinh"),
-    CONSTRAINT "DonViTinh_TrangThai_check" CHECK ((("TrangThai")::text = ANY ((ARRAY['Hoạt động'::character varying, 'Tạm ngưng'::character varying])::text[]))),
-    CONSTRAINT "DonViTinh_pkey" PRIMARY KEY ("DonViTinhID")
+    "TrangThai" character varying(30) DEFAULT 'Hoạt động'::character varying NOT NULL
 );
 
-CREATE TABLE "GiaoNhan" (
+CREATE TABLE "public"."GiaoNhan" (
     "GiaoNhanID" integer DEFAULT nextval('"GiaoNhan_GiaoNhanID_seq"'::regclass) NOT NULL,
     "DonHangID" integer NOT NULL,
     "NhanVienID" integer,
@@ -168,17 +138,10 @@ CREATE TABLE "GiaoNhan" (
     "ThoiGianThucTe" timestamp without time zone,
     "PhiGiaoNhan" numeric(18,2) DEFAULT 0 NOT NULL,
     "TrangThai" character varying(30) DEFAULT 'Chờ thực hiện'::character varying NOT NULL,
-    "GhiChu" character varying(500),
-    CONSTRAINT "GiaoNhan_DonHangID_fkey" FOREIGN KEY ("DonHangID") REFERENCES "DonHang"("DonHangID"),
-    CONSTRAINT "GiaoNhan_HinhThuc_check" CHECK ((("HinhThuc")::text = ANY ((ARRAY['Tại cửa hàng'::character varying, 'Tại nhà'::character varying])::text[]))),
-    CONSTRAINT "GiaoNhan_LoaiGiaoNhan_check" CHECK ((("LoaiGiaoNhan")::text = ANY ((ARRAY['NHAN_DO'::character varying, 'GIAO_DO'::character varying])::text[]))),
-    CONSTRAINT "GiaoNhan_NhanVienID_fkey" FOREIGN KEY ("NhanVienID") REFERENCES "NhanVien"("NhanVienID"),
-    CONSTRAINT "GiaoNhan_PhiGiaoNhan_check" CHECK (("PhiGiaoNhan" >= (0)::numeric)),
-    CONSTRAINT "GiaoNhan_TrangThai_check" CHECK ((("TrangThai")::text = ANY ((ARRAY['Chờ thực hiện'::character varying, 'Đang thực hiện'::character varying, 'Hoàn thành'::character varying, 'Đã hủy'::character varying])::text[]))),
-    CONSTRAINT "GiaoNhan_pkey" PRIMARY KEY ("GiaoNhanID")
+    "GhiChu" character varying(500)
 );
 
-CREATE TABLE "HoaDon" (
+CREATE TABLE "public"."HoaDon" (
     "HoaDonID" integer DEFAULT nextval('"HoaDon_HoaDonID_seq"'::regclass) NOT NULL,
     "MaHoaDon" character varying(30) NOT NULL,
     "DonHangID" integer NOT NULL,
@@ -187,32 +150,20 @@ CREATE TABLE "HoaDon" (
     "PhiGiaoHang" numeric(18,2) DEFAULT 0 NOT NULL,
     "ThanhTien" numeric(18,2) NOT NULL,
     "NgayLap" timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    "TrangThai" character varying(30) DEFAULT 'Chưa thanh toán'::character varying NOT NULL,
-    CONSTRAINT "HoaDon_DonHangID_fkey" FOREIGN KEY ("DonHangID") REFERENCES "DonHang"("DonHangID"),
-    CONSTRAINT "HoaDon_DonHangID_key" UNIQUE ("DonHangID"),
-    CONSTRAINT "HoaDon_GiamGia_check" CHECK (("GiamGia" >= (0)::numeric)),
-    CONSTRAINT "HoaDon_MaHoaDon_key" UNIQUE ("MaHoaDon"),
-    CONSTRAINT "HoaDon_PhiGiaoHang_check" CHECK (("PhiGiaoHang" >= (0)::numeric)),
-    CONSTRAINT "HoaDon_ThanhTien_check" CHECK (("ThanhTien" >= (0)::numeric)),
-    CONSTRAINT "HoaDon_TongTien_check" CHECK (("TongTien" >= (0)::numeric)),
-    CONSTRAINT "HoaDon_TrangThai_check" CHECK ((("TrangThai")::text = ANY ((ARRAY['Chưa thanh toán'::character varying, 'Đã thanh toán'::character varying, 'Đã hủy'::character varying])::text[]))),
-    CONSTRAINT "HoaDon_pkey" PRIMARY KEY ("HoaDonID")
+    "TrangThai" character varying(30) DEFAULT 'Chưa thanh toán'::character varying NOT NULL
 );
 
-CREATE TABLE "KhachHang" (
+CREATE TABLE "public"."KhachHang" (
     "KhachHangID" integer DEFAULT nextval('"KhachHang_KhachHangID_seq"'::regclass) NOT NULL,
     "HoTen" character varying(100) NOT NULL,
     "SoDienThoai" character varying(15),
     "Email" character varying(150),
     "DiaChi" character varying(255),
     "NgayTao" timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    "TrangThai" character varying(30) DEFAULT 'Hoạt động'::character varying NOT NULL,
-    CONSTRAINT "KhachHang_SoDienThoai_key" UNIQUE ("SoDienThoai"),
-    CONSTRAINT "KhachHang_TrangThai_check" CHECK ((("TrangThai")::text = ANY ((ARRAY['Hoạt động'::character varying, 'Khóa'::character varying, 'Ngừng hoạt động'::character varying])::text[]))),
-    CONSTRAINT "KhachHang_pkey" PRIMARY KEY ("KhachHangID")
+    "TrangThai" character varying(30) DEFAULT 'Hoạt động'::character varying NOT NULL
 );
 
-CREATE TABLE "KhuyenMai" (
+CREATE TABLE "public"."KhuyenMai" (
     "KhuyenMaiID" integer DEFAULT nextval('"KhuyenMai_KhuyenMaiID_seq"'::regclass) NOT NULL,
     "MaKhuyenMai" character varying(50) NOT NULL,
     "TenKhuyenMai" character varying(150) NOT NULL,
@@ -224,16 +175,10 @@ CREATE TABLE "KhuyenMai" (
     "DieuKienApDung" character varying(500),
     "NgayBatDau" date NOT NULL,
     "NgayKetThuc" date NOT NULL,
-    "TrangThai" character varying(30) DEFAULT 'Hoạt động'::character varying NOT NULL,
-    CONSTRAINT "CK_KhuyenMai_Ngay" CHECK (("NgayKetThuc" >= "NgayBatDau")),
-    CONSTRAINT "KhuyenMai_GiaTriGiam_check" CHECK (("GiaTriGiam" >= (0)::numeric)),
-    CONSTRAINT "KhuyenMai_LoaiKhuyenMai_check" CHECK ((("LoaiKhuyenMai")::text = ANY ((ARRAY['Phần trăm'::character varying, 'Tiền mặt'::character varying])::text[]))),
-    CONSTRAINT "KhuyenMai_MaKhuyenMai_key" UNIQUE ("MaKhuyenMai"),
-    CONSTRAINT "KhuyenMai_TrangThai_check" CHECK ((("TrangThai")::text = ANY ((ARRAY['Hoạt động'::character varying, 'Tạm ngưng'::character varying, 'Hết hạn'::character varying])::text[]))),
-    CONSTRAINT "KhuyenMai_pkey" PRIMARY KEY ("KhuyenMaiID")
+    "TrangThai" character varying(30) DEFAULT 'Hoạt động'::character varying NOT NULL
 );
 
-CREATE TABLE "LichSuThayDoiHoaDon" (
+CREATE TABLE "public"."LichSuThayDoiHoaDon" (
     "LichSuID" integer DEFAULT nextval('"LichSuThayDoiHoaDon_LichSuID_seq"'::regclass) NOT NULL,
     "HoaDonID" integer NOT NULL,
     "TaiKhoanID" integer NOT NULL,
@@ -241,33 +186,24 @@ CREATE TABLE "LichSuThayDoiHoaDon" (
     "TruongThayDoi" character varying(100) NOT NULL,
     "GiaTriCu" character varying(500),
     "GiaTriMoi" character varying(500),
-    "LyDo" character varying(500),
-    CONSTRAINT "LichSuThayDoiHoaDon_HoaDonID_fkey" FOREIGN KEY ("HoaDonID") REFERENCES "HoaDon"("HoaDonID"),
-    CONSTRAINT "LichSuThayDoiHoaDon_TaiKhoanID_fkey" FOREIGN KEY ("TaiKhoanID") REFERENCES "TaiKhoan"("TaiKhoanID"),
-    CONSTRAINT "LichSuThayDoiHoaDon_pkey" PRIMARY KEY ("LichSuID")
+    "LyDo" character varying(500)
 );
 
-CREATE TABLE "LoaiDichVu" (
+CREATE TABLE "public"."LoaiDichVu" (
     "LoaiDichVuID" integer DEFAULT nextval('"LoaiDichVu_LoaiDichVuID_seq"'::regclass) NOT NULL,
     "TenLoaiDichVu" character varying(100) NOT NULL,
     "MoTa" character varying(255),
-    "TrangThai" character varying(30) DEFAULT 'Hoạt động'::character varying NOT NULL,
-    CONSTRAINT "LoaiDichVu_TenLoaiDichVu_key" UNIQUE ("TenLoaiDichVu"),
-    CONSTRAINT "LoaiDichVu_TrangThai_check" CHECK ((("TrangThai")::text = ANY ((ARRAY['Hoạt động'::character varying, 'Tạm ngưng'::character varying])::text[]))),
-    CONSTRAINT "LoaiDichVu_pkey" PRIMARY KEY ("LoaiDichVuID")
+    "TrangThai" character varying(30) DEFAULT 'Hoạt động'::character varying NOT NULL
 );
 
-CREATE TABLE "LoaiDoGiat" (
+CREATE TABLE "public"."LoaiDoGiat" (
     "LoaiDoGiatID" integer DEFAULT nextval('"LoaiDoGiat_LoaiDoGiatID_seq"'::regclass) NOT NULL,
     "TenLoaiDoGiat" character varying(150) NOT NULL,
     "MoTa" character varying(255),
-    "TrangThai" character varying(30) DEFAULT 'Hoạt động'::character varying NOT NULL,
-    CONSTRAINT "LoaiDoGiat_TenLoaiDoGiat_key" UNIQUE ("TenLoaiDoGiat"),
-    CONSTRAINT "LoaiDoGiat_TrangThai_check" CHECK ((("TrangThai")::text = ANY ((ARRAY['Hoạt động'::character varying, 'Tạm ngưng'::character varying])::text[]))),
-    CONSTRAINT "LoaiDoGiat_pkey" PRIMARY KEY ("LoaiDoGiatID")
+    "TrangThai" character varying(30) DEFAULT 'Hoạt động'::character varying NOT NULL
 );
 
-CREATE TABLE "NhanVien" (
+CREATE TABLE "public"."NhanVien" (
     "NhanVienID" integer DEFAULT nextval('"NhanVien_NhanVienID_seq"'::regclass) NOT NULL,
     "HoTen" character varying(100) NOT NULL,
     "SoDienThoai" character varying(15) NOT NULL,
@@ -275,24 +211,18 @@ CREATE TABLE "NhanVien" (
     "DiaChi" character varying(255),
     "ChucDanh" character varying(100),
     "NgayVaoLam" date,
-    "TrangThai" character varying(30) DEFAULT 'Hoạt động'::character varying NOT NULL,
-    CONSTRAINT "NhanVien_SoDienThoai_key" UNIQUE ("SoDienThoai"),
-    CONSTRAINT "NhanVien_TrangThai_check" CHECK ((("TrangThai")::text = ANY ((ARRAY['Hoạt động'::character varying, 'Khóa'::character varying, 'Ngừng hoạt động'::character varying])::text[]))),
-    CONSTRAINT "NhanVien_pkey" PRIMARY KEY ("NhanVienID")
+    "TrangThai" character varying(30) DEFAULT 'Hoạt động'::character varying NOT NULL
 );
 
-CREATE TABLE "Quyen" (
+CREATE TABLE "public"."Quyen" (
     "QuyenID" integer DEFAULT nextval('"Quyen_QuyenID_seq"'::regclass) NOT NULL,
     "MaQuyen" character varying(100) NOT NULL,
     "TenQuyen" character varying(150) NOT NULL,
     "MoTa" character varying(255),
-    "TrangThai" character varying(30) DEFAULT 'Hoạt động'::character varying NOT NULL,
-    CONSTRAINT "Quyen_MaQuyen_key" UNIQUE ("MaQuyen"),
-    CONSTRAINT "Quyen_TrangThai_check" CHECK ((("TrangThai")::text = ANY ((ARRAY['Hoạt động'::character varying, 'Ngừng hoạt động'::character varying])::text[]))),
-    CONSTRAINT "Quyen_pkey" PRIMARY KEY ("QuyenID")
+    "TrangThai" character varying(30) DEFAULT 'Hoạt động'::character varying NOT NULL
 );
 
-CREATE TABLE "TaiKhoan" (
+CREATE TABLE "public"."TaiKhoan" (
     "TaiKhoanID" integer DEFAULT nextval('"TaiKhoan_TaiKhoanID_seq"'::regclass) NOT NULL,
     "TenDangNhap" character varying(100) NOT NULL,
     "MatKhau" character varying(255),
@@ -302,24 +232,15 @@ CREATE TABLE "TaiKhoan" (
     "KhachHangID" integer,
     "TrangThai" character varying(30) DEFAULT 'Hoạt động'::character varying NOT NULL,
     "NgayTao" timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    "UserAuthId" uuid,
-    CONSTRAINT "CK_TaiKhoan_DoiTuong" CHECK (((("NhanVienID" IS NOT NULL) AND ("KhachHangID" IS NULL)) OR (("NhanVienID" IS NULL) AND ("KhachHangID" IS NOT NULL)))),
-    CONSTRAINT "TaiKhoan_KhachHangID_fkey" FOREIGN KEY ("KhachHangID") REFERENCES "KhachHang"("KhachHangID"),
-    CONSTRAINT "TaiKhoan_NhanVienID_fkey" FOREIGN KEY ("NhanVienID") REFERENCES "NhanVien"("NhanVienID"),
-    CONSTRAINT "TaiKhoan_TenDangNhap_key" UNIQUE ("TenDangNhap"),
-    CONSTRAINT "TaiKhoan_TrangThai_check" CHECK ((("TrangThai")::text = ANY ((ARRAY['Hoạt động'::character varying, 'Khóa'::character varying, 'Ngừng hoạt động'::character varying])::text[]))),
-    CONSTRAINT "TaiKhoan_pkey" PRIMARY KEY ("TaiKhoanID")
+    "UserAuthId" uuid
 );
 
-CREATE TABLE "TaiKhoan_VaiTro" (
+CREATE TABLE "public"."TaiKhoan_VaiTro" (
     "TaiKhoanID" integer NOT NULL,
-    "VaiTroID" integer NOT NULL,
-    CONSTRAINT "TaiKhoan_VaiTro_TaiKhoanID_fkey" FOREIGN KEY ("TaiKhoanID") REFERENCES "TaiKhoan"("TaiKhoanID"),
-    CONSTRAINT "TaiKhoan_VaiTro_VaiTroID_fkey" FOREIGN KEY ("VaiTroID") REFERENCES "VaiTro"("VaiTroID"),
-    CONSTRAINT "TaiKhoan_VaiTro_pkey" PRIMARY KEY ("TaiKhoanID", "VaiTroID")
+    "VaiTroID" integer NOT NULL
 );
 
-CREATE TABLE "ThanhToan" (
+CREATE TABLE "public"."ThanhToan" (
     "ThanhToanID" integer DEFAULT nextval('"ThanhToan_ThanhToanID_seq"'::regclass) NOT NULL,
     "DonHangID" integer NOT NULL,
     "SoTien" numeric(18,2) NOT NULL,
@@ -327,15 +248,10 @@ CREATE TABLE "ThanhToan" (
     "MaGiaoDich" character varying(100),
     "ThoiGian" timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
     "TrangThai" character varying(30) DEFAULT 'Chờ thanh toán'::character varying NOT NULL,
-    "GhiChu" character varying(500),
-    CONSTRAINT "ThanhToan_DonHangID_fkey" FOREIGN KEY ("DonHangID") REFERENCES "DonHang"("DonHangID"),
-    CONSTRAINT "ThanhToan_PhuongThuc_check" CHECK ((("PhuongThuc")::text = ANY ((ARRAY['Tiền mặt'::character varying, 'Chuyển khoản'::character varying])::text[]))),
-    CONSTRAINT "ThanhToan_SoTien_check" CHECK (("SoTien" > (0)::numeric)),
-    CONSTRAINT "ThanhToan_TrangThai_check" CHECK ((("TrangThai")::text = ANY ((ARRAY['Chờ thanh toán'::character varying, 'Thành công'::character varying, 'Thất bại'::character varying, 'Đã hoàn tiền'::character varying])::text[]))),
-    CONSTRAINT "ThanhToan_pkey" PRIMARY KEY ("ThanhToanID")
+    "GhiChu" character varying(500)
 );
 
-CREATE TABLE "ThongBao" (
+CREATE TABLE "public"."ThongBao" (
     "ThongBaoID" integer DEFAULT nextval('"ThongBao_ThongBaoID_seq"'::regclass) NOT NULL,
     "TaiKhoanID" integer NOT NULL,
     "DonHangID" integer,
@@ -343,46 +259,32 @@ CREATE TABLE "ThongBao" (
     "TieuDe" character varying(200) NOT NULL,
     "NoiDung" character varying(1000) NOT NULL,
     "ThoiGianGui" timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    "DaDoc" boolean DEFAULT false NOT NULL,
-    CONSTRAINT "ThongBao_DonHangID_fkey" FOREIGN KEY ("DonHangID") REFERENCES "DonHang"("DonHangID"),
-    CONSTRAINT "ThongBao_TaiKhoanID_fkey" FOREIGN KEY ("TaiKhoanID") REFERENCES "TaiKhoan"("TaiKhoanID"),
-    CONSTRAINT "ThongBao_pkey" PRIMARY KEY ("ThongBaoID")
+    "DaDoc" boolean DEFAULT false NOT NULL
 );
 
-CREATE TABLE "TinNhan" (
+CREATE TABLE "public"."TinNhan" (
     "TinNhanID" integer DEFAULT nextval('"TinNhan_TinNhanID_seq"'::regclass) NOT NULL,
     "NguoiGuiID" integer NOT NULL,
     "NguoiNhanID" integer NOT NULL,
     "DonHangID" integer,
     "NoiDung" character varying(1000) NOT NULL,
     "ThoiGianGui" timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    "TrangThai" character varying(30) DEFAULT 'Đã gửi'::character varying NOT NULL,
-    CONSTRAINT "TinNhan_DonHangID_fkey" FOREIGN KEY ("DonHangID") REFERENCES "DonHang"("DonHangID"),
-    CONSTRAINT "TinNhan_NguoiGuiID_fkey" FOREIGN KEY ("NguoiGuiID") REFERENCES "TaiKhoan"("TaiKhoanID"),
-    CONSTRAINT "TinNhan_NguoiNhanID_fkey" FOREIGN KEY ("NguoiNhanID") REFERENCES "TaiKhoan"("TaiKhoanID"),
-    CONSTRAINT "TinNhan_TrangThai_check" CHECK ((("TrangThai")::text = ANY ((ARRAY['Đã gửi'::character varying, 'Đã nhận'::character varying, 'Đã đọc'::character varying])::text[]))),
-    CONSTRAINT "TinNhan_pkey" PRIMARY KEY ("TinNhanID")
+    "TrangThai" character varying(30) DEFAULT 'Đã gửi'::character varying NOT NULL
 );
 
-CREATE TABLE "VaiTro" (
+CREATE TABLE "public"."VaiTro" (
     "VaiTroID" integer DEFAULT nextval('"VaiTro_VaiTroID_seq"'::regclass) NOT NULL,
     "TenVaiTro" character varying(100) NOT NULL,
     "MoTa" character varying(255),
-    "TrangThai" character varying(30) DEFAULT 'Hoạt động'::character varying NOT NULL,
-    CONSTRAINT "VaiTro_TenVaiTro_key" UNIQUE ("TenVaiTro"),
-    CONSTRAINT "VaiTro_TrangThai_check" CHECK ((("TrangThai")::text = ANY ((ARRAY['Hoạt động'::character varying, 'Ngừng hoạt động'::character varying])::text[]))),
-    CONSTRAINT "VaiTro_pkey" PRIMARY KEY ("VaiTroID")
+    "TrangThai" character varying(30) DEFAULT 'Hoạt động'::character varying NOT NULL
 );
 
-CREATE TABLE "VaiTro_Quyen" (
+CREATE TABLE "public"."VaiTro_Quyen" (
     "VaiTroID" integer NOT NULL,
-    "QuyenID" integer NOT NULL,
-    CONSTRAINT "VaiTro_Quyen_QuyenID_fkey" FOREIGN KEY ("QuyenID") REFERENCES "Quyen"("QuyenID"),
-    CONSTRAINT "VaiTro_Quyen_VaiTroID_fkey" FOREIGN KEY ("VaiTroID") REFERENCES "VaiTro"("VaiTroID"),
-    CONSTRAINT "VaiTro_Quyen_pkey" PRIMARY KEY ("VaiTroID", "QuyenID")
+    "QuyenID" integer NOT NULL
 );
 
-CREATE TABLE "bookings" (
+CREATE TABLE "public"."bookings" (
     "id" bigint DEFAULT nextval('bookings_id_seq'::regclass) NOT NULL,
     "customer_id" bigint NOT NULL,
     "service_id" bigint NOT NULL,
@@ -396,24 +298,20 @@ CREATE TABLE "bookings" (
     "status" character varying(255) DEFAULT 'pending'::character varying NOT NULL,
     "created_at" timestamp(0) without time zone,
     "updated_at" timestamp(0) without time zone,
-    "deleted_at" timestamp(0) without time zone,
-    CONSTRAINT "bookings_pkey" PRIMARY KEY (id)
+    "deleted_at" timestamp(0) without time zone
 );
 
-CREATE TABLE "donhang_trangthai" (
+CREATE TABLE "public"."donhang_trangthai" (
     "donhang_trangthaiid" bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
     "donhangid" bigint NOT NULL,
     "taikhoanid" bigint,
     "trangthaicu" character varying(30),
     "trangthaimoi" character varying(30) NOT NULL,
     "lydo" character varying(500),
-    "thoigian" timestamp with time zone DEFAULT now() NOT NULL,
-    CONSTRAINT "donhang_trangthai_donhangid_fkey" FOREIGN KEY (donhangid) REFERENCES "DonHang"("DonHangID") ON DELETE CASCADE,
-    CONSTRAINT "donhang_trangthai_pkey" PRIMARY KEY (donhang_trangthaiid),
-    CONSTRAINT "donhang_trangthai_taikhoanid_fkey" FOREIGN KEY (taikhoanid) REFERENCES "TaiKhoan"("TaiKhoanID") ON DELETE SET NULL
+    "thoigian" timestamp with time zone DEFAULT now() NOT NULL
 );
 
-CREATE TABLE "khachhang_diachi" (
+CREATE TABLE "public"."khachhang_diachi" (
     "diachiid" bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
     "khachhangid" bigint NOT NULL,
     "tennguoinhan" character varying(100) NOT NULL,
@@ -421,24 +319,175 @@ CREATE TABLE "khachhang_diachi" (
     "diachi" character varying(500) NOT NULL,
     "ghichu" character varying(500),
     "macdinh" boolean DEFAULT false NOT NULL,
-    "ngaytao" timestamp with time zone DEFAULT now() NOT NULL,
-    CONSTRAINT "khachhang_diachi_diachi_check" CHECK ((length(btrim((diachi)::text)) > 0)),
-    CONSTRAINT "khachhang_diachi_khachhangid_fkey" FOREIGN KEY (khachhangid) REFERENCES "KhachHang"("KhachHangID") ON DELETE CASCADE,
-    CONSTRAINT "khachhang_diachi_pkey" PRIMARY KEY (diachiid),
-    CONSTRAINT "khachhang_diachi_sodienthoai_check" CHECK ((length(btrim((sodienthoai)::text)) >= 8))
+    "ngaytao" timestamp with time zone DEFAULT now() NOT NULL
 );
 
-CREATE TABLE "sessions" (
+CREATE TABLE "public"."sessions" (
     "id" character varying(255) NOT NULL,
     "user_id" bigint,
     "ip_address" character varying(45),
     "user_agent" text,
     "payload" text NOT NULL,
-    "last_activity" integer NOT NULL,
-    CONSTRAINT "sessions_pkey" PRIMARY KEY (id)
+    "last_activity" integer NOT NULL
 );
 
-CREATE VIEW "banggia" AS
+ALTER TABLE ONLY "public"."BangGia" ADD CONSTRAINT "BangGia_DichVuID_fkey" FOREIGN KEY ("DichVuID") REFERENCES "DichVu"("DichVuID");
+ALTER TABLE ONLY "public"."BangGia" ADD CONSTRAINT "BangGia_DonGia_check" CHECK ("DonGia" >= 0::numeric);
+ALTER TABLE ONLY "public"."BangGia" ADD CONSTRAINT "BangGia_DonViTinhID_fkey" FOREIGN KEY ("DonViTinhID") REFERENCES "DonViTinh"("DonViTinhID");
+ALTER TABLE ONLY "public"."BangGia" ADD CONSTRAINT "BangGia_LoaiDoGiatID_fkey" FOREIGN KEY ("LoaiDoGiatID") REFERENCES "LoaiDoGiat"("LoaiDoGiatID");
+ALTER TABLE ONLY "public"."BangGia" ADD CONSTRAINT "BangGia_TrangThai_check" CHECK ("TrangThai"::text = ANY (ARRAY['Hoạt động'::character varying, 'Hết hiệu lực'::character varying, 'Tạm ngưng'::character varying]::text[]));
+ALTER TABLE ONLY "public"."BangGia" ADD CONSTRAINT "BangGia_pkey" PRIMARY KEY ("BangGiaID");
+ALTER TABLE ONLY "public"."BangGia" ADD CONSTRAINT "CK_BangGia_Ngay" CHECK ("NgayKetThuc" IS NULL OR "NgayKetThuc" >= "NgayApDung");
+ALTER TABLE ONLY "public"."Booking" ADD CONSTRAINT "Booking_DichVuID_fkey" FOREIGN KEY ("DichVuID") REFERENCES "DichVu"("DichVuID");
+ALTER TABLE ONLY "public"."Booking" ADD CONSTRAINT "Booking_DonViTinhID_fkey" FOREIGN KEY ("DonViTinhID") REFERENCES "DonViTinh"("DonViTinhID");
+ALTER TABLE ONLY "public"."Booking" ADD CONSTRAINT "Booking_HinhThucNhanDo_check" CHECK ("HinhThucNhanDo"::text = ANY (ARRAY['Tại cửa hàng'::character varying, 'Tại nhà'::character varying]::text[]));
+ALTER TABLE ONLY "public"."Booking" ADD CONSTRAINT "Booking_KhachHangID_fkey" FOREIGN KEY ("KhachHangID") REFERENCES "KhachHang"("KhachHangID");
+ALTER TABLE ONLY "public"."Booking" ADD CONSTRAINT "Booking_LoaiDoGiatID_fkey" FOREIGN KEY ("LoaiDoGiatID") REFERENCES "LoaiDoGiat"("LoaiDoGiatID");
+ALTER TABLE ONLY "public"."Booking" ADD CONSTRAINT "Booking_MaBooking_key" UNIQUE ("MaBooking");
+ALTER TABLE ONLY "public"."Booking" ADD CONSTRAINT "Booking_NhanVienID_fkey" FOREIGN KEY ("NhanVienID") REFERENCES "NhanVien"("NhanVienID") ON DELETE SET NULL;
+ALTER TABLE ONLY "public"."Booking" ADD CONSTRAINT "Booking_pkey" PRIMARY KEY ("BookingID");
+ALTER TABLE ONLY "public"."Booking" ADD CONSTRAINT "booking_service_snapshot_check" CHECK ("DichVuID" IS NULL AND "LoaiDoGiatID" IS NULL AND "DonViTinhID" IS NULL AND "SoLuong" IS NULL AND "KhoiLuong" IS NULL AND "DonGia" IS NULL AND "ThanhTien" IS NULL OR "DichVuID" IS NOT NULL AND "LoaiDoGiatID" IS NOT NULL AND "DonViTinhID" IS NOT NULL AND "DonGia" IS NOT NULL AND "ThanhTien" IS NOT NULL AND "DonGia" >= 0::numeric AND "ThanhTien" >= 0::numeric AND ("SoLuong" > 0::numeric AND "KhoiLuong" IS NULL OR "KhoiLuong" > 0::numeric AND "SoLuong" IS NULL));
+ALTER TABLE ONLY "public"."Booking" ADD CONSTRAINT "booking_trangthai_check" CHECK ("TrangThai"::text = ANY (ARRAY['ChoTiepNhan'::character varying, 'DaXacNhan'::character varying, 'DaHuy'::character varying, 'HoanThanh'::character varying]::text[]));
+ALTER TABLE ONLY "public"."ChiTietDonHang" ADD CONSTRAINT "CK_CTDH_SoLuongKhoiLuong" CHECK ("SoLuong" IS NOT NULL AND "SoLuong" > 0::numeric OR "KhoiLuong" IS NOT NULL AND "KhoiLuong" > 0::numeric);
+ALTER TABLE ONLY "public"."ChiTietDonHang" ADD CONSTRAINT "ChiTietDonHang_DichVuID_fkey" FOREIGN KEY ("DichVuID") REFERENCES "DichVu"("DichVuID");
+ALTER TABLE ONLY "public"."ChiTietDonHang" ADD CONSTRAINT "ChiTietDonHang_DonGia_check" CHECK ("DonGia" >= 0::numeric);
+ALTER TABLE ONLY "public"."ChiTietDonHang" ADD CONSTRAINT "ChiTietDonHang_DonHangID_fkey" FOREIGN KEY ("DonHangID") REFERENCES "DonHang"("DonHangID");
+ALTER TABLE ONLY "public"."ChiTietDonHang" ADD CONSTRAINT "ChiTietDonHang_DonViTinhID_fkey" FOREIGN KEY ("DonViTinhID") REFERENCES "DonViTinh"("DonViTinhID");
+ALTER TABLE ONLY "public"."ChiTietDonHang" ADD CONSTRAINT "ChiTietDonHang_LoaiDoGiatID_fkey" FOREIGN KEY ("LoaiDoGiatID") REFERENCES "LoaiDoGiat"("LoaiDoGiatID");
+ALTER TABLE ONLY "public"."ChiTietDonHang" ADD CONSTRAINT "ChiTietDonHang_ThanhTien_check" CHECK ("ThanhTien" >= 0::numeric);
+ALTER TABLE ONLY "public"."ChiTietDonHang" ADD CONSTRAINT "ChiTietDonHang_pkey" PRIMARY KEY ("ChiTietDonHangID");
+ALTER TABLE ONLY "public"."DanhGia" ADD CONSTRAINT "DanhGia_DonHangID_fkey" FOREIGN KEY ("DonHangID") REFERENCES "DonHang"("DonHangID");
+ALTER TABLE ONLY "public"."DanhGia" ADD CONSTRAINT "DanhGia_DonHangID_key" UNIQUE ("DonHangID");
+ALTER TABLE ONLY "public"."DanhGia" ADD CONSTRAINT "DanhGia_KhachHangID_fkey" FOREIGN KEY ("KhachHangID") REFERENCES "KhachHang"("KhachHangID");
+ALTER TABLE ONLY "public"."DanhGia" ADD CONSTRAINT "DanhGia_SoSao_check" CHECK ("SoSao" >= 1 AND "SoSao" <= 5);
+ALTER TABLE ONLY "public"."DanhGia" ADD CONSTRAINT "DanhGia_TrangThai_check" CHECK ("TrangThai"::text = ANY (ARRAY['Hiển thị'::character varying, 'Ẩn'::character varying]::text[]));
+ALTER TABLE ONLY "public"."DanhGia" ADD CONSTRAINT "DanhGia_pkey" PRIMARY KEY ("DanhGiaID");
+ALTER TABLE ONLY "public"."DichVu" ADD CONSTRAINT "DichVu_LoaiDichVuID_fkey" FOREIGN KEY ("LoaiDichVuID") REFERENCES "LoaiDichVu"("LoaiDichVuID");
+ALTER TABLE ONLY "public"."DichVu" ADD CONSTRAINT "DichVu_TrangThai_check" CHECK ("TrangThai"::text = ANY (ARRAY['Hoạt động'::character varying, 'Tạm ngưng'::character varying]::text[]));
+ALTER TABLE ONLY "public"."DichVu" ADD CONSTRAINT "DichVu_pkey" PRIMARY KEY ("DichVuID");
+ALTER TABLE ONLY "public"."DiemTichLuy" ADD CONSTRAINT "DiemTichLuy_DiemHienTai_check" CHECK ("DiemHienTai" >= 0);
+ALTER TABLE ONLY "public"."DiemTichLuy" ADD CONSTRAINT "DiemTichLuy_KhachHangID_fkey" FOREIGN KEY ("KhachHangID") REFERENCES "KhachHang"("KhachHangID");
+ALTER TABLE ONLY "public"."DiemTichLuy" ADD CONSTRAINT "DiemTichLuy_KhachHangID_key" UNIQUE ("KhachHangID");
+ALTER TABLE ONLY "public"."DiemTichLuy" ADD CONSTRAINT "DiemTichLuy_pkey" PRIMARY KEY ("DiemTichLuyID");
+ALTER TABLE ONLY "public"."DonHang" ADD CONSTRAINT "DonHang_BookingID_fkey" FOREIGN KEY ("BookingID") REFERENCES "Booking"("BookingID");
+ALTER TABLE ONLY "public"."DonHang" ADD CONSTRAINT "DonHang_DiemSuDung_check" CHECK ("DiemSuDung" >= 0);
+ALTER TABLE ONLY "public"."DonHang" ADD CONSTRAINT "DonHang_KhachHangID_fkey" FOREIGN KEY ("KhachHangID") REFERENCES "KhachHang"("KhachHangID");
+ALTER TABLE ONLY "public"."DonHang" ADD CONSTRAINT "DonHang_KhuyenMaiID_fkey" FOREIGN KEY ("KhuyenMaiID") REFERENCES "KhuyenMai"("KhuyenMaiID");
+ALTER TABLE ONLY "public"."DonHang" ADD CONSTRAINT "DonHang_MaDonHang_key" UNIQUE ("MaDonHang");
+ALTER TABLE ONLY "public"."DonHang" ADD CONSTRAINT "DonHang_NhanVienID_fkey" FOREIGN KEY ("NhanVienID") REFERENCES "NhanVien"("NhanVienID");
+ALTER TABLE ONLY "public"."DonHang" ADD CONSTRAINT "DonHang_PhiGiaoHang_check" CHECK ("PhiGiaoHang" >= 0::numeric);
+ALTER TABLE ONLY "public"."DonHang" ADD CONSTRAINT "DonHang_ThanhTien_check" CHECK ("ThanhTien" >= 0::numeric);
+ALTER TABLE ONLY "public"."DonHang" ADD CONSTRAINT "DonHang_TienGiamDoDiem_check" CHECK ("TienGiamDoDiem" >= 0::numeric);
+ALTER TABLE ONLY "public"."DonHang" ADD CONSTRAINT "DonHang_TienGiamKhuyenMai_check" CHECK ("TienGiamKhuyenMai" >= 0::numeric);
+ALTER TABLE ONLY "public"."DonHang" ADD CONSTRAINT "DonHang_TongTien_check" CHECK ("TongTien" >= 0::numeric);
+ALTER TABLE ONLY "public"."DonHang" ADD CONSTRAINT "DonHang_TrangThai_check" CHECK ("TrangThai"::text = ANY (ARRAY['Chờ tiếp nhận'::character varying, 'Đã tiếp nhận'::character varying, 'Đang giặt'::character varying, 'Hoàn thành giặt'::character varying, 'Đang giao'::character varying, 'Đã giao'::character varying, 'Đã thanh toán'::character varying, 'Đã hủy'::character varying]::text[]));
+ALTER TABLE ONLY "public"."DonHang" ADD CONSTRAINT "DonHang_pkey" PRIMARY KEY ("DonHangID");
+ALTER TABLE ONLY "public"."DonViTinh" ADD CONSTRAINT "DonViTinh_TenDonViTinh_key" UNIQUE ("TenDonViTinh");
+ALTER TABLE ONLY "public"."DonViTinh" ADD CONSTRAINT "DonViTinh_TrangThai_check" CHECK ("TrangThai"::text = ANY (ARRAY['Hoạt động'::character varying, 'Tạm ngưng'::character varying]::text[]));
+ALTER TABLE ONLY "public"."DonViTinh" ADD CONSTRAINT "DonViTinh_pkey" PRIMARY KEY ("DonViTinhID");
+ALTER TABLE ONLY "public"."GiaoNhan" ADD CONSTRAINT "GiaoNhan_DonHangID_fkey" FOREIGN KEY ("DonHangID") REFERENCES "DonHang"("DonHangID");
+ALTER TABLE ONLY "public"."GiaoNhan" ADD CONSTRAINT "GiaoNhan_HinhThuc_check" CHECK ("HinhThuc"::text = ANY (ARRAY['Tại cửa hàng'::character varying, 'Tại nhà'::character varying]::text[]));
+ALTER TABLE ONLY "public"."GiaoNhan" ADD CONSTRAINT "GiaoNhan_LoaiGiaoNhan_check" CHECK ("LoaiGiaoNhan"::text = ANY (ARRAY['NHAN_DO'::character varying, 'GIAO_DO'::character varying]::text[]));
+ALTER TABLE ONLY "public"."GiaoNhan" ADD CONSTRAINT "GiaoNhan_NhanVienID_fkey" FOREIGN KEY ("NhanVienID") REFERENCES "NhanVien"("NhanVienID");
+ALTER TABLE ONLY "public"."GiaoNhan" ADD CONSTRAINT "GiaoNhan_PhiGiaoNhan_check" CHECK ("PhiGiaoNhan" >= 0::numeric);
+ALTER TABLE ONLY "public"."GiaoNhan" ADD CONSTRAINT "GiaoNhan_TrangThai_check" CHECK ("TrangThai"::text = ANY (ARRAY['Chờ thực hiện'::character varying, 'Đang thực hiện'::character varying, 'Hoàn thành'::character varying, 'Đã hủy'::character varying]::text[]));
+ALTER TABLE ONLY "public"."GiaoNhan" ADD CONSTRAINT "GiaoNhan_pkey" PRIMARY KEY ("GiaoNhanID");
+ALTER TABLE ONLY "public"."HoaDon" ADD CONSTRAINT "HoaDon_DonHangID_fkey" FOREIGN KEY ("DonHangID") REFERENCES "DonHang"("DonHangID");
+ALTER TABLE ONLY "public"."HoaDon" ADD CONSTRAINT "HoaDon_DonHangID_key" UNIQUE ("DonHangID");
+ALTER TABLE ONLY "public"."HoaDon" ADD CONSTRAINT "HoaDon_GiamGia_check" CHECK ("GiamGia" >= 0::numeric);
+ALTER TABLE ONLY "public"."HoaDon" ADD CONSTRAINT "HoaDon_MaHoaDon_key" UNIQUE ("MaHoaDon");
+ALTER TABLE ONLY "public"."HoaDon" ADD CONSTRAINT "HoaDon_PhiGiaoHang_check" CHECK ("PhiGiaoHang" >= 0::numeric);
+ALTER TABLE ONLY "public"."HoaDon" ADD CONSTRAINT "HoaDon_ThanhTien_check" CHECK ("ThanhTien" >= 0::numeric);
+ALTER TABLE ONLY "public"."HoaDon" ADD CONSTRAINT "HoaDon_TongTien_check" CHECK ("TongTien" >= 0::numeric);
+ALTER TABLE ONLY "public"."HoaDon" ADD CONSTRAINT "HoaDon_TrangThai_check" CHECK ("TrangThai"::text = ANY (ARRAY['Chưa thanh toán'::character varying, 'Đã thanh toán'::character varying, 'Đã hủy'::character varying]::text[]));
+ALTER TABLE ONLY "public"."HoaDon" ADD CONSTRAINT "HoaDon_pkey" PRIMARY KEY ("HoaDonID");
+ALTER TABLE ONLY "public"."KhachHang" ADD CONSTRAINT "KhachHang_SoDienThoai_key" UNIQUE ("SoDienThoai");
+ALTER TABLE ONLY "public"."KhachHang" ADD CONSTRAINT "KhachHang_TrangThai_check" CHECK ("TrangThai"::text = ANY (ARRAY['Hoạt động'::character varying, 'Khóa'::character varying, 'Ngừng hoạt động'::character varying]::text[]));
+ALTER TABLE ONLY "public"."KhachHang" ADD CONSTRAINT "KhachHang_pkey" PRIMARY KEY ("KhachHangID");
+ALTER TABLE ONLY "public"."KhuyenMai" ADD CONSTRAINT "CK_KhuyenMai_Ngay" CHECK ("NgayKetThuc" >= "NgayBatDau");
+ALTER TABLE ONLY "public"."KhuyenMai" ADD CONSTRAINT "KhuyenMai_GiaTriGiam_check" CHECK ("GiaTriGiam" >= 0::numeric);
+ALTER TABLE ONLY "public"."KhuyenMai" ADD CONSTRAINT "KhuyenMai_LoaiKhuyenMai_check" CHECK ("LoaiKhuyenMai"::text = ANY (ARRAY['Phần trăm'::character varying, 'Tiền mặt'::character varying]::text[]));
+ALTER TABLE ONLY "public"."KhuyenMai" ADD CONSTRAINT "KhuyenMai_MaKhuyenMai_key" UNIQUE ("MaKhuyenMai");
+ALTER TABLE ONLY "public"."KhuyenMai" ADD CONSTRAINT "KhuyenMai_TrangThai_check" CHECK ("TrangThai"::text = ANY (ARRAY['Hoạt động'::character varying, 'Tạm ngưng'::character varying, 'Hết hạn'::character varying]::text[]));
+ALTER TABLE ONLY "public"."KhuyenMai" ADD CONSTRAINT "KhuyenMai_pkey" PRIMARY KEY ("KhuyenMaiID");
+ALTER TABLE ONLY "public"."LichSuThayDoiHoaDon" ADD CONSTRAINT "LichSuThayDoiHoaDon_HoaDonID_fkey" FOREIGN KEY ("HoaDonID") REFERENCES "HoaDon"("HoaDonID");
+ALTER TABLE ONLY "public"."LichSuThayDoiHoaDon" ADD CONSTRAINT "LichSuThayDoiHoaDon_TaiKhoanID_fkey" FOREIGN KEY ("TaiKhoanID") REFERENCES "TaiKhoan"("TaiKhoanID");
+ALTER TABLE ONLY "public"."LichSuThayDoiHoaDon" ADD CONSTRAINT "LichSuThayDoiHoaDon_pkey" PRIMARY KEY ("LichSuID");
+ALTER TABLE ONLY "public"."LoaiDichVu" ADD CONSTRAINT "LoaiDichVu_TenLoaiDichVu_key" UNIQUE ("TenLoaiDichVu");
+ALTER TABLE ONLY "public"."LoaiDichVu" ADD CONSTRAINT "LoaiDichVu_TrangThai_check" CHECK ("TrangThai"::text = ANY (ARRAY['Hoạt động'::character varying, 'Tạm ngưng'::character varying]::text[]));
+ALTER TABLE ONLY "public"."LoaiDichVu" ADD CONSTRAINT "LoaiDichVu_pkey" PRIMARY KEY ("LoaiDichVuID");
+ALTER TABLE ONLY "public"."LoaiDoGiat" ADD CONSTRAINT "LoaiDoGiat_TenLoaiDoGiat_key" UNIQUE ("TenLoaiDoGiat");
+ALTER TABLE ONLY "public"."LoaiDoGiat" ADD CONSTRAINT "LoaiDoGiat_TrangThai_check" CHECK ("TrangThai"::text = ANY (ARRAY['Hoạt động'::character varying, 'Tạm ngưng'::character varying]::text[]));
+ALTER TABLE ONLY "public"."LoaiDoGiat" ADD CONSTRAINT "LoaiDoGiat_pkey" PRIMARY KEY ("LoaiDoGiatID");
+ALTER TABLE ONLY "public"."NhanVien" ADD CONSTRAINT "NhanVien_SoDienThoai_key" UNIQUE ("SoDienThoai");
+ALTER TABLE ONLY "public"."NhanVien" ADD CONSTRAINT "NhanVien_TrangThai_check" CHECK ("TrangThai"::text = ANY (ARRAY['Hoạt động'::character varying, 'Khóa'::character varying, 'Ngừng hoạt động'::character varying]::text[]));
+ALTER TABLE ONLY "public"."NhanVien" ADD CONSTRAINT "NhanVien_pkey" PRIMARY KEY ("NhanVienID");
+ALTER TABLE ONLY "public"."Quyen" ADD CONSTRAINT "Quyen_MaQuyen_key" UNIQUE ("MaQuyen");
+ALTER TABLE ONLY "public"."Quyen" ADD CONSTRAINT "Quyen_TrangThai_check" CHECK ("TrangThai"::text = ANY (ARRAY['Hoạt động'::character varying, 'Ngừng hoạt động'::character varying]::text[]));
+ALTER TABLE ONLY "public"."Quyen" ADD CONSTRAINT "Quyen_pkey" PRIMARY KEY ("QuyenID");
+ALTER TABLE ONLY "public"."TaiKhoan" ADD CONSTRAINT "CK_TaiKhoan_DoiTuong" CHECK ("NhanVienID" IS NOT NULL AND "KhachHangID" IS NULL OR "NhanVienID" IS NULL AND "KhachHangID" IS NOT NULL);
+ALTER TABLE ONLY "public"."TaiKhoan" ADD CONSTRAINT "TaiKhoan_KhachHangID_fkey" FOREIGN KEY ("KhachHangID") REFERENCES "KhachHang"("KhachHangID");
+ALTER TABLE ONLY "public"."TaiKhoan" ADD CONSTRAINT "TaiKhoan_NhanVienID_fkey" FOREIGN KEY ("NhanVienID") REFERENCES "NhanVien"("NhanVienID");
+ALTER TABLE ONLY "public"."TaiKhoan" ADD CONSTRAINT "TaiKhoan_TenDangNhap_key" UNIQUE ("TenDangNhap");
+ALTER TABLE ONLY "public"."TaiKhoan" ADD CONSTRAINT "TaiKhoan_TrangThai_check" CHECK ("TrangThai"::text = ANY (ARRAY['Hoạt động'::character varying, 'Khóa'::character varying, 'Ngừng hoạt động'::character varying]::text[]));
+ALTER TABLE ONLY "public"."TaiKhoan" ADD CONSTRAINT "TaiKhoan_pkey" PRIMARY KEY ("TaiKhoanID");
+ALTER TABLE ONLY "public"."TaiKhoan_VaiTro" ADD CONSTRAINT "TaiKhoan_VaiTro_TaiKhoanID_fkey" FOREIGN KEY ("TaiKhoanID") REFERENCES "TaiKhoan"("TaiKhoanID");
+ALTER TABLE ONLY "public"."TaiKhoan_VaiTro" ADD CONSTRAINT "TaiKhoan_VaiTro_VaiTroID_fkey" FOREIGN KEY ("VaiTroID") REFERENCES "VaiTro"("VaiTroID");
+ALTER TABLE ONLY "public"."TaiKhoan_VaiTro" ADD CONSTRAINT "TaiKhoan_VaiTro_pkey" PRIMARY KEY ("TaiKhoanID", "VaiTroID");
+ALTER TABLE ONLY "public"."ThanhToan" ADD CONSTRAINT "ThanhToan_DonHangID_fkey" FOREIGN KEY ("DonHangID") REFERENCES "DonHang"("DonHangID");
+ALTER TABLE ONLY "public"."ThanhToan" ADD CONSTRAINT "ThanhToan_PhuongThuc_check" CHECK ("PhuongThuc"::text = ANY (ARRAY['Tiền mặt'::character varying, 'Chuyển khoản'::character varying]::text[]));
+ALTER TABLE ONLY "public"."ThanhToan" ADD CONSTRAINT "ThanhToan_SoTien_check" CHECK ("SoTien" > 0::numeric);
+ALTER TABLE ONLY "public"."ThanhToan" ADD CONSTRAINT "ThanhToan_TrangThai_check" CHECK ("TrangThai"::text = ANY (ARRAY['Chờ thanh toán'::character varying, 'Thành công'::character varying, 'Thất bại'::character varying, 'Đã hoàn tiền'::character varying]::text[]));
+ALTER TABLE ONLY "public"."ThanhToan" ADD CONSTRAINT "ThanhToan_pkey" PRIMARY KEY ("ThanhToanID");
+ALTER TABLE ONLY "public"."ThongBao" ADD CONSTRAINT "ThongBao_DonHangID_fkey" FOREIGN KEY ("DonHangID") REFERENCES "DonHang"("DonHangID");
+ALTER TABLE ONLY "public"."ThongBao" ADD CONSTRAINT "ThongBao_TaiKhoanID_fkey" FOREIGN KEY ("TaiKhoanID") REFERENCES "TaiKhoan"("TaiKhoanID");
+ALTER TABLE ONLY "public"."ThongBao" ADD CONSTRAINT "ThongBao_pkey" PRIMARY KEY ("ThongBaoID");
+ALTER TABLE ONLY "public"."TinNhan" ADD CONSTRAINT "TinNhan_DonHangID_fkey" FOREIGN KEY ("DonHangID") REFERENCES "DonHang"("DonHangID");
+ALTER TABLE ONLY "public"."TinNhan" ADD CONSTRAINT "TinNhan_NguoiGuiID_fkey" FOREIGN KEY ("NguoiGuiID") REFERENCES "TaiKhoan"("TaiKhoanID");
+ALTER TABLE ONLY "public"."TinNhan" ADD CONSTRAINT "TinNhan_NguoiNhanID_fkey" FOREIGN KEY ("NguoiNhanID") REFERENCES "TaiKhoan"("TaiKhoanID");
+ALTER TABLE ONLY "public"."TinNhan" ADD CONSTRAINT "TinNhan_TrangThai_check" CHECK ("TrangThai"::text = ANY (ARRAY['Đã gửi'::character varying, 'Đã nhận'::character varying, 'Đã đọc'::character varying]::text[]));
+ALTER TABLE ONLY "public"."TinNhan" ADD CONSTRAINT "TinNhan_pkey" PRIMARY KEY ("TinNhanID");
+ALTER TABLE ONLY "public"."VaiTro" ADD CONSTRAINT "VaiTro_TenVaiTro_key" UNIQUE ("TenVaiTro");
+ALTER TABLE ONLY "public"."VaiTro" ADD CONSTRAINT "VaiTro_TrangThai_check" CHECK ("TrangThai"::text = ANY (ARRAY['Hoạt động'::character varying, 'Ngừng hoạt động'::character varying]::text[]));
+ALTER TABLE ONLY "public"."VaiTro" ADD CONSTRAINT "VaiTro_pkey" PRIMARY KEY ("VaiTroID");
+ALTER TABLE ONLY "public"."VaiTro_Quyen" ADD CONSTRAINT "VaiTro_Quyen_QuyenID_fkey" FOREIGN KEY ("QuyenID") REFERENCES "Quyen"("QuyenID");
+ALTER TABLE ONLY "public"."VaiTro_Quyen" ADD CONSTRAINT "VaiTro_Quyen_VaiTroID_fkey" FOREIGN KEY ("VaiTroID") REFERENCES "VaiTro"("VaiTroID");
+ALTER TABLE ONLY "public"."VaiTro_Quyen" ADD CONSTRAINT "VaiTro_Quyen_pkey" PRIMARY KEY ("VaiTroID", "QuyenID");
+ALTER TABLE ONLY "public"."bookings" ADD CONSTRAINT "bookings_pkey" PRIMARY KEY (id);
+ALTER TABLE ONLY "public"."donhang_trangthai" ADD CONSTRAINT "donhang_trangthai_donhangid_fkey" FOREIGN KEY (donhangid) REFERENCES "DonHang"("DonHangID") ON DELETE CASCADE;
+ALTER TABLE ONLY "public"."donhang_trangthai" ADD CONSTRAINT "donhang_trangthai_pkey" PRIMARY KEY (donhang_trangthaiid);
+ALTER TABLE ONLY "public"."donhang_trangthai" ADD CONSTRAINT "donhang_trangthai_taikhoanid_fkey" FOREIGN KEY (taikhoanid) REFERENCES "TaiKhoan"("TaiKhoanID") ON DELETE SET NULL;
+ALTER TABLE ONLY "public"."khachhang_diachi" ADD CONSTRAINT "khachhang_diachi_diachi_check" CHECK (length(btrim(diachi::text)) > 0);
+ALTER TABLE ONLY "public"."khachhang_diachi" ADD CONSTRAINT "khachhang_diachi_khachhangid_fkey" FOREIGN KEY (khachhangid) REFERENCES "KhachHang"("KhachHangID") ON DELETE CASCADE;
+ALTER TABLE ONLY "public"."khachhang_diachi" ADD CONSTRAINT "khachhang_diachi_pkey" PRIMARY KEY (diachiid);
+ALTER TABLE ONLY "public"."khachhang_diachi" ADD CONSTRAINT "khachhang_diachi_sodienthoai_check" CHECK (length(btrim(sodienthoai::text)) >= 8);
+ALTER TABLE ONLY "public"."sessions" ADD CONSTRAINT "sessions_pkey" PRIMARY KEY (id);
+
+ALTER SEQUENCE "public"."BangGia_BangGiaID_seq" OWNED BY "public"."BangGia"."BangGiaID";
+ALTER SEQUENCE "public"."Booking_BookingID_seq" OWNED BY "public"."Booking"."BookingID";
+ALTER SEQUENCE "public"."ChiTietDonHang_ChiTietDonHangID_seq" OWNED BY "public"."ChiTietDonHang"."ChiTietDonHangID";
+ALTER SEQUENCE "public"."DanhGia_DanhGiaID_seq" OWNED BY "public"."DanhGia"."DanhGiaID";
+ALTER SEQUENCE "public"."DichVu_DichVuID_seq" OWNED BY "public"."DichVu"."DichVuID";
+ALTER SEQUENCE "public"."DiemTichLuy_DiemTichLuyID_seq" OWNED BY "public"."DiemTichLuy"."DiemTichLuyID";
+ALTER SEQUENCE "public"."DonHang_DonHangID_seq" OWNED BY "public"."DonHang"."DonHangID";
+ALTER SEQUENCE "public"."DonViTinh_DonViTinhID_seq" OWNED BY "public"."DonViTinh"."DonViTinhID";
+ALTER SEQUENCE "public"."GiaoNhan_GiaoNhanID_seq" OWNED BY "public"."GiaoNhan"."GiaoNhanID";
+ALTER SEQUENCE "public"."HoaDon_HoaDonID_seq" OWNED BY "public"."HoaDon"."HoaDonID";
+ALTER SEQUENCE "public"."KhachHang_KhachHangID_seq" OWNED BY "public"."KhachHang"."KhachHangID";
+ALTER SEQUENCE "public"."KhuyenMai_KhuyenMaiID_seq" OWNED BY "public"."KhuyenMai"."KhuyenMaiID";
+ALTER SEQUENCE "public"."LichSuThayDoiHoaDon_LichSuID_seq" OWNED BY "public"."LichSuThayDoiHoaDon"."LichSuID";
+ALTER SEQUENCE "public"."LoaiDichVu_LoaiDichVuID_seq" OWNED BY "public"."LoaiDichVu"."LoaiDichVuID";
+ALTER SEQUENCE "public"."LoaiDoGiat_LoaiDoGiatID_seq" OWNED BY "public"."LoaiDoGiat"."LoaiDoGiatID";
+ALTER SEQUENCE "public"."NhanVien_NhanVienID_seq" OWNED BY "public"."NhanVien"."NhanVienID";
+ALTER SEQUENCE "public"."Quyen_QuyenID_seq" OWNED BY "public"."Quyen"."QuyenID";
+ALTER SEQUENCE "public"."TaiKhoan_TaiKhoanID_seq" OWNED BY "public"."TaiKhoan"."TaiKhoanID";
+ALTER SEQUENCE "public"."ThanhToan_ThanhToanID_seq" OWNED BY "public"."ThanhToan"."ThanhToanID";
+ALTER SEQUENCE "public"."ThongBao_ThongBaoID_seq" OWNED BY "public"."ThongBao"."ThongBaoID";
+ALTER SEQUENCE "public"."TinNhan_TinNhanID_seq" OWNED BY "public"."TinNhan"."TinNhanID";
+ALTER SEQUENCE "public"."VaiTro_VaiTroID_seq" OWNED BY "public"."VaiTro"."VaiTroID";
+ALTER SEQUENCE "public"."bookings_id_seq" OWNED BY "public"."bookings"."id";
+
+CREATE VIEW "public"."banggia" AS
  SELECT "BangGiaID" AS banggiaid,
     "DichVuID" AS dichvuid,
     "LoaiDoGiatID" AS loaidogiatid,
@@ -449,7 +498,7 @@ CREATE VIEW "banggia" AS
     "TrangThai" AS trangthai
    FROM "BangGia";;
 
-CREATE VIEW "booking" AS
+CREATE VIEW "public"."booking" AS
  SELECT "BookingID" AS bookingid,
     "MaBooking" AS mabooking,
     "KhachHangID" AS khachhangid,
@@ -471,7 +520,7 @@ CREATE VIEW "booking" AS
     "ThanhTien" AS thanhtien
    FROM "Booking";;
 
-CREATE VIEW "chitietdonhang" AS
+CREATE VIEW "public"."chitietdonhang" AS
  SELECT "ChiTietDonHangID" AS chitietdonhangid,
     "DonHangID" AS donhangid,
     "DichVuID" AS dichvuid,
@@ -484,7 +533,7 @@ CREATE VIEW "chitietdonhang" AS
     "GhiChu" AS ghichu
    FROM "ChiTietDonHang";;
 
-CREATE VIEW "danhgia" AS
+CREATE VIEW "public"."danhgia" AS
  SELECT "DanhGiaID" AS danhgiaid,
     "DonHangID" AS donhangid,
     "KhachHangID" AS khachhangid,
@@ -494,7 +543,7 @@ CREATE VIEW "danhgia" AS
     "TrangThai" AS trangthai
    FROM "DanhGia";;
 
-CREATE VIEW "dichvu" AS
+CREATE VIEW "public"."dichvu" AS
  SELECT "DichVuID" AS dichvuid,
     "LoaiDichVuID" AS loaidichvuid,
     "TenDichVu" AS tendichvu,
@@ -504,14 +553,14 @@ CREATE VIEW "dichvu" AS
     "NgayTao" AS ngaytao
    FROM "DichVu";;
 
-CREATE VIEW "diemtichluy" AS
+CREATE VIEW "public"."diemtichluy" AS
  SELECT "DiemTichLuyID" AS diemtichluyid,
     "KhachHangID" AS khachhangid,
     "DiemHienTai" AS diemhientai,
     "NgayCapNhat" AS ngaycapnhat
    FROM "DiemTichLuy";;
 
-CREATE VIEW "donhang" AS
+CREATE VIEW "public"."donhang" AS
  SELECT "DonHangID" AS donhangid,
     "MaDonHang" AS madonhang,
     "BookingID" AS bookingid,
@@ -531,14 +580,14 @@ CREATE VIEW "donhang" AS
     "IdempotencyKey" AS idempotency_key
    FROM "DonHang";;
 
-CREATE VIEW "donvitinh" AS
+CREATE VIEW "public"."donvitinh" AS
  SELECT "DonViTinhID" AS donvitinhid,
     "TenDonViTinh" AS tendonvitinh,
     "KyHieu" AS kyhieu,
     "TrangThai" AS trangthai
    FROM "DonViTinh";;
 
-CREATE VIEW "giaonhan" AS
+CREATE VIEW "public"."giaonhan" AS
  SELECT "GiaoNhanID" AS giaonhanid,
     "DonHangID" AS donhangid,
     "NhanVienID" AS nhanvienid,
@@ -552,7 +601,7 @@ CREATE VIEW "giaonhan" AS
     "GhiChu" AS ghichu
    FROM "GiaoNhan";;
 
-CREATE VIEW "hoadon" AS
+CREATE VIEW "public"."hoadon" AS
  SELECT "HoaDonID" AS hoadonid,
     "MaHoaDon" AS mahoadon,
     "DonHangID" AS donhangid,
@@ -564,7 +613,7 @@ CREATE VIEW "hoadon" AS
     "TrangThai" AS trangthai
    FROM "HoaDon";;
 
-CREATE VIEW "khachhang" AS
+CREATE VIEW "public"."khachhang" AS
  SELECT "KhachHangID" AS khachhangid,
     "HoTen" AS hoten,
     "SoDienThoai" AS sodienthoai,
@@ -574,7 +623,7 @@ CREATE VIEW "khachhang" AS
     "TrangThai" AS trangthai
    FROM "KhachHang";;
 
-CREATE VIEW "khuyenmai" AS
+CREATE VIEW "public"."khuyenmai" AS
  SELECT "KhuyenMaiID" AS khuyenmaiid,
     "MaKhuyenMai" AS makhuyenmai,
     "TenKhuyenMai" AS tenkhuyenmai,
@@ -589,7 +638,7 @@ CREATE VIEW "khuyenmai" AS
     "TrangThai" AS trangthai
    FROM "KhuyenMai";;
 
-CREATE VIEW "lichsuthaydoihoadon" AS
+CREATE VIEW "public"."lichsuthaydoihoadon" AS
  SELECT "LichSuID" AS lichsuid,
     "HoaDonID" AS hoadonid,
     "TaiKhoanID" AS taikhoanid,
@@ -600,21 +649,21 @@ CREATE VIEW "lichsuthaydoihoadon" AS
     "LyDo" AS lydo
    FROM "LichSuThayDoiHoaDon";;
 
-CREATE VIEW "loaidichvu" AS
+CREATE VIEW "public"."loaidichvu" AS
  SELECT "LoaiDichVuID" AS loaidichvuid,
     "TenLoaiDichVu" AS tenloaidichvu,
     "MoTa" AS mota,
     "TrangThai" AS trangthai
    FROM "LoaiDichVu";;
 
-CREATE VIEW "loaidogiat" AS
+CREATE VIEW "public"."loaidogiat" AS
  SELECT "LoaiDoGiatID" AS loaidogiatid,
     "TenLoaiDoGiat" AS tenloaidogiat,
     "MoTa" AS mota,
     "TrangThai" AS trangthai
    FROM "LoaiDoGiat";;
 
-CREATE VIEW "nhanvien" AS
+CREATE VIEW "public"."nhanvien" AS
  SELECT "NhanVienID" AS nhanvienid,
     "HoTen" AS hoten,
     "SoDienThoai" AS sodienthoai,
@@ -625,7 +674,7 @@ CREATE VIEW "nhanvien" AS
     "TrangThai" AS trangthai
    FROM "NhanVien";;
 
-CREATE VIEW "quyen" AS
+CREATE VIEW "public"."quyen" AS
  SELECT "QuyenID" AS quyenid,
     "MaQuyen" AS maquyen,
     "TenQuyen" AS tenquyen,
@@ -633,7 +682,7 @@ CREATE VIEW "quyen" AS
     "TrangThai" AS trangthai
    FROM "Quyen";;
 
-CREATE VIEW "taikhoan" AS
+CREATE VIEW "public"."taikhoan" AS
  SELECT "TaiKhoanID" AS taikhoanid,
     "TenDangNhap" AS tendangnhap,
     "MatKhau" AS matkhau,
@@ -646,12 +695,12 @@ CREATE VIEW "taikhoan" AS
     "UserAuthId" AS userauthid
    FROM "TaiKhoan";;
 
-CREATE VIEW "taikhoan_vaitro" AS
+CREATE VIEW "public"."taikhoan_vaitro" AS
  SELECT "TaiKhoanID" AS taikhoanid,
     "VaiTroID" AS vaitroid
    FROM "TaiKhoan_VaiTro";;
 
-CREATE VIEW "thanhtoan" AS
+CREATE VIEW "public"."thanhtoan" AS
  SELECT "ThanhToanID" AS thanhtoanid,
     "DonHangID" AS donhangid,
     "SoTien" AS sotien,
@@ -662,7 +711,7 @@ CREATE VIEW "thanhtoan" AS
     "GhiChu" AS ghichu
    FROM "ThanhToan";;
 
-CREATE VIEW "thongbao" AS
+CREATE VIEW "public"."thongbao" AS
  SELECT "ThongBaoID" AS thongbaoid,
     "TaiKhoanID" AS taikhoanid,
     "DonHangID" AS donhangid,
@@ -673,7 +722,7 @@ CREATE VIEW "thongbao" AS
     "DaDoc" AS dadoc
    FROM "ThongBao";;
 
-CREATE VIEW "tinnhan" AS
+CREATE VIEW "public"."tinnhan" AS
  SELECT "TinNhanID" AS tinnhanid,
     "NguoiGuiID" AS nguoiguiid,
     "NguoiNhanID" AS nguoinhanid,
@@ -683,14 +732,14 @@ CREATE VIEW "tinnhan" AS
     "TrangThai" AS trangthai
    FROM "TinNhan";;
 
-CREATE VIEW "vaitro" AS
+CREATE VIEW "public"."vaitro" AS
  SELECT "VaiTroID" AS vaitroid,
     "TenVaiTro" AS tenvaitro,
     "MoTa" AS mota,
     "TrangThai" AS trangthai
    FROM "VaiTro";;
 
-CREATE VIEW "vaitro_quyen" AS
+CREATE VIEW "public"."vaitro_quyen" AS
  SELECT "VaiTroID" AS vaitroid,
     "QuyenID" AS quyenid
    FROM "VaiTro_Quyen";;
@@ -698,11 +747,11 @@ CREATE VIEW "vaitro_quyen" AS
 CREATE INDEX "IX_Booking_KhachHangID" ON public."Booking" USING btree ("KhachHangID");
 CREATE UNIQUE INDEX booking_idempotency_key_unique_idx ON public."Booking" USING btree ("IdempotencyKey") WHERE ("IdempotencyKey" IS NOT NULL);
 CREATE INDEX "IX_ChiTietDonHang_DonHangID" ON public."ChiTietDonHang" USING btree ("DonHangID");
-CREATE UNIQUE INDEX "DonHang_IdempotencyKey_unique_idx" ON public."DonHang" USING btree ("IdempotencyKey") WHERE ("IdempotencyKey" IS NOT NULL);
+CREATE UNIQUE INDEX "UX_DonHang_BookingID" ON public."DonHang" USING btree ("BookingID") WHERE ("BookingID" IS NOT NULL);
 CREATE INDEX "IX_DonHang_KhachHangID" ON public."DonHang" USING btree ("KhachHangID");
 CREATE INDEX "IX_DonHang_NhanVienID" ON public."DonHang" USING btree ("NhanVienID");
 CREATE INDEX "IX_DonHang_TrangThai" ON public."DonHang" USING btree ("TrangThai");
-CREATE UNIQUE INDEX "UX_DonHang_BookingID" ON public."DonHang" USING btree ("BookingID") WHERE ("BookingID" IS NOT NULL);
+CREATE UNIQUE INDEX "DonHang_IdempotencyKey_unique_idx" ON public."DonHang" USING btree ("IdempotencyKey") WHERE ("IdempotencyKey" IS NOT NULL);
 CREATE UNIQUE INDEX donhang_bookingid_unique_idx ON public."DonHang" USING btree ("BookingID") WHERE ("BookingID" IS NOT NULL);
 CREATE INDEX "IX_GiaoNhan_DonHangID" ON public."GiaoNhan" USING btree ("DonHangID");
 CREATE UNIQUE INDEX "TaiKhoan_UserAuthId_unique_idx" ON public."TaiKhoan" USING btree ("UserAuthId") WHERE ("UserAuthId" IS NOT NULL);
@@ -710,16 +759,5 @@ CREATE INDEX "IX_ThanhToan_DonHangID" ON public."ThanhToan" USING btree ("DonHan
 CREATE INDEX donhang_trangthai_donhangid_idx ON public.donhang_trangthai USING btree (donhangid, thoigian);
 CREATE INDEX khachhang_diachi_khachhangid_idx ON public.khachhang_diachi USING btree (khachhangid);
 CREATE UNIQUE INDEX khachhang_diachi_one_default_idx ON public.khachhang_diachi USING btree (khachhangid) WHERE macdinh;
-CREATE INDEX sessions_last_activity_index ON public.sessions USING btree (last_activity);
 CREATE INDEX sessions_user_id_index ON public.sessions USING btree (user_id);
-
--- PERFORMANCE INDEX CANDIDATES (RECOMMENDATIONS ONLY; NOT EXECUTED).
--- Confirm query plans and table cardinality before scheduling any DDL on Supabase.
--- CREATE INDEX CONCURRENTLY IF NOT EXISTS "IX_HoaDon_DonHangID" ON public."HoaDon" ("DonHangID");
--- CREATE INDEX CONCURRENTLY IF NOT EXISTS "IX_HoaDon_TrangThai_NgayLap" ON public."HoaDon" ("TrangThai", "NgayLap" DESC);
--- CREATE INDEX CONCURRENTLY IF NOT EXISTS "IX_ThanhToan_DonHangID_TrangThai" ON public."ThanhToan" ("DonHangID", "TrangThai");
--- CREATE INDEX CONCURRENTLY IF NOT EXISTS "IX_ChiTietDonHang_DichVuID" ON public."ChiTietDonHang" ("DichVuID");
--- CREATE INDEX CONCURRENTLY IF NOT EXISTS "IX_ChiTietDonHang_LoaiDoGiatID" ON public."ChiTietDonHang" ("LoaiDoGiatID");
--- CREATE INDEX CONCURRENTLY IF NOT EXISTS "IX_BangGia_Lookup" ON public."BangGia" ("DichVuID", "LoaiDoGiatID", "DonViTinhID", "TrangThai", "NgayApDung" DESC, "BangGiaID" DESC);
--- CREATE INDEX CONCURRENTLY IF NOT EXISTS "IX_Booking_TrangThai_NgayHen" ON public."Booking" ("TrangThai", "NgayHen");
--- CREATE INDEX CONCURRENTLY IF NOT EXISTS "IX_DichVu_LoaiDichVuID_TrangThai" ON public."DichVu" ("LoaiDichVuID", "TrangThai");
+CREATE INDEX sessions_last_activity_index ON public.sessions USING btree (last_activity);

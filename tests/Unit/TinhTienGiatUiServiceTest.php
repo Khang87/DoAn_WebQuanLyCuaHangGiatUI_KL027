@@ -49,6 +49,19 @@ class TinhTienGiatUiServiceTest extends TestCase
         $this->assertSame(25000.0, $amount);
     }
 
+    public function test_non_weight_units_preserve_fractional_quantity_from_numeric_schema_column(): void
+    {
+        $service = new TinhTienGiatUiService;
+
+        $amount = $service->tinhThanhTienChiTiet([
+            'SoLuong' => 1.5,
+            'DonGia' => 12500,
+            'TenDonViTinh' => 'Mét',
+        ]);
+
+        $this->assertSame(18750.0, $amount);
+    }
+
     public function test_explicit_minimum_weight_overrides_the_configured_default(): void
     {
         $service = new TinhTienGiatUiService;

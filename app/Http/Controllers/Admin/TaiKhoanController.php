@@ -260,31 +260,57 @@ class TaiKhoanController extends Controller
         }
     }
 
-    public function profile()
+    public function profile(): View
     {
         $account = auth()->user();
 
         return view('admin.accounts.profile', compact('account'));
     }
 
-    public function updateProfile(Request $request)
+    public function updateProfile(Request $request): RedirectResponse
     {
         $account = auth()->user();
+        $account->loadMissing(['nhanVien', 'khachHang']);
 
-        $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|email|max:255|unique:users,email,'.$account->id,
-            'phone' => 'nullable|string|max:20',
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:100'],
+            'email' => [
+                'required',
+                'email',
+                'max:150',
+                'unique:TaiKhoan,Email,'.$account->getKey().',TaiKhoanID',
+            ],
+            'phone' => [
+                $account->nhanVien ? 'required' : 'nullable',
+                'string',
+                'max:15',
+            ],
         ]);
 
         try {
-            $account->update($request->only(['name', 'email', 'phone']));
+            DB::transaction(function () use ($account, $validated): void {
+                $account->update([
+                    'Email' => $validated['email'],
+                    'SoDienThoai' => $validated['phone'] ?? null,
+                ]);
+
+                $profileAttributes = [
+                    'HoTen' => $validated['name'],
+                    'Email' => $validated['email'],
+                    'SoDienThoai' => $validated['phone'] ?? null,
+                ];
+
+                if ($account->nhanVien) {
+                    $account->nhanVien->update($profileAttributes);
+                } elseif ($account->khachHang) {
+                    $account->khachHang->update($profileAttributes);
+                } else {
+                    $account->update(['TenDangNhap' => $validated['name']]);
+                }
+            });
 
             if ($request->input('remove_avatar') === '1') {
-                if ($account->getOriginal('avatar') && file_exists(public_path($account->getOriginal('avatar')))) {
-                    unlink(public_path($account->getOriginal('avatar')));
-                }
-                $account->update(['avatar' => null]);
+                $this->deleteAvatarFiles($account);
             }
 
             return redirect()->route('profile')->with('success', 'Hồ sơ đã được cập nhật.');
@@ -302,20 +328,16 @@ class TaiKhoanController extends Controller
         ]);
 
         try {
-            if ($account->getOriginal('avatar') && file_exists(public_path($account->getOriginal('avatar')))) {
-                unlink(public_path($account->getOriginal('avatar')));
-            }
-
             $dir = public_path('uploads/avatars');
             if (! is_dir($dir)) {
-                mkdir($dir, 0755, true);
+                if (! mkdir($dir, 0755, true) && ! is_dir($dir)) {
+                    throw new \RuntimeException('Không thể tạo thư mục lưu ảnh đại diện.');
+                }
             }
 
-            $filename = 'avatar_'.$account->id.'_'.time().'.'.$request->file('avatar')->getClientOriginalExtension();
-            $request->file('avatar')->move($dir, $filename);
-
-            $account->update(['avatar' => 'uploads/avatars/'.$filename]);
-            $account->refresh();
+            $filename = 'avatar_'.$account->getKey().'.'.$request->file('avatar')->extension();
+            $avatarFile = $request->file('avatar')->move($dir, $filename);
+            $this->deleteAvatarFiles($account, $avatarFile->getPathname());
 
             return response()->json([
                 'success' => true,
@@ -326,6 +348,22 @@ class TaiKhoanController extends Controller
                 'success' => false,
                 'message' => FriendlyError::message($e),
             ], 422);
+        }
+    }
+
+    private function deleteAvatarFiles(User $account, ?string $exceptPath = null): void
+    {
+        $avatarFiles = glob(public_path('uploads/avatars/avatar_'.$account->getKey().'.*')) ?: [];
+        $exceptPath = $exceptPath ? realpath($exceptPath) : null;
+
+        foreach ($avatarFiles as $avatarFile) {
+            if (! is_file($avatarFile) || ($exceptPath && realpath($avatarFile) === $exceptPath)) {
+                continue;
+            }
+
+            if (! unlink($avatarFile)) {
+                throw new \RuntimeException('Không thể xóa ảnh đại diện cũ.');
+            }
         }
     }
 

@@ -4,38 +4,29 @@
 @section('page-title', 'Chi tiết khuyến mãi')
 
 @section('content')
-@php
-    // Coupon dùng bộ giá trị riêng (percent/fixed/free_shipping),
-    // Promotion dùng bộ giá trị trong Promotion::discountTypeOptions().
-    $couponDiscountLabels = [
-        'percent' => 'Phần trăm',
-        'fixed' => 'Số tiền cố định',
-        'free_shipping' => 'Miễn phí giao hàng',
-    ];
-@endphp
-
 <x-admin.detail.page-header
-    title="Khuyến mãi {{ $promotion->code }}"
-    :subtitle="$promotion->name"
+    :title="'Khuyến mãi ' . $promotion->MaKhuyenMai"
+    :subtitle="$promotion->TenKhuyenMai"
 >
     <x-slot:badge>
-        <x-admin.status-badge :status="$promotion->status" :enum="\App\Enums\RecordStatus::class" />
-        <span class="badge {{ $promotion->is_valid ? 'bg-success-subtle text-success-emphasis border border-success' : 'bg-secondary-subtle text-secondary-emphasis border border-secondary' }} px-3 py-2 rounded-pill">
-            <i class="bi {{ $promotion->is_valid ? 'bi-check-circle' : 'bi-x-circle' }} me-1"></i>
-            {{ $promotion->is_valid ? 'Đang áp dụng' : 'Không áp dụng' }}
+        <span class="badge {{ $promotion->status_badge_class }} px-3 py-2 rounded-pill">
+            {{ $promotion->status_label }}
+        </span>
+        <span class="badge {{ $promotion->isValid() ? 'bg-success-subtle text-success-emphasis border border-success' : 'bg-secondary-subtle text-secondary-emphasis border border-secondary' }} px-3 py-2 rounded-pill">
+            <i class="bi {{ $promotion->isValid() ? 'bi-check-circle' : 'bi-x-circle' }} me-1"></i>
+            {{ $promotion->isValid() ? 'Đang áp dụng' : 'Không áp dụng' }}
         </span>
     </x-slot:badge>
 </x-admin.detail.page-header>
 
 <div class="row g-4">
-    {{-- ============ CỘT CHÍNH (8/12) ============ --}}
     <div class="col-lg-8">
         <x-admin.detail.panel title="Thông tin khuyến mãi" icon="bi-megaphone" :iconClass="'bg-primary-subtle text-primary'">
             <x-admin.detail.info-grid :columns="2">
-                <x-admin.detail.info-item label="Tên khuyến mãi" :value="$promotion->name" />
+                <x-admin.detail.info-item label="Tên khuyến mãi" :value="$promotion->TenKhuyenMai" />
                 <x-admin.detail.info-item label="Mã khuyến mãi">
                     <span class="badge bg-primary-subtle text-primary-emphasis border border-primary px-3 py-2 rounded-pill">
-                        {{ $promotion->code }}
+                        {{ $promotion->MaKhuyenMai }}
                     </span>
                 </x-admin.detail.info-item>
                 <x-admin.detail.info-item label="Loại giảm">
@@ -43,136 +34,113 @@
                         {{ $promotion->discountTypeLabel() }}
                     </span>
                 </x-admin.detail.info-item>
-                <x-admin.detail.info-item label="Chiết khấu">
-                    <span class="fw-semibold">{{ $promotion->discountSummary() }}</span>
-                </x-admin.detail.info-item>
-                <x-admin.detail.info-item label="Đơn tối thiểu">
-                    @if((float) $promotion->min_order_amount > 0)
-                        <x-admin.detail.money :value="$promotion->min_order_amount" />
+                <x-admin.detail.info-item label="Giá trị giảm" :value="$promotion->discountSummary()" />
+                <x-admin.detail.info-item label="Đơn hàng tối thiểu">
+                    @if($promotion->GiaTriDonToiThieu !== null)
+                        <x-admin.detail.money :value="$promotion->GiaTriDonToiThieu" />
                     @else
                         <span class="detail-empty-value">Không yêu cầu</span>
                     @endif
                 </x-admin.detail.info-item>
-                <x-admin.detail.info-item label="Số lượt sử dụng">
-                    @if($promotion->usage_limit)
-                        <span class="fw-semibold">{{ $promotion->usageLabel() }}</span>
+                <x-admin.detail.info-item label="Mức giảm tối đa">
+                    @if($promotion->MucGiamToiDa !== null)
+                        <x-admin.detail.money :value="$promotion->MucGiamToiDa" />
                     @else
-                        <span class="detail-empty-value">Không giới hạn lượt</span>
+                        <span class="detail-empty-value">Không giới hạn</span>
                     @endif
                 </x-admin.detail.info-item>
-                <x-admin.detail.info-item label="Số mã phát ra">
-                    @if($promotion->remainingCodes() === null)
-                        <span class="detail-empty-value">Phát vô hạn</span>
-                    @else
-                        <span class="fw-semibold">{{ number_format($promotion->remainingCodes()) }} mã còn lại</span>
-                        <small class="text-muted d-block">Tổng {{ number_format((int) $promotion->quantity) }} mã · đã dùng {{ number_format((int) $promotion->used_count) }}</small>
-                    @endif
-                </x-admin.detail.info-item>
-                <x-admin.detail.info-item label="Bắt đầu" :value="$promotion->starts_at?->format('d/m/Y') ?: 'Tức thì'" />
-                <x-admin.detail.info-item label="Hết hạn" :value="$promotion->expires_at?->format('d/m/Y') ?: 'Không thời hạn'" />
-                <x-admin.detail.info-item label="Ngày tạo" :value="$promotion->created_at?->format('d/m/Y H:i')" />
+                <x-admin.detail.info-item label="Số lượt sử dụng" :value="$promotion->usageLabel()" />
+                <x-admin.detail.info-item label="Ngày bắt đầu" :value="$promotion->NgayBatDau?->format('d/m/Y')" />
+                <x-admin.detail.info-item label="Ngày kết thúc" :value="$promotion->NgayKetThuc?->format('d/m/Y')" />
                 <x-admin.detail.info-item label="Trạng thái">
-                    <x-admin.status-badge :status="$promotion->status" :enum="\App\Enums\RecordStatus::class" :pill="false" />
+                    <span class="badge {{ $promotion->status_badge_class }} px-3 py-2 rounded-pill">
+                        {{ $promotion->status_label }}
+                    </span>
                 </x-admin.detail.info-item>
             </x-admin.detail.info-grid>
 
-            @if($promotion->hasConditions())
-                <div class="mt-4">
-                    <div class="detail-field__label mb-2">Điều kiện áp dụng</div>
+            <div class="mt-4">
+                <div class="detail-field__label mb-2">Điều kiện áp dụng</div>
+                @if($promotion->DieuKienApDung)
                     <div class="detail-text">
-                        @if($promotion->isFirstOrderOnly())
-                            <span class="badge bg-amber-subtle text-amber-emphasis border border-amber px-3 py-2 rounded-pill">
-                                <i class="bi bi-person-check me-1"></i>Chỉ áp dụng cho đơn hàng đầu tiên
-                            </span>
-                        @endif
+                        {{ $promotion->isFirstOrderOnly() ? 'Chỉ áp dụng cho đơn hàng đầu tiên' : $promotion->DieuKienApDung }}
                     </div>
-                </div>
-            @endif
+                @else
+                    <span class="detail-empty-value">Không có điều kiện bổ sung</span>
+                @endif
+            </div>
         </x-admin.detail.panel>
 
-        <x-admin.detail.panel title="Mã giảm giá liên quan" icon="bi-ticket-perforated" :iconClass="'bg-secondary-subtle text-secondary'" flush>
-            <x-slot:header>
-                @can('coupons.create')
-                    <a href="{{ route('coupons.create') }}" class="btn btn-sm btn-outline-primary">
-                        <i class="bi bi-plus-lg me-1"></i>Thêm mã
-                    </a>
-                @endcan
-            </x-slot:header>
-
-            @if($coupons->isEmpty())
-                <x-admin.detail.empty message="Chưa có mã giảm giá nào thuộc chương trình" icon="bi-ticket-perforated" />
+        <x-admin.detail.panel title="Đơn hàng áp dụng khuyến mãi" icon="bi-receipt" :iconClass="'bg-info-subtle text-info'" flush>
+            @if($orders->isEmpty())
+                <x-admin.detail.empty message="Chưa có đơn hàng sử dụng chương trình này" icon="bi-receipt" />
             @else
                 <div class="table-responsive">
                     <table class="table table-hover detail-table">
                         <thead>
                             <tr>
-                                <th>Mã coupon</th>
-                                <th>Loại</th>
-                                <th class="text-end">Giá trị</th>
-                                <th class="text-end">Số lần dùng</th>
-                                <th class="text-end">Hạn dùng</th>
+                                <th>Mã đơn hàng</th>
+                                <th>Khách hàng</th>
                                 <th>Trạng thái</th>
+                                <th class="text-end">Tiền giảm</th>
+                                <th class="text-end">Thành tiền</th>
+                                <th>Ngày tạo</th>
+                                @can('orders.view')
+                                    <th class="text-end">Thao tác</th>
+                                @endcan
                             </tr>
                         </thead>
                         <tbody>
-                            @foreach($coupons as $coupon)
+                            @foreach($orders as $order)
                                 <tr>
+                                    <td class="fw-semibold">{{ $order->MaDonHang }}</td>
+                                    <td>{{ $order->khachHang?->HoTen ?? '—' }}</td>
                                     <td>
-                                        <span class="fw-semibold">
-                                            {{ $coupon->code }}
+                                        @php($orderStatus = \App\Enums\OrderStatus::parse($order->TrangThai))
+                                        <span class="badge {{ $orderStatus->badgeClass() }} px-2 py-1 rounded-pill">
+                                            {{ $orderStatus->label() }}
                                         </span>
                                     </td>
-                                    <td>{{ $couponDiscountLabels[$coupon->discount_type] ?? '—' }}</td>
                                     <td class="text-end">
-                                        @if($coupon->discount_type === 'percent')
-                                            {{ rtrim(rtrim((string) $coupon->discount_value, '0'), '.') }}%
-                                        @elseif($coupon->discount_type === 'fixed')
-                                            <x-admin.detail.money :value="$coupon->discount_value" />
-                                        @else
-                                            Miễn phí
-                                        @endif
+                                        <x-admin.detail.money :value="$order->TienGiamKhuyenMai" />
                                     </td>
-                                    <td class="text-end">{{ $coupon->used_count }}/{{ $coupon->max_uses ?: '∞' }}</td>
-                                    <td class="text-end">{{ $coupon->expires_at?->format('d/m/Y') ?: 'Không hạn' }}</td>
-                                    <td>
-                                        <x-admin.status-badge :status="$coupon->status" :enum="\App\Enums\RecordStatus::class" size="px-2 py-1" />
+                                    <td class="text-end">
+                                        <x-admin.detail.money :value="$order->ThanhTien" />
                                     </td>
+                                    <td>{{ $order->NgayTao?->format('d/m/Y H:i') ?? '—' }}</td>
+                                    @can('orders.view')
+                                        <td class="text-end">
+                                            <a href="{{ route('orders.show', $order->DonHangID) }}" class="btn btn-sm btn-outline-primary" title="Xem đơn hàng">
+                                                <i class="bi bi-eye"></i>
+                                            </a>
+                                        </td>
+                                    @endcan
                                 </tr>
                             @endforeach
                         </tbody>
                     </table>
                 </div>
-
-                @if($coupons->hasPages())
-                    <div class="p-3">{{ $coupons->links('pagination::bootstrap-5') }}</div>
+                @if($orders->hasPages())
+                    <div class="p-3">{{ $orders->links('pagination::bootstrap-5') }}</div>
                 @endif
             @endif
         </x-admin.detail.panel>
     </div>
 
-    {{-- ============ CỘT PHỤ (4/12) ============ --}}
     <div class="col-lg-4">
-        <x-admin.detail.panel title="Hạn mức sử dụng" icon="bi-bar-chart" :iconClass="'bg-success-subtle text-success'">
-            @php
-                $hasUsageLimit = (bool) $promotion->usage_limit;
-                $usagePercent = $hasUsageLimit
-                    ? min(100, ($promotion->used_count / $promotion->usage_limit) * 100)
-                    : 0.0;
-            @endphp
-            <div class="d-flex justify-content-between align-items-baseline mb-2">
-                <span class="detail-field__label">Đã dùng</span>
-                <span class="detail-summary__total">
-                    {{ $hasUsageLimit ? number_format($usagePercent, 1) . '%' : 'Không giới hạn' }}
-                </span>
-            </div>
-            <div class="progress" style="height: 20px;">
-                <div class="progress-bar {{ $hasUsageLimit && $usagePercent >= 100 ? 'bg-danger' : 'bg-success' }}" role="progressbar"
-                     style="width: {{ $hasUsageLimit ? $usagePercent : 0 }}%" aria-valuenow="{{ $hasUsageLimit ? (int) $usagePercent : 0 }}" aria-valuemin="0" aria-valuemax="100"></div>
-            </div>
-            <x-admin.detail.info-grid :columns="1" class="mt-3">
-                <x-admin.detail.info-item label="Đã sử dụng" :value="$promotion->used_count . ' lượt'" />
-                <x-admin.detail.info-item label="Tối đa" :value="$promotion->usage_limit ?: 'Không giới hạn'" />
-                <x-admin.detail.info-item label="Mã đã phát" :value="($promotion->remainingCodes() === null ? 'Không giới hạn' : $promotion->remainingCodes() . ' mã còn lại')" />
+        <x-admin.detail.panel title="Tổng quan sử dụng" icon="bi-bar-chart" :iconClass="'bg-success-subtle text-success'">
+            <x-admin.detail.info-grid :columns="1">
+                <x-admin.detail.info-item label="Số đơn hàng áp dụng" :value="number_format($orderCount)" />
+                <x-admin.detail.info-item label="Tổng tiền đã giảm">
+                    <x-admin.detail.money :value="$totalDiscount" />
+                </x-admin.detail.info-item>
+                <x-admin.detail.info-item label="Điều kiện đơn tối thiểu">
+                    @if($promotion->GiaTriDonToiThieu !== null)
+                        <x-admin.detail.money :value="$promotion->GiaTriDonToiThieu" />
+                    @else
+                        <span class="detail-empty-value">Không yêu cầu</span>
+                    @endif
+                </x-admin.detail.info-item>
             </x-admin.detail.info-grid>
         </x-admin.detail.panel>
 
@@ -184,18 +152,13 @@
                 <h5 class="card-title mb-0 fw-bold">Thao tác</h5>
             </div>
             <div class="card-body d-flex flex-column gap-2">
-                <a href="{{ route('promotions.edit', $promotion) }}" class="btn btn-primary w-100 py-2">
-                    <i class="fas fa-pencil-alt me-1"></i> Chỉnh sửa
-                </a>
-
-                @can('coupons.create')
-                    <a href="{{ route('coupons.create') }}" class="btn btn-outline-primary w-100 py-2">
-                        <i class="fas fa-plus me-1"></i> Thêm mã giảm giá
+                @can('promotions.edit')
+                    <a href="{{ route('promotions.edit', $promotion->KhuyenMaiID) }}" class="btn btn-primary w-100 py-2">
+                        <i class="fas fa-pencil-alt me-1"></i>Chỉnh sửa
                     </a>
                 @endcan
-
                 <a href="{{ route('promotions.index') }}" class="btn btn-outline-secondary w-100 py-2 text-dark">
-                    <i class="fas fa-arrow-left me-1"></i> Quay lại danh sách
+                    <i class="fas fa-arrow-left me-1"></i>Quay lại danh sách
                 </a>
             </div>
         </div>

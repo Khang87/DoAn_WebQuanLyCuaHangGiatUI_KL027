@@ -8,15 +8,13 @@ use App\Http\Controllers\Admin\DanhGiaController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\DichVuController;
 use App\Http\Controllers\Admin\DonHangController;
-use App\Http\Controllers\Admin\GarmentCategoryController;
 use App\Http\Controllers\Admin\GarmentConditionController;
-use App\Http\Controllers\Admin\GarmentController;
 use App\Http\Controllers\Admin\GiaoNhanController;
 use App\Http\Controllers\Admin\HoaDonController;
 use App\Http\Controllers\Admin\KhachHangController;
 use App\Http\Controllers\Admin\KhuyenMaiController;
-use App\Http\Controllers\Admin\LaundryCategoryController;
 use App\Http\Controllers\Admin\LoaiDichVuController;
+use App\Http\Controllers\Admin\LoaiDoGiatController;
 use App\Http\Controllers\Admin\ReportsController;
 use App\Http\Controllers\Admin\TaiKhoanController;
 use App\Http\Controllers\Admin\ThanhToanController;
@@ -156,30 +154,11 @@ Route::middleware(['auth', 'reject.customer'])->group(function () {
             ->middlewareFor(['edit', 'update'], 'permission:services.edit')
             ->middlewareFor('destroy', 'permission:services.delete');
 
-        // Garments Management
-        Route::resource('garments', GarmentController::class)
-            ->middlewareFor(['index', 'show'], 'permission:garments.view')
-            ->middlewareFor(['create', 'store'], 'permission:garments.create')
-            ->middlewareFor(['edit', 'update'], 'permission:garments.edit')
-            ->middlewareFor('destroy', 'permission:garments.delete');
         Route::resource('garment-conditions', GarmentConditionController::class)
             ->middlewareFor(['index', 'show'], 'permission:garment_conditions.view')
             ->middlewareFor(['create', 'store'], 'permission:garment_conditions.create')
             ->middlewareFor(['edit', 'update'], 'permission:garment_conditions.edit')
             ->middlewareFor('destroy', 'permission:garment_conditions.delete');
-        Route::resource('garment-categories', GarmentCategoryController::class)
-            ->middlewareFor(['index', 'show'], 'permission:garment_categories.view')
-            ->middlewareFor(['create', 'store'], 'permission:garment_categories.create')
-            ->middlewareFor(['edit', 'update'], 'permission:garment_categories.edit')
-            ->middlewareFor('destroy', 'permission:garment_categories.delete');
-
-        // Laundry Categories Management
-        Route::resource('laundry-categories', LaundryCategoryController::class)
-            ->middlewareFor(['index', 'show'], 'permission:laundry_categories.view')
-            ->middlewareFor(['create', 'store'], 'permission:laundry_categories.create')
-            ->middlewareFor(['edit', 'update'], 'permission:laundry_categories.edit')
-            ->middlewareFor('destroy', 'permission:laundry_categories.delete');
-
         // Pricing Management
         Route::resource('pricings', BangGiaController::class)
             ->middlewareFor(['index', 'show'], 'permission:pricings.view')
@@ -201,6 +180,7 @@ Route::middleware(['auth', 'reject.customer'])->group(function () {
 
         // Reports (Owner & Manager only)
         Route::prefix('reports')->name('reports.')->middleware(['role:manager|admin', 'permission:reports.view'])->group(function () {
+            Route::get('/export', [ReportsController::class, 'export'])->name('export');
             Route::get('/', [ReportsController::class, 'index'])->name('index');
         });
 
@@ -238,6 +218,23 @@ Route::middleware(['auth', 'reject.customer'])->group(function () {
         // Route::post('services/{service}/toggle-status', [DichVuController::class, 'toggleStatus'])->name('services.toggle-status');
         Route::post('service-categories/{service_category}/toggle-status', [DichVuController::class, 'toggleStatus'])->middleware('permission:service_categories.edit')->name('service-categories.toggle-status');
     });
+
+    // Loại đồ giặt: chủ cửa hàng hoặc nhân viên có quyền theo từng thao tác.
+    Route::middleware('role:admin|staff|employee')->group(function () {
+        Route::resource('loai-do-giat', LoaiDoGiatController::class)
+            ->names('loaidogiat')
+            ->parameters(['loai-do-giat' => 'loai_do_giat'])
+            ->middlewareFor(['index', 'show'], 'permission:garment_categories.view')
+            ->middlewareFor(['create', 'store'], 'permission:garment_categories.create')
+            ->middlewareFor(['edit', 'update'], 'permission:garment_categories.edit')
+            ->middlewareFor('destroy', 'permission:garment_categories.delete');
+    });
+
+    foreach (['garments', 'garment-categories', 'laundry-categories'] as $legacyPath) {
+        Route::get($legacyPath, fn () => redirect()->route('loaidogiat.index'))
+            ->middleware('permission:garment_categories.view')
+            ->name($legacyPath.'.legacy-redirect');
+    }
 
     // User Profile (Staff & Admin) — ai cũng tự sửa được hồ sơ của mình
     Route::get('/profile', [TaiKhoanController::class, 'profile'])->name('profile');

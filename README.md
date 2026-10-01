@@ -71,6 +71,9 @@ Chỉ sử dụng tài khoản được cấp trong môi trường cục bộ ho
 - Tách quyền resource theo từng hành động và kiểm tra quyền cụ thể trên các API được bảo vệ.
 - Bổ sung kiểm thử hồi quy về việc Khách hàng bị chặn khỏi trang quản trị/API và giới hạn quyền theo từng hành động.
 - Bổ sung logic giao diện tạo đơn để chuyển đổi giữa nhập khối lượng và số lượng; phép tính phía máy chủ được xử lý bởi `TinhTienGiatUiService`.
+- Hoàn thiện trang Báo cáo theo bộ lọc thời gian: KPI đơn hàng/đặt lịch, doanh thu theo ngày lập hóa đơn đã thanh toán, giá trị đơn trung bình, xu hướng doanh thu và cơ cấu doanh thu dịch vụ; hai biểu đồ dùng ApexCharts được phục vụ từ tài nguyên cục bộ.
+- Thống kê phương thức thanh toán từ giao dịch thành công trên `ThanhToan`, liên kết với hóa đơn đã thanh toán; danh sách đơn gần đây nạp sẵn thông tin khách hàng và chi tiết dịch vụ.
+- Bổ sung xuất Excel `.xlsx` các hóa đơn đã thanh toán theo bộ lọc ngày lập; route và controller đều kiểm tra quyền `reports.view`.
 - Giữ thông báo rõ ràng cho chức năng điều kiện đồ giặt chưa được schema hiện tại hỗ trợ, không ghi dữ liệu vào bảng không tồn tại.
 
 ### Các vấn đề đã khắc phục
@@ -79,10 +82,33 @@ Chỉ sử dụng tài khoản được cấp trong môi trường cục bộ ho
 - Sửa quan hệ trang chi tiết loại đồ giặt để dùng `LoaiDoGiat` và dữ liệu bảng giá đúng theo schema.
 - Xóa một số lớp tương thích không còn tham chiếu, mã báo cáo trùng lặp, view không được sử dụng và test mẫu mặc định.
 - Khắc phục lỗ hổng phân quyền do dùng chung danh sách quyền OR cho nhiều thao tác và do API thiếu kiểm tra quyền.
+- Đồng bộ các truy vấn báo cáo với `HoaDon.ThanhTien`, `HoaDon.NgayLap`, trạng thái thanh toán và trạng thái đặt lịch theo schema hiện tại.
+- Chuyển nút Xuất Excel từ giao diện placeholder sang tải báo cáo thực, đồng thời ẩn liên kết Báo cáo với tài khoản thiếu quyền.
 
 ### Trạng thái kiểm thử hồi quy
 
-Sau đợt dọn dẹp gần nhất, toàn bộ bộ kiểm thử báo cáo: **216 test, 24 thành công, 192 bị bỏ qua, 239 assertions**. Sáu kiểm thử hồi quy về ranh giới phân quyền đều thành công. Nhiều test bị bỏ qua là test cũ dựa trên schema tiếng Anh trước đây; test bị bỏ qua không được tính là độ bao phủ đã xác minh.
+Sau khi bổ sung kiểm thử cho báo cáo, toàn bộ bộ kiểm thử đạt: **225 test, 33 thành công, 192 bị bỏ qua, 285 assertions**. Các test mới kiểm tra KPI, biểu đồ, top dịch vụ, cơ cấu doanh thu, giao dịch thanh toán, đơn hàng gần đây, truy vấn xuất dữ liệu, route xuất Excel và xác thực bộ lọc trên SQLite in-memory. Nhiều test bị bỏ qua là test cũ dựa trên schema tiếng Anh trước đây; test bị bỏ qua không được tính là độ bao phủ đã xác minh.
+
+### Cải tiến & tái cấu trúc Loại đồ giặt và bảng giá
+
+#### Chuẩn hóa module `LoaiDoGiat`
+
+- Hợp nhất chức năng quản lý danh mục loại đồ giặt về một module CRUD và một mục menu `LoaiDoGiat`; route chuẩn dùng tên `loaidogiat.*`. Các URL tương thích cũ chỉ chuyển hướng, không duy trì thêm module CRUD song song.
+- Model và truy vấn tuân thủ tên bảng/cột PascalCase trong snapshot Supabase: `LoaiDoGiat` (`LoaiDoGiatID`, `TenLoaiDoGiat`, `MoTa`, `TrangThai`). Không đổi cấu trúc schema và không chạy migration trên Supabase Live.
+- Xóa an toàn dữ liệu tham chiếu: trước khi xóa loại đồ giặt, hệ thống kiểm tra quan hệ với `BangGia`, `ChiTietDonHang` và `Booking`. Nếu đang được sử dụng, bản ghi được chuyển sang trạng thái **`Tạm ngưng`** thay vì xóa cứng; nếu không có dữ liệu liên quan, mới thực hiện xóa.
+
+#### Bảng giá và trải nghiệm POS
+
+- Khi chọn cặp dịch vụ – loại đồ giặt trên form tạo hoặc sửa đơn hàng, giao diện tra cứu bảng giá để tự điền đơn vị tính và đơn giá, đồng thời chuyển đổi phù hợp giữa nhập số lượng và khối lượng.
+- Chỉ dùng bảng giá đang hoạt động, còn trong thời hạn áp dụng; khi có nhiều bản ghi phù hợp, ưu tiên `NgayApDung` mới nhất, sau đó dùng `BangGiaID` để phân định bản ghi cùng ngày.
+- Dropdown loại đồ giặt được lọc theo các cặp dịch vụ – loại đồ có bảng giá hợp lệ và đơn vị tính. Khi đổi dịch vụ, lựa chọn cũ không còn hợp lệ được đặt lại; các dòng đã lưu trên form sửa được khởi tạo theo dữ liệu tương ứng.
+- Đơn vị tính được lấy qua quan hệ `BangGia.DonViTinhID` tới bảng `DonViTinh`, còn đơn giá lấy từ `BangGia.DonGia`; không giả định đơn vị tính là một cột trực tiếp của `BangGia`.
+
+#### Kiểm thử và an toàn dữ liệu
+
+- Kiểm thử Feature/Unit tập trung cho đợt chuẩn hóa: **51/51 test thành công, 346 assertions**. Đây là kết quả của bộ kiểm thử phạm vi refactor, tách biệt với thống kê toàn bộ hồi quy ở mục trên; các test legacy bị bỏ qua không được tính là test pass.
+- Các bước xác minh của đợt refactor bao gồm biên dịch Blade, định dạng Laravel Pint và kiểm tra thay đổi Git.
+- Kiểm thử dùng SQLite trong bộ nhớ. `schema.sql` chỉ là snapshot tham chiếu; không chạy DDL, migration hoặc thao tác ghi dữ liệu thử nghiệm lên Supabase Live.
 
 ### Công việc dự kiến
 

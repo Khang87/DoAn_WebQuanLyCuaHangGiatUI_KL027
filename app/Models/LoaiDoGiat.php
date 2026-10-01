@@ -15,11 +15,19 @@ class LoaiDoGiat extends Model
 
     protected $primaryKey = 'LoaiDoGiatID';
 
+    protected $keyType = 'int';
+
+    public $incrementing = true;
+
     public $timestamps = false;
 
     public static $snakeAttributes = false;
 
-    protected $fillable = ['TenLoaiDoGiat', 'MoTa', 'TrangThai', 'LoaiDoGiatID'];
+    protected $fillable = ['TenLoaiDoGiat', 'MoTa', 'TrangThai'];
+
+    protected $casts = [
+        'LoaiDoGiatID' => 'integer',
+    ];
 
     protected static function booted(): void
     {
@@ -35,6 +43,11 @@ class LoaiDoGiat extends Model
     public function bangGias(): HasMany
     {
         return $this->hasMany(BangGia::class, 'LoaiDoGiatID', 'LoaiDoGiatID');
+    }
+
+    public function bookings(): HasMany
+    {
+        return $this->hasMany(Booking::class, 'LoaiDoGiatID', 'LoaiDoGiatID');
     }
 
     public function getIdAttribute(): ?int
