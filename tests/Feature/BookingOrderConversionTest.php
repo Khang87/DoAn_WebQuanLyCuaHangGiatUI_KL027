@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Enums\BookingStatus;
+use App\Http\Requests\Admin\LuuBookingRequest;
 use App\Models\Booking;
 use App\Models\ChiTietDonHang;
 use App\Models\DonHang;
@@ -30,7 +31,7 @@ class BookingOrderConversionTest extends TestCase
 
     protected function tearDown(): void
     {
-        foreach (['ChiTietDonHang', 'GiaoNhan', 'DonHang', 'Booking', 'BangGia', 'DonViTinh', 'KhachHang'] as $table) {
+        foreach (['ChiTietDonHang', 'GiaoNhan', 'DonHang', 'Booking', 'BangGia', 'DonViTinh', 'LoaiDoGiat', 'DichVu', 'KhachHang'] as $table) {
             Schema::dropIfExists($table);
         }
 
@@ -88,6 +89,10 @@ class BookingOrderConversionTest extends TestCase
         $this->assertSame('Tại nhà', $delivery->HinhThuc);
         $this->assertSame('12 Nguyễn Huệ', $delivery->DiaChi);
         $this->assertSame('2026-10-05 14:30:00', $delivery->ThoiGianDuKien->format('Y-m-d H:i:s'));
+
+        $sameOrder = $this->bookingService->confirmAndCreateOrder($booking->fresh());
+        $this->assertSame($order->DonHangID, $sameOrder?->DonHangID);
+        $this->assertSame(1, DonHang::query()->where('BookingID', $booking->BookingID)->count());
     }
 
     public function test_weight_booking_uses_the_configured_minimum_and_keeps_the_actual_weight(): void
@@ -180,6 +185,82 @@ class BookingOrderConversionTest extends TestCase
         $this->assertSame(BookingStatus::Cancelled->value, $booking->fresh()->TrangThai);
     }
 
+    public function test_booking_request_rejects_quantity_for_weight_unit_and_both_amount_fields(): void
+    {
+        $this->createRequestCatalog();
+
+        try {
+            $this->validateBookingRequest([
+                'unit_id' => 1,
+                'quantity' => 2,
+                'weight' => 3,
+            ]);
+            $this->fail('Weight-based units must not accept quantity.');
+        } catch (ValidationException $exception) {
+            $this->assertArrayHasKey('quantity', $exception->errors());
+        }
+    }
+
+    public function test_booking_request_accepts_weight_for_a_weight_unit(): void
+    {
+        $this->createRequestCatalog();
+
+        $validated = $this->validateBookingRequest([
+            'unit_id' => 1,
+            'quantity' => null,
+            'weight' => 2,
+        ]);
+
+        $this->assertEquals(2, $validated['weight']);
+    }
+
+    public function test_booking_request_requires_the_amount_matching_the_selected_unit(): void
+    {
+        $this->createRequestCatalog();
+
+        try {
+            $this->validateBookingRequest([
+                'unit_id' => 2,
+                'quantity' => null,
+                'weight' => 1,
+            ]);
+            $this->fail('Piece-based units must require quantity and reject weight.');
+        } catch (ValidationException $exception) {
+            $this->assertArrayHasKey('quantity', $exception->errors());
+            $this->assertArrayHasKey('weight', $exception->errors());
+        }
+    }
+
+    public function test_order_conversion_rejects_snapshot_amount_that_conflicts_with_its_unit(): void
+    {
+        DB::table('DonViTinh')->insert([
+            'DonViTinhID' => 2,
+            'TenDonViTinh' => 'Cái',
+            'KyHieu' => 'Cái',
+            'TrangThai' => 'Hoạt động',
+        ]);
+        $booking = $this->createBooking([
+            'DichVuID' => 1,
+            'LoaiDoGiatID' => 2,
+            'DonViTinhID' => 2,
+            'KhoiLuong' => 1,
+            'DonGia' => 10000,
+            'ThanhTien' => 10000,
+        ]);
+
+        try {
+            $this->bookingService->update($booking, [
+                'status' => BookingStatus::Confirmed->value,
+            ]);
+            $this->fail('A piece-based unit must not convert a weight snapshot.');
+        } catch (ValidationException $exception) {
+            $this->assertArrayHasKey('service_id', $exception->errors());
+        }
+
+        $this->assertSame(BookingStatus::Pending->value, $booking->fresh()->TrangThai);
+        $this->assertSame(0, DonHang::query()->count());
+    }
+
     private function createBooking(array $overrides = []): Booking
     {
         return Booking::query()->create(array_merge([
@@ -192,10 +273,53 @@ class BookingOrderConversionTest extends TestCase
         ], $overrides));
     }
 
+    private function createRequestCatalog(): void
+    {
+        DB::table('KhachHang')->insert(['KhachHangID' => 9]);
+        DB::table('DichVu')->insert(['DichVuID' => 1]);
+        DB::table('LoaiDoGiat')->insert(['LoaiDoGiatID' => 2]);
+        DB::table('DonViTinh')->insert([
+            ['DonViTinhID' => 1, 'TenDonViTinh' => 'Kilogram', 'KyHieu' => 'KG', 'TrangThai' => 'Hoạt động'],
+            ['DonViTinhID' => 2, 'TenDonViTinh' => 'Cái', 'KyHieu' => 'Cái', 'TrangThai' => 'Hoạt động'],
+        ]);
+    }
+
+    private function validateBookingRequest(array $snapshot): array
+    {
+        $request = LuuBookingRequest::create('/admin/bookings/1', 'PUT', array_merge([
+            'customer_id' => 9,
+            'staff_id' => null,
+            'method' => 'Tại nhà',
+            'address' => '12 Nguyễn Huệ',
+            'scheduled_date' => '2026-10-05',
+            'scheduled_time' => '14:30',
+            'notes' => null,
+            'status' => BookingStatus::Pending->value,
+            'service_id' => 1,
+            'garment_id' => 2,
+            'unit_id' => 1,
+            'quantity' => null,
+            'weight' => 2,
+        ], $snapshot));
+        $request->setContainer($this->app);
+        $request->setRedirector($this->app['redirect']);
+        $request->validateResolved();
+
+        return $request->validated();
+    }
+
     private function createSchema(): void
     {
         Schema::create('KhachHang', function (Blueprint $table): void {
             $table->increments('KhachHangID');
+        });
+
+        Schema::create('DichVu', function (Blueprint $table): void {
+            $table->increments('DichVuID');
+        });
+
+        Schema::create('LoaiDoGiat', function (Blueprint $table): void {
+            $table->increments('LoaiDoGiatID');
         });
 
         Schema::create('Booking', function (Blueprint $table): void {

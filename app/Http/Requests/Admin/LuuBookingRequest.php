@@ -4,7 +4,9 @@ namespace App\Http\Requests\Admin;
 
 use App\Enums\BookingMethod;
 use App\Enums\BookingStatus;
+use App\Models\DonViTinh;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Validator;
 
 class LuuBookingRequest extends FormRequest
 {
@@ -30,6 +32,50 @@ class LuuBookingRequest extends FormRequest
             'quantity' => ['nullable', 'numeric', 'gt:0'],
             'weight' => ['nullable', 'numeric', 'gt:0'],
         ];
+    }
+
+    public function withValidator(Validator $validator): void
+    {
+        $validator->after(function (Validator $validator): void {
+            if ($validator->errors()->hasAny(['service_id', 'garment_id', 'unit_id'])) {
+                return;
+            }
+
+            $hasSnapshotInput = collect(['service_id', 'garment_id', 'unit_id', 'quantity', 'weight'])
+                ->contains(fn (string $field): bool => $this->input($field) !== null && $this->input($field) !== '');
+
+            if (! $hasSnapshotInput) {
+                return;
+            }
+
+            $unit = DonViTinh::query()->find($this->input('unit_id'));
+            if (! $unit) {
+                return;
+            }
+
+            $quantity = $this->input('quantity');
+            $weight = $this->input('weight');
+
+            if ($unit->isWeightUnit()) {
+                if ($quantity !== null && $quantity !== '') {
+                    $validator->errors()->add('quantity', 'Đơn vị tính theo kg không được nhập số lượng.');
+                }
+
+                if ($weight === null || $weight === '') {
+                    $validator->errors()->add('weight', 'Vui lòng nhập khối lượng cho đơn vị tính theo kg.');
+                }
+
+                return;
+            }
+
+            if ($weight !== null && $weight !== '') {
+                $validator->errors()->add('weight', 'Đơn vị tính theo món không được nhập khối lượng.');
+            }
+
+            if ($quantity === null || $quantity === '') {
+                $validator->errors()->add('quantity', 'Vui lòng nhập số lượng cho đơn vị tính này.');
+            }
+        });
     }
 
     public function messages(): array

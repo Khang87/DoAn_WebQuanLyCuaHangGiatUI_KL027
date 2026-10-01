@@ -61,12 +61,7 @@
                                 @if($booking->statusEnum() === \App\Enums\BookingStatus::Pending)
                                     <span class="btn btn-order-action" disabled title="Đơn hàng sẽ tự động được tạo khi chuyển sang trạng thái Đã xác nhận"><i class="bi bi-hourglass-split"></i></span>
                                 @elseif(! $booking->donHangs->first() && $booking->statusEnum() === \App\Enums\BookingStatus::Confirmed)
-                                    @can('orders.view')
-                                        <form action="{{ route('bookings.confirm', $booking) }}" method="POST" class="d-inline" id="confirmBookingForm_{{ $booking->BookingID }}">
-                                            @csrf
-                                            <button type="submit" class="btn btn-order-action view" title="Tạo đơn hàng"><i class="bi bi-cart-plus"></i></button>
-                                        </form>
-                                    @endcan
+                                    <span class="btn btn-order-action text-warning" aria-label="Thiếu đơn hàng" title="Booking đã xác nhận nhưng chưa có đơn hàng. Vui lòng kiểm tra nhật ký hệ thống."><i class="bi bi-exclamation-triangle"></i></span>
                                 @elseif($booking->donHangs->first())
                                     <a href="{{ route('orders.show', $booking->donHangs->first()) }}" class="btn btn-order-action view" title="Xem đơn hàng {{ $booking->donHangs->first()->MaDonHang }}"><i class="bi bi-box-arrow-up-right"></i></a>
                                 @endif
@@ -99,34 +94,6 @@
 @push('scripts')
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        document.querySelectorAll('[id^="confirmBookingForm_"]').forEach(function(form) {
-            form.addEventListener('submit', function(e) {
-                e.preventDefault();
-
-                if (typeof Swal === 'undefined') {
-                    if (confirm('Chuyển lịch này thành đơn hàng?')) {
-                        form.submit();
-                    }
-                    return;
-                }
-
-                Swal.fire({
-                    title: 'Tạo đơn hàng từ lịch hẹn?',
-                    text: 'Lịch hẹn này sẽ được chuyển thành đơn hàng.',
-                    icon: 'question',
-                    showCancelButton: true,
-                    confirmButtonColor: '#2563eb',
-                    cancelButtonColor: '#64748b',
-                    confirmButtonText: 'Tạo đơn hàng',
-                    cancelButtonText: 'Hủy'
-                }).then((result) => {
-                    if (result.isConfirmed) {
-                        form.submit();
-                    }
-                });
-            });
-        });
-
         document.querySelectorAll('[id^="deleteBookingForm_"]').forEach(function(form) {
             form.addEventListener('submit', function(e) {
                 e.preventDefault();

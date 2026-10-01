@@ -134,19 +134,9 @@
                         <i class="bi bi-hourglass-split me-1"></i> Chờ xác nhận
                     </span>
                 @elseif($booking->statusEnum() === \App\Enums\BookingStatus::Confirmed)
-                    <x-admin.detail.confirm-form
-                        :action="route('bookings.confirm', $booking)"
-                        method="POST"
-                        title="Tạo đơn hàng từ lịch hẹn?"
-                        text="Lịch hẹn này sẽ được chuyển thành đơn hàng."
-                        label="Tạo đơn hàng"
-                        icon="bi-cart-plus"
-                        variant="btn-outline-success"
-                        color="#16a34a"
-                        size="py-2"
-                        block
-                        :iconName="'question'"
-                    />
+                    <div class="alert alert-warning mb-0" role="alert">
+                        Booking đã xác nhận nhưng chưa có đơn hàng. Vui lòng kiểm tra nhật ký hệ thống.
+                    </div>
                 @endif
 
                 <a href="{{ route('bookings.index') }}" class="btn btn-outline-secondary w-100 py-2 text-dark">

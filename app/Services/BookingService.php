@@ -399,6 +399,16 @@ class BookingService
 
         $quantity = $booking->SoLuong !== null ? (float) $booking->SoLuong : null;
         $weight = $booking->KhoiLuong !== null ? (float) $booking->KhoiLuong : null;
+        $unit = $booking->donViTinh;
+
+        if (! $unit) {
+            throw ValidationException::withMessages([
+                'service_id' => 'Đơn vị tính của dịch vụ trong đặt lịch không còn hợp lệ.',
+            ]);
+        }
+
+        $isWeightUnit = $unit->isWeightUnit();
+
         if (
             $booking->DichVuID === null
             || $booking->LoaiDoGiatID === null
@@ -408,6 +418,8 @@ class BookingService
             || (($quantity === null) === ($weight === null))
             || ($quantity !== null && $quantity <= 0)
             || ($weight !== null && $weight <= 0)
+            || ($isWeightUnit && ($quantity !== null || $weight === null))
+            || (! $isWeightUnit && ($quantity === null || $weight !== null))
             || (float) $booking->DonGia < 0
             || (float) $booking->ThanhTien < 0
         ) {
