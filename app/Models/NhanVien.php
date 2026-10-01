@@ -7,8 +7,11 @@ use Illuminate\Database\Eloquent\Model;
 class NhanVien extends Model
 {
     protected $table = 'NhanVien';
+
     protected $primaryKey = 'NhanVienID';
+
     public $timestamps = false;
+
     public static $snakeAttributes = false;
 
     /** Cột thời gian tiếng Việt thay cho created_at/updated_at. */
@@ -34,10 +37,5 @@ class NhanVien extends Model
     public function taiKhoans()
     {
         return $this->hasMany(TaiKhoan::class, 'NhanVienID');
-    }
-
-    public function lichSuThayDoiHoaDons()
-    {
-        return $this->hasMany(LichSuThayDoiHoaDon::class, 'TaiKhoanID');
     }
 }

@@ -37,7 +37,7 @@
         <x-admin.status-select
             name="status"
             id="filter-status"
-            :options="\App\Enums\RecordStatus::options()"
+            :options="['Hoạt động' => 'Hoạt động', 'Tạm ngưng' => 'Tạm ngưng', 'Hết hạn' => 'Hết hạn']"
             placeholder="-- Tất cả trạng thái --"
             class="form-select form-select-sm filter-select shadow-sm rounded-3"
             submit

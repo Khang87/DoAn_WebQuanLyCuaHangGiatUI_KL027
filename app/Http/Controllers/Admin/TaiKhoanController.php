@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\LuuTaiKhoanRequest;
+use App\Models\KhachHang;
+use App\Models\NhanVien;
 use App\Models\User;
 use App\Models\VaiTro;
 use App\Services\UserService;
@@ -125,7 +127,16 @@ class TaiKhoanController extends Controller
     {
         $this->authorize('create', User::class);
 
-        return view('admin.accounts.create');
+        $employees = NhanVien::query()
+            ->where('TrangThai', 'Hoạt động')
+            ->orderBy('HoTen')
+            ->get(['NhanVienID', 'HoTen', 'SoDienThoai']);
+        $customers = KhachHang::query()
+            ->where('TrangThai', 'Hoạt động')
+            ->orderBy('HoTen')
+            ->get(['KhachHangID', 'HoTen', 'SoDienThoai']);
+
+        return view('admin.accounts.create', compact('employees', 'customers'));
     }
 
     public function store(LuuTaiKhoanRequest $request)
@@ -178,7 +189,7 @@ class TaiKhoanController extends Controller
         $this->authorize('update', [User::class, $account]);
 
         // CHỈ CHO PHÉP ĐỔI MẬT KHẨU NẾU LÀ TÀI KHOẢN CỦA CHÍNH MÌNH
-        if ($request->filled('password') && auth()->id() !== $account->id) {
+        if ($request->filled('password') && (int) auth()->id() !== (int) $account->getKey()) {
             return back()->withInput()->withErrors([
                 'password' => 'Bạn không có quyền thay đổi mật khẩu của tài khoản khác!',
             ]);
@@ -213,7 +224,11 @@ class TaiKhoanController extends Controller
             abort(422, 'Không thể xóa tài khoản đang đăng nhập.');
         }
 
-        return redirect()->route('accounts.index')->with('success', 'Tài khoản đã được xóa.');
+        $message = $account->exists
+            ? 'Tài khoản có dữ liệu liên quan nên đã được vô hiệu hóa.'
+            : 'Tài khoản đã được xóa.';
+
+        return redirect()->route('accounts.index')->with('success', $message);
     }
 
     public function toggleStatus(int $id)
@@ -227,12 +242,12 @@ class TaiKhoanController extends Controller
         $this->authorize('update', [User::class, $account]);
 
         try {
-            if ($account->trashed()) {
-                $account->restore();
+            if ($account->TrangThai !== 'Hoạt động') {
+                $this->userService->restore($id);
 
                 return redirect()->route('accounts.index')->with('success', 'Tài khoản đã được kích hoạt.');
             } else {
-                $account->delete();
+                $account->update(['TrangThai' => 'Khóa']);
 
                 return redirect()->route('accounts.index')->with('success', 'Tài khoản đã bị khóa.');
             }
@@ -252,7 +267,7 @@ class TaiKhoanController extends Controller
         $this->authorize('update', [User::class, $account]);
 
         try {
-            $account->update(['password' => Hash::make('Abc123!@#')]);
+            $account->update(['MatKhau' => Hash::make('Abc123!@#')]);
 
             return redirect()->route('accounts.show', $account)->with('success', 'Mật khẩu đã được đặt lại thành công. Mật khẩu mới: Abc123!@#');
         } catch (\Exception $e) {
@@ -384,12 +399,12 @@ class TaiKhoanController extends Controller
             'new_password.confirmed' => 'Mật khẩu xác nhận không khớp.',
         ]);
 
-        if (! Hash::check($request->input('current_password'), $account->password)) {
+        if (! Hash::check($request->input('current_password'), $account->getAuthPassword())) {
             return back()->withErrors(['current_password' => 'Mật khẩu hiện tại không đúng.'])->withInput();
         }
 
         try {
-            $account->update(['password' => Hash::make($request->input('new_password'))]);
+            $account->update(['MatKhau' => Hash::make($request->input('new_password'))]);
 
             return redirect()->route('profile')->with('success', 'Mật khẩu đã được đổi thành công.');
         } catch (\Exception $e) {

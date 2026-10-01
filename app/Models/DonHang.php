@@ -102,7 +102,7 @@ class DonHang extends Model
 
     public function danhGia()
     {
-        return $this->hasMany(DanhGia::class, 'DonHangID');
+        return $this->hasOne(DanhGia::class, 'DonHangID');
     }
 
     /* ---------------------------------------------------------------------

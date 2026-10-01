@@ -14,37 +14,33 @@ class LuuGiaoNhanRequest extends FormRequest
 
     public function rules(): array
     {
-        $id = $this->route('delivery') ?? $this->route('id') ?? null;
-
         return [
-            'customer_id' => ['required', 'exists:KhachHang,KhachHangID'],
             'order_id' => ['required', 'exists:DonHang,DonHangID'],
-            'employee_id' => ['nullable', 'exists:NhanVien,NhanVienID'],
+            'employee_id' => ['nullable', 'integer', 'exists:NhanVien,NhanVienID'],
             'method' => ['required', 'in:nhan_do,giao_do'],
-            'address' => ['nullable', 'string', 'max:500'],
+            'address' => ['required', 'string', 'max:255'],
             'pickup_date' => ['required', 'date'],
             'pickup_time' => ['required', 'date_format:H:i'],
             'status' => ['nullable', 'in:'.implode(',', DeliveryStatus::values())],
-            'notes' => ['nullable', 'string', 'max:1000'],
+            'notes' => ['nullable', 'string', 'max:500'],
         ];
     }
 
     public function messages(): array
     {
         return [
-            'customer_id.required' => 'KhÃ¡ch hÃ ng lÃ  báº¯t buá»™c.',
-            'customer_id.exists' => 'KhÃ¡ch hÃ ng khÃ´ng tá»“n táº¡i.',
-            'order_id.required' => 'ÄÆ¡n hÃ ng lÃ  báº¯t buá»™c Ä‘á»ƒ táº¡o giao nháº­n.',
-            'order_id.exists' => 'ÄÆ¡n hÃ ng khÃ´ng tá»“n táº¡i.',
-            'employee_id.exists' => 'NhÃ¢n viÃªn khÃ´ng tá»“n táº¡i.',
-            'method.required' => 'PhÆ°Æ¡ng thá»©c giao nháº­n lÃ  báº¯t buá»™c.',
-            'method.in' => 'PhÆ°Æ¡ng thá»©c khÃ´ng há»£p lá»‡. Chá»‰ cháº¥p nháº­n: nhan_do, giao_do.',
-            'pickup_date.required' => 'NgÃ y láº¥y hÃ ng lÃ  báº¯t buá»™c.',
-            'pickup_time.required' => 'Giá» láº¥y hÃ ng lÃ  báº¯t buá»™c.',
-            'pickup_time.date_format' => 'Äá»‹nh dáº¡ng giá»: HH:MM.',
-            'status.in' => 'Tráº¡ng thÃ¡i khÃ´ng há»£p lá»‡.',
-            'address.max' => 'KhÃ´ng quÃ¡ 500 kÃ½ tá»±.',
-            'notes.max' => 'KhÃ´ng quÃ¡ 1000 kÃ½ tá»±.',
+            'order_id.required' => 'Đơn hàng là bắt buộc để tạo giao nhận.',
+            'order_id.exists' => 'Đơn hàng không tồn tại.',
+            'employee_id.exists' => 'Nhân viên không tồn tại.',
+            'method.required' => 'Loại giao nhận là bắt buộc.',
+            'method.in' => 'Loại giao nhận không hợp lệ.',
+            'address.required' => 'Địa chỉ giao nhận là bắt buộc.',
+            'address.max' => 'Địa chỉ không được vượt quá 255 ký tự.',
+            'pickup_date.required' => 'Ngày giao nhận là bắt buộc.',
+            'pickup_time.required' => 'Giờ giao nhận là bắt buộc.',
+            'pickup_time.date_format' => 'Định dạng giờ phải là HH:MM.',
+            'status.in' => 'Trạng thái không hợp lệ.',
+            'notes.max' => 'Ghi chú không được vượt quá 500 ký tự.',
         ];
     }
 }

@@ -110,6 +110,22 @@ Sau khi bổ sung kiểm thử cho báo cáo, toàn bộ bộ kiểm thử đạ
 - Các bước xác minh của đợt refactor bao gồm biên dịch Blade, định dạng Laravel Pint và kiểm tra thay đổi Git.
 - Kiểm thử dùng SQLite trong bộ nhớ. `schema.sql` chỉ là snapshot tham chiếu; không chạy DDL, migration hoặc thao tác ghi dữ liệu thử nghiệm lên Supabase Live.
 
+### Rà soát đồng bộ Schema Supabase gần đây (01/10/2026)
+
+#### Ánh xạ nghiệp vụ theo schema
+
+- **Tài khoản (`TaiKhoan`):** Luồng tạo tài khoản tuân thủ ràng buộc chỉ liên kết với đúng một hồ sơ `NhanVien` hoặc `KhachHang`. Form hiện cho phép chọn hồ sơ đã tồn tại; tạo hồ sơ mới không nằm trong phạm vi chức năng này. Mật khẩu được ghi vào cột `MatKhau`, trạng thái tài khoản được quản lý qua `TrangThai`, và vai trò được liên kết qua `TaiKhoan_VaiTro`.
+- **Giao nhận (`GiaoNhan`):** Dữ liệu giao nhận được ánh xạ vào các cột có trong schema như `DonHangID`, `NhanVienID`, `LoaiGiaoNhan`, `HinhThuc`, `DiaChi`, `ThoiGianDuKien`, `TrangThai` và `GhiChu`. Request không còn yêu cầu trường khách hàng riêng, vì khách hàng được xác định qua đơn hàng. Các luồng truy vấn cũng không giả định bảng có cột xóa mềm.
+- **Khuyến mãi và đặt lịch:** Lượt sử dụng khuyến mãi được tính từ các đơn hàng tham chiếu thay vì xem `SoLuongSuDung` là hạn mức đổi mã. Quan hệ và kiểm tra dữ liệu liên quan của khuyến mãi/đặt lịch được đối chiếu với các khóa trong schema. Test hồi quy khuyến mãi nằm tại `tests/Unit/KhuyenMaiSchemaCompatibilityTest.php`.
+- **Loại đồ giặt và bảng giá:** Tiếp tục dùng một module quản lý `LoaiDoGiat`; POS tra cứu `BangGia` để điền đơn vị tính và đơn giá, đồng thời lọc loại đồ theo cặp dịch vụ – bảng giá hợp lệ. Đơn vị tính được lấy từ quan hệ `DonViTinhID`, không giả định là cột trực tiếp trong `BangGia`.
+
+#### Toàn vẹn dữ liệu và xác minh
+
+- Với các module được rà soát, khi bản ghi đã có dữ liệu tham chiếu, ưu tiên giữ lịch sử bằng cách chuyển trạng thái sang giá trị ngừng hoạt động/tạm ngưng phù hợp với ràng buộc của bảng; chỉ xóa cứng khi không có liên kết cần bảo toàn.
+- Đã gỡ các truy vấn `withTrashed()`/`onlyTrashed()` khỏi các service được rà soát khi bảng tương ứng không khai báo cột xóa mềm. Trạng thái nghiệp vụ được xử lý bằng các cột trạng thái thực tế thay vì cơ chế soft delete không có trong schema.
+- Tuân thủ **Read-Only DDL**: không chạy migration, DDL hoặc thao tác ghi lên Supabase Live; `schema.sql` chỉ dùng làm snapshot tham chiếu.
+- Lần xác minh Unit gần nhất đạt **25/25 tests, 230 assertions**. Blade cache, đăng ký route, PHP lint trên các file PHP thay đổi, Laravel Pint và `git diff --check` đều hoàn tất thành công. Đây là kết quả Unit tests, không đại diện cho toàn bộ Feature/Legacy suite hoặc kiểm thử kết nối trực tiếp Supabase.
+
 ### Công việc dự kiến
 
 - Tiếp tục đối chiếu các ánh xạ của `DonHang`, `ChiTietDonHang` và `HoaDon` với snapshot mới nhất trong `schema.sql` và truy vấn thực tế.

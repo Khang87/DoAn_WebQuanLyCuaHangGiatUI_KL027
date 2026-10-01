@@ -2,8 +2,8 @@
 
 namespace App\Http\Requests\Admin;
 
-use App\Enums\RecordStatus;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class LuuCouponRequest extends FormRequest
 {
@@ -14,20 +14,24 @@ class LuuCouponRequest extends FormRequest
 
     public function rules(): array
     {
-        $id = $this->route('coupon') ?? $this->route('id') ?? null;
+        $id = $this->route('coupon') ?? $this->route('id');
+        $uniqueCode = Rule::unique('KhuyenMai', 'MaKhuyenMai');
+
+        if (is_numeric($id)) {
+            $uniqueCode->ignore((int) $id, 'KhuyenMaiID');
+        }
 
         return [
-            'MaKhuyenMai' => ['required', 'string', 'max:50', 'unique:KhuyenMai,MaKhuyenMai,'.($id ?? ''), 'KhuyenMaiID'],
-            'TenKhuyenMai' => ['required', 'string', 'max:255'],
-            'LoaiKhuyenMai' => ['required', 'in:Phần trăm,Tiền mặt'],
+            'MaKhuyenMai' => ['required', 'string', 'max:50', $uniqueCode],
+            'TenKhuyenMai' => ['required', 'string', 'max:150'],
+            'LoaiKhuyenMai' => ['required', Rule::in(['Phần trăm', 'Tiền mặt'])],
             'GiaTriGiam' => ['required', 'numeric', 'min:0'],
             'GiaTriDonToiThieu' => ['nullable', 'numeric', 'min:0'],
             'MucGiamToiDa' => ['nullable', 'numeric', 'min:0'],
-            'SoLuongSuDung' => ['nullable', 'integer', 'min:0'],
-            'DieuKienApDung' => ['nullable', 'string', 'max:255'],
+            'DieuKienApDung' => ['nullable', 'string', 'max:500'],
             'NgayBatDau' => ['required', 'date'],
-            'NgayKetThuc' => ['required', 'date'],
-            'TrangThai' => ['required', 'in:'.implode(',', RecordStatus::values())],
+            'NgayKetThuc' => ['required', 'date', 'after_or_equal:NgayBatDau'],
+            'TrangThai' => ['required', Rule::in(['Hoạt động', 'Tạm ngưng', 'Hết hạn'])],
         ];
     }
 

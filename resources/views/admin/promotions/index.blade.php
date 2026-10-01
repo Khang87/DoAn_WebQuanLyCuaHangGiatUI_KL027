@@ -26,7 +26,7 @@
         <x-admin.status-select
             name="status"
             id="filter-status"
-            :options="$statuses ?? \App\Enums\RecordStatus::options()"
+            :options="$statuses ?? \App\Enums\RecordStatus::databaseOptions()"
             placeholder="-- Tất cả trạng thái --"
             class="form-select form-select-sm filter-select shadow-sm rounded-3"
             submit

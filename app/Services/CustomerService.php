@@ -92,6 +92,18 @@ class CustomerService
 
     public function delete(KhachHang $customer): bool
     {
+        if (
+            $customer->donHangs()->exists()
+            || $customer->bookings()->exists()
+            || $customer->danhGia()->exists()
+            || $customer->diemTichLuy()->exists()
+            || $customer->taiKhoan()->exists()
+        ) {
+            $customer->update(['TrangThai' => 'Ngừng hoạt động']);
+
+            return false;
+        }
+
         return $customer->delete();
     }
 

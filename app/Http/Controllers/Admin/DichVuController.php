@@ -26,7 +26,7 @@ class DichVuController extends Controller
         ]);
 
         $categories = LoaiDichVu::where('TrangThai', 'Hoạt động')->orderBy('TenLoaiDichVu')->get();
-        $statuses = RecordStatus::options();
+        $statuses = RecordStatus::databaseOptions();
 
         return view('admin.services.index', compact('services', 'categories', 'statuses'));
     }
@@ -99,9 +99,13 @@ class DichVuController extends Controller
         }
 
         try {
-            $this->serviceService->delete($service);
+            $deleted = $this->serviceService->delete($service);
 
-            return redirect()->route('services.index')->with('success', 'Dịch vụ đã được xóa.');
+            $message = $deleted
+                ? 'Dịch vụ đã được xóa.'
+                : 'Dịch vụ đã có dữ liệu liên quan nên được chuyển sang trạng thái tạm ngưng.';
+
+            return redirect()->route('services.index')->with('success', $message);
         } catch (\Exception $e) {
             return redirect()->route('services.index')->with('error', FriendlyError::message($e));
         }

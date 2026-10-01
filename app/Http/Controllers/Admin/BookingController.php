@@ -99,9 +99,13 @@ class BookingController extends Controller
         }
 
         try {
-            $this->bookingService->delete($booking);
+            $deleted = $this->bookingService->delete($booking);
 
-            return redirect()->route('bookings.index')->with('success', 'Đã xóa đặt lịch.');
+            $message = $deleted && $booking->TrangThai === 'DaHuy'
+                ? 'Đặt lịch đã có đơn hàng liên quan nên được chuyển sang trạng thái đã hủy.'
+                : 'Đã xóa đặt lịch.';
+
+            return redirect()->route('bookings.index')->with('success', $message);
         } catch (\Exception $e) {
             return redirect()->route('bookings.index')->with('error', FriendlyError::message($e));
         }

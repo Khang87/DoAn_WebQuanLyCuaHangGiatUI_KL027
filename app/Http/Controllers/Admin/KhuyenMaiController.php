@@ -28,7 +28,7 @@ class KhuyenMaiController extends Controller
             'sort' => $request->input('sort'),
         ]);
 
-        $statuses = RecordStatus::options();
+        $statuses = RecordStatus::databaseOptions();
 
         return view('admin.promotions.index', compact('promotions', 'statuses'));
     }
@@ -109,9 +109,9 @@ class KhuyenMaiController extends Controller
     {
         $data = $request->validated();
 
-        $data['conditions'] = $request->boolean('conditions.'.self::CONDITION_FIRST_ORDER_ONLY)
-            ? [self::CONDITION_FIRST_ORDER_ONLY => true]
-            : [];
+        $data['DieuKienApDung'] = $request->boolean(self::CONDITION_FIRST_ORDER_ONLY)
+            ? self::CONDITION_FIRST_ORDER_ONLY
+            : null;
 
         return $data;
     }
@@ -127,7 +127,11 @@ class KhuyenMaiController extends Controller
         try {
             $this->promotionService->delete($promotion);
 
-            return redirect()->route('promotions.index')->with('success', 'Chương trình khuyến mãi đã được xóa.');
+            $message = $promotion->exists
+                ? 'Chương trình đã được dùng trong đơn hàng nên đã chuyển sang trạng thái tạm ngưng.'
+                : 'Chương trình khuyến mãi đã được xóa.';
+
+            return redirect()->route('promotions.index')->with('success', $message);
         } catch (\Exception $e) {
             return redirect()->route('promotions.index')->with('error', FriendlyError::message($e));
         }

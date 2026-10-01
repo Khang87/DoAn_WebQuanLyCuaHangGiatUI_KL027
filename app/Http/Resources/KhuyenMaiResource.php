@@ -3,12 +3,12 @@
 namespace App\Http\Resources;
 
 use App\Enums\RecordStatus;
-use App\Models\Promotion;
+use App\Models\KhuyenMai;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
- * @mixin Promotion
+ * @mixin KhuyenMai
  */
 class KhuyenMaiResource extends JsonResource
 {
@@ -18,24 +18,21 @@ class KhuyenMaiResource extends JsonResource
     public function toArray(Request $request): array
     {
         return [
-            'id' => $this->id,
-            'name' => $this->name,
-            'code' => $this->code,
-            'discount_type' => $this->discount_type,
-            'discount_value' => (float) $this->discount_value,
-            'min_order_amount' => (float) $this->min_order_amount,
-            'max_discount' => $this->max_discount === null ? null : (float) $this->max_discount,
-            'usage_limit' => $this->usage_limit,
-            'used_count' => (int) $this->used_count,
-            'quantity' => $this->quantity,
-            'remaining' => $this->quantity === null ? null : max(0, (int) $this->quantity - (int) $this->used_count),
-            'conditions' => $this->conditions,
+            'id' => $this->KhuyenMaiID,
+            'name' => $this->TenKhuyenMai,
+            'code' => $this->MaKhuyenMai,
+            'discount_type' => $this->LoaiKhuyenMai,
+            'discount_value' => (float) $this->GiaTriGiam,
+            'min_order_amount' => (float) $this->GiaTriDonToiThieu,
+            'max_discount' => $this->MucGiamToiDa === null ? null : (float) $this->MucGiamToiDa,
+            'used_count' => $this->usedCount,
+            'conditions' => $this->DieuKienApDung,
             'is_first_order_only' => $this->isFirstOrderOnly(),
             'is_valid' => $this->isValid(),
-            'starts_at' => $this->starts_at?->toDateString(),
-            'expires_at' => $this->expires_at?->toDateString(),
-            'status' => $this->status,
-            'status_label' => RecordStatus::parse($this->status)->label(),
+            'starts_at' => $this->NgayBatDau?->toDateString(),
+            'expires_at' => $this->NgayKetThuc?->toDateString(),
+            'status' => $this->TrangThai,
+            'status_label' => RecordStatus::labelFor($this->TrangThai),
         ];
     }
 }

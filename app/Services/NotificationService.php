@@ -11,19 +11,19 @@ class NotificationService
     {
         $query = ThongBao::query();
 
-        if (!empty($filters['user_id'])) {
+        if (! empty($filters['user_id'])) {
             $query->where('TaiKhoanID', $filters['user_id']);
         }
 
-        if (!empty($filters['type'])) {
+        if (! empty($filters['type'])) {
             $query->where('LoaiThongBao', $filters['type']);
         }
 
-        if (!empty($filters['order_id'])) {
+        if (! empty($filters['order_id'])) {
             $query->where('DonHangID', $filters['order_id']);
         }
 
-        if (!empty($filters['search'])) {
+        if (! empty($filters['search'])) {
             $search = $filters['search'];
             $query->where(function ($q) use ($search) {
                 $q->where('LoaiThongBao', 'LIKE', "%{$search}%")
@@ -31,7 +31,7 @@ class NotificationService
             });
         }
 
-        if (!empty($filters['read'])) {
+        if (! empty($filters['read'])) {
             $filters['read'] === 'unread'
                 ? $query->where('DaDoc', false)
                 : $query->where('DaDoc', true);
@@ -48,7 +48,7 @@ class NotificationService
 
     public function find(int $id): ?ThongBao
     {
-        return ThongBao::withTrashed()->find($id);
+        return ThongBao::find($id);
     }
 
     public function create(array $data): ThongBao
@@ -65,6 +65,7 @@ class NotificationService
     public function update(ThongBao $notification, array $data): ThongBao
     {
         $notification->update($data);
+
         return $notification->fresh();
     }
 
@@ -79,6 +80,7 @@ class NotificationService
         if ($notification) {
             $notification->update(['DaDoc' => true]);
         }
+
         return $notification;
     }
 

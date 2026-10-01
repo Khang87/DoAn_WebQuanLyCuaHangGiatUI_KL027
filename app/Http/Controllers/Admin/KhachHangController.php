@@ -99,9 +99,13 @@ class KhachHangController extends Controller
         }
 
         try {
-            $this->customerService->delete($customer);
+            $deleted = $this->customerService->delete($customer);
 
-            return redirect()->route('customers.index')->with('success', 'Khách hàng đã được xóa.');
+            $message = $deleted
+                ? 'Khách hàng đã được xóa.'
+                : 'Khách hàng có dữ liệu liên quan nên không thể xóa.';
+
+            return redirect()->route('customers.index')->with('success', $message);
         } catch (\Exception $e) {
             return redirect()->route('customers.index')->with('error', FriendlyError::message($e));
         }

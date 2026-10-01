@@ -6,19 +6,22 @@
 ])
 
 {{--
-    Dropdown chọn vai trò, lấy danh sách trực tiếp từ bảng `roles` nên không
+    Dropdown chọn vai trò, lấy danh sách trực tiếp từ bảng `VaiTro` nên không
     thể lệch với ma trận phân quyền. Cột `role` của users lưu theo slug.
 --}}
 @php
-    $roles = \App\Models\Role::query()->orderByRaw("CASE slug WHEN 'owner' THEN 0 WHEN 'manager' THEN 1 WHEN 'staff' THEN 2 ELSE 3 END")->get();
+    $roles = \App\Models\VaiTro::query()
+        ->where('TrangThai', 'Hoạt động')
+        ->orderBy('VaiTroID')
+        ->get();
     $current = old($name, $selected);
-    $current = $current === 'admin' ? \App\Models\Role::OWNER_SLUG : $current;
+    $current = $current === 'admin' ? 'chu-cua-hang' : $current;
 @endphp
 
 <label class="form-label">{{ $label }} @if($required)<span class="text-danger">*</span>@endif</label>
 <select class="form-select @error($name) is-invalid @enderror" name="{{ $name }}" @if($required) required @endif>
     @foreach($roles as $role)
-        <option value="{{ $role->slug }}" @selected($current === $role->slug)>{{ $role->name }}</option>
+        <option value="{{ $role->slug }}" @selected($current === $role->slug)>{{ $role->TenVaiTro }}</option>
     @endforeach
 </select>
 @error($name)

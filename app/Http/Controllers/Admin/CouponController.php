@@ -94,6 +94,10 @@ class CouponController extends Controller
             } catch (\Exception $e) {
                 return redirect()->route('coupons.index')->with('error', FriendlyError::message($e));
             }
+
+            if ($coupon->exists) {
+                return redirect()->route('coupons.index')->with('success', 'Chương trình đã được dùng trong đơn hàng nên đã chuyển sang trạng thái tạm ngưng.');
+            }
         }
 
         return redirect()->route('coupons.index')->with('success', 'Đã xóa mã giảm giá.');

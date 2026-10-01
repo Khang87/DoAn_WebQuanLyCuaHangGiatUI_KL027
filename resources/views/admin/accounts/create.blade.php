@@ -16,23 +16,19 @@
         <form action="{{ route('accounts.store') }}" method="POST">
             @csrf
             <div class="row g-4">
-                <div class="col-md-6">
-                    <label class="form-label">Họ tên <span class="text-danger">*</span></label>
-                    <input type="text" class="form-control @error('name') is-invalid @enderror" name="name" value="{{ old('name') }}" placeholder="Nhập họ tên" required>
-                    @error('name')
-                        <div class="invalid-feedback">{{ $message }}</div>
-                    @enderror
+                <div class="col-12">
+                    <div class="alert alert-info mb-0">Mỗi tài khoản phải liên kết với đúng một hồ sơ nhân viên hoặc khách hàng đã có.</div>
                 </div>
                 <div class="col-md-6">
                     <label class="form-label">Email <span class="text-danger">*</span></label>
-                    <input type="email" class="form-control @error('email') is-invalid @enderror" name="email" value="{{ old('email') }}" placeholder="Nhập email" required>
+                    <input type="email" class="form-control @error('email') is-invalid @enderror" name="email" value="{{ old('email') }}" placeholder="Email đăng nhập (tối đa 100 ký tự)" maxlength="100" required>
                     @error('email')
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
                 </div>
                 <div class="col-md-6">
                     <label class="form-label">Số điện thoại</label>
-                    <input type="text" class="form-control @error('phone') is-invalid @enderror" name="phone" value="{{ old('phone') }}" placeholder="0901234567">
+                    <input type="text" class="form-control @error('phone') is-invalid @enderror" name="phone" value="{{ old('phone') }}" placeholder="0901234567" maxlength="15">
                     @error('phone')
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
@@ -51,8 +47,28 @@
                 <div class="col-md-6">
                     <x-admin.role-select
                         name="role"
-                        :selected="old('role', 'staff')"
+                        :selected="old('role', 'nhan-vien')"
                     />
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label" for="NhanVienID">Hồ sơ nhân viên</label>
+                    <select class="form-select @error('NhanVienID') is-invalid @enderror" id="NhanVienID" name="NhanVienID">
+                        <option value="">-- Không chọn nhân viên --</option>
+                        @foreach($employees as $employee)
+                            <option value="{{ $employee->NhanVienID }}" @selected(old('NhanVienID') == $employee->NhanVienID)>{{ $employee->HoTen }} · {{ $employee->SoDienThoai }}</option>
+                        @endforeach
+                    </select>
+                    @error('NhanVienID')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label" for="KhachHangID">Hồ sơ khách hàng</label>
+                    <select class="form-select @error('KhachHangID') is-invalid @enderror" id="KhachHangID" name="KhachHangID">
+                        <option value="">-- Không chọn khách hàng --</option>
+                        @foreach($customers as $customer)
+                            <option value="{{ $customer->KhachHangID }}" @selected(old('KhachHangID') == $customer->KhachHangID)>{{ $customer->HoTen }} · {{ $customer->SoDienThoai }}</option>
+                        @endforeach
+                    </select>
+                    @error('KhachHangID')<div class="invalid-feedback">{{ $message }}</div>@enderror
                 </div>
             </div>
 

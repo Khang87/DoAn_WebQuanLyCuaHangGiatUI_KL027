@@ -16,15 +16,13 @@ class KhuyenMaiController extends ApiController
     public function index(Request $request): JsonResponse
     {
         $paginator = KhuyenMai::query()
+            ->withCount(['donHangs as used_count'])
             ->where('TrangThai', 'Hoạt động')
             ->where(function ($query) {
                 $query->whereNull('NgayBatDau')->orWhereDate('NgayBatDau', '<=', today());
             })
             ->where(function ($query) {
                 $query->whereNull('NgayKetThuc')->orWhereDate('NgayKetThuc', '>=', today());
-            })
-            ->where(function ($query) {
-                $query->whereNull('SoLuongSuDung')->orWhere('SoLuongSuDung', '>', 0);
             })
             ->when($request->filled('search'), function ($query) use ($request) {
                 $search = $request->string('search')->toString();

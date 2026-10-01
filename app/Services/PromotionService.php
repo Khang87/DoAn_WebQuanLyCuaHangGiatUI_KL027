@@ -10,7 +10,7 @@ class PromotionService
 {
     public function getAll(array $filters = []): LengthAwarePaginator
     {
-        $query = KhuyenMai::query();
+        $query = KhuyenMai::query()->withCount(['donHangs as used_count']);
 
         if (! empty($filters['search'])) {
             $search = trim($filters['search']);
@@ -31,8 +31,8 @@ class PromotionService
         }
 
         $sortMap = [
-            'created_at_desc' => ['KhuyenMaiID', 'desc'],
-            'created_at_asc' => ['KhuyenMaiID', 'asc'],
+            'created_at_desc' => ['NgayBatDau', 'desc'],
+            'created_at_asc' => ['NgayBatDau', 'asc'],
             'name_asc' => ['TenKhuyenMai', 'asc'],
             'name_desc' => ['TenKhuyenMai', 'desc'],
             'code_asc' => ['MaKhuyenMai', 'asc'],
@@ -50,7 +50,9 @@ class PromotionService
 
     public function find(int $id): ?KhuyenMai
     {
-        return KhuyenMai::find($id);
+        return KhuyenMai::query()
+            ->withCount(['donHangs as used_count'])
+            ->find($id);
     }
 
     public function create(array $data): KhuyenMai
@@ -67,18 +69,20 @@ class PromotionService
 
     public function delete(KhuyenMai $promotion): bool
     {
+        if ($promotion->donHangs()->exists()) {
+            $promotion->update(['TrangThai' => 'Tạm ngưng']);
+
+            return true;
+        }
+
         return $promotion->delete();
     }
 
     public function getActive(): Collection
     {
-        return KhuyenMai::where('TrangThai', 'active')
-            ->where(function ($query) {
-                $query->whereNull('NgayBatDau')->orWhereDate('NgayBatDau', '<=', today());
-            })
-            ->where(function ($query) {
-                $query->whereNull('NgayKetThuc')->orWhereDate('NgayKetThuc', '>=', today());
-            })
+        return KhuyenMai::where('TrangThai', 'Hoạt động')
+            ->whereDate('NgayBatDau', '<=', today())
+            ->whereDate('NgayKetThuc', '>=', today())
             ->get();
     }
 }

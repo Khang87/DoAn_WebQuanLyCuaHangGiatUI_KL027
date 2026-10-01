@@ -18,40 +18,37 @@
             <div class="row g-4">
                 <div class="col-md-6">
                     <label class="form-label">Họ tên <span class="text-danger">*</span></label>
-                    <input type="text" class="form-control @error('name') is-invalid @endif" name="name" value="{{ old('name', $account->name) }}" required>
-                    @error('name')
-                        <div class="invalid-feedback">{{ $message }}</div>
-                    @endif
+                    <input type="text" class="form-control" value="{{ $account->name }}" disabled>
                 </div>
                 <div class="col-md-6">
                     <label class="form-label">Email <span class="text-danger">*</span></label>
-                    <input type="email" class="form-control @error('email') is-invalid @endif" name="email" value="{{ old('email', $account->email) }}" required>
+                    <input type="email" class="form-control @error('email') is-invalid @enderror" name="email" value="{{ old('email', $account->email) }}" maxlength="100" required>
                     @error('email')
                         <div class="invalid-feedback">{{ $message }}</div>
-                    @endif
+                    @enderror
                 </div>
                 <div class="col-md-6">
                     <label class="form-label">Số điện thoại</label>
-                    <input type="text" class="form-control @error('phone') is-invalid @endif" name="phone" value="{{ old('phone', $account->phone) }}" placeholder="0901234567">
+                    <input type="text" class="form-control @error('phone') is-invalid @enderror" name="phone" value="{{ old('phone', $account->phone) }}" placeholder="0901234567" maxlength="15">
                     @error('phone')
                         <div class="invalid-feedback">{{ $message }}</div>
-                    @endif
+                    @enderror
                 </div>
                 <div class="col-md-6">
                     <x-admin.role-select
                         name="role"
-                        :selected="$account->role"
+                        :selected="$account->vaiTros->first()?->slug"
                     />
                 </div>
 
-                @if(auth()->id() === $account->getKey())
+                @if((int) auth()->id() === (int) $account->getKey())
                 <div class="col-md-6">
                     <label class="form-label">Mật khẩu mới</label>
-                    <input type="password" class="form-control @error('password') is-invalid @endif" name="password" placeholder="Nhập mật khẩu mới (bỏ trống nếu không đổi)">
+                    <input type="password" class="form-control @error('password') is-invalid @enderror" name="password" placeholder="Nhập mật khẩu mới (bỏ trống nếu không đổi)">
                     <small class="form-text text-muted">Bỏ trống nếu không thay đổi mật khẩu.</small>
                     @error('password')
                         <div class="invalid-feedback">{{ $message }}</div>
-                    @endif
+                    @enderror
                 </div>
                 <div class="col-12">
                     <label class="form-label">Xác nhận mật khẩu</label>

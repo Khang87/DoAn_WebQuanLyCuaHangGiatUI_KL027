@@ -56,8 +56,8 @@
                     <input type="number" class="form-control" name="MucGiamToiDa" value="{{ old('MucGiamToiDa', $coupon->MucGiamToiDa) }}" min="0" step="0.01">
                 </div>
                 <div class="col-md-6">
-                    <label class="form-label">Số lượng mã phát hành</label>
-                    <input type="number" class="form-control" name="SoLuongSuDung" value="{{ old('SoLuongSuDung', $coupon->SoLuongSuDung) }}" min="0">
+                    <label class="form-label">Số lượt đã dùng</label>
+                    <input type="number" class="form-control" value="{{ $coupon->usedCount }}" disabled>
                 </div>
                 <div class="col-md-6">
                     <label class="form-label">Điều kiện áp dụng</label>
@@ -81,7 +81,7 @@
                     <label class="form-label">Trạng thái</label>
                     <x-admin.status-select
                         name="TrangThai"
-                        :options="\App\Enums\RecordStatus::options()"
+                        :options="['Hoạt động' => 'Hoạt động', 'Tạm ngưng' => 'Tạm ngưng', 'Hết hạn' => 'Hết hạn']"
                         :selected="$coupon->TrangThai"
                         class="form-select @error('TrangThai') is-invalid @enderror"
                     />

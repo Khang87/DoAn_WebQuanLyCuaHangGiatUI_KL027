@@ -51,7 +51,13 @@ class ServiceService
 
     public function find(int $id): ?DichVu
     {
-        return DichVu::with('loaiDichVu')->find($id);
+        return DichVu::with([
+            'loaiDichVu',
+            'bangGias' => fn ($query) => $query
+                ->with(['loaiDoGiat', 'donViTinh'])
+                ->orderByDesc('NgayApDung')
+                ->orderByDesc('BangGiaID'),
+        ])->find($id);
     }
 
     public function create(array $data): DichVu
@@ -68,17 +74,17 @@ class ServiceService
 
     public function delete(DichVu $service): bool
     {
-        return $service->delete();
-    }
+        if (
+            $service->bangGias()->exists()
+            || $service->chiTietDonHangs()->exists()
+            || $service->bookings()->exists()
+        ) {
+            $service->update(['TrangThai' => 'Tạm ngưng']);
 
-    public function restore(int $id): ?DichVu
-    {
-        $service = DichVu::onlyTrashed()->find($id);
-        if ($service) {
-            $service->restore();
+            return false;
         }
 
-        return $service;
+        return $service->delete();
     }
 
     public function getCategories(): array

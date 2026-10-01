@@ -4,6 +4,7 @@ namespace App\Http\Requests\Admin;
 
 use App\Enums\RecordStatus;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class LuuDichVuRequest extends FormRequest
 {
@@ -15,36 +16,35 @@ class LuuDichVuRequest extends FormRequest
     public function rules(): array
     {
         $id = $this->route('service') ?? $this->route('id') ?? null;
+        $uniqueName = Rule::unique('DichVu', 'TenDichVu');
+
+        if ($id !== null) {
+            $uniqueName->ignore($id, 'DichVuID');
+        }
 
         return [
-            'name' => ['required', 'string', 'max:255', 'unique:services,name,'.($id ?? '')],
-            'type' => ['nullable', 'string', 'max:50'],
-            'processing_time' => ['nullable', 'integer', 'min:0'],
-            'icon' => ['nullable', 'string', 'max:100'],
-            'price' => ['required', 'numeric', 'min:0'],
-            'unit' => ['required', 'string', 'max:20'],
-            'status' => ['required', 'in:'.implode(',', RecordStatus::values())],
-            'description' => ['nullable', 'string', 'max:1000'],
-            'service_category_id' => ['nullable', 'exists:service_categories,id'],
+            'TenDichVu' => ['required', 'string', 'min:3', 'max:150', $uniqueName],
+            'LoaiDichVuID' => ['required', 'integer', 'exists:LoaiDichVu,LoaiDichVuID'],
+            'MoTa' => ['nullable', 'string', 'max:500'],
+            'ThoiGianDuKien' => ['nullable', 'integer', 'min:0'],
+            'TrangThai' => ['required', Rule::in(RecordStatus::databaseValues())],
         ];
     }
 
     public function messages(): array
     {
         return [
-            'name.required' => 'TÃªn dá»‹ch vá»¥ lÃ  báº¯t buá»™c.',
-            'name.unique' => 'TÃªn dá»‹ch vá»¥ Ä‘Ã£ tá»“n táº¡i.',
-            'price.required' => 'GiÃ¡ lÃ  báº¯t buá»™c.',
-            'price.numeric' => 'GiÃ¡ pháº£i lÃ  sá»‘.',
-            'price.min' => 'GiÃ¡ khÃ´ng Ä‘Æ°á»£c nhá» hÆ¡n 0.',
-            'unit.required' => 'ÄÆ¡n giÃ¡ lÃ  báº¯t buá»™c.',
-            'unit.max' => 'ÄÆ¡n giÃ¡ khÃ´ng Ä‘Æ°á»£c quÃ¡ 20 kÃ½ tá»±.',
-            'status.required' => 'Tráº¡ng thÃ¡i lÃ  báº¯t buá»™c.',
-            'status.in' => 'Tráº¡ng thÃ¡i khÃ´ng há»£p lá»‡.',
-            'service_category_id.exists' => 'Danh má»¥c khÃ´ng tá»“n táº¡i.',
-            'processing_time.integer' => 'Thá»i gian pháº£i lÃ  sá»‘ nguyÃªn.',
-            'processing_time.min' => 'Thá»i gian khÃ´ng Ä‘Æ°á»£c nhá» hÆ¡n 0.',
-            'icon.max' => 'Icon khÃ´ng Ä‘Æ°á»£c quÃ¡ 100 kÃ½ tá»±.',
+            'TenDichVu.required' => 'Tên dịch vụ là bắt buộc.',
+            'TenDichVu.min' => 'Tên dịch vụ phải có ít nhất 3 ký tự.',
+            'TenDichVu.max' => 'Tên dịch vụ không được vượt quá 150 ký tự.',
+            'TenDichVu.unique' => 'Tên dịch vụ đã tồn tại.',
+            'LoaiDichVuID.required' => 'Danh mục dịch vụ là bắt buộc.',
+            'LoaiDichVuID.exists' => 'Danh mục dịch vụ không tồn tại.',
+            'MoTa.max' => 'Mô tả không được vượt quá 500 ký tự.',
+            'ThoiGianDuKien.integer' => 'Thời gian dự kiến phải là số nguyên.',
+            'ThoiGianDuKien.min' => 'Thời gian dự kiến không được nhỏ hơn 0.',
+            'TrangThai.required' => 'Trạng thái là bắt buộc.',
+            'TrangThai.in' => 'Trạng thái không hợp lệ.',
         ];
     }
 }

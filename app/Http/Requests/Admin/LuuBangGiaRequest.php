@@ -2,8 +2,8 @@
 
 namespace App\Http\Requests\Admin;
 
-use App\Enums\RecordStatus;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class LuuBangGiaRequest extends FormRequest
 {
@@ -14,17 +14,17 @@ class LuuBangGiaRequest extends FormRequest
 
     public function rules(): array
     {
-        $id = $this->route('pricing') ?? $this->route('id') ?? null;
-
         return [
-            'service_id' => ['nullable', 'exists:DichVu,DichVuID'],
-            'garment_id' => ['nullable', 'exists:LoaiDoGiat,LoaiDoGiatID'],
-            'name' => ['required', 'string', 'max:255'],
-            'unit' => ['required', 'string', 'max:20'],
-            'price' => ['required', 'numeric', 'min:0'],
-            'effective_date' => ['nullable', 'date'],
-            'status' => ['nullable', 'in:'.implode(',', RecordStatus::values())],
-            'description' => ['nullable', 'string'],
+            'DichVuID' => ['required', 'integer', 'exists:DichVu,DichVuID'],
+            'LoaiDoGiatID' => ['required', 'integer', 'exists:LoaiDoGiat,LoaiDoGiatID'],
+            'DonViTinhID' => ['required', 'integer', 'exists:DonViTinh,DonViTinhID'],
+            'DonGia' => ['required', 'numeric', 'min:0'],
+            'NgayApDung' => ['required', 'date'],
+            'NgayKetThuc' => ['nullable', 'date', 'after_or_equal:NgayApDung'],
+            'TrangThai' => [
+                'required',
+                Rule::in(['Hoạt động', 'Hết hiệu lực', 'Tạm ngưng']),
+            ],
         ];
     }
 }

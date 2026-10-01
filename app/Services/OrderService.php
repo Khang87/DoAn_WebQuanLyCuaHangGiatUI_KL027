@@ -9,7 +9,6 @@ use App\Models\ChiTietDonHang;
 use App\Models\DonHang;
 use App\Models\DonViTinh;
 use App\Models\KhachHang;
-use App\Models\KhuyenMai;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -375,11 +374,6 @@ class OrderService
                 ChiTietDonHang::create(array_merge(['DonHangID' => $order->DonHangID], $item));
             }
 
-            // Ghi nhận lượt sử dụng voucher (chỉ khi voucher còn hiệu lực).
-            if ($promotion && $promotion->isValid()) {
-                $promotion->markUsed();
-            }
-
             return $order->fresh(['chiTietDonHangs', 'khachHang', 'khuyenMai']);
         });
     }
@@ -401,7 +395,6 @@ class OrderService
 
             // Form gửi KhuyenMaiID (có thể rỗng) và/hoặc promotion_code.
             $touchesPromotion = array_key_exists('KhuyenMaiID', $data) || array_key_exists('promotion_code', $data);
-            $previousPromotionId = $order->KhuyenMaiID;
             $promotion = $touchesPromotion
                 ? $this->resolvePromotion($data)
                 : $order->khuyenMai;
@@ -444,17 +437,6 @@ class OrderService
                 ChiTietDonHang::create(array_merge(['DonHangID' => $order->DonHangID], $item));
             }
 
-            // Đồng bộ số lần sử dụng voucher khi voucher của đơn thay đổi
-            // (bao gồm cả trường hợp bị loại vì không thoả điều kiện).
-            if ((int) $previousPromotionId !== (int) ($promotion?->KhuyenMaiID)) {
-                if ($previousPromotionId) {
-                    KhuyenMai::find($previousPromotionId)?->markUnused();
-                }
-                if ($promotion && $promotion->isValid()) {
-                    $promotion->markUsed();
-                }
-            }
-
             return $order->fresh(['chiTietDonHangs', 'khachHang', 'khuyenMai']);
         });
     }
@@ -466,11 +448,6 @@ class OrderService
         }
 
         return DB::transaction(function () use ($order) {
-            // Xóa đơn thì hoàn lại lượt sử dụng voucher đã gắn với đơn.
-            if ($order->KhuyenMaiID) {
-                KhuyenMai::find($order->KhuyenMaiID)?->markUnused();
-            }
-
             // Hoàn lại điểm tích lũy đã trừ cho khách.
             if ($order->KhachHangID && (int) $order->DiemSuDung > 0) {
                 KhachHang::find($order->KhachHangID)?->addPoints((int) $order->DiemSuDung);

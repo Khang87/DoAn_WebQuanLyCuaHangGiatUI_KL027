@@ -132,6 +132,12 @@ class BookingService
 
     public function delete(Booking $booking): bool
     {
+        if ($booking->donHangs()->exists()) {
+            $booking->update(['TrangThai' => 'DaHuy']);
+
+            return true;
+        }
+
         return $booking->delete();
     }
 

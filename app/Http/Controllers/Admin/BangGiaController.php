@@ -2,11 +2,11 @@
 
 namespace App\Http\Controllers\Admin;
 
-use App\Enums\RecordStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\LuuBangGiaRequest;
 use App\Models\BangGia;
 use App\Models\DichVu;
+use App\Models\DonViTinh;
 use App\Models\LoaiDoGiat;
 use App\Services\PricingService;
 use App\Support\FriendlyError;
@@ -31,7 +31,11 @@ class BangGiaController extends Controller
 
         $services = DichVu::where('TrangThai', 'Hoạt động')->orderBy('TenDichVu')->get();
         $garments = LoaiDoGiat::where('TrangThai', 'Hoạt động')->orderBy('TenLoaiDoGiat')->get();
-        $statuses = RecordStatus::options();
+        $statuses = [
+            'Hoạt động' => 'Hoạt động',
+            'Hết hiệu lực' => 'Hết hiệu lực',
+            'Tạm ngưng' => 'Tạm ngưng',
+        ];
         $units = BangGia::unitOptions();
 
         return view('admin.pricings.index', compact('pricings', 'services', 'garments', 'statuses', 'units'));
@@ -41,8 +45,9 @@ class BangGiaController extends Controller
     {
         $services = DichVu::where('TrangThai', 'Hoạt động')->orderBy('TenDichVu')->get();
         $garments = LoaiDoGiat::where('TrangThai', 'Hoạt động')->orderBy('TenLoaiDoGiat')->get();
+        $units = DonViTinh::where('TrangThai', 'Hoạt động')->orderBy('TenDonViTinh')->get();
 
-        return view('admin.pricings.create', compact('services', 'garments'));
+        return view('admin.pricings.create', compact('services', 'garments', 'units'));
     }
 
     public function store(LuuBangGiaRequest $request)
@@ -77,8 +82,9 @@ class BangGiaController extends Controller
 
         $services = DichVu::where('TrangThai', 'Hoạt động')->orderBy('TenDichVu')->get();
         $garments = LoaiDoGiat::where('TrangThai', 'Hoạt động')->orderBy('TenLoaiDoGiat')->get();
+        $units = DonViTinh::where('TrangThai', 'Hoạt động')->orderBy('TenDonViTinh')->get();
 
-        return view('admin.pricings.edit', compact('pricing', 'services', 'garments'));
+        return view('admin.pricings.edit', compact('pricing', 'services', 'garments', 'units'));
     }
 
     public function update(LuuBangGiaRequest $request, int $id)

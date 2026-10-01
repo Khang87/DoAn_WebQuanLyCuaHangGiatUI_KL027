@@ -13,8 +13,11 @@ class KhuyenMai extends Model
     public const DISCOUNT_FIXED = 'Tiền mặt';
 
     protected $table = 'KhuyenMai';
+
     protected $primaryKey = 'KhuyenMaiID';
+
     public $timestamps = false;
+
     public static $snakeAttributes = false;
 
     protected $fillable = [
@@ -52,7 +55,7 @@ class KhuyenMai extends Model
 
     public function isValid(): bool
     {
-        if ($this->TrangThai !== 'Hoạt động') {
+        if ($this->TrangThai !== 'Hoạt động' || $this->NgayBatDau === null || $this->NgayKetThuc === null) {
             return false;
         }
 
@@ -63,11 +66,6 @@ class KhuyenMai extends Model
         }
 
         if ($this->NgayKetThuc && $this->NgayKetThuc->endOfDay() < $today) {
-            return false;
-        }
-
-        // SoLuongSuDung = null nghĩa là dùng vô hạn.
-        if ($this->SoLuongSuDung !== null && $this->SoLuongSuDung <= 0) {
             return false;
         }
 
@@ -182,26 +180,6 @@ class KhuyenMai extends Model
     }
 
     /**
-     * Ghi nhận một lượt sử dụng.
-     */
-    public function markUsed(): void
-    {
-        if ($this->SoLuongSuDung !== null) {
-            $this->increment('SoLuongSuDung');
-        }
-    }
-
-    /**
-     * Hoàn lại một lượt sử dụng (khi bỏ mã khuyến mãi hoặc xóa đơn).
-     */
-    public function markUnused(): void
-    {
-        if ($this->SoLuongSuDung !== null && $this->SoLuongSuDung > 0) {
-            $this->decrement('SoLuongSuDung');
-        }
-    }
-
-    /**
      * @return array<string, string>
      */
     public static function discountTypeOptions(): array
@@ -231,10 +209,10 @@ class KhuyenMai extends Model
         $value = (float) $this->GiaTriGiam;
 
         if ($this->LoaiKhuyenMai === self::DISCOUNT_PERCENTAGE) {
-            return rtrim(rtrim(number_format($value, 2, '.', ''), '0'), '.') . '%';
+            return rtrim(rtrim(number_format($value, 2, '.', ''), '0'), '.').'%';
         }
 
-        return number_format($value) . ' VNĐ';
+        return number_format($value).' VNĐ';
     }
 
     public function discountSummary(): string
@@ -242,7 +220,7 @@ class KhuyenMai extends Model
         $summary = $this->discountValueLabel();
 
         if ($this->LoaiKhuyenMai === self::DISCOUNT_PERCENTAGE && (float) $this->MucGiamToiDa > 0) {
-            $summary .= ' (tối đa ' . number_format((float) $this->MucGiamToiDa) . ' VNĐ)';
+            $summary .= ' (tối đa '.number_format((float) $this->MucGiamToiDa).' VNĐ)';
         }
 
         return $summary;
@@ -250,16 +228,17 @@ class KhuyenMai extends Model
 
     public function remainingCodes(): ?int
     {
-        if ($this->SoLuongSuDung === null) {
-            return null;
-        }
-
-        return max(0, (int) $this->SoLuongSuDung);
+        return null;
     }
 
     public function usageLabel(): string
     {
-        return ($this->SoLuongSuDung ?? '∞') . ' lượt';
+        return number_format($this->usedCount).' lượt';
+    }
+
+    public function getUsedCountAttribute(): int
+    {
+        return (int) ($this->attributes['used_count'] ?? $this->donHangs()->count());
     }
 
     public function getStatusLabelAttribute(): string
