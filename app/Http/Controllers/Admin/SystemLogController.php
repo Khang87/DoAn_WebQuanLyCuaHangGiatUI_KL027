@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\NhatKyHeThong;
+use App\Models\TaiKhoan;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
@@ -11,10 +12,12 @@ class SystemLogController extends Controller
 {
     public function index(Request $request): View
     {
+        abort_unless($request->user()?->isOwner(), 403);
+
         $filters = $request->validate([
             'table' => ['nullable', 'string', 'max:100'],
             'action' => ['nullable', 'string', 'max:255'],
-            'account_id' => ['nullable', 'integer', 'min:1'],
+            'TaiKhoanID' => ['nullable', 'integer', 'min:1'],
             'from' => ['nullable', 'date'],
             'to' => ['nullable', 'date', 'after_or_equal:from'],
         ]);
@@ -29,8 +32,8 @@ class SystemLogController extends Controller
             $query->where('HanhDong', 'like', '%'.$filters['action'].'%');
         }
 
-        if (! empty($filters['account_id'])) {
-            $query->where('TaiKhoanID', $filters['account_id']);
+        if (! empty($filters['TaiKhoanID'])) {
+            $query->where('TaiKhoanID', $filters['TaiKhoanID']);
         }
 
         if (! empty($filters['from'])) {
@@ -44,6 +47,10 @@ class SystemLogController extends Controller
         return view('admin.system_logs.index', [
             'logs' => $query->orderByDesc('ThoiGian')->orderByDesc('NhatKyID')->paginate(30)->withQueryString(),
             'filters' => $filters,
+            'accounts' => TaiKhoan::query()
+                ->select(['TaiKhoanID', 'TenDangNhap'])
+                ->orderBy('TenDangNhap')
+                ->get(),
             'tables' => NhatKyHeThong::query()->select('BangDuLieu')->distinct()->orderBy('BangDuLieu')->pluck('BangDuLieu'),
         ]);
     }

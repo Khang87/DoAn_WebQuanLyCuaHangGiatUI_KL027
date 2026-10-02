@@ -57,7 +57,9 @@ Route::middleware(['auth', 'reject.customer'])->group(function () {
         Route::get('/admin/dashboard', [DashboardController::class, 'index'])->name('admin.dashboard');
         Route::post('/admin/dashboard/collect-cash-payment/{invoice}', [DashboardController::class, 'collectCashPayment'])->name('admin.dashboard.collect-cash-payment');
         Route::get('/admin/dashboard/revenue-chart', [DashboardController::class, 'getRevenueChartData'])->name('admin.dashboard.revenue-chart');
-        Route::get('/admin/system-logs', [SystemLogController::class, 'index'])->name('admin.system-logs.index');
+        Route::get('/admin/system-logs', [SystemLogController::class, 'index'])
+            ->middleware('role:admin')
+            ->name('admin.system-logs.index');
     });
 
     Route::middleware(['role:manager|admin|staff|employee'])->group(function () {

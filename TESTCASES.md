@@ -122,6 +122,17 @@ Lần chạy được ghi nhận bằng `php artisan test --compact` trên cấu
 | 87 | TC-BK-13 — `BookingOrderConversion` | Booking đã hủy không được xác nhận và không sinh đơn hàng. | Feature — `tests/Feature/BookingOrderConversionTest.php` | ✅ PASSED |
 | 88 | TC-BK-14 — `BookingOrderConversion` | Booking chưa có dòng dịch vụ được chuyển tới form sửa với thông báo hướng dẫn; trạng thái và đơn hàng không bị thay đổi. | Feature — `tests/Feature/BookingOrderConversionTest.php` | ✅ PASSED |
 
+### Kiểm thử Nhật ký hệ thống (SystemLog)
+
+Chạy riêng bằng `php artisan test --compact --filter=SystemLogTest`: **4 passed**, 11 assertions.
+
+| STT | Mã Test / Tên Class Test | Mô tả kịch bản test | Môi trường/File test | Trạng thái |
+|---:|---|---|---|---|
+| 89 | TC-SLOG-01 — `SystemLog` | Lọc nhật ký theo dropdown `TaiKhoanID` chỉ trả về log thuộc tài khoản được chọn. | Feature — `tests/Feature/SystemLogTest.php` | ✅ PASSED |
+| 90 | TC-SLOG-02 — `SystemLog` | Nhật ký có `TaiKhoanID` NULL được hiển thị với nhãn “Hệ thống”. | Feature — `tests/Feature/SystemLogTest.php` | ✅ PASSED |
+| 91 | TC-SLOG-03 — `SystemLog` | View nhận danh sách tài khoản chỉ gồm `TaiKhoanID`, `TenDangNhap` và hiển thị option dropdown đúng định dạng. | Feature — `tests/Feature/SystemLogTest.php` | ✅ PASSED |
+| 92 | TC-SLOG-04 — `SystemLog` | Tài khoản vai trò Nhân viên bị từ chối truy cập route Nhật ký hệ thống (HTTP 403). | Feature — `tests/Feature/SystemLogTest.php` | ✅ PASSED |
+
 ### Giới hạn phạm vi kiểm thử
 
 - Audit đơn hàng được test trực tiếp qua `OrderService`. Chưa có test tích hợp riêng gọi từng luồng Payment hoặc Dashboard để chứng minh việc ghi audit qua các endpoint đó.

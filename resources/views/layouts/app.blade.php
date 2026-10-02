@@ -212,12 +212,14 @@
                         </a>
                     </li>
                     @endcan
-                    <li class="sidebar-menu-item">
-                        <a href="{{ route('admin.system-logs.index') }}" class="sidebar-menu-link {{ request()->routeIs('admin.system-logs.*') ? 'active' : '' }}">
-                            <i class="bi bi-journal-text"></i>
-                            <span>Nhật ký hệ thống</span>
-                        </a>
-                    </li>
+                    @if(auth()->user()?->isOwner())
+                        <li class="sidebar-menu-item">
+                            <a href="{{ route('admin.system-logs.index') }}" class="sidebar-menu-link {{ request()->routeIs('admin.system-logs.*') ? 'active' : '' }}">
+                                <i class="bi bi-journal-text"></i>
+                                <span>Nhật ký hệ thống</span>
+                            </a>
+                        </li>
+                    @endif
                     @can('roles.manage')
                     <li class="sidebar-menu-item">
                         <a href="{{ route('roles.index') }}" class="sidebar-menu-link {{ request()->routeIs('roles.*') ? 'active' : '' }}">

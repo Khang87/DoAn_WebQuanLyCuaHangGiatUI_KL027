@@ -11,7 +11,7 @@
     <div class="card-body">
         <form method="GET" action="{{ route('admin.system-logs.index') }}" class="row g-3 align-items-end">
             <div class="col-md-3">
-                <label for="table" class="form-label">Bảng tác động</label>
+                <label for="table" class="form-label">Bảng dữ liệu</label>
                 <select id="table" name="table" class="form-select">
                     <option value="">Tất cả bảng</option>
                     @foreach($tables as $table)
@@ -24,8 +24,15 @@
                 <input id="action" name="action" value="{{ $filters['action'] ?? '' }}" class="form-control" maxlength="255" placeholder="Tìm hành động">
             </div>
             <div class="col-md-2">
-                <label for="account_id" class="form-label">Mã tài khoản</label>
-                <input id="account_id" name="account_id" type="number" min="1" value="{{ $filters['account_id'] ?? '' }}" class="form-control">
+                <label for="TaiKhoanID" class="form-label">Tài khoản</label>
+                <select id="TaiKhoanID" name="TaiKhoanID" class="form-select">
+                    <option value="">Tất cả tài khoản</option>
+                    @foreach($accounts as $account)
+                        <option value="{{ $account->TaiKhoanID }}" @selected((string) ($filters['TaiKhoanID'] ?? '') === (string) $account->TaiKhoanID)>
+                            {{ $account->TenDangNhap }} (#{{ $account->TaiKhoanID }})
+                        </option>
+                    @endforeach
+                </select>
             </div>
             <div class="col-md-2">
                 <label for="from" class="form-label">Từ ngày</label>
@@ -56,7 +63,7 @@
                         <th>Thời gian</th>
                         <th>Tài khoản</th>
                         <th>Hành động</th>
-                        <th>Bảng</th>
+                        <th>Bảng dữ liệu</th>
                         <th>Bản ghi</th>
                         <th>Chi tiết</th>
                     </tr>
@@ -64,9 +71,20 @@
                 <tbody>
                     @forelse($logs as $log)
                         <tr>
-                            <td class="text-nowrap">{{ $log->ThoiGian?->format('d-m-Y H:i:s') ?: '—' }}</td>
+                            <td class="text-nowrap px-3 py-2">
+                                @if($log->ThoiGian)
+                                    <div class="fw-normal font-monospace">{{ $log->ThoiGian->format('d/m/Y') }}</div>
+                                    <div class="small fw-normal font-monospace text-muted mt-1">{{ $log->ThoiGian->format('H:i:s') }}</div>
+                                @else
+                                    <span class="fw-normal text-muted">—</span>
+                                @endif
+                            </td>
                             <td>
-                                {{ $log->taiKhoan?->TenDangNhap ?: '—' }}
+                                @if($log->TaiKhoanID === null)
+                                    <span class="badge bg-secondary-subtle text-secondary-emphasis">Hệ thống</span>
+                                @else
+                                    {{ $log->taiKhoan?->TenDangNhap ?: 'Tài khoản #'.$log->TaiKhoanID }}
+                                @endif
                                 @if($log->TaiKhoanID)
                                     <span class="text-muted small d-block">#{{ $log->TaiKhoanID }}</span>
                                 @endif

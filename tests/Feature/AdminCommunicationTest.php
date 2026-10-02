@@ -38,6 +38,41 @@ class AdminCommunicationTest extends TestCase
             $table->string('HoTen');
         });
 
+        Schema::create('VaiTro', function (Blueprint $table): void {
+            $table->increments('VaiTroID');
+            $table->string('TenVaiTro');
+            $table->string('TrangThai')->default('Hoạt động');
+        });
+
+        Schema::create('Quyen', function (Blueprint $table): void {
+            $table->increments('QuyenID');
+            $table->string('MaQuyen');
+            $table->string('TrangThai')->default('Hoạt động');
+        });
+
+        Schema::create('TaiKhoan_VaiTro', function (Blueprint $table): void {
+            $table->unsignedInteger('TaiKhoanID');
+            $table->unsignedInteger('VaiTroID');
+            $table->primary(['TaiKhoanID', 'VaiTroID']);
+        });
+
+        Schema::create('VaiTro_Quyen', function (Blueprint $table): void {
+            $table->unsignedInteger('VaiTroID');
+            $table->unsignedInteger('QuyenID');
+            $table->primary(['VaiTroID', 'QuyenID']);
+        });
+
+        Schema::create('ThongBao', function (Blueprint $table): void {
+            $table->increments('ThongBaoID');
+            $table->unsignedInteger('TaiKhoanID');
+            $table->unsignedInteger('DonHangID')->nullable();
+            $table->string('LoaiThongBao')->nullable();
+            $table->string('TieuDe');
+            $table->string('NoiDung');
+            $table->dateTime('ThoiGianGui')->useCurrent();
+            $table->boolean('DaDoc')->default(false);
+        });
+
         Schema::create('DonHang', function (Blueprint $table): void {
             $table->increments('DonHangID');
             $table->string('MaDonHang');
@@ -137,6 +172,8 @@ class AdminCommunicationTest extends TestCase
     public function test_system_log_screen_applies_table_action_account_and_date_filters(): void
     {
         $account = $this->createAccount('log-owner');
+        $this->assignRole($account, 'Owner');
+        $this->actingAs($account);
         NhatKyHeThong::query()->create([
             'TaiKhoanID' => $account->TaiKhoanID,
             'HanhDong' => 'Chuyển trạng thái đơn hàng',
@@ -154,33 +191,69 @@ class AdminCommunicationTest extends TestCase
             'ThoiGian' => '2026-10-01 12:00:00',
         ]);
 
-        $view = app(SystemLogController::class)->index(Request::create('/admin/system-logs', 'GET', [
+        $request = Request::create('/admin/system-logs', 'GET', [
             'table' => 'DonHang',
             'action' => 'trạng thái',
-            'account_id' => $account->TaiKhoanID,
+            'TaiKhoanID' => $account->TaiKhoanID,
             'from' => '2026-10-02',
             'to' => '2026-10-02',
-        ]));
+        ]);
+        $request->setUserResolver(fn () => $account);
+        $view = app(SystemLogController::class)->index($request);
         $logs = $view->getData()['logs'];
 
         $this->assertSame('admin.system_logs.index', $view->name());
         $this->assertSame(1, $logs->total());
         $this->assertSame('DonHang', $logs->items()[0]->BangDuLieu);
         $this->assertSame('Chuyển trạng thái đơn hàng', $logs->items()[0]->HanhDong);
+        $this->assertSame('log-owner', $view->getData()['accounts']->firstWhere('TaiKhoanID', $account->TaiKhoanID)->TenDangNhap);
+
+        $html = $view->render();
+
+        $this->assertStringContainsString('name="TaiKhoanID"', $html);
+        $this->assertStringContainsString('log-owner (#'.$account->TaiKhoanID.')', $html);
+        $this->assertStringContainsString('value="'.$account->TaiKhoanID.'" selected', $html);
+        $this->assertStringContainsString('Bảng dữ liệu', $html);
     }
 
-    public function test_staff_chat_and_manager_only_system_log_routes_have_expected_role_boundaries(): void
+    public function test_owner_can_view_system_logs_and_sees_the_menu_link(): void
     {
-        $routes = app('router')->getRoutes();
+        $owner = $this->createAccount('log-owner');
+        $this->assignRole($owner, 'Owner');
 
-        $this->assertContains(
-            'role:manager|admin|staff|employee',
-            $routes->getByName('admin.messages.index')->getAction('middleware'),
-        );
-        $this->assertContains(
-            'role:manager|admin',
-            $routes->getByName('admin.system-logs.index')->getAction('middleware'),
-        );
+        $this->actingAs($owner)
+            ->get(route('admin.system-logs.index'))
+            ->assertOk()
+            ->assertSee('Nhật ký hệ thống');
+    }
+
+    public function test_manager_and_staff_cannot_open_system_logs_or_see_the_menu_link(): void
+    {
+        foreach (['Quản lý', 'Nhân viên'] as $index => $roleName) {
+            $user = $this->createAccount('restricted-'.$index);
+            $this->assignRole($user, $roleName);
+
+            $response = $this->actingAs($user)->get(route('admin.system-logs.index'));
+
+            if ($index === 0) {
+                $response->assertForbidden();
+            } else {
+                $response->assertRedirect(route('staff.dashboard'));
+            }
+
+            $this->actingAs($user)
+                ->get(route('admin.messages.index'))
+                ->assertOk()
+                ->assertDontSee('Nhật ký hệ thống');
+        }
+    }
+
+    public function test_system_log_route_requires_the_owner_role_in_addition_to_manager_area_access(): void
+    {
+        $route = app('router')->getRoutes()->getByName('admin.system-logs.index');
+
+        $this->assertContains('role:manager|admin', $route->getAction('middleware'));
+        $this->assertContains('role:admin', $route->getAction('middleware'));
     }
 
     private function createAccount(string $username, ?int $customerId = null): User
@@ -190,6 +263,19 @@ class AdminCommunicationTest extends TestCase
             'MatKhau' => 'test-password',
             'KhachHangID' => $customerId,
             'TrangThai' => 'Hoạt động',
+        ]);
+    }
+
+    private function assignRole(User $user, string $roleName): void
+    {
+        $roleId = DB::table('VaiTro')->insertGetId([
+            'TenVaiTro' => $roleName,
+            'TrangThai' => 'Hoạt động',
+        ], 'VaiTroID');
+
+        DB::table('TaiKhoan_VaiTro')->insert([
+            'TaiKhoanID' => $user->TaiKhoanID,
+            'VaiTroID' => $roleId,
         ]);
     }
 }
