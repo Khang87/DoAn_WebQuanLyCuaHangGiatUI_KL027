@@ -26,6 +26,8 @@ Sky Laundry hỗ trợ số hóa hoạt động hằng ngày của cửa hàng g
 - Bộ máy bảng giá tra cứu chính xác theo `(DichVuID, LoaiDoGiatID, DonViTinhID)`, lấy ngày áp dụng mới nhất; thao tác tạo/sửa/khôi phục khóa theo tuple bằng PostgreSQL transaction advisory lock để chống race condition giữa các tiến trình Laravel.
 - Booking được xác nhận sẽ tự chuyển thành đơn hàng và phiếu giao trong transaction. UI không hiện nút tạo đơn cho Booking đang chờ xác nhận; nếu đã có đơn thì hiển thị liên kết tới đơn hiện hữu thay vì tạo trùng.
 - Ghi nhật ký `NhatKyHeThong` cho tạo/xác nhận Booking (bao gồm người và thời điểm xác nhận), đổi trạng thái đơn hàng và thay đổi tài khoản; snapshot tài khoản không ghi mật khẩu.
+- Màn hình Nhật ký hệ thống tại `/admin/system-logs` dành riêng cho Chủ cửa hàng; có lọc theo bảng dữ liệu, hành động, khoảng ngày và tài khoản, phân trang, xem snapshot trước/sau và liên kết tới Booking/đơn liên quan. Nhật ký có `TaiKhoanID` NULL được hiển thị là “Hệ thống”.
+- Chat hai chiều theo đơn hàng tại `/admin/messages` dành cho Chủ cửa hàng, Quản lý và Nhân viên; tải lịch sử tin nhắn gần nhất và gửi phản hồi tới tài khoản khách hàng liên kết với đơn. `TinNhan` chỉ lưu hội thoại, không dùng làm technical audit hoặc system log.
 - Tên bảng/cột tuân thủ chính xác cách viết của Supabase PostgreSQL: phần lớn bảng nghiệp vụ PascalCase, riêng một số đối tượng live như `khachhang_diachi` và các cột của nó viết thường.
 - Có cơ chế bảo vệ các lệnh Artisan có thể phá hủy cấu trúc cơ sở dữ liệu.
 
@@ -56,6 +58,8 @@ Quyền truy cập được kiểm tra theo vai trò và mã quyền. Việc ẩ
 | Dashboard và báo cáo quản lý | Theo quyền Chủ cửa hàng | Theo quyền được cấp | Chỉ truy cập chức năng được cấp | Bị chặn khỏi khu vực quản trị |
 | Đơn hàng, khách hàng, dịch vụ và giao nhận | Theo quyền Chủ cửa hàng | Theo ma trận quyền | Theo ma trận quyền từng thao tác | Bị chặn khỏi giao diện/API quản trị hiện tại |
 | Hóa đơn và thanh toán | Theo quyền Chủ cửa hàng | Theo quyền được cấp và quy tắc khóa bản ghi đã quyết toán | Chỉ khi được cấp quyền phù hợp | Bị chặn khỏi giao diện/API quản trị hiện tại |
+| Nhật ký hệ thống (`NhatKyHeThong`) | Được truy cập | Bị từ chối | Bị từ chối | Bị chặn khỏi khu vực quản trị |
+| Chat theo đơn hàng (`TinNhan`) | Được truy cập | Được truy cập | Được truy cập | Bị chặn khỏi giao diện quản trị |
 | Tài khoản không hoạt động | Không được bypass quyền | Bị từ chối | Bị từ chối | Bị từ chối |
 
 Tài khoản có thể có nhiều vai trò thông qua `TaiKhoan_VaiTro`. Quyền được gán cho vai trò qua `VaiTro_Quyen` và bảng `Quyen`. Những thao tác đặc biệt với bản ghi đã thanh toán tiếp tục chịu quy tắc nghiệp vụ riêng; không suy diễn rằng chỉ dựa vào vai trò là đủ quyền.
@@ -72,6 +76,8 @@ Tài khoản có thể có nhiều vai trò thông qua `TaiKhoan_VaiTro`. Quyề
 | Giao nhận | Theo dõi lịch và trạng thái giao/nhận đồ |
 | Khuyến mãi và mã giảm giá | Quản lý chương trình và mã áp dụng |
 | Đánh giá và thông báo | Theo dõi phản hồi, trả lời đánh giá và thông báo nghiệp vụ |
+| Nhật ký hệ thống | Tra cứu audit `NhatKyHeThong` theo bảng, hành động, thời gian và tài khoản (Chủ cửa hàng) |
+| Tin nhắn | Hội thoại hai chiều giữa cửa hàng và khách hàng theo đơn hàng, lưu trong `TinNhan` |
 | Báo cáo | Tổng hợp chỉ số vận hành, doanh thu và dữ liệu dịch vụ |
 | API | Cung cấp một số danh sách và thao tác đã được xác thực, phân quyền |
 
@@ -107,7 +113,7 @@ Chỉ sử dụng tài khoản được cấp trong môi trường cục bộ ho
 
 ### Trạng thái kiểm thử hồi quy
 
-Lần chạy đầy đủ gần nhất: **280 test được phát hiện, 88 PASSED, 192 skipped, 512 assertions**. Các test skipped không được tính là kiểm thử thành công. Bộ test dùng SQLite in-memory theo `phpunit.xml`, không phải kiểm thử tích hợp ghi dữ liệu trên Supabase Live.
+Lần chạy đầy đủ gần nhất: **304 test được phát hiện, 112 PASSED, 192 skipped, 598 assertions**. Các test skipped không được tính là kiểm thử thành công. Bộ test dùng SQLite in-memory theo `phpunit.xml`, không phải kiểm thử tích hợp ghi dữ liệu trên Supabase Live.
 
 ### Cải tiến & tái cấu trúc Loại đồ giặt và bảng giá
 
@@ -161,7 +167,7 @@ Lần chạy đầy đủ gần nhất: **280 test được phát hiện, 88 PAS
 
 #### Kiểm thử và chất lượng
 
-- Lần chạy đầy đủ gần nhất: **280 test được phát hiện, 88 PASSED, 192 skipped, 512 assertions**. Các ca PASSED liên quan trực tiếp bao gồm chuyển Booking nhiều dòng, audit, XOR số lượng/khối lượng, giá theo tuple, chặn overlap, ngày hiệu lực biên, tính phí KG theo từng dòng và quan hệ địa chỉ khách hàng; danh sách chi tiết ở [TESTCASES.md](./TESTCASES.md).
+- Lần chạy đầy đủ gần nhất: **304 test được phát hiện, 112 PASSED, 192 skipped, 598 assertions**. Các ca PASSED bao gồm Booking nhiều dòng, audit, RBAC Nhật ký hệ thống, dropdown lọc tài khoản, chat theo đơn, XOR số lượng/khối lượng, giá theo tuple, chặn overlap, ngày hiệu lực biên, tính phí KG theo từng dòng và quan hệ địa chỉ khách hàng; danh sách chi tiết ở [TESTCASES.md](./TESTCASES.md).
 - `php artisan view:cache`, `vendor/bin/pint --dirty --format agent`, kiểm tra lỗi trên các file PHP đã sửa và `git diff --check` đều hoàn tất thành công.
 - Test chạy với SQLite in-memory; kết quả không phải kiểm thử tích hợp ghi dữ liệu trên Supabase Live.
 - Thứ tự ưu tiên `NgayApDung` mới nhất và các mốc ngày biên đã có regression test trên SQLite. Chưa có test PostgreSQL tích hợp chạy đồng thời để chứng minh advisory lock/race-condition không deadlock; cũng chưa có test tích hợp riêng gọi từng endpoint Payment/Dashboard để xác nhận audit qua từng đường đi.
