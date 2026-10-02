@@ -35,28 +35,34 @@
                     </span>
                 </x-admin.detail.info-item>
                 <x-admin.detail.info-item label="Nhân viên phụ trách" :value="$booking->nhanVien?->HoTen ?? 'Chưa phân công'" />
+                <x-admin.detail.info-item label="Nhân viên xác nhận" :value="$booking->nhanVienXacNhan?->HoTen ?? '—'" />
+                <x-admin.detail.info-item label="Thời gian xác nhận" :value="$booking->ThoiGianXacNhan?->format('d/m/Y H:i') ?? '—'" />
                 <x-admin.detail.info-item label="Ngày hẹn" :value="$booking->NgayHen?->format('d/m/Y')" />
                 <x-admin.detail.info-item label="Giờ hẹn" :value="$booking->GioHen?->format('H:i')" />
                 <x-admin.detail.info-item label="Địa chỉ nhận đồ" :value="$booking->DiaChiNhan ?: '—'" />
-                <x-admin.detail.info-item label="Dịch vụ dự kiến" :value="$booking->dichVu?->TenDichVu ?: 'Chưa chọn'" />
-                <x-admin.detail.info-item label="Loại đồ giặt" :value="$booking->loaiDoGiat?->TenLoaiDoGiat ?: 'Chưa chọn'" />
-                <x-admin.detail.info-item label="Đơn vị tính" :value="$booking->donViTinh?->TenDonViTinh ?: '—'" />
-                <x-admin.detail.info-item label="Số lượng / khối lượng">
-                    @if($booking->SoLuong !== null)
-                        {{ number_format((float) $booking->SoLuong, 2, ',', '.') }} {{ $booking->donViTinh?->KyHieu ?: $booking->donViTinh?->TenDonViTinh }}
-                    @elseif($booking->KhoiLuong !== null)
-                        {{ number_format((float) $booking->KhoiLuong, 2, ',', '.') }} {{ $booking->donViTinh?->KyHieu ?: $booking->donViTinh?->TenDonViTinh }}
-                    @else
-                        —
-                    @endif
-                </x-admin.detail.info-item>
-                <x-admin.detail.info-item label="Đơn giá dự kiến">
-                    {{ $booking->DonGia !== null ? number_format((float) $booking->DonGia, 0, ',', '.').' VNĐ' : '—' }}
-                </x-admin.detail.info-item>
-                <x-admin.detail.info-item label="Thành tiền dự kiến">
-                    {{ $booking->ThanhTien !== null ? number_format((float) $booking->ThanhTien, 0, ',', '.').' VNĐ' : '—' }}
-                </x-admin.detail.info-item>
             </x-admin.detail.info-grid>
+
+            <div class="mt-4">
+                <div class="detail-field__label mb-2">Dịch vụ dự kiến</div>
+                @forelse($booking->chiTietBookings as $item)
+                    <div class="border rounded p-3 mb-2">
+                        <div class="d-flex justify-content-between gap-3">
+                            <strong>{{ $item->dichVu?->TenDichVu ?? 'Dịch vụ không còn tồn tại' }} · {{ $item->loaiDoGiat?->TenLoaiDoGiat ?? 'Loại đồ không còn tồn tại' }}</strong>
+                            <strong>{{ number_format((float) $item->ThanhTien, 0, ',', '.') }} VNĐ</strong>
+                        </div>
+                        <div class="text-muted small mt-1">
+                            {{ $item->SoLuong !== null ? number_format((float) $item->SoLuong, 2, ',', '.') : number_format((float) $item->KhoiLuong, 2, ',', '.') }}
+                            {{ $item->donViTinh?->KyHieu ?: $item->donViTinh?->TenDonViTinh }}
+                            · Đơn giá {{ number_format((float) $item->DonGia, 0, ',', '.') }} VNĐ
+                        </div>
+                        @if($item->GhiChu)
+                            <div class="text-muted small mt-1">{{ $item->GhiChu }}</div>
+                        @endif
+                    </div>
+                @empty
+                    <div class="text-muted">Chưa có dịch vụ dự kiến.</div>
+                @endforelse
+            </div>
 
             @if($booking->GhiChu)
                 <div class="mt-4">

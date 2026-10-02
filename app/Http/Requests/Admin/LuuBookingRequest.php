@@ -26,54 +26,69 @@ class LuuBookingRequest extends FormRequest
             'scheduled_time' => ['required', 'date_format:H:i'],
             'notes' => ['nullable', 'string', 'max:500'],
             'status' => ['nullable', 'in:'.implode(',', BookingStatus::values())],
-            'service_id' => ['nullable', 'integer', 'exists:DichVu,DichVuID', 'required_with:garment_id,unit_id,quantity,weight'],
-            'garment_id' => ['nullable', 'integer', 'exists:LoaiDoGiat,LoaiDoGiatID', 'required_with:service_id,unit_id,quantity,weight'],
-            'unit_id' => ['nullable', 'integer', 'exists:DonViTinh,DonViTinhID', 'required_with:service_id,garment_id,quantity,weight'],
-            'quantity' => ['nullable', 'numeric', 'gt:0'],
-            'weight' => ['nullable', 'numeric', 'gt:0'],
+            'items' => ['sometimes', 'array'],
+            'items.*.DichVuID' => ['required', 'integer', 'exists:DichVu,DichVuID'],
+            'items.*.LoaiDoGiatID' => ['required', 'integer', 'exists:LoaiDoGiat,LoaiDoGiatID'],
+            'items.*.DonViTinhID' => ['required', 'integer', 'exists:DonViTinh,DonViTinhID'],
+            'items.*.SoLuong' => ['nullable', 'numeric', 'gt:0'],
+            'items.*.KhoiLuong' => ['nullable', 'numeric', 'gt:0'],
+            'items.*.GhiChu' => ['nullable', 'string', 'max:500'],
         ];
+    }
+
+    protected function prepareForValidation(): void
+    {
+        $items = $this->input('items');
+        if (! is_array($items)) {
+            return;
+        }
+
+        $items = array_values(array_filter($items, function (mixed $item): bool {
+            if (! is_array($item)) {
+                return true;
+            }
+
+            return collect($item)->contains(fn (mixed $value): bool => $value !== null && $value !== '');
+        }));
+
+        $this->merge(['items' => $items]);
     }
 
     public function withValidator(Validator $validator): void
     {
         $validator->after(function (Validator $validator): void {
-            if ($validator->errors()->hasAny(['service_id', 'garment_id', 'unit_id'])) {
-                return;
-            }
-
-            $hasSnapshotInput = collect(['service_id', 'garment_id', 'unit_id', 'quantity', 'weight'])
-                ->contains(fn (string $field): bool => $this->input($field) !== null && $this->input($field) !== '');
-
-            if (! $hasSnapshotInput) {
-                return;
-            }
-
-            $unit = DonViTinh::query()->find($this->input('unit_id'));
-            if (! $unit) {
-                return;
-            }
-
-            $quantity = $this->input('quantity');
-            $weight = $this->input('weight');
-
-            if ($unit->isWeightUnit()) {
-                if ($quantity !== null && $quantity !== '') {
-                    $validator->errors()->add('quantity', 'Đơn vị tính theo kg không được nhập số lượng.');
+            foreach ($this->input('items', []) as $index => $item) {
+                if (! is_array($item) || $validator->errors()->has("items.{$index}.DonViTinhID")) {
+                    continue;
                 }
 
-                if ($weight === null || $weight === '') {
-                    $validator->errors()->add('weight', 'Vui lòng nhập khối lượng cho đơn vị tính theo kg.');
+                $unit = DonViTinh::query()->find($item['DonViTinhID'] ?? null);
+                if (! $unit) {
+                    continue;
                 }
 
-                return;
-            }
+                $quantity = $item['SoLuong'] ?? null;
+                $weight = $item['KhoiLuong'] ?? null;
+                $hasQuantity = $quantity !== null && $quantity !== '';
+                $hasWeight = $weight !== null && $weight !== '';
 
-            if ($weight !== null && $weight !== '') {
-                $validator->errors()->add('weight', 'Đơn vị tính theo món không được nhập khối lượng.');
-            }
+                if ($unit->isWeightUnit()) {
+                    if ($hasQuantity || ! $hasWeight) {
+                        $validator->errors()->add(
+                            "items.{$index}.SoLuong",
+                            'Đơn vị tính theo kg chỉ được nhập khối lượng, không nhập số lượng.',
+                        );
+                    }
 
-            if ($quantity === null || $quantity === '') {
-                $validator->errors()->add('quantity', 'Vui lòng nhập số lượng cho đơn vị tính này.');
+                    continue;
+                }
+
+                if ($hasWeight || ! $hasQuantity) {
+                    $validator->errors()->add(
+                        "items.{$index}.SoLuong",
+                        'Đơn vị tính theo món chỉ được nhập số lượng, không nhập khối lượng.',
+                    );
+                }
             }
         });
     }
@@ -93,11 +108,11 @@ class LuuBookingRequest extends FormRequest
             'scheduled_time.date_format' => 'Định dạng giờ: HH:MM.',
             'status.in' => 'Trạng thái không hợp lệ.',
             'notes.max' => 'Không quá 500 ký tự.',
-            'service_id.required_with' => 'Hãy chọn đầy đủ dịch vụ và thông tin dòng hàng.',
-            'garment_id.required_with' => 'Hãy chọn đầy đủ dịch vụ và thông tin dòng hàng.',
-            'unit_id.required_with' => 'Hãy chọn đơn vị tính cho dòng hàng.',
-            'quantity.gt' => 'Số lượng phải lớn hơn 0.',
-            'weight.gt' => 'Khối lượng phải lớn hơn 0.',
+            'items.*.DichVuID.required' => 'Hãy chọn dịch vụ cho từng dòng đặt lịch.',
+            'items.*.LoaiDoGiatID.required' => 'Hãy chọn loại đồ giặt cho từng dòng đặt lịch.',
+            'items.*.DonViTinhID.required' => 'Hãy chọn đơn vị tính cho từng dòng đặt lịch.',
+            'items.*.SoLuong.gt' => 'Số lượng phải lớn hơn 0.',
+            'items.*.KhoiLuong.gt' => 'Khối lượng phải lớn hơn 0.',
         ];
     }
 }

@@ -16,12 +16,31 @@
                 <div class="col-md-6"><label class="form-label">Địa chỉ nhận đồ</label><input type="text" class="form-control @error('address') is-invalid @enderror" name="address" value="{{ old('address', $booking->DiaChiNhan) }}" maxlength="255" @required(old('method', $booking->HinhThucNhanDo) === \App\Enums\BookingMethod::GiaoDo->value)>@error('address')<div class="invalid-feedback">{{ $message }}</div>@enderror</div>
                 <div class="col-md-6"><label class="form-label">Ngày hẹn <span class="text-danger ms-1">*</span></label><input type="date" class="form-control @error('scheduled_date') is-invalid @enderror" name="scheduled_date" value="{{ old('scheduled_date', $booking->NgayHen?->format('Y-m-d')) }}" required>@error('scheduled_date')<div class="invalid-feedback">{{ $message }}</div>@enderror</div>
                 <div class="col-md-6"><label class="form-label">Giờ hẹn <span class="text-danger ms-1">*</span></label><input type="time" class="form-control @error('scheduled_time') is-invalid @enderror" name="scheduled_time" value="{{ old('scheduled_time', $booking->GioHen?->format('H:i')) }}" required>@error('scheduled_time')<div class="invalid-feedback">{{ $message }}</div>@enderror</div>
-                <div class="col-12"><hr class="my-1"><h6 class="mb-0">Dịch vụ dự kiến</h6><small class="text-muted">Mỗi đặt lịch lưu tối đa một dòng theo cấu trúc schema hiện tại. Đơn giá và thành tiền được tính lại từ bảng giá hiệu lực khi lưu.</small></div>
-                <div class="col-md-4"><label class="form-label">Dịch vụ</label><select class="form-select @error('service_id') is-invalid @enderror" name="service_id"><option value="">-- Chọn dịch vụ --</option>@foreach($services as $service)<option value="{{ $service->DichVuID }}" @selected((string) old('service_id', $booking->DichVuID) === (string) $service->DichVuID)>{{ $service->TenDichVu }}</option>@endforeach</select>@error('service_id')<div class="invalid-feedback">{{ $message }}</div>@enderror</div>
-                <div class="col-md-4"><label class="form-label">Loại đồ giặt</label><select class="form-select @error('garment_id') is-invalid @enderror" name="garment_id"><option value="">-- Chọn loại đồ --</option>@foreach($garments as $garment)<option value="{{ $garment->LoaiDoGiatID }}" @selected((string) old('garment_id', $booking->LoaiDoGiatID) === (string) $garment->LoaiDoGiatID)>{{ $garment->TenLoaiDoGiat }}</option>@endforeach</select>@error('garment_id')<div class="invalid-feedback">{{ $message }}</div>@enderror</div>
-                <div class="col-md-4"><label class="form-label">Đơn vị tính</label><select class="form-select @error('unit_id') is-invalid @enderror" name="unit_id" id="booking-unit"><option value="">-- Chọn đơn vị --</option>@foreach($units as $unit)<option value="{{ $unit->DonViTinhID }}" data-unit="{{ $unit->KyHieu ?: $unit->TenDonViTinh }}" @selected((string) old('unit_id', $booking->DonViTinhID) === (string) $unit->DonViTinhID)>{{ $unit->TenDonViTinh }}{{ $unit->KyHieu ? ' ('.$unit->KyHieu.')' : '' }}</option>@endforeach</select>@error('unit_id')<div class="invalid-feedback">{{ $message }}</div>@enderror</div>
-                <div class="col-md-6"><label class="form-label">Số lượng</label><input type="number" step="0.01" min="0.01" class="form-control @error('quantity') is-invalid @enderror" name="quantity" id="booking-quantity" value="{{ old('quantity', $booking->SoLuong) }}">@error('quantity')<div class="invalid-feedback">{{ $message }}</div>@enderror</div>
-                <div class="col-md-6"><label class="form-label">Khối lượng (kg)</label><input type="number" step="0.01" min="0.01" class="form-control @error('weight') is-invalid @enderror" name="weight" id="booking-weight" value="{{ old('weight', $booking->KhoiLuong) }}">@error('weight')<div class="invalid-feedback">{{ $message }}</div>@enderror</div>
+                @if($errors->any())
+                    <div class="col-12"><div class="alert alert-danger mb-0">@foreach($errors->all() as $message)<div>{{ $message }}</div>@endforeach</div></div>
+                @endif
+                <div class="col-12"><hr class="my-1"><div class="d-flex justify-content-between align-items-center"><div><h6 class="mb-1">Dịch vụ dự kiến</h6><small class="text-muted">Có thể thêm nhiều dòng. Đơn giá và thành tiền được tính lại từ bảng giá hiệu lực khi lưu.</small></div><button type="button" class="btn btn-outline-primary btn-sm" id="add-booking-item"><i class="bi bi-plus-lg me-1"></i>Thêm dòng</button></div></div>
+                @php
+                    $bookingItems = old('items', $booking->chiTietBookings->map(fn ($item) => $item->only(['DichVuID', 'LoaiDoGiatID', 'DonViTinhID', 'SoLuong', 'KhoiLuong', 'GhiChu']))->all());
+                    if ($bookingItems === []) {
+                        $bookingItems = [[]];
+                    }
+                @endphp
+                <div class="col-12" id="booking-items">
+                    @foreach($bookingItems as $index => $item)
+                        <div class="booking-item border rounded p-3 mb-3">
+                            <div class="d-flex justify-content-between align-items-center mb-3"><strong>Dòng dịch vụ</strong><button type="button" class="btn btn-outline-danger btn-sm remove-booking-item">Xóa dòng</button></div>
+                            <div class="row g-3">
+                                <div class="col-md-4"><label class="form-label">Dịch vụ</label><select class="form-select" name="items[{{ $index }}][DichVuID]"><option value="">-- Chọn dịch vụ --</option>@foreach($services as $service)<option value="{{ $service->DichVuID }}" @selected((string) ($item['DichVuID'] ?? '') === (string) $service->DichVuID)>{{ $service->TenDichVu }}</option>@endforeach</select></div>
+                                <div class="col-md-4"><label class="form-label">Loại đồ giặt</label><select class="form-select" name="items[{{ $index }}][LoaiDoGiatID]"><option value="">-- Chọn loại đồ --</option>@foreach($garments as $garment)<option value="{{ $garment->LoaiDoGiatID }}" @selected((string) ($item['LoaiDoGiatID'] ?? '') === (string) $garment->LoaiDoGiatID)>{{ $garment->TenLoaiDoGiat }}</option>@endforeach</select></div>
+                                <div class="col-md-4"><label class="form-label">Đơn vị tính</label><select class="form-select booking-unit" name="items[{{ $index }}][DonViTinhID]"><option value="">-- Chọn đơn vị --</option>@foreach($units as $unit)<option value="{{ $unit->DonViTinhID }}" data-unit="{{ $unit->KyHieu ?: $unit->TenDonViTinh }}" @selected((string) ($item['DonViTinhID'] ?? '') === (string) $unit->DonViTinhID)>{{ $unit->TenDonViTinh }}{{ $unit->KyHieu ? ' ('.$unit->KyHieu.')' : '' }}</option>@endforeach</select></div>
+                                <div class="col-md-6"><label class="form-label">Số lượng</label><input type="number" step="0.01" min="0.01" class="form-control booking-quantity" name="items[{{ $index }}][SoLuong]" value="{{ $item['SoLuong'] ?? '' }}"></div>
+                                <div class="col-md-6"><label class="form-label">Khối lượng (kg)</label><input type="number" step="0.01" min="0.01" class="form-control booking-weight" name="items[{{ $index }}][KhoiLuong]" value="{{ $item['KhoiLuong'] ?? '' }}"></div>
+                                <div class="col-12"><label class="form-label">Ghi chú dòng</label><input type="text" class="form-control" name="items[{{ $index }}][GhiChu]" value="{{ $item['GhiChu'] ?? '' }}" maxlength="500"></div>
+                            </div>
+                        </div>
+                    @endforeach
+                </div>
                 <div class="col-md-6"><label class="form-label">Trạng thái</label><x-admin.status-select name="status" :options="\App\Enums\BookingStatus::options()" :selected="$booking->TrangThai" class="form-select @error('status') is-invalid @enderror" />@error('status')<div class="invalid-feedback">{{ $message }}</div>@enderror</div>
                 <div class="col-12"><label class="form-label">Ghi chú</label><textarea class="form-control @error('notes') is-invalid @enderror" name="notes" rows="3" maxlength="500">{{ old('notes', $booking->GhiChu) }}</textarea>@error('notes')<div class="invalid-feedback">{{ $message }}</div>@enderror</div>
             </div>
@@ -33,19 +52,25 @@
     document.addEventListener('DOMContentLoaded', function () {
         const method = document.getElementById('booking-method');
         const address = document.querySelector('[name="address"]');
-        const unit = document.getElementById('booking-unit');
-        const quantity = document.getElementById('booking-quantity');
-        const weight = document.getElementById('booking-weight');
+        const form = document.querySelector('form');
+        const itemsContainer = document.getElementById('booking-items');
+        const addItemButton = document.getElementById('add-booking-item');
+        let nextItemIndex = {{ count($bookingItems) }};
 
         function updateAddressRequirement() {
             address.required = method.value === @json(\App\Enums\BookingMethod::GiaoDo->value);
         }
 
-        function updateQuantityFields() {
+        function updateQuantityFields(item) {
+            const unit = item.querySelector('.booking-unit');
             const selectedUnit = unit.options[unit.selectedIndex];
             const isWeight = /^(kg|kgs|kilogram)$/.test(selectedUnit?.dataset.unit?.trim().toLowerCase() ?? '');
-            quantity.readOnly = isWeight;
-            weight.readOnly = !isWeight;
+            const quantity = item.querySelector('.booking-quantity');
+            const weight = item.querySelector('.booking-weight');
+            quantity.disabled = !unit.value || isWeight;
+            weight.disabled = !unit.value || !isWeight;
+            quantity.required = Boolean(unit.value) && !isWeight;
+            weight.required = Boolean(unit.value) && isWeight;
             if (isWeight) {
                 quantity.value = '';
             } else {
@@ -54,9 +79,40 @@
         }
 
         method.addEventListener('change', updateAddressRequirement);
-        unit.addEventListener('change', updateQuantityFields);
+        form.addEventListener('reset', function () {
+            setTimeout(function () {
+                updateAddressRequirement();
+                itemsContainer.querySelectorAll('.booking-item').forEach(updateQuantityFields);
+            });
+        });
+        itemsContainer.addEventListener('change', function (event) {
+            if (event.target.matches('.booking-unit')) {
+                updateQuantityFields(event.target.closest('.booking-item'));
+            }
+        });
+        itemsContainer.addEventListener('click', function (event) {
+            if (event.target.closest('.remove-booking-item')) {
+                const rows = itemsContainer.querySelectorAll('.booking-item');
+                if (rows.length > 1) {
+                    event.target.closest('.booking-item').remove();
+                } else {
+                    rows[0].querySelectorAll('select, input').forEach(field => field.value = '');
+                    updateQuantityFields(rows[0]);
+                }
+            }
+        });
+        addItemButton.addEventListener('click', function () {
+            const template = itemsContainer.querySelector('.booking-item').cloneNode(true);
+            template.querySelectorAll('select, input').forEach(field => {
+                field.value = '';
+                field.name = field.name.replace(/items\[\d+\]/, `items[${nextItemIndex}]`);
+            });
+            itemsContainer.appendChild(template);
+            updateQuantityFields(template);
+            nextItemIndex++;
+        });
         updateAddressRequirement();
-        updateQuantityFields();
+        itemsContainer.querySelectorAll('.booking-item').forEach(updateQuantityFields);
     });
 </script>
 @endsection

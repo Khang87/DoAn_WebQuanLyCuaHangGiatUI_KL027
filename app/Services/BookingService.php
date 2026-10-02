@@ -8,9 +8,11 @@ use App\Enums\DeliveryStatus;
 use App\Enums\OrderStatus;
 use App\Models\BangGia;
 use App\Models\Booking;
+use App\Models\ChiTietBooking;
 use App\Models\ChiTietDonHang;
 use App\Models\DonHang;
 use App\Models\GiaoNhan;
+use App\Models\NhatKyHeThong;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -63,13 +65,37 @@ class BookingService
     public function find(int $id): ?Booking
     {
         return Booking::query()
-            ->with(['khachHang', 'dichVu', 'loaiDoGiat', 'donViTinh', 'nhanVien', 'donHangs'])
+            ->with([
+                'khachHang',
+                'chiTietBookings.dichVu',
+                'chiTietBookings.loaiDoGiat',
+                'chiTietBookings.donViTinh',
+                'nhanVien',
+                'nhanVienXacNhan',
+                'donHangs',
+            ])
             ->find($id);
     }
 
     public function create(array $data): Booking
     {
-        return Booking::create($data);
+        return DB::transaction(function () use ($data): Booking {
+            $booking = Booking::create($this->mapRequestData($data));
+
+            if (array_key_exists('items', $data)) {
+                $this->syncBookingItems($booking, $data['items']);
+            }
+
+            $this->recordBookingAudit(
+                $booking,
+                [],
+                $this->bookingAuditSnapshot($booking),
+                [],
+                $this->bookingItemsAuditSnapshot($booking),
+            );
+
+            return $booking->fresh(['chiTietBookings']);
+        });
     }
 
     public function update(Booking $booking, array $data): Booking
@@ -78,6 +104,8 @@ class BookingService
             $lockedBooking = Booking::query()
                 ->lockForUpdate()
                 ->findOrFail($booking->BookingID);
+            $before = $this->bookingAuditSnapshot($lockedBooking);
+            $beforeItems = $this->bookingItemsAuditSnapshot($lockedBooking);
 
             if (
                 ($data['status'] ?? null) === BookingStatus::Cancelled->value
@@ -89,12 +117,54 @@ class BookingService
                 ]);
             }
 
-            $mappedData = $this->mapRequestData($data);
-            $snapshotData = $this->resolveServiceSnapshot($data, $lockedBooking);
-            $lockedBooking->update(array_merge($mappedData, $snapshotData));
-            $lockedBooking->refresh();
+            if ($this->hasConvertedOrder($lockedBooking) && array_key_exists('items', $data)) {
+                throw ValidationException::withMessages([
+                    'items' => 'Không thể sửa các dòng dịch vụ sau khi Booking đã được chuyển thành đơn hàng.',
+                ]);
+            }
 
-            return $lockedBooking->fresh(['khachHang', 'donHangs']);
+            $mappedData = $this->mapRequestData($data);
+            $wasPending = $lockedBooking->TrangThai === BookingStatus::Pending->value;
+            $isBeingConfirmed = ($data['status'] ?? null) === BookingStatus::Confirmed->value;
+
+            if ($wasPending && $isBeingConfirmed) {
+                $employeeId = auth()->user()?->NhanVienID;
+
+                if (! $employeeId) {
+                    throw ValidationException::withMessages([
+                        'status' => 'Tài khoản hiện tại chưa liên kết hồ sơ nhân viên để xác nhận Booking.',
+                    ]);
+                }
+
+                $mappedData['NhanVienXacNhanID'] = $employeeId;
+                $mappedData['ThoiGianXacNhan'] = now();
+            }
+
+            if (array_key_exists('items', $data)) {
+                $this->syncBookingItems($lockedBooking, $data['items']);
+            }
+
+            $lockedBooking->update($mappedData);
+            $lockedBooking->refresh();
+            $after = $this->bookingAuditSnapshot($lockedBooking);
+            $afterItems = $this->bookingItemsAuditSnapshot($lockedBooking);
+
+            if ($before !== $after || $beforeItems !== $afterItems) {
+                $this->recordBookingAudit($lockedBooking, $before, $after, $beforeItems, $afterItems);
+            }
+
+            if ($lockedBooking->isConvertibleToOrder() && ! $this->hasConvertedOrder($lockedBooking)) {
+                $this->insertOrderAndDelivery($lockedBooking);
+            }
+
+            return $lockedBooking->fresh([
+                'khachHang',
+                'chiTietBookings.dichVu',
+                'chiTietBookings.loaiDoGiat',
+                'chiTietBookings.donViTinh',
+                'nhanVienXacNhan',
+                'donHangs',
+            ]);
         });
     }
 
@@ -136,6 +206,10 @@ class BookingService
             if ($this->hasConvertedOrder($lockedBooking)) {
                 return false;
             }
+
+            $before = $this->bookingAuditSnapshot($lockedBooking);
+            $beforeItems = $this->bookingItemsAuditSnapshot($lockedBooking);
+            $this->recordBookingAudit($lockedBooking, $before, [], $beforeItems, []);
 
             return (bool) $lockedBooking->delete();
         });
@@ -188,9 +262,9 @@ class BookingService
      */
     private function insertOrderAndDelivery(Booking $booking): DonHang
     {
-        $snapshot = $this->serviceSnapshotForOrder($booking);
+        $snapshots = $this->serviceSnapshotsForOrder($booking);
         $bookingCode = $booking->MaBooking ?: Booking::nextCode();
-        $total = $snapshot['ThanhTien'] ?? 0;
+        $total = array_sum(array_column($snapshots, 'ThanhTien'));
 
         $order = DonHang::create([
             'MaDonHang' => 'TMP'.Str::ulid(),
@@ -206,7 +280,7 @@ class BookingService
             'MaDonHang' => 'DH'.str_pad((string) $order->DonHangID, 3, '0', STR_PAD_LEFT),
         ]);
 
-        if ($snapshot !== null) {
+        foreach ($snapshots as $snapshot) {
             ChiTietDonHang::create(array_merge(
                 ['DonHangID' => $order->DonHangID],
                 $snapshot,
@@ -269,174 +343,186 @@ class BookingService
     }
 
     /**
-     * Reprice a booking snapshot from the currently effective price table.
+     * Reprice Booking item inputs using the exact service/garment/unit tuple.
      *
-     * @return array<string, mixed>
+     * @param  array<int, array<string, mixed>>  $items
      */
-    private function resolveServiceSnapshot(array $data, Booking $booking): array
+    private function syncBookingItems(Booking $booking, array $items): void
     {
-        $fieldMap = [
-            'service_id' => 'DichVuID',
-            'garment_id' => 'LoaiDoGiatID',
-            'unit_id' => 'DonViTinhID',
-            'quantity' => 'SoLuong',
-            'weight' => 'KhoiLuong',
-        ];
-        $hasSnapshotInput = collect(array_keys($fieldMap))
-            ->contains(fn (string $key): bool => array_key_exists($key, $data));
+        $rows = [];
 
-        if (! $hasSnapshotInput) {
-            return [];
-        }
+        foreach ($items as $index => $item) {
+            $serviceId = (int) ($item['DichVuID'] ?? 0);
+            $garmentId = (int) ($item['LoaiDoGiatID'] ?? 0);
+            $unitId = (int) ($item['DonViTinhID'] ?? 0);
+            $quantity = ($item['SoLuong'] ?? '') !== '' ? (float) $item['SoLuong'] : null;
+            $weight = ($item['KhoiLuong'] ?? '') !== '' ? (float) $item['KhoiLuong'] : null;
+            $pricing = BangGia::getLatestPricing($serviceId, $garmentId, $unitId);
 
-        $values = [];
-        foreach ($fieldMap as $input => $column) {
-            $values[$column] = array_key_exists($input, $data) ? $data[$input] : $booking->{$column};
-        }
+            if (! $pricing) {
+                throw ValidationException::withMessages([
+                    "items.{$index}.DonViTinhID" => 'Không có bảng giá đang hiệu lực cho tổ hợp dịch vụ, loại đồ và đơn vị tính đã chọn.',
+                ]);
+            }
 
-        $allEmpty = collect($values)->every(fn (mixed $value): bool => $value === null || $value === '');
-        if ($allEmpty) {
-            return [
-                'DichVuID' => null,
-                'LoaiDoGiatID' => null,
-                'DonViTinhID' => null,
-                'SoLuong' => null,
-                'KhoiLuong' => null,
-                'DonGia' => null,
-                'ThanhTien' => null,
+            $isWeightUnit = BangGia::isWeightUnit($pricing->unit);
+            if (
+                ($isWeightUnit && ($weight === null || $weight <= 0 || $quantity !== null))
+                || (! $isWeightUnit && ($quantity === null || $quantity <= 0 || $weight !== null))
+            ) {
+                throw ValidationException::withMessages([
+                    "items.{$index}.SoLuong" => 'Chỉ nhập khối lượng cho đơn vị KG; các đơn vị khác phải nhập số lượng.',
+                ]);
+            }
+
+            $billableAmount = $isWeightUnit
+                ? max($weight, (float) config('giatui.khoi_luong_toi_thieu', 3.0))
+                : $quantity;
+
+            $rows[] = [
+                'DichVuID' => $serviceId,
+                'LoaiDoGiatID' => $garmentId,
+                'DonViTinhID' => $unitId,
+                'SoLuong' => $quantity,
+                'KhoiLuong' => $weight,
+                'DonGia' => (float) $pricing->DonGia,
+                'ThanhTien' => round((float) $pricing->DonGia * $billableAmount, 2),
+                'GhiChu' => $item['GhiChu'] ?? null,
             ];
         }
 
-        $serviceSelectionUnchanged = (int) $values['DichVuID'] === (int) $booking->DichVuID
-            && (int) $values['LoaiDoGiatID'] === (int) $booking->LoaiDoGiatID
-            && (int) $values['DonViTinhID'] === (int) $booking->DonViTinhID;
-        $quantityUnchanged = ($values['SoLuong'] === null || $values['SoLuong'] === '')
-            ? $booking->SoLuong === null
-            : $booking->SoLuong !== null && (float) $values['SoLuong'] === (float) $booking->SoLuong;
-        $weightUnchanged = (
-            $values['KhoiLuong'] === null || $values['KhoiLuong'] === ''
-                ? $booking->KhoiLuong === null
-                : $booking->KhoiLuong !== null && (float) $values['KhoiLuong'] === (float) $booking->KhoiLuong
-        );
-        $unchangedSnapshot = $serviceSelectionUnchanged && $quantityUnchanged && $weightUnchanged;
-
-        if ($unchangedSnapshot) {
-            return [];
+        $booking->chiTietBookings()->delete();
+        foreach ($rows as $row) {
+            $booking->chiTietBookings()->create($row);
         }
-
-        if (
-            empty($values['DichVuID'])
-            || empty($values['LoaiDoGiatID'])
-            || empty($values['DonViTinhID'])
-        ) {
-            throw ValidationException::withMessages([
-                'service_id' => 'Hãy chọn đầy đủ dịch vụ, loại đồ giặt và đơn vị tính.',
-            ]);
-        }
-
-        $pricing = BangGia::getLatestPricing(
-            (int) $values['DichVuID'],
-            (int) $values['LoaiDoGiatID'],
-            (int) $values['DonViTinhID'],
-        );
-
-        if (! $pricing) {
-            throw ValidationException::withMessages([
-                'garment_id' => 'Cặp dịch vụ và loại đồ giặt chưa có bảng giá đang hiệu lực cho đơn vị tính này.',
-            ]);
-        }
-
-        $isWeightUnit = BangGia::isWeightUnit($pricing->unit);
-        $quantity = $values['SoLuong'] !== null && $values['SoLuong'] !== '' ? (float) $values['SoLuong'] : null;
-        $weight = $values['KhoiLuong'] !== null && $values['KhoiLuong'] !== '' ? (float) $values['KhoiLuong'] : null;
-
-        if (
-            ($isWeightUnit && ($weight === null || $weight <= 0 || $quantity !== null))
-            || (! $isWeightUnit && ($quantity === null || $quantity <= 0 || $weight !== null))
-        ) {
-            throw ValidationException::withMessages([
-                $isWeightUnit ? 'weight' : 'quantity' => $isWeightUnit
-                    ? 'Vui lòng nhập khối lượng lớn hơn 0 và không nhập số lượng.'
-                    : 'Vui lòng nhập số lượng lớn hơn 0 và không nhập khối lượng.',
-            ]);
-        }
-
-        $billableAmount = $isWeightUnit
-            ? max($weight, (float) config('giatui.khoi_luong_toi_thieu', 3.0))
-            : $quantity;
-
-        return [
-            'DichVuID' => (int) $values['DichVuID'],
-            'LoaiDoGiatID' => (int) $values['LoaiDoGiatID'],
-            'DonViTinhID' => (int) $values['DonViTinhID'],
-            'SoLuong' => $quantity,
-            'KhoiLuong' => $weight,
-            'DonGia' => (float) $pricing->DonGia,
-            'ThanhTien' => round((float) $pricing->DonGia * $billableAmount, 2),
-        ];
     }
 
     /**
-     * Return the one optional service row stored in the Booking snapshot.
-     *
-     * @return array<string, mixed>|null
+     * @return array<int, array<string, mixed>>
      */
-    private function serviceSnapshotForOrder(Booking $booking): ?array
+    private function serviceSnapshotsForOrder(Booking $booking): array
     {
-        $hasNoSnapshot = $booking->DichVuID === null
-            && $booking->LoaiDoGiatID === null
-            && $booking->DonViTinhID === null
-            && $booking->DonGia === null
-            && $booking->ThanhTien === null
-            && $booking->SoLuong === null
-            && $booking->KhoiLuong === null;
+        $items = $booking->chiTietBookings()
+            ->with('donViTinh')
+            ->orderBy('ChiTietBookingID')
+            ->get();
 
-        if ($hasNoSnapshot) {
+        if ($items->isEmpty()) {
             throw ValidationException::withMessages([
-                'service_id' => 'Đặt lịch chưa có dịch vụ và loại đồ giặt. Hãy bổ sung thông tin trước khi tạo đơn hàng.',
+                'items' => 'Đặt lịch chưa có dòng dịch vụ. Hãy bổ sung ít nhất một dòng trước khi xác nhận.',
             ]);
         }
 
-        $quantity = $booking->SoLuong !== null ? (float) $booking->SoLuong : null;
-        $weight = $booking->KhoiLuong !== null ? (float) $booking->KhoiLuong : null;
-        $unit = $booking->donViTinh;
+        return $items->map(function (ChiTietBooking $item): array {
+            $quantity = $item->SoLuong !== null ? (float) $item->SoLuong : null;
+            $weight = $item->KhoiLuong !== null ? (float) $item->KhoiLuong : null;
+            $unit = $item->donViTinh;
 
-        if (! $unit) {
-            throw ValidationException::withMessages([
-                'service_id' => 'Đơn vị tính của dịch vụ trong đặt lịch không còn hợp lệ.',
-            ]);
-        }
+            if (! $unit) {
+                throw ValidationException::withMessages([
+                    'items' => 'Một hoặc nhiều dòng dịch vụ tham chiếu đến đơn vị tính không tồn tại.',
+                ]);
+            }
 
-        $isWeightUnit = $unit->isWeightUnit();
+            $isWeightUnit = $unit->isWeightUnit();
 
-        if (
-            $booking->DichVuID === null
-            || $booking->LoaiDoGiatID === null
-            || $booking->DonViTinhID === null
-            || $booking->DonGia === null
-            || $booking->ThanhTien === null
-            || (($quantity === null) === ($weight === null))
-            || ($quantity !== null && $quantity <= 0)
-            || ($weight !== null && $weight <= 0)
-            || ($isWeightUnit && ($quantity !== null || $weight === null))
-            || (! $isWeightUnit && ($quantity === null || $weight !== null))
-            || (float) $booking->DonGia < 0
-            || (float) $booking->ThanhTien < 0
-        ) {
-            throw ValidationException::withMessages([
-                'service_id' => 'Thông tin dịch vụ trong đặt lịch chưa đầy đủ hoặc không hợp lệ; hãy cập nhật trước khi tạo đơn.',
-            ]);
-        }
+            if (
+                $item->DichVuID === null
+                || $item->LoaiDoGiatID === null
+                || $item->DonViTinhID === null
+                || (($quantity === null) === ($weight === null))
+                || ($quantity !== null && $quantity <= 0)
+                || ($weight !== null && $weight <= 0)
+                || ($isWeightUnit && ($quantity !== null || $weight === null))
+                || (! $isWeightUnit && ($quantity === null || $weight !== null))
+                || (float) $item->DonGia < 0
+                || (float) $item->ThanhTien < 0
+            ) {
+                throw ValidationException::withMessages([
+                    'items' => 'Một hoặc nhiều dòng dịch vụ trong Booking không hợp lệ.',
+                ]);
+            }
 
-        return [
-            'DichVuID' => $booking->DichVuID,
-            'LoaiDoGiatID' => $booking->LoaiDoGiatID,
-            'DonViTinhID' => $booking->DonViTinhID,
-            'SoLuong' => $quantity,
-            'KhoiLuong' => $weight,
-            'DonGia' => (float) $booking->DonGia,
-            'ThanhTien' => (float) $booking->ThanhTien,
-            'GhiChu' => $booking->GhiChu,
-        ];
+            return [
+                'DichVuID' => $item->DichVuID,
+                'LoaiDoGiatID' => $item->LoaiDoGiatID,
+                'DonViTinhID' => $item->DonViTinhID,
+                'SoLuong' => $quantity,
+                'KhoiLuong' => $weight,
+                'DonGia' => (float) $item->DonGia,
+                'ThanhTien' => (float) $item->ThanhTien,
+                'GhiChu' => $item->GhiChu,
+            ];
+        })->all();
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function bookingAuditSnapshot(Booking $booking): array
+    {
+        return $booking->only([
+            'MaBooking',
+            'KhachHangID',
+            'HinhThucNhanDo',
+            'DiaChiNhan',
+            'NgayHen',
+            'GioHen',
+            'GhiChu',
+            'TrangThai',
+            'NhanVienID',
+            'NhanVienXacNhanID',
+            'ThoiGianXacNhan',
+        ]);
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    private function bookingItemsAuditSnapshot(Booking $booking): array
+    {
+        return $booking->chiTietBookings()
+            ->orderBy('ChiTietBookingID')
+            ->get([
+                'ChiTietBookingID',
+                'DichVuID',
+                'LoaiDoGiatID',
+                'DonViTinhID',
+                'SoLuong',
+                'KhoiLuong',
+                'DonGia',
+                'ThanhTien',
+                'GhiChu',
+            ])
+            ->toArray();
+    }
+
+    /**
+     * @param  array<string, mixed>  $before
+     * @param  array<string, mixed>  $after
+     * @param  array<int, array<string, mixed>>  $beforeItems
+     * @param  array<int, array<string, mixed>>  $afterItems
+     */
+    private function recordBookingAudit(
+        Booking $booking,
+        array $before,
+        array $after,
+        array $beforeItems,
+        array $afterItems,
+    ): void {
+        $statusChanged = ($before['TrangThai'] ?? null) !== ($after['TrangThai'] ?? null);
+
+        NhatKyHeThong::create([
+            'TaiKhoanID' => auth()->id(),
+            'HanhDong' => $statusChanged ? 'Thay đổi trạng thái đặt lịch' : 'Cập nhật đặt lịch',
+            'BangDuLieu' => 'Booking',
+            'BanGhiID' => $booking->BookingID,
+            'DuLieuCu' => ['Booking' => $before, 'ChiTietBooking' => $beforeItems],
+            'DuLieuMoi' => ['Booking' => $after, 'ChiTietBooking' => $afterItems],
+            'LyDo' => null,
+            'ThoiGian' => now(),
+            'IPAddress' => request()->ip(),
+            'UserAgent' => request()->userAgent(),
+        ]);
     }
 }

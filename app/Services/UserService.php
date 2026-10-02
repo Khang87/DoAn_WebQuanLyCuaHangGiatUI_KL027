@@ -2,8 +2,8 @@
 
 namespace App\Services;
 
-use App\Models\DonHangTrangthai;
 use App\Models\LichSuThayDoiHoaDon;
+use App\Models\NhatKyHeThong;
 use App\Models\TinNhan;
 use App\Models\User;
 use App\Models\VaiTro;
@@ -156,6 +156,6 @@ class UserService
                 ->orWhere('NguoiNhanID', $userId)
                 ->exists()
             || LichSuThayDoiHoaDon::where('TaiKhoanID', $userId)->exists()
-            || DonHangTrangthai::where('taikhoanid', $userId)->exists();
+                || NhatKyHeThong::where('TaiKhoanID', $userId)->exists();
     }
 }

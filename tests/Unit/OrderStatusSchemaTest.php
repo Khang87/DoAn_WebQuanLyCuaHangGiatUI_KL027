@@ -24,21 +24,14 @@ class OrderStatusSchemaTest extends TestCase
         $this->assertSame(array_keys(OrderStatus::options()), OrderStatus::values());
     }
 
-    public function test_status_history_table_is_not_used_as_the_dropdown_catalog(): void
+    public function test_system_audit_log_replaces_the_removed_legacy_status_table(): void
     {
         $schema = file_get_contents(dirname(__DIR__, 2).'/schema.sql');
 
         $this->assertNotFalse($schema);
-        $this->assertStringContainsString('CREATE TABLE "public"."donhang_trangthai"', $schema);
-        $this->assertStringContainsString('"trangthaicu" character varying(30)', $schema);
-        $this->assertStringContainsString('"trangthaimoi" character varying(30) NOT NULL', $schema);
-
-        $historyTable = substr(
-            $schema,
-            strpos($schema, 'CREATE TABLE "public"."donhang_trangthai"'),
-        );
-        $historyTable = substr($historyTable, 0, strpos($historyTable, ');'));
-
-        $this->assertStringNotContainsString('"TrangThai"', $historyTable);
+        $this->assertStringContainsString('CREATE TABLE "public"."NhatKyHeThong"', $schema);
+        $this->assertStringContainsString('"DuLieuCu" jsonb', $schema);
+        $this->assertStringContainsString('"DuLieuMoi" jsonb', $schema);
+        $this->assertStringNotContainsString('donhang_trangthai', $schema);
     }
 }

@@ -126,16 +126,39 @@ Sau khi bổ sung kiểm thử cho báo cáo, toàn bộ bộ kiểm thử đạ
 - Tuân thủ **Read-Only DDL**: không chạy migration, DDL hoặc thao tác ghi lên Supabase Live; `schema.sql` chỉ dùng làm snapshot tham chiếu.
 - Lần xác minh Unit gần nhất đạt **25/25 tests, 230 assertions**. Blade cache, đăng ký route, PHP lint trên các file PHP thay đổi, Laravel Pint và `git diff --check` đều hoàn tất thành công. Đây là kết quả Unit tests, không đại diện cho toàn bộ Feature/Legacy suite hoặc kiểm thử kết nối trực tiếp Supabase.
 
+### Refactor Booking nhiều dòng, bảng giá và audit (02/10/2026)
+
+#### Đã hoàn tất
+
+- **Booking nhiều dòng (`ChiTietBooking`):** Booking lưu nhiều dòng dịch vụ dự kiến thay vì nhúng thông tin một dịch vụ vào bảng `Booking`. Mỗi dòng có dịch vụ, loại đồ, đơn vị tính, giá và thành tiền riêng. Validation ở Request và Service yêu cầu đúng một trong hai giá trị dương: `SoLuong` hoặc `KhoiLuong`, phù hợp với đơn vị tính.
+- **Giá chuẩn hóa (`BangGia`):** Đơn giá được tra theo đúng bộ ba `(DichVuID, LoaiDoGiatID, DonViTinhID)`, chỉ lấy bản ghi đang hoạt động và còn hiệu lực, ưu tiên ngày áp dụng mới nhất. Máy chủ tính lại giá và thành tiền, không tin đơn giá do biểu mẫu gửi lên.
+- **Chuyển Booking thành đơn:** Khi Booking được xác nhận, các dòng `ChiTietBooking` được ánh xạ thành các dòng `ChiTietDonHang` trong cùng giao dịch tạo đơn và phiếu giao. Thao tác xác nhận được ghi vào `NhatKyHeThong`, bao gồm dữ liệu Booking và chi tiết trước/sau cùng thông tin tài khoản thao tác khi có.
+- **Audit:** Thay model lịch sử trạng thái legacy `DonHangTrangthai` và tham chiếu bảng `donhang_trangthai` bằng model/bảng `NhatKyHeThong` trong các phần đã refactor. Phạm vi hiện đã ghi audit cho tạo/cập nhật Booking và thay đổi trạng thái Booking. Nhật ký tổng quát cho mọi cập nhật đơn hàng và tài khoản chưa được triển khai; không xem phần này là đã hoàn tất.
+- **Snapshot schema và an toàn:** `schema.sql` cục bộ đã được cập nhật làm tài liệu tham chiếu cho các cấu trúc `Booking`, `ChiTietBooking`, `BangGia` và `NhatKyHeThong` theo catalog Live đã kiểm tra. Không chạy migration hoặc DDL và không ghi dữ liệu thử nghiệm lên Supabase Live. Snapshot không thay thế bước xác minh trực tiếp từng đối tượng khi schema Live thay đổi.
+
+#### Kiểm thử và chất lượng
+
+- Lần chạy đầy đủ gần nhất: **262 tests, 70 passed, 192 skipped, 414 assertions**. Các kịch bản mới bao gồm chuyển Booking nhiều dòng thành đơn, audit xác nhận, validation số lượng/khối lượng và tra giá chính xác theo bộ ba khóa; đơn vị test bị skip không được tính là pass.
+- `php artisan view:cache`, `vendor/bin/pint --dirty --format agent`, kiểm tra lỗi trên các file PHP đã sửa và `git diff --check` đều hoàn tất thành công.
+- Test chạy với SQLite in-memory; kết quả không phải kiểm thử tích hợp ghi dữ liệu trên Supabase Live.
+
+#### RPC `transition_laundry_order` — trạng thái và bước tiếp theo
+
+- Chữ ký đã xác minh trên Supabase Live: `transition_laundry_order(p_donhangid bigint, p_trangthaimoi text, p_lydo text DEFAULT NULL) RETURNS void`. Function lấy định danh người thao tác từ `auth.uid()` trong Supabase JWT; chữ ký không có tham số `p_nhan_vien_id`.
+- Kết nối PostgreSQL hiện dùng bởi Laravel chưa thiết lập JWT theo người dùng đăng nhập. Ngoài ra, RPC hiện không hỗ trợ trạng thái **“Đã thanh toán”**.
+- Vì vậy, Web Admin hiện chưa được chuyển sang gọi RPC và việc tích hợp đang được hoãn. Bước tiếp theo là thiết kế cơ chế cấp/truyền JWT Supabase theo người dùng và thống nhất quy trình cho trạng thái thanh toán trước khi thay đổi các luồng chuyển trạng thái. Không truyền tham số ngoài chữ ký, giả mạo JWT hoặc bỏ qua kiểm tra phân quyền của function.
+
 ### Công việc dự kiến
 
+- Bổ sung phạm vi audit cho cập nhật đơn hàng và tài khoản vào `NhatKyHeThong` theo yêu cầu nghiệp vụ và ràng buộc schema.
+- Thiết kế tích hợp RPC `transition_laundry_order` với JWT Supabase theo người dùng và thống nhất xử lý trạng thái thanh toán chưa được RPC hỗ trợ.
 - Tiếp tục đối chiếu các ánh xạ của `DonHang`, `ChiTietDonHang` và `HoaDon` với snapshot mới nhất trong `schema.sql` và truy vấn thực tế.
-- Kiểm thử luồng tính tiền lúc tạo/sửa đơn, bao gồm dữ liệu null, bằng 0 và khối lượng tối thiểu.
 - Chỉ xây dựng cổng Khách hàng xem đơn khi mọi truy vấn đều giới hạn theo `KhachHangID` của tài khoản đang đăng nhập.
 - Giảm số test legacy đang bị bỏ qua và bổ sung kiểm thử trên schema được hỗ trợ, không kết nối test tới Supabase Live.
 
 ## Kiến trúc và nguyên tắc an toàn dữ liệu
 
-- **Chỉ đọc DDL:** Coi `schema.sql` là snapshot tham chiếu. Không sửa file này, không chạy migration và không thực thi lệnh DDL trên Supabase.
+- **Read-Only DDL:** Coi `schema.sql` là snapshot tham chiếu; có thể cập nhật snapshot cục bộ sau khi kiểm tra catalog chỉ đọc. Không chạy migration hoặc thực thi lệnh DDL trên Supabase Live.
 - **Không ghi dữ liệu thử nghiệm lên môi trường thật:** Không cấu hình kiểm thử, seeder hoặc lệnh thiết lập cục bộ để ghi vào Supabase Live.
 - `phpunit.xml` cấu hình bộ test dùng SQLite trong bộ nhớ (`:memory:`). Một số test tính năng hiện có sử dụng `RefreshDatabase`; thao tác này chỉ được phép trên kết nối SQLite trong bộ nhớ, tuyệt đối không đổi cấu hình để trỏ tới cơ sở dữ liệu Live.
 - Không đưa thông tin đăng nhập trong `.env` lên Git hoặc chia sẻ chuỗi kết nối cơ sở dữ liệu.

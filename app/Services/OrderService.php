@@ -78,7 +78,7 @@ class OrderService
     /**
      * Tạo các dòng mặt hàng từ dữ liệu form, chốt Đơn giá lịch sử và tính tạm tính.
      *
-     * Đơn vị tính tiền lấy từ BangGia theo cặp DichVuID + LoaiDoGiatID:
+     * Đơn giá lấy từ BangGia theo bộ ba DichVuID + LoaiDoGiatID + DonViTinhID:
      *   - Đơn vị "kg"  → Tạm tính = max(Khối lượng, mức tối thiểu) × Đơn giá
      *   - Đơn vị khác  → Tạm tính = Số lượng × Đơn giá
      *
@@ -89,7 +89,7 @@ class OrderService
         $rows = [];
         $calculationItems = [];
         $items = $rawItems ?? [];
-        $pricingPairs = [];
+        $pricingTuples = [];
         $unitIds = [];
 
         foreach ($items as $item) {
@@ -97,10 +97,12 @@ class OrderService
             $garmentId = $item['LoaiDoGiatID'] ?? $item['garment_id'] ?? null;
             $unitId = $item['DonViTinhID'] ?? $item['unit_id'] ?? null;
 
-            if ($serviceId && $garmentId) {
-                $pricingPairs[(int) $serviceId.':'.(int) $garmentId] = [
+            if ($serviceId && $garmentId && $unitId) {
+                $key = (int) $serviceId.':'.(int) $garmentId.':'.(int) $unitId;
+                $pricingTuples[$key] = [
                     'DichVuID' => (int) $serviceId,
                     'LoaiDoGiatID' => (int) $garmentId,
+                    'DonViTinhID' => (int) $unitId,
                 ];
             }
 
@@ -109,13 +111,10 @@ class OrderService
             }
         }
 
-        $pricingByPair = [];
-        $pricingByPairAndUnit = [];
-
-        if ($pricingPairs !== []) {
+        $pricingByTuple = [];
+        if ($pricingTuples !== []) {
             $pricingRows = BangGia::query()
-                ->select(['BangGiaID', 'DichVuID', 'LoaiDoGiatID', 'DonViTinhID', 'DonGia', 'NgayApDung'])
-                ->with('donViTinh:DonViTinhID,KyHieu,TenDonViTinh')
+                ->select(['BangGiaID', 'DichVuID', 'LoaiDoGiatID', 'DonViTinhID', 'DonGia'])
                 ->where('TrangThai', 'Hoạt động')
                 ->where(function ($dateQuery): void {
                     $dateQuery->whereNull('NgayApDung')->orWhereDate('NgayApDung', '<=', today());
@@ -123,11 +122,12 @@ class OrderService
                 ->where(function ($dateQuery): void {
                     $dateQuery->whereNull('NgayKetThuc')->orWhereDate('NgayKetThuc', '>=', today());
                 })
-                ->where(function ($pairQuery) use ($pricingPairs): void {
-                    foreach ($pricingPairs as $pair) {
-                        $pairQuery->orWhere(function ($query) use ($pair): void {
-                            $query->where('DichVuID', $pair['DichVuID'])
-                                ->where('LoaiDoGiatID', $pair['LoaiDoGiatID']);
+                ->where(function ($tupleQuery) use ($pricingTuples): void {
+                    foreach ($pricingTuples as $tuple) {
+                        $tupleQuery->orWhere(function ($query) use ($tuple): void {
+                            $query->where('DichVuID', $tuple['DichVuID'])
+                                ->where('LoaiDoGiatID', $tuple['LoaiDoGiatID'])
+                                ->where('DonViTinhID', $tuple['DonViTinhID']);
                         });
                     }
                 })
@@ -136,10 +136,9 @@ class OrderService
                 ->orderByDesc('BangGiaID')
                 ->get();
 
-            foreach ($pricingRows as $pricing) {
-                $pairKey = $pricing->DichVuID.':'.$pricing->LoaiDoGiatID;
-                $pricingByPair[$pairKey] ??= $pricing;
-                $pricingByPairAndUnit[$pairKey.':'.$pricing->DonViTinhID] ??= $pricing;
+            foreach ($pricingRows as $pricingRow) {
+                $key = $pricingRow->DichVuID.':'.$pricingRow->LoaiDoGiatID.':'.$pricingRow->DonViTinhID;
+                $pricingByTuple[$key] ??= $pricingRow;
             }
         }
 
@@ -155,40 +154,51 @@ class OrderService
             $serviceId = $item['DichVuID'] ?? $item['service_id'] ?? null;
             $garmentId = $item['LoaiDoGiatID'] ?? $item['garment_id'] ?? null;
             $unitId = $item['DonViTinhID'] ?? $item['unit_id'] ?? null;
-            $pairKey = $serviceId && $garmentId ? (int) $serviceId.':'.(int) $garmentId : null;
-            $pricing = $pairKey === null
-                ? null
-                : ($unitId !== null && $unitId !== ''
-                    ? ($pricingByPairAndUnit[$pairKey.':'.(int) $unitId] ?? null)
-                    : ($pricingByPair[$pairKey] ?? null));
-
-            // Ưu tiên giá gửi lên; nếu thiếu thì lấy giá lịch sử từ bảng BangGia.
-            $price = $item['DonGia'] ?? $item['price'] ?? null;
-            if (($price === null || $price === '') && $pricing) {
-                $price = $pricing->DonGia;
+            if (! $serviceId || ! $garmentId || ! $unitId) {
+                throw ValidationException::withMessages([
+                    "items.{$itemIndex}.DichVuID" => 'Hãy chọn đầy đủ dịch vụ, loại đồ giặt và đơn vị tính cho từng dòng.',
+                ]);
             }
 
-            $price = (float) ($price ?? 0);
-            $quantity = max(0, (int) ($item['SoLuong'] ?? $item['quantity'] ?? 0));
-            $weight = max(0, (float) ($item['KhoiLuong'] ?? $item['weight'] ?? 0));
-
-            $resolvedUnitId = $unitId ?: $pricing?->DonViTinhID;
-            $unitRecord = $resolvedUnitId ? $units->get((int) $resolvedUnitId) : null;
-            $unit = $unitRecord?->KyHieu
-                ?? $unitRecord?->TenDonViTinh
-                ?? $pricing?->unit;
-            $isWeightUnit = BangGia::isWeightUnit($unit);
-            if (! $isWeightUnit && $quantity < 1) {
+            $tupleKey = (int) $serviceId.':'.(int) $garmentId.':'.(int) $unitId;
+            $pricing = $pricingByTuple[$tupleKey] ?? null;
+            if (! $pricing) {
                 throw ValidationException::withMessages([
-                    "items.{$itemIndex}.SoLuong" => 'Số lượng phải lớn hơn 0 đối với đơn vị tính theo số lượng.',
+                    "items.{$itemIndex}.DonViTinhID" => 'Không có bảng giá đang hiệu lực cho tổ hợp dịch vụ, loại đồ và đơn vị tính đã chọn.',
+                ]);
+            }
+
+            $price = (float) $pricing->DonGia;
+            $quantityInput = $item['SoLuong'] ?? $item['quantity'] ?? null;
+            $weightInput = $item['KhoiLuong'] ?? $item['weight'] ?? null;
+            $quantity = $quantityInput !== null && $quantityInput !== '' ? (float) $quantityInput : null;
+            $weight = $weightInput !== null && $weightInput !== '' ? (float) $weightInput : null;
+            $unitRecord = $units->get((int) $unitId);
+
+            if (! $unitRecord) {
+                throw ValidationException::withMessages([
+                    "items.{$itemIndex}.DonViTinhID" => 'Đơn vị tính không tồn tại.',
+                ]);
+            }
+
+            $unit = $unitRecord->KyHieu ?? $unitRecord->TenDonViTinh;
+            $isWeightUnit = $unitRecord->isWeightUnit();
+            if (
+                ($isWeightUnit && ($weight === null || $weight <= 0 || $quantity !== null))
+                || (! $isWeightUnit && ($quantity === null || $quantity <= 0 || $weight !== null))
+            ) {
+                throw ValidationException::withMessages([
+                    "items.{$itemIndex}.SoLuong" => $isWeightUnit
+                        ? 'Chỉ nhập khối lượng lớn hơn 0 cho đơn vị tính theo kg.'
+                        : 'Chỉ nhập số lượng lớn hơn 0 cho đơn vị tính theo món.',
                 ]);
             }
 
             $minimumWeight = (float) config('giatui.khoi_luong_toi_thieu', 3.0);
-            $billableWeight = $isWeightUnit ? max($weight, $minimumWeight) : $weight;
+            $billableWeight = $isWeightUnit ? max($weight ?? 0, $minimumWeight) : ($weight ?? 0);
             $calculationItem = [
-                'SoLuong' => $quantity,
-                'KhoiLuong' => $weight,
+                'SoLuong' => $quantity ?? 0,
+                'KhoiLuong' => $weight ?? 0,
                 'DonGia' => $price,
                 'TenDonViTinh' => $unit,
                 'MucToiThieu' => $minimumWeight,
@@ -199,7 +209,7 @@ class OrderService
             $rows[] = [
                 'DichVuID' => $serviceId ?: null,
                 'LoaiDoGiatID' => $garmentId ?: null,
-                'DonViTinhID' => $resolvedUnitId ?: null,
+                'DonViTinhID' => (int) $unitId,
                 'DonGia' => $price,
                 'SoLuong' => $isWeightUnit ? null : $quantity,
                 'KhoiLuong' => $isWeightUnit ? $billableWeight : null,

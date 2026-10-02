@@ -47,14 +47,6 @@ class DonHang extends Model
         return $this->belongsTo(Booking::class, 'BookingID');
     }
 
-    /**
-     * Lịch sử thay đổi trạng thái (bảng `donhang_trangthai`).
-     */
-    public function lichSuTrangThai()
-    {
-        return $this->hasMany(DonHangTrangthai::class, 'donhangid');
-    }
-
     public function khachHang()
     {
         return $this->belongsTo(KhachHang::class, 'KhachHangID');

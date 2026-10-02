@@ -61,16 +61,19 @@ class BookingController extends Controller
 
         $customers = KhachHang::orderBy('HoTen')->get();
         $employees = NhanVien::where('TrangThai', 'Hoạt động')->orderBy('HoTen')->get();
+        $serviceIds = $booking->chiTietBookings->pluck('DichVuID')->all();
+        $garmentIds = $booking->chiTietBookings->pluck('LoaiDoGiatID')->all();
+        $unitIds = $booking->chiTietBookings->pluck('DonViTinhID')->all();
         $services = DichVu::query()
-            ->where(fn ($query) => $query->where('TrangThai', 'Hoạt động')->orWhere('DichVuID', $booking->DichVuID))
+            ->where(fn ($query) => $query->where('TrangThai', 'Hoạt động')->orWhereIn('DichVuID', $serviceIds))
             ->orderBy('TenDichVu')
             ->get();
         $garments = LoaiDoGiat::query()
-            ->where(fn ($query) => $query->where('TrangThai', 'Hoạt động')->orWhere('LoaiDoGiatID', $booking->LoaiDoGiatID))
+            ->where(fn ($query) => $query->where('TrangThai', 'Hoạt động')->orWhereIn('LoaiDoGiatID', $garmentIds))
             ->orderBy('TenLoaiDoGiat')
             ->get();
         $units = DonViTinh::query()
-            ->where(fn ($query) => $query->where('TrangThai', 'Hoạt động')->orWhere('DonViTinhID', $booking->DonViTinhID))
+            ->where(fn ($query) => $query->where('TrangThai', 'Hoạt động')->orWhereIn('DonViTinhID', $unitIds))
             ->orderBy('TenDonViTinh')
             ->get();
 
@@ -88,8 +91,12 @@ class BookingController extends Controller
         try {
             $this->bookingService->update($booking, $request->validated());
 
-            // Lịch hẹn vừa chuyển sang "Đã xác nhận" nên đã được sinh đơn tự động.
             $booking = $this->bookingService->find($id);
+            if ($booking?->isConvertibleToOrder()) {
+                $this->bookingService->confirmAndCreateOrder($booking);
+                $booking = $this->bookingService->find($id);
+            }
+
             $order = $booking?->donHangs()->orderByDesc('DonHangID')->first();
 
             if ($order) {

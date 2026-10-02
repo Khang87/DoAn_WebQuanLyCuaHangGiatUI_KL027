@@ -8,7 +8,10 @@ use App\Models\Booking;
 use App\Models\ChiTietDonHang;
 use App\Models\DonHang;
 use App\Models\GiaoNhan;
+use App\Models\NhatKyHeThong;
+use App\Models\User;
 use App\Services\BookingService;
+use App\Services\OrderService;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -31,7 +34,7 @@ class BookingOrderConversionTest extends TestCase
 
     protected function tearDown(): void
     {
-        foreach (['ChiTietDonHang', 'GiaoNhan', 'DonHang', 'Booking', 'BangGia', 'DonViTinh', 'LoaiDoGiat', 'DichVu', 'KhachHang'] as $table) {
+        foreach (['NhatKyHeThong', 'ChiTietBooking', 'ChiTietDonHang', 'GiaoNhan', 'DonHang', 'Booking', 'BangGia', 'DonViTinh', 'LoaiDoGiat', 'DichVu', 'NhanVien', 'KhachHang'] as $table) {
             Schema::dropIfExists($table);
         }
 
@@ -56,6 +59,7 @@ class BookingOrderConversionTest extends TestCase
             'TrangThai' => 'Hoạt động',
         ]);
         $booking = $this->createBooking();
+        $this->actingAsBookingEmployee();
 
         $this->bookingService->update($booking, [
             'status' => BookingStatus::Confirmed->value,
@@ -64,21 +68,21 @@ class BookingOrderConversionTest extends TestCase
             'address' => '12 Nguyễn Huệ',
             'scheduled_date' => '2026-10-05',
             'scheduled_time' => '14:30',
-            'service_id' => 1,
-            'garment_id' => 2,
-            'unit_id' => 3,
-            'quantity' => 2,
-            'weight' => null,
+            'items' => [
+                ['DichVuID' => 1, 'LoaiDoGiatID' => 2, 'DonViTinhID' => 3, 'SoLuong' => 2],
+                ['DichVuID' => 1, 'LoaiDoGiatID' => 2, 'DonViTinhID' => 3, 'SoLuong' => 1],
+            ],
         ]);
 
         $order = DonHang::query()->where('BookingID', $booking->BookingID)->firstOrFail();
-        $item = ChiTietDonHang::query()->where('DonHangID', $order->DonHangID)->firstOrFail();
+        $items = ChiTietDonHang::query()->where('DonHangID', $order->DonHangID)->orderBy('ChiTietDonHangID')->get();
+        $item = $items->firstOrFail();
         $delivery = GiaoNhan::query()->where('DonHangID', $order->DonHangID)->firstOrFail();
 
-        $this->assertSame(1, ChiTietDonHang::query()->where('DonHangID', $order->DonHangID)->count());
+        $this->assertCount(2, $items);
         $this->assertSame('DH001', $order->MaDonHang);
-        $this->assertSame(30000.0, (float) $order->TongTien);
-        $this->assertSame(30000.0, (float) $order->ThanhTien);
+        $this->assertSame(45000.0, (float) $order->TongTien);
+        $this->assertSame(45000.0, (float) $order->ThanhTien);
         $this->assertSame(1, $item->DichVuID);
         $this->assertSame(2, $item->LoaiDoGiatID);
         $this->assertSame(3, $item->DonViTinhID);
@@ -89,6 +93,11 @@ class BookingOrderConversionTest extends TestCase
         $this->assertSame('Tại nhà', $delivery->HinhThuc);
         $this->assertSame('12 Nguyễn Huệ', $delivery->DiaChi);
         $this->assertSame('2026-10-05 14:30:00', $delivery->ThoiGianDuKien->format('Y-m-d H:i:s'));
+        $this->assertSame(1, $booking->fresh()->NhanVienXacNhanID);
+        $this->assertNotNull($booking->fresh()->ThoiGianXacNhan);
+        $audit = NhatKyHeThong::query()->where('BangDuLieu', 'Booking')->firstOrFail();
+        $this->assertSame(1, NhatKyHeThong::query()->where('BangDuLieu', 'Booking')->count());
+        $this->assertCount(2, $audit->DuLieuMoi['ChiTietBooking']);
 
         $sameOrder = $this->bookingService->confirmAndCreateOrder($booking->fresh());
         $this->assertSame($order->DonHangID, $sameOrder?->DonHangID);
@@ -114,13 +123,12 @@ class BookingOrderConversionTest extends TestCase
             'TrangThai' => 'Hoạt động',
         ]);
         $booking = $this->createBooking();
+        $this->actingAsBookingEmployee();
 
         $this->bookingService->update($booking, [
-            'service_id' => 1,
-            'garment_id' => 2,
-            'unit_id' => 1,
-            'quantity' => null,
-            'weight' => 2,
+            'items' => [
+                ['DichVuID' => 1, 'LoaiDoGiatID' => 2, 'DonViTinhID' => 1, 'KhoiLuong' => 2],
+            ],
         ]);
         $booking->refresh();
         $this->bookingService->update($booking, [
@@ -136,9 +144,91 @@ class BookingOrderConversionTest extends TestCase
         $this->assertSame(30000.0, (float) $order->ThanhTien);
     }
 
+    public function test_order_creation_uses_the_exact_price_tuple_instead_of_the_submitted_price(): void
+    {
+        DB::table('DonViTinh')->insert([
+            ['DonViTinhID' => 3, 'TenDonViTinh' => 'Cái', 'KyHieu' => 'Cái', 'TrangThai' => 'Hoạt động'],
+            ['DonViTinhID' => 4, 'TenDonViTinh' => 'Đôi', 'KyHieu' => 'Đôi', 'TrangThai' => 'Hoạt động'],
+        ]);
+        DB::table('BangGia')->insert([
+            [
+                'BangGiaID' => 1,
+                'DichVuID' => 1,
+                'LoaiDoGiatID' => 2,
+                'DonViTinhID' => 3,
+                'DonGia' => 15000,
+                'NgayApDung' => '2026-01-01',
+                'TrangThai' => 'Hoạt động',
+            ],
+            [
+                'BangGiaID' => 2,
+                'DichVuID' => 1,
+                'LoaiDoGiatID' => 2,
+                'DonViTinhID' => 4,
+                'DonGia' => 9000,
+                'NgayApDung' => '2026-01-01',
+                'TrangThai' => 'Hoạt động',
+            ],
+        ]);
+
+        $order = app(OrderService::class)->create([
+            'KhachHangID' => 9,
+            'TrangThai' => 'Chờ tiếp nhận',
+            'items' => [[
+                'DichVuID' => 1,
+                'LoaiDoGiatID' => 2,
+                'DonViTinhID' => 3,
+                'SoLuong' => 2,
+                'DonGia' => 1,
+            ]],
+        ]);
+
+        $item = $order->chiTietDonHangs->firstOrFail();
+        $this->assertSame(3, $item->DonViTinhID);
+        $this->assertSame(15000.0, (float) $item->DonGia);
+        $this->assertSame(30000.0, (float) $item->ThanhTien);
+    }
+
+    public function test_order_creation_rejects_a_missing_exact_price_tuple(): void
+    {
+        DB::table('DonViTinh')->insert([
+            ['DonViTinhID' => 3, 'TenDonViTinh' => 'Cái', 'KyHieu' => 'Cái', 'TrangThai' => 'Hoạt động'],
+            ['DonViTinhID' => 4, 'TenDonViTinh' => 'Đôi', 'KyHieu' => 'Đôi', 'TrangThai' => 'Hoạt động'],
+        ]);
+        DB::table('BangGia')->insert([
+            'BangGiaID' => 1,
+            'DichVuID' => 1,
+            'LoaiDoGiatID' => 2,
+            'DonViTinhID' => 3,
+            'DonGia' => 15000,
+            'NgayApDung' => '2026-01-01',
+            'TrangThai' => 'Hoạt động',
+        ]);
+
+        try {
+            app(OrderService::class)->create([
+                'KhachHangID' => 9,
+                'TrangThai' => 'Chờ tiếp nhận',
+                'items' => [[
+                    'DichVuID' => 1,
+                    'LoaiDoGiatID' => 2,
+                    'DonViTinhID' => 4,
+                    'SoLuong' => 2,
+                    'DonGia' => 1000,
+                ]],
+            ]);
+            $this->fail('An item without an exact effective price tuple must be rejected.');
+        } catch (ValidationException $exception) {
+            $this->assertArrayHasKey('items.0.DonViTinhID', $exception->errors());
+        }
+
+        $this->assertSame(0, DonHang::query()->count());
+    }
+
     public function test_booking_confirmation_rolls_back_when_no_service_snapshot_is_provided(): void
     {
         $booking = $this->createBooking();
+        $this->actingAsBookingEmployee();
 
         try {
             $this->bookingService->update($booking, [
@@ -146,7 +236,7 @@ class BookingOrderConversionTest extends TestCase
             ]);
             $this->fail('A booking without an item snapshot must not become an order.');
         } catch (ValidationException $exception) {
-            $this->assertArrayHasKey('service_id', $exception->errors());
+            $this->assertArrayHasKey('items', $exception->errors());
         }
 
         $this->assertSame(BookingStatus::Pending->value, $booking->fresh()->TrangThai);
@@ -191,13 +281,13 @@ class BookingOrderConversionTest extends TestCase
 
         try {
             $this->validateBookingRequest([
-                'unit_id' => 1,
-                'quantity' => 2,
-                'weight' => 3,
+                'items' => [
+                    ['DichVuID' => 1, 'LoaiDoGiatID' => 2, 'DonViTinhID' => 1, 'SoLuong' => 2, 'KhoiLuong' => 3],
+                ],
             ]);
             $this->fail('Weight-based units must not accept quantity.');
         } catch (ValidationException $exception) {
-            $this->assertArrayHasKey('quantity', $exception->errors());
+            $this->assertArrayHasKey('items.0.SoLuong', $exception->errors());
         }
     }
 
@@ -206,12 +296,12 @@ class BookingOrderConversionTest extends TestCase
         $this->createRequestCatalog();
 
         $validated = $this->validateBookingRequest([
-            'unit_id' => 1,
-            'quantity' => null,
-            'weight' => 2,
+            'items' => [
+                ['DichVuID' => 1, 'LoaiDoGiatID' => 2, 'DonViTinhID' => 1, 'SoLuong' => null, 'KhoiLuong' => 2],
+            ],
         ]);
 
-        $this->assertEquals(2, $validated['weight']);
+        $this->assertEquals(2, $validated['items'][0]['KhoiLuong']);
     }
 
     public function test_booking_request_requires_the_amount_matching_the_selected_unit(): void
@@ -220,14 +310,13 @@ class BookingOrderConversionTest extends TestCase
 
         try {
             $this->validateBookingRequest([
-                'unit_id' => 2,
-                'quantity' => null,
-                'weight' => 1,
+                'items' => [
+                    ['DichVuID' => 1, 'LoaiDoGiatID' => 2, 'DonViTinhID' => 2, 'SoLuong' => null, 'KhoiLuong' => 1],
+                ],
             ]);
             $this->fail('Piece-based units must require quantity and reject weight.');
         } catch (ValidationException $exception) {
-            $this->assertArrayHasKey('quantity', $exception->errors());
-            $this->assertArrayHasKey('weight', $exception->errors());
+            $this->assertArrayHasKey('items.0.SoLuong', $exception->errors());
         }
     }
 
@@ -240,6 +329,9 @@ class BookingOrderConversionTest extends TestCase
             'TrangThai' => 'Hoạt động',
         ]);
         $booking = $this->createBooking([
+        ]);
+        DB::table('ChiTietBooking')->insert([
+            'BookingID' => $booking->BookingID,
             'DichVuID' => 1,
             'LoaiDoGiatID' => 2,
             'DonViTinhID' => 2,
@@ -247,6 +339,7 @@ class BookingOrderConversionTest extends TestCase
             'DonGia' => 10000,
             'ThanhTien' => 10000,
         ]);
+        $this->actingAsBookingEmployee();
 
         try {
             $this->bookingService->update($booking, [
@@ -254,7 +347,7 @@ class BookingOrderConversionTest extends TestCase
             ]);
             $this->fail('A piece-based unit must not convert a weight snapshot.');
         } catch (ValidationException $exception) {
-            $this->assertArrayHasKey('service_id', $exception->errors());
+            $this->assertArrayHasKey('items', $exception->errors());
         }
 
         $this->assertSame(BookingStatus::Pending->value, $booking->fresh()->TrangThai);
@@ -295,17 +388,19 @@ class BookingOrderConversionTest extends TestCase
             'scheduled_time' => '14:30',
             'notes' => null,
             'status' => BookingStatus::Pending->value,
-            'service_id' => 1,
-            'garment_id' => 2,
-            'unit_id' => 1,
-            'quantity' => null,
-            'weight' => 2,
         ], $snapshot));
         $request->setContainer($this->app);
         $request->setRedirector($this->app['redirect']);
         $request->validateResolved();
 
         return $request->validated();
+    }
+
+    private function actingAsBookingEmployee(): void
+    {
+        $user = new User;
+        $user->forceFill(['TaiKhoanID' => 1, 'NhanVienID' => 1]);
+        $this->actingAs($user);
     }
 
     private function createSchema(): void
@@ -322,6 +417,11 @@ class BookingOrderConversionTest extends TestCase
             $table->increments('LoaiDoGiatID');
         });
 
+        Schema::create('NhanVien', function (Blueprint $table): void {
+            $table->increments('NhanVienID');
+            $table->string('HoTen')->nullable();
+        });
+
         Schema::create('Booking', function (Blueprint $table): void {
             $table->increments('BookingID');
             $table->string('MaBooking')->unique();
@@ -334,14 +434,36 @@ class BookingOrderConversionTest extends TestCase
             $table->string('TrangThai');
             $table->dateTime('NgayTao')->useCurrent();
             $table->dateTime('NgayCapNhat')->nullable();
-            $table->unsignedInteger('DichVuID')->nullable();
-            $table->unsignedInteger('LoaiDoGiatID')->nullable();
-            $table->unsignedInteger('DonViTinhID')->nullable();
+            $table->unsignedInteger('NhanVienID')->nullable();
+            $table->unsignedInteger('NhanVienXacNhanID')->nullable();
+            $table->dateTime('ThoiGianXacNhan')->nullable();
+        });
+
+        Schema::create('ChiTietBooking', function (Blueprint $table): void {
+            $table->increments('ChiTietBookingID');
+            $table->unsignedInteger('BookingID');
+            $table->unsignedInteger('DichVuID');
+            $table->unsignedInteger('LoaiDoGiatID');
+            $table->unsignedInteger('DonViTinhID');
             $table->decimal('SoLuong', 10, 2)->nullable();
             $table->decimal('KhoiLuong', 10, 2)->nullable();
-            $table->decimal('DonGia', 18, 2)->nullable();
-            $table->decimal('ThanhTien', 18, 2)->nullable();
-            $table->unsignedInteger('NhanVienID')->nullable();
+            $table->decimal('DonGia', 18, 2)->default(0);
+            $table->decimal('ThanhTien', 18, 2)->default(0);
+            $table->string('GhiChu', 500)->nullable();
+        });
+
+        Schema::create('NhatKyHeThong', function (Blueprint $table): void {
+            $table->increments('NhatKyID');
+            $table->unsignedInteger('TaiKhoanID')->nullable();
+            $table->string('HanhDong');
+            $table->string('BangDuLieu');
+            $table->unsignedBigInteger('BanGhiID')->nullable();
+            $table->json('DuLieuCu')->nullable();
+            $table->json('DuLieuMoi')->nullable();
+            $table->string('LyDo')->nullable();
+            $table->dateTime('ThoiGian')->useCurrent();
+            $table->string('IPAddress')->nullable();
+            $table->text('UserAgent')->nullable();
         });
 
         Schema::create('DonHang', function (Blueprint $table): void {

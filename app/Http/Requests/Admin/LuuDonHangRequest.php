@@ -4,8 +4,10 @@ namespace App\Http\Requests\Admin;
 
 use App\Enums\OrderStatus;
 use App\Models\DonHang;
+use App\Models\DonViTinh;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Validator;
 
 class LuuDonHangRequest extends FormRequest
 {
@@ -33,14 +35,45 @@ class LuuDonHangRequest extends FormRequest
             'TrangThai' => ['required', 'in:'.implode(',', OrderStatus::values())],
             'GhiChu' => ['nullable', 'string', 'max:500'],
             'items' => ['nullable', 'array'],
-            'items.*.DichVuID' => ['nullable', 'integer', 'exists:DichVu,DichVuID'],
-            'items.*.LoaiDoGiatID' => ['nullable', 'integer', 'exists:LoaiDoGiat,LoaiDoGiatID'],
-            'items.*.DonViTinhID' => ['nullable', 'integer', 'exists:DonViTinh,DonViTinhID'],
+            'items.*.DichVuID' => ['required', 'integer', 'exists:DichVu,DichVuID'],
+            'items.*.LoaiDoGiatID' => ['required', 'integer', 'exists:LoaiDoGiat,LoaiDoGiatID'],
+            'items.*.DonViTinhID' => ['required', 'integer', 'exists:DonViTinh,DonViTinhID'],
             'items.*.DonGia' => ['nullable', 'numeric', 'min:0'],
-            'items.*.SoLuong' => ['nullable', 'numeric', 'min:0'],
-            'items.*.KhoiLuong' => ['nullable', 'numeric', 'min:0'],
+            'items.*.SoLuong' => ['nullable', 'numeric', 'gt:0'],
+            'items.*.KhoiLuong' => ['nullable', 'numeric', 'gt:0'],
             'items.*.GhiChu' => ['nullable', 'string', 'max:500'],
         ];
+    }
+
+    public function withValidator(Validator $validator): void
+    {
+        $validator->after(function (Validator $validator): void {
+            foreach ($this->input('items', []) as $index => $item) {
+                if (! is_array($item) || $validator->errors()->has("items.{$index}.DonViTinhID")) {
+                    continue;
+                }
+
+                $unit = DonViTinh::query()->find($item['DonViTinhID'] ?? null);
+                if (! $unit) {
+                    continue;
+                }
+
+                $hasQuantity = isset($item['SoLuong']) && $item['SoLuong'] !== '';
+                $hasWeight = isset($item['KhoiLuong']) && $item['KhoiLuong'] !== '';
+                $validInput = $unit->isWeightUnit()
+                    ? $hasWeight && ! $hasQuantity
+                    : $hasQuantity && ! $hasWeight;
+
+                if (! $validInput) {
+                    $validator->errors()->add(
+                        "items.{$index}.SoLuong",
+                        $unit->isWeightUnit()
+                            ? 'Đơn vị tính theo kg chỉ được nhập khối lượng.'
+                            : 'Đơn vị tính theo món chỉ được nhập số lượng.',
+                    );
+                }
+            }
+        });
     }
 
     public function messages(): array
@@ -53,8 +86,12 @@ class LuuDonHangRequest extends FormRequest
             'TrangThai.required' => 'Trạng thái là bắt buộc.',
             'TrangThai.in' => 'Trạng thái không hợp lệ.',
             'GhiChu.max' => 'Ghi chú không quá 500 ký tự.',
+            'items.*.DichVuID.required' => 'Hãy chọn dịch vụ cho từng mặt hàng.',
+            'items.*.LoaiDoGiatID.required' => 'Hãy chọn loại đồ giặt cho từng mặt hàng.',
+            'items.*.DonViTinhID.required' => 'Chưa xác định được đơn vị tính của mặt hàng.',
             'items.*.SoLuong.numeric' => 'Số lượng phải là số.',
-            'items.*.SoLuong.min' => 'Số lượng không được nhỏ hơn 0.',
+            'items.*.SoLuong.gt' => 'Số lượng phải lớn hơn 0.',
+            'items.*.KhoiLuong.gt' => 'Khối lượng phải lớn hơn 0.',
         ];
     }
 }
