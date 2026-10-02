@@ -17,14 +17,14 @@ return new class extends Migration
             $table->dropForeign(['service_id']);
             $table->dropColumn(['service_id', 'garment_type', 'quantity']);
         });
-        
+
         // Update existing statuses to new ones
-        \DB::statement("UPDATE bookings SET status = CASE 
+        DB::statement("UPDATE bookings SET status = CASE 
             WHEN status = 'pending' THEN 'pending'
             WHEN status = 'confirmed' THEN 'confirmed'
             WHEN status = 'cancelled' THEN 'cancelled'
             ELSE 'pending' END");
-        \DB::statement("UPDATE bookings SET method = CASE 
+        DB::statement("UPDATE bookings SET method = CASE 
             WHEN method IN ('pickup', 'home_pickup') THEN 'nhan_do'
             WHEN method IN ('dropoff', 'delivery', 'store_delivery') THEN 'giao_do'
             ELSE 'nhan_do' END");

@@ -2,7 +2,9 @@
 
 namespace Database\Factories;
 
+use App\Models\Garment;
 use App\Models\Pricing;
+use App\Models\Service;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -13,8 +15,8 @@ class PricingFactory extends Factory
     public function definition(): array
     {
         return [
-            'service_id' => \App\Models\Service::factory(),
-            'garment_id' => \App\Models\Garment::factory(),
+            'service_id' => Service::factory(),
+            'garment_id' => Garment::factory(),
             'name' => fake()->word(),
             'unit' => fake()->randomElement(['kg', 'cái', 'món', 'đôi', 'bộ']),
             'price' => fake()->randomFloat(0, 15000, 200000),

@@ -77,6 +77,20 @@ class ProfileUpdateTest extends TestCase
             $table->unsignedInteger('QuyenID');
         });
 
+        Schema::create('NhatKyHeThong', function (Blueprint $table): void {
+            $table->increments('NhatKyID');
+            $table->unsignedInteger('TaiKhoanID')->nullable();
+            $table->string('HanhDong');
+            $table->string('BangDuLieu');
+            $table->unsignedBigInteger('BanGhiID')->nullable();
+            $table->json('DuLieuCu')->nullable();
+            $table->json('DuLieuMoi')->nullable();
+            $table->string('LyDo')->nullable();
+            $table->dateTime('ThoiGian')->nullable();
+            $table->string('IPAddress')->nullable();
+            $table->text('UserAgent')->nullable();
+        });
+
         DB::table('VaiTro')->insert([
             ['VaiTroID' => 1, 'TenVaiTro' => 'Nhân viên', 'TrangThai' => 'Hoạt động'],
             ['VaiTroID' => 2, 'TenVaiTro' => 'Chủ cửa hàng', 'TrangThai' => 'Hoạt động'],
@@ -85,6 +99,7 @@ class ProfileUpdateTest extends TestCase
 
     protected function tearDown(): void
     {
+        Schema::dropIfExists('NhatKyHeThong');
         Schema::dropIfExists('VaiTro_Quyen');
         Schema::dropIfExists('TaiKhoan_VaiTro');
         Schema::dropIfExists('Quyen');
@@ -126,6 +141,7 @@ class ProfileUpdateTest extends TestCase
 
         $this->assertDatabaseHas('TaiKhoan', [
             'TaiKhoanID' => 11,
+            'TenDangNhap' => 'staff11',
             'Email' => 'new@example.com',
             'SoDienThoai' => '0900000002',
         ]);
@@ -134,6 +150,11 @@ class ProfileUpdateTest extends TestCase
             'HoTen' => 'Tên mới',
             'Email' => 'new@example.com',
             'SoDienThoai' => '0900000002',
+        ]);
+        $this->assertDatabaseHas('NhatKyHeThong', [
+            'BanGhiID' => 11,
+            'BangDuLieu' => 'TaiKhoan',
+            'HanhDong' => 'Thay đổi tài khoản',
         ]);
     }
 
@@ -167,6 +188,7 @@ class ProfileUpdateTest extends TestCase
 
         $this->assertDatabaseHas('TaiKhoan', [
             'TaiKhoanID' => 12,
+            'TenDangNhap' => 'customer12',
             'Email' => 'customer@example.com',
             'SoDienThoai' => null,
         ]);

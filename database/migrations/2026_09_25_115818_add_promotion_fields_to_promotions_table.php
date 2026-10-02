@@ -19,7 +19,7 @@ return new class extends Migration
             $table->renameColumn('expires_at', 'expires_at'); // keep existing
             $table->string('status')->default('active')->change();
         });
-        
+
         // Remove old discount column
         Schema::table('promotions', function (Blueprint $table) {
             $table->dropColumn('discount');

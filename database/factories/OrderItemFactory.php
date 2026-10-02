@@ -2,7 +2,10 @@
 
 namespace Database\Factories;
 
+use App\Models\Garment;
+use App\Models\Order;
 use App\Models\OrderItem;
+use App\Models\Service;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -16,9 +19,9 @@ class OrderItemFactory extends Factory
         $quantity = fake()->numberBetween(1, 5);
 
         return [
-            'order_id' => \App\Models\Order::factory(),
-            'service_id' => \App\Models\Service::factory(),
-            'garment_id' => \App\Models\Garment::factory(),
+            'order_id' => Order::factory(),
+            'service_id' => Service::factory(),
+            'garment_id' => Garment::factory(),
             'item_name' => fake()->word(),
             'item_type' => 'garment',
             'price' => $price,

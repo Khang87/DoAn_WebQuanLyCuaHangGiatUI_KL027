@@ -149,7 +149,11 @@ class BookingService
             $after = $this->bookingAuditSnapshot($lockedBooking);
             $afterItems = $this->bookingItemsAuditSnapshot($lockedBooking);
 
-            if ($before !== $after || $beforeItems !== $afterItems) {
+            if (
+                $wasPending
+                && $isBeingConfirmed
+                && ($before !== $after || $beforeItems !== $afterItems)
+            ) {
                 $this->recordBookingAudit($lockedBooking, $before, $after, $beforeItems, $afterItems);
             }
 
@@ -207,10 +211,6 @@ class BookingService
                 return false;
             }
 
-            $before = $this->bookingAuditSnapshot($lockedBooking);
-            $beforeItems = $this->bookingItemsAuditSnapshot($lockedBooking);
-            $this->recordBookingAudit($lockedBooking, $before, [], $beforeItems, []);
-
             return (bool) $lockedBooking->delete();
         });
     }
@@ -249,6 +249,31 @@ class BookingService
                 throw ValidationException::withMessages([
                     'status' => 'Chỉ đặt lịch đã xác nhận mới có thể tạo đơn hàng.',
                 ]);
+            }
+
+            if ($lockedBooking->NhanVienXacNhanID === null || $lockedBooking->ThoiGianXacNhan === null) {
+                $before = $this->bookingAuditSnapshot($lockedBooking);
+                $beforeItems = $this->bookingItemsAuditSnapshot($lockedBooking);
+                $employeeId = auth()->user()?->NhanVienID;
+
+                if (! $employeeId) {
+                    throw ValidationException::withMessages([
+                        'status' => 'Tài khoản hiện tại chưa liên kết hồ sơ nhân viên để ghi nhận xác nhận Booking.',
+                    ]);
+                }
+
+                $lockedBooking->update([
+                    'NhanVienXacNhanID' => $lockedBooking->NhanVienXacNhanID ?? $employeeId,
+                    'ThoiGianXacNhan' => $lockedBooking->ThoiGianXacNhan ?? now(),
+                ]);
+                $lockedBooking->refresh();
+                $this->recordBookingAudit(
+                    $lockedBooking,
+                    $before,
+                    $this->bookingAuditSnapshot($lockedBooking),
+                    $beforeItems,
+                    $this->bookingItemsAuditSnapshot($lockedBooking),
+                );
             }
 
             return $this->insertOrderAndDelivery($lockedBooking)->fresh();
@@ -510,11 +535,15 @@ class BookingService
         array $beforeItems,
         array $afterItems,
     ): void {
-        $statusChanged = ($before['TrangThai'] ?? null) !== ($after['TrangThai'] ?? null);
+        $action = $before === []
+            ? 'Tạo Booking'
+            : (($after['TrangThai'] ?? null) === BookingStatus::Confirmed->value
+                ? 'Xác nhận Booking'
+                : 'Cập nhật Booking');
 
         NhatKyHeThong::create([
             'TaiKhoanID' => auth()->id(),
-            'HanhDong' => $statusChanged ? 'Thay đổi trạng thái đặt lịch' : 'Cập nhật đặt lịch',
+            'HanhDong' => $action,
             'BangDuLieu' => 'Booking',
             'BanGhiID' => $booking->BookingID,
             'DuLieuCu' => ['Booking' => $before, 'ChiTietBooking' => $beforeItems],

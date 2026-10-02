@@ -3,6 +3,7 @@
 namespace Database\Factories;
 
 use App\Models\Coupon;
+use App\Models\Promotion;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -21,7 +22,7 @@ class CouponFactory extends Factory
         $type = fake()->randomElement($discountTypes);
 
         return [
-            'promotion_id' => \App\Models\Promotion::factory(),
+            'promotion_id' => Promotion::factory(),
             'code' => fake()->bothify('GIAO????'),
             'discount_type' => $type,
             'discount_value' => $type === 'percent' ? fake()->numberBetween(10, 30) : fake()->numberBetween(20000, 100000),

@@ -22,9 +22,29 @@ Sky Laundry hỗ trợ số hóa hoạt động hằng ngày của cửa hàng g
 - Một tài khoản có thể mang nhiều vai trò qua bảng `TaiKhoan_VaiTro`; quyền vai trò được liên kết qua `VaiTro_Quyen` và `Quyen`.
 - Tài khoản không hoạt động (`TaiKhoan.TrangThai`) không được hưởng quyền bỏ qua kiểm tra của Chủ cửa hàng hoặc quyền truy cập theo mã quyền.
 - Hỗ trợ nghiệp vụ đơn hàng, đặt lịch, hóa đơn, thanh toán, giao nhận, khách hàng, dịch vụ, bảng giá, khuyến mãi và báo cáo.
-- Tính tiền từng dòng theo khối lượng với mức tối thiểu có thể cấu hình, hoặc theo số lượng đối với đơn vị như cái, đôi, bộ, tấm.
-- Giữ nguyên cách viết PascalCase của tên bảng và cột PostgreSQL theo schema.
+- Booking hỗ trợ nhiều dòng dịch vụ; mức khối lượng tối thiểu được tính riêng trên từng dòng KG, không cộng gộp toàn Booking.
+- Bộ máy bảng giá tra cứu chính xác theo `(DichVuID, LoaiDoGiatID, DonViTinhID)`, lấy ngày áp dụng mới nhất; thao tác tạo/sửa/khôi phục khóa theo tuple bằng PostgreSQL transaction advisory lock để chống race condition giữa các tiến trình Laravel.
+- Booking được xác nhận sẽ tự chuyển thành đơn hàng và phiếu giao trong transaction. UI không hiện nút tạo đơn cho Booking đang chờ xác nhận; nếu đã có đơn thì hiển thị liên kết tới đơn hiện hữu thay vì tạo trùng.
+- Ghi nhật ký `NhatKyHeThong` cho tạo/xác nhận Booking (bao gồm người và thời điểm xác nhận), đổi trạng thái đơn hàng và thay đổi tài khoản; snapshot tài khoản không ghi mật khẩu.
+- Tên bảng/cột tuân thủ chính xác cách viết của Supabase PostgreSQL: phần lớn bảng nghiệp vụ PascalCase, riêng một số đối tượng live như `khachhang_diachi` và các cột của nó viết thường.
 - Có cơ chế bảo vệ các lệnh Artisan có thể phá hủy cấu trúc cơ sở dữ liệu.
+
+## Cấu trúc Supabase Live
+
+`schema.sql` là snapshot cấu trúc chỉ đọc của PostgreSQL Supabase, dùng làm nguồn tham chiếu khi ánh xạ Eloquent. Không chạy migration/DDL hoặc seeder trên Supabase Live.
+
+Phần lớn bảng nghiệp vụ dùng tên PascalCase, ví dụ `Booking`, `BangGia`, `DonHang`; không tự động đổi casing vì PostgreSQL giữ nguyên tên identifier đã được quote. Bảng sổ địa chỉ là ngoại lệ lowercase theo schema live:
+
+| Đối tượng | Tên trong schema |
+|---|---|
+| Bảng địa chỉ | `khachhang_diachi` |
+| Khóa chính | `diachiid` (`GENERATED ALWAYS AS IDENTITY`) |
+| Khóa ngoại khách hàng | `khachhangid` → `"KhachHang"("KhachHangID")` |
+| Các cột còn lại | `tennguoinhan`, `sodienthoai`, `diachi`, `ghichu`, `macdinh`, `ngaytao` |
+
+Model `KhachHangDiaChi` khai báo đúng tên bảng/khóa/cột lowercase; `diachiid` không nằm trong `$fillable` để PostgreSQL tự sinh giá trị identity. Quan hệ khách hàng dùng khóa ngoại `khachhangid` và khóa cha `KhachHangID`.
+
+Kiểm tra chống khoảng giá chồng lấn hiện được thực thi trong ứng dụng khi thao tác qua Laravel. Advisory lock có hiệu lực trong transaction của PostgreSQL; vì schema live chưa khai báo exclusion constraint, thao tác ghi trực tiếp ngoài Laravel không được bảo vệ bởi kiểm tra này.
 
 ## Sơ đồ phân quyền hệ thống
 
@@ -87,7 +107,7 @@ Chỉ sử dụng tài khoản được cấp trong môi trường cục bộ ho
 
 ### Trạng thái kiểm thử hồi quy
 
-Sau khi bổ sung kiểm thử cho báo cáo, toàn bộ bộ kiểm thử đạt: **225 test, 33 thành công, 192 bị bỏ qua, 285 assertions**. Các test mới kiểm tra KPI, biểu đồ, top dịch vụ, cơ cấu doanh thu, giao dịch thanh toán, đơn hàng gần đây, truy vấn xuất dữ liệu, route xuất Excel và xác thực bộ lọc trên SQLite in-memory. Nhiều test bị bỏ qua là test cũ dựa trên schema tiếng Anh trước đây; test bị bỏ qua không được tính là độ bao phủ đã xác minh.
+Lần chạy đầy đủ gần nhất: **267 test được phát hiện, 75 PASSED, 192 skipped, 447 assertions**. Chỉ 75 test PASSED được liệt kê trong [TESTCASES.md](./TESTCASES.md); các test skipped không được tính là kiểm thử thành công. Bộ test dùng SQLite in-memory theo `phpunit.xml`, không phải kiểm thử tích hợp ghi dữ liệu trên Supabase Live.
 
 ### Cải tiến & tái cấu trúc Loại đồ giặt và bảng giá
 
@@ -106,7 +126,7 @@ Sau khi bổ sung kiểm thử cho báo cáo, toàn bộ bộ kiểm thử đạ
 
 #### Kiểm thử và an toàn dữ liệu
 
-- Kiểm thử Feature/Unit tập trung cho đợt chuẩn hóa: **51/51 test thành công, 346 assertions**. Đây là kết quả của bộ kiểm thử phạm vi refactor, tách biệt với thống kê toàn bộ hồi quy ở mục trên; các test legacy bị bỏ qua không được tính là test pass.
+- Các kiểm thử schema/feature dùng SQLite trong bộ nhớ; kết quả hiện hành của toàn bộ suite được ghi ở mục **Trạng thái kiểm thử hồi quy** phía trên.
 - Các bước xác minh của đợt refactor bao gồm biên dịch Blade, định dạng Laravel Pint và kiểm tra thay đổi Git.
 - Kiểm thử dùng SQLite trong bộ nhớ. `schema.sql` chỉ là snapshot tham chiếu; không chạy DDL, migration hoặc thao tác ghi dữ liệu thử nghiệm lên Supabase Live.
 
@@ -124,23 +144,27 @@ Sau khi bổ sung kiểm thử cho báo cáo, toàn bộ bộ kiểm thử đạ
 - Với các module được rà soát, khi bản ghi đã có dữ liệu tham chiếu, ưu tiên giữ lịch sử bằng cách chuyển trạng thái sang giá trị ngừng hoạt động/tạm ngưng phù hợp với ràng buộc của bảng; chỉ xóa cứng khi không có liên kết cần bảo toàn.
 - Đã gỡ các truy vấn `withTrashed()`/`onlyTrashed()` khỏi các service được rà soát khi bảng tương ứng không khai báo cột xóa mềm. Trạng thái nghiệp vụ được xử lý bằng các cột trạng thái thực tế thay vì cơ chế soft delete không có trong schema.
 - Tuân thủ **Read-Only DDL**: không chạy migration, DDL hoặc thao tác ghi lên Supabase Live; `schema.sql` chỉ dùng làm snapshot tham chiếu.
-- Lần xác minh Unit gần nhất đạt **25/25 tests, 230 assertions**. Blade cache, đăng ký route, PHP lint trên các file PHP thay đổi, Laravel Pint và `git diff --check` đều hoàn tất thành công. Đây là kết quả Unit tests, không đại diện cho toàn bộ Feature/Legacy suite hoặc kiểm thử kết nối trực tiếp Supabase.
+- Test suite dùng SQLite in-memory và không đại diện cho kiểm thử tích hợp hoặc kiểm tra kết nối trực tiếp Supabase.
 
 ### Refactor Booking nhiều dòng, bảng giá và audit (02/10/2026)
 
 #### Đã hoàn tất
 
 - **Booking nhiều dòng (`ChiTietBooking`):** Booking lưu nhiều dòng dịch vụ dự kiến thay vì nhúng thông tin một dịch vụ vào bảng `Booking`. Mỗi dòng có dịch vụ, loại đồ, đơn vị tính, giá và thành tiền riêng. Validation ở Request và Service yêu cầu đúng một trong hai giá trị dương: `SoLuong` hoặc `KhoiLuong`, phù hợp với đơn vị tính.
-- **Giá chuẩn hóa (`BangGia`):** Đơn giá được tra theo đúng bộ ba `(DichVuID, LoaiDoGiatID, DonViTinhID)`, chỉ lấy bản ghi đang hoạt động và còn hiệu lực, ưu tiên ngày áp dụng mới nhất. Máy chủ tính lại giá và thành tiền, không tin đơn giá do biểu mẫu gửi lên.
+- **Khối lượng tối thiểu:** Mức KG tối thiểu có thể cấu hình được tính cho từng dòng dịch vụ riêng; đơn giá nhân với `max(KhoiLuong, muc_toi_thieu)` của dòng đó.
+- **Giá chuẩn hóa (`BangGia`):** Đơn giá được tra theo đúng bộ ba `(DichVuID, LoaiDoGiatID, DonViTinhID)`, chỉ lấy bản ghi đang hoạt động và còn hiệu lực, ưu tiên ngày áp dụng mới nhất, sau đó dùng `BangGiaID` để phân định cùng ngày. Khoảng hiệu lực chồng lấn bị từ chối khi tạo, cập nhật hoặc khôi phục giá. Service dùng advisory transaction lock theo tuple PostgreSQL nhằm tránh race-condition giữa các thao tác Laravel đồng thời. Máy chủ tính lại giá và thành tiền, không tin đơn giá do biểu mẫu gửi lên.
 - **Chuyển Booking thành đơn:** Khi Booking được xác nhận, các dòng `ChiTietBooking` được ánh xạ thành các dòng `ChiTietDonHang` trong cùng giao dịch tạo đơn và phiếu giao. Thao tác xác nhận được ghi vào `NhatKyHeThong`, bao gồm dữ liệu Booking và chi tiết trước/sau cùng thông tin tài khoản thao tác khi có.
-- **Audit:** Thay model lịch sử trạng thái legacy `DonHangTrangthai` và tham chiếu bảng `donhang_trangthai` bằng model/bảng `NhatKyHeThong` trong các phần đã refactor. Phạm vi hiện đã ghi audit cho tạo/cập nhật Booking và thay đổi trạng thái Booking. Nhật ký tổng quát cho mọi cập nhật đơn hàng và tài khoản chưa được triển khai; không xem phần này là đã hoàn tất.
+- **Audit:** `NhatKyHeThong` ghi nhận tạo/xác nhận Booking, chuyển trạng thái đơn hàng và thay đổi tài khoản. Sự kiện xác nhận lưu `NhanVienXacNhanID` và `ThoiGianXacNhan`; nội dung audit tài khoản không chứa mật khẩu.
+- **Chống tạo đơn trùng:** Booking đã có đơn sẽ dẫn tới đơn hiện hữu; thao tác chuyển đổi là idempotent. Giao diện Booking hiển thị trạng thái chờ, đơn đã liên kết hoặc cảnh báo nếu Booking xác nhận nhưng chưa có đơn.
+- **Ánh xạ địa chỉ:** `khachhang_diachi` và các cột `diachiid`, `khachhangid` giữ lowercase theo Supabase Live; model không mass-assign khóa identity.
 - **Snapshot schema và an toàn:** `schema.sql` cục bộ đã được cập nhật làm tài liệu tham chiếu cho các cấu trúc `Booking`, `ChiTietBooking`, `BangGia` và `NhatKyHeThong` theo catalog Live đã kiểm tra. Không chạy migration hoặc DDL và không ghi dữ liệu thử nghiệm lên Supabase Live. Snapshot không thay thế bước xác minh trực tiếp từng đối tượng khi schema Live thay đổi.
 
 #### Kiểm thử và chất lượng
 
-- Lần chạy đầy đủ gần nhất: **262 tests, 70 passed, 192 skipped, 414 assertions**. Các kịch bản mới bao gồm chuyển Booking nhiều dòng thành đơn, audit xác nhận, validation số lượng/khối lượng và tra giá chính xác theo bộ ba khóa; đơn vị test bị skip không được tính là pass.
+- Lần chạy đầy đủ gần nhất: **267 test được phát hiện, 75 PASSED, 192 skipped, 447 assertions**. Các ca PASSED liên quan trực tiếp bao gồm chuyển Booking nhiều dòng, audit, XOR số lượng/khối lượng, giá theo tuple, chặn overlap và tính phí KG theo từng dòng; danh sách chi tiết ở [TESTCASES.md](./TESTCASES.md).
 - `php artisan view:cache`, `vendor/bin/pint --dirty --format agent`, kiểm tra lỗi trên các file PHP đã sửa và `git diff --check` đều hoàn tất thành công.
 - Test chạy với SQLite in-memory; kết quả không phải kiểm thử tích hợp ghi dữ liệu trên Supabase Live.
+- Chưa có test PASSED độc lập xác nhận thứ tự ưu tiên `NgayApDung` mới nhất hoặc gọi audit trực tiếp qua từng endpoint Payment/Dashboard; các điểm này cần bổ sung regression test nếu muốn xác nhận riêng từng đường đi.
 
 #### RPC `transition_laundry_order` — trạng thái và bước tiếp theo
 
@@ -150,7 +174,6 @@ Sau khi bổ sung kiểm thử cho báo cáo, toàn bộ bộ kiểm thử đạ
 
 ### Công việc dự kiến
 
-- Bổ sung phạm vi audit cho cập nhật đơn hàng và tài khoản vào `NhatKyHeThong` theo yêu cầu nghiệp vụ và ràng buộc schema.
 - Thiết kế tích hợp RPC `transition_laundry_order` với JWT Supabase theo người dùng và thống nhất xử lý trạng thái thanh toán chưa được RPC hỗ trợ.
 - Tiếp tục đối chiếu các ánh xạ của `DonHang`, `ChiTietDonHang` và `HoaDon` với snapshot mới nhất trong `schema.sql` và truy vấn thực tế.
 - Chỉ xây dựng cổng Khách hàng xem đơn khi mọi truy vấn đều giới hạn theo `KhachHangID` của tài khoản đang đăng nhập.
@@ -239,7 +262,19 @@ Yêu cầu môi trường: PHP 8.3 trở lên, Composer, Node.js/npm và quyền
 Chạy bộ kiểm thử bằng cấu hình SQLite trong bộ nhớ tại `phpunit.xml`:
 
 ```sh
-php artisan test
+php artisan test --compact
+```
+
+Hiển thị tên từng test để đối chiếu với [TESTCASES.md](./TESTCASES.md):
+
+```sh
+php artisan test --compact --testdox
+```
+
+Chạy Laravel Pint để định dạng mã PHP:
+
+```sh
+vendor/bin/pint
 ```
 
 Liệt kê các route đã đăng ký; lệnh này không thay đổi cơ sở dữ liệu:

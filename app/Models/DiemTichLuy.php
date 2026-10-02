@@ -7,8 +7,11 @@ use Illuminate\Database\Eloquent\Model;
 class DiemTichLuy extends Model
 {
     protected $table = 'DiemTichLuy';
+
     protected $primaryKey = 'DiemTichLuyID';
+
     public $timestamps = false;
+
     public static $snakeAttributes = false;
 
     /** Cột thời gian tiếng Việt thay cho created_at/updated_at. */

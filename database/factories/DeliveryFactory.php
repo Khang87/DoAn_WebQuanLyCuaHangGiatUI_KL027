@@ -2,7 +2,9 @@
 
 namespace Database\Factories;
 
+use App\Models\Customer;
 use App\Models\Delivery;
+use App\Models\Order;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -16,9 +18,9 @@ class DeliveryFactory extends Factory
         $statuses = ['pending', 'picking', 'delivering', 'completed', 'cancelled'];
 
         return [
-            'code' => 'GH' . fake()->unique()->numerify('####'),
-            'order_id' => \App\Models\Order::factory(),
-            'customer_id' => \App\Models\Customer::factory(),
+            'code' => 'GH'.fake()->unique()->numerify('####'),
+            'order_id' => Order::factory(),
+            'customer_id' => Customer::factory(),
             'employee_id' => null,
             'method' => fake()->randomElement($methods),
             'address' => fake()->address(),

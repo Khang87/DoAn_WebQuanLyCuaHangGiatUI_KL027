@@ -17,7 +17,7 @@ return new class extends Migration
         DB::table('bookings')->orderBy('id')->each(function ($booking) {
             DB::table('bookings')
                 ->where('id', $booking->id)
-                ->update(['code' => 'DL' . str_pad((string) $booking->id, 4, '0', STR_PAD_LEFT)]);
+                ->update(['code' => 'DL'.str_pad((string) $booking->id, 4, '0', STR_PAD_LEFT)]);
         });
 
         Schema::table('bookings', function (Blueprint $table) {

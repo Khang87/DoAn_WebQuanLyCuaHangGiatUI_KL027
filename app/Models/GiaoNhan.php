@@ -7,8 +7,11 @@ use Illuminate\Database\Eloquent\Model;
 class GiaoNhan extends Model
 {
     protected $table = 'GiaoNhan';
+
     protected $primaryKey = 'GiaoNhanID';
+
     public $timestamps = false;
+
     public static $snakeAttributes = false;
 
     protected $fillable = [

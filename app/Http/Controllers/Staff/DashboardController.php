@@ -137,7 +137,7 @@ class DashboardController extends Controller
             ], 409);
         }
 
-        $order->update(['TrangThai' => $newStatus]);
+        $order = $this->orderService->updateStatus($order, (string) $newStatus);
 
         return response()->json([
             'success' => true,

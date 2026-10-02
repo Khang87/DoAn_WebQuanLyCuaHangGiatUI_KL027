@@ -18,7 +18,7 @@ class CustomerFactory extends Factory
     public function definition(): array
     {
         return [
-            'code' => 'KH' . fake()->unique()->numerify('###'),
+            'code' => 'KH'.fake()->unique()->numerify('###'),
             'name' => fake()->name(),
             'email' => fake()->unique()->safeEmail(),
             'phone' => fake()->phoneNumber(),

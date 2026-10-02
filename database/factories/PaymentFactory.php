@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Models\Order;
 use App\Models\Payment;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
@@ -16,7 +17,7 @@ class PaymentFactory extends Factory
         $statuses = ['pending', 'partial', 'paid'];
 
         return [
-            'order_id' => \App\Models\Order::factory(),
+            'order_id' => Order::factory(),
             'amount' => fake()->randomFloat(2, 50000, 1000000),
             'method' => fake()->randomElement($methods),
             'paid_at' => fake()->optional()->dateTime(),

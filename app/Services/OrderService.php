@@ -9,6 +9,7 @@ use App\Models\ChiTietDonHang;
 use App\Models\DonHang;
 use App\Models\DonViTinh;
 use App\Models\KhachHang;
+use App\Models\NhatKyHeThong;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -477,12 +478,37 @@ class OrderService
             throw SettledOrderException::forOrder($order->MaDonHang);
         }
 
-        $order->update([
-            'TrangThai' => $status,
-            'NgayCapNhat' => now(),
-        ]);
+        return DB::transaction(function () use ($order, $status, $overrideSettled): DonHang {
+            $lockedOrder = DonHang::query()
+                ->lockForUpdate()
+                ->findOrFail($order->getKey());
 
-        return $order->fresh();
+            if ($lockedOrder->isLocked() && ! $overrideSettled) {
+                throw SettledOrderException::forOrder($lockedOrder->MaDonHang);
+            }
+
+            $previousStatus = $lockedOrder->TrangThai;
+            $lockedOrder->update([
+                'TrangThai' => $status,
+                'NgayCapNhat' => now(),
+            ]);
+
+            if ($previousStatus !== $status) {
+                NhatKyHeThong::create([
+                    'TaiKhoanID' => auth()->id(),
+                    'HanhDong' => 'Chuyển trạng thái đơn hàng',
+                    'BangDuLieu' => 'DonHang',
+                    'BanGhiID' => $lockedOrder->getKey(),
+                    'DuLieuCu' => ['TrangThai' => $previousStatus],
+                    'DuLieuMoi' => ['TrangThai' => $status],
+                    'ThoiGian' => now(),
+                    'IPAddress' => request()->ip(),
+                    'UserAgent' => request()->userAgent(),
+                ]);
+            }
+
+            return $lockedOrder->fresh();
+        });
     }
 
     public function findById(int $id): ?DonHang

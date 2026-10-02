@@ -2,6 +2,8 @@
 
 namespace Database\Factories;
 
+use App\Models\Customer;
+use App\Models\Order;
 use App\Models\Review;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
@@ -13,8 +15,8 @@ class ReviewFactory extends Factory
     public function definition(): array
     {
         return [
-            'order_id' => \App\Models\Order::factory(),
-            'customer_id' => \App\Models\Customer::factory(),
+            'order_id' => Order::factory(),
+            'customer_id' => Customer::factory(),
             'rating' => fake()->numberBetween(1, 5),
             'content' => fake()->optional()->paragraph(),
             'images' => null,

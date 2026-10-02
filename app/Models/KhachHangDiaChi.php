@@ -12,9 +12,17 @@ use Illuminate\Database\Eloquent\Model;
  */
 class KhachHangDiaChi extends Model
 {
+    /**
+     * Bảng này được tạo trực tiếp trên Supabase và giữ tên viết thường theo live DDL.
+     * Không ép chuyển sang PascalCase vì PostgreSQL sẽ giữ tên nguyên nếu được quoted.
+     */
     protected $table = 'khachhang_diachi';
 
     protected $primaryKey = 'diachiid';
+
+    public $incrementing = true;
+
+    protected $keyType = 'int';
 
     public $timestamps = false;
 
@@ -24,8 +32,9 @@ class KhachHangDiaChi extends Model
     /** Cột thời gian thực tế của bảng. */
     public const CREATED_AT = 'ngaytao';
 
+    public const UPDATED_AT = null;
+
     protected $fillable = [
-        'diachiid',
         'khachhangid',
         'tennguoinhan',
         'sodienthoai',

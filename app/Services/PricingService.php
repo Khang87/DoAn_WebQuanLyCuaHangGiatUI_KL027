@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\BangGia;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class PricingService
 {
@@ -47,15 +48,31 @@ class PricingService
     public function create(array $data): BangGia
     {
         return DB::transaction(function () use ($data) {
+            $this->lockPricingTuples([$data]);
+            $this->ensurePeriodDoesNotOverlap($data);
+
             return BangGia::create($data);
         });
     }
 
     public function update(BangGia $pricing, array $data): BangGia
     {
-        $pricing->update($data);
+        return DB::transaction(function () use ($pricing, $data): BangGia {
+            $lockedPricing = BangGia::query()
+                ->lockForUpdate()
+                ->findOrFail($pricing->getKey());
+            $updatedData = array_merge(
+                $lockedPricing->only(['DichVuID', 'LoaiDoGiatID', 'DonViTinhID', 'NgayApDung', 'NgayKetThuc']),
+                $data,
+            );
 
-        return $pricing->fresh();
+            $this->lockPricingTuples([$lockedPricing->getAttributes(), $updatedData]);
+            $this->ensurePeriodDoesNotOverlap($updatedData, (int) $lockedPricing->getKey());
+
+            $lockedPricing->update($data);
+
+            return $lockedPricing->fresh();
+        });
     }
 
     public function delete(BangGia $pricing): bool
@@ -65,16 +82,105 @@ class PricingService
 
     public function restore(int $id): ?BangGia
     {
-        $pricing = BangGia::find($id);
-        if ($pricing !== null) {
-            $pricing->update(['TrangThai' => 'Hoạt động']);
-        }
+        return DB::transaction(function () use ($id): ?BangGia {
+            $pricing = BangGia::query()
+                ->lockForUpdate()
+                ->find($id);
 
-        return $pricing;
+            if ($pricing === null) {
+                return null;
+            }
+
+            $data = $pricing->getAttributes();
+            $this->lockPricingTuples([$data]);
+            $this->ensurePeriodDoesNotOverlap($data, (int) $pricing->getKey());
+            $pricing->update(['TrangThai' => 'Hoạt động']);
+
+            return $pricing->fresh();
+        });
     }
 
     public function getLatestPrice(int $serviceId, int $garmentId): ?float
     {
         return BangGia::getLatestPrice($serviceId, $garmentId);
+    }
+
+    public function hasOverlappingPeriod(
+        int $serviceId,
+        int $garmentId,
+        int $unitId,
+        string $startDate,
+        ?string $endDate,
+        ?int $exceptPricingId = null,
+    ): bool {
+        $query = BangGia::query()
+            ->where('DichVuID', $serviceId)
+            ->where('LoaiDoGiatID', $garmentId)
+            ->where('DonViTinhID', $unitId)
+            ->where(function ($query) use ($startDate): void {
+                $query->whereNull('NgayKetThuc')
+                    ->orWhereDate('NgayKetThuc', '>=', $startDate);
+            });
+
+        if ($endDate !== null) {
+            $query->whereDate('NgayApDung', '<=', $endDate);
+        }
+
+        if ($exceptPricingId !== null) {
+            $query->where('BangGiaID', '!=', $exceptPricingId);
+        }
+
+        return $query->exists();
+    }
+
+    /**
+     * Prevent concurrent writes for the same price tuple from both passing
+     * the overlap check on PostgreSQL.
+     *
+     * @param  array<int, array<string, mixed>>  $tuples
+     */
+    private function lockPricingTuples(array $tuples): void
+    {
+        if (DB::connection()->getDriverName() !== 'pgsql') {
+            return;
+        }
+
+        $keys = [];
+
+        foreach ($tuples as $tuple) {
+            $keys[] = implode(':', [
+                $tuple['DichVuID'],
+                $tuple['LoaiDoGiatID'],
+                $tuple['DonViTinhID'],
+            ]);
+        }
+
+        $keys = array_values(array_unique($keys));
+        sort($keys);
+
+        foreach ($keys as $key) {
+            DB::select('SELECT pg_advisory_xact_lock(hashtext(?))', [$key]);
+        }
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    private function ensurePeriodDoesNotOverlap(array $data, ?int $exceptPricingId = null): void
+    {
+        if (! $this->hasOverlappingPeriod(
+            (int) $data['DichVuID'],
+            (int) $data['LoaiDoGiatID'],
+            (int) $data['DonViTinhID'],
+            (string) $data['NgayApDung'],
+            $data['NgayKetThuc'] ?? null,
+            $exceptPricingId,
+        )) {
+            return;
+        }
+
+        throw ValidationException::withMessages([
+            'NgayApDung' => 'Khoảng thời gian bảng giá bị chồng lấn với một bản giá khác của cùng dịch vụ, loại đồ giặt và đơn vị tính.',
+        ]);
     }
 }

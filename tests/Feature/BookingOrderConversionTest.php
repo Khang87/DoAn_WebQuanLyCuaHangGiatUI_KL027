@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Enums\BookingStatus;
+use App\Enums\OrderStatus;
 use App\Http\Requests\Admin\LuuBookingRequest;
 use App\Models\Booking;
 use App\Models\ChiTietDonHang;
@@ -12,6 +13,7 @@ use App\Models\NhatKyHeThong;
 use App\Models\User;
 use App\Services\BookingService;
 use App\Services\OrderService;
+use App\Services\PricingService;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -97,14 +99,39 @@ class BookingOrderConversionTest extends TestCase
         $this->assertNotNull($booking->fresh()->ThoiGianXacNhan);
         $audit = NhatKyHeThong::query()->where('BangDuLieu', 'Booking')->firstOrFail();
         $this->assertSame(1, NhatKyHeThong::query()->where('BangDuLieu', 'Booking')->count());
+        $this->assertSame('Xác nhận Booking', $audit->HanhDong);
         $this->assertCount(2, $audit->DuLieuMoi['ChiTietBooking']);
+        $this->assertSame(1, $audit->DuLieuMoi['Booking']['NhanVienXacNhanID']);
+        $this->assertNotEmpty($audit->DuLieuMoi['Booking']['ThoiGianXacNhan']);
 
         $sameOrder = $this->bookingService->confirmAndCreateOrder($booking->fresh());
         $this->assertSame($order->DonHangID, $sameOrder?->DonHangID);
         $this->assertSame(1, DonHang::query()->where('BookingID', $booking->BookingID)->count());
     }
 
-    public function test_weight_booking_uses_the_configured_minimum_and_keeps_the_actual_weight(): void
+    public function test_booking_creation_is_written_to_the_system_audit_log(): void
+    {
+        $this->actingAsBookingEmployee();
+
+        $booking = $this->bookingService->create([
+            'customer_id' => 9,
+            'method' => 'Tại nhà',
+            'address' => '12 Nguyễn Huệ',
+            'scheduled_date' => '2026-10-05',
+            'scheduled_time' => '14:30',
+            'status' => BookingStatus::Pending->value,
+        ]);
+
+        $audit = NhatKyHeThong::query()
+            ->where('BangDuLieu', 'Booking')
+            ->firstOrFail();
+        $this->assertSame('Tạo Booking', $audit->HanhDong);
+        $this->assertSame($booking->BookingID, $audit->BanGhiID);
+        $this->assertSame(1, $audit->TaiKhoanID);
+        $this->assertSame(BookingStatus::Pending->value, $audit->DuLieuMoi['Booking']['TrangThai']);
+    }
+
+    public function test_weight_booking_applies_the_configured_minimum_to_each_line_and_keeps_actual_weights(): void
     {
         config(['giatui.khoi_luong_toi_thieu' => 3.0]);
         DB::table('DonViTinh')->insert([
@@ -128,6 +155,7 @@ class BookingOrderConversionTest extends TestCase
         $this->bookingService->update($booking, [
             'items' => [
                 ['DichVuID' => 1, 'LoaiDoGiatID' => 2, 'DonViTinhID' => 1, 'KhoiLuong' => 2],
+                ['DichVuID' => 1, 'LoaiDoGiatID' => 2, 'DonViTinhID' => 1, 'KhoiLuong' => 1],
             ],
         ]);
         $booking->refresh();
@@ -136,12 +164,36 @@ class BookingOrderConversionTest extends TestCase
         ]);
 
         $order = DonHang::query()->where('BookingID', $booking->BookingID)->firstOrFail();
-        $item = ChiTietDonHang::query()->where('DonHangID', $order->DonHangID)->firstOrFail();
+        $items = ChiTietDonHang::query()
+            ->where('DonHangID', $order->DonHangID)
+            ->orderBy('ChiTietDonHangID')
+            ->get();
 
-        $this->assertSame(2.0, (float) $item->KhoiLuong);
-        $this->assertNull($item->SoLuong);
-        $this->assertSame(30000.0, (float) $item->ThanhTien);
-        $this->assertSame(30000.0, (float) $order->ThanhTien);
+        $this->assertCount(2, $items);
+        $this->assertSame([2.0, 1.0], $items->pluck('KhoiLuong')->map(fn ($weight): float => (float) $weight)->all());
+        $this->assertSame([30000.0, 30000.0], $items->pluck('ThanhTien')->map(fn ($amount): float => (float) $amount)->all());
+        $this->assertNull($items[0]->SoLuong);
+        $this->assertSame(60000.0, (float) $order->ThanhTien);
+    }
+
+    public function test_order_status_change_is_written_to_the_system_audit_log(): void
+    {
+        $order = DonHang::query()->create([
+            'MaDonHang' => 'DH001',
+            'KhachHangID' => 9,
+            'TrangThai' => OrderStatus::Pending->value,
+            'TongTien' => 0,
+            'ThanhTien' => 0,
+        ]);
+        $this->actingAsBookingEmployee();
+
+        app(OrderService::class)->updateStatus($order, OrderStatus::Received->value);
+
+        $audit = NhatKyHeThong::query()->where('BangDuLieu', 'DonHang')->firstOrFail();
+        $this->assertSame('Chuyển trạng thái đơn hàng', $audit->HanhDong);
+        $this->assertSame(['TrangThai' => OrderStatus::Pending->value], $audit->DuLieuCu);
+        $this->assertSame(['TrangThai' => OrderStatus::Received->value], $audit->DuLieuMoi);
+        $this->assertSame(1, $audit->TaiKhoanID);
     }
 
     public function test_order_creation_uses_the_exact_price_tuple_instead_of_the_submitted_price(): void
@@ -223,6 +275,73 @@ class BookingOrderConversionTest extends TestCase
         }
 
         $this->assertSame(0, DonHang::query()->count());
+    }
+
+    public function test_pricing_service_rejects_overlapping_periods_for_the_same_three_key_tuple(): void
+    {
+        DB::table('BangGia')->insert([
+            'BangGiaID' => 1,
+            'DichVuID' => 1,
+            'LoaiDoGiatID' => 2,
+            'DonViTinhID' => 3,
+            'DonGia' => 15000,
+            'NgayApDung' => '2026-01-01',
+            'NgayKetThuc' => '2026-10-10',
+            'TrangThai' => 'Hoạt động',
+        ]);
+
+        try {
+            app(PricingService::class)->create([
+                'DichVuID' => 1,
+                'LoaiDoGiatID' => 2,
+                'DonViTinhID' => 3,
+                'DonGia' => 17000,
+                'NgayApDung' => '2026-10-10',
+                'NgayKetThuc' => '2026-12-31',
+                'TrangThai' => 'Hoạt động',
+            ]);
+            $this->fail('Overlapping pricing periods must be rejected, including a shared boundary date.');
+        } catch (ValidationException $exception) {
+            $this->assertArrayHasKey('NgayApDung', $exception->errors());
+        }
+
+        $pricing = app(PricingService::class)->create([
+            'DichVuID' => 1,
+            'LoaiDoGiatID' => 2,
+            'DonViTinhID' => 3,
+            'DonGia' => 17000,
+            'NgayApDung' => '2026-10-11',
+            'NgayKetThuc' => null,
+            'TrangThai' => 'Hoạt động',
+        ]);
+
+        $this->assertSame(2, $pricing->BangGiaID);
+
+        try {
+            app(PricingService::class)->update($pricing, [
+                'DichVuID' => 1,
+                'LoaiDoGiatID' => 2,
+                'DonViTinhID' => 3,
+                'DonGia' => 18000,
+                'NgayApDung' => '2026-10-09',
+                'NgayKetThuc' => null,
+                'TrangThai' => 'Hoạt động',
+            ]);
+            $this->fail('Updating a pricing period into an overlap must be rejected.');
+        } catch (ValidationException $exception) {
+            $this->assertArrayHasKey('NgayApDung', $exception->errors());
+        }
+
+        $updatedPricing = app(PricingService::class)->update($pricing, [
+            'DichVuID' => 1,
+            'LoaiDoGiatID' => 2,
+            'DonViTinhID' => 3,
+            'DonGia' => 18000,
+            'NgayApDung' => '2026-10-11',
+            'NgayKetThuc' => null,
+            'TrangThai' => 'Hoạt động',
+        ]);
+        $this->assertSame(18000.0, (float) $updatedPricing->DonGia);
     }
 
     public function test_booking_confirmation_rolls_back_when_no_service_snapshot_is_provided(): void

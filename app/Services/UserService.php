@@ -78,6 +78,13 @@ class UserService
             ]);
 
             $this->syncRole($user, $data['role']);
+            $user->load('vaiTros');
+            $this->recordAccountAudit(
+                $user,
+                'Tạo tài khoản',
+                [],
+                $this->accountAuditSnapshot($user),
+            );
 
             return $user->load(['vaiTros', 'nhanVien', 'khachHang']);
         });
@@ -86,23 +93,48 @@ class UserService
     public function update(User $user, array $data): User
     {
         return DB::transaction(function () use ($user, $data): User {
-            $attributes = [
-                'TenDangNhap' => $data['email'],
-                'Email' => $data['email'],
-                'SoDienThoai' => $data['phone'] ?? null,
-            ];
+            $user->load('vaiTros');
+            $before = $this->accountAuditSnapshot($user);
+            $attributes = [];
 
-            if (! empty($data['password'])) {
+            if (array_key_exists('email', $data)) {
+                $attributes['TenDangNhap'] = $data['email'];
+                $attributes['Email'] = $data['email'];
+            }
+
+            if (array_key_exists('phone', $data)) {
+                $attributes['SoDienThoai'] = $data['phone'];
+            }
+
+            if (array_key_exists('username', $data)) {
+                $attributes['TenDangNhap'] = $data['username'];
+            }
+
+            $passwordChanged = ! empty($data['password']);
+
+            if ($passwordChanged) {
                 $attributes['MatKhau'] = Hash::make($data['password']);
             }
 
-            $user->update($attributes);
+            if ($attributes !== []) {
+                $user->update($attributes);
+            }
 
             if (isset($data['role'])) {
                 $this->syncRole($user, $data['role']);
             }
 
-            return $user->fresh(['vaiTros', 'nhanVien', 'khachHang']);
+            $updatedUser = $user->fresh(['vaiTros', 'nhanVien', 'khachHang']);
+            $after = $this->accountAuditSnapshot($updatedUser);
+
+            if ($before !== $after || $passwordChanged) {
+                $action = $passwordChanged && array_diff(array_keys($data), ['password']) === []
+                    ? 'Đổi mật khẩu tài khoản'
+                    : 'Thay đổi tài khoản';
+                $this->recordAccountAudit($updatedUser, $action, $before, $after);
+            }
+
+            return $updatedUser;
         });
     }
 
@@ -112,21 +144,109 @@ class UserService
             return false;
         }
 
-        if ($this->hasRelatedRecords($user)) {
-            $user->update(['TrangThai' => 'Ngừng hoạt động']);
+        return DB::transaction(function () use ($user): bool {
+            $lockedUser = User::query()->lockForUpdate()->findOrFail($user->getKey());
+            $before = $this->accountAuditSnapshot($lockedUser);
 
-            return true;
-        }
+            if ($this->hasRelatedRecords($lockedUser)) {
+                $lockedUser->update(['TrangThai' => 'Ngừng hoạt động']);
+                $after = $this->accountAuditSnapshot($lockedUser->fresh('vaiTros'));
 
-        return (bool) $user->delete();
+                if ($before !== $after) {
+                    $this->recordAccountAudit($lockedUser, 'Vô hiệu hóa tài khoản', $before, $after);
+                }
+
+                return true;
+            }
+
+            $deleted = (bool) $lockedUser->delete();
+
+            if ($deleted) {
+                $this->recordAccountAudit($lockedUser, 'Xóa tài khoản', $before, []);
+            }
+
+            return $deleted;
+        });
     }
 
     public function restore(int $id): ?User
     {
-        $user = User::find($id);
-        $user?->update(['TrangThai' => 'Hoạt động']);
+        return DB::transaction(function () use ($id): ?User {
+            $user = User::query()->lockForUpdate()->find($id);
 
-        return $user;
+            if ($user === null) {
+                return null;
+            }
+
+            $before = $this->accountAuditSnapshot($user);
+            $user->update(['TrangThai' => 'Hoạt động']);
+            $user->refresh();
+            $after = $this->accountAuditSnapshot($user->load('vaiTros'));
+
+            if ($before !== $after) {
+                $this->recordAccountAudit($user, 'Khôi phục tài khoản', $before, $after);
+            }
+
+            return $user;
+        });
+    }
+
+    public function setStatus(User $user, string $status): User
+    {
+        return DB::transaction(function () use ($user, $status): User {
+            $lockedUser = User::query()->lockForUpdate()->findOrFail($user->getKey());
+            $before = $this->accountAuditSnapshot($lockedUser);
+            $lockedUser->update(['TrangThai' => $status]);
+            $lockedUser->refresh();
+            $after = $this->accountAuditSnapshot($lockedUser->load('vaiTros'));
+
+            if ($before !== $after) {
+                $this->recordAccountAudit($lockedUser, 'Thay đổi trạng thái tài khoản', $before, $after);
+            }
+
+            return $lockedUser;
+        });
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function accountAuditSnapshot(User $user): array
+    {
+        return [
+            'TaiKhoanID' => (int) $user->getKey(),
+            'TenDangNhap' => $user->TenDangNhap,
+            'Email' => $user->Email,
+            'SoDienThoai' => $user->SoDienThoai,
+            'NhanVienID' => $user->NhanVienID,
+            'KhachHangID' => $user->KhachHangID,
+            'TrangThai' => $user->TrangThai,
+            'VaiTroIDs' => $user->vaiTros
+                ->pluck('VaiTroID')
+                ->map(fn ($roleId): int => (int) $roleId)
+                ->sort()
+                ->values()
+                ->all(),
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $before
+     * @param  array<string, mixed>  $after
+     */
+    private function recordAccountAudit(User $user, string $action, array $before, array $after): void
+    {
+        NhatKyHeThong::create([
+            'TaiKhoanID' => auth()->id(),
+            'HanhDong' => $action,
+            'BangDuLieu' => 'TaiKhoan',
+            'BanGhiID' => $user->getKey(),
+            'DuLieuCu' => $before,
+            'DuLieuMoi' => $after,
+            'ThoiGian' => now(),
+            'IPAddress' => request()->ip(),
+            'UserAgent' => request()->userAgent(),
+        ]);
     }
 
     private function syncRole(User $user, string $roleSlug): void

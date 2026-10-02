@@ -15,6 +15,10 @@ use Illuminate\Validation\ValidationException;
 
 class PaymentService
 {
+    public function __construct(
+        private OrderService $orderService,
+    ) {}
+
     public function getAll(array $filters = []): LengthAwarePaginator
     {
         $query = ThanhToan::query();
@@ -116,7 +120,7 @@ class PaymentService
                 $grandTotal = $order->hoaDons?->first()?->ThanhTien ?? $order->ThanhTien;
 
                 if ($totalPaid >= $grandTotal) {
-                    $order->update(['TrangThai' => OrderStatus::Paid->value]);
+                    $this->orderService->updateStatus($order, OrderStatus::Paid->value);
                 }
             }
 
@@ -158,7 +162,7 @@ class PaymentService
             $grandTotal = $order->hoaDons?->first()?->ThanhTien ?? $order->ThanhTien;
 
             if ($totalPaid >= $grandTotal) {
-                $order->update(['TrangThai' => OrderStatus::Paid->value]);
+                $this->orderService->updateStatus($order, OrderStatus::Paid->value, $override);
             }
         }
 
@@ -261,9 +265,9 @@ class PaymentService
             $grandTotal = $order->hoaDons?->first()?->ThanhTien ?? $order->ThanhTien;
 
             if ($totalPaid >= $grandTotal) {
-                $order->update(['TrangThai' => OrderStatus::Paid->value]);
+                $this->orderService->updateStatus($order, OrderStatus::Paid->value, $override);
             } elseif ($order->TrangThai === OrderStatus::Paid->value) {
-                $order->update(['TrangThai' => OrderStatus::Delivered->value]);
+                $this->orderService->updateStatus($order, OrderStatus::Delivered->value, $override);
             }
         }
 

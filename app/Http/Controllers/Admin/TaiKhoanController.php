@@ -247,7 +247,7 @@ class TaiKhoanController extends Controller
 
                 return redirect()->route('accounts.index')->with('success', 'Tài khoản đã được kích hoạt.');
             } else {
-                $account->update(['TrangThai' => 'Khóa']);
+                $this->userService->setStatus($account, 'Khóa');
 
                 return redirect()->route('accounts.index')->with('success', 'Tài khoản đã bị khóa.');
             }
@@ -267,7 +267,7 @@ class TaiKhoanController extends Controller
         $this->authorize('update', [User::class, $account]);
 
         try {
-            $account->update(['MatKhau' => Hash::make('Abc123!@#')]);
+            $this->userService->update($account, ['password' => 'Abc123!@#']);
 
             return redirect()->route('accounts.show', $account)->with('success', 'Mật khẩu đã được đặt lại thành công. Mật khẩu mới: Abc123!@#');
         } catch (\Exception $e) {
@@ -304,10 +304,17 @@ class TaiKhoanController extends Controller
 
         try {
             DB::transaction(function () use ($account, $validated): void {
-                $account->update([
-                    'Email' => $validated['email'],
-                    'SoDienThoai' => $validated['phone'] ?? null,
-                ]);
+                $accountData = [
+                    'email' => $validated['email'],
+                    'phone' => $validated['phone'] ?? null,
+                    'username' => $account->TenDangNhap,
+                ];
+
+                if (! $account->nhanVien && ! $account->khachHang) {
+                    $accountData['username'] = $validated['name'];
+                }
+
+                $this->userService->update($account, $accountData);
 
                 $profileAttributes = [
                     'HoTen' => $validated['name'],
@@ -319,8 +326,6 @@ class TaiKhoanController extends Controller
                     $account->nhanVien->update($profileAttributes);
                 } elseif ($account->khachHang) {
                     $account->khachHang->update($profileAttributes);
-                } else {
-                    $account->update(['TenDangNhap' => $validated['name']]);
                 }
             });
 
@@ -404,7 +409,7 @@ class TaiKhoanController extends Controller
         }
 
         try {
-            $account->update(['MatKhau' => Hash::make($request->input('new_password'))]);
+            $this->userService->update($account, ['password' => $request->input('new_password')]);
 
             return redirect()->route('profile')->with('success', 'Mật khẩu đã được đổi thành công.');
         } catch (\Exception $e) {

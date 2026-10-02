@@ -7,9 +7,13 @@ use Illuminate\Database\Eloquent\Model;
 class VaiTroQuyen extends Model
 {
     protected $table = 'VaiTro_Quyen';
+
     protected $primaryKey = null;
+
     public $timestamps = false;
+
     public $incrementing = false;
+
     public static $snakeAttributes = false;
 
     protected $fillable = ['VaiTroID', 'QuyenID'];

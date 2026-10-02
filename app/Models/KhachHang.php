@@ -7,8 +7,11 @@ use Illuminate\Database\Eloquent\Model;
 class KhachHang extends Model
 {
     protected $table = 'KhachHang';
+
     protected $primaryKey = 'KhachHangID';
+
     public $timestamps = false;
+
     public static $snakeAttributes = false;
 
     /** Cột thời gian tiếng Việt thay cho created_at/updated_at. */
@@ -51,7 +54,7 @@ class KhachHang extends Model
      */
     public function diaChis()
     {
-        return $this->hasMany(KhachHangDiaChi::class, 'khachhangid');
+        return $this->hasMany(KhachHangDiaChi::class, 'khachhangid', 'KhachHangID');
     }
 
     /* ---------------------------------------------------------------------

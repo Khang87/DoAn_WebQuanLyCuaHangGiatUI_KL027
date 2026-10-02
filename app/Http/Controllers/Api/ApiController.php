@@ -13,6 +13,7 @@ abstract class ApiController
      * Số trang mặc định và tối đa cho các endpoint dạng index.
      */
     protected const DEFAULT_PER_PAGE = 15;
+
     protected const MAX_PER_PAGE = 100;
 
     /**

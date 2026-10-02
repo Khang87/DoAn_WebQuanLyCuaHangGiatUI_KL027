@@ -3,6 +3,7 @@
 namespace Database\Factories;
 
 use App\Models\Invoice;
+use App\Models\Order;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -18,8 +19,8 @@ class InvoiceFactory extends Factory
         $deliveryFee = fake()->randomElement([0, 15000, 20000]);
 
         return [
-            'order_id' => \App\Models\Order::factory(),
-            'code' => 'HD' . fake()->unique()->numerify('###'),
+            'order_id' => Order::factory(),
+            'code' => 'HD'.fake()->unique()->numerify('###'),
             'invoice_date' => now(),
             'total_amount' => $totalAmount,
             'discount_amount' => $discount,

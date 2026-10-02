@@ -2,7 +2,10 @@
 
 namespace Database\Factories;
 
+use App\Models\Customer;
 use App\Models\Order;
+use App\Models\Service;
+use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -16,10 +19,10 @@ class OrderFactory extends Factory
         $weights = ['1kg', '3kg', '5kg', '8kg', '10kg', '15kg'];
 
         return [
-            'code' => 'DH' . fake()->unique()->numerify('###'),
-            'customer_id' => \App\Models\Customer::factory(),
-            'employee_id' => \App\Models\User::factory()->state(['role' => 'staff']),
-            'service_id' => \App\Models\Service::factory(),
+            'code' => 'DH'.fake()->unique()->numerify('###'),
+            'customer_id' => Customer::factory(),
+            'employee_id' => User::factory()->state(['role' => 'staff']),
+            'service_id' => Service::factory(),
             'promotion_id' => null,
             'subtotal' => 0,
             'discount_by_promotion' => 0,
