@@ -30,8 +30,8 @@ class LuuBookingRequest extends FormRequest
             'items.*.DichVuID' => ['required', 'integer', 'exists:DichVu,DichVuID'],
             'items.*.LoaiDoGiatID' => ['required', 'integer', 'exists:LoaiDoGiat,LoaiDoGiatID'],
             'items.*.DonViTinhID' => ['required', 'integer', 'exists:DonViTinh,DonViTinhID'],
-            'items.*.SoLuong' => ['nullable', 'numeric', 'gt:0'],
-            'items.*.KhoiLuong' => ['nullable', 'numeric', 'gt:0'],
+            'items.*.SoLuong' => ['nullable', 'integer', 'min:1'],
+            'items.*.KhoiLuong' => ['nullable', 'numeric', 'min:0'],
             'items.*.GhiChu' => ['nullable', 'string', 'max:500'],
         ];
     }
@@ -51,6 +51,22 @@ class LuuBookingRequest extends FormRequest
             return collect($item)->contains(fn (mixed $value): bool => $value !== null && $value !== '');
         }));
 
+        foreach ($items as &$item) {
+            if (
+                is_array($item)
+                && isset($item['SoLuong'])
+                && is_numeric($item['SoLuong'])
+                && preg_match('/^([+-]?\d+)(?:\.0+)?$/D', (string) $item['SoLuong'], $quantityMatch) === 1
+            ) {
+                $item['SoLuong'] = $quantityMatch[1];
+            }
+
+            if (is_array($item) && isset($item['KhoiLuong']) && is_numeric($item['KhoiLuong'])) {
+                $item['KhoiLuong'] = round((float) $item['KhoiLuong'], 2);
+            }
+        }
+        unset($item);
+
         $this->merge(['items' => $items]);
     }
 
@@ -58,7 +74,11 @@ class LuuBookingRequest extends FormRequest
     {
         $validator->after(function (Validator $validator): void {
             foreach ($this->input('items', []) as $index => $item) {
-                if (! is_array($item) || $validator->errors()->has("items.{$index}.DonViTinhID")) {
+                if (
+                    ! is_array($item)
+                    || $validator->errors()->has("items.{$index}.DonViTinhID")
+                    || $validator->errors()->has("items.{$index}.SoLuong")
+                ) {
                     continue;
                 }
 
@@ -73,20 +93,29 @@ class LuuBookingRequest extends FormRequest
                 $hasWeight = $weight !== null && $weight !== '';
 
                 if ($unit->isWeightUnit()) {
-                    if ($hasQuantity || ! $hasWeight) {
+                    if ($hasQuantity || ! $hasWeight || ! is_numeric($weight) || (float) $weight <= 0) {
                         $validator->errors()->add(
                             "items.{$index}.SoLuong",
-                            'Đơn vị tính theo kg chỉ được nhập khối lượng, không nhập số lượng.',
+                            'Đơn vị tính theo kg chỉ được nhập khối lượng lớn hơn 0; số lượng món không được lưu cho dòng này.',
                         );
                     }
 
                     continue;
                 }
 
-                if ($hasWeight || ! $hasQuantity) {
+                if (! $hasQuantity || ! is_numeric($quantity) || (float) $quantity < 1 || floor((float) $quantity) !== (float) $quantity) {
                     $validator->errors()->add(
                         "items.{$index}.SoLuong",
-                        'Đơn vị tính theo món chỉ được nhập số lượng, không nhập khối lượng.',
+                        'Đơn vị tính theo món cần số lượng nguyên dương.',
+                    );
+
+                    continue;
+                }
+
+                if ($hasWeight && (! is_numeric($weight) || (float) $weight !== 0.0)) {
+                    $validator->errors()->add(
+                        "items.{$index}.KhoiLuong",
+                        'Đơn vị tính theo món chỉ được nhập khối lượng bằng 0 hoặc để trống.',
                     );
                 }
             }
@@ -112,7 +141,10 @@ class LuuBookingRequest extends FormRequest
             'items.*.LoaiDoGiatID.required' => 'Hãy chọn loại đồ giặt cho từng dòng đặt lịch.',
             'items.*.DonViTinhID.required' => 'Hãy chọn đơn vị tính cho từng dòng đặt lịch.',
             'items.*.SoLuong.gt' => 'Số lượng phải lớn hơn 0.',
+            'items.*.SoLuong.integer' => 'Số lượng món phải là số nguyên.',
+            'items.*.SoLuong.min' => 'Số lượng phải từ 1 món trở lên.',
             'items.*.KhoiLuong.gt' => 'Khối lượng phải lớn hơn 0.',
+            'items.*.KhoiLuong.min' => 'Khối lượng không được nhỏ hơn 0.',
         ];
     }
 }

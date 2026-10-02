@@ -51,7 +51,7 @@
                                 <th>STT</th>
                                 <th>Tên dịch vụ / Loại đồ</th>
                                 <th class="text-end">Đơn vị tính</th>
-                                <th class="text-end">Số lượng</th>
+                                <th class="text-end">Số lượng / Khối lượng</th>
                                 <th class="text-end">Đơn giá</th>
                                 <th class="text-end">Thành tiền</th>
                             </tr>
@@ -62,7 +62,7 @@
                                     <td>{{ $index + 1 }}</td>
                                     <td class="fw-semibold">{{ $item->dichVu?->TenDichVu ?: ($item->loaiDoGiat?->TenLoaiDoGiat ?: '—') }}</td>
                                     <td class="text-end">{{ $item->donViTinh?->KyHieu ?? $item->donViTinh?->TenDonViTinh ?? '—' }}</td>
-                                    <td class="text-end">{{ $item->SoLuong ?? 0 }}</td>
+                                    <td class="text-end">{{ format_quantity_weight($item->SoLuong, $item->KhoiLuong) ?: '—' }}</td>
                                     <td class="text-end"><x-admin.detail.money :value="$item->DonGia ?? 0" /></td>
                                     <td class="text-end fw-semibold"><x-admin.detail.money :value="$item->ThanhTien ?? 0" /></td>
                                 </tr>
@@ -165,6 +165,34 @@
                 <div class="mt-3">
                     <div class="detail-field__label mb-2">Ghi chú hóa đơn</div>
                     <div class="detail-text">{{ $invoice->GhiChu }}</div>
+                </div>
+            @endif
+        </x-admin.detail.panel>
+
+        <x-admin.detail.panel title="Lịch sử thay đổi" icon="bi-clock-history" :iconClass="'bg-secondary-subtle text-secondary'">
+            @if($invoice->lichSuThayDoiHoaDons->isEmpty())
+                <x-admin.detail.empty message="Chưa có lịch sử thay đổi hóa đơn" icon="bi-clock" />
+            @else
+                <div class="d-flex flex-column gap-3">
+                    @foreach($invoice->lichSuThayDoiHoaDons->sortByDesc('ThoiGian') as $change)
+                        <div class="border-bottom pb-3">
+                            <div class="d-flex justify-content-between gap-3">
+                                <strong>{{ $change->TruongThayDoi }}</strong>
+                                <small class="text-muted text-nowrap">{{ $change->ThoiGian?->format('d-m-Y H:i') }}</small>
+                            </div>
+                            <div class="small mt-1">
+                                <span class="text-muted">{{ $change->GiaTriCu ?? '—' }}</span>
+                                <i class="bi bi-arrow-right mx-1" aria-hidden="true"></i>
+                                <span>{{ $change->GiaTriMoi ?? '—' }}</span>
+                            </div>
+                            <small class="text-muted">
+                                Người thực hiện: {{ $change->taiKhoan?->TenDangNhap ?? '—' }}
+                            </small>
+                            @if($change->LyDo)
+                                <div class="small text-muted mt-1">{{ $change->LyDo }}</div>
+                            @endif
+                        </div>
+                    @endforeach
                 </div>
             @endif
         </x-admin.detail.panel>

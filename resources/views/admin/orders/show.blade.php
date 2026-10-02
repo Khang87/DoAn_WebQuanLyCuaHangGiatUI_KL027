@@ -94,9 +94,8 @@
                             <tr>
                                 <th>Dịch vụ</th>
                                 <th>Loại đồ giặt</th>
-                                <th class="text-end">Khối lượng (kg)</th>
                                 <th class="text-end">Đơn giá</th>
-                                <th class="text-end">Số lượng / ĐVT</th>
+                                <th class="text-end">Số lượng / Khối lượng</th>
                                 <th class="text-end">Thành tiền</th>
                             </tr>
                         </thead>
@@ -105,15 +104,9 @@
                                 <tr>
                                     <td class="fw-semibold">{{ $item->dichVu?->TenDichVu ?: '—' }}</td>
                                     <td>{{ $item->loaiDoGiat?->TenLoaiDoGiat ?: '—' }}</td>
-                                    <td class="text-end">{{ $item->KhoiLuong !== null ? format_weight($item->KhoiLuong) : '—' }}</td>
                                     <td class="text-end"><x-admin.detail.money :value="$item->DonGia" /></td>
                                     <td class="text-end">
-                                        @if($item->SoLuong !== null)
-                                            {{ number_format((float) $item->SoLuong, 2) }}
-                                            {{ $item->donViTinh?->KyHieu ?: $item->donViTinh?->TenDonViTinh }}
-                                        @else
-                                            —
-                                        @endif
+                                        {{ format_quantity_weight($item->SoLuong, $item->KhoiLuong) ?: '—' }}
                                     </td>
                                     <td class="text-end fw-semibold"><x-admin.detail.money :value="$item->ThanhTien" /></td>
                                 </tr>
@@ -228,6 +221,12 @@
                             <i class="fas fa-pencil-alt me-1"></i> Chỉnh sửa
                         </a>
                     @endcan
+                @endif
+
+                @if(auth()->user()?->hasRole(['owner', 'manager', 'staff']))
+                    <a href="{{ route('admin.messages.index', ['order_id' => $order->DonHangID]) }}" class="btn btn-outline-primary w-100 py-2">
+                        <i class="bi bi-chat-dots me-1"></i> Nhắn tin khách hàng
+                    </a>
                 @endif
 
                 @if($order->hoaDons->isNotEmpty())

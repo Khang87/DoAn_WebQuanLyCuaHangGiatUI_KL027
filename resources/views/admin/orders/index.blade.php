@@ -83,12 +83,7 @@
                                 $itemWeight = (float) $order->chiTietDonHangs->sum('KhoiLuong');
                             @endphp
                             @if($itemQuantity > 0 || $itemWeight > 0)
-                                @if($itemQuantity > 0)
-                                    {{ number_format($itemQuantity, 2) }} món
-                                @endif
-                                @if($itemWeight > 0)
-                                    {{ $itemQuantity > 0 ? ' · ' : '' }}{{ number_format($itemWeight, 2) }} kg
-                                @endif
+                                {{ format_quantity_weight($itemQuantity ?: null, $itemWeight ?: null) }}
                             @else
                                 -
                             @endif

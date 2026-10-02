@@ -28,13 +28,19 @@
                 @endphp
                 <div class="col-12" id="booking-items">
                     @foreach($bookingItems as $index => $item)
+                        @php
+                            $quantityValue = $item['SoLuong'] ?? '';
+                            if (is_numeric($quantityValue) && floor((float) $quantityValue) === (float) $quantityValue) {
+                                $quantityValue = (string) (int) $quantityValue;
+                            }
+                        @endphp
                         <div class="booking-item border rounded p-3 mb-3">
                             <div class="d-flex justify-content-between align-items-center mb-3"><strong>Dòng dịch vụ</strong><button type="button" class="btn btn-outline-danger btn-sm remove-booking-item">Xóa dòng</button></div>
                             <div class="row g-3">
                                 <div class="col-md-4"><label class="form-label">Dịch vụ</label><select class="form-select" name="items[{{ $index }}][DichVuID]"><option value="">-- Chọn dịch vụ --</option>@foreach($services as $service)<option value="{{ $service->DichVuID }}" @selected((string) ($item['DichVuID'] ?? '') === (string) $service->DichVuID)>{{ $service->TenDichVu }}</option>@endforeach</select></div>
                                 <div class="col-md-4"><label class="form-label">Loại đồ giặt</label><select class="form-select" name="items[{{ $index }}][LoaiDoGiatID]"><option value="">-- Chọn loại đồ --</option>@foreach($garments as $garment)<option value="{{ $garment->LoaiDoGiatID }}" @selected((string) ($item['LoaiDoGiatID'] ?? '') === (string) $garment->LoaiDoGiatID)>{{ $garment->TenLoaiDoGiat }}</option>@endforeach</select></div>
                                 <div class="col-md-4"><label class="form-label">Đơn vị tính</label><select class="form-select booking-unit" name="items[{{ $index }}][DonViTinhID]"><option value="">-- Chọn đơn vị --</option>@foreach($units as $unit)<option value="{{ $unit->DonViTinhID }}" data-unit="{{ $unit->KyHieu ?: $unit->TenDonViTinh }}" @selected((string) ($item['DonViTinhID'] ?? '') === (string) $unit->DonViTinhID)>{{ $unit->TenDonViTinh }}{{ $unit->KyHieu ? ' ('.$unit->KyHieu.')' : '' }}</option>@endforeach</select></div>
-                                <div class="col-md-6"><label class="form-label">Số lượng</label><input type="number" step="0.01" min="0.01" class="form-control booking-quantity" name="items[{{ $index }}][SoLuong]" value="{{ $item['SoLuong'] ?? '' }}"></div>
+                                <div class="col-md-6"><label class="form-label">Số lượng</label><input type="number" step="1" min="1" class="form-control booking-quantity" name="items[{{ $index }}][SoLuong]" value="{{ $quantityValue }}"></div>
                                 <div class="col-md-6"><label class="form-label">Khối lượng (kg)</label><input type="number" step="0.01" min="0.01" class="form-control booking-weight" name="items[{{ $index }}][KhoiLuong]" value="{{ $item['KhoiLuong'] ?? '' }}"></div>
                                 <div class="col-12"><label class="form-label">Ghi chú dòng</label><input type="text" class="form-control" name="items[{{ $index }}][GhiChu]" value="{{ $item['GhiChu'] ?? '' }}" maxlength="500"></div>
                             </div>

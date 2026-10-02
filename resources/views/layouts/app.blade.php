@@ -78,6 +78,14 @@
                         </a>
                     </li>
                     @endcan
+                    @if(auth()->user()?->hasRole(['owner', 'manager', 'staff']))
+                    <li class="sidebar-menu-item">
+                        <a href="{{ route('admin.messages.index') }}" class="sidebar-menu-link {{ request()->routeIs('admin.messages.*') ? 'active' : '' }}">
+                            <i class="bi bi-chat-dots"></i>
+                            <span>Tin nhắn khách hàng</span>
+                        </a>
+                    </li>
+                    @endif
                     @can('service_categories.view')
                     <li class="sidebar-menu-item">
                         <a href="{{ route('service-categories.index') }}" class="sidebar-menu-link {{ request()->routeIs('service-categories.*') ? 'active' : '' }}">
@@ -160,7 +168,7 @@
                 </ul>
             </div>
 
-@if(auth()->user()?->can('promotions.view') || auth()->user()?->can('reports.view'))
+@if(auth()->user()?->can('promotions.view') || auth()->user()?->can('reports.view') || auth()->user()?->isManager())
             <!-- Khuyen mai & Bao cao (Chi quan ly) -->
             <div class="sidebar-menu-section">
                 <div class="sidebar-menu-title">Khuyến mãi & Báo cáo</div>
@@ -204,6 +212,12 @@
                         </a>
                     </li>
                     @endcan
+                    <li class="sidebar-menu-item">
+                        <a href="{{ route('admin.system-logs.index') }}" class="sidebar-menu-link {{ request()->routeIs('admin.system-logs.*') ? 'active' : '' }}">
+                            <i class="bi bi-journal-text"></i>
+                            <span>Nhật ký hệ thống</span>
+                        </a>
+                    </li>
                     @can('roles.manage')
                     <li class="sidebar-menu-item">
                         <a href="{{ route('roles.index') }}" class="sidebar-menu-link {{ request()->routeIs('roles.*') ? 'active' : '' }}">
@@ -383,7 +397,7 @@
             @if(session('error'))
             Swal.fire({
                 icon: 'error',
-                title: 'Không có quyền truy cập!',
+                title: 'Không thể xử lý!',
                 text: @json(session('error')),
                 timer: 3500,
                 showConfirmButton: false

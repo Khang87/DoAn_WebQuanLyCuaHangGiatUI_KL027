@@ -2,8 +2,9 @@
 
 namespace Tests\Unit;
 
+use App\Models\KhachHang;
 use App\Models\KhachHangDiaChi;
-use PHPUnit\Framework\TestCase;
+use Tests\TestCase;
 
 class KhachHangDiaChiModelTest extends TestCase
 {
@@ -15,5 +16,14 @@ class KhachHangDiaChiModelTest extends TestCase
         $this->assertSame('diachiid', $model->getKeyName());
         $this->assertNotContains('diachiid', $model->getFillable());
         $this->assertTrue($model->getIncrementing());
+    }
+
+    public function test_customer_has_many_addresses_through_the_lowercase_foreign_key(): void
+    {
+        $relation = (new KhachHang)->diaChis();
+
+        $this->assertSame('khachhangid', $relation->getForeignKeyName());
+        $this->assertSame('KhachHangID', $relation->getLocalKeyName());
+        $this->assertSame('khachhang_diachi', $relation->getRelated()->getTable());
     }
 }

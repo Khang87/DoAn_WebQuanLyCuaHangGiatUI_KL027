@@ -2,16 +2,21 @@
 
 namespace App\Services;
 
+use App\Enums\BookingMethod;
+use App\Enums\DeliveryStatus;
 use App\Enums\OrderStatus;
 use App\Exceptions\SettledOrderException;
 use App\Models\BangGia;
+use App\Models\Booking;
 use App\Models\ChiTietDonHang;
 use App\Models\DonHang;
 use App\Models\DonViTinh;
+use App\Models\GiaoNhan;
 use App\Models\KhachHang;
 use App\Models\NhatKyHeThong;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 class OrderService
@@ -74,6 +79,71 @@ class OrderService
             'TienGiamDoDiem' => round($discountByPoints, 2),
             'ThanhTien' => round(max(0, $subtotal - $discountByPromotion - $discountByPoints), 2),
         ];
+    }
+
+    /**
+     * Create an order and delivery record from a validated booking snapshot.
+     *
+     * @param  array<int, array<string, mixed>>  $snapshots
+     */
+    public function createFromBooking(Booking $booking, array $snapshots): DonHang
+    {
+        return DB::transaction(function () use ($booking, $snapshots): DonHang {
+            $existingOrder = DonHang::query()
+                ->where('BookingID', $booking->BookingID)
+                ->first();
+
+            if ($existingOrder !== null) {
+                return $existingOrder;
+            }
+
+            $bookingCode = $booking->MaBooking ?: Booking::nextCode();
+            $total = array_sum(array_column($snapshots, 'ThanhTien'));
+            $reference = 'Tự động tạo từ đặt lịch '.$bookingCode
+                .' ('.$booking->method_label.' ngày '
+                .($booking->NgayHen?->format('d/m/Y') ?? '—').')';
+            $notes = mb_substr(
+                $booking->GhiChu ? $reference.' | '.$booking->GhiChu : $reference,
+                0,
+                500,
+            );
+
+            $order = DonHang::create([
+                'MaDonHang' => 'TMP'.Str::ulid(),
+                'KhachHangID' => $booking->KhachHangID,
+                'NhanVienID' => $booking->NhanVienID,
+                'BookingID' => $booking->BookingID,
+                'TrangThai' => OrderStatus::Pending->value,
+                'GhiChu' => $notes,
+                'TongTien' => $total,
+                'ThanhTien' => $total,
+            ]);
+            $order->update([
+                'MaDonHang' => 'DH'.str_pad((string) $order->DonHangID, 3, '0', STR_PAD_LEFT),
+            ]);
+
+            foreach ($snapshots as $snapshot) {
+                ChiTietDonHang::create(array_merge(
+                    ['DonHangID' => $order->DonHangID],
+                    $snapshot,
+                ));
+            }
+
+            GiaoNhan::create([
+                'DonHangID' => $order->DonHangID,
+                'NhanVienID' => $booking->NhanVienID,
+                'HinhThuc' => $booking->HinhThucNhanDo,
+                'LoaiGiaoNhan' => $booking->methodEnum()->deliveryType(),
+                'DiaChi' => $booking->methodEnum() === BookingMethod::GiaoDo
+                    ? $booking->DiaChiNhan
+                    : null,
+                'ThoiGianDuKien' => $booking->NgayHen->format('Y-m-d').' '.$booking->GioHen->format('H:i:s'),
+                'TrangThai' => DeliveryStatus::Pending->dbValue(),
+                'GhiChu' => $booking->GhiChu,
+            ]);
+
+            return $order;
+        });
     }
 
     /**
@@ -173,7 +243,7 @@ class OrderService
             $quantityInput = $item['SoLuong'] ?? $item['quantity'] ?? null;
             $weightInput = $item['KhoiLuong'] ?? $item['weight'] ?? null;
             $quantity = $quantityInput !== null && $quantityInput !== '' ? (float) $quantityInput : null;
-            $weight = $weightInput !== null && $weightInput !== '' ? (float) $weightInput : null;
+            $weight = $weightInput !== null && $weightInput !== '' ? round((float) $weightInput, 2) : null;
             $unitRecord = $units->get((int) $unitId);
 
             if (! $unitRecord) {
@@ -186,17 +256,21 @@ class OrderService
             $isWeightUnit = $unitRecord->isWeightUnit();
             if (
                 ($isWeightUnit && ($weight === null || $weight <= 0 || $quantity !== null))
-                || (! $isWeightUnit && ($quantity === null || $quantity <= 0 || $weight !== null))
+                || (! $isWeightUnit && (
+                    $quantity === null
+                    || $quantity < 1
+                    || floor($quantity) !== $quantity
+                    || ($weight !== null && $weight !== 0.0)
+                ))
             ) {
                 throw ValidationException::withMessages([
                     "items.{$itemIndex}.SoLuong" => $isWeightUnit
-                        ? 'Chỉ nhập khối lượng lớn hơn 0 cho đơn vị tính theo kg.'
-                        : 'Chỉ nhập số lượng lớn hơn 0 cho đơn vị tính theo món.',
+                        ? 'Chỉ nhập khối lượng lớn hơn 0 cho đơn vị KG; không thể lưu số lượng món cùng dòng theo schema hiện tại.'
+                        : 'Đơn vị tính theo món cần số lượng nguyên dương; khối lượng phải bằng 0 hoặc để trống.',
                 ]);
             }
 
             $minimumWeight = (float) config('giatui.khoi_luong_toi_thieu', 3.0);
-            $billableWeight = $isWeightUnit ? max($weight ?? 0, $minimumWeight) : ($weight ?? 0);
             $calculationItem = [
                 'SoLuong' => $quantity ?? 0,
                 'KhoiLuong' => $weight ?? 0,
@@ -213,7 +287,7 @@ class OrderService
                 'DonViTinhID' => (int) $unitId,
                 'DonGia' => $price,
                 'SoLuong' => $isWeightUnit ? null : $quantity,
-                'KhoiLuong' => $isWeightUnit ? $billableWeight : null,
+                'KhoiLuong' => $isWeightUnit ? $weight : null,
                 'ThanhTien' => $lineSubtotal,
                 'GhiChu' => $item['GhiChu'] ?? $item['notes'] ?? null,
             ];
@@ -433,11 +507,38 @@ class OrderService
                 $customer->deductPoints($amounts['DiemSuDung']);
             }
 
+            $auditedFields = [
+                'TongTien',
+                'TienGiamDoDiem',
+                'TienGiamKhuyenMai',
+                'PhiGiaoHang',
+                'ThanhTien',
+            ];
+            $previousValues = [];
+            foreach ($auditedFields as $field) {
+                $previousValues[$field] = $order->getAttribute($field);
+            }
+
             $order->fill(array_merge($this->onlyOrderColumns($data), [
                 'KhuyenMaiID' => $promotion?->KhuyenMaiID,
                 'NgayCapNhat' => now(),
             ], $amounts));
             $order->save();
+
+            $changedFields = array_intersect($auditedFields, array_keys($order->getChanges()));
+            if ($changedFields !== []) {
+                NhatKyHeThong::query()->create([
+                    'TaiKhoanID' => auth()->id(),
+                    'HanhDong' => 'Thay đổi số tiền đơn hàng',
+                    'BangDuLieu' => 'DonHang',
+                    'BanGhiID' => $order->getKey(),
+                    'DuLieuCu' => array_intersect_key($previousValues, array_flip($changedFields)),
+                    'DuLieuMoi' => array_intersect_key($order->getAttributes(), array_flip($changedFields)),
+                    'ThoiGian' => now(),
+                    'IPAddress' => request()->ip(),
+                    'UserAgent' => request()->userAgent(),
+                ]);
+            }
 
             $order->chiTietDonHangs()->delete();
             foreach ($items as $item) {
@@ -487,25 +588,10 @@ class OrderService
                 throw SettledOrderException::forOrder($lockedOrder->MaDonHang);
             }
 
-            $previousStatus = $lockedOrder->TrangThai;
             $lockedOrder->update([
                 'TrangThai' => $status,
                 'NgayCapNhat' => now(),
             ]);
-
-            if ($previousStatus !== $status) {
-                NhatKyHeThong::create([
-                    'TaiKhoanID' => auth()->id(),
-                    'HanhDong' => 'Chuyển trạng thái đơn hàng',
-                    'BangDuLieu' => 'DonHang',
-                    'BanGhiID' => $lockedOrder->getKey(),
-                    'DuLieuCu' => ['TrangThai' => $previousStatus],
-                    'DuLieuMoi' => ['TrangThai' => $status],
-                    'ThoiGian' => now(),
-                    'IPAddress' => request()->ip(),
-                    'UserAgent' => request()->userAgent(),
-                ]);
-            }
 
             return $lockedOrder->fresh();
         });

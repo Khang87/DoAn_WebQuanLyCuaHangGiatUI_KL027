@@ -3,14 +3,52 @@
 namespace App\Http\Requests\Admin;
 
 use App\Services\PricingService;
+use DateTimeImmutable;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
 class LuuBangGiaRequest extends FormRequest
 {
+    protected function prepareForValidation(): void
+    {
+        $dateInputs = [];
+
+        foreach (['NgayApDung', 'NgayKetThuc'] as $field) {
+            $displayField = "{$field}_display";
+
+            if ($this->exists($displayField)) {
+                $dateInputs[$field] = $this->normalizeDate($this->input($displayField));
+            }
+        }
+
+        if ($dateInputs !== []) {
+            $this->merge($dateInputs);
+        }
+    }
+
     public function authorize(): bool
     {
         return true;
+    }
+
+    private function normalizeDate(mixed $value): mixed
+    {
+        if (! is_string($value) || ! preg_match('/^\d{2}-\d{2}-\d{4}$/', $value)) {
+            return $value;
+        }
+
+        $date = DateTimeImmutable::createFromFormat('!d-m-Y', $value);
+        $errors = DateTimeImmutable::getLastErrors();
+
+        if (
+            $date === false
+            || ($errors !== false && ($errors['warning_count'] > 0 || $errors['error_count'] > 0))
+            || $date->format('d-m-Y') !== $value
+        ) {
+            return $value;
+        }
+
+        return $date->format('Y-m-d');
     }
 
     public function rules(): array

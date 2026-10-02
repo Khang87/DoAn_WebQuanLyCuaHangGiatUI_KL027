@@ -15,7 +15,9 @@ use App\Http\Controllers\Admin\KhachHangController;
 use App\Http\Controllers\Admin\KhuyenMaiController;
 use App\Http\Controllers\Admin\LoaiDichVuController;
 use App\Http\Controllers\Admin\LoaiDoGiatController;
+use App\Http\Controllers\Admin\MessageController;
 use App\Http\Controllers\Admin\ReportsController;
+use App\Http\Controllers\Admin\SystemLogController;
 use App\Http\Controllers\Admin\TaiKhoanController;
 use App\Http\Controllers\Admin\ThanhToanController;
 use App\Http\Controllers\Admin\ThongBaoController;
@@ -55,6 +57,12 @@ Route::middleware(['auth', 'reject.customer'])->group(function () {
         Route::get('/admin/dashboard', [DashboardController::class, 'index'])->name('admin.dashboard');
         Route::post('/admin/dashboard/collect-cash-payment/{invoice}', [DashboardController::class, 'collectCashPayment'])->name('admin.dashboard.collect-cash-payment');
         Route::get('/admin/dashboard/revenue-chart', [DashboardController::class, 'getRevenueChartData'])->name('admin.dashboard.revenue-chart');
+        Route::get('/admin/system-logs', [SystemLogController::class, 'index'])->name('admin.system-logs.index');
+    });
+
+    Route::middleware(['role:manager|admin|staff|employee'])->group(function () {
+        Route::get('/admin/messages', [MessageController::class, 'index'])->name('admin.messages.index');
+        Route::post('/admin/messages', [MessageController::class, 'store'])->name('admin.messages.store');
     });
 
     // ===== STAFF DASHBOARD (Employee) =====

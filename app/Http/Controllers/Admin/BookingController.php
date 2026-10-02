@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\LuuBookingRequest;
+use App\Http\Requests\Admin\XacNhanBookingRequest;
 use App\Models\DichVu;
 use App\Models\DonViTinh;
 use App\Models\KhachHang;
@@ -11,8 +12,12 @@ use App\Models\LoaiDoGiat;
 use App\Models\NhanVien;
 use App\Services\BookingService;
 use App\Support\FriendlyError;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
+use PDOException;
+use Throwable;
 
 class BookingController extends Controller
 {
@@ -92,10 +97,6 @@ class BookingController extends Controller
             $this->bookingService->update($booking, $request->validated());
 
             $booking = $this->bookingService->find($id);
-            if ($booking?->isConvertibleToOrder()) {
-                $this->bookingService->confirmAndCreateOrder($booking);
-                $booking = $this->bookingService->find($id);
-            }
 
             $order = $booking?->donHangs()->orderByDesc('DonHangID')->first();
 
@@ -109,7 +110,9 @@ class BookingController extends Controller
             return redirect()->route('bookings.index')->with('success', 'Đặt lịch đã được cập nhật.');
         } catch (ValidationException $e) {
             return redirect()->route('bookings.edit', $booking)->withErrors($e->errors())->withInput();
-        } catch (\Exception $e) {
+        } catch (Throwable $e) {
+            $this->logBookingFailure($booking->BookingID, 'update', $e);
+
             return redirect()->route('bookings.edit', $booking)->with('error', FriendlyError::message($e))->withInput();
         }
     }
@@ -132,12 +135,12 @@ class BookingController extends Controller
             }
 
             return redirect()->route('bookings.index')->with('success', 'Đã xóa đặt lịch.');
-        } catch (\Exception $e) {
+        } catch (Throwable $e) {
             return redirect()->route('bookings.index')->with('error', FriendlyError::message($e));
         }
     }
 
-    public function confirm(int $id)
+    public function confirm(XacNhanBookingRequest $request, int $id)
     {
         $booking = $this->bookingService->find($id);
 
@@ -146,25 +149,50 @@ class BookingController extends Controller
         }
 
         try {
-            // Đã có đơn rồi thì không tạo lại, chỉ đưa người dùng tới đơn cũ.
-            if ($this->bookingService->hasConvertedOrder($booking)) {
-                $order = $this->bookingService->confirmAndCreateOrder($booking);
+            $order = $this->bookingService->confirmPendingBooking($booking);
 
-                return redirect()->route('orders.show', $order)
-                    ->with('success', 'Đặt lịch này đã được chuyển thành đơn hàng trước đó.');
-            }
-
-            $order = $this->bookingService->confirmAndCreateOrder($booking);
-
-            if ($order) {
-                return redirect()->route('orders.show', $order)->with('success', 'Đặt lịch đã được xác nhận và tạo đơn hàng thành công.');
-            }
-
-            return redirect()->route('bookings.index')->with('error', 'Chỉ đặt lịch đã xác nhận mới chuyển thành đơn hàng được.');
+            return redirect()->route('orders.show', $order)->with(
+                'success',
+                'Đặt lịch đã được xác nhận và tạo đơn hàng '.$order->MaDonHang.' thành công.',
+            );
         } catch (ValidationException $e) {
-            return redirect()->route('bookings.edit', $booking)->withErrors($e->errors())->withInput();
-        } catch (\Exception $e) {
+            return redirect()->route('bookings.edit', $booking)->withErrors($e->errors());
+        } catch (Throwable $e) {
+            $this->logBookingFailure($booking->BookingID, 'confirm', $e);
+
             return redirect()->route('bookings.index')->with('error', FriendlyError::message($e));
         }
+    }
+
+    private function logBookingFailure(int $bookingId, string $operation, Throwable $exception): void
+    {
+        Log::error('Booking operation failed', [
+            'booking_id' => $bookingId,
+            'operation' => $operation,
+            'exception' => $exception::class,
+            'sql_state' => FriendlyError::sqlState($exception),
+            'database_connection' => $exception instanceof QueryException
+                ? $exception->connectionName
+                : null,
+            'database_error' => $this->databaseErrorDetail($exception),
+        ]);
+    }
+
+    private function databaseErrorDetail(Throwable $exception): ?string
+    {
+        for ($cause = $exception; $cause !== null; $cause = $cause->getPrevious()) {
+            if (! $cause instanceof PDOException) {
+                continue;
+            }
+
+            $message = preg_replace('/[\r\n\t]+/u', ' ', $cause->getMessage()) ?? '';
+            $detail = preg_match('/ERROR:\s*(.*?)(?:\s+CONTEXT:|\s+\(Connection:|$)/i', $message, $matches) === 1
+                ? 'PostgreSQL ERROR: '.$matches[1]
+                : 'PostgreSQL operation failed.';
+
+            return mb_substr($detail, 0, 1000);
+        }
+
+        return null;
     }
 }

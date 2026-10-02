@@ -58,9 +58,30 @@
                             @endcan
                             @can('bookings.edit')
                                 <a href="{{ route('bookings.edit', $booking) }}" class="btn btn-order-action edit" title="Sửa"><i class="bi bi-pencil"></i></a>
+                            @endcan
+                            @can('bookings.confirm')
                                 @if($booking->statusEnum() === \App\Enums\BookingStatus::Pending)
-                                    <span class="btn btn-order-action" disabled title="Đơn hàng sẽ tự động được tạo khi chuyển sang trạng thái Đã xác nhận"><i class="bi bi-hourglass-split"></i></span>
-                                @elseif(! $booking->donHangs->first() && $booking->statusEnum() === \App\Enums\BookingStatus::Confirmed)
+                                    @if($booking->chiTietBookings->isNotEmpty())
+                                        <form action="{{ route('bookings.confirm', $booking) }}" method="POST" class="d-inline" data-confirm-booking-form>
+                                            @csrf
+                                            <button type="submit" class="btn btn-order-action" title="Xác nhận lịch và tự động tạo đơn hàng">
+                                                <i class="bi bi-hourglass-split" aria-hidden="true"></i>
+                                                <span class="visually-hidden">Xác nhận Booking</span>
+                                            </button>
+                                        </form>
+                                    @elseif(auth()->user()?->can('bookings.edit'))
+                                        <a href="{{ route('bookings.edit', $booking) }}" class="btn btn-order-action text-warning" aria-label="Cần thêm dịch vụ trước khi xác nhận" title="Chưa thể xác nhận: hãy thêm ít nhất một dòng dịch vụ trước.">
+                                            <i class="bi bi-exclamation-triangle" aria-hidden="true"></i>
+                                        </a>
+                                    @else
+                                            <span class="btn btn-order-action text-warning" aria-label="Cần thêm dịch vụ trước khi xác nhận" title="Chưa thể xác nhận: cần nhân viên có quyền sửa Booking thêm ít nhất một dòng dịch vụ.">
+                                                <i class="bi bi-exclamation-triangle" aria-hidden="true"></i>
+                                            </span>
+                                    @endif
+                                @endif
+                            @endcan
+                            @can('bookings.edit')
+                                @if(! $booking->donHangs->first() && $booking->statusEnum() === \App\Enums\BookingStatus::Confirmed)
                                     <span class="btn btn-order-action text-warning" aria-label="Thiếu đơn hàng" title="Booking đã xác nhận nhưng chưa có đơn hàng. Vui lòng kiểm tra nhật ký hệ thống."><i class="bi bi-exclamation-triangle"></i></span>
                                 @elseif($booking->donHangs->first())
                                     <a href="{{ route('orders.show', $booking->donHangs->first()) }}" class="btn btn-order-action view" title="Xem đơn hàng {{ $booking->donHangs->first()->MaDonHang }}"><i class="bi bi-box-arrow-up-right"></i></a>
@@ -94,6 +115,19 @@
 @push('scripts')
 <script>
     document.addEventListener('DOMContentLoaded', function() {
+        document.querySelectorAll('[data-confirm-booking-form]').forEach(function(form) {
+            form.addEventListener('submit', function() {
+                const button = form.querySelector('button[type="submit"]');
+                if (!button) {
+                    return;
+                }
+
+                button.disabled = true;
+                button.setAttribute('aria-busy', 'true');
+                button.innerHTML = '<span class="spinner-border spinner-border-sm" aria-hidden="true"></span><span class="visually-hidden">Đang xác nhận</span>';
+            });
+        });
+
         document.querySelectorAll('[id^="deleteBookingForm_"]').forEach(function(form) {
             form.addEventListener('submit', function(e) {
                 e.preventDefault();

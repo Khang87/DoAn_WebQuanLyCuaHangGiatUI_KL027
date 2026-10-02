@@ -98,6 +98,8 @@ class UserAccountAuditTest extends TestCase
         $this->assertSame('TaiKhoan', $creation->BangDuLieu);
         $this->assertSame('staff@example.com', $creation->DuLieuMoi['Email']);
         $this->assertArrayNotHasKey('MatKhau', $creation->DuLieuMoi);
+        $this->assertArrayNotHasKey('password', $creation->DuLieuMoi);
+        $this->assertArrayNotHasKey('remember_token', $creation->DuLieuMoi);
         $this->assertSame(1, $creation->DuLieuMoi['VaiTroIDs'][0]);
 
         $service->update($user, [
@@ -122,6 +124,10 @@ class UserAccountAuditTest extends TestCase
             ->firstOrFail();
         $this->assertArrayNotHasKey('MatKhau', $passwordChange->DuLieuCu);
         $this->assertArrayNotHasKey('MatKhau', $passwordChange->DuLieuMoi);
+        $this->assertArrayNotHasKey('password', $passwordChange->DuLieuCu);
+        $this->assertArrayNotHasKey('password', $passwordChange->DuLieuMoi);
+        $this->assertArrayNotHasKey('remember_token', $passwordChange->DuLieuCu);
+        $this->assertArrayNotHasKey('remember_token', $passwordChange->DuLieuMoi);
         $this->assertSame(3, NhatKyHeThong::query()->count());
     }
 }

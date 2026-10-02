@@ -3,8 +3,12 @@
 namespace App\Providers;
 
 use App\Models\Booking;
+use App\Models\DonHang;
+use App\Models\HoaDon;
 use App\Models\User;
 use App\Observers\BookingObserver;
+use App\Observers\HoaDonObserver;
+use App\Observers\OrderObserver;
 use App\Policies\UserPolicy;
 use App\Support\PermissionRegistry;
 use Illuminate\Console\Events\CommandStarting;
@@ -53,6 +57,8 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(User::class, UserPolicy::class);
 
         Booking::observe(BookingObserver::class);
+        HoaDon::observe(HoaDonObserver::class);
+        DonHang::observe(OrderObserver::class);
 
         Paginator::useBootstrapFive();
 

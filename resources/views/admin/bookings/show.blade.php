@@ -51,8 +51,7 @@
                             <strong>{{ number_format((float) $item->ThanhTien, 0, ',', '.') }} VNĐ</strong>
                         </div>
                         <div class="text-muted small mt-1">
-                            {{ $item->SoLuong !== null ? number_format((float) $item->SoLuong, 2, ',', '.') : number_format((float) $item->KhoiLuong, 2, ',', '.') }}
-                            {{ $item->donViTinh?->KyHieu ?: $item->donViTinh?->TenDonViTinh }}
+                            {{ format_quantity_weight($item->SoLuong, $item->KhoiLuong) ?: '—' }}
                             · Đơn giá {{ number_format((float) $item->DonGia, 0, ',', '.') }} VNĐ
                         </div>
                         @if($item->GhiChu)
@@ -135,10 +134,26 @@
                         <i class="bi bi-receipt me-1"></i> Xem đơn {{ $order->MaDonHang }}
                     </a>
                 @elseif($booking->statusEnum() === \App\Enums\BookingStatus::Pending)
-                    <span class="btn btn-outline-secondary py-2 disabled w-100"
-                          title="Đơn hàng sẽ tự động được tạo khi lịch chuyển sang trạng thái Đã xác nhận">
-                        <i class="bi bi-hourglass-split me-1"></i> Chờ xác nhận
-                    </span>
+                    @if($booking->chiTietBookings->isNotEmpty() && auth()->user()?->can('bookings.confirm'))
+                        <form action="{{ route('bookings.confirm', $booking) }}" method="POST" data-confirm-booking-form>
+                            @csrf
+                            <button type="submit" class="btn btn-outline-primary py-2 w-100">
+                                <i class="bi bi-hourglass-split me-1" aria-hidden="true"></i> Xác nhận và tạo đơn
+                            </button>
+                        </form>
+                    @elseif($booking->chiTietBookings->isEmpty() && auth()->user()?->can('bookings.edit'))
+                        <a href="{{ route('bookings.edit', $booking) }}" class="btn btn-outline-warning py-2 w-100">
+                            <i class="bi bi-exclamation-triangle me-1" aria-hidden="true"></i> Thêm dịch vụ trước khi xác nhận
+                        </a>
+                    @elseif($booking->chiTietBookings->isEmpty())
+                        <div class="alert alert-warning mb-0" role="alert">
+                            Chưa thể xác nhận: cần thêm ít nhất một dòng dịch vụ trước khi tạo đơn hàng.
+                        </div>
+                    @else
+                        <span class="btn btn-outline-secondary py-2 disabled w-100">
+                            <i class="bi bi-hourglass-split me-1"></i> Chờ xác nhận
+                        </span>
+                    @endif
                 @elseif($booking->statusEnum() === \App\Enums\BookingStatus::Confirmed)
                     <div class="alert alert-warning mb-0" role="alert">
                         Booking đã xác nhận nhưng chưa có đơn hàng. Vui lòng kiểm tra nhật ký hệ thống.
@@ -153,3 +168,22 @@
     </div>
 </div>
 @endsection
+
+@push('scripts')
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        document.querySelectorAll('[data-confirm-booking-form]').forEach(function(form) {
+            form.addEventListener('submit', function() {
+                const button = form.querySelector('button[type="submit"]');
+                if (!button) {
+                    return;
+                }
+
+                button.disabled = true;
+                button.setAttribute('aria-busy', 'true');
+                button.innerHTML = '<span class="spinner-border spinner-border-sm" aria-hidden="true"></span><span class="visually-hidden">Đang xác nhận</span>';
+            });
+        });
+    });
+</script>
+@endpush

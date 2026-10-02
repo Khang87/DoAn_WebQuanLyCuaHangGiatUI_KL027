@@ -41,3 +41,51 @@ if (! function_exists('format_weight')) {
         return $formatted === '' ? '0' : $formatted;
     }
 }
+
+if (! function_exists('format_quantity')) {
+    /**
+     * Định dạng số món dạng số nguyên, không kèm phần thập phân.
+     */
+    function format_quantity(float|int|string|null $quantity): string
+    {
+        if ($quantity === null || $quantity === '') {
+            return '';
+        }
+
+        return number_format((float) $quantity, 0, '.', ',');
+    }
+}
+
+if (! function_exists('format_weight_display')) {
+    /**
+     * Hiển thị khối lượng với đúng hai chữ số thập phân.
+     */
+    function format_weight_display(float|int|string|null $weight): string
+    {
+        if ($weight === null || $weight === '') {
+            return '';
+        }
+
+        return number_format((float) $weight, 2, '.', ',');
+    }
+}
+
+if (! function_exists('format_quantity_weight')) {
+    /**
+     * Định dạng số món và khối lượng cho cùng một dòng chi tiết.
+     */
+    function format_quantity_weight(float|int|string|null $quantity, float|int|string|null $weight): string
+    {
+        $parts = [];
+
+        if ($quantity !== null && $quantity !== '') {
+            $parts[] = format_quantity($quantity).' món';
+        }
+
+        if ($weight !== null && $weight !== '' && (float) $weight > 0) {
+            $parts[] = format_weight_display($weight).' kg';
+        }
+
+        return implode(' · ', $parts);
+    }
+}

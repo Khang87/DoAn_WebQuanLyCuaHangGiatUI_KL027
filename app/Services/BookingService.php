@@ -2,24 +2,23 @@
 
 namespace App\Services;
 
-use App\Enums\BookingMethod;
 use App\Enums\BookingStatus;
-use App\Enums\DeliveryStatus;
 use App\Enums\OrderStatus;
 use App\Models\BangGia;
 use App\Models\Booking;
 use App\Models\ChiTietBooking;
-use App\Models\ChiTietDonHang;
 use App\Models\DonHang;
-use App\Models\GiaoNhan;
 use App\Models\NhatKyHeThong;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 class BookingService
 {
+    public function __construct(
+        private OrderService $orderService,
+    ) {}
+
     public function getAll(array $filters = []): LengthAwarePaginator
     {
         $query = Booking::query();
@@ -56,7 +55,7 @@ class BookingService
         $sortBy = in_array($filters['sort_by'] ?? null, $allowedSorts) ? $filters['sort_by'] : 'NgayTao';
         $sortOrder = ($filters['sort_order'] ?? 'desc') === 'asc' ? 'asc' : 'desc';
 
-        return $query->with(['khachHang', 'nhanVien', 'donHangs'])
+        return $query->with(['khachHang', 'nhanVien', 'donHangs', 'chiTietBookings'])
             ->orderBy($sortBy, $sortOrder)
             ->paginate(10)
             ->withQueryString();
@@ -144,7 +143,7 @@ class BookingService
                 $this->syncBookingItems($lockedBooking, $data['items']);
             }
 
-            $lockedBooking->update($mappedData);
+            $lockedBooking->updateQuietly($mappedData);
             $lockedBooking->refresh();
             $after = $this->bookingAuditSnapshot($lockedBooking);
             $afterItems = $this->bookingItemsAuditSnapshot($lockedBooking);
@@ -280,6 +279,49 @@ class BookingService
         });
     }
 
+    public function confirmPendingBooking(Booking $booking): DonHang
+    {
+        return DB::transaction(function () use ($booking): DonHang {
+            $lockedBooking = Booking::query()
+                ->lockForUpdate()
+                ->findOrFail($booking->BookingID);
+
+            if ($lockedBooking->statusEnum() !== BookingStatus::Pending) {
+                throw ValidationException::withMessages([
+                    'booking' => 'Chỉ đặt lịch đang ở trạng thái Chờ xác nhận mới có thể được duyệt.',
+                ]);
+            }
+
+            $snapshots = $this->serviceSnapshotsForOrder($lockedBooking);
+            $employeeId = auth()->user()?->NhanVienID;
+
+            if (! $employeeId) {
+                throw ValidationException::withMessages([
+                    'booking' => 'Tài khoản hiện tại chưa liên kết hồ sơ nhân viên để xác nhận Booking.',
+                ]);
+            }
+
+            $before = $this->bookingAuditSnapshot($lockedBooking);
+            $beforeItems = $this->bookingItemsAuditSnapshot($lockedBooking);
+
+            $lockedBooking->updateQuietly([
+                'TrangThai' => BookingStatus::Confirmed->value,
+                'NhanVienXacNhanID' => $employeeId,
+                'ThoiGianXacNhan' => now(),
+            ]);
+            $lockedBooking->refresh();
+
+            $after = $this->bookingAuditSnapshot($lockedBooking);
+            $afterItems = $this->bookingItemsAuditSnapshot($lockedBooking);
+            $this->recordBookingAudit($lockedBooking, $before, $after, $beforeItems, $afterItems);
+
+            $order = $this->findOrderForBooking($lockedBooking)
+                ?? $this->orderService->createFromBooking($lockedBooking, $snapshots);
+
+            return $order->fresh();
+        });
+    }
+
     /**
      * Insert bản ghi đơn hàng (kèm phiếu giao) có tham chiếu về lịch hẹn.
      * Bản ghi đơn luôn chứa mã tham chiếu của lịch đặt: qua quan hệ
@@ -288,59 +330,8 @@ class BookingService
     private function insertOrderAndDelivery(Booking $booking): DonHang
     {
         $snapshots = $this->serviceSnapshotsForOrder($booking);
-        $bookingCode = $booking->MaBooking ?: Booking::nextCode();
-        $total = array_sum(array_column($snapshots, 'ThanhTien'));
 
-        $order = DonHang::create([
-            'MaDonHang' => 'TMP'.Str::ulid(),
-            'KhachHangID' => $booking->KhachHangID,
-            'NhanVienID' => $booking->NhanVienID,
-            'BookingID' => $booking->BookingID,
-            'TrangThai' => OrderStatus::Pending->value,
-            'GhiChu' => $this->buildOrderNotes($booking, $bookingCode),
-            'TongTien' => $total,
-            'ThanhTien' => $total,
-        ]);
-        $order->update([
-            'MaDonHang' => 'DH'.str_pad((string) $order->DonHangID, 3, '0', STR_PAD_LEFT),
-        ]);
-
-        foreach ($snapshots as $snapshot) {
-            ChiTietDonHang::create(array_merge(
-                ['DonHangID' => $order->DonHangID],
-                $snapshot,
-            ));
-        }
-
-        GiaoNhan::create([
-            'DonHangID' => $order->DonHangID,
-            'NhanVienID' => $booking->NhanVienID,
-            'HinhThuc' => $booking->HinhThucNhanDo,
-            'LoaiGiaoNhan' => $booking->methodEnum()->deliveryType(),
-            'DiaChi' => $booking->methodEnum() === BookingMethod::GiaoDo
-                ? $booking->DiaChiNhan
-                : null,
-            'ThoiGianDuKien' => $booking->NgayHen->format('Y-m-d').' '.$booking->GioHen->format('H:i:s'),
-            'TrangThai' => DeliveryStatus::Pending->dbValue(),
-            'GhiChu' => $booking->GhiChu,
-        ]);
-
-        return $order;
-    }
-
-    /**
-     * Ghi chú của đơn luôn mở đầu bằng mã tham chiếu lịch đặt để nhân viên
-     * nhìn bảng đơn là biết đơn này sinh ra từ lịch nào.
-     */
-    private function buildOrderNotes(Booking $booking, string $bookingCode): string
-    {
-        $reference = 'Tự động tạo từ đặt lịch '.$bookingCode
-            .' ('.$booking->method_label.' ngày '
-            .($booking->NgayHen?->format('d/m/Y') ?? '—').')';
-
-        return mb_substr($booking->GhiChu
-            ? $reference.' | '.$booking->GhiChu
-            : $reference, 0, 500);
+        return $this->orderService->createFromBooking($booking, $snapshots);
     }
 
     /**
@@ -381,7 +372,7 @@ class BookingService
             $garmentId = (int) ($item['LoaiDoGiatID'] ?? 0);
             $unitId = (int) ($item['DonViTinhID'] ?? 0);
             $quantity = ($item['SoLuong'] ?? '') !== '' ? (float) $item['SoLuong'] : null;
-            $weight = ($item['KhoiLuong'] ?? '') !== '' ? (float) $item['KhoiLuong'] : null;
+            $weight = ($item['KhoiLuong'] ?? '') !== '' ? round((float) $item['KhoiLuong'], 2) : null;
             $pricing = BangGia::getLatestPricing($serviceId, $garmentId, $unitId);
 
             if (! $pricing) {
@@ -393,10 +384,17 @@ class BookingService
             $isWeightUnit = BangGia::isWeightUnit($pricing->unit);
             if (
                 ($isWeightUnit && ($weight === null || $weight <= 0 || $quantity !== null))
-                || (! $isWeightUnit && ($quantity === null || $quantity <= 0 || $weight !== null))
+                || (! $isWeightUnit && (
+                    $quantity === null
+                    || $quantity < 1
+                    || floor($quantity) !== $quantity
+                    || ($weight !== null && $weight !== 0.0)
+                ))
             ) {
                 throw ValidationException::withMessages([
-                    "items.{$index}.SoLuong" => 'Chỉ nhập khối lượng cho đơn vị KG; các đơn vị khác phải nhập số lượng.',
+                    "items.{$index}.SoLuong" => $isWeightUnit
+                        ? 'Chỉ nhập khối lượng lớn hơn 0 cho đơn vị KG; không thể lưu số lượng món cùng dòng theo schema hiện tại.'
+                        : 'Đơn vị tính theo món cần số lượng nguyên dương; khối lượng phải bằng 0 hoặc để trống.',
                 ]);
             }
 
@@ -408,8 +406,8 @@ class BookingService
                 'DichVuID' => $serviceId,
                 'LoaiDoGiatID' => $garmentId,
                 'DonViTinhID' => $unitId,
-                'SoLuong' => $quantity,
-                'KhoiLuong' => $weight,
+                'SoLuong' => $isWeightUnit ? null : $quantity,
+                'KhoiLuong' => $isWeightUnit ? $weight : null,
                 'DonGia' => (float) $pricing->DonGia,
                 'ThanhTien' => round((float) $pricing->DonGia * $billableAmount, 2),
                 'GhiChu' => $item['GhiChu'] ?? null,
@@ -456,7 +454,7 @@ class BookingService
                 || $item->LoaiDoGiatID === null
                 || $item->DonViTinhID === null
                 || (($quantity === null) === ($weight === null))
-                || ($quantity !== null && $quantity <= 0)
+                || ($quantity !== null && ($quantity < 1 || floor($quantity) !== $quantity))
                 || ($weight !== null && $weight <= 0)
                 || ($isWeightUnit && ($quantity !== null || $weight === null))
                 || (! $isWeightUnit && ($quantity === null || $weight !== null))

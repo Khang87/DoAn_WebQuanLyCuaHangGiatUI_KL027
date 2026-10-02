@@ -1,8 +1,8 @@
 # Test Cases đã chạy thành công
 
-Lần chạy được ghi nhận bằng `php artisan test --compact --testdox` trên cấu hình SQLite in-memory trong `phpunit.xml`.
+Lần chạy được ghi nhận bằng `php artisan test --compact` trên cấu hình SQLite in-memory trong `phpunit.xml`.
 
-**Kết quả suite:** 267 test được phát hiện, **75 PASSED**, 192 skipped, 447 assertions. Bảng dưới đây chứa đúng 75 test PASSED, không liệt kê test skipped. Trạng thái mỗi hàng là trạng thái thực tế của test case được PHPUnit/TestDox chạy.
+**Kết quả suite:** 280 test được phát hiện, **88 PASSED**, 192 skipped, 512 assertions. Bảng dưới đây chứa đúng 88 test PASSED, không liệt kê test skipped. Trạng thái mỗi hàng là trạng thái thực tế của test case được PHPUnit chạy.
 
 ## Nhóm 1: Booking & Order Conversion
 
@@ -28,7 +28,7 @@ Lần chạy được ghi nhận bằng `php artisan test --compact --testdox` t
 
 | STT | Mã Test / Tên Class Test | Mô tả kịch bản test | Môi trường/File test | Trạng thái |
 |---:|---|---|---|---|
-| 11 | TC-PRICE-01 — `BookingOrderConversion` | Mức tối thiểu KG được áp dụng riêng trên từng dòng Booking; lưu khối lượng thực và cộng tiền theo từng dòng. | Feature — `tests/Feature/BookingOrderConversionTest.php` | ✅ PASSED |
+| 11 | TC-PRICE-01 — `BookingOrderConversion` | Mức tối thiểu 3kg áp dụng riêng cho từng dòng Booking (1.5kg tính 3kg, 4kg tính 4kg); lưu khối lượng thực và cộng đúng tiền. | Feature — `tests/Feature/BookingOrderConversionTest.php` | ✅ PASSED |
 | 12 | TC-PRICE-02 — `BookingOrderConversion` | Đơn hàng lấy giá từ đúng tuple dịch vụ/loại đồ/đơn vị, không tin đơn giá gửi từ client. | Feature — `tests/Feature/BookingOrderConversionTest.php` | ✅ PASSED |
 | 13 | TC-PRICE-03 — `BookingOrderConversion` | Từ chối tạo đơn khi thiếu bảng giá đúng tuple ba khóa. | Feature — `tests/Feature/BookingOrderConversionTest.php` | ✅ PASSED |
 | 14 | TC-PRICE-04 — `BookingOrderConversion` | Từ chối khoảng hiệu lực chồng lấn trên cùng tuple; cho phép khoảng kế tiếp không giao nhau và sửa bản giá không tự chồng lấn. | Feature — `tests/Feature/BookingOrderConversionTest.php` | ✅ PASSED |
@@ -104,9 +104,25 @@ Lần chạy được ghi nhận bằng `php artisan test --compact --testdox` t
 | 74 | TC-REG-48 — `UserAvatarUrl` | URL avatar dùng đúng ảnh hồ sơ đã lưu. | Unit — `tests/Unit/UserAvatarUrlTest.php` | ✅ PASSED |
 | 75 | TC-REG-49 — `UserAvatarUrl` | URL avatar dùng ảnh fallback xác định khi chưa có ảnh hồ sơ. | Unit — `tests/Unit/UserAvatarUrlTest.php` | ✅ PASSED |
 
+### Ca kiểm thử bổ sung trong đợt regression
+
+| STT | Mã Test / Tên Class Test | Mô tả kịch bản test | Môi trường/File test | Trạng thái |
+|---:|---|---|---|---|
+| 76 | TC-PRICE-11 — `BookingOrderConversion` | Tra cứu chọn giá có ngày áp dụng mới nhất, bao gồm đúng ngày bắt đầu/kết thúc và loại trừ giá tương lai. | Feature — `tests/Feature/BookingOrderConversionTest.php` | ✅ PASSED |
+| 77 | TC-DB-07 — `KhachHangDiaChiModel` | Quan hệ `KhachHang` 1-N dùng khóa ngoại lowercase `khachhangid` và đúng bảng địa chỉ. | Unit — `tests/Unit/KhachHangDiaChiModelTest.php` | ✅ PASSED |
+| 78 | TC-PRICE-12 — `PricingDateInput` | Chuẩn hóa ngày nhập `dd-mm-yyyy` thành định dạng ngày hợp lệ trước validation. | Feature — `tests/Feature/PricingDateInputTest.php` | ✅ PASSED |
+| 79 | TC-PRICE-13 — `PricingDateInput` | Từ chối ngày `dd-mm-yyyy` không tồn tại, không tự biến ngày sai thành ngày hợp lệ. | Feature — `tests/Feature/PricingDateInputTest.php` | ✅ PASSED |
+| 80 | TC-BK-07 — `BookingOrderConversion` | Rollback trạng thái xác nhận, audit, đơn hàng và giao nhận khi tạo chi tiết đơn thất bại giữa transaction. | Feature — `tests/Feature/BookingOrderConversionTest.php` | ✅ PASSED |
+| 81 | TC-BK-08 — `BookingOrderConversion` | Từ chối khối lượng âm/0 và số lượng 0 ở đơn vị bắt buộc có giá trị dương. | Feature — `tests/Feature/BookingOrderConversionTest.php` | ✅ PASSED |
+| 82 | TC-BK-09 — `BookingOrderConversion` | Làm tròn khối lượng thừa độ chính xác về 2 chữ số trước khi lưu chi tiết Booking. | Feature — `tests/Feature/BookingOrderConversionTest.php` | ✅ PASSED |
+| 83 | TC-BK-10 — `BookingOrderConversion` | Làm tròn khối lượng trước tính tiền/lưu đơn và vẫn lưu khối lượng thực thay vì mức tối thiểu tính phí. | Feature — `tests/Feature/BookingOrderConversionTest.php` | ✅ PASSED |
+| 84 | TC-BK-11 — `BookingOrderConversion` | Request đơn hàng làm tròn khối lượng về 2 chữ số trước validation. | Feature — `tests/Feature/BookingOrderConversionTest.php` | ✅ PASSED |
+| 85 | TC-UI-01 — `MeasurementFormatting` | Hiển thị số lượng dạng số nguyên, khối lượng đúng hai chữ số và định dạng kết hợp `2 món · 16.00 kg`. | Unit — `tests/Unit/MeasurementFormattingTest.php` | ✅ PASSED |
+| 86 | TC-BK-12 — `BookingOrderConversion` | Gọi route xác nhận từ danh sách chuyển Booking đang chờ thành Đã xác nhận và tạo đúng một đơn cùng phiếu giao. | Feature — `tests/Feature/BookingOrderConversionTest.php` | ✅ PASSED |
+| 87 | TC-BK-13 — `BookingOrderConversion` | Booking đã hủy không được xác nhận và không sinh đơn hàng. | Feature — `tests/Feature/BookingOrderConversionTest.php` | ✅ PASSED |
+| 88 | TC-BK-14 — `BookingOrderConversion` | Booking chưa có dòng dịch vụ được chuyển tới form sửa với thông báo hướng dẫn; trạng thái và đơn hàng không bị thay đổi. | Feature — `tests/Feature/BookingOrderConversionTest.php` | ✅ PASSED |
+
 ### Giới hạn phạm vi kiểm thử
 
-- Suite hiện không có test PASSED độc lập chứng minh quy tắc lấy bản giá có `NgayApDung` mới nhất; đây là logic hiện có trong code nhưng chưa được xác nhận bằng regression test riêng.
 - Audit đơn hàng được test trực tiếp qua `OrderService`. Chưa có test tích hợp riêng gọi từng luồng Payment hoặc Dashboard để chứng minh việc ghi audit qua các endpoint đó.
-- `KhachHangDiaChiModelTest` kiểm tra ánh xạ bảng, identity và `$fillable`; quan hệ `KhachHang` 1-N với sổ địa chỉ chưa có test assertion độc lập.
-- Test SQLite in-memory không xác minh PostgreSQL advisory lock/race-condition thực tế. Không test nào ở đây kết nối hoặc ghi lên Supabase Live.
+- Test SQLite in-memory kiểm chứng nhánh nghiệp vụ nhưng không chạy advisory transaction lock PostgreSQL và không xác minh race-condition/deadlock dưới tải đồng thời. Không test nào ở đây kết nối hoặc ghi lên Supabase Live.

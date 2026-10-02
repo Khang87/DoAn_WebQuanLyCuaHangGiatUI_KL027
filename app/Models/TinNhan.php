@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class TinNhan extends Model
 {
@@ -30,5 +31,15 @@ class TinNhan extends Model
     public function donHang()
     {
         return $this->belongsTo(DonHang::class, 'DonHangID');
+    }
+
+    public function sender(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'NguoiGuiID', 'TaiKhoanID');
+    }
+
+    public function recipient(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'NguoiNhanID', 'TaiKhoanID');
     }
 }

@@ -11,6 +11,24 @@ use Illuminate\Validation\Validator;
 
 class LuuDonHangRequest extends FormRequest
 {
+    protected function prepareForValidation(): void
+    {
+        $items = $this->input('items');
+
+        if (! is_array($items)) {
+            return;
+        }
+
+        foreach ($items as &$item) {
+            if (is_array($item) && isset($item['KhoiLuong']) && is_numeric($item['KhoiLuong'])) {
+                $item['KhoiLuong'] = round((float) $item['KhoiLuong'], 2);
+            }
+        }
+        unset($item);
+
+        $this->merge(['items' => $items]);
+    }
+
     public function authorize(): bool
     {
         return true;
@@ -39,8 +57,8 @@ class LuuDonHangRequest extends FormRequest
             'items.*.LoaiDoGiatID' => ['required', 'integer', 'exists:LoaiDoGiat,LoaiDoGiatID'],
             'items.*.DonViTinhID' => ['required', 'integer', 'exists:DonViTinh,DonViTinhID'],
             'items.*.DonGia' => ['nullable', 'numeric', 'min:0'],
-            'items.*.SoLuong' => ['nullable', 'numeric', 'gt:0'],
-            'items.*.KhoiLuong' => ['nullable', 'numeric', 'gt:0'],
+            'items.*.SoLuong' => ['nullable', 'integer', 'min:1'],
+            'items.*.KhoiLuong' => ['nullable', 'numeric', 'min:0'],
             'items.*.GhiChu' => ['nullable', 'string', 'max:500'],
         ];
     }
@@ -61,15 +79,19 @@ class LuuDonHangRequest extends FormRequest
                 $hasQuantity = isset($item['SoLuong']) && $item['SoLuong'] !== '';
                 $hasWeight = isset($item['KhoiLuong']) && $item['KhoiLuong'] !== '';
                 $validInput = $unit->isWeightUnit()
-                    ? $hasWeight && ! $hasQuantity
-                    : $hasQuantity && ! $hasWeight;
+                    ? $hasWeight && is_numeric($item['KhoiLuong']) && (float) $item['KhoiLuong'] > 0 && ! $hasQuantity
+                    : $hasQuantity
+                        && is_numeric($item['SoLuong'])
+                        && (float) $item['SoLuong'] >= 1
+                        && floor((float) $item['SoLuong']) === (float) $item['SoLuong']
+                        && (! $hasWeight || (is_numeric($item['KhoiLuong']) && (float) $item['KhoiLuong'] === 0.0));
 
                 if (! $validInput) {
                     $validator->errors()->add(
-                        "items.{$index}.SoLuong",
+                        "items.{$index}.".($unit->isWeightUnit() ? 'SoLuong' : 'KhoiLuong'),
                         $unit->isWeightUnit()
-                            ? 'Đơn vị tính theo kg chỉ được nhập khối lượng.'
-                            : 'Đơn vị tính theo món chỉ được nhập số lượng.',
+                            ? 'Đơn vị tính theo kg chỉ được nhập khối lượng lớn hơn 0; số lượng món không được lưu cho dòng này.'
+                            : 'Đơn vị tính theo món cần số lượng nguyên dương; khối lượng phải bằng 0 hoặc để trống.',
                     );
                 }
             }
@@ -91,7 +113,10 @@ class LuuDonHangRequest extends FormRequest
             'items.*.DonViTinhID.required' => 'Chưa xác định được đơn vị tính của mặt hàng.',
             'items.*.SoLuong.numeric' => 'Số lượng phải là số.',
             'items.*.SoLuong.gt' => 'Số lượng phải lớn hơn 0.',
+            'items.*.SoLuong.integer' => 'Số lượng món phải là số nguyên.',
+            'items.*.SoLuong.min' => 'Số lượng phải từ 1 món trở lên.',
             'items.*.KhoiLuong.gt' => 'Khối lượng phải lớn hơn 0.',
+            'items.*.KhoiLuong.min' => 'Khối lượng không được nhỏ hơn 0.',
         ];
     }
 }

@@ -107,7 +107,7 @@ Chỉ sử dụng tài khoản được cấp trong môi trường cục bộ ho
 
 ### Trạng thái kiểm thử hồi quy
 
-Lần chạy đầy đủ gần nhất: **267 test được phát hiện, 75 PASSED, 192 skipped, 447 assertions**. Chỉ 75 test PASSED được liệt kê trong [TESTCASES.md](./TESTCASES.md); các test skipped không được tính là kiểm thử thành công. Bộ test dùng SQLite in-memory theo `phpunit.xml`, không phải kiểm thử tích hợp ghi dữ liệu trên Supabase Live.
+Lần chạy đầy đủ gần nhất: **280 test được phát hiện, 88 PASSED, 192 skipped, 512 assertions**. Các test skipped không được tính là kiểm thử thành công. Bộ test dùng SQLite in-memory theo `phpunit.xml`, không phải kiểm thử tích hợp ghi dữ liệu trên Supabase Live.
 
 ### Cải tiến & tái cấu trúc Loại đồ giặt và bảng giá
 
@@ -161,10 +161,10 @@ Lần chạy đầy đủ gần nhất: **267 test được phát hiện, 75 PAS
 
 #### Kiểm thử và chất lượng
 
-- Lần chạy đầy đủ gần nhất: **267 test được phát hiện, 75 PASSED, 192 skipped, 447 assertions**. Các ca PASSED liên quan trực tiếp bao gồm chuyển Booking nhiều dòng, audit, XOR số lượng/khối lượng, giá theo tuple, chặn overlap và tính phí KG theo từng dòng; danh sách chi tiết ở [TESTCASES.md](./TESTCASES.md).
+- Lần chạy đầy đủ gần nhất: **280 test được phát hiện, 88 PASSED, 192 skipped, 512 assertions**. Các ca PASSED liên quan trực tiếp bao gồm chuyển Booking nhiều dòng, audit, XOR số lượng/khối lượng, giá theo tuple, chặn overlap, ngày hiệu lực biên, tính phí KG theo từng dòng và quan hệ địa chỉ khách hàng; danh sách chi tiết ở [TESTCASES.md](./TESTCASES.md).
 - `php artisan view:cache`, `vendor/bin/pint --dirty --format agent`, kiểm tra lỗi trên các file PHP đã sửa và `git diff --check` đều hoàn tất thành công.
 - Test chạy với SQLite in-memory; kết quả không phải kiểm thử tích hợp ghi dữ liệu trên Supabase Live.
-- Chưa có test PASSED độc lập xác nhận thứ tự ưu tiên `NgayApDung` mới nhất hoặc gọi audit trực tiếp qua từng endpoint Payment/Dashboard; các điểm này cần bổ sung regression test nếu muốn xác nhận riêng từng đường đi.
+- Thứ tự ưu tiên `NgayApDung` mới nhất và các mốc ngày biên đã có regression test trên SQLite. Chưa có test PostgreSQL tích hợp chạy đồng thời để chứng minh advisory lock/race-condition không deadlock; cũng chưa có test tích hợp riêng gọi từng endpoint Payment/Dashboard để xác nhận audit qua từng đường đi.
 
 #### RPC `transition_laundry_order` — trạng thái và bước tiếp theo
 

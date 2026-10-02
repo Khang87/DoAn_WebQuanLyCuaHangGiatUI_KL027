@@ -56,7 +56,13 @@ class InvoiceService
             ->where('HoaDonID', $id)
             ->orWhere('MaHoaDon', $id)
             ->first()
-            ?->load(['donHang.khachHang', 'donHang.chiTietDonHangs.dichVu', 'donHang.chiTietDonHangs.loaiDoGiat', 'donHang.thanhToans']);
+            ?->load([
+                'donHang.khachHang',
+                'donHang.chiTietDonHangs.dichVu',
+                'donHang.chiTietDonHangs.loaiDoGiat',
+                'donHang.thanhToans',
+                'lichSuThayDoiHoaDons.taiKhoan',
+            ]);
     }
 
     public function create(array $data): HoaDon
