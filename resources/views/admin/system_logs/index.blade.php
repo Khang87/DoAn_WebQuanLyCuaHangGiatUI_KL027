@@ -3,6 +3,85 @@
 @section('title', 'Nhật ký hệ thống - Sky Laundry')
 @section('page-title', 'Nhật ký hệ thống')
 
+@push('styles')
+    <style>
+        .system-log-filter-actions {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .system-log-filter-button {
+            box-sizing: border-box;
+            display: inline-flex;
+            height: 2.5rem;
+            align-items: center;
+            justify-content: center;
+            padding: 0.5rem 1rem;
+            border: 1px solid transparent;
+            border-radius: 0.5rem;
+            font-size: 0.875rem;
+            font-weight: 500;
+            line-height: 1.25rem;
+            text-decoration: none;
+            white-space: nowrap;
+            transition: color 150ms ease, background-color 150ms ease, border-color 150ms ease, box-shadow 150ms ease;
+        }
+
+        .system-log-filter-button svg {
+            width: 1rem;
+            height: 1rem;
+            margin-right: 0.375rem;
+            flex: none;
+        }
+
+        .system-log-filter-button:focus-visible {
+            outline: none;
+            box-shadow: 0 0 0 2px #fff, 0 0 0 4px currentColor;
+        }
+
+        .system-log-filter-button--primary {
+            border-color: #2563eb;
+            background-color: #2563eb;
+            color: #fff;
+            box-shadow: 0 1px 2px rgb(0 0 0 / 0.08);
+        }
+
+        .system-log-filter-button--primary:hover,
+        .system-log-filter-button--primary:active {
+            border-color: #1d4ed8;
+            background-color: #1d4ed8;
+            color: #fff;
+        }
+
+        .system-log-filter-button--primary:focus-visible {
+            color: #2563eb;
+        }
+
+        .system-log-filter-button--secondary {
+            border-color: #d1d5db;
+            background-color: #fff;
+            color: #374151;
+            box-shadow: 0 1px 2px rgb(0 0 0 / 0.08);
+        }
+
+        .system-log-filter-button--secondary svg {
+            color: #9ca3af;
+        }
+
+        .system-log-filter-button--secondary:hover,
+        .system-log-filter-button--secondary:active {
+            border-color: #d1d5db;
+            background-color: #f9fafb;
+            color: #111827;
+        }
+
+        .system-log-filter-button--secondary:focus-visible {
+            color: #9ca3af;
+        }
+    </style>
+@endpush
+
 @section('content')
 <div class="card border-0 shadow-sm mb-4">
     <div class="card-header bg-white py-3">
@@ -42,9 +121,19 @@
                 <label for="to" class="form-label">Đến ngày</label>
                 <input id="to" name="to" type="date" value="{{ $filters['to'] ?? '' }}" class="form-control">
             </div>
-            <div class="col-12 d-flex gap-2">
-                <button type="submit" class="btn btn-primary"><i class="bi bi-search me-1"></i>Lọc</button>
-                <a href="{{ route('admin.system-logs.index') }}" class="btn btn-outline-secondary">Xóa lọc</a>
+            <div class="col-12 system-log-filter-actions">
+                <button type="submit" class="system-log-filter-button system-log-filter-button--primary">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m21 21-6-6m2-5a7 7 0 1 1-14 0 7 7 0 0 1 14 0Z"/>
+                    </svg>
+                    Lọc
+                </button>
+                <a href="{{ route('admin.system-logs.index') }}" class="system-log-filter-button system-log-filter-button--secondary">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 0 0 4.582 9M4.582 9H9m11 11v-5h-.581m0 0a8.003 8.003 0 0 1-15.357-2m15.357 2H15"/>
+                    </svg>
+                    Xóa lọc
+                </a>
             </div>
         </form>
     </div>
