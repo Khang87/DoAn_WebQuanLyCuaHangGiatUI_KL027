@@ -2,7 +2,7 @@
 
 Lần chạy được ghi nhận bằng `php artisan test --compact` trên cấu hình SQLite in-memory trong `phpunit.xml`.
 
-**Kết quả suite:** 280 test được phát hiện, **88 PASSED**, 192 skipped, 512 assertions. Bảng dưới đây chứa đúng 88 test PASSED, không liệt kê test skipped. Trạng thái mỗi hàng là trạng thái thực tế của test case được PHPUnit chạy.
+**Kết quả suite gần nhất:** 311 test được phát hiện, **119 PASSED**, 192 skipped, 624 assertions. Test chạy trên SQLite in-memory theo `phpunit.xml`; các test skipped không được tính là passed và không có test nào ghi lên Supabase Live. Các bảng dưới đây ghi chi tiết các kịch bản regression trọng tâm đã được xác minh; không thay thế kết quả đầy đủ của PHPUnit.
 
 ## Nhóm 1: Booking & Order Conversion
 
@@ -135,18 +135,34 @@ Chạy riêng bằng `php artisan test --compact --filter=SystemLogTest`: **4 pa
 
 ### Kiểm thử Điểm tích lũy (RewardPoint)
 
-Chạy riêng bằng `php artisan test --compact --filter=RewardPointTest`: **6 passed**, 22 assertions.
+Chạy riêng bằng `php artisan test --compact --filter=RewardPointTest`: **7 passed**, 26 assertions.
 
 | STT | Mã Test / Tên Class Test | Mô tả kịch bản test | Môi trường/File test | Trạng thái |
 |---:|---|---|---|---|
-| 93 | TC-POINT-01 — `RewardPoint` | Đơn chuyển sang “Đã giao” cộng 1 điểm mỗi 1.000 VNĐ giá trị thanh toán; quay lại trạng thái khác rồi giao lại không cộng trùng. | Feature — `tests/Feature/RewardPointTest.php` | ✅ PASSED |
-| 94 | TC-POINT-02 — `RewardPoint` | Xác nhận Booking sử dụng điểm đã chọn, giảm đúng tiền và trừ đúng số dư khách hàng. | Feature — `tests/Feature/RewardPointTest.php` | ✅ PASSED |
-| 95 | TC-POINT-03 — `RewardPoint` | Khi sửa đơn sang khách khác, hoàn điểm về khách cũ và chỉ trừ điểm khách mới. | Feature — `tests/Feature/RewardPointTest.php` | ✅ PASSED |
-| 96 | TC-POINT-04 — `RewardPoint` | Không áp dụng giảm tiền nhỏ hơn giá trị một điểm nếu không thể trừ số điểm nguyên tương ứng. | Feature — `tests/Feature/RewardPointTest.php` | ✅ PASSED |
-| 97 | TC-POINT-05 — `RewardPoint` | Từ chối tạo đơn khi điểm yêu cầu vượt số dư; đơn không được lưu và số dư giữ nguyên. | Feature — `tests/Feature/RewardPointTest.php` | ✅ PASSED |
-| 98 | TC-POINT-06 — `RewardPoint` | Khi sửa đơn thất bại do khách mới không đủ điểm, rollback cả hoàn điểm cho khách cũ và các thay đổi đơn hàng. | Feature — `tests/Feature/RewardPointTest.php` | ✅ PASSED |
+| 93 | TC-POINT-01 — `RewardPoint` | Đơn 100.000 VNĐ chuyển sang “Đã giao” cộng 10.000 điểm; đổi trạng thái qua lại không cộng trùng. | Feature — `tests/Feature/RewardPointTest.php` | ✅ PASSED |
+| 94 | TC-POINT-02 — `RewardPoint` | Xác nhận Booking dùng 100 điểm, giảm 1.000 VNĐ trên đơn 10.000 VNĐ và trừ đúng số dư khách hàng. | Feature — `tests/Feature/RewardPointTest.php` | ✅ PASSED |
+| 95 | TC-POINT-03 — `RewardPoint` | Tạo đơn dùng 500 điểm giảm 5.000 VNĐ; số dư điểm bị trừ đúng 500. | Feature — `tests/Feature/RewardPointTest.php` | ✅ PASSED |
+| 96 | TC-POINT-04 — `RewardPoint` | Khi sửa đơn sang khách khác, hoàn điểm đã dùng về khách cũ và trừ điểm khách mới theo tỷ lệ 10 VNĐ/điểm. | Feature — `tests/Feature/RewardPointTest.php` | ✅ PASSED |
+| 97 | TC-POINT-05 — `RewardPoint` | Giới hạn số điểm sử dụng theo số dư và phần tiền còn lại; xác nhận 100 điểm giảm 1.000 VNĐ. | Feature — `tests/Feature/RewardPointTest.php` | ✅ PASSED |
+| 98 | TC-POINT-06 — `RewardPoint` | Từ chối tạo đơn khi điểm yêu cầu vượt số dư; đơn không được lưu và số dư giữ nguyên. | Feature — `tests/Feature/RewardPointTest.php` | ✅ PASSED |
+| 99 | TC-POINT-07 — `RewardPoint` | Khi sửa đơn thất bại do khách mới không đủ điểm, rollback cả hoàn điểm cho khách cũ và các thay đổi đơn hàng. | Feature — `tests/Feature/RewardPointTest.php` | ✅ PASSED |
+
+### Kiểm thử giao tiếp quản trị, chat và audit tài khoản
+
+Chạy riêng: `php artisan test --compact --filter=AdminCommunicationTest` (**6 passed**, 31 assertions) và `php artisan test --compact --filter=UserAccountAuditTest` (**1 passed**, 18 assertions).
+
+| STT | Mã Test / Tên Class Test | Mô tả kịch bản test | Môi trường/File test | Trạng thái |
+|---:|---|---|---|---|
+| 100 | TC-COMM-01 — `AdminCommunication` | Tin nhắn cửa hàng được gửi tới tài khoản gắn với khách hàng của đơn, chuẩn hóa nội dung và không tạo system audit. | Feature — `tests/Feature/AdminCommunicationTest.php` | ✅ PASSED |
+| 101 | TC-COMM-02 — `AdminCommunication` | Từ chối gửi tin nhắn khi khách hàng của đơn chưa có tài khoản nhận; không tạo bản ghi `TinNhan`. | Feature — `tests/Feature/AdminCommunicationTest.php` | ✅ PASSED |
+| 102 | TC-COMM-03 — `AdminCommunication` | Lọc nhật ký kết hợp bảng, hành động, `TaiKhoanID` và khoảng ngày. | Feature — `tests/Feature/AdminCommunicationTest.php` | ✅ PASSED |
+| 103 | TC-COMM-04 — `AdminCommunication` | Chủ cửa hàng truy cập được Nhật ký hệ thống và có liên kết menu tương ứng. | Feature — `tests/Feature/AdminCommunicationTest.php` | ✅ PASSED |
+| 104 | TC-COMM-05 — `AdminCommunication` | Quản lý và Nhân viên bị chặn khỏi Nhật ký hệ thống; route nhắn tin quản trị vẫn truy cập được. | Feature — `tests/Feature/AdminCommunicationTest.php` | ✅ PASSED |
+| 105 | TC-COMM-06 — `AdminCommunication` | Route Nhật ký yêu cầu đồng thời vùng vai trò quản trị và vai trò Chủ cửa hàng. | Feature — `tests/Feature/AdminCommunicationTest.php` | ✅ PASSED |
+| 106 | TC-AUD-05 — `UserAccountAudit` | Tạo/cập nhật tài khoản và đổi mật khẩu được ghi audit mà không lưu mật khẩu vào snapshot. | Feature — `tests/Feature/UserAccountAuditTest.php` | ✅ PASSED |
 
 ### Giới hạn phạm vi kiểm thử
 
 - Audit đơn hàng được test trực tiếp qua `OrderService`. Chưa có test tích hợp riêng gọi từng luồng Payment hoặc Dashboard để chứng minh việc ghi audit qua các endpoint đó.
 - Test SQLite in-memory kiểm chứng nhánh nghiệp vụ nhưng không chạy advisory transaction lock PostgreSQL và không xác minh race-condition/deadlock dưới tải đồng thời. Không test nào ở đây kết nối hoặc ghi lên Supabase Live.
+- Chưa có class riêng tên `ChatAuthorizationTest`; kiểm thử giao tiếp hiện nằm trong `AdminCommunicationTest`. Các ca hiện có kiểm tra route quản trị cho Quản lý/Nhân viên và gửi tới tài khoản khách hàng liên kết, nhưng chưa kiểm thử việc khách hàng đăng nhập không thể đọc hội thoại đơn khác hoặc badge UI theo vai trò. Giao diện hiện phân biệt người gửi bằng nhãn “Cửa hàng”/tên tài khoản.

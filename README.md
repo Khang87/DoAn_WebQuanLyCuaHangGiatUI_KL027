@@ -25,10 +25,10 @@ Sky Laundry hỗ trợ số hóa hoạt động hằng ngày của cửa hàng g
 - Booking hỗ trợ nhiều dòng dịch vụ; mức khối lượng tối thiểu được tính riêng trên từng dòng KG, không cộng gộp toàn Booking.
 - Bộ máy bảng giá tra cứu chính xác theo `(DichVuID, LoaiDoGiatID, DonViTinhID)`, lấy ngày áp dụng mới nhất; thao tác tạo/sửa/khôi phục khóa theo tuple bằng PostgreSQL transaction advisory lock để chống race condition giữa các tiến trình Laravel.
 - Booking được xác nhận sẽ tự chuyển thành đơn hàng và phiếu giao trong transaction. UI không hiện nút tạo đơn cho Booking đang chờ xác nhận; nếu đã có đơn thì hiển thị liên kết tới đơn hiện hữu thay vì tạo trùng.
-- Điểm tích lũy dùng tỷ lệ 1.000 VNĐ = 1 điểm: đơn được giao sẽ cộng điểm một lần; điểm có thể được chọn để giảm giá khi tạo/sửa đơn hoặc chuyển Booking thành đơn hàng.
+- Điểm tích lũy dùng các hằng số nghiệp vụ trong `OrderService`: mỗi 1.000 VNĐ giá trị đơn tương ứng 100 điểm khi đơn chuyển sang `Đã giao`; mỗi điểm giảm 10 VNĐ. Có thể dùng điểm khi tạo/sửa đơn quản trị hoặc xác nhận/chuyển Booking thành đơn hàng. Cộng điểm có audit và chống cộng lặp; giao dịch tạo/sửa đơn hoàn điểm cũ, trừ điểm mới nguyên tử và rollback nếu số dư không đủ.
 - Ghi nhật ký `NhatKyHeThong` cho tạo/xác nhận Booking (bao gồm người và thời điểm xác nhận), đổi trạng thái đơn hàng và thay đổi tài khoản; snapshot tài khoản không ghi mật khẩu.
-- Màn hình Nhật ký hệ thống tại `/admin/system-logs` dành riêng cho Chủ cửa hàng; có lọc theo bảng dữ liệu, hành động, khoảng ngày và tài khoản, phân trang, xem snapshot trước/sau và liên kết tới Booking/đơn liên quan. Nhật ký có `TaiKhoanID` NULL được hiển thị là “Hệ thống”.
-- Chat hai chiều theo đơn hàng tại `/admin/messages` dành cho Chủ cửa hàng, Quản lý và Nhân viên; tải lịch sử tin nhắn gần nhất và gửi phản hồi tới tài khoản khách hàng liên kết với đơn. `TinNhan` chỉ lưu hội thoại, không dùng làm technical audit hoặc system log.
+- Màn hình Nhật ký hệ thống tại `/admin/system-logs` dành riêng cho Chủ cửa hàng; có lọc theo bảng dữ liệu, hành động, khoảng ngày và dropdown tài khoản, phân trang, xem snapshot trước/sau và liên kết tới Booking/đơn liên quan. Nhật ký có `TaiKhoanID` NULL được hiển thị là “Hệ thống”; thời gian được trình bày ngày/giờ thành hai dòng và cặp nút “Lọc”/“Xóa lọc” dùng cùng kích thước, căn chỉnh.
+- Chat theo đơn hàng tại `/admin/messages` cho Chủ cửa hàng, Quản lý và Nhân viên; danh sách đơn phân trang, xem tối đa 100 tin nhắn gần nhất theo đơn và gửi tới tài khoản khách hàng được liên kết với đơn. Nhãn người gửi phân biệt tin của “Cửa hàng” với tên tài khoản người gửi; `TinNhan` chỉ lưu hội thoại, không dùng làm technical audit hoặc system log.
 - Tên bảng/cột tuân thủ chính xác cách viết của Supabase PostgreSQL: phần lớn bảng nghiệp vụ PascalCase, riêng một số đối tượng live như `khachhang_diachi` và các cột của nó viết thường.
 - Có cơ chế bảo vệ các lệnh Artisan có thể phá hủy cấu trúc cơ sở dữ liệu.
 
@@ -82,6 +82,18 @@ Tài khoản có thể có nhiều vai trò thông qua `TaiKhoan_VaiTro`. Quyề
 | Báo cáo | Tổng hợp chỉ số vận hành, doanh thu và dữ liệu dịch vụ |
 | API | Cung cấp một số danh sách và thao tác đã được xác thực, phân quyền |
 
+### Tỷ lệ điểm tích lũy
+
+Các tỷ lệ nằm tại `App\Services\OrderService`:
+
+| Hằng số | Giá trị | Ý nghĩa |
+|---|---:|---|
+| `POINTS_PER_AMOUNT` | 1.000 VNĐ | Mốc giá trị thanh toán để tính thưởng |
+| `POINTS_EARNED_PER_AMOUNT` | 100 điểm | Điểm thưởng cho mỗi mốc trên khi đơn chuyển sang `Đã giao` |
+| `POINT_VALUE` | 10 VNĐ/điểm | Giá trị giảm giá; ví dụ 100 điểm giảm 1.000 VNĐ |
+
+Điểm thưởng được tính theo phần nguyên của `ThanhTien / POINTS_PER_AMOUNT`, nhân `POINTS_EARNED_PER_AMOUNT`. Điểm sử dụng được giới hạn bởi số dư và phần tiền còn lại sau khuyến mãi.
+
 ## Tài khoản demo hệ thống
 
 Thông tin tài khoản mẫu phải được lấy từ seeder hoặc môi trường demo do quản trị viên cung cấp. README không công bố email/mật khẩu mặc định vì thông tin này có thể không còn khớp với mã nguồn hiện tại và không nên dùng làm thông tin xác thực dùng chung.
@@ -114,7 +126,7 @@ Chỉ sử dụng tài khoản được cấp trong môi trường cục bộ ho
 
 ### Trạng thái kiểm thử hồi quy
 
-Lần chạy đầy đủ gần nhất: **304 test được phát hiện, 112 PASSED, 192 skipped, 598 assertions**. Các test skipped không được tính là kiểm thử thành công. Bộ test dùng SQLite in-memory theo `phpunit.xml`, không phải kiểm thử tích hợp ghi dữ liệu trên Supabase Live.
+Lần chạy đầy đủ gần nhất: **311 test được phát hiện, 119 PASSED, 192 skipped, 624 assertions**. Các test skipped không được tính là kiểm thử thành công. Bộ test dùng SQLite in-memory theo `phpunit.xml`, không phải kiểm thử tích hợp ghi dữ liệu trên Supabase Live.
 
 ### Cải tiến & tái cấu trúc Loại đồ giặt và bảng giá
 
@@ -168,7 +180,7 @@ Lần chạy đầy đủ gần nhất: **304 test được phát hiện, 112 PA
 
 #### Kiểm thử và chất lượng
 
-- Lần chạy đầy đủ gần nhất: **304 test được phát hiện, 112 PASSED, 192 skipped, 598 assertions**. Các ca PASSED bao gồm Booking nhiều dòng, audit, RBAC Nhật ký hệ thống, dropdown lọc tài khoản, chat theo đơn, XOR số lượng/khối lượng, giá theo tuple, chặn overlap, ngày hiệu lực biên, tính phí KG theo từng dòng và quan hệ địa chỉ khách hàng; danh sách chi tiết ở [TESTCASES.md](./TESTCASES.md).
+- Lần chạy đầy đủ gần nhất và các ca được ghi chi tiết nằm tại mục **Trạng thái kiểm thử hồi quy** và [TESTCASES.md](./TESTCASES.md). Các nhóm bao gồm Booking nhiều dòng, audit, RBAC Nhật ký hệ thống, dropdown lọc tài khoản, chat theo đơn, điểm tích lũy, XOR số lượng/khối lượng, giá theo tuple, chặn overlap, ngày hiệu lực biên, tính phí KG theo từng dòng và quan hệ địa chỉ khách hàng.
 - `php artisan view:cache`, `vendor/bin/pint --dirty --format agent`, kiểm tra lỗi trên các file PHP đã sửa và `git diff --check` đều hoàn tất thành công.
 - Test chạy với SQLite in-memory; kết quả không phải kiểm thử tích hợp ghi dữ liệu trên Supabase Live.
 - Thứ tự ưu tiên `NgayApDung` mới nhất và các mốc ngày biên đã có regression test trên SQLite. Chưa có test PostgreSQL tích hợp chạy đồng thời để chứng minh advisory lock/race-condition không deadlock; cũng chưa có test tích hợp riêng gọi từng endpoint Payment/Dashboard để xác nhận audit qua từng đường đi.
