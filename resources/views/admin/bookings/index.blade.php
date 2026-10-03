@@ -20,14 +20,14 @@
             name="status"
             id="filter-status"
             :options="\App\Enums\BookingStatus::options()"
-            placeholder="-- Tất cả trạng thái --"
+            placeholder="Tất cả trạng thái"
             class="form-select form-select-sm filter-select shadow-sm rounded-3"
             submit
         />
     </div>
     <div class="col-12 col-sm-6 col-md-auto">
         <select name="method" class="form-select form-select-sm filter-select shadow-sm rounded-3" onchange="this.form.submit()">
-            <option value="">-- Tất cả hình thức --</option>
+            <option value="">Tất cả hình thức</option>
             @foreach(\App\Enums\BookingMethod::options() as $value => $label)
                 <option value="{{ $value }}" @selected(request('method') === $value)>{{ $label }}</option>
             @endforeach
@@ -62,25 +62,19 @@
                             @can('bookings.confirm')
                                 @if($booking->statusEnum() === \App\Enums\BookingStatus::Pending)
                                     @if($booking->chiTietBookings->isNotEmpty())
-                                        <form action="{{ route('bookings.confirm', $booking) }}" method="POST" class="d-inline" data-confirm-booking-form>
-                                            @csrf
-                                            <label class="visually-hidden" for="booking-points-{{ $booking->BookingID }}">Điểm sử dụng cho Booking {{ $booking->MaBooking }}</label>
-                                            <input
-                                                class="form-control form-control-sm mb-1"
-                                                id="booking-points-{{ $booking->BookingID }}"
-                                                type="number"
-                                                name="DiemSuDung"
-                                                min="0"
-                                                max="{{ $booking->khachHang?->points ?? 0 }}"
-                                                value="0"
-                                                aria-label="Điểm tích lũy muốn sử dụng"
-                                                title="Điểm hiện có: {{ $booking->khachHang?->points ?? 0 }}; mỗi điểm giảm {{ number_format(\App\Services\OrderService::POINT_VALUE) }} VNĐ"
-                                            >
-                                            <button type="submit" class="btn btn-order-action" title="Xác nhận lịch và tự động tạo đơn hàng">
-                                                <i class="bi bi-hourglass-split" aria-hidden="true"></i>
-                                                <span class="visually-hidden">Xác nhận Booking</span>
-                                            </button>
-                                        </form>
+                                        <button
+                                            type="button"
+                                            class="btn btn-order-action"
+                                            title="Xác nhận lịch và tự động tạo đơn hàng"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#confirmBookingModal"
+                                            data-confirm-booking-action="{{ route('bookings.confirm', $booking) }}"
+                                            data-booking-id="{{ $booking->BookingID }}"
+                                            data-booking-employee="{{ $booking->NhanVienID }}"
+                                        >
+                                            <i class="bi bi-hourglass-split" aria-hidden="true"></i>
+                                            <span class="visually-hidden">Xác nhận Booking</span>
+                                        </button>
                                     @elseif(auth()->user()?->can('bookings.edit'))
                                         <a href="{{ route('bookings.edit', $booking) }}" class="btn btn-order-action text-warning" aria-label="Cần thêm dịch vụ trước khi xác nhận" title="Chưa thể xác nhận: hãy thêm ít nhất một dòng dịch vụ trước.">
                                             <i class="bi bi-exclamation-triangle" aria-hidden="true"></i>
@@ -122,11 +116,67 @@
     {{ $bookings->links('pagination::bootstrap-5') }}
 </div>
 @endif
+
+<div class="modal fade" id="confirmBookingModal" tabindex="-1" aria-labelledby="confirmBookingModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form
+                id="confirmBookingForm"
+                action="{{ old('booking_id') ? route('bookings.confirm', old('booking_id')) : '#' }}"
+                method="POST"
+                data-confirm-booking-form
+            >
+                @csrf
+                <input type="hidden" name="booking_id" value="{{ old('booking_id') }}">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="confirmBookingModalLabel">Xác nhận và tạo đơn hàng</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button>
+                </div>
+                <div class="modal-body">
+                    <label class="form-label" for="confirm-booking-employee">
+                        Nhân viên phụ trách <span class="text-danger">*</span>
+                    </label>
+                    <select
+                        class="form-select @error('NhanVienID') is-invalid @enderror"
+                        id="confirm-booking-employee"
+                        name="NhanVienID"
+                        required
+                    >
+                        <option value="">Chọn nhân viên phụ trách</option>
+                        @foreach($employees as $employee)
+                            <option value="{{ $employee->NhanVienID }}" @selected(old('NhanVienID') == $employee->NhanVienID)>{{ $employee->HoTen }}</option>
+                        @endforeach
+                    </select>
+                    @error('NhanVienID')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Hủy</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-hourglass-split me-1" aria-hidden="true"></i>Xác nhận và tạo đơn
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 @endsection
 
 @push('scripts')
 <script>
     document.addEventListener('DOMContentLoaded', function() {
+        const confirmBookingModal = document.getElementById('confirmBookingModal');
+        const confirmBookingForm = document.getElementById('confirmBookingForm');
+        const responsibleEmployee = document.getElementById('confirm-booking-employee');
+        const bookingId = confirmBookingForm.querySelector('[name="booking_id"]');
+
+        document.querySelectorAll('[data-confirm-booking-action]').forEach(function(button) {
+            button.addEventListener('click', function() {
+                confirmBookingForm.action = button.dataset.confirmBookingAction;
+                bookingId.value = button.dataset.bookingId;
+                responsibleEmployee.value = button.dataset.bookingEmployee || '';
+            });
+        });
+
         document.querySelectorAll('[data-confirm-booking-form]').forEach(function(form) {
             form.addEventListener('submit', function() {
                 const button = form.querySelector('button[type="submit"]');
@@ -139,6 +189,10 @@
                 button.innerHTML = '<span class="spinner-border spinner-border-sm" aria-hidden="true"></span><span class="visually-hidden">Đang xác nhận</span>';
             });
         });
+
+        @if($errors->has('NhanVienID'))
+            bootstrap.Modal.getOrCreateInstance(confirmBookingModal).show();
+        @endif
 
         document.querySelectorAll('[id^="deleteBookingForm_"]').forEach(function(form) {
             form.addEventListener('submit', function(e) {

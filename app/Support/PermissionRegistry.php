@@ -117,7 +117,6 @@ final class PermissionRegistry
                 'accounts.edit' => 'Sửa tài khoản',
                 'accounts.delete' => 'Xóa tài khoản',
                 'accounts.reset_password' => 'Đặt lại mật khẩu',
-                'settings.view' => 'Xem cấu hình hệ thống',
                 'roles.manage' => 'Quản lý vai trò & quyền hạn',
             ],
         ];

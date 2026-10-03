@@ -31,8 +31,8 @@
     <x-admin.detail.locked text="Tài khoản đã bị xóa mềm nên không thể sửa hoặc xóa. Hãy kích hoạt lại nếu cần." />
 @endif
 
-<div class="row g-4">
-    <div class="col-lg-8">
+<div class="row g-4 align-items-start">
+    <div class="col-lg-7">
         <x-admin.detail.panel title="Thông tin tài khoản" icon="bi-person-badge" :iconClass="'bg-primary-subtle text-primary'">
             <x-admin.detail.info-grid :columns="2">
                 <x-admin.detail.info-item label="Họ và tên" :value="$account->name" />
@@ -53,10 +53,18 @@
                 </x-admin.detail.info-item>
             </x-admin.detail.info-grid>
         </x-admin.detail.panel>
+
+        <x-admin.detail.panel title="Hoạt động" icon="bi-activity" :iconClass="'bg-secondary-subtle text-secondary'">
+            <x-admin.detail.info-grid :columns="1">
+                <x-admin.detail.info-item label="Đơn hàng đã xử lý" :value="number_format($account->orders?->count() ?? 0)" />
+                <x-admin.detail.info-item label="Phiếu giao nhận" :value="number_format($account->deliveries?->count() ?? 0)" />
+                <x-admin.detail.info-item label="Cập nhật lần cuối" :value="$account->updated_at?->format('d/m/Y H:i')" />
+            </x-admin.detail.info-grid>
+        </x-admin.detail.panel>
     </div>
 
-    <div class="col-lg-4">
-        <div class="card shadow-sm border-0 sticky-top" style="top: 20px;">
+    <div class="col-lg-5 d-flex flex-column">
+        <div class="card shadow-sm border-0 sticky-top order-first" style="top: 20px;">
             <div class="card-header bg-transparent border-bottom d-flex align-items-center gap-2 py-3">
                 <div class="bg-light rounded p-2 d-inline-flex align-items-center justify-content-center">
                     <i class="fas fa-sliders-h text-secondary"></i>
@@ -78,7 +86,7 @@
                 text="Mật khẩu sẽ được đặt lại về mặc định."
                 label="Đặt lại mật khẩu"
                 icon="bi-key"
-                variant="btn-outline-warning"
+                variant="btn-outline-primary"
                 color="#f59e0b"
                 size="py-2"
                 block
@@ -94,8 +102,8 @@
                 text="Tài khoản sẽ {{ $account->deleted_at ? 'được kích hoạt trở lại' : 'bị tạm ngưng' }}."
                 label="{{ $account->deleted_at ? 'Kích hoạt' : 'Tạm ngưng' }}"
                 :icon="$account->deleted_at ? 'bi-unlock' : 'bi-lock'"
-                :variant="$account->deleted_at ? 'btn-outline-success' : 'btn-outline-warning'"
-                :color="$account->deleted_at ? '#16a34a' : '#f59e0b'"
+                variant="btn-outline-primary"
+                color="#2563eb"
                 size="py-2"
                 block
                 :iconName="'question'"
@@ -107,7 +115,7 @@
                 :action="route('accounts.destroy', $account->getKey())"
                 title="Xóa tài khoản?"
                 text="Hành động này không thể hoàn tác."
-                label="Xóa"
+                label="Xóa tài khoản"
                 icon="bi-trash"
                 variant="btn-outline-danger"
                 size="py-2"
@@ -120,16 +128,6 @@
                 </a>
             </div>
         </div>
-    </div>
-
-    <div class="col-lg-4">
-        <x-admin.detail.panel title="Hoạt động" icon="bi-activity" :iconClass="'bg-secondary-subtle text-secondary'">
-            <x-admin.detail.info-grid :columns="1">
-                <x-admin.detail.info-item label="Đơn hàng đã xử lý" :value="number_format($account->orders?->count() ?? 0)" />
-                <x-admin.detail.info-item label="Phiếu giao nhận" :value="number_format($account->deliveries?->count() ?? 0)" />
-                <x-admin.detail.info-item label="Cập nhật lần cuối" :value="$account->updated_at?->format('d/m/Y H:i')" />
-            </x-admin.detail.info-grid>
-        </x-admin.detail.panel>
     </div>
 </div>
 @endsection

@@ -19,7 +19,7 @@
                 <div class="col-md-6">
                     <label class="form-label">Danh mục <span class="text-danger ms-1">*</span></label>
                     <select id="LoaiDichVuID" class="form-select @error('LoaiDichVuID') is-invalid @enderror" name="LoaiDichVuID" required>
-                        <option value="">-- Chọn danh mục --</option>
+                        <option value="">Chọn danh mục</option>
                         @foreach($categories as $category)
                         <option value="{{ $category->LoaiDichVuID }}" @selected(old('LoaiDichVuID') == $category->LoaiDichVuID)>{{ $category->TenLoaiDichVu }}</option>
                         @endforeach

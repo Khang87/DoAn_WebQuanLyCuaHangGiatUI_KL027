@@ -44,7 +44,7 @@ class LuuDonHangRequest extends FormRequest
         return [
             'MaDonHang' => ['nullable', 'string', 'max:30', Rule::unique('DonHang', 'MaDonHang')->ignore($id, 'DonHangID')],
             'KhachHangID' => ['required', 'integer', 'exists:KhachHang,KhachHangID'],
-            'NhanVienID' => ['nullable', 'integer', 'exists:NhanVien,NhanVienID'],
+            'NhanVienID' => ['required', 'integer', 'exists:NhanVien,NhanVienID'],
             'BookingID' => ['nullable', 'integer', 'exists:Booking,BookingID'],
             'KhuyenMaiID' => ['nullable', 'integer', 'exists:KhuyenMai,KhuyenMaiID'],
             'promotion_code' => ['nullable', 'string', 'max:50'],
@@ -103,6 +103,7 @@ class LuuDonHangRequest extends FormRequest
         return [
             'KhachHangID.required' => 'Khách hàng là bắt buộc.',
             'KhachHangID.exists' => 'Khách hàng không tồn tại.',
+            'NhanVienID.required' => 'Vui lòng chọn nhân viên phụ trách.',
             'NhanVienID.exists' => 'Nhân viên không tồn tại.',
             'KhuyenMaiID.exists' => 'Chương trình khuyến mãi không tồn tại.',
             'TrangThai.required' => 'Trạng thái là bắt buộc.',

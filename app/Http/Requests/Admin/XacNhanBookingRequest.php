@@ -18,7 +18,16 @@ class XacNhanBookingRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'NhanVienID' => ['required', 'integer', 'exists:NhanVien,NhanVienID'],
             'DiemSuDung' => ['nullable', 'integer', 'min:0'],
+        ];
+    }
+
+    public function messages(): array
+    {
+        return [
+            'NhanVienID.required' => 'Vui lòng chọn nhân viên phụ trách.',
+            'NhanVienID.exists' => 'Nhân viên không tồn tại.',
         ];
     }
 

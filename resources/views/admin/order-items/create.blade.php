@@ -19,7 +19,7 @@
                 <div class="col-md-6">
                     <label class="form-label">Đơn hàng</label>
                     <select class="form-select" name="DonHangID">
-                        <option value="">-- Chọn đơn hàng --</option>
+                        <option value="">Chọn đơn hàng</option>
                         @foreach($orders as $order)
                         <option value="{{ $order->id }}">{{ $order->code }} - {{ $order->customer?->name }}</option>
                         @endforeach
@@ -28,7 +28,7 @@
                 <div class="col-md-6">
                     <label class="form-label">Dịch vụ</label>
                     <select class="form-select" name="DichVuID">
-                        <option value="">-- Chọn dịch vụ --</option>
+                        <option value="">Chọn dịch vụ</option>
                         @foreach($services as $service)
                         <option value="{{ $service->id }}">{{ $service->name }}</option>
                         @endforeach

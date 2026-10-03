@@ -33,7 +33,7 @@
     <x-admin.detail.locked text="Hóa đơn đã thanh toán nên bị khóa. Liên hệ Chủ cửa hàng nếu cần điều chỉnh." />
 @endif
 
-<div class="row g-4">
+<div class="row g-4 align-items-start">
     {{-- ============ CỘT CHÍNH (8/12) ============ --}}
     <div class="col-lg-8">
         <x-admin.detail.panel title="Dịch vụ đã thực hiện" icon="bi-list-check" :iconClass="'bg-primary-subtle text-primary'" flush>
@@ -87,10 +87,38 @@
                 </div>
             </x-admin.detail.panel>
         @endif
+
+        <x-admin.detail.panel title="Lịch sử thay đổi" icon="bi-clock-history" :iconClass="'bg-secondary-subtle text-secondary'">
+            @if($invoice->lichSuThayDoiHoaDons->isEmpty())
+                <x-admin.detail.empty message="Chưa có lịch sử thay đổi hóa đơn" icon="bi-clock" />
+            @else
+                <div class="d-flex flex-column gap-3">
+                    @foreach($invoice->lichSuThayDoiHoaDons->sortByDesc('ThoiGian') as $change)
+                        <div class="border-bottom pb-3">
+                            <div class="d-flex justify-content-between gap-3">
+                                <strong>{{ $change->TruongThayDoi }}</strong>
+                                <small class="text-muted text-nowrap">{{ $change->ThoiGian?->format('d-m-Y H:i') }}</small>
+                            </div>
+                            <div class="small mt-1">
+                                <span class="text-muted">{{ $change->GiaTriCu ?? '—' }}</span>
+                                <i class="bi bi-arrow-right mx-1" aria-hidden="true"></i>
+                                <span>{{ $change->GiaTriMoi ?? '—' }}</span>
+                            </div>
+                            <small class="text-muted">
+                                Người thực hiện: {{ $change->taiKhoan?->TenDangNhap ?? '—' }}
+                            </small>
+                            @if($change->LyDo)
+                                <div class="small text-muted mt-1">{{ $change->LyDo }}</div>
+                            @endif
+                        </div>
+                    @endforeach
+                </div>
+            @endif
+        </x-admin.detail.panel>
     </div>
 
     {{-- ============ CỘT PHỤ (4/12) ============ --}}
-    <div class="col-lg-4">
+    <div class="col-lg-4 d-flex flex-column">
         {{-- Giữ nguyên khối "đầu hóa đơn" để CSS in ẩn/hiện đúng như cũ --}}
         <div class="invoice-header">
             <x-admin.detail.panel title="Tổng hợp" icon="bi-receipt-cutoff" :iconClass="'bg-success-subtle text-success'">
@@ -169,34 +197,6 @@
             @endif
         </x-admin.detail.panel>
 
-        <x-admin.detail.panel title="Lịch sử thay đổi" icon="bi-clock-history" :iconClass="'bg-secondary-subtle text-secondary'">
-            @if($invoice->lichSuThayDoiHoaDons->isEmpty())
-                <x-admin.detail.empty message="Chưa có lịch sử thay đổi hóa đơn" icon="bi-clock" />
-            @else
-                <div class="d-flex flex-column gap-3">
-                    @foreach($invoice->lichSuThayDoiHoaDons->sortByDesc('ThoiGian') as $change)
-                        <div class="border-bottom pb-3">
-                            <div class="d-flex justify-content-between gap-3">
-                                <strong>{{ $change->TruongThayDoi }}</strong>
-                                <small class="text-muted text-nowrap">{{ $change->ThoiGian?->format('d-m-Y H:i') }}</small>
-                            </div>
-                            <div class="small mt-1">
-                                <span class="text-muted">{{ $change->GiaTriCu ?? '—' }}</span>
-                                <i class="bi bi-arrow-right mx-1" aria-hidden="true"></i>
-                                <span>{{ $change->GiaTriMoi ?? '—' }}</span>
-                            </div>
-                            <small class="text-muted">
-                                Người thực hiện: {{ $change->taiKhoan?->TenDangNhap ?? '—' }}
-                            </small>
-                            @if($change->LyDo)
-                                <div class="small text-muted mt-1">{{ $change->LyDo }}</div>
-                            @endif
-                        </div>
-                    @endforeach
-                </div>
-            @endif
-        </x-admin.detail.panel>
-
         <x-admin.detail.panel title="Khách hàng" icon="bi-person" :iconClass="'bg-info-subtle text-info'">
             <x-admin.detail.info-grid :columns="1">
                 <x-admin.detail.info-item label="Họ và tên" :value="$customer?->HoTen" />
@@ -212,7 +212,7 @@
             @endif
         </x-admin.detail.panel>
 
-        <div class="card shadow-sm border-0 mt-3 no-print">
+        <div class="card shadow-sm border-0 no-print order-first">
             <div class="card-header bg-transparent border-bottom d-flex align-items-center gap-2 py-3">
                 <div class="bg-light rounded p-2 d-inline-flex align-items-center justify-content-center">
                     <i class="fas fa-sliders-h text-secondary"></i>
@@ -220,13 +220,26 @@
                 <h5 class="card-title mb-0 fw-bold">Thao tác</h5>
             </div>
             <div class="card-body d-flex flex-column gap-2">
-                <a href="{{ route('invoices.export-excel', $invoice->HoaDonID) }}" class="btn btn-outline-success w-100 py-2">
+                <a href="{{ route('invoices.export-excel', $invoice->HoaDonID) }}" class="btn btn-outline-primary w-100 py-2">
                     <i class="fas fa-file-excel me-1"></i> Xuất excel
                 </a>
 
-                <button type="button" class="btn btn-outline-info w-100 py-2" onclick="window.print()">
+                <button type="button" class="btn btn-outline-primary w-100 py-2" onclick="window.print()">
                     <i class="fas fa-print me-1"></i> In hóa đơn
                 </button>
+
+                @can('invoices.delete')
+                    <x-admin.detail.confirm-form
+                        :action="route('invoices.destroy', $invoice->HoaDonID)"
+                        title="Xóa hóa đơn?"
+                        text="Hóa đơn thuộc đơn đã quyết toán chỉ có thể xóa theo quyền quản lý."
+                        label="Xóa hóa đơn"
+                        icon="bi-trash"
+                        variant="btn-outline-danger"
+                        size="py-2"
+                        block
+                    />
+                @endcan
 
                 <a href="{{ route('invoices.index') }}" class="btn btn-outline-secondary w-100 py-2 text-dark">
                     <i class="fas fa-arrow-left me-1"></i> Quay lại danh sách

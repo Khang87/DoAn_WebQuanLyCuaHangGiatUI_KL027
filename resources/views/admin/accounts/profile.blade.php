@@ -7,9 +7,6 @@
 <div class="card mb-4">
     <div class="card-header d-flex justify-content-between align-items-center">
         <h5 class="mb-0">Thông tin cá nhân</h5>
-        <a href="{{ route('settings') }}" class="btn btn-sm btn-outline-secondary">
-            <i class="bi bi-gear me-1"></i>Cài đặt
-        </a>
     </div>
     <div class="card-body">
         @if(session('success'))

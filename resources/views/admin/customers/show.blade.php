@@ -13,7 +13,7 @@
     </x-slot:badge>
 </x-admin.detail.page-header>
 
-<div class="row g-4">
+<div class="row g-4 align-items-start">
     <div class="col-lg-8">
         <x-admin.detail.panel title="Thông tin khách hàng" icon="bi-person" :iconClass="'bg-primary-subtle text-primary'">
             <div class="d-flex align-items-center gap-3 mb-4 pb-3 border-bottom">
@@ -78,23 +78,8 @@
     </div>
 
     {{-- ============ CỘT PHỤ (4/12) ============ --}}
-    <div class="col-lg-4">
-        <x-admin.detail.panel title="Tổng quan tài chính" icon="bi-wallet2" :iconClass="'bg-success-subtle text-success'">
-            <x-admin.detail.info-grid :columns="1">
-                <x-admin.detail.info-item label="Tổng chi tiêu">
-                    <x-admin.detail.money :value="$totalSpent" class="detail-summary__total text-primary" />
-                </x-admin.detail.info-item>
-                <x-admin.detail.info-item label="Tổng số đơn hàng" :value="number_format($orderCount)" />
-                <x-admin.detail.info-item label="Điểm tích lũy">
-                    <span class="badge rounded-pill px-3 py-2 fs-6 fw-bold d-inline-flex align-items-center gap-1"
-                          style="background-color: #fef3c7; color: #b45309; border: 1px solid #fde68a;">
-                        <i class="bi bi-star-fill me-1"></i>{{ number_format($customer->points ?? 0) }} điểm
-                    </span>
-                </x-admin.detail.info-item>
-            </x-admin.detail.info-grid>
-        </x-admin.detail.panel>
-
-        <div class="card shadow-sm border-0 mt-3">
+    <div class="col-lg-4 d-flex flex-column">
+        <div class="card shadow-sm border-0 order-first">
             <div class="card-header bg-transparent border-bottom d-flex align-items-center gap-2 py-3">
                 <div class="bg-light rounded p-2 d-inline-flex align-items-center justify-content-center">
                     <i class="fas fa-sliders-h text-secondary"></i>
@@ -114,11 +99,39 @@
                     </a>
                 @endcan
 
+                @can('customers.delete')
+                    <x-admin.detail.confirm-form
+                        :action="route('customers.destroy', $customer->getKey())"
+                        title="Xóa khách hàng?"
+                        text="Khách hàng có dữ liệu liên quan sẽ không thể xóa."
+                        label="Xóa khách hàng"
+                        icon="bi-trash"
+                        variant="btn-outline-danger"
+                        size="py-2"
+                        block
+                    />
+                @endcan
+
                 <a href="{{ route('customers.index') }}" class="btn btn-outline-secondary w-100 py-2 text-dark">
                     <i class="fas fa-arrow-left me-1"></i> Quay lại danh sách
                 </a>
             </div>
         </div>
+
+        <x-admin.detail.panel title="Tổng quan tài chính" icon="bi-wallet2" :iconClass="'bg-success-subtle text-success'">
+            <x-admin.detail.info-grid :columns="1">
+                <x-admin.detail.info-item label="Tổng chi tiêu">
+                    <x-admin.detail.money :value="$totalSpent" class="detail-summary__total text-primary" />
+                </x-admin.detail.info-item>
+                <x-admin.detail.info-item label="Tổng số đơn hàng" :value="number_format($orderCount)" />
+                <x-admin.detail.info-item label="Điểm tích lũy">
+                    <span class="badge rounded-pill px-3 py-2 fs-6 fw-bold d-inline-flex align-items-center gap-1"
+                          style="background-color: #fef3c7; color: #b45309; border: 1px solid #fde68a;">
+                        <i class="bi bi-star-fill me-1"></i>{{ number_format($customer->points ?? 0) }} điểm
+                    </span>
+                </x-admin.detail.info-item>
+            </x-admin.detail.info-grid>
+        </x-admin.detail.panel>
     </div>
 </div>
 @endsection

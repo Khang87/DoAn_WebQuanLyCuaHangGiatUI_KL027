@@ -251,11 +251,6 @@ Route::middleware(['auth', 'reject.customer'])->group(function () {
     Route::put('/profile', [TaiKhoanController::class, 'updateProfile'])->name('profile.update');
     Route::post('/profile/avatar', [TaiKhoanController::class, 'updateAvatar'])->name('profile.avatar');
     Route::post('/profile/change-password', [TaiKhoanController::class, 'changePassword'])->name('profile.change-password');
-
-    // ===== CẤU HÌNH HỆ THỐNG (chỉ Quản lý / Admin) =====
-    Route::middleware(['role:manager|admin'])->group(function () {
-        Route::get('/settings', [TaiKhoanController::class, 'settings'])->name('settings');
-    });
 });
 
 // Default route redirect to login or dashboard

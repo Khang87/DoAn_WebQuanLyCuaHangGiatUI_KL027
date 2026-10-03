@@ -17,8 +17,8 @@
     </x-slot:badge>
 </x-admin.detail.page-header>
 
-<div class="row g-4">
-    <div class="col-lg-8">
+<div class="row g-4 align-items-start">
+    <div class="col-lg-7">
         <x-admin.detail.panel title="Thông tin lịch hẹn" icon="bi-calendar-check" :iconClass="'bg-primary-subtle text-primary'">
             <x-admin.detail.info-grid :columns="2">
                 <x-admin.detail.info-item label="Mã tham chiếu">
@@ -72,7 +72,7 @@
         </x-admin.detail.panel>
     </div>
 
-    <div class="col-lg-4">
+    <div class="col-lg-5 d-flex flex-column">
         <x-admin.detail.panel title="Khách hàng" icon="bi-person" :iconClass="'bg-secondary-subtle text-secondary'">
             <x-admin.detail.info-grid :columns="1">
                 <x-admin.detail.info-item label="Họ và tên" :value="$booking->khachHang?->HoTen" />
@@ -114,7 +114,7 @@
             @endif
         </x-admin.detail.panel>
 
-        <div class="card shadow-sm border-0 mt-3">
+        <div class="card shadow-sm border-0 order-first">
             <div class="card-header bg-transparent border-bottom d-flex align-items-center gap-2 py-3">
                 <div class="bg-light rounded p-2 d-inline-flex align-items-center justify-content-center">
                     <i class="fas fa-sliders-h text-secondary"></i>
@@ -130,13 +130,29 @@
 
                 @php $order = $booking->donHangs->first() @endphp
                 @if($order)
-                    <a href="{{ route('orders.show', $order) }}" class="btn btn-outline-info w-100 py-2">
+                    <a href="{{ route('orders.show', $order) }}" class="btn btn-outline-primary w-100 py-2">
                         <i class="bi bi-receipt me-1"></i> Xem đơn {{ $order->MaDonHang }}
                     </a>
                 @elseif($booking->statusEnum() === \App\Enums\BookingStatus::Pending)
                     @if($booking->chiTietBookings->isNotEmpty() && auth()->user()?->can('bookings.confirm'))
                         <form action="{{ route('bookings.confirm', $booking) }}" method="POST" data-confirm-booking-form>
                             @csrf
+                            <label class="form-label" for="booking-responsible-employee">
+                                Nhân viên phụ trách <span class="text-danger">*</span>
+                            </label>
+                            <select
+                                class="form-select @error('NhanVienID') is-invalid @enderror mb-2"
+                                id="booking-responsible-employee"
+                                name="NhanVienID"
+                                required
+                            >
+                                <option value="">Chọn nhân viên phụ trách</option>
+                                @foreach($employees as $employee)
+                                    <option value="{{ $employee->NhanVienID }}" @selected(old('NhanVienID', $booking->NhanVienID) == $employee->NhanVienID)>{{ $employee->HoTen }}</option>
+                                @endforeach
+                            </select>
+                            @error('NhanVienID')<div class="invalid-feedback d-block mb-2">{{ $message }}</div>@enderror
+                            <input type="hidden" name="booking_id" value="{{ $booking->BookingID }}">
                             <label class="form-label" for="booking-points-used">Dùng điểm tích lũy</label>
                             <input
                                 class="form-control mb-2"
@@ -148,14 +164,14 @@
                                 value="{{ old('DiemSuDung', 0) }}"
                             >
                             <div class="form-text mb-2">
-                                Có {{ number_format($booking->khachHang?->points ?? 0) }} điểm; 1 điểm = {{ number_format(\App\Services\OrderService::POINT_VALUE) }} VNĐ.
+                                Khách đang có {{ number_format($booking->khachHang?->points ?? 0) }} điểm (tương đương {{ number_format(($booking->khachHang?->points ?? 0) * \App\Services\OrderService::POINT_VALUE) }} VNĐ)
                             </div>
                             <button type="submit" class="btn btn-outline-primary py-2 w-100">
                                 <i class="bi bi-hourglass-split me-1" aria-hidden="true"></i> Xác nhận và tạo đơn
                             </button>
                         </form>
                     @elseif($booking->chiTietBookings->isEmpty() && auth()->user()?->can('bookings.edit'))
-                        <a href="{{ route('bookings.edit', $booking) }}" class="btn btn-outline-warning py-2 w-100">
+                        <a href="{{ route('bookings.edit', $booking) }}" class="btn btn-outline-primary py-2 w-100">
                             <i class="bi bi-exclamation-triangle me-1" aria-hidden="true"></i> Thêm dịch vụ trước khi xác nhận
                         </a>
                     @elseif($booking->chiTietBookings->isEmpty())
@@ -163,7 +179,7 @@
                             Chưa thể xác nhận: cần thêm ít nhất một dòng dịch vụ trước khi tạo đơn hàng.
                         </div>
                     @else
-                        <span class="btn btn-outline-secondary py-2 disabled w-100">
+                        <span class="btn btn-outline-primary py-2 disabled w-100">
                             <i class="bi bi-hourglass-split me-1"></i> Chờ xác nhận
                         </span>
                     @endif
@@ -171,6 +187,21 @@
                     <div class="alert alert-warning mb-0" role="alert">
                         Booking đã xác nhận nhưng chưa có đơn hàng. Vui lòng kiểm tra nhật ký hệ thống.
                     </div>
+                @endif
+
+                @if(! $order)
+                    @can('bookings.delete')
+                        <x-admin.detail.confirm-form
+                            :action="route('bookings.destroy', $booking)"
+                            title="Xóa đặt lịch?"
+                            text="Hành động này không thể hoàn tác."
+                            label="Xóa đặt lịch"
+                            icon="bi-trash"
+                            variant="btn-outline-danger"
+                            size="py-2"
+                            block
+                        />
+                    @endcan
                 @endif
 
                 <a href="{{ route('bookings.index') }}" class="btn btn-outline-secondary w-100 py-2 text-dark">

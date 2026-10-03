@@ -159,23 +159,69 @@ class BookingOrderConversionTest extends TestCase
             RejectCustomerRole::class,
         ]);
 
-        $response = $this->post(route('bookings.confirm', $booking->BookingID));
+        DB::table('NhanVien')->insert([
+            'NhanVienID' => 2,
+            'HoTen' => 'Nhân viên được giao',
+        ]);
+        $response = $this->post(route('bookings.confirm', $booking->BookingID), ['NhanVienID' => 2]);
 
         $order = DonHang::query()->where('BookingID', $booking->BookingID)->firstOrFail();
         $response->assertRedirect(route('orders.show', $order));
         $this->assertSame(BookingStatus::Confirmed->value, $booking->fresh()->TrangThai);
+        $this->assertSame(2, $order->NhanVienID);
+        $this->assertSame(2, $booking->fresh()->NhanVienID);
         $this->assertSame(1, $booking->fresh()->NhanVienXacNhanID);
         $this->assertNotNull($booking->fresh()->ThoiGianXacNhan);
         $this->assertSame(1, DonHang::query()->where('BookingID', $booking->BookingID)->count());
         $this->assertSame(1, GiaoNhan::query()->where('DonHangID', $order->DonHangID)->count());
 
         $this->from(route('bookings.index'))
-            ->post(route('bookings.confirm', $booking->BookingID))
+            ->post(route('bookings.confirm', $booking->BookingID), ['NhanVienID' => 2])
             ->assertRedirect(route('bookings.index'))
             ->assertSessionHasErrors([
                 'booking' => 'Booking này đã có đơn hàng '.$order->MaDonHang.'; hệ thống không tạo đơn hàng trùng.',
             ]);
         $this->assertSame(1, DonHang::query()->where('BookingID', $booking->BookingID)->count());
+    }
+
+    public function test_confirm_route_requires_a_responsible_employee_before_creating_an_order(): void
+    {
+        DB::table('DonViTinh')->insert([
+            'DonViTinhID' => 3,
+            'TenDonViTinh' => 'Cái',
+            'KyHieu' => 'Cái',
+            'TrangThai' => 'Hoạt động',
+        ]);
+        DB::table('BangGia')->insert([
+            'BangGiaID' => 1,
+            'DichVuID' => 1,
+            'LoaiDoGiatID' => 2,
+            'DonViTinhID' => 3,
+            'DonGia' => 15000,
+            'NgayApDung' => '2026-01-01',
+            'TrangThai' => 'Hoạt động',
+        ]);
+        $booking = $this->createBooking();
+        $this->bookingService->update($booking, [
+            'items' => [
+                ['DichVuID' => 1, 'LoaiDoGiatID' => 2, 'DonViTinhID' => 3, 'SoLuong' => 1],
+            ],
+        ]);
+        $this->actingAsBookingEmployee();
+        $this->withoutMiddleware([
+            EnsureUserHasPermission::class,
+            RejectCustomerRole::class,
+        ]);
+
+        $this->from(route('bookings.index'))
+            ->post(route('bookings.confirm', $booking->BookingID))
+            ->assertRedirect(route('bookings.index'))
+            ->assertSessionHasErrors([
+                'NhanVienID' => 'Vui lòng chọn nhân viên phụ trách.',
+            ]);
+
+        $this->assertSame(BookingStatus::Pending->value, $booking->fresh()->TrangThai);
+        $this->assertSame(0, DonHang::query()->where('BookingID', $booking->BookingID)->count());
     }
 
     public function test_confirm_route_rolls_back_booking_when_postgres_trigger_rejects_order_insert(): void
@@ -230,7 +276,7 @@ class BookingOrderConversionTest extends TestCase
                     && ! str_contains($context['database_error'], 'insert into')
             ));
 
-        $response = $this->post(route('bookings.confirm', $booking->BookingID));
+        $response = $this->post(route('bookings.confirm', $booking->BookingID), ['NhanVienID' => 1]);
 
         $response->assertRedirect(route('bookings.index'));
         $response->assertSessionHas(
@@ -255,7 +301,7 @@ class BookingOrderConversionTest extends TestCase
         ]);
 
         $this->from(route('bookings.index'))
-            ->post(route('bookings.confirm', $booking->BookingID))
+            ->post(route('bookings.confirm', $booking->BookingID), ['NhanVienID' => 1])
             ->assertRedirect(route('bookings.edit', $booking))
             ->assertSessionHasErrors([
                 'items' => 'Đặt lịch chưa có dòng dịch vụ. Hãy bổ sung ít nhất một dòng trước khi xác nhận.',
@@ -278,7 +324,7 @@ class BookingOrderConversionTest extends TestCase
         ]);
 
         $this->from(route('bookings.index'))
-            ->post(route('bookings.confirm', $booking->BookingID))
+            ->post(route('bookings.confirm', $booking->BookingID), ['NhanVienID' => 1])
             ->assertRedirect(route('bookings.index'))
             ->assertSessionHasErrors('booking');
 
@@ -873,6 +919,46 @@ class BookingOrderConversionTest extends TestCase
         $this->assertSame(2.35, $validated['items'][0]['KhoiLuong']);
     }
 
+    public function test_order_request_requires_a_valid_responsible_employee_for_create_and_update(): void
+    {
+        $this->createRequestCatalog();
+
+        foreach (['POST', 'PUT'] as $method) {
+            try {
+                $this->validateOrderRequest(['NhanVienID' => null], $method);
+                $this->fail('The responsible employee is required for order creation and updates.');
+            } catch (ValidationException $exception) {
+                $this->assertArrayHasKey('NhanVienID', $exception->errors());
+                $this->assertSame('Vui lòng chọn nhân viên phụ trách.', $exception->errors()['NhanVienID'][0]);
+            }
+
+            $validated = $this->validateOrderRequest(['NhanVienID' => 1], $method);
+            $this->assertSame(1, $validated['NhanVienID']);
+        }
+    }
+
+    public function test_booking_edit_requires_a_responsible_employee_when_converting_to_an_order(): void
+    {
+        $this->createRequestCatalog();
+
+        try {
+            $this->validateBookingRequest([
+                'staff_id' => null,
+                'status' => BookingStatus::Confirmed->value,
+            ]);
+            $this->fail('A responsible employee is required when confirming a booking.');
+        } catch (ValidationException $exception) {
+            $this->assertArrayHasKey('staff_id', $exception->errors());
+            $this->assertSame('Vui lòng chọn nhân viên phụ trách.', $exception->errors()['staff_id'][0]);
+        }
+
+        $validated = $this->validateBookingRequest([
+            'staff_id' => 1,
+            'status' => BookingStatus::Confirmed->value,
+        ]);
+        $this->assertSame(1, $validated['staff_id']);
+    }
+
     public function test_booking_request_requires_the_amount_matching_the_selected_unit(): void
     {
         $this->createRequestCatalog();
@@ -927,6 +1013,7 @@ class BookingOrderConversionTest extends TestCase
     {
         return Booking::query()->create(array_merge([
             'KhachHangID' => 9,
+            'NhanVienID' => 1,
             'HinhThucNhanDo' => 'Tại nhà',
             'DiaChiNhan' => '12 Nguyễn Huệ',
             'NgayHen' => '2026-10-05',
@@ -965,10 +1052,11 @@ class BookingOrderConversionTest extends TestCase
         return $request->validated();
     }
 
-    private function validateOrderRequest(array $snapshot): array
+    private function validateOrderRequest(array $snapshot, string $method = 'POST'): array
     {
-        $request = LuuDonHangRequest::create('/admin/orders', 'POST', array_merge([
+        $request = LuuDonHangRequest::create('/admin/orders/1', $method, array_merge([
             'KhachHangID' => 9,
+            'NhanVienID' => 1,
             'TrangThai' => OrderStatus::Pending->value,
         ], $snapshot));
         $request->setContainer($this->app);
@@ -1007,6 +1095,10 @@ class BookingOrderConversionTest extends TestCase
             $table->increments('NhanVienID');
             $table->string('HoTen')->nullable();
         });
+        DB::table('NhanVien')->insert([
+            'NhanVienID' => 1,
+            'HoTen' => 'Nhân viên kiểm thử',
+        ]);
 
         Schema::create('Booking', function (Blueprint $table): void {
             $table->increments('BookingID');

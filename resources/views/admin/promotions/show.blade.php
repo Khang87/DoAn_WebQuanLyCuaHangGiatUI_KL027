@@ -19,7 +19,7 @@
     </x-slot:badge>
 </x-admin.detail.page-header>
 
-<div class="row g-4">
+<div class="row g-4 align-items-start">
     <div class="col-lg-8">
         <x-admin.detail.panel title="Thông tin khuyến mãi" icon="bi-megaphone" :iconClass="'bg-primary-subtle text-primary'">
             <x-admin.detail.info-grid :columns="2">
@@ -127,7 +127,7 @@
         </x-admin.detail.panel>
     </div>
 
-    <div class="col-lg-4">
+    <div class="col-lg-4 d-flex flex-column">
         <x-admin.detail.panel title="Tổng quan sử dụng" icon="bi-bar-chart" :iconClass="'bg-success-subtle text-success'">
             <x-admin.detail.info-grid :columns="1">
                 <x-admin.detail.info-item label="Số đơn hàng áp dụng" :value="number_format($orderCount)" />
@@ -144,7 +144,7 @@
             </x-admin.detail.info-grid>
         </x-admin.detail.panel>
 
-        <div class="card shadow-sm border-0 mt-3">
+        <div class="card shadow-sm border-0 order-first">
             <div class="card-header bg-transparent border-bottom d-flex align-items-center gap-2 py-3">
                 <div class="bg-light rounded p-2 d-inline-flex align-items-center justify-content-center">
                     <i class="fas fa-sliders-h text-secondary"></i>
@@ -157,6 +157,20 @@
                         <i class="fas fa-pencil-alt me-1"></i>Chỉnh sửa
                     </a>
                 @endcan
+
+                @can('promotions.delete')
+                    <x-admin.detail.confirm-form
+                        :action="route('promotions.destroy', $promotion->KhuyenMaiID)"
+                        title="Xóa chương trình khuyến mãi?"
+                        text="Chương trình đã được dùng sẽ chuyển sang trạng thái tạm ngưng."
+                        label="Xóa chương trình khuyến mãi"
+                        icon="bi-trash"
+                        variant="btn-outline-danger"
+                        size="py-2"
+                        block
+                    />
+                @endcan
+
                 <a href="{{ route('promotions.index') }}" class="btn btn-outline-secondary w-100 py-2 text-dark">
                     <i class="fas fa-arrow-left me-1"></i>Quay lại danh sách
                 </a>

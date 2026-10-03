@@ -26,9 +26,9 @@
     </x-slot:badge>
 </x-admin.detail.page-header>
 
-<div class="row g-4">
-    {{-- ============ CỘT CHÍNH (8/12) ============ --}}
-    <div class="col-lg-8">
+<div class="row g-4 align-items-start">
+    {{-- ============ CỘT CHÍNH (7/12) ============ --}}
+    <div class="col-lg-7">
         <x-admin.detail.panel title="Thông tin mã giảm giá" icon="bi-ticket-perforated" :iconClass="'bg-primary-subtle text-primary'">
             <x-admin.detail.info-grid :columns="2">
                 <x-admin.detail.info-item label="Mã coupon">
@@ -57,8 +57,39 @@
         </x-admin.detail.panel>
     </div>
 
-    {{-- ============ CỘT PHỤ (4/12) ============ --}}
-    <div class="col-lg-4">
+    {{-- ============ CỘT PHỤ (5/12) ============ --}}
+    <div class="col-lg-5 d-flex flex-column">
+        <div class="card shadow-sm border-0 order-first">
+            <div class="card-header bg-transparent border-bottom d-flex align-items-center gap-2 py-3">
+                <div class="bg-light rounded p-2 d-inline-flex align-items-center justify-content-center">
+                    <i class="fas fa-sliders-h text-secondary"></i>
+                </div>
+                <h5 class="card-title mb-0 fw-bold">Thao tác</h5>
+            </div>
+            <div class="card-body d-flex flex-column gap-2">
+                <a href="{{ route('coupons.edit', $coupon) }}" class="btn btn-primary w-100 py-2">
+                    <i class="fas fa-pencil-alt me-1"></i> Chỉnh sửa
+                </a>
+
+                @can('coupons.delete')
+                    <x-admin.detail.confirm-form
+                        :action="route('coupons.destroy', $coupon)"
+                        title="Xóa mã giảm giá?"
+                        text="Hành động này không thể hoàn tác."
+                        label="Xóa mã giảm giá"
+                        icon="bi-trash"
+                        variant="btn-outline-danger"
+                        size="py-2"
+                        block
+                    />
+                @endcan
+
+                <a href="{{ route('coupons.index') }}" class="btn btn-outline-secondary w-100 py-2 text-dark">
+                    <i class="fas fa-arrow-left me-1"></i> Quay lại danh sách
+                </a>
+            </div>
+        </div>
+
         <x-admin.detail.panel title="Mức độ sử dụng" icon="bi-bar-chart" :iconClass="'bg-success-subtle text-success'">
             <div class="d-flex justify-content-between align-items-baseline mb-2">
                 <span class="detail-field__label">Đã dùng</span>
@@ -74,34 +105,6 @@
                 <x-admin.detail.info-item label="Tối đa" :value="$coupon->remainingCodes() !== null ? ($coupon->SoLuongSuDung + $coupon->remainingCodes()) : 'Không giới hạn'" />
             </x-admin.detail.info-grid>
         </x-admin.detail.panel>
-
-        <div class="card shadow-sm border-0 mt-3">
-            <div class="card-header bg-transparent border-bottom d-flex align-items-center gap-2 py-3">
-                <div class="bg-light rounded p-2 d-inline-flex align-items-center justify-content-center">
-                    <i class="fas fa-sliders-h text-secondary"></i>
-                </div>
-                <h5 class="card-title mb-0 fw-bold">Thao tác</h5>
-            </div>
-            <div class="card-body d-flex flex-column gap-2">
-                <a href="{{ route('coupons.edit', $coupon) }}" class="btn btn-primary w-100 py-2">
-                    <i class="fas fa-pencil-alt me-1"></i> Chỉnh sửa
-                </a>
-
-                <x-admin.detail.confirm-form
-                    :action="route('coupons.destroy', $coupon)"
-                    title="Xóa mã giảm giá?"
-                    text="Hành động này không thể hoàn tác."
-                    label="Xóa mã giảm giá"
-                    icon="bi-trash"
-                    variant="btn-outline-danger"
-                    :block="true"
-                />
-
-                <a href="{{ route('coupons.index') }}" class="btn btn-outline-secondary w-100 py-2 text-dark">
-                    <i class="fas fa-arrow-left me-1"></i> Quay lại danh sách
-                </a>
-            </div>
-        </div>
     </div>
 </div>
 @endsection

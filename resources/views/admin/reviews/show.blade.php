@@ -28,9 +28,9 @@
     </x-slot:badge>
 </x-admin.detail.page-header>
 
-<div class="row g-4">
-    {{-- ============ CỘT CHÍNH (8/12) ============ --}}
-    <div class="col-lg-8">
+<div class="row g-4 align-items-start">
+    {{-- ============ CỘT CHÍNH (7/12) ============ --}}
+    <div class="col-lg-7">
         <x-admin.detail.panel title="Nội dung đánh giá" icon="bi-chat-quote" :iconClass="'bg-warning-subtle text-warning-emphasis'">
             <div class="d-flex justify-content-between align-items-center mb-3">
                 <div class="fs-4 text-warning">
@@ -74,8 +74,8 @@
         </x-admin.detail.panel>
     </div>
 
-    {{-- ============ CỘT PHỤ (4/12) ============ --}}
-    <div class="col-lg-4">
+    {{-- ============ CỘT PHỤ (5/12) ============ --}}
+    <div class="col-lg-5 d-flex flex-column">
         <x-admin.detail.panel title="Phản hồi từ cửa hàng" icon="bi-reply" :iconClass="'bg-success-subtle text-success'" id="phan-hoi">
             @if($review->shop_response)
                 <div class="detail-text mb-2">{{ $review->shop_response }}</div>
@@ -96,7 +96,7 @@
             </form>
         </x-admin.detail.panel>
 
-        <div class="card shadow-sm border-0 mt-3">
+        <div class="card shadow-sm border-0 order-first">
             <div class="card-header bg-transparent border-bottom d-flex align-items-center gap-2 py-3">
                 <div class="bg-light rounded p-2 d-inline-flex align-items-center justify-content-center">
                     <i class="fas fa-sliders-h text-secondary"></i>
@@ -112,7 +112,7 @@
                         text="Trạng thái hiển thị của đánh giá sẽ thay đổi."
                         label="{{ $isHidden ? 'Hiện đánh giá' : 'Ẩn đánh giá' }}"
                         :icon="$isHidden ? 'bi-eye' : 'bi-eye-slash'"
-                        variant="btn-outline-secondary"
+                        variant="btn-outline-primary"
                         color="#64748b"
                         :iconName="'question'"
                         :block="true"

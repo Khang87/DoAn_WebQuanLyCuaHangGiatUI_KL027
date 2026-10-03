@@ -27,14 +27,14 @@
             name="status"
             id="filter-status"
             :options="$statuses ?? \App\Enums\RecordStatus::databaseOptions()"
-            placeholder="-- Tất cả trạng thái --"
+            placeholder="Tất cả trạng thái"
             class="form-select form-select-sm filter-select shadow-sm rounded-3"
             submit
         />
     </div>
     <div class="col-12 col-sm-6 col-md-auto">
         <select name="sort" class="form-select form-select-sm filter-select shadow-sm rounded-3" onchange="this.form.submit()">
-            <option value="">-- Tất cả cách sắp xếp --</option>
+            <option value="">Tất cả cách sắp xếp</option>
             <option value="latest" @selected(request('sort') === 'latest')>Mới nhất</option>
             <option value="oldest" @selected(request('sort') === 'oldest')>Cũ nhất</option>
             <option value="name_asc" @selected(request('sort') === 'name_asc')>Tên A-Z</option>

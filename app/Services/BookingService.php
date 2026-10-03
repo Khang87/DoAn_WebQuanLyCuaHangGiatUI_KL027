@@ -279,9 +279,9 @@ class BookingService
         });
     }
 
-    public function confirmPendingBooking(Booking $booking, int $pointsUsed = 0): DonHang
+    public function confirmPendingBooking(Booking $booking, int $employeeId, int $pointsUsed = 0): DonHang
     {
-        return DB::transaction(function () use ($booking, $pointsUsed): DonHang {
+        return DB::transaction(function () use ($booking, $employeeId, $pointsUsed): DonHang {
             $lockedBooking = Booking::query()
                 ->lockForUpdate()
                 ->findOrFail($booking->BookingID);
@@ -293,9 +293,9 @@ class BookingService
             }
 
             $snapshots = $this->serviceSnapshotsForOrder($lockedBooking);
-            $employeeId = auth()->user()?->NhanVienID;
+            $confirmerId = auth()->user()?->NhanVienID;
 
-            if (! $employeeId) {
+            if (! $confirmerId) {
                 throw ValidationException::withMessages([
                     'booking' => 'Tài khoản hiện tại chưa liên kết hồ sơ nhân viên để xác nhận Booking.',
                 ]);
@@ -305,8 +305,9 @@ class BookingService
             $beforeItems = $this->bookingItemsAuditSnapshot($lockedBooking);
 
             $lockedBooking->updateQuietly([
+                'NhanVienID' => $employeeId,
                 'TrangThai' => BookingStatus::Confirmed->value,
-                'NhanVienXacNhanID' => $employeeId,
+                'NhanVienXacNhanID' => $confirmerId,
                 'ThoiGianXacNhan' => now(),
             ]);
             $lockedBooking->refresh();
@@ -316,7 +317,7 @@ class BookingService
             $this->recordBookingAudit($lockedBooking, $before, $after, $beforeItems, $afterItems);
 
             $order = $this->findOrderForBooking($lockedBooking)
-                ?? $this->orderService->createFromBooking($lockedBooking, $snapshots, $pointsUsed);
+                ?? $this->orderService->createFromBooking($lockedBooking, $snapshots, $employeeId, $pointsUsed);
 
             return $order->fresh();
         });
@@ -331,7 +332,7 @@ class BookingService
     {
         $snapshots = $this->serviceSnapshotsForOrder($booking);
 
-        return $this->orderService->createFromBooking($booking, $snapshots, $pointsUsed);
+        return $this->orderService->createFromBooking($booking, $snapshots, (int) $booking->NhanVienID, $pointsUsed);
     }
 
     /**

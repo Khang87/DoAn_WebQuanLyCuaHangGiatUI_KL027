@@ -43,7 +43,6 @@ class QuyenMapperTest extends TestCase
         $this->assertSame('SERVICE_MANAGE', QuyenMapper::resolveMaQuyen('garment_categories.view'));
         $this->assertSame('DELIVERY_MANAGE', QuyenMapper::resolveMaQuyen('bookings.edit'));
         $this->assertSame('PROMOTION_MANAGE', QuyenMapper::resolveMaQuyen('coupons.view'));
-        $this->assertSame('ACCOUNT_MANAGE', QuyenMapper::resolveMaQuyen('settings.view'));
     }
 
     public function test_payments_view_and_edit_share_payment_create_but_delete_stays_unresolvable(): void

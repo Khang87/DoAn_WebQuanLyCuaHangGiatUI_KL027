@@ -32,9 +32,9 @@
     <x-admin.detail.locked text="Thanh toán đã quyết toán nên bị khóa sửa/xóa. Liên hệ Chủ cửa hàng nếu cần điều chỉnh." />
 @endif
 
-<div class="row g-4">
-    {{-- ============ CỘT CHÍNH (8/12) ============ --}}
-    <div class="col-lg-8">
+<div class="row g-4 align-items-start">
+    {{-- ============ CỘT CHÍNH ============ --}}
+    <div class="col-lg-7">
         <x-admin.detail.panel title="Thông tin thanh toán" icon="bi-cash-coin" :iconClass="'bg-primary-subtle text-primary'">
             <x-admin.detail.info-grid :columns="2">
                 <x-admin.detail.info-item label="Mã thanh toán" :value="$paymentCode" />
@@ -55,10 +55,27 @@
                 />
             </x-admin.detail.info-grid>
         </x-admin.detail.panel>
+
+        <x-admin.detail.panel title="Khách hàng" icon="bi-person" :iconClass="'bg-info-subtle text-info'">
+            @if($order?->khachHang)
+                <x-admin.detail.info-grid :columns="1">
+                    <x-admin.detail.info-item label="Họ và tên" :value="$order->khachHang->HoTen" />
+                    <x-admin.detail.info-item label="Số điện thoại" :value="$order->khachHang->SoDienThoai" />
+                    <x-admin.detail.info-item label="Địa chỉ" :value="$order->khachHang->DiaChi" />
+                </x-admin.detail.info-grid>
+                <div class="mt-3">
+                    <a href="{{ route('customers.show', $order->khachHang->KhachHangID) }}" class="btn btn-outline-secondary btn-sm w-100">
+                        <i class="bi bi-box-arrow-up-right me-1"></i>Hồ sơ khách hàng
+                    </a>
+                </div>
+            @else
+                <x-admin.detail.empty message="Chưa có thông tin khách hàng" icon="bi-person" />
+            @endif
+        </x-admin.detail.panel>
     </div>
 
-    {{-- ============ CỘT PHỤ (4/12) ============ --}}
-    <div class="col-lg-4">
+    {{-- ============ CỘT PHỤ (5/12) ============ --}}
+    <div class="col-lg-5 d-flex flex-column">
         <x-admin.detail.panel title="Chứng từ liên kết" icon="bi-link-45deg" :iconClass="'bg-secondary-subtle text-secondary'">
             <x-admin.detail.info-grid :columns="1">
                 <x-admin.detail.info-item label="Đơn hàng">
@@ -82,24 +99,7 @@
             </x-admin.detail.info-grid>
         </x-admin.detail.panel>
 
-        <x-admin.detail.panel title="Khách hàng" icon="bi-person" :iconClass="'bg-info-subtle text-info'">
-            @if($order?->khachHang)
-                <x-admin.detail.info-grid :columns="1">
-                    <x-admin.detail.info-item label="Họ và tên" :value="$order->khachHang->HoTen" />
-                    <x-admin.detail.info-item label="Số điện thoại" :value="$order->khachHang->SoDienThoai" />
-                    <x-admin.detail.info-item label="Địa chỉ" :value="$order->khachHang->DiaChi" />
-                </x-admin.detail.info-grid>
-                <div class="mt-3">
-                    <a href="{{ route('customers.show', $order->khachHang->KhachHangID) }}" class="btn btn-outline-secondary btn-sm w-100">
-                        <i class="bi bi-box-arrow-up-right me-1"></i>Hồ sơ khách hàng
-                    </a>
-                </div>
-            @else
-                <x-admin.detail.empty message="Chưa có thông tin khách hàng" icon="bi-person" />
-            @endif
-        </x-admin.detail.panel>
-
-        <div class="card shadow-sm border-0 mt-3">
+        <div class="card shadow-sm border-0 order-first">
             <div class="card-header bg-transparent border-bottom d-flex align-items-center gap-2 py-3">
                 <div class="bg-light rounded p-2 d-inline-flex align-items-center justify-content-center">
                     <i class="fas fa-sliders-h text-secondary"></i>
@@ -114,15 +114,18 @@
                 @endif
 
                 @if($canManageSettled)
-                    <x-admin.detail.confirm-form
-                        :action="route('payments.destroy', $payment->ThanhToanID)"
-                        title="Xóa phiếu thanh toán?"
-                        text="Hành động này không thể hoàn tác."
-                        label="Xóa phiếu thanh toán"
-                        icon="bi-trash"
-                        variant="btn-outline-danger"
-                        :block="true"
-                    />
+                    @can('payments.delete')
+                        <x-admin.detail.confirm-form
+                            :action="route('payments.destroy', $payment->ThanhToanID)"
+                            title="Xóa phiếu thanh toán?"
+                            text="Hành động này không thể hoàn tác."
+                            label="Xóa phiếu thanh toán"
+                            icon="bi-trash"
+                            variant="btn-outline-danger"
+                            size="py-2"
+                            block
+                        />
+                    @endcan
                 @endif
 
                 <a href="{{ route('payments.index') }}" class="btn btn-outline-secondary w-100 py-2 text-dark">

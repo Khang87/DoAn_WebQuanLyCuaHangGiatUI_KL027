@@ -36,9 +36,9 @@
     </x-slot:badge>
 </x-admin.detail.page-header>
 
-<div class="row g-4">
+<div class="row g-4 align-items-start">
     {{-- ============ CỘT CHÍNH (8/12) ============ --}}
-    <div class="col-lg-8">
+    <div class="col-lg-7">
         <x-admin.detail.panel title="Nội dung thông báo" icon="bi-bell" :iconClass="'bg-primary-subtle text-primary'">
             <div class="detail-text mb-3">{{ $notification->NoiDung }}</div>
             <x-admin.detail.info-grid :columns="2">
@@ -57,7 +57,7 @@
     </div>
 
     {{-- ============ CỘT PHỤ (4/12) ============ --}}
-    <div class="col-lg-4">
+    <div class="col-lg-5 d-flex flex-column">
         <x-admin.detail.panel title="Thông tin gửi" icon="bi-clock-history" :iconClass="'bg-secondary-subtle text-secondary'">
             <x-admin.detail.info-grid :columns="1">
                 <x-admin.detail.info-item label="Người nhận" :value="$notification->taiKhoan?->HoTen ?? $notification->taiKhoan?->TenDangNhap ?? 'Tất cả nhân viên'" />

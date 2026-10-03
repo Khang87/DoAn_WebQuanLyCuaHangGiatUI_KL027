@@ -51,7 +51,7 @@
 
                     <div class="col-12 col-sm-6 col-md-auto">
                         <select name="rating" class="form-select form-select-sm filter-select shadow-sm rounded-3" onchange="this.form.submit()">
-                            <option value="">-- Tất cả số sao --</option>
+                            <option value="">Tất cả số sao</option>
                             @for($star = 5; $star >= 1; $star--)
                                 <option value="{{ $star }}" @selected((string) request('rating') === (string) $star)>{{ $star }} sao</option>
                             @endfor
@@ -63,7 +63,7 @@
                             name="status"
                             id="filter-status"
                             :options="\App\Enums\ReviewStatus::options()"
-                            placeholder="-- Tất cả trạng thái --"
+                            placeholder="Tất cả trạng thái"
                             class="form-select form-select-sm filter-select shadow-sm rounded-3"
                             submit
                         />

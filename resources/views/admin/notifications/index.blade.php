@@ -32,7 +32,7 @@
     </div>
     <div class="col-12 col-sm-6 col-md-auto">
         <select name="read" class="form-select form-select-sm filter-select shadow-sm rounded-3" onchange="this.form.submit()">
-            <option value="">-- Tất cả trạng thái --</option>
+            <option value="">Tất cả trạng thái</option>
             <option value="unread" @selected(request('read') === 'unread')>Chưa đọc</option>
             <option value="read" @selected(request('read') === 'read')>Đã đọc</option>
         </select>

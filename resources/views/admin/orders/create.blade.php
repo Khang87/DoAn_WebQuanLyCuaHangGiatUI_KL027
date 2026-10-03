@@ -42,20 +42,21 @@
                 <div class="col-md-6">
                     <label class="form-label" for="customer_id">Khách hàng <span class="text-danger ms-1">*</span></label>
                     <select class="form-select" id="customer_id" name="KhachHangID" required>
-                        <option value="">-- Chọn khách hàng --</option>
+                        <option value="">Chọn khách hàng</option>
                         @foreach($customers as $customer)
                             <option value="{{ $customer->KhachHangID }}" @selected(old('KhachHangID') == $customer->KhachHangID)>{{ $customer->HoTen }} (ID {{ $customer->KhachHangID }})</option>
                         @endforeach
                     </select>
                 </div>
                 <div class="col-md-6">
-                    <label class="form-label" for="employee_id">Nhân viên phụ trách</label>
-                    <select class="form-select" id="employee_id" name="NhanVienID">
-                        <option value="">-- Chọn nhân viên --</option>
+                    <label class="form-label" for="employee_id">Nhân viên phụ trách <span class="text-danger ms-1">*</span></label>
+                    <select class="form-select @error('NhanVienID') is-invalid @enderror" id="employee_id" name="NhanVienID" required>
+                        <option value="">Chọn nhân viên phụ trách</option>
                         @foreach($employeeOptions as $employee)
                             <option value="{{ $employee->NhanVienID }}" @selected(old('NhanVienID') == $employee->NhanVienID)>{{ $employee->HoTen }}</option>
                         @endforeach
                     </select>
+                    @error('NhanVienID')<div class="invalid-feedback">{{ $message }}</div>@enderror
                 </div>
                 <div class="col-md-6">
                     <label class="form-label" for="status">Trạng thái <span class="text-danger ms-1">*</span></label>
@@ -86,9 +87,9 @@
                                             ->all();
                                     @endphp
                                     <tr>
-                                        <td><select class="form-select item-service-category" name="items[{{ $index }}][service_category_id]"><option value="">-- Danh mục --</option>@foreach($serviceCategories as $category)<option value="{{ $category->LoaiDichVuID }}" @selected(($item['service_category_id'] ?? '') == $category->LoaiDichVuID)>{{ $category->TenLoaiDichVu }}</option>@endforeach</select></td>
-                                        <td><select class="form-select item-service" name="items[{{ $index }}][DichVuID]" required><option value="">-- Chọn dịch vụ --</option>@foreach($services as $service)<option value="{{ $service->DichVuID }}" data-category-id="{{ $service->LoaiDichVuID }}" @selected(($item['DichVuID'] ?? $item['service_id'] ?? '') == $service->DichVuID)>{{ $service->TenDichVu }}</option>@endforeach</select></td>
-                                        <td><select class="form-select item-garment" name="items[{{ $index }}][LoaiDoGiatID]" required><option value="">-- Chọn loại đồ --</option>@foreach($garmentOptions->whereIn('LoaiDoGiatID', $availableGarmentIds) as $garment)<option value="{{ $garment->LoaiDoGiatID }}" @selected(($item['LoaiDoGiatID'] ?? $item['garment_id'] ?? '') == $garment->LoaiDoGiatID)>{{ $garment->TenLoaiDoGiat }}</option>@endforeach</select></td>
+                                        <td><select class="form-select item-service-category" name="items[{{ $index }}][service_category_id]"><option value="">Danh mục</option>@foreach($serviceCategories as $category)<option value="{{ $category->LoaiDichVuID }}" @selected(($item['service_category_id'] ?? '') == $category->LoaiDichVuID)>{{ $category->TenLoaiDichVu }}</option>@endforeach</select></td>
+                                        <td><select class="form-select item-service" name="items[{{ $index }}][DichVuID]" required><option value="">Chọn dịch vụ</option>@foreach($services as $service)<option value="{{ $service->DichVuID }}" data-category-id="{{ $service->LoaiDichVuID }}" @selected(($item['DichVuID'] ?? $item['service_id'] ?? '') == $service->DichVuID)>{{ $service->TenDichVu }}</option>@endforeach</select></td>
+                                        <td><select class="form-select item-garment" name="items[{{ $index }}][LoaiDoGiatID]" required><option value="">Chọn loại đồ</option>@foreach($garmentOptions->whereIn('LoaiDoGiatID', $availableGarmentIds) as $garment)<option value="{{ $garment->LoaiDoGiatID }}" @selected(($item['LoaiDoGiatID'] ?? $item['garment_id'] ?? '') == $garment->LoaiDoGiatID)>{{ $garment->TenLoaiDoGiat }}</option>@endforeach</select></td>
                                         <td><span class="badge text-bg-light item-unit">—</span><input type="hidden" class="item-unit-value" name="items[{{ $index }}][DonViTinhID]" value="{{ $item['DonViTinhID'] ?? '' }}"></td>
                                         <td><input type="number" class="form-control item-quantity" name="items[{{ $index }}][SoLuong]" value="{{ $item['SoLuong'] ?? $item['quantity'] ?? 1 }}" min="1" required></td>
                                         <td><input type="number" step="0.01" class="form-control item-weight" name="items[{{ $index }}][KhoiLuong]" value="{{ $item['KhoiLuong'] ?? $item['weight'] ?? 0 }}" min="0"></td>
@@ -112,7 +113,7 @@
                                 <div class="col-md-4">
                                     <label class="form-label" for="promotion_id">Mã giảm giá (Voucher)</label>
                                     <select class="form-select" id="promotion_id" name="KhuyenMaiID">
-                                        <option value="">-- Không dùng voucher --</option>
+                                        <option value="">Không dùng voucher</option>
                                         @foreach($promotions as $promotion)
                                             <option value="{{ $promotion->KhuyenMaiID }}"
                                                     data-code="{{ $promotion->MaKhuyenMai }}"
@@ -132,7 +133,7 @@
                                 <div class="col-md-4">
                                     <label class="form-label" for="points_used">Số điểm sử dụng</label>
                                     <input type="number" class="form-control" id="points_used" name="DiemSuDung" value="{{ old('DiemSuDung', 0) }}" min="0">
-                                    <div class="form-text" id="customerPointsText">1 điểm = 1,000 VNĐ</div>
+                                    <div class="form-text" id="customerPointsText">Khách đang có 0 điểm (tương đương 0 VNĐ)</div>
                                 </div>
                             </div>
                         </div>
@@ -151,13 +152,13 @@
                                                 <td>Tạm tính:</td>
                                                 <td class="text-end"><span id="subtotalAmount">0</span> VNĐ</td>
                                             </tr>
-                                            <tr>
+                                            <tr id="promotionDiscountRow" class="d-none">
                                                 <td>Tiền giảm voucher:</td>
-                                                <td class="text-end text-danger">-<span id="promotionDiscount">0</span> VNĐ</td>
+                                                <td class="text-end text-success">-<span id="promotionDiscount">0</span> VNĐ</td>
                                             </tr>
-                                            <tr>
+                                            <tr id="pointsDiscountRow" class="d-none">
                                                 <td>Tiền giảm do điểm:</td>
-                                                <td class="text-end text-danger">-<span id="pointsDiscount">0</span> VNĐ</td>
+                                                <td class="text-end text-success">-<span id="pointsDiscount">0</span> VNĐ</td>
                                             </tr>
                                             <tr class="table-light">
                                                 <td class="fw-bold fs-5">TỔNG THANH TOÁN:</td>
@@ -209,7 +210,9 @@
     const out = {
         subtotal: document.getElementById('subtotalAmount'),
         promotion: document.getElementById('promotionDiscount'),
+        promotionRow: document.getElementById('promotionDiscountRow'),
         points: document.getElementById('pointsDiscount'),
+        pointsRow: document.getElementById('pointsDiscountRow'),
         grand: document.getElementById('grandTotal')
     };
 
@@ -231,7 +234,7 @@
                 .map(price => String(price.garment_id))
         );
 
-        garmentSelect.replaceChildren(new Option('-- Chọn loại đồ --', ''));
+        garmentSelect.replaceChildren(new Option('Chọn loại đồ', ''));
         Object.entries(garments).forEach(([id, name]) => {
             if (!eligibleGarmentIds.has(String(id))) return;
 
@@ -343,7 +346,7 @@
     function updateCustomerPointsHint() {
         const id = customerSelect.value;
         const available = id ? (customerPoints[id] || 0) : 0;
-        pointsText.textContent = `Khách đang có ${fmt(available)} điểm — 1 điểm = ${fmt(POINT_VALUE)} VNĐ`;
+        pointsText.textContent = `Khách đang có ${fmt(available)} điểm (tương đương ${fmt(available * POINT_VALUE)} VNĐ)`;
         pointsInput.max = available;
     }
 
@@ -360,7 +363,9 @@
 
         out.subtotal.textContent = fmt(subtotal);
         out.promotion.textContent = fmt(promoDiscount);
+        out.promotionRow.classList.toggle('d-none', promoDiscount <= 0);
         out.points.textContent = fmt(pointsDiscount);
+        out.pointsRow.classList.toggle('d-none', pointsDiscount <= 0);
         out.grand.textContent = fmt(Math.max(0, subtotal - promoDiscount - pointsDiscount));
     }
 
@@ -408,7 +413,7 @@
     document.getElementById('addItem').addEventListener('click', () => {
         const index = table.tBodies[0].rows.length;
         const row = table.tBodies[0].insertRow();
-        row.innerHTML = `<td><select class="form-select item-service-category" name="items[${index}][service_category_id]"><option value="">-- Danh mục --</option>${Object.entries(serviceCategories).map(([id,name]) => `<option value="${id}">${name}</option>`).join('')}</select></td><td><select class="form-select item-service" name="items[${index}][DichVuID]" required><option value="">-- Chọn dịch vụ --</option>${Object.entries(services).map(([id,service]) => `<option value="${id}" data-category-id="${service.category_id}">${service.name}</option>`).join('')}</select></td><td><select class="form-select item-garment" name="items[${index}][LoaiDoGiatID]" required><option value="">-- Chọn loại đồ --</option></select></td><td><span class="badge text-bg-light item-unit">—</span><input type="hidden" class="item-unit-value" name="items[${index}][DonViTinhID]"></td><td><input type="number" class="form-control item-quantity" name="items[${index}][SoLuong]" value="1" min="1" required></td><td><input type="number" step="0.01" class="form-control item-weight" name="items[${index}][KhoiLuong]" value="0" min="0"></td><td><input type="number" class="form-control item-price" name="items[${index}][DonGia]" value="0" min="0" step="100"></td><td><input type="number" class="form-control item-subtotal" value="0" readonly></td><td><button type="button" class="btn btn-sm btn-outline-danger remove-item" title="Xóa mặt hàng"><i class="bi bi-trash"></i></button></td>`;
+        row.innerHTML = `<td><select class="form-select item-service-category" name="items[${index}][service_category_id]"><option value="">Danh mục</option>${Object.entries(serviceCategories).map(([id,name]) => `<option value="${id}">${name}</option>`).join('')}</select></td><td><select class="form-select item-service" name="items[${index}][DichVuID]" required><option value="">Chọn dịch vụ</option>${Object.entries(services).map(([id,service]) => `<option value="${id}" data-category-id="${service.category_id}">${service.name}</option>`).join('')}</select></td><td><select class="form-select item-garment" name="items[${index}][LoaiDoGiatID]" required><option value="">Chọn loại đồ</option></select></td><td><span class="badge text-bg-light item-unit">—</span><input type="hidden" class="item-unit-value" name="items[${index}][DonViTinhID]"></td><td><input type="number" class="form-control item-quantity" name="items[${index}][SoLuong]" value="1" min="1" required></td><td><input type="number" step="0.01" class="form-control item-weight" name="items[${index}][KhoiLuong]" value="0" min="0"></td><td><input type="number" class="form-control item-price" name="items[${index}][DonGia]" value="0" min="0" step="100"></td><td><input type="number" class="form-control item-subtotal" value="0" readonly></td><td><button type="button" class="btn btn-sm btn-outline-danger remove-item" title="Xóa mặt hàng"><i class="bi bi-trash"></i></button></td>`;
         syncGarmentOptions(row);
         updateRowState(row);
         updateTotals();
@@ -427,9 +432,9 @@
                 const filtered = Object.entries(services).filter(([, service]) => {
                     return String(service.category_id) === categoryId;
                 });
-                serviceSelect.innerHTML = '<option value="">-- Chọn dịch vụ --</option>' + filtered.map(([id,service]) => `<option value="${id}" data-category-id="${service.category_id}">${service.name}</option>`).join('');
+                serviceSelect.innerHTML = '<option value="">Chọn dịch vụ</option>' + filtered.map(([id,service]) => `<option value="${id}" data-category-id="${service.category_id}">${service.name}</option>`).join('');
             } else {
-                serviceSelect.innerHTML = '<option value="">-- Chọn dịch vụ --</option>' + Object.entries(services).map(([id,service]) => `<option value="${id}" data-category-id="${service.category_id}">${service.name}</option>`).join('');
+                serviceSelect.innerHTML = '<option value="">Chọn dịch vụ</option>' + Object.entries(services).map(([id,service]) => `<option value="${id}" data-category-id="${service.category_id}">${service.name}</option>`).join('');
             }
             serviceSelect.value = '';
             syncGarmentOptions(row);

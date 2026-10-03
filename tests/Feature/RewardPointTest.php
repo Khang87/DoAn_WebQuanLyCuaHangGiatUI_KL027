@@ -78,7 +78,7 @@ class RewardPointTest extends TestCase
         $booking = $this->createBooking($customer);
         $this->actingAsBookingEmployee();
 
-        $order = app(BookingService::class)->confirmPendingBooking($booking, 100);
+        $order = app(BookingService::class)->confirmPendingBooking($booking, 1, 100);
 
         $this->assertSame(100, $order->DiemSuDung);
         $this->assertSame(1000.0, $order->TienGiamDoDiem);

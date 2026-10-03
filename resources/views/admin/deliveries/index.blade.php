@@ -20,7 +20,7 @@
     </div>
     <div class="col-12 col-sm-6 col-md-auto">
         <select name="method" class="form-select form-select-sm filter-select shadow-sm rounded-3" onchange="this.form.submit()">
-            <option value="">-- Tất cả hình thức --</option>
+            <option value="">Tất cả hình thức</option>
             <option value="nhan_do" @selected(request('method') === 'nhan_do')>Nhận đồ</option>
             <option value="giao_do" @selected(request('method') === 'giao_do')>Giao đồ</option>
         </select>
@@ -30,7 +30,7 @@
             name="status"
             id="filter-status"
             :options="\App\Enums\DeliveryStatus::options()"
-            placeholder="-- Tất cả trạng thái --"
+            placeholder="Tất cả trạng thái"
             class="form-select form-select-sm filter-select shadow-sm rounded-3"
             submit
         />

@@ -19,7 +19,7 @@
                 <div class="col-md-6">
                     <label class="form-label">Đơn hàng</label>
                     <select class="form-select" name="order_id">
-                        <option value="">-- Chọn đơn hàng --</option>
+                        <option value="">Chọn đơn hàng</option>
                         @foreach($orders as $order)
                         <option value="{{ $order->DonHangID }}" {{ $preselectedOrder && $preselectedOrder->DonHangID == $order->DonHangID ? 'selected' : '' }}>
                             {{ $order->MaDonHang }} - {{ $order->khachHang?->HoTen }}
@@ -30,7 +30,7 @@
                 <div class="col-md-6">
                     <label class="form-label">Hóa đơn (tự động lấy từ đơn hàng)</label>
                     <select class="form-select" name="invoice_id">
-                        <option value="">-- Chọn hóa đơn (tùy chọn) --</option>
+                        <option value="">Chọn hóa đơn (tùy chọn)</option>
                         @foreach($invoices as $inv)
                         <option value="{{ $inv->HoaDonID }}" {{ $preselectedInvoice && $preselectedInvoice->HoaDonID == $inv->HoaDonID ? 'selected' : '' }}>
                             {{ $inv->MaHoaDon }} - {{ $inv->donHang?->khachHang?->HoTen }}

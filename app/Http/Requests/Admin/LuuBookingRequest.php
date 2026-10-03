@@ -19,7 +19,7 @@ class LuuBookingRequest extends FormRequest
     {
         return [
             'customer_id' => ['required', 'exists:KhachHang,KhachHangID'],
-            'staff_id' => ['nullable', 'exists:NhanVien,NhanVienID'],
+            'staff_id' => ['nullable', 'integer', 'required_if:status,'.BookingStatus::Confirmed->value, 'exists:NhanVien,NhanVienID'],
             'method' => ['required', 'in:'.implode(',', BookingMethod::values())],
             'address' => ['nullable', 'string', 'max:255', 'required_if:method,'.BookingMethod::GiaoDo->value],
             'scheduled_date' => ['required', 'date'],
@@ -128,6 +128,7 @@ class LuuBookingRequest extends FormRequest
         return [
             'customer_id.required' => 'Khách hàng là bắt buộc.',
             'customer_id.exists' => 'Khách hàng không tồn tại.',
+            'staff_id.required_if' => 'Vui lòng chọn nhân viên phụ trách.',
             'staff_id.exists' => 'Nhân viên không tồn tại.',
             'method.required' => 'Phương thức nhận/giao đồ là bắt buộc.',
             'method.in' => 'Phương thức không hợp lệ. Chỉ chấp nhận: '.implode(', ', BookingMethod::values()).'.',

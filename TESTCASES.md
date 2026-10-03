@@ -161,6 +161,17 @@ Chạy riêng: `php artisan test --compact --filter=AdminCommunicationTest` (**6
 | 105 | TC-COMM-06 — `AdminCommunication` | Route Nhật ký yêu cầu đồng thời vùng vai trò quản trị và vai trò Chủ cửa hàng. | Feature — `tests/Feature/AdminCommunicationTest.php` | ✅ PASSED |
 | 106 | TC-AUD-05 — `UserAccountAudit` | Tạo/cập nhật tài khoản và đổi mật khẩu được ghi audit mà không lưu mật khẩu vào snapshot. | Feature — `tests/Feature/UserAccountAuditTest.php` | ✅ PASSED |
 
+## Nhóm 6: Loại bỏ Cài đặt hệ thống
+
+Các mục dưới đây là checklist hồi quy cho thay đổi gỡ tính năng. Đây là kiểm tra thủ công, không thuộc kết quả PHPUnit gần nhất.
+
+| Mã kiểm tra | Kịch bản | Kết quả mong đợi | Trạng thái |
+|---|---|---|---|
+| TC-SET-01 | Mở menu tài khoản trên thanh điều hướng. | Không còn liên kết “Cài đặt” hoặc đường dẫn `/settings`. | ⏳ NOT RUN |
+| TC-SET-02 | Truy cập trực tiếp `/settings`. | Không còn route cài đặt được đăng ký; ứng dụng trả về trang không tìm thấy. | ⏳ NOT RUN |
+| TC-SET-03 | Mở trang hồ sơ cá nhân. | Trang hồ sơ vẫn hiển thị, không có liên kết tới trang Cài đặt đã gỡ bỏ. | ⏳ NOT RUN |
+| TC-SET-04 | Tra cứu quyền hệ thống liên quan đến cấu hình. | Không còn mã quyền `settings.view` trong registry hoặc ánh xạ quyền. | ⏳ NOT RUN |
+
 ### Giới hạn phạm vi kiểm thử
 
 - Audit đơn hàng được test trực tiếp qua `OrderService`. Chưa có test tích hợp riêng gọi từng luồng Payment hoặc Dashboard để chứng minh việc ghi audit qua các endpoint đó.

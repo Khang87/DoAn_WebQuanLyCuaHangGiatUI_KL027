@@ -387,11 +387,6 @@ class TaiKhoanController extends Controller
         }
     }
 
-    public function settings()
-    {
-        return view('admin.settings.index');
-    }
-
     public function changePassword(Request $request)
     {
         $account = auth()->user();

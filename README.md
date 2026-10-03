@@ -29,6 +29,7 @@ Sky Laundry hỗ trợ số hóa hoạt động hằng ngày của cửa hàng g
 - Ghi nhật ký `NhatKyHeThong` cho tạo/xác nhận Booking (bao gồm người và thời điểm xác nhận), đổi trạng thái đơn hàng và thay đổi tài khoản; snapshot tài khoản không ghi mật khẩu.
 - Màn hình Nhật ký hệ thống tại `/admin/system-logs` dành riêng cho Chủ cửa hàng; có lọc theo bảng dữ liệu, hành động, khoảng ngày và dropdown tài khoản, phân trang, xem snapshot trước/sau và liên kết tới Booking/đơn liên quan. Nhật ký có `TaiKhoanID` NULL được hiển thị là “Hệ thống”; thời gian được trình bày ngày/giờ thành hai dòng và cặp nút “Lọc”/“Xóa lọc” dùng cùng kích thước, căn chỉnh.
 - Chat theo đơn hàng tại `/admin/messages` cho Chủ cửa hàng, Quản lý và Nhân viên; danh sách đơn phân trang, xem tối đa 100 tin nhắn gần nhất theo đơn và gửi tới tài khoản khách hàng được liên kết với đơn. Nhãn người gửi phân biệt tin của “Cửa hàng” với tên tài khoản người gửi; `TinNhan` chỉ lưu hội thoại, không dùng làm technical audit hoặc system log.
+- Chức năng Cài đặt hệ thống đã được loại bỏ: không còn trang/menu hay route `/settings`; quản lý hồ sơ cá nhân và đổi mật khẩu vẫn hoạt động riêng.
 - Tên bảng/cột tuân thủ chính xác cách viết của Supabase PostgreSQL: phần lớn bảng nghiệp vụ PascalCase, riêng một số đối tượng live như `khachhang_diachi` và các cột của nó viết thường.
 - Có cơ chế bảo vệ các lệnh Artisan có thể phá hủy cấu trúc cơ sở dữ liệu.
 
@@ -121,6 +122,7 @@ Chỉ sử dụng tài khoản được cấp trong môi trường cục bộ ho
 - Sửa quan hệ trang chi tiết loại đồ giặt để dùng `LoaiDoGiat` và dữ liệu bảng giá đúng theo schema.
 - Xóa một số lớp tương thích không còn tham chiếu, mã báo cáo trùng lặp, view không được sử dụng và test mẫu mặc định.
 - Khắc phục lỗ hổng phân quyền do dùng chung danh sách quyền OR cho nhiều thao tác và do API thiếu kiểm tra quyền.
+- Loại bỏ route, menu, trang và ánh xạ quyền riêng của Cài đặt hệ thống; giữ nguyên các chức năng hồ sơ cá nhân trong module tài khoản.
 - Đồng bộ các truy vấn báo cáo với `HoaDon.ThanhTien`, `HoaDon.NgayLap`, trạng thái thanh toán và trạng thái đặt lịch theo schema hiện tại.
 - Chuyển nút Xuất Excel từ giao diện placeholder sang tải báo cáo thực, đồng thời ẩn liên kết Báo cáo với tài khoản thiếu quyền.
 

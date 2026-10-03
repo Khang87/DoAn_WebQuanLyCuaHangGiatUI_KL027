@@ -24,7 +24,7 @@
     </div>
     <div class="col-12 col-sm-6 col-md-auto">
         <select id="category-filter" name="category_id" class="form-select form-select-sm filter-select shadow-sm rounded-3 js-icon-select" onchange="this.form.submit()">
-            <option value="">-- Tất cả danh mục --</option>
+            <option value="">Tất cả danh mục</option>
             @foreach($categories as $category)
                 <option value="{{ $category->LoaiDichVuID }}" @selected(request('category_id') == $category->LoaiDichVuID)>
                     {{ $category->TenLoaiDichVu }}
@@ -38,14 +38,14 @@
             name="status"
             id="filter-status"
             :options="$statuses ?? \App\Enums\RecordStatus::options()"
-            placeholder="-- Tất cả trạng thái --"
+            placeholder="Tất cả trạng thái"
             class="form-select form-select-sm filter-select shadow-sm rounded-3"
             submit
         />
     </div>
     <div class="col-12 col-sm-6 col-md-auto">
         <select name="sort" class="form-select form-select-sm filter-select shadow-sm rounded-3" onchange="this.form.submit()">
-            <option value="">-- Tất cả cách sắp xếp --</option>
+            <option value="">Tất cả cách sắp xếp</option>
             <option value="created_at_desc" @selected(request('sort') === 'created_at_desc')>Mới nhất</option>
             <option value="created_at_asc" @selected(request('sort') === 'created_at_asc')>Cũ nhất</option>
             <option value="duration_asc" @selected(request('sort') === 'duration_asc')>Thời gian tăng dần</option>

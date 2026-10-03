@@ -13,29 +13,9 @@
     </x-slot:badge>
 </x-admin.detail.page-header>
 
-<div class="row g-4">
+<div class="row g-4 align-items-start">
     {{-- ============ CỘT CHÍNH (8/12) ============ --}}
     <div class="col-lg-8">
-        <x-admin.detail.panel
-            title="Thông tin danh mục"
-            :icon="'bi-folder'"
-            :iconClass="'bg-primary-subtle text-primary'"
-        >
-            <x-admin.detail.info-grid :columns="2">
-                <x-admin.detail.info-item label="Tên danh mục" :value="$category->TenLoaiDichVu" />
-                <x-admin.detail.info-item label="Mã danh mục" :value="'DV' . str_pad($category->LoaiDichVuID, 4, '0', STR_PAD_LEFT)" />
-                <x-admin.detail.info-item label="Số dịch vụ" :value="$category->dichVus()->count()" />
-                <x-admin.detail.info-item label="Trạng thái">
-                    <x-admin.status-badge :status="$category->TrangThai" :enum="\App\Enums\RecordStatus::class" :pill="false" />
-                </x-admin.detail.info-item>
-            </x-admin.detail.info-grid>
-
-            <div class="mt-4">
-                <div class="detail-field__label mb-2">Mô tả</div>
-                <div class="detail-text">{{ $category->MoTa ?: 'Chưa có mô tả.' }}</div>
-            </div>
-        </x-admin.detail.panel>
-
         <x-admin.detail.panel title="Dịch vụ trong danh mục" icon="bi-list-check" :iconClass="'bg-secondary-subtle text-secondary'" flush>
             <x-slot:header>
                 <span class="text-muted small">{{ $services->total() }} dịch vụ</span>
@@ -78,11 +58,31 @@
                 @endif
             @endif
         </x-admin.detail.panel>
+
+        <x-admin.detail.panel
+            title="Thông tin danh mục"
+            :icon="'bi-folder'"
+            :iconClass="'bg-primary-subtle text-primary'"
+        >
+            <x-admin.detail.info-grid :columns="2">
+                <x-admin.detail.info-item label="Tên danh mục" :value="$category->TenLoaiDichVu" />
+                <x-admin.detail.info-item label="Mã danh mục" :value="'DV' . str_pad($category->LoaiDichVuID, 4, '0', STR_PAD_LEFT)" />
+                <x-admin.detail.info-item label="Số dịch vụ" :value="$category->dichVus()->count()" />
+                <x-admin.detail.info-item label="Trạng thái">
+                    <x-admin.status-badge :status="$category->TrangThai" :enum="\App\Enums\RecordStatus::class" :pill="false" />
+                </x-admin.detail.info-item>
+            </x-admin.detail.info-grid>
+
+            <div class="mt-4">
+                <div class="detail-field__label mb-2">Mô tả</div>
+                <div class="detail-text">{{ $category->MoTa ?: 'Chưa có mô tả.' }}</div>
+            </div>
+        </x-admin.detail.panel>
     </div>
 
     {{-- ============ CỘT PHỤ (4/12) ============ --}}
-    <div class="col-lg-4">
-        <div class="card shadow-sm border-0">
+    <div class="col-lg-4 d-flex flex-column">
+        <div class="card shadow-sm border-0 order-first">
             <div class="card-header bg-transparent border-bottom d-flex align-items-center gap-2 py-3">
                 <div class="bg-light rounded p-2 d-inline-flex align-items-center justify-content-center">
                     <i class="fas fa-sliders-h text-secondary"></i>
@@ -100,11 +100,25 @@
                     </a>
                 @endcan
 
+                @can('service_categories.delete')
+                    <x-admin.detail.confirm-form
+                        :action="route('service-categories.destroy', $category->LoaiDichVuID)"
+                        title="Xóa danh mục dịch vụ?"
+                        text="Danh mục sẽ được chuyển sang trạng thái tạm ngưng."
+                        label="Xóa danh mục dịch vụ"
+                        icon="bi-trash"
+                        variant="btn-outline-danger"
+                        size="py-2"
+                        block
+                    />
+                @endcan
+
                 <a href="{{ route('service-categories.index') }}" class="btn btn-outline-secondary w-100 py-2 text-dark">
                     <i class="fas fa-arrow-left me-1"></i> Quay lại danh sách
                 </a>
             </div>
         </div>
+
     </div>
 </div>
 @endsection

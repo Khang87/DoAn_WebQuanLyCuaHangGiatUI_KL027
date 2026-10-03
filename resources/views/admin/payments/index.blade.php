@@ -24,7 +24,7 @@
     </div>
     <div class="col-12 col-sm-6 col-md-auto">
         <select name="method" class="form-select form-select-sm filter-select shadow-sm rounded-3" onchange="this.form.submit()">
-            <option value="">-- Tất cả phương thức --</option>
+            <option value="">Tất cả phương thức</option>
             @foreach($methods as $value => $label)
                 <option value="{{ $value }}" @selected(request('method') === $value)>{{ $label }}</option>
             @endforeach
@@ -35,14 +35,14 @@
             name="status"
             id="filter-status"
             :options="\App\Enums\PaymentStatus::options()"
-            placeholder="-- Tất cả trạng thái --"
+            placeholder="Tất cả trạng thái"
             class="form-select form-select-sm filter-select shadow-sm rounded-3"
             submit
         />
     </div>
     <div class="col-12 col-sm-6 col-md-auto">
         <select name="sort" class="form-select form-select-sm filter-select shadow-sm rounded-3" onchange="this.form.submit()">
-            <option value="">-- Tất cả cách sắp xếp --</option>
+            <option value="">Tất cả cách sắp xếp</option>
             <option value="created_at_desc" @selected(request('sort') === 'created_at_desc')>Mới nhất</option>
             <option value="created_at_asc" @selected(request('sort') === 'created_at_asc')>Cũ nhất</option>
             <option value="amount_desc" @selected(request('sort') === 'amount_desc')>Số tiền cao nhất</option>

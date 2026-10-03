@@ -1186,19 +1186,56 @@ select.form-select.filter-select {
     min-width: 160px !important;
     max-width: 200px !important;
     text-align: left !important;
-    font-size: 0.875rem !important;
-    color: #4f5d75 !important;
-    border-color: #d1d5db !important;
-    border-radius: 6px !important;
-    padding-top: 0.35rem !important;
-    padding-bottom: 0.35rem !important;
 }
 
-/* Căn trái toàn bộ option bên trong dropdown */
-select.form-select option {
+select,
+select.form-select,
+select.form-select-sm,
+select.form-select-custom {
+    min-height: 40px;
+    padding: 0.5rem 2rem 0.5rem 0.75rem !important;
+    font-family: inherit;
+    font-size: 0.875rem !important;
+    font-weight: 400;
+    line-height: 1.5;
+    color: #4f5d75 !important;
+    background-color: #ffffff !important;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3e%3c/svg%3e") !important;
+    background-repeat: no-repeat !important;
+    background-position: right 0.625rem center !important;
+    background-size: 16px 16px !important;
+    border: 1px solid #d1d5db !important;
+    border-radius: 6px !important;
+    appearance: none;
+    cursor: pointer;
+}
+
+select:focus:not(:disabled):not(.is-invalid),
+select.form-select:focus:not(:disabled):not(.is-invalid) {
+    border-color: #3b82f6 !important;
+    outline: 0;
+    box-shadow: 0 0 0 1px #3b82f6 !important;
+}
+
+select:disabled {
+    cursor: not-allowed;
+}
+
+select option {
     text-align: left !important;
     color: #374151 !important;
     padding: 6px 10px !important;
+}
+
+select option:checked {
+    color: #ffffff !important;
+    background: #2563eb linear-gradient(#2563eb, #2563eb) !important;
+    font-weight: 500;
+}
+
+select option:hover {
+    color: #111827;
+    background-color: #f3f4f6;
 }
 
 /* Ô nhập ngày trong bộ lọc (invoices) giữ cùng độ rộng với dropdown */
@@ -1209,15 +1246,6 @@ select.form-select option {
     font-size: 0.875rem !important;
     padding-top: 0.35rem !important;
     padding-bottom: 0.35rem !important;
-}
-
-/* Select trong form nhập dữ liệu: cùng typography, giữ chiều rộng theo cột */
-select.form-select:not(.filter-select) {
-    text-align: left !important;
-    font-size: 0.875rem !important;
-    color: #4f5d75 !important;
-    border-color: #d1d5db !important;
-    border-radius: 6px !important;
 }
 
 /* Fix lỗi Badge Thời gian xử lý - loại bỏ bóng mờ đen */

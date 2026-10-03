@@ -117,7 +117,6 @@ final class QuyenMapper
         'garment_categories' => 'SERVICE_MANAGE',
         'bookings' => 'DELIVERY_MANAGE',
         'coupons' => 'PROMOTION_MANAGE',
-        'settings' => 'ACCOUNT_MANAGE',
     ];
 
     /**
@@ -146,7 +145,6 @@ final class QuyenMapper
         'notifications' => 'NOTIFICATION',
         'reports' => 'REPORT',
         'accounts' => 'ACCOUNT',
-        'settings' => 'SETTINGS',
         'roles' => 'ROLE',
         'dashboard' => 'DASHBOARD',
     ];

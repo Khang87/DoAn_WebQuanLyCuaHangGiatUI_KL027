@@ -27,7 +27,7 @@
     </div>
     <div class="col-12 col-sm-6 col-md-auto">
         <select name="promotion_id" class="form-select form-select-sm filter-select shadow-sm rounded-3" onchange="this.form.submit()">
-            <option value="">-- Tất cả chương trình --</option>
+            <option value="">Tất cả chương trình</option>
             @foreach($promotions as $promo)
                 <option value="{{ $promo->KhuyenMaiID }}" @selected(request('promotion_id') == $promo->KhuyenMaiID)>{{ $promo->TenKhuyenMai }}</option>
             @endforeach
@@ -38,7 +38,7 @@
             name="status"
             id="filter-status"
             :options="['Hoạt động' => 'Hoạt động', 'Tạm ngưng' => 'Tạm ngưng', 'Hết hạn' => 'Hết hạn']"
-            placeholder="-- Tất cả trạng thái --"
+            placeholder="Tất cả trạng thái"
             class="form-select form-select-sm filter-select shadow-sm rounded-3"
             submit
         />

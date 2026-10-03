@@ -13,6 +13,7 @@ use App\Models\DonHang;
 use App\Models\DonViTinh;
 use App\Models\GiaoNhan;
 use App\Models\KhachHang;
+use App\Models\NhanVien;
 use App\Models\NhatKyHeThong;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
@@ -93,15 +94,23 @@ class OrderService
      *
      * @param  array<int, array<string, mixed>>  $snapshots
      */
-    public function createFromBooking(Booking $booking, array $snapshots, int $pointsUsed = 0): DonHang
+    public function createFromBooking(Booking $booking, array $snapshots, int $employeeId, int $pointsUsed = 0): DonHang
     {
-        return DB::transaction(function () use ($booking, $snapshots, $pointsUsed): DonHang {
+        return DB::transaction(function () use ($booking, $snapshots, $employeeId, $pointsUsed): DonHang {
             $existingOrder = DonHang::query()
                 ->where('BookingID', $booking->BookingID)
                 ->first();
 
             if ($existingOrder !== null) {
                 return $existingOrder;
+            }
+
+            if (! NhanVien::query()->whereKey($employeeId)->exists()) {
+                throw ValidationException::withMessages([
+                    'NhanVienID' => $employeeId > 0
+                        ? 'Nhân viên không tồn tại.'
+                        : 'Vui lòng chọn nhân viên phụ trách.',
+                ]);
             }
 
             $bookingCode = $booking->MaBooking ?: Booking::nextCode();
@@ -129,7 +138,7 @@ class OrderService
             $order = DonHang::create(array_merge([
                 'MaDonHang' => 'TMP'.Str::ulid(),
                 'KhachHangID' => $booking->KhachHangID,
-                'NhanVienID' => $booking->NhanVienID,
+                'NhanVienID' => $employeeId,
                 'BookingID' => $booking->BookingID,
                 'TrangThai' => OrderStatus::Pending->value,
                 'GhiChu' => $notes,
@@ -147,7 +156,7 @@ class OrderService
 
             GiaoNhan::create([
                 'DonHangID' => $order->DonHangID,
-                'NhanVienID' => $booking->NhanVienID,
+                'NhanVienID' => $employeeId,
                 'HinhThuc' => $booking->HinhThucNhanDo,
                 'LoaiGiaoNhan' => $booking->methodEnum()->deliveryType(),
                 'DiaChi' => $booking->methodEnum() === BookingMethod::GiaoDo

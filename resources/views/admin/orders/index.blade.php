@@ -27,7 +27,7 @@
             name="status"
             id="filter-status"
             :options="$statusFlow ?? \App\Enums\OrderStatus::options()"
-            placeholder="-- Tất cả trạng thái --"
+            placeholder="Tất cả trạng thái"
             class="form-select form-select-sm filter-select shadow-sm rounded-3"
             submit
         />

@@ -53,7 +53,9 @@ class BookingController extends Controller
             abort(404);
         }
 
-        return view('admin.bookings.show', compact('booking'));
+        $employees = NhanVien::query()->orderBy('HoTen')->get(['NhanVienID', 'HoTen']);
+
+        return view('admin.bookings.show', compact('booking', 'employees'));
     }
 
     public function edit(int $id)
@@ -151,6 +153,7 @@ class BookingController extends Controller
         try {
             $order = $this->bookingService->confirmPendingBooking(
                 $booking,
+                (int) $request->validated()['NhanVienID'],
                 (int) ($request->validated()['DiemSuDung'] ?? 0),
             );
 

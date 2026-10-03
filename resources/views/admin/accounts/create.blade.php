@@ -53,7 +53,7 @@
                 <div class="col-md-6">
                     <label class="form-label" for="NhanVienID">Hồ sơ nhân viên</label>
                     <select class="form-select @error('NhanVienID') is-invalid @enderror" id="NhanVienID" name="NhanVienID">
-                        <option value="">-- Không chọn nhân viên --</option>
+                        <option value="">Không chọn nhân viên</option>
                         @foreach($employees as $employee)
                             <option value="{{ $employee->NhanVienID }}" @selected(old('NhanVienID') == $employee->NhanVienID)>{{ $employee->HoTen }} · {{ $employee->SoDienThoai }}</option>
                         @endforeach
@@ -63,7 +63,7 @@
                 <div class="col-md-6">
                     <label class="form-label" for="KhachHangID">Hồ sơ khách hàng</label>
                     <select class="form-select @error('KhachHangID') is-invalid @enderror" id="KhachHangID" name="KhachHangID">
-                        <option value="">-- Không chọn khách hàng --</option>
+                        <option value="">Không chọn khách hàng</option>
                         @foreach($customers as $customer)
                             <option value="{{ $customer->KhachHangID }}" @selected(old('KhachHangID') == $customer->KhachHangID)>{{ $customer->HoTen }} · {{ $customer->SoDienThoai }}</option>
                         @endforeach
