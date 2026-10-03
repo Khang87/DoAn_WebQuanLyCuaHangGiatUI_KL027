@@ -19,6 +19,22 @@
                 @if($errors->any())
                     <div class="col-12"><div class="alert alert-danger mb-0">@foreach($errors->all() as $message)<div>{{ $message }}</div>@endforeach</div></div>
                 @endif
+                @if($booking->statusEnum() === \App\Enums\BookingStatus::Pending || $booking->donHangs->isEmpty())
+                    <div class="col-md-6">
+                        <label class="form-label" for="booking-points-used">Điểm tích lũy sử dụng khi tạo đơn</label>
+                        <input
+                            class="form-control @error('DiemSuDung') is-invalid @enderror"
+                            id="booking-points-used"
+                            type="number"
+                            name="DiemSuDung"
+                            min="0"
+                            max="{{ $booking->khachHang?->points ?? 0 }}"
+                            value="{{ old('DiemSuDung', 0) }}"
+                        >
+                        <div class="form-text">Khách hiện có {{ number_format($booking->khachHang?->points ?? 0) }} điểm; 1 điểm = {{ number_format(\App\Services\OrderService::POINT_VALUE) }} VNĐ.</div>
+                        @error('DiemSuDung')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                    </div>
+                @endif
                 <div class="col-12"><hr class="my-1"><div class="d-flex justify-content-between align-items-center"><div><h6 class="mb-1">Dịch vụ dự kiến</h6><small class="text-muted">Có thể thêm nhiều dòng. Đơn giá và thành tiền được tính lại từ bảng giá hiệu lực khi lưu.</small></div><button type="button" class="btn btn-outline-primary btn-sm" id="add-booking-item"><i class="bi bi-plus-lg me-1"></i>Thêm dòng</button></div></div>
                 @php
                     $bookingItems = old('items', $booking->chiTietBookings->map(fn ($item) => $item->only(['DichVuID', 'LoaiDoGiatID', 'DonViTinhID', 'SoLuong', 'KhoiLuong', 'GhiChu']))->all());

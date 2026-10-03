@@ -17,7 +17,9 @@ class XacNhanBookingRequest extends FormRequest
 
     public function rules(): array
     {
-        return [];
+        return [
+            'DiemSuDung' => ['nullable', 'integer', 'min:0'],
+        ];
     }
 
     public function withValidator(Validator $validator): void

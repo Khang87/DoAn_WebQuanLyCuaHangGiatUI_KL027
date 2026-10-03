@@ -55,7 +55,7 @@ class BookingService
         $sortBy = in_array($filters['sort_by'] ?? null, $allowedSorts) ? $filters['sort_by'] : 'NgayTao';
         $sortOrder = ($filters['sort_order'] ?? 'desc') === 'asc' ? 'asc' : 'desc';
 
-        return $query->with(['khachHang', 'nhanVien', 'donHangs', 'chiTietBookings'])
+        return $query->with(['khachHang.diemTichLuy', 'nhanVien', 'donHangs', 'chiTietBookings'])
             ->orderBy($sortBy, $sortOrder)
             ->paginate(10)
             ->withQueryString();
@@ -157,7 +157,7 @@ class BookingService
             }
 
             if ($lockedBooking->isConvertibleToOrder() && ! $this->hasConvertedOrder($lockedBooking)) {
-                $this->insertOrderAndDelivery($lockedBooking);
+                $this->insertOrderAndDelivery($lockedBooking, (int) ($data['DiemSuDung'] ?? 0));
             }
 
             return $lockedBooking->fresh([
@@ -279,9 +279,9 @@ class BookingService
         });
     }
 
-    public function confirmPendingBooking(Booking $booking): DonHang
+    public function confirmPendingBooking(Booking $booking, int $pointsUsed = 0): DonHang
     {
-        return DB::transaction(function () use ($booking): DonHang {
+        return DB::transaction(function () use ($booking, $pointsUsed): DonHang {
             $lockedBooking = Booking::query()
                 ->lockForUpdate()
                 ->findOrFail($booking->BookingID);
@@ -316,7 +316,7 @@ class BookingService
             $this->recordBookingAudit($lockedBooking, $before, $after, $beforeItems, $afterItems);
 
             $order = $this->findOrderForBooking($lockedBooking)
-                ?? $this->orderService->createFromBooking($lockedBooking, $snapshots);
+                ?? $this->orderService->createFromBooking($lockedBooking, $snapshots, $pointsUsed);
 
             return $order->fresh();
         });
@@ -327,11 +327,11 @@ class BookingService
      * Bản ghi đơn luôn chứa mã tham chiếu của lịch đặt: qua quan hệ
      * `orders.booking_id` và qua mã ghi trong phần ghi chú.
      */
-    private function insertOrderAndDelivery(Booking $booking): DonHang
+    private function insertOrderAndDelivery(Booking $booking, int $pointsUsed = 0): DonHang
     {
         $snapshots = $this->serviceSnapshotsForOrder($booking);
 
-        return $this->orderService->createFromBooking($booking, $snapshots);
+        return $this->orderService->createFromBooking($booking, $snapshots, $pointsUsed);
     }
 
     /**

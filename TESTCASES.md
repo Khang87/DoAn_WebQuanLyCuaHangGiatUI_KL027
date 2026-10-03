@@ -133,6 +133,19 @@ Chạy riêng bằng `php artisan test --compact --filter=SystemLogTest`: **4 pa
 | 91 | TC-SLOG-03 — `SystemLog` | View nhận danh sách tài khoản chỉ gồm `TaiKhoanID`, `TenDangNhap` và hiển thị option dropdown đúng định dạng. | Feature — `tests/Feature/SystemLogTest.php` | ✅ PASSED |
 | 92 | TC-SLOG-04 — `SystemLog` | Tài khoản vai trò Nhân viên bị từ chối truy cập route Nhật ký hệ thống (HTTP 403). | Feature — `tests/Feature/SystemLogTest.php` | ✅ PASSED |
 
+### Kiểm thử Điểm tích lũy (RewardPoint)
+
+Chạy riêng bằng `php artisan test --compact --filter=RewardPointTest`: **6 passed**, 22 assertions.
+
+| STT | Mã Test / Tên Class Test | Mô tả kịch bản test | Môi trường/File test | Trạng thái |
+|---:|---|---|---|---|
+| 93 | TC-POINT-01 — `RewardPoint` | Đơn chuyển sang “Đã giao” cộng 1 điểm mỗi 1.000 VNĐ giá trị thanh toán; quay lại trạng thái khác rồi giao lại không cộng trùng. | Feature — `tests/Feature/RewardPointTest.php` | ✅ PASSED |
+| 94 | TC-POINT-02 — `RewardPoint` | Xác nhận Booking sử dụng điểm đã chọn, giảm đúng tiền và trừ đúng số dư khách hàng. | Feature — `tests/Feature/RewardPointTest.php` | ✅ PASSED |
+| 95 | TC-POINT-03 — `RewardPoint` | Khi sửa đơn sang khách khác, hoàn điểm về khách cũ và chỉ trừ điểm khách mới. | Feature — `tests/Feature/RewardPointTest.php` | ✅ PASSED |
+| 96 | TC-POINT-04 — `RewardPoint` | Không áp dụng giảm tiền nhỏ hơn giá trị một điểm nếu không thể trừ số điểm nguyên tương ứng. | Feature — `tests/Feature/RewardPointTest.php` | ✅ PASSED |
+| 97 | TC-POINT-05 — `RewardPoint` | Từ chối tạo đơn khi điểm yêu cầu vượt số dư; đơn không được lưu và số dư giữ nguyên. | Feature — `tests/Feature/RewardPointTest.php` | ✅ PASSED |
+| 98 | TC-POINT-06 — `RewardPoint` | Khi sửa đơn thất bại do khách mới không đủ điểm, rollback cả hoàn điểm cho khách cũ và các thay đổi đơn hàng. | Feature — `tests/Feature/RewardPointTest.php` | ✅ PASSED |
+
 ### Giới hạn phạm vi kiểm thử
 
 - Audit đơn hàng được test trực tiếp qua `OrderService`. Chưa có test tích hợp riêng gọi từng luồng Payment hoặc Dashboard để chứng minh việc ghi audit qua các endpoint đó.

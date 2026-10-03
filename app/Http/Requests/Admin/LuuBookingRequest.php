@@ -26,6 +26,7 @@ class LuuBookingRequest extends FormRequest
             'scheduled_time' => ['required', 'date_format:H:i'],
             'notes' => ['nullable', 'string', 'max:500'],
             'status' => ['nullable', 'in:'.implode(',', BookingStatus::values())],
+            'DiemSuDung' => ['nullable', 'integer', 'min:0'],
             'items' => ['sometimes', 'array'],
             'items.*.DichVuID' => ['required', 'integer', 'exists:DichVu,DichVuID'],
             'items.*.LoaiDoGiatID' => ['required', 'integer', 'exists:LoaiDoGiat,LoaiDoGiatID'],

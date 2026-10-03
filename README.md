@@ -25,6 +25,7 @@ Sky Laundry hỗ trợ số hóa hoạt động hằng ngày của cửa hàng g
 - Booking hỗ trợ nhiều dòng dịch vụ; mức khối lượng tối thiểu được tính riêng trên từng dòng KG, không cộng gộp toàn Booking.
 - Bộ máy bảng giá tra cứu chính xác theo `(DichVuID, LoaiDoGiatID, DonViTinhID)`, lấy ngày áp dụng mới nhất; thao tác tạo/sửa/khôi phục khóa theo tuple bằng PostgreSQL transaction advisory lock để chống race condition giữa các tiến trình Laravel.
 - Booking được xác nhận sẽ tự chuyển thành đơn hàng và phiếu giao trong transaction. UI không hiện nút tạo đơn cho Booking đang chờ xác nhận; nếu đã có đơn thì hiển thị liên kết tới đơn hiện hữu thay vì tạo trùng.
+- Điểm tích lũy dùng tỷ lệ 1.000 VNĐ = 1 điểm: đơn được giao sẽ cộng điểm một lần; điểm có thể được chọn để giảm giá khi tạo/sửa đơn hoặc chuyển Booking thành đơn hàng.
 - Ghi nhật ký `NhatKyHeThong` cho tạo/xác nhận Booking (bao gồm người và thời điểm xác nhận), đổi trạng thái đơn hàng và thay đổi tài khoản; snapshot tài khoản không ghi mật khẩu.
 - Màn hình Nhật ký hệ thống tại `/admin/system-logs` dành riêng cho Chủ cửa hàng; có lọc theo bảng dữ liệu, hành động, khoảng ngày và tài khoản, phân trang, xem snapshot trước/sau và liên kết tới Booking/đơn liên quan. Nhật ký có `TaiKhoanID` NULL được hiển thị là “Hệ thống”.
 - Chat hai chiều theo đơn hàng tại `/admin/messages` dành cho Chủ cửa hàng, Quản lý và Nhân viên; tải lịch sử tin nhắn gần nhất và gửi phản hồi tới tài khoản khách hàng liên kết với đơn. `TinNhan` chỉ lưu hội thoại, không dùng làm technical audit hoặc system log.

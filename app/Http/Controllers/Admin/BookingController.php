@@ -149,14 +149,17 @@ class BookingController extends Controller
         }
 
         try {
-            $order = $this->bookingService->confirmPendingBooking($booking);
+            $order = $this->bookingService->confirmPendingBooking(
+                $booking,
+                (int) ($request->validated()['DiemSuDung'] ?? 0),
+            );
 
             return redirect()->route('orders.show', $order)->with(
                 'success',
                 'Đặt lịch đã được xác nhận và tạo đơn hàng '.$order->MaDonHang.' thành công.',
             );
         } catch (ValidationException $e) {
-            return redirect()->route('bookings.edit', $booking)->withErrors($e->errors());
+            return redirect()->route('bookings.edit', $booking)->withErrors($e->errors())->withInput();
         } catch (Throwable $e) {
             $this->logBookingFailure($booking->BookingID, 'confirm', $e);
 

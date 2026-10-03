@@ -26,9 +26,19 @@ class OrderService
     ) {}
 
     /**
-     * Quy ước 1 điểm tích lũy thành tiền.
+     * Giá trị giảm giá của một điểm tích lũy tính theo VNĐ.
      */
-    public const POINT_VALUE = 1000;
+    public const POINT_VALUE = 10;
+
+    /**
+     * Số tiền thanh toán cần thiết để nhận một lô điểm tích lũy.
+     */
+    public const POINTS_PER_AMOUNT = 1000;
+
+    /**
+     * Số điểm được cộng cho mỗi lô giá trị đơn hàng đạt mức quy định.
+     */
+    public const POINTS_EARNED_PER_AMOUNT = 100;
 
     /**
      * Lý do voucher cuối cùng bị loại trong lần gọi create()/update() gần nhất.
@@ -64,13 +74,10 @@ class OrderService
             : 0.0;
 
         // Không cho dùng vượt số điểm khách đang có.
-        $pointsUsed = max(0, min($pointsUsed, $customerPoints));
-
         $remaining = max(0, $subtotal - $discountByPromotion);
-        $discountByPoints = min($pointsUsed * self::POINT_VALUE, $remaining);
-
-        // Số điểm thực sự quy ước được thành tiền (tránh ghi điểm "lãng phí").
-        $effectivePoints = (int) floor($discountByPoints / self::POINT_VALUE);
+        $redeemablePoints = (int) floor($remaining / self::POINT_VALUE);
+        $effectivePoints = max(0, min($pointsUsed, $customerPoints, $redeemablePoints));
+        $discountByPoints = $effectivePoints * self::POINT_VALUE;
 
         return [
             'TongTien' => round($subtotal, 2),
@@ -86,9 +93,9 @@ class OrderService
      *
      * @param  array<int, array<string, mixed>>  $snapshots
      */
-    public function createFromBooking(Booking $booking, array $snapshots): DonHang
+    public function createFromBooking(Booking $booking, array $snapshots, int $pointsUsed = 0): DonHang
     {
-        return DB::transaction(function () use ($booking, $snapshots): DonHang {
+        return DB::transaction(function () use ($booking, $snapshots, $pointsUsed): DonHang {
             $existingOrder = DonHang::query()
                 ->where('BookingID', $booking->BookingID)
                 ->first();
@@ -99,6 +106,17 @@ class OrderService
 
             $bookingCode = $booking->MaBooking ?: Booking::nextCode();
             $total = array_sum(array_column($snapshots, 'ThanhTien'));
+            $customer = KhachHang::query()->find($booking->KhachHangID);
+            $customerPoints = $customer?->points() ?? 0;
+            $this->assertRequestedPointsAvailable($pointsUsed, $customerPoints);
+            $amounts = $this->calculateAmounts($total, null, $pointsUsed, $customerPoints);
+
+            if ($amounts['DiemSuDung'] > 0 && ! $customer->deductPoints($amounts['DiemSuDung'])) {
+                throw ValidationException::withMessages([
+                    'DiemSuDung' => 'Số dư điểm đã thay đổi. Vui lòng kiểm tra lại điểm tích lũy và thử lại.',
+                ]);
+            }
+
             $reference = 'Tự động tạo từ đặt lịch '.$bookingCode
                 .' ('.$booking->method_label.' ngày '
                 .($booking->NgayHen?->format('d/m/Y') ?? '—').')';
@@ -108,16 +126,14 @@ class OrderService
                 500,
             );
 
-            $order = DonHang::create([
+            $order = DonHang::create(array_merge([
                 'MaDonHang' => 'TMP'.Str::ulid(),
                 'KhachHangID' => $booking->KhachHangID,
                 'NhanVienID' => $booking->NhanVienID,
                 'BookingID' => $booking->BookingID,
                 'TrangThai' => OrderStatus::Pending->value,
                 'GhiChu' => $notes,
-                'TongTien' => $total,
-                'ThanhTien' => $total,
-            ]);
+            ], $amounts));
             $order->update([
                 'MaDonHang' => 'DH'.str_pad((string) $order->DonHangID, 3, '0', STR_PAD_LEFT),
             ]);
@@ -433,17 +449,21 @@ class OrderService
             );
 
             $customerPoints = $customer?->points() ?? 0;
+            $pointsRequested = (int) ($data['DiemSuDung'] ?? 0);
+            $this->assertRequestedPointsAvailable($pointsRequested, $customerPoints);
 
             $amounts = $this->calculateAmounts(
                 $subtotal,
                 $promotion,
-                (int) ($data['DiemSuDung'] ?? 0),
+                $pointsRequested,
                 $customerPoints
             );
 
             // Trừ điểm tích lũy của khách hàng ngay trong cùng transaction.
-            if ($customer && $amounts['DiemSuDung'] > 0) {
-                $customer->deductPoints($amounts['DiemSuDung']);
+            if ($amounts['DiemSuDung'] > 0 && (! $customer || ! $customer->deductPoints($amounts['DiemSuDung']))) {
+                throw ValidationException::withMessages([
+                    'DiemSuDung' => 'Không thể sử dụng số điểm đã chọn. Vui lòng kiểm tra số dư điểm và thử lại.',
+                ]);
             }
 
             $order = DonHang::create(array_merge($this->onlyOrderColumns($data), [
@@ -471,10 +491,12 @@ class OrderService
 
         $this->promotionRejection = null;
 
-        return DB::transaction(function () use ($order, $data) {
-            $customer = ! empty($data['KhachHangID'])
-                ? KhachHang::find($data['KhachHangID'])
-                : $order->khachHang;
+        return DB::transaction(function () use ($order, $data, $overrideSettled) {
+            $lockedOrder = DonHang::query()->lockForUpdate()->findOrFail($order->getKey());
+
+            if ($lockedOrder->isLocked() && ! $overrideSettled) {
+                throw SettledOrderException::forOrder($lockedOrder->MaDonHang);
+            }
 
             [$items, $subtotal] = $this->buildItems($data['items'] ?? []);
 
@@ -482,29 +504,40 @@ class OrderService
             $touchesPromotion = array_key_exists('KhuyenMaiID', $data) || array_key_exists('promotion_code', $data);
             $promotion = $touchesPromotion
                 ? $this->resolvePromotion($data)
-                : $order->khuyenMai;
+                : $lockedOrder->khuyenMai;
 
             // Chính sách điều kiện voucher: bỏ voucher nếu khách không thoả
             // điều kiện, đơn vẫn lưu bình thường.
-            $promotion = $this->applyPromotionConditions($promotion, $customer, $subtotal, $order->DonHangID);
+            $newCustomerId = (int) ($data['KhachHangID'] ?? $lockedOrder->KhachHangID);
+            $customerChanged = $newCustomerId !== (int) $lockedOrder->KhachHangID;
+            $oldCustomer = KhachHang::query()->find($lockedOrder->KhachHangID);
+            $customer = $customerChanged
+                ? KhachHang::query()->findOrFail($newCustomerId)
+                : $oldCustomer;
+
+            $promotion = $this->applyPromotionConditions($promotion, $customer, $subtotal, $lockedOrder->DonHangID);
 
             // Hoàn lại số điểm đã dùng ở lần lưu trước để tính lại từ đầu.
-            $previousPoints = (int) $order->DiemSuDung;
-            if ($customer && $previousPoints > 0) {
-                $customer->addPoints($previousPoints);
+            $previousPoints = (int) $lockedOrder->DiemSuDung;
+            if ($oldCustomer && $previousPoints > 0) {
+                $oldCustomer->addPoints($previousPoints);
             }
 
             $customerPoints = $customer?->points() ?? 0;
+            $pointsRequested = (int) ($data['DiemSuDung'] ?? 0);
+            $this->assertRequestedPointsAvailable($pointsRequested, $customerPoints);
 
             $amounts = $this->calculateAmounts(
                 $subtotal,
                 $promotion,
-                (int) ($data['DiemSuDung'] ?? 0),
+                $pointsRequested,
                 $customerPoints
             );
 
-            if ($customer && $amounts['DiemSuDung'] > 0) {
-                $customer->deductPoints($amounts['DiemSuDung']);
+            if ($amounts['DiemSuDung'] > 0 && (! $customer || ! $customer->deductPoints($amounts['DiemSuDung']))) {
+                throw ValidationException::withMessages([
+                    'DiemSuDung' => 'Không thể sử dụng số điểm đã chọn. Vui lòng kiểm tra số dư điểm và thử lại.',
+                ]);
             }
 
             $auditedFields = [
@@ -516,40 +549,41 @@ class OrderService
             ];
             $previousValues = [];
             foreach ($auditedFields as $field) {
-                $previousValues[$field] = $order->getAttribute($field);
+                $previousValues[$field] = $lockedOrder->getAttribute($field);
             }
 
-            $order->fill(array_merge($this->onlyOrderColumns($data), [
+            $lockedOrder->fill(array_merge($this->onlyOrderColumns($data), [
+                'KhachHangID' => $newCustomerId,
                 'KhuyenMaiID' => $promotion?->KhuyenMaiID,
                 'NgayCapNhat' => now(),
             ], $amounts));
-            $order->save();
+            $lockedOrder->save();
 
-            $changedFields = array_intersect($auditedFields, array_keys($order->getChanges()));
+            $changedFields = array_intersect($auditedFields, array_keys($lockedOrder->getChanges()));
             if ($changedFields !== []) {
                 NhatKyHeThong::query()->create([
                     'TaiKhoanID' => auth()->id(),
                     'HanhDong' => 'Thay đổi số tiền đơn hàng',
                     'BangDuLieu' => 'DonHang',
-                    'BanGhiID' => $order->getKey(),
+                    'BanGhiID' => $lockedOrder->getKey(),
                     'DuLieuCu' => array_intersect_key($previousValues, array_flip($changedFields)),
-                    'DuLieuMoi' => array_intersect_key($order->getAttributes(), array_flip($changedFields)),
+                    'DuLieuMoi' => array_intersect_key($lockedOrder->getAttributes(), array_flip($changedFields)),
                     'ThoiGian' => now(),
                     'IPAddress' => request()->ip(),
                     'UserAgent' => request()->userAgent(),
                 ]);
             }
 
-            $order->chiTietDonHangs()->delete();
+            $lockedOrder->chiTietDonHangs()->delete();
             foreach ($items as $item) {
                 if (empty($item['DichVuID']) || empty($item['LoaiDoGiatID']) || empty($item['DonViTinhID'])) {
                     continue;
                 }
 
-                ChiTietDonHang::create(array_merge(['DonHangID' => $order->DonHangID], $item));
+                ChiTietDonHang::create(array_merge(['DonHangID' => $lockedOrder->DonHangID], $item));
             }
 
-            return $order->fresh(['chiTietDonHangs', 'khachHang', 'khuyenMai']);
+            return $lockedOrder->fresh(['chiTietDonHangs', 'khachHang', 'khuyenMai']);
         });
     }
 
@@ -595,6 +629,15 @@ class OrderService
 
             return $lockedOrder->fresh();
         });
+    }
+
+    private function assertRequestedPointsAvailable(int $pointsRequested, int $availablePoints): void
+    {
+        if ($pointsRequested < 0 || $pointsRequested > $availablePoints) {
+            throw ValidationException::withMessages([
+                'DiemSuDung' => 'Số điểm sử dụng vượt quá số dư điểm hiện có.',
+            ]);
+        }
     }
 
     public function findById(int $id): ?DonHang

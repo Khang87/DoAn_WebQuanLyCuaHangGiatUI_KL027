@@ -64,6 +64,18 @@
                                     @if($booking->chiTietBookings->isNotEmpty())
                                         <form action="{{ route('bookings.confirm', $booking) }}" method="POST" class="d-inline" data-confirm-booking-form>
                                             @csrf
+                                            <label class="visually-hidden" for="booking-points-{{ $booking->BookingID }}">Điểm sử dụng cho Booking {{ $booking->MaBooking }}</label>
+                                            <input
+                                                class="form-control form-control-sm mb-1"
+                                                id="booking-points-{{ $booking->BookingID }}"
+                                                type="number"
+                                                name="DiemSuDung"
+                                                min="0"
+                                                max="{{ $booking->khachHang?->points ?? 0 }}"
+                                                value="0"
+                                                aria-label="Điểm tích lũy muốn sử dụng"
+                                                title="Điểm hiện có: {{ $booking->khachHang?->points ?? 0 }}; mỗi điểm giảm {{ number_format(\App\Services\OrderService::POINT_VALUE) }} VNĐ"
+                                            >
                                             <button type="submit" class="btn btn-order-action" title="Xác nhận lịch và tự động tạo đơn hàng">
                                                 <i class="bi bi-hourglass-split" aria-hidden="true"></i>
                                                 <span class="visually-hidden">Xác nhận Booking</span>

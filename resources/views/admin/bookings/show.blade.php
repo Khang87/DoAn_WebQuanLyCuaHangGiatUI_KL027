@@ -137,6 +137,19 @@
                     @if($booking->chiTietBookings->isNotEmpty() && auth()->user()?->can('bookings.confirm'))
                         <form action="{{ route('bookings.confirm', $booking) }}" method="POST" data-confirm-booking-form>
                             @csrf
+                            <label class="form-label" for="booking-points-used">Dùng điểm tích lũy</label>
+                            <input
+                                class="form-control mb-2"
+                                id="booking-points-used"
+                                type="number"
+                                name="DiemSuDung"
+                                min="0"
+                                max="{{ $booking->khachHang?->points ?? 0 }}"
+                                value="{{ old('DiemSuDung', 0) }}"
+                            >
+                            <div class="form-text mb-2">
+                                Có {{ number_format($booking->khachHang?->points ?? 0) }} điểm; 1 điểm = {{ number_format(\App\Services\OrderService::POINT_VALUE) }} VNĐ.
+                            </div>
                             <button type="submit" class="btn btn-outline-primary py-2 w-100">
                                 <i class="bi bi-hourglass-split me-1" aria-hidden="true"></i> Xác nhận và tạo đơn
                             </button>

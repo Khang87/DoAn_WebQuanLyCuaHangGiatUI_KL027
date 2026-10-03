@@ -105,23 +105,19 @@ class KhachHang extends Model
             return false;
         }
 
-        $record = $this->diemTichLuy ?: DiemTichLuy::firstOrCreate(
+        DiemTichLuy::firstOrCreate(
             ['KhachHangID' => $this->KhachHangID],
             ['DiemHienTai' => 0, 'NgayCapNhat' => now()]
         );
 
-        if ((int) $record->DiemHienTai < $points) {
-            return false;
-        }
-
-        $record->update([
-            'DiemHienTai' => (int) $record->DiemHienTai - $points,
-            'NgayCapNhat' => now(),
-        ]);
+        $deducted = DiemTichLuy::query()
+            ->where('KhachHangID', $this->KhachHangID)
+            ->where('DiemHienTai', '>=', $points)
+            ->decrement('DiemHienTai', $points, ['NgayCapNhat' => now()]);
 
         $this->unsetRelation('diemTichLuy');
 
-        return true;
+        return $deducted === 1;
     }
 
     /**
@@ -133,15 +129,14 @@ class KhachHang extends Model
             return;
         }
 
-        $record = $this->diemTichLuy ?: DiemTichLuy::firstOrCreate(
+        DiemTichLuy::firstOrCreate(
             ['KhachHangID' => $this->KhachHangID],
             ['DiemHienTai' => 0, 'NgayCapNhat' => now()]
         );
 
-        $record->update([
-            'DiemHienTai' => (int) $record->DiemHienTai + $points,
-            'NgayCapNhat' => now(),
-        ]);
+        DiemTichLuy::query()
+            ->where('KhachHangID', $this->KhachHangID)
+            ->increment('DiemHienTai', $points, ['NgayCapNhat' => now()]);
 
         $this->unsetRelation('diemTichLuy');
     }
