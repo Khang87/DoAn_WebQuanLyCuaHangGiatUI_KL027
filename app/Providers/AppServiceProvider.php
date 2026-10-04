@@ -2,12 +2,10 @@
 
 namespace App\Providers;
 
-use App\Models\Booking;
 use App\Models\DonHang;
 use App\Models\HoaDon;
 use App\Models\Quyen;
 use App\Models\User;
-use App\Observers\BookingObserver;
 use App\Observers\HoaDonObserver;
 use App\Observers\OrderObserver;
 use App\Policies\UserPolicy;
@@ -57,7 +55,6 @@ class AppServiceProvider extends ServiceProvider
 
         Gate::policy(User::class, UserPolicy::class);
 
-        Booking::observe(BookingObserver::class);
         HoaDon::observe(HoaDonObserver::class);
         DonHang::observe(OrderObserver::class);
 

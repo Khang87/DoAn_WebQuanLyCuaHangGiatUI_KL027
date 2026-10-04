@@ -14,6 +14,9 @@
             $garmentOptions = $garments;
             $employeeOptions = $employees;
             $priceOptions = $pricings;
+            $statusOptions = $order->statusEnum() === \App\Enums\OrderStatus::Pending
+                ? [\App\Enums\OrderStatus::Pending->value => \App\Enums\OrderStatus::Pending->label()]
+                : ($statusFlow ?? \App\Enums\OrderStatus::options());
             $minimumWeight = (float) config('giatui.khoi_luong_toi_thieu', 3.0);
             $items = old('items');
             if (!is_array($items)) {
@@ -86,7 +89,7 @@
                     <x-admin.status-select
                         name="TrangThai"
                         id="status"
-                        :options="$statusFlow ?? \App\Enums\OrderStatus::options()"
+                        :options="$statusOptions"
                         :selected="$order->TrangThai"
                         class="form-select"
                         required

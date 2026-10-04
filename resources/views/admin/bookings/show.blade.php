@@ -107,10 +107,10 @@
                 </x-admin.detail.info-grid>
                 <div class="detail-lock mt-3">
                     <i class="bi bi-info-circle"></i>
-                    <span>Đơn hàng được tạo tự động khi lịch chuyển sang trạng thái Đã xác nhận.</span>
+                    <span>Đơn hàng được tạo ở trạng thái chờ tiếp nhận; cần kiểm tra thực tế trước khi bắt đầu giặt.</span>
                 </div>
             @else
-                <x-admin.detail.empty message="Chưa có đơn — sẽ tự động tạo khi lịch được xác nhận" icon="bi-hourglass-split" />
+                <x-admin.detail.empty message="Chưa có đơn — dùng thao tác Tiếp nhận & tạo đơn để bắt đầu quy trình" icon="bi-hourglass-split" />
             @endif
         </x-admin.detail.panel>
 
@@ -167,25 +167,25 @@
                                 Khách đang có {{ number_format($booking->khachHang?->points ?? 0) }} điểm (tương đương {{ number_format(($booking->khachHang?->points ?? 0) * \App\Services\OrderService::POINT_VALUE) }} VNĐ)
                             </div>
                             <button type="submit" class="btn btn-outline-primary py-2 w-100">
-                                <i class="bi bi-hourglass-split me-1" aria-hidden="true"></i> Xác nhận và tạo đơn
+                                <i class="bi bi-box-arrow-in-down me-1" aria-hidden="true"></i> Tiếp nhận &amp; tạo đơn
                             </button>
                         </form>
                     @elseif($booking->chiTietBookings->isEmpty() && auth()->user()?->can('bookings.edit'))
                         <a href="{{ route('bookings.edit', $booking) }}" class="btn btn-outline-primary py-2 w-100">
-                            <i class="bi bi-exclamation-triangle me-1" aria-hidden="true"></i> Thêm dịch vụ trước khi xác nhận
+                            <i class="bi bi-exclamation-triangle me-1" aria-hidden="true"></i> Thêm dịch vụ trước khi tiếp nhận
                         </a>
                     @elseif($booking->chiTietBookings->isEmpty())
                         <div class="alert alert-warning mb-0" role="alert">
-                            Chưa thể xác nhận: cần thêm ít nhất một dòng dịch vụ trước khi tạo đơn hàng.
+                            Chưa thể tiếp nhận: cần thêm ít nhất một dòng dịch vụ trước khi tạo đơn hàng.
                         </div>
                     @else
                         <span class="btn btn-outline-primary py-2 disabled w-100">
-                            <i class="bi bi-hourglass-split me-1"></i> Chờ xác nhận
+                            <i class="bi bi-hourglass-split me-1"></i> Chờ tiếp nhận
                         </span>
                     @endif
                 @elseif($booking->statusEnum() === \App\Enums\BookingStatus::Confirmed)
                     <div class="alert alert-warning mb-0" role="alert">
-                        Booking đã xác nhận nhưng chưa có đơn hàng. Vui lòng kiểm tra nhật ký hệ thống.
+                        Booking đã được xác nhận nhưng chưa có đơn hàng. Vui lòng kiểm tra nhật ký hệ thống.
                     </div>
                 @endif
 

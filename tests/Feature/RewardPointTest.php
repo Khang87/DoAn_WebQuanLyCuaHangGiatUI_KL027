@@ -58,6 +58,7 @@ class RewardPointTest extends TestCase
     {
         $customer = $this->createCustomer(1, 2);
         $order = $this->createOrder($customer, 100000, 0);
+        $order->update(['TrangThai' => OrderStatus::Received->value]);
         $service = app(OrderService::class);
 
         $service->updateStatus($order, OrderStatus::Delivered->value);

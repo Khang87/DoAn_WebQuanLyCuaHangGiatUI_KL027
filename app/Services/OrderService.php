@@ -147,7 +147,7 @@ class OrderService
                 'KhachHangID' => $booking->KhachHangID,
                 'NhanVienID' => $employeeId,
                 'BookingID' => $booking->BookingID,
-                'TrangThai' => OrderStatus::Received->value,
+                'TrangThai' => OrderStatus::Pending->value,
                 'GhiChu' => $notes,
             ], $amounts));
             $order->update([
@@ -187,7 +187,7 @@ class OrderService
      *
      * @return array{0: array<int, array<string, mixed>>, 1: float}
      */
-    private function buildItems(?array $rawItems): array
+    private function buildItems(?array $rawItems, array $priceOverridesByIndex = []): array
     {
         $rows = [];
         $calculationItems = [];
@@ -265,13 +265,14 @@ class OrderService
 
             $tupleKey = (int) $serviceId.':'.(int) $garmentId.':'.(int) $unitId;
             $pricing = $pricingByTuple[$tupleKey] ?? null;
-            if (! $pricing) {
+            $priceOverride = $priceOverridesByIndex[$itemIndex] ?? null;
+            if (! $pricing && $priceOverride === null) {
                 throw ValidationException::withMessages([
                     "items.{$itemIndex}.DonViTinhID" => 'Không có bảng giá đang hiệu lực cho tổ hợp dịch vụ, loại đồ và đơn vị tính đã chọn.',
                 ]);
             }
 
-            $price = (float) $pricing->DonGia;
+            $price = $priceOverride !== null ? (float) $priceOverride : (float) $pricing->DonGia;
             $quantityInput = $item['SoLuong'] ?? $item['quantity'] ?? null;
             $weightInput = $item['KhoiLuong'] ?? $item['weight'] ?? null;
             $quantity = $quantityInput !== null && $quantityInput !== '' ? (float) $quantityInput : null;
@@ -518,6 +519,22 @@ class OrderService
                 throw SettledOrderException::forOrder($lockedOrder->MaDonHang);
             }
 
+            if ($lockedOrder->TrangThai !== OrderStatus::Pending->value && ! $overrideSettled) {
+                throw ValidationException::withMessages([
+                    'order' => 'Chi tiết đơn hàng đã khóa sau khi hoàn tất tiếp nhận.',
+                ]);
+            }
+
+            if (
+                $lockedOrder->statusEnum() === OrderStatus::Pending
+                && isset($data['TrangThai'])
+                && $data['TrangThai'] !== OrderStatus::Pending->value
+            ) {
+                throw ValidationException::withMessages([
+                    'TrangThai' => 'Cần hoàn tất kiểm tra và tiếp nhận thực tế trước khi chuyển trạng thái đơn hàng.',
+                ]);
+            }
+
             [$items, $subtotal] = $this->buildItems($data['items'] ?? []);
 
             // Form gửi KhuyenMaiID (có thể rỗng) và/hoặc promotion_code.
@@ -607,6 +624,139 @@ class OrderService
         });
     }
 
+    /**
+     * Lưu kết quả kiểm tra thực tế và hoàn tất tiếp nhận trong một transaction.
+     *
+     * @param  array<int, array<string, mixed>>  $items
+     */
+    public function completeReceivingInspection(DonHang $order, array $items): DonHang
+    {
+        return DB::transaction(function () use ($order, $items): DonHang {
+            $lockedOrder = DonHang::query()
+                ->lockForUpdate()
+                ->findOrFail($order->getKey());
+
+            if ($lockedOrder->statusEnum() !== OrderStatus::Pending) {
+                throw ValidationException::withMessages([
+                    'order' => 'Chỉ đơn hàng đang chờ tiếp nhận mới có thể hoàn tất kiểm tra.',
+                ]);
+            }
+
+            if ($items === []) {
+                throw ValidationException::withMessages([
+                    'items' => 'Đơn hàng cần có ít nhất một mặt hàng thực tế.',
+                ]);
+            }
+
+            $items = array_values($items);
+            $existingItems = $lockedOrder->chiTietDonHangs()
+                ->lockForUpdate()
+                ->get()
+                ->keyBy('ChiTietDonHangID');
+            $submittedItemIds = [];
+
+            foreach ($items as $item) {
+                $itemId = $item['ChiTietDonHangID'] ?? null;
+                if ($itemId === null) {
+                    continue;
+                }
+
+                $itemId = (int) $itemId;
+                if (! $existingItems->has($itemId)) {
+                    throw ValidationException::withMessages([
+                        'items' => 'Có mặt hàng không thuộc đơn hàng này. Vui lòng tải lại và kiểm tra danh sách.',
+                    ]);
+                }
+
+                if (isset($submittedItemIds[$itemId])) {
+                    throw ValidationException::withMessages([
+                        'items' => 'Không thể gửi trùng một mặt hàng trong danh sách kiểm tra.',
+                    ]);
+                }
+
+                $submittedItemIds[$itemId] = true;
+            }
+
+            $priceOverridesByIndex = [];
+            foreach ($items as $index => $item) {
+                $itemId = (int) ($item['ChiTietDonHangID'] ?? 0);
+                $existingItem = $existingItems->get($itemId);
+
+                if (
+                    $existingItem
+                    && (int) $existingItem->DichVuID === (int) $item['DichVuID']
+                    && (int) $existingItem->LoaiDoGiatID === (int) $item['LoaiDoGiatID']
+                    && (int) $existingItem->DonViTinhID === (int) $item['DonViTinhID']
+                ) {
+                    $priceOverridesByIndex[$index] = (float) $existingItem->DonGia;
+                }
+            }
+
+            [$rows, $subtotal] = $this->buildItems($items, $priceOverridesByIndex);
+            $retainedIds = [];
+
+            foreach ($rows as $index => $row) {
+                $itemId = $items[$index]['ChiTietDonHangID'] ?? null;
+                if ($itemId !== null) {
+                    $existingItems->get((int) $itemId)->update($row);
+                    $retainedIds[] = (int) $itemId;
+
+                    continue;
+                }
+
+                $createdItem = $lockedOrder->chiTietDonHangs()->create($row);
+                $retainedIds[] = (int) $createdItem->getKey();
+            }
+
+            $lockedOrder->chiTietDonHangs()
+                ->whereNotIn('ChiTietDonHangID', $retainedIds)
+                ->delete();
+
+            $customer = KhachHang::query()->find($lockedOrder->KhachHangID);
+            $previousPoints = (int) $lockedOrder->DiemSuDung;
+
+            if ($customer && $previousPoints > 0) {
+                $customer->addPoints($previousPoints);
+            }
+
+            $promotion = $this->applyPromotionConditions(
+                $lockedOrder->khuyenMai,
+                $customer,
+                $subtotal,
+                (int) $lockedOrder->DonHangID,
+            );
+            $customerPoints = $customer?->points() ?? 0;
+            $this->assertRequestedPointsAvailable($previousPoints, $customerPoints);
+            $amounts = $this->calculateAmounts(
+                $subtotal,
+                $promotion,
+                $previousPoints,
+                $customerPoints,
+            );
+
+            if ($amounts['DiemSuDung'] > 0 && (! $customer || ! $customer->deductPoints($amounts['DiemSuDung']))) {
+                throw ValidationException::withMessages([
+                    'DiemSuDung' => 'Không thể áp dụng lại số điểm đã chọn. Vui lòng kiểm tra số dư điểm.',
+                ]);
+            }
+
+            $lockedOrder->update(array_merge($amounts, [
+                'KhuyenMaiID' => $promotion?->KhuyenMaiID,
+                'TrangThai' => OrderStatus::Received->value,
+                'NgayCapNhat' => now(),
+            ]));
+
+            return $lockedOrder->fresh([
+                'chiTietDonHangs.dichVu',
+                'chiTietDonHangs.loaiDoGiat',
+                'chiTietDonHangs.donViTinh',
+                'khachHang',
+                'khuyenMai',
+                'nhanVien',
+            ]);
+        });
+    }
+
     public function delete(DonHang $order, bool $overrideSettled = false): bool
     {
         if ($order->isLocked() && ! $overrideSettled) {
@@ -640,6 +790,21 @@ class OrderService
 
             if ($lockedOrder->isLocked() && ! $overrideSettled) {
                 throw SettledOrderException::forOrder($lockedOrder->MaDonHang);
+            }
+
+            if (! in_array($status, OrderStatus::values(), true)) {
+                throw ValidationException::withMessages([
+                    'TrangThai' => 'Trạng thái đơn hàng không hợp lệ.',
+                ]);
+            }
+
+            if (
+                $lockedOrder->statusEnum() === OrderStatus::Pending
+                && $status !== OrderStatus::Pending->value
+            ) {
+                throw ValidationException::withMessages([
+                    'TrangThai' => 'Cần hoàn tất kiểm tra và tiếp nhận thực tế trước khi chuyển trạng thái đơn hàng.',
+                ]);
             }
 
             $lockedOrder->update([

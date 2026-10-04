@@ -9,7 +9,10 @@
     },
     {
       "src": "public/index.php",
-      "use": "vercel-php@0.7.2"
+      "use": "vercel-php@0.7.2",
+      "config": {
+        "phpVersion": "8.2"
+      }
     }
   ],
   "routes": [

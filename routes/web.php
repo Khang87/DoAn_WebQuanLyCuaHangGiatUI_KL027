@@ -130,6 +130,8 @@ Route::middleware(['remembered.login', 'auth', 'reject.customer'])->group(functi
     Route::middleware('permission:orders.edit')->group(function () {
         Route::get('/orders/{order}/edit', [DonHangController::class, 'edit'])->name('orders.edit');
         Route::match(['put', 'patch'], '/orders/{order}', [DonHangController::class, 'update'])->name('orders.update');
+        Route::post('/orders/{order}/complete-receiving', [DonHangController::class, 'completeReceiving'])
+            ->name('orders.complete-receiving');
     });
 
     Route::middleware('permission:orders.delete')->group(function () {

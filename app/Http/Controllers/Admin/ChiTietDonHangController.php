@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Enums\OrderStatus;
 use App\Http\Controllers\Concerns\RejectsSettledRecords;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\LuuChiTietDonHangRequest;
@@ -31,6 +32,18 @@ class ChiTietDonHangController extends Controller
                 $request,
                 'Đơn hàng '.$order->MaDonHang.' đã quyết toán nên không thể thay đổi chi tiết mặt hàng.',
                 $fallbackUrl
+            );
+        }
+
+        if (
+            $order
+            && $order->TrangThai !== OrderStatus::Pending->value
+            && ! (auth()->user()?->isOwner() ?? false)
+        ) {
+            return $this->rejectSettled(
+                $request,
+                'Chi tiết mặt hàng đã khóa sau khi hoàn tất tiếp nhận.',
+                route('orders.show', $order)
             );
         }
 
@@ -68,6 +81,18 @@ class ChiTietDonHangController extends Controller
     public function store(LuuChiTietDonHangRequest $request)
     {
         $order = DonHang::find($request->input('DonHangID', $request->input('order_id')));
+
+        if (
+            $order
+            && $order->TrangThai !== OrderStatus::Pending->value
+            && ! (auth()->user()?->isOwner() ?? false)
+        ) {
+            return $this->rejectSettled(
+                $request,
+                'Chi tiết mặt hàng đã khóa sau khi hoàn tất tiếp nhận.',
+                route('orders.show', $order)
+            );
+        }
 
         if ($order?->isLocked()) {
             return $this->rejectSettled(

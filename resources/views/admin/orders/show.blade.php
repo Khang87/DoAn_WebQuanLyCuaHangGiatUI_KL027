@@ -15,7 +15,20 @@
     $statusKeys = array_keys($statusFlow);
     $currentStatusIndex = array_search($order->status, $statusKeys, true);
     $isCancelled = $order->status === \App\Enums\OrderStatus::Cancelled->value;
+    $isReceiving = $order->status === \App\Enums\OrderStatus::Pending->value;
     $currentStatusIsCompleted = \App\Enums\OrderStatus::parse($order->status)->isCompletedMilestone();
+    $inspectionItems = old('items');
+    if (! is_array($inspectionItems)) {
+        $inspectionItems = $order->chiTietDonHangs->map(fn ($item) => [
+            'ChiTietDonHangID' => $item->ChiTietDonHangID,
+            'DichVuID' => $item->DichVuID,
+            'LoaiDoGiatID' => $item->LoaiDoGiatID,
+            'DonViTinhID' => $item->DonViTinhID,
+            'SoLuong' => $item->SoLuong,
+            'KhoiLuong' => $item->KhoiLuong,
+            'GhiChu' => $item->GhiChu,
+        ])->values()->all();
+    }
 @endphp
 
 @push('styles')
@@ -89,6 +102,11 @@
                 {{ $isOwner ? 'Đã quyết toán · Chủ cửa hàng được phép điều chỉnh' : 'Đã quyết toán' }}
             </span>
         @endif
+        @if($isReceiving)
+            <span class="badge bg-warning-subtle text-warning-emphasis border border-warning px-3 py-2 rounded-pill">
+                <i class="bi bi-clipboard-check me-1" aria-hidden="true"></i>Chờ kiểm tra và tiếp nhận thực tế
+            </span>
+        @endif
     </x-slot:badge>
 </x-admin.detail.page-header>
 
@@ -144,35 +162,148 @@
                 <span class="text-muted small">{{ $order->chiTietDonHangs->count() }} mục</span>
             </x-slot:header>
 
-            @if($order->chiTietDonHangs->isEmpty())
-                <x-admin.detail.empty message="Đơn hàng chưa có mặt hàng nào" icon="bi-bag" />
-            @else
-                <div class="table-responsive">
-                    <table class="table table-hover detail-table">
-                        <thead>
-                            <tr>
-                                <th>Dịch vụ</th>
-                                <th>Loại đồ giặt</th>
-                                <th class="text-end">Đơn giá</th>
-                                <th class="text-end">Số lượng / Khối lượng</th>
-                                <th class="text-end">Thành tiền</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach($order->chiTietDonHangs as $item)
+            @if($isReceiving && auth()->user()?->can('orders.edit'))
+                <form action="{{ route('orders.complete-receiving', $order) }}" method="POST" id="receivingInspectionForm">
+                    @csrf
+                    <div class="alert alert-warning mx-3 mt-3 mb-0" role="status">
+                        <strong>Đơn hàng đang chờ kiểm tra.</strong>
+                        Kiểm tra số lượng thực tế và ghi tình trạng từng mặt hàng trước khi cho phép bắt đầu giặt.
+                        Tình trạng được lưu trong cột ghi chú hiện có của từng dòng (không thay đổi schema).
+                    </div>
+                    @error('items')<div class="alert alert-danger mx-3 mt-3 mb-0">{{ $message }}</div>@enderror
+                    <div class="table-responsive">
+                        <table class="table table-hover detail-table align-middle mb-0" id="receivingItemsTable">
+                            <thead>
                                 <tr>
-                                    <td class="fw-semibold">{{ $item->dichVu?->TenDichVu ?: '—' }}</td>
-                                    <td>{{ $item->loaiDoGiat?->TenLoaiDoGiat ?: '—' }}</td>
-                                    <td class="text-end"><x-admin.detail.money :value="$item->DonGia" /></td>
-                                    <td class="text-end">
-                                        {{ format_quantity_weight($item->SoLuong, $item->KhoiLuong) ?: '—' }}
-                                    </td>
-                                    <td class="text-end fw-semibold"><x-admin.detail.money :value="$item->ThanhTien" /></td>
+                                    <th>Dịch vụ</th>
+                                    <th>Loại đồ giặt</th>
+                                    <th>Đơn vị</th>
+                                    <th class="text-end">Số lượng</th>
+                                    <th class="text-end">Khối lượng (kg)</th>
+                                    <th class="text-end">Đơn giá hiện hành</th>
+                                    <th>Tình trạng trước khi giặt</th>
+                                    <th></th>
                                 </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
-                </div>
+                            </thead>
+                            <tbody>
+                                @foreach($inspectionItems as $index => $inspectionItem)
+                                    @php
+                                        $selectedUnitId = $inspectionItem['DonViTinhID'] ?? '';
+                                        $selectedUnit = $units->firstWhere('DonViTinhID', $selectedUnitId);
+                                        $isWeightUnit = $selectedUnit?->isWeightUnit() ?? false;
+                                    @endphp
+                                    <tr data-inspection-row>
+                                        <td>
+                                            <input type="hidden" name="items[{{ $index }}][ChiTietDonHangID]" value="{{ $inspectionItem['ChiTietDonHangID'] ?? '' }}">
+                                            <select class="form-select form-select-sm" name="items[{{ $index }}][DichVuID]" required>
+                                                <option value="">Chọn dịch vụ</option>
+                                                @foreach($services as $service)
+                                                    <option value="{{ $service->DichVuID }}" @selected(($inspectionItem['DichVuID'] ?? '') == $service->DichVuID)>{{ $service->TenDichVu }}</option>
+                                                @endforeach
+                                            </select>
+                                            @error("items.$index.DichVuID")<div class="text-danger small">{{ $message }}</div>@enderror
+                                        </td>
+                                        <td>
+                                            <select class="form-select form-select-sm" name="items[{{ $index }}][LoaiDoGiatID]" required>
+                                                <option value="">Chọn loại đồ</option>
+                                                @foreach($garments as $garment)
+                                                    <option value="{{ $garment->LoaiDoGiatID }}" @selected(($inspectionItem['LoaiDoGiatID'] ?? '') == $garment->LoaiDoGiatID)>{{ $garment->TenLoaiDoGiat }}</option>
+                                                @endforeach
+                                            </select>
+                                        </td>
+                                        <td>
+                                            <select class="form-select form-select-sm" name="items[{{ $index }}][DonViTinhID]" data-inspection-unit required>
+                                                <option value="">Chọn đơn vị</option>
+                                                @foreach($units as $unit)
+                                                    <option value="{{ $unit->DonViTinhID }}" data-weight-unit="{{ $unit->isWeightUnit() ? 'true' : 'false' }}" @selected($selectedUnitId == $unit->DonViTinhID)>{{ $unit->KyHieu ?: $unit->TenDonViTinh }}</option>
+                                                @endforeach
+                                            </select>
+                                            @error("items.$index.DonViTinhID")<div class="text-danger small">{{ $message }}</div>@enderror
+                                        </td>
+                                        <td class="text-end">
+                                            <input class="form-control form-control-sm text-end" type="number" min="1" step="1" name="items[{{ $index }}][SoLuong]" value="{{ $isWeightUnit ? '' : ($inspectionItem['SoLuong'] ?? '') }}" data-inspection-quantity @disabled($isWeightUnit) @required(! $isWeightUnit)>
+                                            @error("items.$index.SoLuong")<div class="text-danger small">{{ $message }}</div>@enderror
+                                        </td>
+                                        <td class="text-end">
+                                            <input class="form-control form-control-sm text-end" type="number" min="0.01" step="0.01" name="items[{{ $index }}][KhoiLuong]" value="{{ $isWeightUnit ? ($inspectionItem['KhoiLuong'] ?? '') : '' }}" data-inspection-weight @disabled(! $isWeightUnit) @required($isWeightUnit)>
+                                            @error("items.$index.KhoiLuong")<div class="text-danger small">{{ $message }}</div>@enderror
+                                        </td>
+                                        <td class="text-end text-nowrap">
+                                            {{ $order->chiTietDonHangs->firstWhere('ChiTietDonHangID', $inspectionItem['ChiTietDonHangID'] ?? null)?->DonGia !== null
+                                                ? number_format((float) $order->chiTietDonHangs->firstWhere('ChiTietDonHangID', $inspectionItem['ChiTietDonHangID'] ?? null)->DonGia, 0, ',', '.').' đ'
+                                                : 'Tính theo bảng giá' }}
+                                        </td>
+                                        <td>
+                                            <textarea class="form-control form-control-sm" rows="2" name="items[{{ $index }}][GhiChu]" maxlength="500" placeholder="VD: rách, ố màu, bung chỉ..." required>{{ $inspectionItem['GhiChu'] ?? '' }}</textarea>
+                                            @error("items.$index.GhiChu")<div class="text-danger small">{{ $message }}</div>@enderror
+                                        </td>
+                                        <td>
+                                            <button type="button" class="btn btn-sm btn-outline-danger" data-remove-inspection-row aria-label="Xóa mặt hàng"><i class="bi bi-trash" aria-hidden="true"></i></button>
+                                        </td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="d-flex flex-wrap justify-content-between gap-2 p-3 border-top">
+                        <button type="button" class="btn btn-outline-primary" id="addInspectionItem">
+                            <i class="bi bi-plus-lg me-1" aria-hidden="true"></i>Thêm mặt hàng thực tế
+                        </button>
+                        <button type="submit" class="btn btn-success">
+                            <i class="bi bi-check2-circle me-1" aria-hidden="true"></i>Kiểm tra &amp; Hoàn tất tiếp nhận
+                        </button>
+                    </div>
+                </form>
+                <template id="receivingItemTemplate">
+                    <tr data-inspection-row>
+                        <td><input type="hidden" name="items[__INDEX__][ChiTietDonHangID]" value=""><select class="form-select form-select-sm" name="items[__INDEX__][DichVuID]" required><option value="">Chọn dịch vụ</option>@foreach($services as $service)<option value="{{ $service->DichVuID }}">{{ $service->TenDichVu }}</option>@endforeach</select></td>
+                        <td><select class="form-select form-select-sm" name="items[__INDEX__][LoaiDoGiatID]" required><option value="">Chọn loại đồ</option>@foreach($garments as $garment)<option value="{{ $garment->LoaiDoGiatID }}">{{ $garment->TenLoaiDoGiat }}</option>@endforeach</select></td>
+                        <td><select class="form-select form-select-sm" name="items[__INDEX__][DonViTinhID]" data-inspection-unit required><option value="">Chọn đơn vị</option>@foreach($units as $unit)<option value="{{ $unit->DonViTinhID }}" data-weight-unit="{{ $unit->isWeightUnit() ? 'true' : 'false' }}">{{ $unit->KyHieu ?: $unit->TenDonViTinh }}</option>@endforeach</select></td>
+                        <td class="text-end"><input class="form-control form-control-sm text-end" type="number" min="1" step="1" name="items[__INDEX__][SoLuong]" data-inspection-quantity required></td>
+                        <td class="text-end"><input class="form-control form-control-sm text-end" type="number" min="0.01" step="0.01" name="items[__INDEX__][KhoiLuong]" data-inspection-weight disabled></td>
+                        <td class="text-end text-nowrap">Tính theo bảng giá</td>
+                        <td><textarea class="form-control form-control-sm" rows="2" name="items[__INDEX__][GhiChu]" maxlength="500" placeholder="VD: rách, ố màu, bung chỉ..." required></textarea></td>
+                        <td><button type="button" class="btn btn-sm btn-outline-danger" data-remove-inspection-row aria-label="Xóa mặt hàng"><i class="bi bi-trash" aria-hidden="true"></i></button></td>
+                    </tr>
+                </template>
+            @else
+                @if($isReceiving)
+                    <div class="alert alert-warning mx-3 mt-3 mb-0" role="status">
+                        Đơn hàng đang chờ kiểm tra và tiếp nhận thực tế.
+                    </div>
+                @endif
+                @if($order->chiTietDonHangs->isEmpty())
+                <x-admin.detail.empty message="Đơn hàng chưa có mặt hàng nào" icon="bi-bag" />
+                @else
+                    <div class="table-responsive">
+                        <table class="table table-hover detail-table">
+                            <thead>
+                                <tr>
+                                    <th>Dịch vụ</th>
+                                    <th>Loại đồ giặt</th>
+                                    <th class="text-end">Đơn giá</th>
+                                    <th class="text-end">Số lượng / Khối lượng</th>
+                                    <th class="text-end">Thành tiền</th>
+                                    <th>Tình trạng trước khi giặt</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach($order->chiTietDonHangs as $item)
+                                    <tr>
+                                        <td class="fw-semibold">{{ $item->dichVu?->TenDichVu ?: '—' }}</td>
+                                        <td>{{ $item->loaiDoGiat?->TenLoaiDoGiat ?: '—' }}</td>
+                                        <td class="text-end"><x-admin.detail.money :value="$item->DonGia" /></td>
+                                        <td class="text-end">
+                                            {{ format_quantity_weight($item->SoLuong, $item->KhoiLuong) ?: '—' }}
+                                        </td>
+                                        <td class="text-end fw-semibold"><x-admin.detail.money :value="$item->ThanhTien" /></td>
+                                        <td>{{ $item->GhiChu ?: '—' }}</td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                @endif
             @endif
         </x-admin.detail.panel>
 
@@ -299,7 +430,7 @@
                     @endcan
                 @endif
 
-                @if($canEdit)
+                @if($canEdit && ! $isReceiving)
                     @can('orders.edit')
                         <a href="{{ route('orders.edit', $order->getKey()) }}" class="btn btn-primary w-100 py-2">
                             <i class="fas fa-pencil-alt me-1" aria-hidden="true"></i> Chỉnh sửa
@@ -353,6 +484,58 @@
 @push('scripts')
 <script>
     document.addEventListener('DOMContentLoaded', function() {
+        const inspectionTable = document.querySelector('#receivingItemsTable tbody');
+        const inspectionTemplate = document.getElementById('receivingItemTemplate');
+        const addInspectionItem = document.getElementById('addInspectionItem');
+        let nextInspectionIndex = inspectionTable ? inspectionTable.querySelectorAll('[data-inspection-row]').length : 0;
+
+        function syncInspectionRow(row) {
+            const unit = row.querySelector('[data-inspection-unit]');
+            const quantity = row.querySelector('[data-inspection-quantity]');
+            const weight = row.querySelector('[data-inspection-weight]');
+            if (!unit || !quantity || !weight) {
+                return;
+            }
+
+            const isWeightUnit = unit.selectedOptions[0]?.dataset.weightUnit === 'true';
+            quantity.disabled = isWeightUnit;
+            quantity.required = !isWeightUnit;
+            if (isWeightUnit) {
+                quantity.value = '';
+            }
+            weight.disabled = !isWeightUnit;
+            weight.required = isWeightUnit;
+            if (!isWeightUnit) {
+                weight.value = '';
+            }
+        }
+
+        if (inspectionTable) {
+            inspectionTable.querySelectorAll('[data-inspection-row]').forEach(function(row) {
+                const unit = row.querySelector('[data-inspection-unit]');
+                unit?.addEventListener('change', function() {
+                    syncInspectionRow(row);
+                });
+                row.querySelector('[data-remove-inspection-row]')?.addEventListener('click', function() {
+                    row.remove();
+                });
+            });
+        }
+
+        addInspectionItem?.addEventListener('click', function() {
+            const html = inspectionTemplate.innerHTML.replaceAll('__INDEX__', String(nextInspectionIndex++));
+            const template = document.createElement('template');
+            template.innerHTML = html.trim();
+            const row = template.content.firstElementChild;
+            inspectionTable.appendChild(row);
+            row.querySelector('[data-inspection-unit]').addEventListener('change', function() {
+                syncInspectionRow(row);
+            });
+            row.querySelector('[data-remove-inspection-row]').addEventListener('click', function() {
+                row.remove();
+            });
+        });
+
         document.querySelectorAll('[data-payment-link]').forEach(function(link) {
             link.addEventListener('click', function() {
                 if (link.dataset.loading === 'true') {

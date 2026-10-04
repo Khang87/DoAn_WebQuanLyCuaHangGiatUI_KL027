@@ -5,7 +5,7 @@
 
 @section('content')
 <div class="page-toolbar">
-    <p class="text-muted page-toolbar__desc">Tiếp nhận lịch hẹn. Khi chuyển lịch sang <strong>Đã xác nhận</strong>, hệ thống tự động tạo đơn hàng có mã tham chiếu về lịch.</p>
+    <p class="text-muted page-toolbar__desc">Tiếp nhận Booking để tạo đơn hàng ở trạng thái chờ kiểm tra thực tế trước khi bắt đầu xử lý.</p>
 </div>
 
 <form action="{{ url()->current() }}" method="GET" class="row g-3 align-items-center mb-4">
@@ -65,15 +65,15 @@
                                         <button
                                             type="button"
                                             class="btn btn-order-action"
-                                            title="Xác nhận lịch và tự động tạo đơn hàng"
+                                            title="Tiếp nhận Booking và tạo đơn hàng"
                                             data-bs-toggle="modal"
                                             data-bs-target="#confirmBookingModal"
                                             data-confirm-booking-action="{{ route('bookings.confirm', $booking) }}"
                                             data-booking-id="{{ $booking->BookingID }}"
                                             data-booking-employee="{{ $booking->NhanVienID }}"
                                         >
-                                            <i class="bi bi-hourglass-split" aria-hidden="true"></i>
-                                            <span class="visually-hidden">Xác nhận Booking</span>
+                                            <i class="bi bi-box-arrow-in-down" aria-hidden="true"></i>
+                                            <span class="visually-hidden">Tiếp nhận và tạo đơn hàng</span>
                                         </button>
                                     @elseif(auth()->user()?->can('bookings.edit'))
                                         <a href="{{ route('bookings.edit', $booking) }}" class="btn btn-order-action text-warning" aria-label="Cần thêm dịch vụ trước khi xác nhận" title="Chưa thể xác nhận: hãy thêm ít nhất một dòng dịch vụ trước.">
@@ -129,7 +129,7 @@
                 @csrf
                 <input type="hidden" name="booking_id" value="{{ old('booking_id') }}">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="confirmBookingModalLabel">Xác nhận và tạo đơn hàng</h5>
+                    <h5 class="modal-title" id="confirmBookingModalLabel">Tiếp nhận &amp; tạo đơn</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button>
                 </div>
                 <div class="modal-body">
@@ -152,7 +152,7 @@
                 <div class="modal-footer">
                     <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Hủy</button>
                     <button type="submit" class="btn btn-primary">
-                        <i class="bi bi-hourglass-split me-1" aria-hidden="true"></i>Xác nhận và tạo đơn
+                        <i class="bi bi-box-arrow-in-down me-1" aria-hidden="true"></i>Tiếp nhận &amp; tạo đơn
                     </button>
                 </div>
             </form>

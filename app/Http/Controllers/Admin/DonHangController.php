@@ -2,8 +2,10 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Enums\OrderStatus;
 use App\Http\Controllers\Concerns\RejectsSettledRecords;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\HoanTatTiepNhanRequest;
 use App\Http\Requests\Admin\LuuDonHangRequest;
 use App\Models\BangGia;
 use App\Models\DichVu;
@@ -17,6 +19,7 @@ use App\Services\OrderService;
 use App\Support\FriendlyError;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Validation\ValidationException;
 
 class DonHangController extends Controller
 {
@@ -137,8 +140,54 @@ class DonHangController extends Controller
         }
 
         $statusFlow = $this->orderService->getStatusFlow();
+        $services = collect();
+        $garments = collect();
+        $units = collect();
 
-        return view('admin.orders.show', compact('order', 'statusFlow'));
+        if (
+            $order->statusEnum() === OrderStatus::Pending
+            && auth()->user()?->can('orders.edit')
+        ) {
+            $services = DichVu::orderBy('TenDichVu')->get();
+            $garments = LoaiDoGiat::orderBy('TenLoaiDoGiat')->get();
+            $units = DonViTinh::orderBy('TenDonViTinh')->get();
+        }
+
+        return view('admin.orders.show', compact('order', 'statusFlow', 'services', 'garments', 'units'));
+    }
+
+    public function completeReceiving(HoanTatTiepNhanRequest $request, int $id)
+    {
+        $order = $this->orderService->find($id);
+
+        if (! $order) {
+            abort(404);
+        }
+
+        try {
+            $order = $this->orderService->completeReceivingInspection($order, $request->validated()['items']);
+            $rejection = $this->orderService->promotionRejection();
+
+            if ($rejection) {
+                return redirect()->route('orders.show', $order)->with(
+                    'error',
+                    $rejection.' Đơn hàng đã hoàn tất tiếp nhận nhưng không áp dụng voucher.',
+                );
+            }
+
+            return redirect()->route('orders.show', $order)->with(
+                'success',
+                'Đã lưu kiểm tra thực tế và hoàn tất tiếp nhận đơn hàng '.$order->MaDonHang.'.',
+            );
+        } catch (ValidationException $exception) {
+            return redirect()->route('orders.show', $order)
+                ->withErrors($exception->errors())
+                ->withInput();
+        } catch (\Throwable $exception) {
+            return redirect()->route('orders.show', $order)
+                ->with('error', FriendlyError::message($exception))
+                ->withInput();
+        }
     }
 
     /**
@@ -181,6 +230,17 @@ class DonHangController extends Controller
             abort(404);
         }
 
+        if (
+            $order->TrangThai !== OrderStatus::Pending->value
+            && ! $this->canOverrideSettled()
+        ) {
+            return $this->denySettled(
+                $request,
+                'Chi tiết đơn hàng đã khóa sau khi hoàn tất tiếp nhận.',
+                route('orders.show', $order)
+            );
+        }
+
         // Kiểm tra đơn đã thanh toán - nhân viên/quản lý không được sửa
         if ($denied = $this->denyIfPaidAndNotOwner($request, $order, 'sửa')) {
             return $denied;
@@ -216,6 +276,17 @@ class DonHangController extends Controller
             abort(404);
         }
 
+        if (
+            $order->TrangThai !== OrderStatus::Pending->value
+            && ! $this->canOverrideSettled()
+        ) {
+            return $this->denySettled(
+                $request,
+                'Chi tiết đơn hàng đã khóa sau khi hoàn tất tiếp nhận.',
+                route('orders.show', $order)
+            );
+        }
+
         // Kiểm tra đơn đã thanh toán - nhân viên/quản lý không được sửa
         if ($denied = $this->denyIfPaidAndNotOwner($request, $order, 'chỉnh sửa')) {
             return $denied;
@@ -242,6 +313,10 @@ class DonHangController extends Controller
             }
 
             return redirect()->route('orders.show', $order)->with('success', 'Đơn hàng đã được cập nhật.');
+        } catch (ValidationException $exception) {
+            return redirect()->route('orders.edit', $order)
+                ->withErrors($exception->errors())
+                ->withInput();
         } catch (\Exception $e) {
             return redirect()->route('orders.edit', $order)->with('error', FriendlyError::message($e))->withInput();
         }
@@ -306,6 +381,8 @@ class DonHangController extends Controller
             $this->orderService->updateStatus($order, (string) $request->input('TrangThai', $request->input('status')), $override);
 
             return back()->with('success', 'Trạng thái đơn hàng đã được cập nhật.');
+        } catch (ValidationException $exception) {
+            return back()->withErrors($exception->errors());
         } catch (\Exception $e) {
             return back()->with('error', FriendlyError::message($e));
         }

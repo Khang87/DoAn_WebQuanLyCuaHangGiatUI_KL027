@@ -127,16 +127,9 @@ class BookingService
             $isBeingConfirmed = ($data['status'] ?? null) === BookingStatus::Confirmed->value;
 
             if ($wasPending && $isBeingConfirmed) {
-                $employeeId = auth()->user()?->NhanVienID;
-
-                if (! $employeeId) {
-                    throw ValidationException::withMessages([
-                        'status' => 'Tài khoản hiện tại chưa liên kết hồ sơ nhân viên để xác nhận Booking.',
-                    ]);
-                }
-
-                $mappedData['NhanVienXacNhanID'] = $employeeId;
-                $mappedData['ThoiGianXacNhan'] = now();
+                throw ValidationException::withMessages([
+                    'status' => 'Hãy dùng thao tác “Tiếp nhận & tạo đơn” để xác nhận Booking và tạo đơn hàng.',
+                ]);
             }
 
             if (array_key_exists('items', $data)) {
@@ -154,10 +147,6 @@ class BookingService
                 && ($before !== $after || $beforeItems !== $afterItems)
             ) {
                 $this->recordBookingAudit($lockedBooking, $before, $after, $beforeItems, $afterItems);
-            }
-
-            if ($lockedBooking->isConvertibleToOrder() && ! $this->hasConvertedOrder($lockedBooking)) {
-                $this->insertOrderAndDelivery($lockedBooking, (int) ($data['DiemSuDung'] ?? 0));
             }
 
             return $lockedBooking->fresh([

@@ -44,7 +44,7 @@ class BookingOrderConversionTest extends TestCase
 
     protected function tearDown(): void
     {
-        foreach (['NhatKyHeThong', 'ChiTietBooking', 'ChiTietDonHang', 'GiaoNhan', 'DonHang', 'Booking', 'BangGia', 'DonViTinh', 'LoaiDoGiat', 'DichVu', 'NhanVien', 'KhachHang'] as $table) {
+        foreach (['NhatKyHeThong', 'ChiTietBooking', 'ChiTietDonHang', 'GiaoNhan', 'HoaDon', 'ThanhToan', 'DiemTichLuy', 'DonHang', 'Booking', 'BangGia', 'DonViTinh', 'LoaiDoGiat', 'DichVu', 'NhanVien', 'KhachHang'] as $table) {
             Schema::dropIfExists($table);
         }
 
@@ -72,7 +72,6 @@ class BookingOrderConversionTest extends TestCase
         $this->actingAsBookingEmployee();
 
         $this->bookingService->update($booking, [
-            'status' => BookingStatus::Confirmed->value,
             'customer_id' => 9,
             'method' => 'Tại nhà',
             'address' => '12 Nguyễn Huệ',
@@ -83,6 +82,7 @@ class BookingOrderConversionTest extends TestCase
                 ['DichVuID' => 1, 'LoaiDoGiatID' => 2, 'DonViTinhID' => 3, 'SoLuong' => 1],
             ],
         ]);
+        $this->bookingService->confirmPendingBooking($booking->fresh(), 1);
 
         $order = DonHang::query()->where('BookingID', $booking->BookingID)->firstOrFail();
         $items = ChiTietDonHang::query()->where('DonHangID', $order->DonHangID)->orderBy('ChiTietDonHangID')->get();
@@ -91,7 +91,7 @@ class BookingOrderConversionTest extends TestCase
 
         $this->assertCount(2, $items);
         $this->assertSame('DH'.str_pad((string) $order->DonHangID, 4, '0', STR_PAD_LEFT), $order->MaDonHang);
-        $this->assertSame(OrderStatus::Received->value, $order->TrangThai);
+        $this->assertSame(OrderStatus::Pending->value, $order->TrangThai);
         $this->assertSame(45000.0, (float) $order->TongTien);
         $this->assertSame(45000.0, (float) $order->ThanhTien);
         $this->assertSame(1, $item->DichVuID);
@@ -105,6 +105,7 @@ class BookingOrderConversionTest extends TestCase
         $this->assertSame('12 Nguyễn Huệ', $delivery->DiaChi);
         $this->assertSame('2026-10-05 14:30:00', $delivery->ThoiGianDuKien->format('Y-m-d H:i:s'));
         $this->assertSame(1, $booking->fresh()->NhanVienXacNhanID);
+        $this->assertSame(2, DB::table('ChiTietBooking')->where('BookingID', $booking->BookingID)->count());
         $this->assertNotNull($booking->fresh()->ThoiGianXacNhan);
         $orderAudit = NhatKyHeThong::query()
             ->where('BangDuLieu', 'DonHang')
@@ -112,7 +113,7 @@ class BookingOrderConversionTest extends TestCase
             ->where('HanhDong', 'Chuyển trạng thái đơn hàng')
             ->firstOrFail();
         $this->assertSame(['TrangThai' => null], $orderAudit->DuLieuCu);
-        $this->assertSame(['TrangThai' => OrderStatus::Received->value], $orderAudit->DuLieuMoi);
+        $this->assertSame(['TrangThai' => OrderStatus::Pending->value], $orderAudit->DuLieuMoi);
         $audit = NhatKyHeThong::query()->where('BangDuLieu', 'Booking')->firstOrFail();
         $this->assertSame(1, NhatKyHeThong::query()->where('BangDuLieu', 'Booking')->count());
         $this->assertSame('Xác nhận Booking', $audit->HanhDong);
@@ -183,6 +184,24 @@ class BookingOrderConversionTest extends TestCase
                 'booking' => 'Booking này đã có đơn hàng '.$order->MaDonHang.'; hệ thống không tạo đơn hàng trùng.',
             ]);
         $this->assertSame(1, DonHang::query()->where('BookingID', $booking->BookingID)->count());
+    }
+
+    public function test_booking_edit_cannot_bypass_the_receive_and_create_order_action(): void
+    {
+        $booking = $this->createBooking();
+        $this->actingAsBookingEmployee();
+
+        try {
+            $this->bookingService->update($booking, [
+                'status' => BookingStatus::Confirmed->value,
+            ]);
+            $this->fail('Booking confirmation must use the receiving action.');
+        } catch (ValidationException $exception) {
+            $this->assertArrayHasKey('status', $exception->errors());
+        }
+
+        $this->assertSame(BookingStatus::Pending->value, $booking->fresh()->TrangThai);
+        $this->assertSame(0, DonHang::query()->count());
     }
 
     public function test_confirm_route_requires_a_responsible_employee_before_creating_an_order(): void
@@ -362,9 +381,7 @@ class BookingOrderConversionTest extends TestCase
         });
 
         try {
-            $this->bookingService->update($booking->fresh(), [
-                'status' => BookingStatus::Confirmed->value,
-            ]);
+            $this->bookingService->confirmPendingBooking($booking->fresh(), 1);
             $this->fail('An order-item insert failure must abort booking confirmation.');
         } catch (\RuntimeException $exception) {
             $this->assertSame('Simulated order-item insert failure.', $exception->getMessage());
@@ -429,9 +446,7 @@ class BookingOrderConversionTest extends TestCase
             ],
         ]);
         $booking->refresh();
-        $this->bookingService->update($booking, [
-            'status' => BookingStatus::Confirmed->value,
-        ]);
+        $this->bookingService->confirmPendingBooking($booking, 1);
 
         $order = DonHang::query()->where('BookingID', $booking->BookingID)->firstOrFail();
         $items = ChiTietDonHang::query()
@@ -446,7 +461,7 @@ class BookingOrderConversionTest extends TestCase
         $this->assertSame(70000.0, (float) $order->ThanhTien);
     }
 
-    public function test_order_status_change_is_written_to_the_system_audit_log(): void
+    public function test_pending_order_cannot_skip_receiving_inspection_to_change_status(): void
     {
         $order = DonHang::query()->create([
             'MaDonHang' => 'DH001',
@@ -457,21 +472,166 @@ class BookingOrderConversionTest extends TestCase
         ]);
         $this->actingAsBookingEmployee();
 
-        app(OrderService::class)->updateStatus($order, OrderStatus::Received->value);
+        foreach ([OrderStatus::Received, OrderStatus::Washing] as $status) {
+            try {
+                app(OrderService::class)->updateStatus($order, $status->value);
+                $this->fail('A pending order must not skip receiving inspection.');
+            } catch (ValidationException $exception) {
+                $this->assertArrayHasKey('TrangThai', $exception->errors());
+            }
+        }
 
-        $audit = NhatKyHeThong::query()
-            ->where('BangDuLieu', 'DonHang')
-            ->where('HanhDong', 'Chuyển trạng thái đơn hàng')
-            ->orderByDesc('NhatKyID')
-            ->firstOrFail();
-        $this->assertSame(2, NhatKyHeThong::query()
-            ->where('BangDuLieu', 'DonHang')
-            ->where('HanhDong', 'Chuyển trạng thái đơn hàng')
-            ->count());
-        $this->assertSame('Chuyển trạng thái đơn hàng', $audit->HanhDong);
-        $this->assertSame(['TrangThai' => OrderStatus::Pending->value], $audit->DuLieuCu);
-        $this->assertSame(['TrangThai' => OrderStatus::Received->value], $audit->DuLieuMoi);
-        $this->assertSame(1, $audit->TaiKhoanID);
+        try {
+            app(OrderService::class)->update($order, ['TrangThai' => OrderStatus::Received->value]);
+            $this->fail('The order edit form must not bypass receiving inspection.');
+        } catch (ValidationException $exception) {
+            $this->assertArrayHasKey('TrangThai', $exception->errors());
+        }
+
+        $this->assertSame(OrderStatus::Pending->value, $order->fresh()->TrangThai);
+    }
+
+    public function test_receiving_inspection_saves_condition_recalculates_amount_and_allows_washing(): void
+    {
+        $this->createRequestCatalog();
+        DB::table('DichVu')->insert(['DichVuID' => 2]);
+        DB::table('BangGia')->insert([
+            [
+                'BangGiaID' => 1,
+                'DichVuID' => 1,
+                'LoaiDoGiatID' => 2,
+                'DonViTinhID' => 2,
+                'DonGia' => 15000,
+                'NgayApDung' => '2026-01-01',
+                'TrangThai' => 'Hoạt động',
+            ],
+            [
+                'BangGiaID' => 2,
+                'DichVuID' => 2,
+                'LoaiDoGiatID' => 2,
+                'DonViTinhID' => 2,
+                'DonGia' => 20000,
+                'NgayApDung' => '2026-01-01',
+                'TrangThai' => 'Hoạt động',
+            ],
+        ]);
+
+        $order = DonHang::query()->create([
+            'MaDonHang' => 'DH003',
+            'KhachHangID' => 9,
+            'NhanVienID' => 1,
+            'TrangThai' => OrderStatus::Pending->value,
+            'TongTien' => 15000,
+            'ThanhTien' => 15000,
+        ]);
+        $item = ChiTietDonHang::query()->create([
+            'DonHangID' => $order->DonHangID,
+            'DichVuID' => 1,
+            'LoaiDoGiatID' => 2,
+            'DonViTinhID' => 2,
+            'SoLuong' => 1,
+            'DonGia' => 15000,
+            'ThanhTien' => 15000,
+        ]);
+        $itemToRemove = ChiTietDonHang::query()->create([
+            'DonHangID' => $order->DonHangID,
+            'DichVuID' => 1,
+            'LoaiDoGiatID' => 2,
+            'DonViTinhID' => 2,
+            'SoLuong' => 1,
+            'DonGia' => 15000,
+            'ThanhTien' => 15000,
+        ]);
+        DB::table('BangGia')->where('DichVuID', 1)->update(['TrangThai' => 'Tạm ngưng']);
+        $this->actingAsBookingEmployee();
+
+        $receivedOrder = app(OrderService::class)->completeReceivingInspection($order, [
+            [
+                'ChiTietDonHangID' => $item->ChiTietDonHangID,
+                'DichVuID' => 1,
+                'LoaiDoGiatID' => 2,
+                'DonViTinhID' => 2,
+                'SoLuong' => 3,
+                'GhiChu' => 'Có vết ố ở tay áo',
+            ],
+            [
+                'DichVuID' => 2,
+                'LoaiDoGiatID' => 2,
+                'DonViTinhID' => 2,
+                'SoLuong' => 1,
+                'GhiChu' => 'Không phát hiện hư hỏng',
+            ],
+        ]);
+
+        $this->assertSame(OrderStatus::Received->value, $receivedOrder->TrangThai);
+        $this->assertSame(65000.0, (float) $receivedOrder->TongTien);
+        $this->assertSame('Có vết ố ở tay áo', $item->fresh()->GhiChu);
+        $this->assertNull($itemToRemove->fresh());
+        $this->assertSame(2, $receivedOrder->chiTietDonHangs->count());
+        $this->assertSame(
+            'Không phát hiện hư hỏng',
+            $receivedOrder->chiTietDonHangs->firstWhere('DichVuID', 2)?->GhiChu
+        );
+
+        try {
+            app(OrderService::class)->update($receivedOrder, ['items' => []]);
+            $this->fail('Order details must lock after receiving is complete.');
+        } catch (ValidationException $exception) {
+            $this->assertArrayHasKey('order', $exception->errors());
+        }
+
+        $washingOrder = app(OrderService::class)->updateStatus($receivedOrder, OrderStatus::Washing->value);
+        $this->assertSame(OrderStatus::Washing->value, $washingOrder->TrangThai);
+    }
+
+    public function test_receiving_completion_route_persists_the_inspection(): void
+    {
+        $this->createRequestCatalog();
+        DB::table('BangGia')->insert([
+            'BangGiaID' => 1,
+            'DichVuID' => 1,
+            'LoaiDoGiatID' => 2,
+            'DonViTinhID' => 2,
+            'DonGia' => 15000,
+            'NgayApDung' => '2026-01-01',
+            'TrangThai' => 'Hoạt động',
+        ]);
+        $order = DonHang::query()->create([
+            'MaDonHang' => 'DH004',
+            'KhachHangID' => 9,
+            'NhanVienID' => 1,
+            'TrangThai' => OrderStatus::Pending->value,
+            'TongTien' => 15000,
+            'ThanhTien' => 15000,
+        ]);
+        $item = ChiTietDonHang::query()->create([
+            'DonHangID' => $order->DonHangID,
+            'DichVuID' => 1,
+            'LoaiDoGiatID' => 2,
+            'DonViTinhID' => 2,
+            'SoLuong' => 1,
+            'DonGia' => 15000,
+            'ThanhTien' => 15000,
+        ]);
+        $this->actingAsBookingEmployee();
+        $this->withoutMiddleware([
+            EnsureUserHasPermission::class,
+            RejectCustomerRole::class,
+        ]);
+
+        $this->post(route('orders.complete-receiving', $order), [
+            'items' => [[
+                'ChiTietDonHangID' => $item->ChiTietDonHangID,
+                'DichVuID' => 1,
+                'LoaiDoGiatID' => 2,
+                'DonViTinhID' => 2,
+                'SoLuong' => 2,
+                'GhiChu' => 'Bung chỉ nhẹ',
+            ]],
+        ])->assertRedirect(route('orders.show', $order));
+
+        $this->assertSame(OrderStatus::Received->value, $order->fresh()->TrangThai);
+        $this->assertSame('Bung chỉ nhẹ', $item->fresh()->GhiChu);
     }
 
     public function test_order_amount_changes_are_written_to_the_system_audit_log(): void
@@ -696,9 +856,7 @@ class BookingOrderConversionTest extends TestCase
         $this->actingAsBookingEmployee();
 
         try {
-            $this->bookingService->update($booking, [
-                'status' => BookingStatus::Confirmed->value,
-            ]);
+            $this->bookingService->confirmPendingBooking($booking, 1);
             $this->fail('A booking without an item snapshot must not become an order.');
         } catch (ValidationException $exception) {
             $this->assertArrayHasKey('items', $exception->errors());
@@ -998,9 +1156,7 @@ class BookingOrderConversionTest extends TestCase
         $this->actingAsBookingEmployee();
 
         try {
-            $this->bookingService->update($booking, [
-                'status' => BookingStatus::Confirmed->value,
-            ]);
+            $this->bookingService->confirmPendingBooking($booking, 1);
             $this->fail('A piece-based unit must not convert a weight snapshot.');
         } catch (ValidationException $exception) {
             $this->assertArrayHasKey('items', $exception->errors());
@@ -1189,6 +1345,23 @@ class BookingOrderConversionTest extends TestCase
             $table->decimal('PhiGiaoNhan', 18, 2)->default(0);
             $table->string('TrangThai');
             $table->string('GhiChu', 500)->nullable();
+        });
+
+        Schema::create('HoaDon', function (Blueprint $table): void {
+            $table->increments('HoaDonID');
+            $table->unsignedInteger('DonHangID');
+        });
+
+        Schema::create('ThanhToan', function (Blueprint $table): void {
+            $table->increments('ThanhToanID');
+            $table->unsignedInteger('DonHangID');
+        });
+
+        Schema::create('DiemTichLuy', function (Blueprint $table): void {
+            $table->increments('DiemTichLuyID');
+            $table->unsignedInteger('KhachHangID')->unique();
+            $table->integer('DiemHienTai')->default(0);
+            $table->dateTime('NgayCapNhat')->nullable();
         });
 
         Schema::create('DonViTinh', function (Blueprint $table): void {

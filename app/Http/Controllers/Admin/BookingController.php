@@ -135,17 +135,6 @@ class BookingController extends Controller
         try {
             $this->bookingService->update($booking, $request->validated());
 
-            $booking = $this->bookingService->find($id);
-
-            $order = $booking?->donHangs()->orderByDesc('DonHangID')->first();
-
-            if ($order) {
-                return redirect()->route('bookings.index')->with(
-                    'success',
-                    'Đặt lịch '.($booking?->MaBooking ?? '').' đã được cập nhật và tự động tạo đơn hàng '.$order->MaDonHang.'.'
-                );
-            }
-
             return redirect()->route('bookings.index')->with('success', 'Đặt lịch đã được cập nhật.');
         } catch (ValidationException $e) {
             return redirect()->route('bookings.edit', $booking)->withErrors($e->errors())->withInput();
@@ -196,7 +185,7 @@ class BookingController extends Controller
 
             return redirect()->route('orders.show', $order)->with(
                 'success',
-                'Đặt lịch đã được xác nhận và tạo đơn hàng '.$order->MaDonHang.' thành công.',
+                'Đã tiếp nhận Booking và tạo đơn hàng '.$order->MaDonHang.' ở trạng thái chờ kiểm tra thực tế.',
             );
         } catch (ValidationException $e) {
             return redirect()->route('bookings.edit', $booking)->withErrors($e->errors())->withInput();
