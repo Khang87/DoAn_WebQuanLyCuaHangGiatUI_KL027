@@ -51,6 +51,11 @@ class NotificationService
         return ThongBao::find($id);
     }
 
+    public function findForDetails(int $id): ?ThongBao
+    {
+        return ThongBao::with(['taiKhoan', 'donHang'])->find($id);
+    }
+
     public function create(array $data): ThongBao
     {
         if (empty($data['sent_at'])) {
@@ -79,6 +84,16 @@ class NotificationService
         $notification = ThongBao::find($id);
         if ($notification) {
             $notification->update(['DaDoc' => true]);
+        }
+
+        return $notification;
+    }
+
+    public function markNotificationAsRead(ThongBao $notification): ThongBao
+    {
+        if (! $notification->DaDoc) {
+            $notification->DaDoc = true;
+            $notification->save();
         }
 
         return $notification;

@@ -71,16 +71,14 @@ class ThongBaoController extends Controller
 
     public function show(int $id)
     {
-        $notification = $this->notificationService->find($id);
+        $notification = $this->notificationService->findForDetails($id);
 
         if (! $notification) {
             abort(404);
         }
 
-        // Tự động đánh dấu đã đọc khi người dùng mở chi tiết thông báo
         if (! $notification->DaDoc) {
-            $this->notificationService->markAsRead($notification->ThongBaoID);
-            $notification = $this->notificationService->find($id);
+            $this->notificationService->markNotificationAsRead($notification);
         }
 
         return view('admin.notifications.show', compact('notification'));
