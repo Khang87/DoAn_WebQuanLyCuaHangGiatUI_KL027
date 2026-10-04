@@ -130,13 +130,10 @@ class PaymentService
             }
 
             if ($order) {
-                // Update order status based on payment
                 $totalPaid = $this->paidTotalFor($order);
                 $grandTotal = $order->hoaDons?->first()?->ThanhTien ?? $order->ThanhTien;
 
-                if ($totalPaid >= $grandTotal) {
-                    $this->orderService->updateStatus($order, OrderStatus::Paid->value);
-                }
+                $this->synchronizeOrderPaymentStatus($order, $totalPaid, (float) $grandTotal);
             }
 
             return $payment->fresh();
@@ -176,9 +173,7 @@ class PaymentService
             $totalPaid = $this->paidTotalFor($order);
             $grandTotal = $order->hoaDons?->first()?->ThanhTien ?? $order->ThanhTien;
 
-            if ($totalPaid >= $grandTotal) {
-                $this->orderService->updateStatus($order, OrderStatus::Paid->value, $override);
-            }
+            $this->synchronizeOrderPaymentStatus($order, $totalPaid, (float) $grandTotal, $override);
         }
 
         return $payment->fresh();
@@ -247,6 +242,23 @@ class PaymentService
             ->sum('SoTien');
     }
 
+    private function synchronizeOrderPaymentStatus(
+        DonHang $order,
+        float $totalPaid,
+        float $grandTotal,
+        bool $override = false,
+    ): void {
+        if ($totalPaid >= $grandTotal && $order->statusEnum() === OrderStatus::Delivered) {
+            $this->orderService->updateStatus($order, OrderStatus::Paid->value, $override);
+
+            return;
+        }
+
+        if ($totalPaid < $grandTotal && $order->statusEnum() === OrderStatus::Paid) {
+            $this->orderService->updateStatus($order, OrderStatus::Delivered->value, $override);
+        }
+    }
+
     private function updateInvoiceStatus(HoaDon $invoice): void
     {
         $donHang = $invoice->donHang;
@@ -279,11 +291,7 @@ class PaymentService
             $totalPaid = $this->paidTotalFor($order);
             $grandTotal = $order->hoaDons?->first()?->ThanhTien ?? $order->ThanhTien;
 
-            if ($totalPaid >= $grandTotal) {
-                $this->orderService->updateStatus($order, OrderStatus::Paid->value, $override);
-            } elseif ($order->TrangThai === OrderStatus::Paid->value) {
-                $this->orderService->updateStatus($order, OrderStatus::Delivered->value, $override);
-            }
+            $this->synchronizeOrderPaymentStatus($order, $totalPaid, (float) $grandTotal, $override);
         }
 
         return $result;

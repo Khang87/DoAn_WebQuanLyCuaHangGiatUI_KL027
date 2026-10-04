@@ -7,6 +7,10 @@ use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 
 class CouponService
 {
+    public function __construct(
+        private PromotionService $promotionService,
+    ) {}
+
     public function getAll(array $filters = []): LengthAwarePaginator
     {
         $query = KhuyenMai::query();
@@ -34,7 +38,7 @@ class CouponService
 
     public function create(array $data): KhuyenMai
     {
-        return KhuyenMai::create($data);
+        return $this->promotionService->create($data);
     }
 
     public function update(KhuyenMai $coupon, array $data): KhuyenMai

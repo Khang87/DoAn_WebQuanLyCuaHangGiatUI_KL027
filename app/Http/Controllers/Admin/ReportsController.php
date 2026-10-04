@@ -7,11 +7,6 @@ use App\Services\ReportsService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\View\View;
-use PhpOffice\PhpSpreadsheet\Cell\DataType;
-use PhpOffice\PhpSpreadsheet\Spreadsheet;
-use PhpOffice\PhpSpreadsheet\Style\Fill;
-use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
-use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ReportsController extends Controller
 {
@@ -65,53 +60,6 @@ class ReportsController extends Controller
             'paymentMethodColors',
             'paymentMethodLabels'
         ));
-    }
-
-    public function export(Request $request): StreamedResponse
-    {
-        Gate::authorize('reports.view');
-
-        $filters = $this->validatedFilters($request);
-        $filename = 'bao-cao-doanh-thu-'.now()->format('Ymd-His').'.xlsx';
-
-        return response()->streamDownload(function () use ($filters): void {
-            $spreadsheet = new Spreadsheet;
-            $sheet = $spreadsheet->getActiveSheet();
-            $sheet->setTitle('Bao cao doanh thu');
-            $sheet->fromArray(
-                ['Mã đơn hàng', 'Khách hàng', 'Trạng thái', 'Ngày lập hóa đơn', 'Doanh thu (VNĐ)'],
-                null,
-                'A1',
-            );
-            $sheet->getStyle('A1:E1')->getFont()->setBold(true);
-            $sheet->getStyle('A1:E1')->getFill()
-                ->setFillType(Fill::FILL_SOLID)
-                ->getStartColor()->setARGB('FFE8F0FE');
-
-            $rowNumber = 2;
-            $this->reportsService->getExportOrdersQuery($filters)->chunk(500, function ($orders) use ($sheet, &$rowNumber): void {
-                foreach ($orders as $order) {
-                    $sheet->setCellValueExplicit('A'.$rowNumber, (string) $order->order_code, DataType::TYPE_STRING);
-                    $sheet->setCellValueExplicit('B'.$rowNumber, (string) ($order->customer_name ?? ''), DataType::TYPE_STRING);
-                    $sheet->setCellValueExplicit('C'.$rowNumber, (string) $order->order_status, DataType::TYPE_STRING);
-                    $sheet->setCellValueExplicit('D'.$rowNumber, (string) $order->invoice_date, DataType::TYPE_STRING);
-                    $sheet->setCellValue('E'.$rowNumber, (float) ($order->revenue ?? 0));
-                    $rowNumber++;
-                }
-            });
-
-            $sheet->getStyle('E2:E'.max(2, $rowNumber - 1))
-                ->getNumberFormat()->setFormatCode('#,##0.00');
-            $sheet->getAutoFilter()->setRange('A1:E'.max(1, $rowNumber - 1));
-            foreach (range('A', 'E') as $column) {
-                $sheet->getColumnDimension($column)->setAutoSize(true);
-            }
-
-            (new Xlsx($spreadsheet))->save('php://output');
-            $spreadsheet->disconnectWorksheets();
-        }, $filename, [
-            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        ]);
     }
 
     /**

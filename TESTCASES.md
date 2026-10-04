@@ -1,8 +1,8 @@
-# Test Cases đã chạy thành công
+# Test Cases và kết quả kiểm thử
 
 Lần chạy được ghi nhận bằng `php artisan test --compact` trên cấu hình SQLite in-memory trong `phpunit.xml`.
 
-**Kết quả suite gần nhất:** 311 test được phát hiện, **119 PASSED**, 192 skipped, 624 assertions. Test chạy trên SQLite in-memory theo `phpunit.xml`; các test skipped không được tính là passed và không có test nào ghi lên Supabase Live. Các bảng dưới đây ghi chi tiết các kịch bản regression trọng tâm đã được xác minh; không thay thế kết quả đầy đủ của PHPUnit.
+**Kết quả suite đầy đủ đã ghi nhận trước đó:** 311 test được phát hiện, **119 PASSED**, 192 skipped, 624 assertions. Test chạy trên SQLite in-memory theo `phpunit.xml`; các test skipped không được tính là passed và không có test nào ghi lên Supabase Live. Các bảng dưới đây ghi các kịch bản regression trọng tâm; kết quả kiểm thử mới được bổ sung riêng, không thay thế số liệu suite đầy đủ nếu chưa chạy lại toàn bộ PHPUnit.
 
 ## Nhóm 1: Booking & Order Conversion
 
@@ -92,14 +92,12 @@ Lần chạy được ghi nhận bằng `php artisan test --compact` trên cấu
 | 62 | TC-REG-36 — `ReportsService` | Biểu đồ dùng ngày hóa đơn đã thanh toán và tính tỷ trọng dịch vụ. | Feature — `tests/Feature/ReportsServiceTest.php` | ✅ PASSED |
 | 63 | TC-REG-37 — `ReportsService` | Bộ lọc ngày tùy chỉnh xử lý ngày lịch Việt Nam với timestamp UTC. | Feature — `tests/Feature/ReportsServiceTest.php` | ✅ PASSED |
 | 64 | TC-REG-38 — `ReportsService` | Bộ lọc toàn thời gian lấy dữ liệu cũ và nhóm biểu đồ theo tháng. | Feature — `tests/Feature/ReportsServiceTest.php` | ✅ PASSED |
-| 65 | TC-REG-39 — `ReportsService` | Route xuất báo cáo chấp nhận bộ lọc toàn thời gian. | Feature — `tests/Feature/ReportsServiceTest.php` | ✅ PASSED |
-| 66 | TC-REG-40 — `ReportsService` | Kỳ không có dữ liệu trả cơ cấu rỗng và doanh thu bằng 0. | Feature — `tests/Feature/ReportsServiceTest.php` | ✅ PASSED |
-| 67 | TC-REG-41 — `ReportsService` | Xếp hạng dịch vụ theo doanh thu đã thanh toán, kèm số lượng và đơn vị. | Feature — `tests/Feature/ReportsServiceTest.php` | ✅ PASSED |
-| 68 | TC-REG-42 — `ReportsService` | Truy vấn xuất báo cáo chỉ lấy hóa đơn thanh toán trong kỳ được chọn. | Feature — `tests/Feature/ReportsServiceTest.php` | ✅ PASSED |
-| 69 | TC-REG-43 — `ReportsService` | Tổng hợp phương thức thanh toán chỉ tính giao dịch thành công của hóa đơn đã thanh toán. | Feature — `tests/Feature/ReportsServiceTest.php` | ✅ PASSED |
-| 70 | TC-REG-44 — `ReportsService` | Đơn gần đây eager-load khách hàng và chi tiết dịch vụ. | Feature — `tests/Feature/ReportsServiceTest.php` | ✅ PASSED |
-| 71 | TC-REG-45 — `ReportsService` | Route xuất báo cáo trả tệp XLSX theo ngày đã chọn. | Feature — `tests/Feature/ReportsServiceTest.php` | ✅ PASSED |
-| 72 | TC-REG-46 — `ReportsService` | Từ chối định dạng khoảng ngày không hợp lệ bằng lỗi validation. | Feature — `tests/Feature/ReportsServiceTest.php` | ✅ PASSED |
+| 65 | TC-REG-50 — `ReportsService` | KPI dùng doanh thu hóa đơn đã thanh toán và đếm Booking mới trong khoảng ngày. | Feature — `tests/Feature/ReportsServiceTest.php` | ✅ PASSED |
+| 66 | TC-REG-51 — `ReportsService` | Kỳ không có dữ liệu trả cơ cấu rỗng và doanh thu bằng 0. | Feature — `tests/Feature/ReportsServiceTest.php` | ✅ PASSED |
+| 67 | TC-REG-52 — `ReportsService` | Xếp hạng dịch vụ theo doanh thu đã thanh toán, kèm số lượng và đơn vị. | Feature — `tests/Feature/ReportsServiceTest.php` | ✅ PASSED |
+| 68 | TC-REG-53 — `ReportsService` | Tổng hợp phương thức thanh toán chỉ tính giao dịch thành công của hóa đơn đã thanh toán. | Feature — `tests/Feature/ReportsServiceTest.php` | ✅ PASSED |
+| 69 | TC-REG-54 — `ReportsService` | Đơn gần đây eager-load khách hàng và chi tiết dịch vụ để tránh N+1. | Feature — `tests/Feature/ReportsServiceTest.php` | ✅ PASSED |
+| 70 | TC-REG-55 — `ReportsService` | Từ chối định dạng khoảng ngày không hợp lệ bằng lỗi validation. | Feature — `tests/Feature/ReportsServiceTest.php` | ✅ PASSED |
 | 73 | TC-REG-47 — `UserAuthorizationStatus` | Tài khoản không hoạt động không thể dùng quyền hoặc bypass của Chủ cửa hàng. | Unit — `tests/Unit/UserAuthorizationStatusTest.php` | ✅ PASSED |
 | 74 | TC-REG-48 — `UserAvatarUrl` | URL avatar dùng đúng ảnh hồ sơ đã lưu. | Unit — `tests/Unit/UserAvatarUrlTest.php` | ✅ PASSED |
 | 75 | TC-REG-49 — `UserAvatarUrl` | URL avatar dùng ảnh fallback xác định khi chưa có ảnh hồ sơ. | Unit — `tests/Unit/UserAvatarUrlTest.php` | ✅ PASSED |
@@ -121,6 +119,22 @@ Lần chạy được ghi nhận bằng `php artisan test --compact` trên cấu
 | 86 | TC-BK-12 — `BookingOrderConversion` | Gọi route xác nhận từ danh sách chuyển Booking đang chờ thành Đã xác nhận và tạo đúng một đơn cùng phiếu giao. | Feature — `tests/Feature/BookingOrderConversionTest.php` | ✅ PASSED |
 | 87 | TC-BK-13 — `BookingOrderConversion` | Booking đã hủy không được xác nhận và không sinh đơn hàng. | Feature — `tests/Feature/BookingOrderConversionTest.php` | ✅ PASSED |
 | 88 | TC-BK-14 — `BookingOrderConversion` | Booking chưa có dòng dịch vụ được chuyển tới form sửa với thông báo hướng dẫn; trạng thái và đơn hàng không bị thay đổi. | Feature — `tests/Feature/BookingOrderConversionTest.php` | ✅ PASSED |
+
+### Kiểm thử tối ưu hiệu năng và luồng nghiệp vụ mới
+
+Các lần chạy dưới đây là kiểm thử hẹp trên SQLite in-memory, không kết nối Supabase Live.
+
+| Mã kiểm tra | Test | Kịch bản đã xác minh | Kết quả |
+|---|---|---|---|
+| TC-PERF-01 | `ReportsServiceTest::test_kpis_and_revenue_chart_use_bounded_aggregate_query_counts` | KPI dùng số truy vấn cố định cho phần tổng hợp trạng thái; biểu đồ doanh thu dùng một truy vấn tổng hợp. | ✅ PASSED |
+| TC-PERF-02 | `DashboardRevenueChartTest::test_revenue_chart_aggregates_each_filter_in_a_single_query` | Các bộ lọc hôm nay/7 ngày/tháng/năm đều chạy một truy vấn tổng hợp và trả đúng số liệu theo bucket. | ✅ PASSED |
+| TC-PERF-03 | `ReportsServiceTest::test_recent_orders_eager_load_customer_and_service_details` | Danh sách đơn gần đây nạp sẵn khách hàng và dịch vụ trong chi tiết đơn. | ✅ PASSED |
+| TC-PAY-01 | `PaymentOrderRedirectTest` | Kiểm tra số tiền còn phải thu, chặn thanh toán vượt số dư, transaction code duy nhất và không bỏ qua vòng đời đơn. | ✅ PASSED |
+| TC-POINT-08 | `RewardPointTest::test_repeated_order_edits_only_adjust_the_difference_in_redeemed_points` | Lưu/sửa cùng đơn nhiều lần chỉ điều chỉnh phần điểm chênh lệch, không trừ lặp toàn bộ. | ✅ PASSED |
+| TC-COMM-07 | `AdminCommunicationTest` | Tiêu đề thông báo được lưu, thời gian gửi lấy từ server, gửi theo nhóm người nhận và đánh dấu đã đọc chỉ trên tài khoản hiện tại. | ✅ PASSED |
+| TC-COMM-08 | `PromotionNotificationTest::test_creating_active_promotion_does_not_fan_out_database_notifications` | Tạo khuyến mãi không phát sinh thông báo database hàng loạt ngoài ý muốn. | ✅ PASSED |
+
+Lần chạy tập trung xác nhận tối ưu báo cáo: `php artisan test --compact tests/Feature/DashboardRevenueChartTest.php tests/Feature/ReportsServiceTest.php` — **11 passed, 70 assertions**.
 
 ### Kiểm thử Nhật ký hệ thống (SystemLog)
 

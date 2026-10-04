@@ -53,14 +53,16 @@ class DashboardController extends Controller
         ])->count();
 
         // --- KPI: Lượng nhận đồ / giao đồ được phân công hôm nay ---
-        $todayDeliveries = GiaoNhan::whereDate('ThoiGianDuKien', $today)
+        $todayDeliveryCounts = GiaoNhan::whereDate('ThoiGianDuKien', $today)
             ->when($nhanVienId, fn ($q) => $q->where('NhanVienID', $nhanVienId))
             ->where('TrangThai', '!=', DeliveryStatus::Cancelled->dbValue())
-            ->with(['donHang.khachHang', 'nhanVien'])
-            ->get();
+            ->select('LoaiGiaoNhan')
+            ->selectRaw('COUNT(*) AS total')
+            ->groupBy('LoaiGiaoNhan')
+            ->pluck('total', 'LoaiGiaoNhan');
 
-        $pickupCount = $todayDeliveries->where('LoaiGiaoNhan', 'NHAN_DO')->count();
-        $deliveryCount = $todayDeliveries->where('LoaiGiaoNhan', 'GIAO_DO')->count();
+        $pickupCount = (int) $todayDeliveryCounts->get('NHAN_DO', 0);
+        $deliveryCount = (int) $todayDeliveryCounts->get('GIAO_DO', 0);
 
         // --- Danh sách: Đơn hàng cần xử lý ---
         $processingOrders = DonHang::with(['khachHang', 'nhanVien'])

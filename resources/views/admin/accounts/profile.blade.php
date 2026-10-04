@@ -25,7 +25,7 @@
         <div class="d-flex justify-content-center mb-4">
             <div class="position-relative d-inline-block">
                 <label for="avatarInput" class="d-block" style="cursor: pointer;">
-                    <img id="avatarPreview" src="{{ $account->avatar_url }}" alt="Avatar" class="rounded-circle shadow-sm avatar-cover" data-user-avatar style="width: 180px; height: 180px; border: 4px solid #e9ecef;">
+                    <img id="avatarPreview" src="{{ $account->avatar_url }}" alt="Avatar" class="rounded-circle shadow-sm avatar-cover" data-user-avatar onerror="this.onerror=null; this.src='{{ asset('assets/images/user_'.(($account->getKey() % 8) + 1).'.jpg') }}';" style="width: 180px; height: 180px; border: 4px solid #e9ecef;">
                 </label>
                 <span class="position-absolute bottom-0 end-0 translate-middle badge rounded-circle bg-primary border-2 border-white" style="width: 34px; height: 34px; display: flex; align-items: center; justify-content: center;">
                     <i class="bi bi-camera" style="font-size: 14px;"></i>

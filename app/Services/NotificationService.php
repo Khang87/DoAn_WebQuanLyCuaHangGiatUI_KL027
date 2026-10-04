@@ -2,11 +2,20 @@
 
 namespace App\Services;
 
+use App\Models\TaiKhoan;
 use App\Models\ThongBao;
+use App\Models\VaiTro;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\DB;
 
 class NotificationService
 {
+    public const RECIPIENT_GROUPS = [
+        'all' => 'Tất cả người dùng',
+        'all_customers' => 'Tất cả khách hàng',
+        'all_staff' => 'Tất cả nhân viên',
+    ];
+
     public function getAll(array $filters = []): LengthAwarePaginator
     {
         $query = ThongBao::query();
@@ -58,13 +67,52 @@ class NotificationService
 
     public function create(array $data): ThongBao
     {
-        if (empty($data['sent_at'])) {
-            $data['ThoiGianGui'] = now();
-        } else {
-            $data['ThoiGianGui'] = $data['sent_at'];
-        }
+        $data['ThoiGianGui'] = now();
 
         return ThongBao::create($data);
+    }
+
+    public function createForRecipient(string $recipient, array $data): int
+    {
+        $query = TaiKhoan::query()->where('TrangThai', 'Hoạt động');
+
+        if ($recipient === 'all_customers') {
+            $query->whereHas('vaiTros', fn ($roleQuery) => $roleQuery->where('TenVaiTro', 'Khách hàng'));
+        } elseif ($recipient === 'all_staff') {
+            $query->whereHas('vaiTros', fn ($roleQuery) => $roleQuery->whereIn('TenVaiTro', [
+                VaiTro::OWNER,
+                'Quản lý',
+                'Nhân viên',
+            ]));
+        } elseif ($recipient !== 'all') {
+            $query->where('TaiKhoanID', (int) $recipient);
+        }
+
+        $notification = [
+            'DonHangID' => $data['DonHangID'] ?? null,
+            'LoaiThongBao' => $data['LoaiThongBao'] ?? null,
+            'TieuDe' => $data['TieuDe'],
+            'NoiDung' => $data['NoiDung'],
+            'ThoiGianGui' => now()->toDateTimeString(),
+            'DaDoc' => false,
+        ];
+        $createdCount = 0;
+
+        DB::transaction(function () use ($query, $notification, &$createdCount): void {
+            $query->select('TaiKhoanID')->chunkById(500, function ($accounts) use ($notification, &$createdCount): void {
+                $rows = $accounts->map(fn (TaiKhoan $account): array => [
+                    'TaiKhoanID' => $account->TaiKhoanID,
+                    ...$notification,
+                ])->all();
+
+                if ($rows !== []) {
+                    DB::table('ThongBao')->insert($rows);
+                    $createdCount += count($rows);
+                }
+            }, 'TaiKhoanID');
+        });
+
+        return $createdCount;
     }
 
     public function update(ThongBao $notification, array $data): ThongBao

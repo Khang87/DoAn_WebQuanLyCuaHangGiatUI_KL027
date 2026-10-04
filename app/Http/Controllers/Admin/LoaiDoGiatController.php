@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Enums\RecordStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\LuuLoaiDoGiatRequest;
+use App\Models\DanhMucLoaiDoGiat;
 use App\Services\LoaiDoGiatService;
 use App\Support\FriendlyError;
 use Illuminate\Http\RedirectResponse;
@@ -34,7 +35,12 @@ class LoaiDoGiatController extends Controller
 
     public function create(): View
     {
-        return view('admin.loaidogiat.create');
+        $categories = DanhMucLoaiDoGiat::query()
+            ->where('TrangThai', 'Hoạt động')
+            ->orderBy('TenDanhMuc')
+            ->get(['DanhMucID', 'TenDanhMuc']);
+
+        return view('admin.loaidogiat.create', compact('categories'));
     }
 
     public function store(LuuLoaiDoGiatRequest $request): RedirectResponse
@@ -74,7 +80,15 @@ class LoaiDoGiatController extends Controller
             abort(404);
         }
 
-        return view('admin.loaidogiat.edit', compact('category'));
+        $categories = DanhMucLoaiDoGiat::query()
+            ->where(function ($query) use ($category): void {
+                $query->where('TrangThai', 'Hoạt động')
+                    ->orWhere('DanhMucID', $category->DanhMucID);
+            })
+            ->orderBy('TenDanhMuc')
+            ->get(['DanhMucID', 'TenDanhMuc']);
+
+        return view('admin.loaidogiat.edit', compact('category', 'categories'));
     }
 
     public function update(LuuLoaiDoGiatRequest $request, int $id): RedirectResponse

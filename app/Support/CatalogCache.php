@@ -15,31 +15,31 @@ class CatalogCache
 
     public static function serviceCategories(Closure $resolver): array
     {
-        return Cache::store('file')->remember(self::SERVICE_CATEGORIES_KEY, now()->addMinutes(10), $resolver);
+        return Cache::remember(self::SERVICE_CATEGORIES_KEY, now()->addMinutes(10), $resolver);
     }
 
     public static function garmentTypes(Closure $resolver): array
     {
-        return Cache::store('file')->remember(self::GARMENT_TYPES_KEY, now()->addMinutes(10), $resolver);
+        return Cache::remember(self::GARMENT_TYPES_KEY, now()->addMinutes(10), $resolver);
     }
 
     public static function units(Closure $resolver): array
     {
-        return Cache::store('file')->remember(self::UNITS_KEY, now()->addMinutes(10), $resolver);
+        return Cache::remember(self::UNITS_KEY, now()->addMinutes(10), $resolver);
     }
 
     public static function forgetServiceCategories(): void
     {
-        Cache::store('file')->forget(self::SERVICE_CATEGORIES_KEY);
+        Cache::forget(self::SERVICE_CATEGORIES_KEY);
     }
 
     public static function forgetGarmentTypes(): void
     {
-        Cache::store('file')->forget(self::GARMENT_TYPES_KEY);
+        Cache::forget(self::GARMENT_TYPES_KEY);
     }
 
     public static function forgetUnits(): void
     {
-        Cache::store('file')->forget(self::UNITS_KEY);
+        Cache::forget(self::UNITS_KEY);
     }
 }

@@ -220,10 +220,6 @@
                 <h5 class="card-title mb-0 fw-bold">Thao tác</h5>
             </div>
             <div class="card-body d-flex flex-column gap-2">
-                <a href="{{ route('invoices.export-excel', $invoice->HoaDonID) }}" class="btn btn-outline-primary w-100 py-2">
-                    <i class="fas fa-file-excel me-1"></i> Xuất excel
-                </a>
-
                 <button type="button" class="btn btn-outline-primary w-100 py-2" onclick="window.print()">
                     <i class="fas fa-print me-1"></i> In hóa đơn
                 </button>

@@ -50,12 +50,20 @@ class DeliveryService
         $sortBy = in_array($filters['sort_by'] ?? null, $allowedSorts) ? $filters['sort_by'] : 'ThoiGianDuKien';
         $sortOrder = ($filters['sort_order'] ?? 'desc') === 'asc' ? 'asc' : 'desc';
 
-        return $query->with(['donHang', 'nhanVien'])->orderBy($sortBy, $sortOrder)->paginate(10)->withQueryString();
+        return $query
+            ->with([
+                'donHang:DonHangID,MaDonHang,KhachHangID',
+                'donHang.khachHang:KhachHangID,HoTen,SoDienThoai',
+                'nhanVien:NhanVienID,HoTen',
+            ])
+            ->orderBy($sortBy, $sortOrder)
+            ->paginate(10)
+            ->withQueryString();
     }
 
     public function find(int $id): ?GiaoNhan
     {
-        return GiaoNhan::with(['donHang', 'nhanVien'])->find($id);
+        return GiaoNhan::with(['donHang.khachHang', 'nhanVien'])->find($id);
     }
 
     public function create(array $data): GiaoNhan

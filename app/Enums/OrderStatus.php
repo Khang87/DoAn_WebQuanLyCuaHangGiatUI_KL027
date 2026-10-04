@@ -78,6 +78,17 @@ enum OrderStatus: string
         ], true);
     }
 
+    public function nextProcessStatus(): ?self
+    {
+        return match ($this) {
+            self::Received => self::Washing,
+            self::Washing => self::Washed,
+            self::Washed => self::Delivering,
+            self::Delivering => self::Delivered,
+            default => null,
+        };
+    }
+
     /**
      * @return array<int, string>
      */

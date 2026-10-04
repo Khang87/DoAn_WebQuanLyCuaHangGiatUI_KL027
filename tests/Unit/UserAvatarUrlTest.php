@@ -3,6 +3,7 @@
 namespace Tests\Unit;
 
 use App\Models\User;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class UserAvatarUrlTest extends TestCase
@@ -58,5 +59,34 @@ class UserAvatarUrlTest extends TestCase
         $user->setAttribute('TaiKhoanID', 17);
 
         $this->assertStringEndsWith('/assets/images/user_2.jpg', $user->avatar_url);
+    }
+
+    public function test_avatar_url_uses_predictable_supabase_object_path_when_storage_is_configured(): void
+    {
+        config([
+            'filesystems.disks.supabase.key' => 'access-key',
+            'filesystems.disks.supabase.secret' => 'secret-key',
+            'filesystems.disks.supabase.bucket' => 'avatars',
+            'filesystems.disks.supabase.endpoint' => 'https://project.supabase.co/storage/v1/s3',
+            'filesystems.disks.supabase.url' => 'https://project.supabase.co/storage/v1/object/public/avatars',
+        ]);
+        Storage::shouldReceive('disk')
+            ->once()
+            ->with('supabase')
+            ->andReturn(new class
+            {
+                public function url(string $path): string
+                {
+                    return 'https://project.supabase.co/storage/v1/object/public/avatars/'.$path;
+                }
+            });
+
+        $user = new User;
+        $user->setAttribute('TaiKhoanID', 17);
+
+        $this->assertSame(
+            'https://project.supabase.co/storage/v1/object/public/avatars/avatars/17',
+            $user->avatar_url,
+        );
     }
 }

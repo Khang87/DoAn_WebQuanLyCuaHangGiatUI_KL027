@@ -1,6 +1,17 @@
 -- Supabase PostgreSQL live schema snapshot.
 -- Generated from pg_catalog via read-only transactions on 2026-10-04.
 -- Schema only: no table rows. This local reference was not executed against Supabase.
+--
+-- Laravel naming/reference notes for this snapshot:
+--   User       -> public."TaiKhoan" (avatar files are stored outside PostgreSQL)
+--   Customer   -> public."KhachHang" ("SoDienThoai" is unique; "Email" is not)
+--   Order      -> public."DonHang" ("TrangThai", "TienGiamDoDiem",
+--                                  and "TienGiamKhuyenMai" are the stored fields)
+--   Garment    -> public."LoaiDoGiat" ("DanhMucID" is required and references
+--                                      "DanhMucLoaiDoGiat")
+--   Pricing    -> public."BangGia" (references service, garment, and unit)
+-- These are notes about the existing database, not instructions to add columns
+-- or constraints. Keep this snapshot aligned with the catalog; do not apply DDL.
 SET search_path = public, pg_catalog;
 
 CREATE SCHEMA IF NOT EXISTS private;

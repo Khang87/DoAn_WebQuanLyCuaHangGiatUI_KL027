@@ -15,15 +15,33 @@
 <form action="{{ url()->current() }}" method="GET" class="row g-3 align-items-center mb-4">
     <div class="col-12 col-md-auto flex-grow-1">
         <div class="input-group input-group-sm shadow-sm rounded-3 overflow-hidden">
-            <span class="input-group-text bg-white border-end-0 ps-3"><i class="fas fa-search text-muted"></i></span>
-            <input type="text" name="search" class="form-control form-control-sm border-start-0 ps-2" placeholder="Tìm theo mã, tên dịch vụ..." value="{{ request('search') }}">
+            <span class="input-group-text bg-white border-end-0 ps-3">
+                <i class="fas fa-search text-muted"></i>
+            </span>
+            <input type="text" name="search" class="form-control form-control-sm border-start-0 ps-2" placeholder="Tìm theo dịch vụ, loại đồ..." value="{{ request('search') }}">
         </div>
+    </div>
+    <div class="col-12 col-sm-6 col-md-auto">
+        <select name="service_id" id="filter-service" class="form-select form-select-sm filter-select shadow-sm rounded-3" onchange="this.form.submit()">
+            <option value="">Tất cả dịch vụ</option>
+            @foreach($services as $service)
+                <option value="{{ $service->DichVuID }}" @selected((string) request('service_id') === (string) $service->DichVuID)>{{ $service->TenDichVu }}</option>
+            @endforeach
+        </select>
+    </div>
+    <div class="col-12 col-sm-6 col-md-auto">
+        <select name="garment_id" id="filter-garment" class="form-select form-select-sm filter-select shadow-sm rounded-3" onchange="this.form.submit()">
+            <option value="">Tất cả loại đồ</option>
+            @foreach($garments as $garment)
+                <option value="{{ $garment->LoaiDoGiatID }}" @selected((string) request('garment_id') === (string) $garment->LoaiDoGiatID)>{{ $garment->TenLoaiDoGiat }}</option>
+            @endforeach
+        </select>
     </div>
     <div class="col-12 col-sm-6 col-md-auto">
         <x-admin.status-select
             name="status"
             id="filter-status"
-            :options="$statuses ?? \App\Enums\RecordStatus::options()"
+            :options="$statuses"
             placeholder="Tất cả trạng thái"
             class="form-select form-select-sm filter-select shadow-sm rounded-3"
             submit

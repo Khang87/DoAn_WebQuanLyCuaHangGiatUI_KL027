@@ -29,10 +29,13 @@ class OrderStatusSchemaTest extends TestCase
         $schema = file_get_contents(dirname(__DIR__, 2).'/schema.sql');
 
         $this->assertNotFalse($schema);
-        $this->assertStringContainsString('CREATE TABLE "public"."NhatKyHeThong"', $schema);
+        $this->assertStringContainsString('CREATE TABLE IF NOT EXISTS "public"."NhatKyHeThong"', $schema);
         $this->assertStringContainsString('"DuLieuCu" jsonb', $schema);
         $this->assertStringContainsString('"DuLieuMoi" jsonb', $schema);
-        $this->assertStringNotContainsString('donhang_trangthai', $schema);
+        $this->assertSame(
+            0,
+            preg_match('/CREATE TABLE(?: IF NOT EXISTS)?\s+"public"\."donhang_trangthai"/i', $schema),
+        );
     }
 
     public function test_completed_order_milestones_are_distinguished_from_in_progress_statuses(): void
@@ -43,6 +46,18 @@ class OrderStatusSchemaTest extends TestCase
 
         foreach ([OrderStatus::Pending, OrderStatus::Washing, OrderStatus::Delivering, OrderStatus::Cancelled] as $status) {
             $this->assertFalse($status->isCompletedMilestone());
+        }
+    }
+
+    public function test_each_in_progress_order_status_has_its_next_process_action(): void
+    {
+        $this->assertSame(OrderStatus::Washing, OrderStatus::Received->nextProcessStatus());
+        $this->assertSame(OrderStatus::Washed, OrderStatus::Washing->nextProcessStatus());
+        $this->assertSame(OrderStatus::Delivering, OrderStatus::Washed->nextProcessStatus());
+        $this->assertSame(OrderStatus::Delivered, OrderStatus::Delivering->nextProcessStatus());
+
+        foreach ([OrderStatus::Pending, OrderStatus::Delivered, OrderStatus::Paid, OrderStatus::Cancelled] as $status) {
+            $this->assertNull($status->nextProcessStatus());
         }
     }
 }

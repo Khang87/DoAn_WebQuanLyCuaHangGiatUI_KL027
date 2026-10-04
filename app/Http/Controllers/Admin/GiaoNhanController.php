@@ -9,6 +9,7 @@ use App\Models\KhachHang;
 use App\Models\NhanVien;
 use App\Services\DeliveryService;
 use App\Support\FriendlyError;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\Request;
 
 class GiaoNhanController extends Controller
@@ -28,17 +29,21 @@ class GiaoNhanController extends Controller
             'sort_order' => $request->input('sort_order'),
         ]);
 
-        $customers = KhachHang::orderBy('HoTen')->get();
-        $employees = NhanVien::where('TrangThai', 'Hoạt động')->orderBy('HoTen')->get();
+        $customers = KhachHang::query()->orderBy('HoTen')->get(['KhachHangID', 'HoTen']);
+        $employees = NhanVien::where('TrangThai', 'Hoạt động')
+            ->orderBy('HoTen')
+            ->get(['NhanVienID', 'HoTen']);
 
         return view('admin.deliveries.index', compact('deliveries', 'customers', 'employees'));
     }
 
     public function create()
     {
-        $customers = KhachHang::orderBy('HoTen')->get();
-        $employees = NhanVien::where('TrangThai', 'Hoạt động')->orderBy('HoTen')->get();
-        $orders = DonHang::whereDoesntHave('giaoNhans')->where('TrangThai', '!=', 'Đã hủy')->orderBy('NgayTao', 'desc')->get();
+        $customers = KhachHang::query()->orderBy('HoTen')->get(['KhachHangID', 'HoTen']);
+        $employees = NhanVien::where('TrangThai', 'Hoạt động')
+            ->orderBy('HoTen')
+            ->get(['NhanVienID', 'HoTen']);
+        $orders = $this->orderOptions();
 
         return view('admin.deliveries.create', compact('customers', 'employees', 'orders'));
     }
@@ -73,9 +78,11 @@ class GiaoNhanController extends Controller
             abort(404);
         }
 
-        $customers = KhachHang::orderBy('HoTen')->get();
-        $employees = NhanVien::where('TrangThai', 'Hoạt động')->orderBy('HoTen')->get();
-        $orders = DonHang::whereDoesntHave('giaoNhans')->where('TrangThai', '!=', 'Đã hủy')->orderBy('NgayTao', 'desc')->get();
+        $customers = KhachHang::query()->orderBy('HoTen')->get(['KhachHangID', 'HoTen']);
+        $employees = NhanVien::where('TrangThai', 'Hoạt động')
+            ->orderBy('HoTen')
+            ->get(['NhanVienID', 'HoTen']);
+        $orders = $this->orderOptions($delivery->DonHangID);
 
         return view('admin.deliveries.edit', compact('delivery', 'customers', 'employees', 'orders'));
     }
@@ -114,5 +121,25 @@ class GiaoNhanController extends Controller
         } catch (\Exception $e) {
             return redirect()->route('deliveries.index')->with('error', FriendlyError::message($e));
         }
+    }
+
+    /**
+     * @return Collection<int, DonHang>
+     */
+    private function orderOptions(?int $currentOrderId = null): Collection
+    {
+        return DonHang::query()
+            ->select(['DonHangID', 'MaDonHang', 'KhachHangID', 'NgayTao'])
+            ->with('khachHang:KhachHangID,HoTen')
+            ->where('TrangThai', '!=', 'Đã hủy')
+            ->where(function ($query) use ($currentOrderId): void {
+                $query->whereDoesntHave('giaoNhans');
+
+                if ($currentOrderId !== null) {
+                    $query->orWhereKey($currentOrderId);
+                }
+            })
+            ->orderByDesc('NgayTao')
+            ->get();
     }
 }

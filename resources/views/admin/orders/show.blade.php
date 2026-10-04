@@ -17,6 +17,34 @@
     $isCancelled = $order->status === \App\Enums\OrderStatus::Cancelled->value;
     $isReceiving = $order->status === \App\Enums\OrderStatus::Pending->value;
     $currentStatusIsCompleted = \App\Enums\OrderStatus::parse($order->status)->isCompletedMilestone();
+    $nextProcessStatus = $order->statusEnum()->nextProcessStatus();
+    $nextStatusAction = match ($nextProcessStatus) {
+        \App\Enums\OrderStatus::Washing => [
+            'status' => \App\Enums\OrderStatus::Washing,
+            'label' => 'Bắt đầu giặt',
+            'icon' => 'bi-play-circle',
+            'variant' => 'primary',
+        ],
+        \App\Enums\OrderStatus::Washed => [
+            'status' => \App\Enums\OrderStatus::Washed,
+            'label' => 'Hoàn thành giặt',
+            'icon' => 'bi-check2-circle',
+            'variant' => 'success',
+        ],
+        \App\Enums\OrderStatus::Delivering => [
+            'status' => \App\Enums\OrderStatus::Delivering,
+            'label' => 'Bắt đầu giao hàng',
+            'icon' => 'bi-truck',
+            'variant' => 'primary',
+        ],
+        \App\Enums\OrderStatus::Delivered => [
+            'status' => \App\Enums\OrderStatus::Delivered,
+            'label' => 'Xác nhận đã giao',
+            'icon' => 'bi-box-seam',
+            'variant' => 'success',
+        ],
+        default => null,
+    };
     $inspectionItems = old('items');
     if (! is_array($inspectionItems)) {
         $inspectionItems = $order->chiTietDonHangs->map(function ($item): array {
@@ -478,14 +506,14 @@
                     @endcan
                 @endif
 
-                @if($order->statusEnum() === \App\Enums\OrderStatus::Received)
+                @if($nextStatusAction)
                     @can('orders.update_status')
                         <form action="{{ route('orders.update-status', $order) }}" method="POST">
                             @csrf
                             @method('PATCH')
-                            <input type="hidden" name="TrangThai" value="{{ \App\Enums\OrderStatus::Washing->value }}">
-                            <button type="submit" class="btn btn-primary w-100 py-2">
-                                <i class="bi bi-play-circle me-1" aria-hidden="true"></i>Bắt đầu giặt
+                            <input type="hidden" name="TrangThai" value="{{ $nextStatusAction['status']->value }}">
+                            <button type="submit" class="btn btn-{{ $nextStatusAction['variant'] }} w-100 py-2">
+                                <i class="bi {{ $nextStatusAction['icon'] }} me-1" aria-hidden="true"></i>{{ $nextStatusAction['label'] }}
                             </button>
                         </form>
                     @endcan

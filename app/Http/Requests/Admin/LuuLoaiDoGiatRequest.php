@@ -19,6 +19,7 @@ class LuuLoaiDoGiatRequest extends FormRequest
         $id = is_numeric($id) ? (int) $id : null;
 
         return [
+            'DanhMucID' => ['required', 'integer', Rule::exists('DanhMucLoaiDoGiat', 'DanhMucID')],
             'TenLoaiDoGiat' => [
                 'required',
                 'string',
@@ -33,6 +34,9 @@ class LuuLoaiDoGiatRequest extends FormRequest
     public function messages(): array
     {
         return [
+            'DanhMucID.required' => 'Vui lòng chọn danh mục loại đồ giặt.',
+            'DanhMucID.integer' => 'Danh mục loại đồ giặt không hợp lệ.',
+            'DanhMucID.exists' => 'Danh mục loại đồ giặt đã chọn không tồn tại.',
             'TenLoaiDoGiat.required' => 'Tên loại đồ giặt là bắt buộc.',
             'TenLoaiDoGiat.unique' => 'Tên loại đồ giặt đã tồn tại.',
             'MoTa.max' => 'Mô tả không được vượt quá 255 ký tự.',

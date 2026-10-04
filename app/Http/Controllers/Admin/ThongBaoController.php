@@ -5,10 +5,10 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\DonHang;
 use App\Models\TaiKhoan;
-use App\Models\ThongBao;
 use App\Services\NotificationService;
 use App\Support\FriendlyError;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 
 class ThongBaoController extends Controller
 {
@@ -43,27 +43,56 @@ class ThongBaoController extends Controller
     {
         $users = TaiKhoan::where('TrangThai', 'Hoạt động')->orderBy('TenDangNhap')->get();
         $orders = DonHang::orderBy('NgayTao', 'desc')->get();
+        $recipientGroups = NotificationService::RECIPIENT_GROUPS;
 
-        return view('admin.notifications.create', compact('users', 'orders'));
+        return view('admin.notifications.create', compact('users', 'orders', 'recipientGroups'));
     }
 
     public function store(Request $request)
     {
+        $recipient = (string) $request->input('recipient', $request->input('TaiKhoanID', ''));
+        $request->merge(['recipient' => $recipient]);
         $validated = $request->validate([
-            'TaiKhoanID' => 'required|exists:TaiKhoan,TaiKhoanID',
+            'recipient' => [
+                'required',
+                'string',
+                function (string $attribute, mixed $value, \Closure $fail): void {
+                    if (array_key_exists((string) $value, NotificationService::RECIPIENT_GROUPS)) {
+                        return;
+                    }
+
+                    if (
+                        ! ctype_digit((string) $value)
+                        || ! TaiKhoan::query()
+                            ->where('TaiKhoanID', (int) $value)
+                            ->where('TrangThai', 'Hoạt động')
+                            ->exists()
+                    ) {
+                        $fail('Vui lòng chọn nhóm người nhận hoặc tài khoản đang hoạt động.');
+                    }
+                },
+            ],
             'LoaiThongBao' => 'nullable|string|max:100',
+            'TieuDe' => 'required|string|max:200',
             'NoiDung' => 'required|string|max:1000',
             'DonHangID' => 'nullable|exists:DonHang,DonHangID',
-            'ThoiGianGui' => 'nullable|date',
         ]);
 
         try {
-            if (empty($validated['ThoiGianGui'])) {
-                $validated['ThoiGianGui'] = now();
-            }
-            ThongBao::create($validated);
+            unset($validated['recipient']);
+            $createdCount = $this->notificationService->createForRecipient($recipient, $validated);
 
-            return redirect()->route('notifications.index')->with('success', 'Thông báo đã được tạo thành công.');
+            if ($createdCount === 0) {
+                throw ValidationException::withMessages([
+                    'recipient' => 'Không tìm thấy tài khoản đang hoạt động trong nhóm đã chọn.',
+                ]);
+            }
+
+            return redirect()->route('notifications.index')->with('success', $createdCount === 1
+                ? 'Thông báo đã được tạo thành công.'
+                : "Đã tạo thông báo cho {$createdCount} tài khoản.");
+        } catch (ValidationException $exception) {
+            throw $exception;
         } catch (\Exception $e) {
             return redirect()->route('notifications.create')->with('error', FriendlyError::message($e))->withInput();
         }
@@ -109,9 +138,9 @@ class ThongBaoController extends Controller
         $validated = $request->validate([
             'TaiKhoanID' => 'required|exists:TaiKhoan,TaiKhoanID',
             'LoaiThongBao' => 'nullable|string|max:100',
+            'TieuDe' => 'required|string|max:200',
             'NoiDung' => 'required|string|max:1000',
             'DonHangID' => 'nullable|exists:DonHang,DonHangID',
-            'ThoiGianGui' => 'nullable|date',
             'DaDoc' => 'nullable|boolean',
         ]);
 

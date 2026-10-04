@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\KhuyenMai;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 
 class PromotionService
 {
@@ -57,7 +58,22 @@ class PromotionService
 
     public function create(array $data): KhuyenMai
     {
-        return KhuyenMai::create($data);
+        return DB::transaction(function () use ($data): KhuyenMai {
+            $shouldActivate = ($data['TrangThai'] ?? null) === 'Hoạt động';
+
+            if ($shouldActivate) {
+                // Supabase broadcasts active promotions from an AFTER INSERT trigger.
+                $data['TrangThai'] = 'Tạm ngưng';
+            }
+
+            $promotion = KhuyenMai::create($data);
+
+            if ($shouldActivate) {
+                $promotion->update(['TrangThai' => 'Hoạt động']);
+            }
+
+            return $promotion;
+        });
     }
 
     public function update(KhuyenMai $promotion, array $data): KhuyenMai

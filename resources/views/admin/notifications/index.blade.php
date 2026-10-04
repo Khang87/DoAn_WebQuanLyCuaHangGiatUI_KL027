@@ -14,7 +14,7 @@
     <div class="page-toolbar__actions ms-auto">
         <form action="{{ route('notifications.mark-all-read') }}" method="POST" class="d-inline">
             @csrf
-            <button type="submit" class="btn btn-outline-secondary btn-sm" title="Đánh dấu tất cả là đã đọc">
+            <button type="submit" class="btn btn-outline-secondary btn-sm" title="Đánh dấu tất cả thông báo của tài khoản hiện tại là đã đọc">
                 <i class="bi bi-check2-all"></i> Đánh dấu tất cả đã đọc
             </button>
         </form>

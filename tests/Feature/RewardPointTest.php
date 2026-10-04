@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Enums\BookingStatus;
 use App\Enums\OrderStatus;
+use App\Enums\PaymentStatus;
 use App\Models\Booking;
 use App\Models\ChiTietBooking;
 use App\Models\DiemTichLuy;
@@ -35,6 +36,8 @@ class RewardPointTest extends TestCase
     {
         foreach ([
             'NhatKyHeThong',
+            'ThanhToan',
+            'HoaDon',
             'ChiTietBooking',
             'ChiTietDonHang',
             'GiaoNhan',
@@ -61,8 +64,11 @@ class RewardPointTest extends TestCase
         $order->update(['TrangThai' => OrderStatus::Received->value]);
         $service = app(OrderService::class);
 
+        $service->updateStatus($order, OrderStatus::Washing->value);
+        $service->updateStatus($order->fresh(), OrderStatus::Washed->value);
+        $service->updateStatus($order->fresh(), OrderStatus::Delivering->value);
         $service->updateStatus($order, OrderStatus::Delivered->value);
-        $service->updateStatus($order->fresh(), OrderStatus::Received->value);
+        $service->updateStatus($order->fresh(), OrderStatus::Delivering->value);
         $service->updateStatus($order->fresh(), OrderStatus::Delivered->value);
 
         $this->assertSame(10002, $customer->fresh()->points());
@@ -126,6 +132,57 @@ class RewardPointTest extends TestCase
         $this->assertSame($newCustomer->KhachHangID, $updatedOrder->KhachHangID);
         $this->assertSame(4, $updatedOrder->DiemSuDung);
         $this->assertSame(9960.0, $updatedOrder->ThanhTien);
+    }
+
+    public function test_repeated_order_edits_only_adjust_the_difference_in_redeemed_points(): void
+    {
+        $customer = $this->createCustomer(5, 7);
+        $order = $this->createOrder($customer, 10000, 3);
+        $service = app(OrderService::class);
+        $orderData = [
+            'KhachHangID' => $customer->KhachHangID,
+            'TrangThai' => OrderStatus::Pending->value,
+            'DiemSuDung' => 3,
+            'items' => [$this->orderItem()],
+        ];
+
+        $service->update($order, $orderData);
+        $this->assertSame(7, $customer->fresh()->points());
+
+        $service->update($order->fresh(), $orderData);
+        $this->assertSame(7, $customer->fresh()->points());
+
+        $orderData['DiemSuDung'] = 5;
+        $service->update($order->fresh(), $orderData);
+        $this->assertSame(5, $customer->fresh()->points());
+
+        $service->update($order->fresh(), $orderData);
+        $this->assertSame(5, $customer->fresh()->points());
+    }
+
+    public function test_fully_paid_order_becomes_settled_when_delivery_is_completed(): void
+    {
+        $customer = $this->createCustomer(6, 0);
+        $order = $this->createOrder($customer, 10000, 0);
+        $order->update(['TrangThai' => OrderStatus::Received->value]);
+
+        DB::table('HoaDon')->insert([
+            'DonHangID' => $order->DonHangID,
+            'ThanhTien' => 10000,
+            'TrangThai' => 'Đã thanh toán',
+        ]);
+        DB::table('ThanhToan')->insert([
+            'DonHangID' => $order->DonHangID,
+            'SoTien' => 10000,
+            'TrangThai' => PaymentStatus::Paid->value,
+        ]);
+
+        $service = app(OrderService::class);
+        foreach ([OrderStatus::Washing, OrderStatus::Washed, OrderStatus::Delivering, OrderStatus::Delivered] as $status) {
+            $order = $service->updateStatus($order, $status->value);
+        }
+
+        $this->assertSame(OrderStatus::Paid->value, $order->fresh()->TrangThai);
     }
 
     public function test_points_discount_never_exceeds_the_value_of_points_redeemed(): void
@@ -366,6 +423,20 @@ class RewardPointTest extends TestCase
             $table->string('GhiChu')->nullable();
             $table->dateTime('NgayTao')->useCurrent();
             $table->dateTime('NgayCapNhat')->nullable();
+        });
+
+        Schema::create('HoaDon', function (Blueprint $table): void {
+            $table->increments('HoaDonID');
+            $table->unsignedInteger('DonHangID');
+            $table->decimal('ThanhTien', 18, 2)->default(0);
+            $table->string('TrangThai')->nullable();
+        });
+
+        Schema::create('ThanhToan', function (Blueprint $table): void {
+            $table->increments('ThanhToanID');
+            $table->unsignedInteger('DonHangID');
+            $table->decimal('SoTien', 18, 2)->default(0);
+            $table->string('TrangThai');
         });
 
         Schema::create('ChiTietDonHang', function (Blueprint $table): void {

@@ -78,6 +78,27 @@ class ReportsServiceTest extends TestCase
         $this->assertEquals(125000, $metrics['avg_order_value']);
     }
 
+    public function test_kpis_and_revenue_chart_use_bounded_aggregate_query_counts(): void
+    {
+        $service = app(ReportsService::class);
+        $filters = [
+            'range' => 'custom',
+            'date_from' => '2026-01-10',
+            'date_to' => '2026-01-10',
+        ];
+
+        DB::connection()->flushQueryLog();
+        DB::connection()->enableQueryLog();
+        $service->getKpiMetrics($filters);
+        $this->assertCount(3, DB::connection()->getQueryLog());
+
+        DB::connection()->flushQueryLog();
+        $chart = $service->getRevenueChartData($filters);
+        $this->assertCount(1, DB::connection()->getQueryLog());
+        $this->assertSame(['10/01'], $chart['labels']);
+        $this->assertEquals([125000], $chart['revenue']);
+    }
+
     public function test_charts_use_paid_invoice_dates_and_calculate_service_shares(): void
     {
         $service = app(ReportsService::class);
@@ -139,26 +160,12 @@ class ReportsServiceTest extends TestCase
         $service = app(ReportsService::class);
         $metrics = $service->getKpiMetrics(['range' => 'all_time']);
         $chart = $service->getRevenueChartData(['range' => 'all_time']);
-        $export = $service->getExportOrdersQuery(['range' => 'all_time'])->get();
 
         $this->assertNull($service->getDateRange(['range' => 'all_time'])['from']);
         $this->assertEquals(125000, $metrics['total_revenue']);
         $this->assertSame(['01/2026'], $chart['labels']);
         $this->assertEquals([125000], $chart['revenue']);
-        $this->assertCount(1, $export);
         $this->assertEquals(125000, $service->getKpiMetrics([])['total_revenue']);
-    }
-
-    public function test_export_route_accepts_all_time_filter(): void
-    {
-        $response = $this->actingAs($this->reportOwner())
-            ->get(route('reports.export', ['range' => 'all_time']));
-
-        $response->assertOk();
-        $response->assertHeader(
-            'content-type',
-            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        );
     }
 
     public function test_charts_return_empty_composition_and_zero_revenue_for_empty_periods(): void
@@ -195,21 +202,6 @@ class ReportsServiceTest extends TestCase
         $this->assertEquals(100000, $services[0]->total_revenue);
     }
 
-    public function test_export_query_returns_paid_invoices_in_the_selected_period(): void
-    {
-        $rows = app(ReportsService::class)->getExportOrdersQuery([
-            'range' => 'custom',
-            'date_from' => '2026-01-10',
-            'date_to' => '2026-01-10',
-        ])->get();
-
-        $this->assertCount(1, $rows);
-        $this->assertSame('DH-001', $rows[0]->order_code);
-        $this->assertSame('Nguyễn An', $rows[0]->customer_name);
-        $this->assertEquals(125000, $rows[0]->revenue);
-        $this->assertSame('2026-01-10 12:00:00', $rows[0]->invoice_date);
-    }
-
     public function test_payment_method_totals_include_only_successful_payments_for_paid_invoices(): void
     {
         $payments = app(ReportsService::class)->getRevenueByPaymentMethod([
@@ -239,22 +231,6 @@ class ReportsServiceTest extends TestCase
         $this->assertSame('DH-003', $latestOrder->code);
         $this->assertSame('Nguyễn An', $latestOrder->customer->name);
         $this->assertTrue($latestOrder->relationLoaded('chiTietDonHangs'));
-    }
-
-    public function test_export_route_returns_an_xlsx_using_the_selected_dates(): void
-    {
-        $response = $this->actingAs($this->reportOwner())->get(route('reports.export', [
-            'range' => 'custom',
-            'date_from' => '2026-01-10',
-            'date_to' => '2026-01-10',
-        ]));
-
-        $response->assertOk();
-        $response->assertHeader(
-            'content-type',
-            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        );
-        $this->assertStringStartsWith('PK', $response->streamedContent());
     }
 
     public function test_invalid_range_shape_is_rejected_with_a_validation_error(): void

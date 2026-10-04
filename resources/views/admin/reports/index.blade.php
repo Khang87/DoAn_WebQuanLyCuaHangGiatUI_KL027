@@ -228,9 +228,6 @@
         <button type="submit" class="btn btn-outline-secondary btn-sm">
             <i class="bi bi-filter me-1"></i>Lọc dữ liệu
         </button>
-        <button type="submit" formaction="{{ route('reports.export') }}" formmethod="GET" class="btn btn-outline-secondary btn-sm">
-            <i class="bi bi-file-earmark-excel me-1"></i>Xuất Excel
-        </button>
         <a href="{{ route('reports.index') }}" class="btn btn-outline-secondary btn-sm">
             <i class="bi bi-arrow-clockwise me-1"></i>Đặt lại
         </a>
@@ -349,8 +346,10 @@
                     <div class="d-flex align-items-center mb-2">
                         <span class="me-2 rounded-circle" style="width: 10px; height: 10px; background-color: {{ $chartColors[$index] ?? '#ccc' }};"></span>
                         <span class="small fw-semibold flex-grow-1">{{ $label }}</span>
-                        <span class="ms-2 small text-muted">{{ number_format($compositionData['percentages'][$index] ?? 0, 1, ',', '.') }}%</span>
-                        <span class="ms-auto small text-muted">{{ number_format($compositionData['revenue'][$index] ?? 0, 0, ',', '.') }} VNĐ</span>
+                        <span class="ms-auto small text-muted text-nowrap">
+                            {{ number_format($compositionData['revenue'][$index] ?? 0, 0, ',', '.') }} VNĐ
+                            ({{ number_format($compositionData['percentages'][$index] ?? 0, 1, ',', '.') }}%)
+                        </span>
                     </div>
                     @endforeach
                 </div>

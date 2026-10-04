@@ -39,8 +39,13 @@ class LoaiDoGiatTest extends TestCase
             $table->string('TenLoaiDoGiat', 150)->unique();
             $table->string('MoTa', 255)->nullable();
             $table->string('TrangThai', 30)->default('Hoạt động');
-            $table->unsignedBigInteger('DanhMucID')->nullable();
+            $table->unsignedBigInteger('DanhMucID');
         });
+        DB::table('DanhMucLoaiDoGiat')->insert([
+            'DanhMucID' => 1,
+            'TenDanhMuc' => 'Đồ mặc',
+            'TrangThai' => 'Hoạt động',
+        ]);
 
         foreach (['BangGia', 'ChiTietDonHang', 'ChiTietBooking'] as $tableName) {
             Schema::create($tableName, function (Blueprint $table): void {
@@ -102,6 +107,7 @@ class LoaiDoGiatTest extends TestCase
         $category = app(LoaiDoGiatService::class)->create([
             'TenLoaiDoGiat' => 'Áo sơ mi',
             'MoTa' => 'Đồ cần giặt riêng',
+            'DanhMucID' => 1,
         ]);
 
         $this->assertSame('Áo sơ mi', $category->TenLoaiDoGiat);
@@ -130,6 +136,7 @@ class LoaiDoGiatTest extends TestCase
         foreach (['BangGia', 'ChiTietDonHang', 'ChiTietBooking'] as $tableName) {
             $category = app(LoaiDoGiatService::class)->create([
                 'TenLoaiDoGiat' => 'Loại '.$tableName,
+                'DanhMucID' => 1,
             ]);
             DB::table($tableName)->insert(['LoaiDoGiatID' => $category->LoaiDoGiatID]);
 
@@ -147,6 +154,7 @@ class LoaiDoGiatTest extends TestCase
     {
         $category = app(LoaiDoGiatService::class)->create([
             'TenLoaiDoGiat' => 'Áo không liên quan',
+            'DanhMucID' => 1,
         ]);
         $employee = $this->userWithPermissions('staff', ['garment_categories.delete']);
 
@@ -163,6 +171,7 @@ class LoaiDoGiatTest extends TestCase
     {
         $category = app(LoaiDoGiatService::class)->create([
             'TenLoaiDoGiat' => 'Áo đang dùng',
+            'DanhMucID' => 1,
         ]);
         DB::table('ChiTietBooking')->insert([
             'LoaiDoGiatID' => $category->LoaiDoGiatID,
@@ -186,12 +195,14 @@ class LoaiDoGiatTest extends TestCase
         DB::table('LoaiDoGiat')->insert([
             'TenLoaiDoGiat' => 'Áo khoác',
             'TrangThai' => 'Hoạt động',
+            'DanhMucID' => 1,
         ]);
 
         $this->actingAs($this->userWithPermissions('staff', ['garment_categories.create']))
             ->post(route('loaidogiat.store'), [
                 'TenLoaiDoGiat' => 'Áo khoác',
                 'TrangThai' => 'Hoạt động',
+                'DanhMucID' => 1,
             ])
             ->assertSessionHasErrors('TenLoaiDoGiat');
     }
@@ -204,9 +215,11 @@ class LoaiDoGiatTest extends TestCase
         ]);
 
         $this->actingAs($employee)
+            ->from(route('loaidogiat.create'))
             ->post(route('loaidogiat.store'), [
                 'TenLoaiDoGiat' => 'Chăn mỏng',
                 'TrangThai' => 'Hoạt động',
+                'DanhMucID' => 1,
             ])
             ->assertRedirect(route('loaidogiat.index'));
 
@@ -214,6 +227,7 @@ class LoaiDoGiatTest extends TestCase
 
         $this->actingAs($employee)
             ->put(route('loaidogiat.update', $category->LoaiDoGiatID), [
+                'DanhMucID' => 1,
                 'TenLoaiDoGiat' => 'Chăn mỏng',
                 'TrangThai' => 'Tạm ngưng',
             ])
@@ -230,11 +244,13 @@ class LoaiDoGiatTest extends TestCase
             ->post(route('loaidogiat.store'), [
                 'TenLoaiDoGiat' => 'Vải lụa',
                 'TrangThai' => 'Hoạt động',
+                'DanhMucID' => 1,
             ])
             ->assertRedirect(route('loaidogiat.index'));
 
         $this->assertDatabaseHas('LoaiDoGiat', [
             'TenLoaiDoGiat' => 'Vải lụa',
+            'DanhMucID' => 1,
             'TrangThai' => 'Hoạt động',
         ]);
     }
@@ -251,6 +267,35 @@ class LoaiDoGiatTest extends TestCase
             ->assertForbidden();
 
         $this->assertDatabaseCount('LoaiDoGiat', 0);
+    }
+
+    public function test_category_creation_requires_a_valid_parent_category_and_persists_the_selection(): void
+    {
+        $employee = $this->userWithPermissions('staff', ['garment_categories.create']);
+
+        $this->actingAs($employee)
+            ->from(route('loaidogiat.create'))
+            ->post(route('loaidogiat.store'), [
+                'TenLoaiDoGiat' => 'Áo len',
+                'TrangThai' => 'Hoạt động',
+            ])
+            ->assertRedirect(route('loaidogiat.create'))
+            ->assertSessionHasErrors('DanhMucID');
+
+        $this->actingAs($employee)
+            ->post(route('loaidogiat.store'), [
+                'TenLoaiDoGiat' => 'Áo len',
+                'TrangThai' => 'Hoạt động',
+                'DanhMucID' => 1,
+            ])
+            ->assertRedirect(route('loaidogiat.index'))
+            ->assertSessionHas('success', 'Loại đồ giặt đã được tạo thành công.');
+
+        $this->assertDatabaseHas('LoaiDoGiat', [
+            'TenLoaiDoGiat' => 'Áo len',
+            'DanhMucID' => 1,
+            'TrangThai' => 'Hoạt động',
+        ]);
     }
 
     public function test_manager_role_is_not_granted_category_access_by_role_alone(): void

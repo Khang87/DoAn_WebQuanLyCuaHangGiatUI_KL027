@@ -3,6 +3,7 @@
 namespace App\Observers;
 
 use App\Enums\OrderStatus;
+use App\Enums\PaymentStatus;
 use App\Models\DonHang;
 use App\Models\NhatKyHeThong;
 use App\Services\OrderService;
@@ -31,6 +32,7 @@ class OrderObserver
 
         if ($order->TrangThai === OrderStatus::Delivered->value) {
             $this->awardCompletionPoints($order);
+            $this->markPaidIfFullySettled($order);
         }
     }
 
@@ -95,5 +97,18 @@ class OrderObserver
                 'UserAgent' => Request::userAgent(),
             ]);
         });
+    }
+
+    private function markPaidIfFullySettled(DonHang $order): void
+    {
+        $lockedOrder = DonHang::query()->with('hoaDons')->findOrFail($order->getKey());
+        $grandTotal = (float) ($lockedOrder->hoaDons->first()?->ThanhTien ?? $lockedOrder->ThanhTien);
+        $totalPaid = (float) $lockedOrder->thanhToans()
+            ->where('TrangThai', PaymentStatus::Paid->value)
+            ->sum('SoTien');
+
+        if ($grandTotal > 0 && $totalPaid >= $grandTotal) {
+            app(OrderService::class)->updateStatus($lockedOrder, OrderStatus::Paid->value);
+        }
     }
 }

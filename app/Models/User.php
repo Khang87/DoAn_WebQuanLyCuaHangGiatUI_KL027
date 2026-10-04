@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\Storage;
 
 /**
  * Tài khoản đăng nhập, ánh xạ tới bảng `TaiKhoan` của Supabase.
@@ -188,6 +189,16 @@ class User extends Authenticatable
             if (is_file($avatarFile)) {
                 return asset('uploads/avatars/'.basename($avatarFile)).'?v='.filemtime($avatarFile);
             }
+        }
+
+        if (
+            filled(config('filesystems.disks.supabase.key'))
+            && filled(config('filesystems.disks.supabase.secret'))
+            && filled(config('filesystems.disks.supabase.bucket'))
+            && filled(config('filesystems.disks.supabase.endpoint'))
+            && filled(config('filesystems.disks.supabase.url'))
+        ) {
+            return Storage::disk('supabase')->url('avatars/'.$this->getKey());
         }
 
         return asset('assets/images/user_'.$seed.'.jpg');

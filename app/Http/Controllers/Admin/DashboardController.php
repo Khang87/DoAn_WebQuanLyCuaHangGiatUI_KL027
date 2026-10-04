@@ -70,19 +70,24 @@ class DashboardController extends Controller
         $monthRevenueChange = $this->percentChange($monthRevenue, $prevMonthRevenue);
 
         // --- KPI: Tổng số đơn hàng (theo trạng thái) ---
+        $orderCounts = DonHang::query()
+            ->selectRaw('"TrangThai", COUNT(*) AS total')
+            ->groupBy('TrangThai')
+            ->pluck('total', 'TrangThai');
+
         $statusCounts = [
-            'completed' => DonHang::whereIn('TrangThai', OrderStatus::settledValues())->count(),
-            'processing' => DonHang::whereIn('TrangThai', [
+            'completed' => (int) $orderCounts->only(OrderStatus::settledValues())->sum(),
+            'processing' => (int) $orderCounts->only([
                 OrderStatus::Pending->value,
                 OrderStatus::Received->value,
                 OrderStatus::Washing->value,
                 OrderStatus::Washed->value,
                 OrderStatus::Delivering->value,
-            ])->count(),
-            'cancelled' => DonHang::where('TrangThai', OrderStatus::Cancelled->value)->count(),
+            ])->sum(),
+            'cancelled' => (int) $orderCounts->get(OrderStatus::Cancelled->value, 0),
         ];
 
-        $totalOrders = DonHang::count();
+        $totalOrders = (int) $orderCounts->sum();
 
         // --- KPI: Khách hàng ---
         $totalCustomers = KhachHang::count();
@@ -210,21 +215,6 @@ class DashboardController extends Controller
     }
 
     /**
-     * Tổng doanh thu từ đơn hàng đã hoàn thành hoặc đã thanh toán trong khoảng thời gian.
-     */
-    private function revenueBetween(Carbon $from, Carbon $to): float
-    {
-        return (float) DonHang::whereBetween('NgayTao', [$from, $to])
-            ->where(function ($query) {
-                $query->whereIn('TrangThai', OrderStatus::settledValues())
-                    ->orWhereHas('hoaDons', function ($q) {
-                        $q->where('TrangThai', InvoiceStatus::Paid->value);
-                    });
-            })
-            ->sum('ThanhTien');
-    }
-
-    /**
      * Thu tiền mặt cho hóa đơn.
      */
     public function collectCashPayment(Request $request, int $invoice)
@@ -278,57 +268,64 @@ class DashboardController extends Controller
         $filter = $request->get('filter', '7_days');
         $today = Carbon::today();
         $thisYear = now()->year;
-
+        $groupBy = 'day';
+        $from = $today->copy()->subDays(6)->startOfDay();
+        $to = $today->copy()->endOfDay();
         $labels = [];
-        $data = [];
+        $periodKeys = [];
 
         switch ($filter) {
             case 'today':
-                // Doanh thu theo giờ trong ngày hôm nay (0-23h)
+                $groupBy = 'hour';
+                $from = $today->copy()->startOfDay();
+
                 for ($hour = 0; $hour <= 23; $hour++) {
-                    $from = $today->copy()->setTime($hour, 0, 0);
-                    $to = $today->copy()->setTime($hour, 59, 59);
                     $labels[] = sprintf('%02d:00', $hour);
-                    $data[] = $this->revenueBetween($from, $to);
+                    $periodKeys[] = $hour;
                 }
                 break;
 
             case '7_days':
-                // Doanh thu 7 ngày gần nhất
                 for ($daysAgo = 6; $daysAgo >= 0; $daysAgo--) {
                     $date = $today->copy()->subDays($daysAgo);
                     $labels[] = $date->format('d/m');
-                    $data[] = $this->revenueBetween($date->copy()->startOfDay(), $date->copy()->endOfDay());
+                    $periodKeys[] = $date->toDateString();
                 }
                 break;
 
             case 'this_month':
-                // Doanh thu theo ngày trong tháng hiện tại
+                $from = $today->copy()->startOfMonth();
+                $to = $today->copy()->endOfMonth();
+
                 $daysInMonth = $today->copy()->daysInMonth;
                 for ($day = 1; $day <= $daysInMonth; $day++) {
                     $date = $today->copy()->setDay($day);
                     $labels[] = $date->format('d/m');
-                    $data[] = $this->revenueBetween($date->copy()->startOfDay(), $date->copy()->endOfDay());
+                    $periodKeys[] = $date->toDateString();
                 }
                 break;
 
             case 'this_year':
-                // Doanh thu 12 tháng trong năm hiện tại
+                $groupBy = 'month';
+                $from = Carbon::create($thisYear, 1, 1)->startOfYear();
+                $to = $from->copy()->endOfYear();
+
                 for ($month = 1; $month <= 12; $month++) {
-                    $date = Carbon::create($thisYear, $month, 1);
                     $labels[] = 'Tháng '.$month;
-                    $data[] = $this->revenueBetween($date->copy()->startOfMonth(), $date->copy()->endOfMonth());
+                    $periodKeys[] = $month;
                 }
                 break;
 
             default:
-                // Mặc định 7 ngày
                 for ($daysAgo = 6; $daysAgo >= 0; $daysAgo--) {
                     $date = $today->copy()->subDays($daysAgo);
                     $labels[] = $date->format('d/m');
-                    $data[] = $this->revenueBetween($date->copy()->startOfDay(), $date->copy()->endOfDay());
+                    $periodKeys[] = $date->toDateString();
                 }
         }
+
+        $totals = $this->getGroupedRevenueTotals($from, $to, $groupBy);
+        $data = array_map(fn (int|string $periodKey): float => $totals[$periodKey] ?? 0.0, $periodKeys);
 
         return response()->json([
             'labels' => $labels,
@@ -336,6 +333,39 @@ class DashboardController extends Controller
             'filter' => $filter,
             'filter_label' => $this->getFilterLabel($filter),
         ]);
+    }
+
+    /**
+     * @return array<int|string, float>
+     */
+    private function getGroupedRevenueTotals(Carbon $from, Carbon $to, string $groupBy): array
+    {
+        $driver = DB::connection()->getDriverName();
+        $groupExpression = match ($groupBy) {
+            'hour' => $driver === 'sqlite'
+                ? 'CAST(strftime(\'%H\', "NgayTao") AS INTEGER)'
+                : 'EXTRACT(HOUR FROM "NgayTao")::integer',
+            'month' => $driver === 'sqlite'
+                ? 'CAST(strftime(\'%m\', "NgayTao") AS INTEGER)'
+                : 'EXTRACT(MONTH FROM "NgayTao")::integer',
+            default => 'DATE("NgayTao")',
+        };
+
+        return DonHang::query()
+            ->selectRaw($groupExpression.' AS period_key, SUM("ThanhTien") AS total')
+            ->whereBetween('NgayTao', [$from, $to])
+            ->where(function ($query): void {
+                $query->whereIn('TrangThai', OrderStatus::settledValues())
+                    ->orWhereHas('hoaDons', function ($invoiceQuery): void {
+                        $invoiceQuery->where('TrangThai', InvoiceStatus::Paid->value);
+                    });
+            })
+            ->groupByRaw($groupExpression)
+            ->get()
+            ->mapWithKeys(fn ($row): array => [
+                $groupBy === 'day' ? (string) $row->period_key : (int) $row->period_key => (float) $row->total,
+            ])
+            ->all();
     }
 
     /**

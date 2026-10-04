@@ -238,6 +238,35 @@ class PaymentOrderRedirectTest extends TestCase
         );
     }
 
+    public function test_transaction_code_can_be_kept_when_updating_its_own_payment(): void
+    {
+        DB::table('ThanhToan')->insert([
+            'ThanhToanID' => 55,
+            'MaGiaoDich' => 'TM_DH0055_20261004090000',
+            'TrangThai' => PaymentStatus::Paid->value,
+            'SoTien' => 100,
+        ]);
+
+        $request = new LuuThanhToanRequest;
+        $request->replace([
+            'transaction_code' => 'TM_DH0055_20261004090000',
+        ]);
+        $request->setRouteResolver(fn () => new class
+        {
+            public function parameter(string $key): ?string
+            {
+                return $key === 'payment' ? '55' : null;
+            }
+        });
+        $validator = validator(
+            $request->all(),
+            ['transaction_code' => $request->rules()['transaction_code']],
+            $request->messages(),
+        );
+
+        $this->assertFalse($validator->fails());
+    }
+
     public function test_server_generates_a_unique_cash_transaction_code_when_code_is_blank(): void
     {
         DB::table('DonHang')->insert([
@@ -259,5 +288,57 @@ class PaymentOrderRedirectTest extends TestCase
             $payment->MaGiaoDich,
         );
         $this->assertSame(1, DB::table('ThanhToan')->where('MaGiaoDich', $payment->MaGiaoDich)->count());
+    }
+
+    public function test_payment_for_received_order_is_saved_without_skipping_order_lifecycle(): void
+    {
+        DB::table('DonHang')->insert([
+            'DonHangID' => 52,
+            'MaDonHang' => 'DH0052',
+            'TrangThai' => OrderStatus::Received->value,
+            'ThanhTien' => 25000,
+        ]);
+
+        $payment = app(PaymentService::class)->create([
+            'order_id' => 52,
+            'amount' => 25000,
+            'method' => 'cash',
+            'status' => PaymentStatus::Paid->value,
+        ]);
+
+        $this->assertSame(52, $payment->DonHangID);
+        $this->assertSame(OrderStatus::Received->value, DB::table('DonHang')->where('DonHangID', 52)->value('TrangThai'));
+        $this->assertSame(1, DB::table('ThanhToan')->where('DonHangID', 52)->count());
+    }
+
+    public function test_invoice_only_payment_cannot_exceed_its_remaining_balance(): void
+    {
+        DB::table('DonHang')->insert([
+            'DonHangID' => 53,
+            'MaDonHang' => 'DH0053',
+            'TrangThai' => OrderStatus::Delivered->value,
+            'ThanhTien' => 25000,
+        ]);
+        DB::table('HoaDon')->insert([
+            'HoaDonID' => 20,
+            'DonHangID' => 53,
+            'MaHoaDon' => 'HD0053',
+            'TrangThai' => 'Chưa thanh toán',
+            'ThanhTien' => 20000,
+        ]);
+
+        $request = new LuuThanhToanRequest;
+        $request->replace([
+            'invoice_id' => 20,
+            'amount' => 20001,
+        ]);
+        $validator = validator($request->all(), $request->rules());
+        $request->withValidator($validator);
+
+        $this->assertTrue($validator->fails());
+        $this->assertSame(
+            'Số tiền thanh toán không được vượt quá số tiền còn phải thu (20,000 đ).',
+            $validator->errors()->first('amount'),
+        );
     }
 }

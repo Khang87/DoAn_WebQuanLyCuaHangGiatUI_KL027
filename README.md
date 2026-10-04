@@ -113,7 +113,7 @@ Chỉ sử dụng tài khoản được cấp trong môi trường cục bộ ho
 - Bổ sung logic giao diện tạo đơn để chuyển đổi giữa nhập khối lượng và số lượng; phép tính phía máy chủ được xử lý bởi `TinhTienGiatUiService`.
 - Hoàn thiện trang Báo cáo theo bộ lọc thời gian: KPI đơn hàng/đặt lịch, doanh thu theo ngày lập hóa đơn đã thanh toán, giá trị đơn trung bình, xu hướng doanh thu và cơ cấu doanh thu dịch vụ; hai biểu đồ dùng ApexCharts được phục vụ từ tài nguyên cục bộ.
 - Thống kê phương thức thanh toán từ giao dịch thành công trên `ThanhToan`, liên kết với hóa đơn đã thanh toán; danh sách đơn gần đây nạp sẵn thông tin khách hàng và chi tiết dịch vụ.
-- Bổ sung xuất Excel `.xlsx` các hóa đơn đã thanh toán theo bộ lọc ngày lập; route và controller đều kiểm tra quyền `reports.view`.
+- Xuất Excel danh sách hóa đơn vẫn được hỗ trợ tại module Hóa đơn; chức năng xuất Excel ở Báo cáo và Chi tiết hóa đơn đã được gỡ bỏ.
 - Giữ thông báo rõ ràng cho chức năng điều kiện đồ giặt chưa được schema hiện tại hỗ trợ, không ghi dữ liệu vào bảng không tồn tại.
 
 ### Các vấn đề đã khắc phục
@@ -124,11 +124,17 @@ Chỉ sử dụng tài khoản được cấp trong môi trường cục bộ ho
 - Khắc phục lỗ hổng phân quyền do dùng chung danh sách quyền OR cho nhiều thao tác và do API thiếu kiểm tra quyền.
 - Loại bỏ route, menu, trang và ánh xạ quyền riêng của Cài đặt hệ thống; giữ nguyên các chức năng hồ sơ cá nhân trong module tài khoản.
 - Đồng bộ các truy vấn báo cáo với `HoaDon.ThanhTien`, `HoaDon.NgayLap`, trạng thái thanh toán và trạng thái đặt lịch theo schema hiện tại.
-- Chuyển nút Xuất Excel từ giao diện placeholder sang tải báo cáo thực, đồng thời ẩn liên kết Báo cáo với tài khoản thiếu quyền.
+- Tối ưu KPI báo cáo bằng một truy vấn tổng hợp trạng thái đơn; tra cứu bucket biểu đồ qua collection đã lập chỉ mục thay vì quét lại toàn bộ kết quả cho từng ngày/tuần.
+- Các biểu đồ doanh thu dashboard tổng hợp theo giờ/ngày/tháng bằng một truy vấn, thay vì phát sinh một truy vấn cho từng bucket.
+- Danh mục ít thay đổi dùng cache store cấu hình; trên Vercel mặc định dùng Redis nếu `CACHE_STORE` chưa được đặt. Khi triển khai Upstash, cần cấu hình kết nối Redis tương ứng trong biến môi trường và không đưa thông tin bí mật vào Git.
+- Tối ưu dashboard nhân viên bằng cách đếm lịch nhận/giao tại database; danh sách giao nhận eager-load quan hệ và chỉ lấy các cột cần hiển thị.
+- Cải thiện xử lý điểm tích lũy khi sửa đơn để chỉ điều chỉnh phần chênh lệch; đồng bộ trạng thái thanh toán theo lifecycle đơn hàng.
+- Cải thiện tạo và quản lý thông báo: tiêu đề bắt buộc, thời gian gửi lấy từ server, đánh dấu đã đọc giới hạn theo tài khoản hiện tại và không gửi thông báo khuyến mãi hàng loạt ngoài ý muốn.
+- Gỡ chức năng xuất Excel ở Báo cáo và Chi tiết hóa đơn; giữ nguyên xuất Excel danh sách hóa đơn tại module Hóa đơn.
 
 ### Trạng thái kiểm thử hồi quy
 
-Lần chạy đầy đủ gần nhất: **311 test được phát hiện, 119 PASSED, 192 skipped, 624 assertions**. Các test skipped không được tính là kiểm thử thành công. Bộ test dùng SQLite in-memory theo `phpunit.xml`, không phải kiểm thử tích hợp ghi dữ liệu trên Supabase Live.
+Lần chạy đầy đủ được ghi nhận trước đó: **311 test được phát hiện, 119 PASSED, 192 skipped, 624 assertions**. Các test skipped không được tính là kiểm thử thành công. Bộ test dùng SQLite in-memory theo `phpunit.xml`, không phải kiểm thử tích hợp ghi dữ liệu trên Supabase Live. Các xác minh hồi quy mới hơn được ghi trong [TESTCASES.md](./TESTCASES.md); số liệu suite đầy đủ chỉ được cập nhật sau khi chạy lại toàn bộ suite.
 
 ### Cải tiến & tái cấu trúc Loại đồ giặt và bảng giá
 

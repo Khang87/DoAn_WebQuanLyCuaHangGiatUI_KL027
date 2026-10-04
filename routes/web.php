@@ -170,7 +170,6 @@ Route::middleware(['auth', 'reject.customer'])->group(function () {
         ->middlewareFor('destroy', 'permission:payments.delete');
 
     Route::get('invoices/export', [HoaDonController::class, 'export'])->middleware('permission:invoices.view')->name('invoices.export');
-    Route::get('invoices/{invoice}/export-excel', [HoaDonController::class, 'exportExcel'])->middleware('permission:invoices.view')->name('invoices.export-excel');
     Route::post('invoices/{invoice}/status', [HoaDonController::class, 'updateStatus'])->middleware('permission:invoices.update_status')->name('invoices.update-status');
     Route::resource('invoices', HoaDonController::class)
         ->middlewareFor(['index', 'show'], 'permission:invoices.view')
@@ -226,7 +225,6 @@ Route::middleware(['auth', 'reject.customer'])->group(function () {
         ->middlewareFor('destroy', 'permission:coupons.delete');
 
     Route::prefix('reports')->name('reports.')->middleware('permission:reports.view')->group(function () {
-        Route::get('/export', [ReportsController::class, 'export'])->name('export');
         Route::get('/', [ReportsController::class, 'index'])->name('index');
     });
 
@@ -255,7 +253,7 @@ Route::middleware(['auth', 'reject.customer'])->group(function () {
         ->middleware('permission:notifications.edit')
         ->name('notifications.mark-read');
     Route::post('notifications/mark-all-read', [ThongBaoController::class, 'markAllAsRead'])
-        ->middleware('permission:notifications.edit')
+        ->middleware('permission:notifications.view')
         ->name('notifications.mark-all-read');
 
     // ===== PHÂN QUYỀN ĐỘNG (RBAC) =====

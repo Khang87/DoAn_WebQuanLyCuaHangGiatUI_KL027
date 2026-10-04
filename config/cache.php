@@ -15,7 +15,7 @@ return [
     |
     */
 
-    'default' => env('CACHE_STORE', 'file'),
+    'default' => env('CACHE_STORE', env('VERCEL') ? 'redis' : 'file'),
 
     'auth_store' => env(
         'AUTH_CACHE_STORE',

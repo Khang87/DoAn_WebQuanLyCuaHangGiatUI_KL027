@@ -556,14 +556,12 @@ class OrderService
 
             $promotion = $this->applyPromotionConditions($promotion, $customer, $subtotal, $lockedOrder->DonHangID);
 
-            // Hoàn lại số điểm đã dùng ở lần lưu trước để tính lại từ đầu.
             $previousPoints = (int) $lockedOrder->DiemSuDung;
-            if ($oldCustomer && $previousPoints > 0) {
-                $oldCustomer->addPoints($previousPoints);
-            }
-
-            $customerPoints = $customer?->points() ?? 0;
             $pointsRequested = (int) ($data['DiemSuDung'] ?? 0);
+            $sameCustomer = ! $customerChanged;
+            $customerPoints = ($customer?->points() ?? 0)
+                + ($sameCustomer ? $previousPoints : 0);
+
             $this->assertRequestedPointsAvailable($pointsRequested, $customerPoints);
 
             $amounts = $this->calculateAmounts(
@@ -573,7 +571,31 @@ class OrderService
                 $customerPoints
             );
 
-            if ($amounts['DiemSuDung'] > 0 && (! $customer || ! $customer->deductPoints($amounts['DiemSuDung']))) {
+            if ($sameCustomer) {
+                $pointsDifference = $pointsRequested - $previousPoints;
+
+                if ($pointsDifference > 0 && (! $customer || ! $customer->deductPoints($pointsDifference))) {
+                    throw ValidationException::withMessages([
+                        'DiemSuDung' => 'Không thể sử dụng số điểm đã chọn. Vui lòng kiểm tra số dư điểm và thử lại.',
+                    ]);
+                }
+
+                if ($pointsDifference < 0 && $customer) {
+                    $customer->addPoints(abs($pointsDifference));
+                }
+            } else {
+                if ($oldCustomer && $previousPoints > 0) {
+                    $oldCustomer->addPoints($previousPoints);
+                }
+
+                if ($amounts['DiemSuDung'] > 0 && (! $customer || ! $customer->deductPoints($amounts['DiemSuDung']))) {
+                    throw ValidationException::withMessages([
+                        'DiemSuDung' => 'Không thể sử dụng số điểm đã chọn. Vui lòng kiểm tra số dư điểm và thử lại.',
+                    ]);
+                }
+            }
+
+            if ($pointsRequested > 0 && ! $customer) {
                 throw ValidationException::withMessages([
                     'DiemSuDung' => 'Không thể sử dụng số điểm đã chọn. Vui lòng kiểm tra số dư điểm và thử lại.',
                 ]);

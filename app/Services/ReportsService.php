@@ -13,7 +13,6 @@ use App\Models\ThanhToan;
 use Carbon\Carbon;
 use Carbon\CarbonPeriod;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
-use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Collection as BaseCollection;
 use Illuminate\Support\Facades\DB;
 
@@ -126,22 +125,26 @@ class ReportsService
 
         $totalRevenue = (float) (clone $paidInvoices)->sum('ThanhTien');
 
-        $totalOrders = (clone $base)->count();
+        $orderCounts = (clone $base)
+            ->selectRaw('COUNT(*) AS total_orders')
+            ->selectRaw(
+                'SUM(CASE WHEN "TrangThai" IN (?, ?) THEN 1 ELSE 0 END) AS completed_orders',
+                [OrderStatus::Delivered->value, OrderStatus::Paid->value],
+            )
+            ->selectRaw(
+                'SUM(CASE WHEN "TrangThai" IN ('.implode(', ', array_fill(0, count(self::PROCESSING_STATUSES), '?')).') THEN 1 ELSE 0 END) AS processing_orders',
+                self::PROCESSING_STATUSES,
+            )
+            ->selectRaw(
+                'SUM(CASE WHEN "TrangThai" = ? THEN 1 ELSE 0 END) AS cancelled_orders',
+                [OrderStatus::Cancelled->value],
+            )
+            ->first();
 
-        $completedOrders = (clone $base)
-            ->whereIn('TrangThai', [
-                OrderStatus::Delivered->value,
-                OrderStatus::Paid->value,
-            ])
-            ->count();
-
-        $processingOrders = (clone $base)
-            ->whereIn('TrangThai', self::PROCESSING_STATUSES)
-            ->count();
-
-        $cancelledOrders = (clone $base)
-            ->where('TrangThai', OrderStatus::Cancelled->value)
-            ->count();
+        $totalOrders = (int) $orderCounts->total_orders;
+        $completedOrders = (int) $orderCounts->completed_orders;
+        $processingOrders = (int) $orderCounts->processing_orders;
+        $cancelledOrders = (int) $orderCounts->cancelled_orders;
 
         $bookings = Booking::query()->where('TrangThai', BookingStatus::Pending->value);
 
@@ -205,6 +208,8 @@ class ReportsService
         }
 
         $data = $query->get();
+        $dataByDate = $data->keyBy('date');
+        $dataByWeek = $data->keyBy('week');
 
         $labels = [];
         $revenue = [];
@@ -212,7 +217,7 @@ class ReportsService
 
         if ($groupBy === 'day') {
             foreach (CarbonPeriod::create($localFrom, $localTo) as $date) {
-                $item = $data->firstWhere('date', $date->format('Y-m-d'));
+                $item = $dataByDate->get($date->format('Y-m-d'));
 
                 $labels[] = $date->format('d/m');
                 $revenue[] = $item ? (float) $item->revenue : 0;
@@ -222,7 +227,7 @@ class ReportsService
             $current = $localFrom->copy()->startOfWeek();
 
             while ($current->lte($localTo)) {
-                $item = $data->firstWhere('week', (int) $current->format('oW'));
+                $item = $dataByWeek->get((int) $current->format('oW'));
 
                 $labels[] = $current->format('d/m').'-'.$current->copy()->endOfWeek()->format('d/m');
                 $revenue[] = $item ? (float) $item->revenue : 0;
@@ -353,12 +358,20 @@ class ReportsService
         $from = $dates['from'];
         $to = $dates['to'];
 
-        $query = DonHang::with([
-            'khachHang',
-            'chiTietDonHangs.dichVu',
-            'chiTietDonHangs.loaiDoGiat',
-            'chiTietDonHangs.donViTinh',
-        ]);
+        $query = DonHang::query()
+            ->select([
+                'DonHangID',
+                'MaDonHang',
+                'KhachHangID',
+                'TrangThai',
+                'ThanhTien',
+                'NgayTao',
+            ])
+            ->with([
+                'khachHang:KhachHangID,HoTen',
+                'chiTietDonHangs:ChiTietDonHangID,DonHangID,DichVuID',
+                'chiTietDonHangs.dichVu:DichVuID,TenDichVu',
+            ]);
 
         if ($from !== null && $to !== null) {
             $query->whereBetween('NgayTao', [$from, $to]);
@@ -367,34 +380,6 @@ class ReportsService
         return $query->orderByDesc('NgayTao')
             ->paginate(10)
             ->withQueryString();
-    }
-
-    /**
-     * Hóa đơn đã thanh toán trong kỳ, kèm đơn hàng và khách hàng để xuất báo cáo.
-     */
-    public function getExportOrdersQuery(array $filters): Builder
-    {
-        $dates = $this->getDateRange($filters);
-
-        $query = HoaDon::query()
-            ->join('DonHang', 'DonHang.DonHangID', '=', 'HoaDon.DonHangID')
-            ->leftJoin('KhachHang', 'KhachHang.KhachHangID', '=', 'DonHang.KhachHangID')
-            ->where('HoaDon.TrangThai', InvoiceStatus::Paid->value)
-            ->select([
-                'DonHang.MaDonHang as order_code',
-                'KhachHang.HoTen as customer_name',
-                'DonHang.TrangThai as order_status',
-                'HoaDon.NgayLap as invoice_date',
-                'HoaDon.ThanhTien as revenue',
-            ])
-            ->orderBy('HoaDon.NgayLap')
-            ->orderBy('HoaDon.HoaDonID');
-
-        if ($dates['from'] !== null && $dates['to'] !== null) {
-            $query->whereBetween('HoaDon.NgayLap', [$dates['from'], $dates['to']]);
-        }
-
-        return $query->toBase();
     }
 
     private function localTimestampExpression(string $column): string

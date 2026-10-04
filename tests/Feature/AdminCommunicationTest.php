@@ -170,6 +170,141 @@ class AdminCommunicationTest extends TestCase
         $this->assertSame(0, TinNhan::query()->count());
     }
 
+    public function test_store_notification_saves_title_and_uses_server_send_time(): void
+    {
+        $account = $this->createAccount('notification-recipient');
+        $expectedSentAt = now();
+
+        $response = $this->actingAs($account)
+            ->withoutMiddleware()
+            ->post(route('notifications.store'), [
+                'TaiKhoanID' => $account->TaiKhoanID,
+                'LoaiThongBao' => 'system',
+                'TieuDe' => 'Thông báo kiểm thử',
+                'NoiDung' => 'Nội dung thông báo kiểm thử.',
+                'ThoiGianGui' => '2000-01-01T00:00',
+            ]);
+
+        $response->assertRedirect(route('notifications.index'))
+            ->assertSessionHas('success', 'Thông báo đã được tạo thành công.');
+
+        $notification = ThongBao::query()->where('TieuDe', 'Thông báo kiểm thử')->firstOrFail();
+        $this->assertSame($account->TaiKhoanID, $notification->TaiKhoanID);
+        $this->assertSame($expectedSentAt->format('Y-m-d H:i'), $notification->ThoiGianGui->format('Y-m-d H:i'));
+    }
+
+    public function test_store_notification_can_send_to_customer_and_staff_groups(): void
+    {
+        $customer = $this->createAccount('notification-customer', 1);
+        $staff = $this->createAccount('notification-staff');
+        $unrelated = $this->createAccount('notification-unrelated');
+        $this->assignRole($customer, 'Khách hàng');
+        $this->assignRole($staff, 'Nhân viên');
+        $this->actingAs($staff)->withoutMiddleware();
+
+        $this->post(route('notifications.store'), [
+            'recipient' => 'all_customers',
+            'TieuDe' => 'Thông báo khách hàng',
+            'NoiDung' => 'Nội dung khách hàng.',
+        ])->assertRedirect(route('notifications.index'));
+
+        $this->assertSame(
+            [$customer->TaiKhoanID],
+            ThongBao::query()->where('TieuDe', 'Thông báo khách hàng')->pluck('TaiKhoanID')->all(),
+        );
+
+        $this->post(route('notifications.store'), [
+            'recipient' => 'all_staff',
+            'TieuDe' => 'Thông báo nhân viên',
+            'NoiDung' => 'Nội dung nhân viên.',
+        ])->assertRedirect(route('notifications.index'));
+
+        $this->assertSame(
+            [$staff->TaiKhoanID],
+            ThongBao::query()->where('TieuDe', 'Thông báo nhân viên')->pluck('TaiKhoanID')->all(),
+        );
+
+        $this->post(route('notifications.store'), [
+            'recipient' => 'all',
+            'TieuDe' => 'Thông báo toàn hệ thống',
+            'NoiDung' => 'Nội dung toàn hệ thống.',
+        ])->assertRedirect(route('notifications.index'));
+
+        $allRecipientIds = ThongBao::query()
+            ->where('TieuDe', 'Thông báo toàn hệ thống')
+            ->orderBy('TaiKhoanID')
+            ->pluck('TaiKhoanID')
+            ->all();
+        $expectedIds = [$customer->TaiKhoanID, $staff->TaiKhoanID, $unrelated->TaiKhoanID];
+        sort($expectedIds);
+        $this->assertSame($expectedIds, $allRecipientIds);
+
+        $this->assertDatabaseMissing('ThongBao', [
+            'TaiKhoanID' => $unrelated->TaiKhoanID,
+            'TieuDe' => 'Thông báo khách hàng',
+        ]);
+    }
+
+    public function test_notification_forms_do_not_allow_manual_send_time(): void
+    {
+        $account = $this->createAccount('notification-form-user');
+        $notification = ThongBao::query()->create([
+            'TaiKhoanID' => $account->TaiKhoanID,
+            'TieuDe' => 'Thông báo cần sửa',
+            'NoiDung' => 'Nội dung.',
+        ]);
+
+        $this->actingAs($account)
+            ->withoutMiddleware()
+            ->withViewErrors([])
+            ->get(route('notifications.create'))
+            ->assertOk()
+            ->assertSee('name="TieuDe"', false)
+            ->assertSee('all_customers')
+            ->assertSee('all_staff')
+            ->assertDontSee('name="ThoiGianGui"', false);
+
+        $this->get(route('notifications.edit', $notification->ThongBaoID))
+            ->assertOk()
+            ->assertSee('name="TieuDe"', false)
+            ->assertDontSee('name="ThoiGianGui"', false);
+    }
+
+    public function test_mark_all_read_updates_every_notification_for_current_account_only(): void
+    {
+        $currentAccount = $this->createAccount('notification-current');
+        $otherAccount = $this->createAccount('notification-other');
+
+        $currentUnread = ThongBao::query()->create([
+            'TaiKhoanID' => $currentAccount->TaiKhoanID,
+            'TieuDe' => 'Chưa đọc của tôi',
+            'NoiDung' => 'Thông báo chưa đọc.',
+            'DaDoc' => false,
+        ]);
+        $alreadyRead = ThongBao::query()->create([
+            'TaiKhoanID' => $currentAccount->TaiKhoanID,
+            'TieuDe' => 'Đã đọc của tôi',
+            'NoiDung' => 'Thông báo đã đọc.',
+            'DaDoc' => true,
+        ]);
+        $otherUnread = ThongBao::query()->create([
+            'TaiKhoanID' => $otherAccount->TaiKhoanID,
+            'TieuDe' => 'Chưa đọc tài khoản khác',
+            'NoiDung' => 'Không bị thay đổi.',
+            'DaDoc' => false,
+        ]);
+
+        $this->actingAs($currentAccount)
+            ->withoutMiddleware()
+            ->post(route('notifications.mark-all-read'))
+            ->assertRedirect()
+            ->assertSessionHas('success', 'Đã đánh dấu 1 thông báo là đã đọc.');
+
+        $this->assertTrue($currentUnread->fresh()->DaDoc);
+        $this->assertTrue($alreadyRead->fresh()->DaDoc);
+        $this->assertFalse($otherUnread->fresh()->DaDoc);
+    }
+
     public function test_system_log_screen_applies_table_action_account_and_date_filters(): void
     {
         $account = $this->createAccount('log-owner');
@@ -299,6 +434,13 @@ class AdminCommunicationTest extends TestCase
         $this->assertContains('permission:system_logs.view', $route->getAction('middleware'));
         $this->assertNotContains('role:manager|admin', $route->getAction('middleware'));
         $this->assertNotContains('role:admin', $route->getAction('middleware'));
+    }
+
+    public function test_mark_all_read_route_is_available_to_notification_viewers(): void
+    {
+        $route = app('router')->getRoutes()->getByName('notifications.mark-all-read');
+
+        $this->assertContains('permission:notifications.view', $route->getAction('middleware'));
     }
 
     private function createAccount(string $username, ?int $customerId = null): User

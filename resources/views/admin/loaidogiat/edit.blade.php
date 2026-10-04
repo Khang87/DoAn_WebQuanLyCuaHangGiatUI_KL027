@@ -16,14 +16,28 @@
         <form action="{{ route('loaidogiat.update', $category->LoaiDoGiatID) }}" method="POST">
             @csrf @method('PUT')
             <div class="row g-4">
-                <div class="col-md-6">
+                <div class="col-12 col-md-6">
+                    <label class="form-label fw-semibold" for="DanhMucID">Danh mục <span class="text-danger ms-1">*</span></label>
+                    <select class="form-select @error('DanhMucID') is-invalid @enderror" id="DanhMucID" name="DanhMucID" required>
+                        <option value="">Chọn danh mục</option>
+                        @foreach($categories as $parentCategory)
+                            <option value="{{ $parentCategory->DanhMucID }}" @selected(old('DanhMucID', $category->DanhMucID) == $parentCategory->DanhMucID)>
+                                {{ $parentCategory->TenDanhMuc }}
+                            </option>
+                        @endforeach
+                    </select>
+                    @error('DanhMucID')
+                        <div class="invalid-feedback">{{ $message }}</div>
+                    @enderror
+                </div>
+                <div class="col-12 col-md-6">
                     <label class="form-label fw-semibold">Tên loại đồ giặt <span class="text-danger ms-1">*</span></label>
                     <input type="text" class="form-control @error('TenLoaiDoGiat') is-invalid @enderror" name="TenLoaiDoGiat" value="{{ old('TenLoaiDoGiat', $category->TenLoaiDoGiat) }}" placeholder="VD: Áo, Quần, Váy, Chăn ga gối..." required>
                     @error('TenLoaiDoGiat')
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
                 </div>
-                <div class="col-md-6">
+                <div class="col-12 col-md-6">
                     <label class="form-label fw-semibold">Trạng thái</label>
                     <x-admin.status-select
                         name="TrangThai"
