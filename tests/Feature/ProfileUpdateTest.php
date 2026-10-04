@@ -4,8 +4,10 @@ namespace Tests\Feature;
 
 use App\Models\User;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class ProfileUpdateTest extends TestCase
@@ -32,6 +34,7 @@ class ProfileUpdateTest extends TestCase
             $table->string('TrangThai')->default('Hoạt động');
             $table->dateTime('NgayTao')->nullable();
             $table->string('UserAuthId')->nullable();
+            $table->text('AvatarURL')->nullable();
         });
 
         Schema::create('NhanVien', function (Blueprint $table): void {
@@ -244,6 +247,43 @@ class ProfileUpdateTest extends TestCase
             'TaiKhoanID' => 31,
             'Email' => 'first@example.com',
         ]);
+    }
+
+    public function test_avatar_upload_stores_a_predictable_path_and_returns_its_public_url(): void
+    {
+        DB::table('TaiKhoan')->insert([
+            'TaiKhoanID' => 13,
+            'TenDangNhap' => 'avatar13',
+        ]);
+
+        config([
+            'filesystems.disks.supabase.key' => 'test-key',
+            'filesystems.disks.supabase.secret' => 'test-secret',
+            'filesystems.disks.supabase.bucket' => 'avatars',
+            'filesystems.disks.supabase.endpoint' => 'https://project.supabase.co/storage/v1/s3',
+            'filesystems.disks.supabase.url' => 'https://project.supabase.co/storage/v1/object/public/avatars',
+        ]);
+        Storage::fake('supabase');
+
+        $user = User::query()->findOrFail(13);
+
+        $this->actingAs($user)
+            ->postJson(route('profile.avatar'), [
+                'avatar' => UploadedFile::fake()->image('avatar.gif'),
+            ])
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('avatar_url', Storage::disk('supabase')->url('avatars/13'));
+
+        Storage::disk('supabase')->assertExists('avatars/13');
+        $this->assertDatabaseHas('TaiKhoan', [
+            'TaiKhoanID' => 13,
+            'AvatarURL' => Storage::disk('supabase')->url('avatars/13'),
+        ]);
+        $this->assertSame(
+            Storage::disk('supabase')->url('avatars/13'),
+            User::query()->findOrFail(13)->avatar_url,
+        );
     }
 
     private function assignRole(int $accountId, int $roleId): void

@@ -55,6 +55,7 @@ class User extends Authenticatable
         'NgayTao',
         'TaiKhoanID',
         'UserAuthId',
+        'AvatarURL',
     ];
 
     protected $hidden = [
@@ -181,6 +182,11 @@ class User extends Authenticatable
 
     public function getAvatarUrlAttribute(): string
     {
+        $storedAvatarUrl = $this->attributes['AvatarURL'] ?? null;
+        if (filled($storedAvatarUrl)) {
+            return $storedAvatarUrl;
+        }
+
         $seed = ($this->getKey() % 8) + 1;
         $avatarDirectory = public_path('uploads/avatars');
         $avatarFiles = glob($avatarDirectory.DIRECTORY_SEPARATOR.'avatar_'.$this->getKey().'.*') ?: [];

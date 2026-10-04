@@ -61,6 +61,18 @@ class UserAvatarUrlTest extends TestCase
         $this->assertStringEndsWith('/assets/images/user_2.jpg', $user->avatar_url);
     }
 
+    public function test_avatar_url_uses_persisted_avatar_url_when_present(): void
+    {
+        $user = new User;
+        $user->setAttribute('TaiKhoanID', 17);
+        $user->setAttribute('AvatarURL', 'https://project.supabase.co/storage/v1/object/public/avatars/avatars/17');
+
+        $this->assertSame(
+            'https://project.supabase.co/storage/v1/object/public/avatars/avatars/17',
+            $user->avatar_url,
+        );
+    }
+
     public function test_avatar_url_uses_predictable_supabase_object_path_when_storage_is_configured(): void
     {
         config([

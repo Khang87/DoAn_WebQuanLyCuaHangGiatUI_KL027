@@ -395,30 +395,20 @@ class TaiKhoanController extends Controller
         $account = $request->user();
 
         $validated = $request->validate([
-            'avatar' => ['required', 'image', 'mimes:jpeg,jpg,png,webp', 'max:2048'],
+            'avatar' => ['required', 'image', 'mimes:jpeg,jpg,png,gif,webp', 'max:2048'],
         ]);
         $file = $validated['avatar'];
 
         try {
             if ($this->isSupabaseStorageConfigured()) {
-                $path = $this->supabaseAvatarPath($account);
-                $stream = fopen($file->getRealPath(), 'r');
+                $path = $file->storeAs('avatars', (string) $account->getKey(), [
+                    'disk' => 'supabase',
+                    'visibility' => 'public',
+                    'ContentType' => $file->getMimeType(),
+                    'CacheControl' => 'no-cache, max-age=0, must-revalidate',
+                ]);
 
-                if ($stream === false) {
-                    throw new \RuntimeException('Không thể đọc ảnh đại diện đã tải lên.');
-                }
-
-                try {
-                    $uploaded = Storage::disk('supabase')->put($path, $stream, [
-                        'visibility' => 'public',
-                        'ContentType' => $file->getMimeType(),
-                        'CacheControl' => 'no-cache, max-age=0, must-revalidate',
-                    ]);
-                } finally {
-                    fclose($stream);
-                }
-
-                if (! $uploaded) {
+                if (! is_string($path) || $path === '') {
                     throw new \RuntimeException('Supabase Storage từ chối tải ảnh lên.');
                 }
 
@@ -433,8 +423,11 @@ class TaiKhoanController extends Controller
                 $filename = 'avatar_'.$account->getKey().'.'.$file->extension();
                 $avatarFile = $file->move($dir, $filename);
                 $this->deleteLocalAvatarFiles($account, $avatarFile->getPathname());
-                $avatarUrl = $account->avatar_url;
+                $avatarUrl = asset('uploads/avatars/'.$filename).'?v='.filemtime($avatarFile->getPathname());
             }
+
+            $account->AvatarURL = $avatarUrl;
+            $account->save();
 
             return response()->json([
                 'success' => true,
@@ -465,6 +458,9 @@ class TaiKhoanController extends Controller
                 throw new \RuntimeException('Không thể xóa ảnh đại diện trên Supabase Storage.');
             }
         }
+
+        $account->AvatarURL = null;
+        $account->save();
     }
 
     private function deleteLocalAvatarFiles(User $account, ?string $exceptPath = null): void

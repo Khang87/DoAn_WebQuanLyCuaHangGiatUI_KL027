@@ -3,7 +3,8 @@
 -- Schema only: no table rows. This local reference was not executed against Supabase.
 --
 -- Laravel naming/reference notes for this snapshot:
---   User       -> public."TaiKhoan" (avatar files are stored outside PostgreSQL)
+--   User       -> public."TaiKhoan" ("AvatarURL" stores the public URL; avatar
+--                                  files are stored outside PostgreSQL)
 --   Customer   -> public."KhachHang" ("SoDienThoai" is unique; "Email" is not)
 --   Order      -> public."DonHang" ("TrangThai", "TienGiamDoDiem",
 --                                  and "TienGiamKhuyenMai" are the stored fields)
@@ -302,7 +303,8 @@ CREATE TABLE IF NOT EXISTS "public"."TaiKhoan" (
     "KhachHangID" integer,
     "TrangThai" character varying(30) DEFAULT 'Hoạt động'::character varying NOT NULL,
     "NgayTao" timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    "UserAuthId" uuid
+    "UserAuthId" uuid,
+    "AvatarURL" text
 );
 
 CREATE TABLE IF NOT EXISTS "public"."TaiKhoan_VaiTro" (
