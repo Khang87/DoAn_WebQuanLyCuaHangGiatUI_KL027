@@ -110,6 +110,17 @@ class AuthFlowTest extends TestCase
         $this->assertArrayNotHasKey('remember_token', $this->staff->getAttributes());
     }
 
+    public function test_login_asset_urls_use_https_when_behind_vercel_proxy(): void
+    {
+        $response = $this->get('/login', [
+            'X-Forwarded-Proto' => 'https',
+        ]);
+
+        $response->assertOk()
+            ->assertSee('https://localhost:8000/assets/css/laundry.css', false)
+            ->assertSee('https://localhost:8000/assets/libs/bootstrap/css/bootstrap.min.css', false);
+    }
+
     public function test_remember_cookie_restores_the_user_after_the_session_is_lost(): void
     {
         $rememberedLogin = app(RememberedLogin::class);

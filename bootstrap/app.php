@@ -9,6 +9,7 @@ use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\URL;
 
 $app = Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -18,6 +19,13 @@ $app = Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        $middleware->trustProxies(
+            at: '*',
+            headers: Symfony\Component\HttpFoundation\Request::HEADER_X_FORWARDED_FOR
+                | Symfony\Component\HttpFoundation\Request::HEADER_X_FORWARDED_HOST
+                | Symfony\Component\HttpFoundation\Request::HEADER_X_FORWARDED_PORT
+                | Symfony\Component\HttpFoundation\Request::HEADER_X_FORWARDED_PROTO,
+        );
         $middleware->alias([
             'role' => EnsureUserHasRole::class,
             'permission' => EnsureUserHasPermission::class,
@@ -32,9 +40,16 @@ $app = Application::configure(basePath: dirname(__DIR__))
         );
     })->create();
 
-// Chuyển thư mục lưu storage/cache tạm sang /tmp khi chạy trên Vercel
-if (isset($_ENV['VERCEL']) || isset($_SERVER['VERCEL'])) {
+// Vercel terminates HTTPS before forwarding requests to the PHP runtime.
+$isVercel = isset($_ENV['VERCEL'])
+    || isset($_SERVER['VERCEL'])
+    || getenv('VERCEL') !== false;
+
+if ($isVercel) {
     $app->useStoragePath('/tmp/storage');
+    $app->booted(static function (): void {
+        URL::forceScheme('https');
+    });
 }
 
 return $app;
