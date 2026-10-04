@@ -1,18 +1,10 @@
 {
   "version": 2,
-  "framework": null,
   "outputDirectory": "public",
   "builds": [
     {
-      "src": "package.json",
-      "use": "@vercel/static-build"
-    },
-    {
       "src": "public/index.php",
-      "use": "vercel-php@0.7.2",
-      "config": {
-        "phpVersion": "8.2"
-      }
+      "use": "vercel-php@0.6.0"
     }
   ],
   "routes": [
