@@ -31,3 +31,7 @@ return Application::configure(basePath: dirname(__DIR__))
             fn (Request $request) => $request->is('api/*') || $request->expectsJson(),
         );
     })->create();
+// Chuyển thư mục lưu storage/cache tạm sang /tmp khi chạy trên Vercel
+if (isset($_ENV['VERCEL']) || isset($_SERVER['VERCEL'])) {
+    $app->useStoragePath('/tmp/storage');
+}
