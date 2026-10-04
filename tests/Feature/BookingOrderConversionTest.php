@@ -44,7 +44,7 @@ class BookingOrderConversionTest extends TestCase
 
     protected function tearDown(): void
     {
-        foreach (['NhatKyHeThong', 'ChiTietBooking', 'ChiTietDonHang', 'GiaoNhan', 'HoaDon', 'ThanhToan', 'DiemTichLuy', 'DonHang', 'Booking', 'BangGia', 'DonViTinh', 'LoaiDoGiat', 'DichVu', 'NhanVien', 'KhachHang'] as $table) {
+        foreach (['NhatKyHeThong', 'ChiTietBooking', 'ChiTietDonHang', 'GiaoNhan', 'HoaDon', 'ThanhToan', 'DiemTichLuy', 'DonHang', 'Booking', 'BangGia', 'DonViTinh', 'LoaiDoGiat', 'DanhMucLoaiDoGiat', 'DichVu', 'NhanVien', 'KhachHang'] as $table) {
             Schema::dropIfExists($table);
         }
 
@@ -552,24 +552,28 @@ class BookingOrderConversionTest extends TestCase
                 'LoaiDoGiatID' => 2,
                 'DonViTinhID' => 2,
                 'SoLuong' => 3,
-                'GhiChu' => 'Có vết ố ở tay áo',
+                'DonGia' => 16000,
+                'TinhTrangTruocKhiGiat' => 'Có vết ố ở tay áo',
+                'GhiChu' => 'Khách báo vết bẩn từ trước',
             ],
             [
                 'DichVuID' => 2,
                 'LoaiDoGiatID' => 2,
                 'DonViTinhID' => 2,
                 'SoLuong' => 1,
-                'GhiChu' => 'Không phát hiện hư hỏng',
+                'TinhTrangTruocKhiGiat' => 'Không phát hiện hư hỏng',
             ],
         ]);
 
         $this->assertSame(OrderStatus::Received->value, $receivedOrder->TrangThai);
-        $this->assertSame(65000.0, (float) $receivedOrder->TongTien);
-        $this->assertSame('Có vết ố ở tay áo', $item->fresh()->GhiChu);
+        $this->assertSame(68000.0, (float) $receivedOrder->TongTien);
+        $this->assertSame(16000.0, (float) $item->fresh()->DonGia);
+        $this->assertSame('Có vết ố ở tay áo', $item->fresh()->TinhTrangTruocKhiGiat);
+        $this->assertSame('[Tình trạng: Có vết ố ở tay áo; Loại: Áo sơ mi] Khách báo vết bẩn từ trước', $item->fresh()->GhiChu);
         $this->assertNull($itemToRemove->fresh());
         $this->assertSame(2, $receivedOrder->chiTietDonHangs->count());
         $this->assertSame(
-            'Không phát hiện hư hỏng',
+            '[Tình trạng: Không phát hiện hư hỏng; Loại: Áo sơ mi]',
             $receivedOrder->chiTietDonHangs->firstWhere('DichVuID', 2)?->GhiChu
         );
 
@@ -626,12 +630,25 @@ class BookingOrderConversionTest extends TestCase
                 'LoaiDoGiatID' => 2,
                 'DonViTinhID' => 2,
                 'SoLuong' => 2,
-                'GhiChu' => 'Bung chỉ nhẹ',
+                'DonGia' => 15000,
+                'TinhTrangTruocKhiGiat' => 'Bung chỉ nhẹ',
+                'GhiChu' => 'Khách hẹn lấy gấp',
             ]],
         ])->assertRedirect(route('orders.show', $order));
 
         $this->assertSame(OrderStatus::Received->value, $order->fresh()->TrangThai);
-        $this->assertSame('Bung chỉ nhẹ', $item->fresh()->GhiChu);
+        $this->assertSame('Bung chỉ nhẹ', $item->fresh()->TinhTrangTruocKhiGiat);
+        $this->assertSame('[Tình trạng: Bung chỉ nhẹ; Loại: Áo sơ mi] Khách hẹn lấy gấp', $item->fresh()->GhiChu);
+
+        try {
+            app(OrderService::class)->updateStatus($order->fresh(), OrderStatus::Washed->value);
+            $this->fail('A received order must enter washing before advancing.');
+        } catch (ValidationException $exception) {
+            $this->assertArrayHasKey('TrangThai', $exception->errors());
+        }
+
+        $washingOrder = app(OrderService::class)->updateStatus($order->fresh(), OrderStatus::Washing->value);
+        $this->assertSame(OrderStatus::Washing->value, $washingOrder->TrangThai);
     }
 
     public function test_order_amount_changes_are_written_to_the_system_audit_log(): void
@@ -1183,7 +1200,15 @@ class BookingOrderConversionTest extends TestCase
     {
         DB::table('KhachHang')->insert(['KhachHangID' => 9]);
         DB::table('DichVu')->insert(['DichVuID' => 1]);
-        DB::table('LoaiDoGiat')->insert(['LoaiDoGiatID' => 2]);
+        DB::table('DanhMucLoaiDoGiat')->insert([
+            'DanhMucID' => 1,
+            'TenDanhMuc' => 'Quần áo',
+        ]);
+        DB::table('LoaiDoGiat')->insert([
+            'LoaiDoGiatID' => 2,
+            'TenLoaiDoGiat' => 'Áo sơ mi',
+            'DanhMucID' => 1,
+        ]);
         DB::table('DonViTinh')->insert([
             ['DonViTinhID' => 1, 'TenDonViTinh' => 'Kilogram', 'KyHieu' => 'KG', 'TrangThai' => 'Hoạt động'],
             ['DonViTinhID' => 2, 'TenDonViTinh' => 'Cái', 'KyHieu' => 'Cái', 'TrangThai' => 'Hoạt động'],
@@ -1244,8 +1269,20 @@ class BookingOrderConversionTest extends TestCase
             $table->increments('DichVuID');
         });
 
+        Schema::create('DanhMucLoaiDoGiat', function (Blueprint $table): void {
+            $table->bigIncrements('DanhMucID');
+            $table->string('TenDanhMuc');
+            $table->text('MoTa')->nullable();
+            $table->string('TrangThai')->default('Hoạt động');
+            $table->dateTime('NgayTao')->useCurrent();
+        });
+
         Schema::create('LoaiDoGiat', function (Blueprint $table): void {
             $table->increments('LoaiDoGiatID');
+            $table->string('TenLoaiDoGiat')->default('Áo sơ mi');
+            $table->string('MoTa')->nullable();
+            $table->string('TrangThai')->default('Hoạt động');
+            $table->unsignedBigInteger('DanhMucID')->default(1);
         });
 
         Schema::create('NhanVien', function (Blueprint $table): void {
@@ -1331,6 +1368,7 @@ class BookingOrderConversionTest extends TestCase
             $table->decimal('DonGia', 18, 2);
             $table->decimal('ThanhTien', 18, 2);
             $table->string('GhiChu', 500)->nullable();
+            $table->text('TinhTrangTruocKhiGiat')->nullable();
         });
 
         Schema::create('GiaoNhan', function (Blueprint $table): void {

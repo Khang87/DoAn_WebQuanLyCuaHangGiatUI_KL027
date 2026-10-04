@@ -289,7 +289,7 @@
                                 </div>
                                 <div class="flex-grow-1">
                                     <p class="mb-1 small">{{ $notif->title }}</p>
-                                    <small class="text-muted">{{ $notif->created_at->diffForHumans() }}</small>
+                                    <small class="text-muted">{{ $notif->ThoiGianGui?->diffForHumans() ?? 'Không rõ thời gian' }}</small>
                                 </div>
                                 @if(! $notif->read_at)
                                     <span class="badge bg-primary-subtle text-primary-emphasis border border-primary ms-2">Mới</span>

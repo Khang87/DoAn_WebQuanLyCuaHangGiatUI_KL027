@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Support\CatalogCache;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class LoaiDoGiat extends Model
@@ -23,11 +24,17 @@ class LoaiDoGiat extends Model
 
     public static $snakeAttributes = false;
 
-    protected $fillable = ['TenLoaiDoGiat', 'MoTa', 'TrangThai'];
+    protected $fillable = ['TenLoaiDoGiat', 'MoTa', 'TrangThai', 'DanhMucID'];
 
     protected $casts = [
         'LoaiDoGiatID' => 'integer',
+        'DanhMucID' => 'integer',
     ];
+
+    public function danhMuc(): BelongsTo
+    {
+        return $this->belongsTo(DanhMucLoaiDoGiat::class, 'DanhMucID', 'DanhMucID');
+    }
 
     protected static function booted(): void
     {

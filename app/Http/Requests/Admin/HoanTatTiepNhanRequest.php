@@ -40,7 +40,9 @@ class HoanTatTiepNhanRequest extends FormRequest
             'items.*.DonViTinhID' => ['required', 'integer', 'exists:DonViTinh,DonViTinhID'],
             'items.*.SoLuong' => ['nullable', 'numeric', 'min:1'],
             'items.*.KhoiLuong' => ['nullable', 'numeric', 'gt:0'],
-            'items.*.GhiChu' => ['required', 'string', 'max:500'],
+            'items.*.DonGia' => ['required', 'numeric', 'min:0', 'max:9999999999999999.99'],
+            'items.*.TinhTrangTruocKhiGiat' => ['required', 'string', 'max:320'],
+            'items.*.GhiChu' => ['nullable', 'string', 'max:160'],
         ];
     }
 

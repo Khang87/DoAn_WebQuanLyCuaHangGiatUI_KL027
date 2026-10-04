@@ -8,6 +8,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\HoanTatTiepNhanRequest;
 use App\Http\Requests\Admin\LuuDonHangRequest;
 use App\Models\BangGia;
+use App\Models\DanhMucLoaiDoGiat;
 use App\Models\DichVu;
 use App\Models\DonViTinh;
 use App\Models\KhachHang;
@@ -63,6 +64,32 @@ class DonHangController extends Controller
             ->orderByDesc('BangGiaID')
             ->get()
             ->unique(fn ($pricing) => $pricing->DichVuID.'-'.$pricing->LoaiDoGiatID)
+            ->values();
+    }
+
+    private function receivingPricingOptions()
+    {
+        return BangGia::query()
+            ->with('donViTinh')
+            ->where('TrangThai', 'Hoạt động')
+            ->whereNotNull('DonGia')
+            ->where(function ($query): void {
+                $query->whereNull('NgayApDung')
+                    ->orWhereDate('NgayApDung', '<=', today());
+            })
+            ->where(function ($query): void {
+                $query->whereNull('NgayKetThuc')
+                    ->orWhereDate('NgayKetThuc', '>=', today());
+            })
+            ->orderByRaw('CASE WHEN "NgayApDung" IS NULL THEN 1 ELSE 0 END')
+            ->orderByDesc('NgayApDung')
+            ->orderByDesc('BangGiaID')
+            ->get()
+            ->unique(fn ($pricing) => implode(':', [
+                $pricing->DichVuID,
+                $pricing->LoaiDoGiatID,
+                $pricing->DonViTinhID,
+            ]))
             ->values();
     }
 
@@ -143,17 +170,31 @@ class DonHangController extends Controller
         $services = collect();
         $garments = collect();
         $units = collect();
+        $garmentCategories = collect();
+        $inspectionPricings = collect();
 
         if (
             $order->statusEnum() === OrderStatus::Pending
             && auth()->user()?->can('orders.edit')
         ) {
             $services = DichVu::orderBy('TenDichVu')->get();
-            $garments = LoaiDoGiat::orderBy('TenLoaiDoGiat')->get();
+            $garments = LoaiDoGiat::orderBy('TenLoaiDoGiat')
+                ->get(['LoaiDoGiatID', 'TenLoaiDoGiat', 'DanhMucID']);
             $units = DonViTinh::orderBy('TenDonViTinh')->get();
+            $garmentCategories = DanhMucLoaiDoGiat::orderBy('TenDanhMuc')
+                ->get(['DanhMucID', 'TenDanhMuc']);
+            $inspectionPricings = $this->receivingPricingOptions();
         }
 
-        return view('admin.orders.show', compact('order', 'statusFlow', 'services', 'garments', 'units'));
+        return view('admin.orders.show', compact(
+            'order',
+            'statusFlow',
+            'services',
+            'garments',
+            'units',
+            'garmentCategories',
+            'inspectionPricings',
+        ));
     }
 
     public function completeReceiving(HoanTatTiepNhanRequest $request, int $id)

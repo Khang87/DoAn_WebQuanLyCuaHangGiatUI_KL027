@@ -3,110 +3,131 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
-use App\Mail\PasswordResetLinkMail;
 use App\Models\User;
 use App\Services\RememberedLogin;
+use App\Services\ResendOtpMailer;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Log;
 use Illuminate\View\View;
+use Throwable;
 
 class PasswordResetController extends Controller
 {
-    private const TOKEN_PREFIX = 'auth:password-reset:';
+    private const OTP_PREFIX = 'pwd_reset_';
 
     private const THROTTLE_PREFIX = 'auth:password-reset-throttle:';
 
-    private const TOKEN_LIFETIME_MINUTES = 60;
+    private const OTP_LIFETIME_MINUTES = 15;
 
     public function showLinkRequestForm(): View
     {
-        return view('auth.forgot-password');
+        return view('auth.passwords.email');
     }
 
-    public function sendResetLink(Request $request): RedirectResponse
+    public function sendResetOtp(Request $request, ResendOtpMailer $otpMailer): RedirectResponse
     {
         $validated = $request->validate([
             'email' => ['required', 'email', 'max:150'],
         ]);
         $email = mb_strtolower(trim($validated['email']));
-        $cache = Cache::store('file');
+        $cache = Cache::store(config('cache.auth_store'));
         $throttleKey = self::THROTTLE_PREFIX.hash('sha256', $email);
 
-        if ($cache->add($throttleKey, true, now()->addMinute())) {
-            $user = $this->findUserByEmail($email);
-
-            if ($user) {
-                $token = bin2hex(random_bytes(32));
-                $cache->put(
-                    $this->tokenKey($user->getKey()),
-                    hash('sha256', $token),
-                    now()->addMinutes(self::TOKEN_LIFETIME_MINUTES),
-                );
-                $resetUrl = route('password.reset', [
-                    'token' => $token,
-                    'email' => $email,
-                ]);
-
-                Mail::to($email)->send(new PasswordResetLinkMail(
-                    $user->TenDangNhap,
-                    $resetUrl,
-                ));
-            }
+        if (! $cache->add($throttleKey, true, now()->addMinute())) {
+            return redirect()->route('password.reset')
+                ->with('reset_email', $email)
+                ->with('error', 'Vui lòng chờ một phút trước khi yêu cầu mã OTP mới.');
         }
 
-        return back()->with(
-            'status',
-            'Nếu email này đã đăng ký, hướng dẫn đặt lại mật khẩu sẽ được gửi đến hộp thư.',
+        $user = $this->findUserByEmail($email);
+        if (! $user) {
+            return redirect()->route('password.reset')
+                ->with('reset_email', $email)
+                ->with('status', 'Nếu email đã đăng ký, mã xác minh sẽ được tạo.');
+        }
+
+        $otp = (string) random_int(100000, 999999);
+        $cache->put(
+            $this->otpKey($email),
+            hash('sha256', $otp),
+            now()->addMinutes(self::OTP_LIFETIME_MINUTES),
         );
-    }
 
-    public function showResetForm(string $token, Request $request): View|RedirectResponse
-    {
-        $validated = $request->validate([
-            'email' => ['required', 'email', 'max:150'],
-        ]);
-        $user = $this->findUserByEmail($validated['email']);
+        try {
+            $otpMailer->send($email, $otp);
+        } catch (Throwable $exception) {
+            $cache->forget($this->otpKey($email));
+            $cache->forget($throttleKey);
+            $context = [
+                'email_hash' => hash('sha256', $email),
+                'exception' => $exception::class,
+                'provider_message' => $this->sanitizeProviderMessage(
+                    $exception->getMessage(),
+                    $email,
+                    $otp,
+                ),
+            ];
 
-        if (! $user || ! $this->tokenIsValid($user, $token)) {
+            if (method_exists($exception, 'getErrorType')) {
+                $context['provider_error_type'] = $exception->getErrorType();
+            }
+            if (method_exists($exception, 'getErrorCode')) {
+                $context['provider_error_code'] = $exception->getErrorCode();
+            }
+
+            Log::error('Unable to send password reset OTP through Resend.', $context);
+
             return redirect()->route('password.request')
-                ->with('error', 'Liên kết đặt lại mật khẩu không hợp lệ hoặc đã hết hạn.');
+                ->withInput(['email' => $email])
+                ->with('error', 'Không thể gửi email mã OTP lúc này. Vui lòng thử lại sau.');
         }
 
-        return view('auth.reset-password', [
-            'email' => $user->Email,
-            'token' => $token,
+        return redirect()->route('password.reset')
+            ->with('reset_email', $email)
+            ->with('status', 'Nếu email đã đăng ký, mã OTP sẽ được gửi đến hộp thư và có hiệu lực trong 15 phút.');
+    }
+
+    public function showResetForm(Request $request): View
+    {
+        return view('auth.passwords.reset', [
+            'email' => (string) $request->session()->get('reset_email', $request->old('email', '')),
         ]);
     }
 
-    public function reset(Request $request, string $token, RememberedLogin $rememberedLogin): RedirectResponse
+    public function resetPassword(Request $request, RememberedLogin $rememberedLogin): RedirectResponse
     {
         $validated = $request->validate([
             'email' => ['required', 'email', 'max:150'],
+            'otp' => ['required', 'digits:6'],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
         ]);
-        $user = $this->findUserByEmail($validated['email']);
+        $email = mb_strtolower(trim($validated['email']));
+        $user = $this->findUserByEmail($email);
+        $cache = Cache::store(config('cache.auth_store'));
+        $storedOtp = $cache->get($this->otpKey($email));
 
-        if (! $user || ! $this->tokenIsValid($user, $token)) {
-            return redirect()->route('password.request')
-                ->with('error', 'Liên kết đặt lại mật khẩu không hợp lệ hoặc đã hết hạn.');
+        if (
+            ! $user
+            || ! is_string($storedOtp)
+            || ! hash_equals($storedOtp, hash('sha256', $validated['otp']))
+        ) {
+            return redirect()->route('password.reset')
+                ->withInput(['email' => $email])
+                ->with('error', 'Email hoặc mã OTP không đúng hoặc mã đã hết hạn.');
         }
 
-        $user->forceFill(['MatKhau' => Hash::make($validated['password'])])->save();
-        Cache::store('file')->forget($this->tokenKey($user->getKey()));
+        $user->forceFill([
+            'MatKhau' => Hash::make($validated['password']),
+        ])->save();
+
+        $cache->forget($this->otpKey($email));
         $rememberedLogin->revokeForUser($user);
 
         return redirect()->route('login')
             ->with('success', 'Mật khẩu đã được cập nhật. Vui lòng đăng nhập.');
-    }
-
-    private function tokenIsValid(User $user, string $token): bool
-    {
-        $storedHash = Cache::store('file')->get($this->tokenKey($user->getKey()));
-
-        return is_string($storedHash) && hash_equals($storedHash, hash('sha256', $token));
     }
 
     private function findUserByEmail(string $email): ?User
@@ -116,8 +137,39 @@ class PasswordResetController extends Controller
             ->first();
     }
 
-    private function tokenKey(int|string $userId): string
+    private function otpKey(string $email): string
     {
-        return self::TOKEN_PREFIX.$userId;
+        return self::OTP_PREFIX.mb_strtolower(trim($email));
+    }
+
+    private function sanitizeProviderMessage(string $message, string $email, string $otp): string
+    {
+        $message = str_replace(
+            array_filter([
+                $email,
+                $otp,
+                (string) config('services.resend.key'),
+                (string) config('services.resend.from'),
+            ]),
+            '[redacted]',
+            $message,
+        );
+        $message = preg_replace(
+            [
+                '/[A-Z0-9._%+\-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i',
+                '/\b\d{6}\b/',
+                '/\bBearer\s+\S+/i',
+                '/\bre_[A-Z0-9_-]{10,}\b/i',
+            ],
+            [
+                '[redacted-email]',
+                '[redacted-otp]',
+                'Bearer [redacted]',
+                '[redacted-key]',
+            ],
+            $message,
+        );
+
+        return $message ?? 'Provider error (message redacted).';
     }
 }

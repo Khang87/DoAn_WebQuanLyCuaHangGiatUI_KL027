@@ -15,7 +15,7 @@
             <div class="login-logo">
                 <i class="bi bi-shield-lock" style="font-size: 3rem; color: var(--primary-blue);"></i>
                 <h1>Quên mật khẩu?</h1>
-                <p>Nhập email tài khoản để nhận liên kết đặt lại mật khẩu.</p>
+                <p>Nhập email tài khoản để tạo mã OTP đặt lại mật khẩu.</p>
             </div>
 
             @if(session('status'))
@@ -31,12 +31,21 @@
             <form method="POST" action="{{ route('password.email') }}">
                 @csrf
                 <div class="mb-3">
-                    <label class="form-label" for="email">Email</label>
-                    <input class="form-control @error('email') is-invalid @enderror"
-                           type="email" id="email" name="email" value="{{ old('email') }}" required autofocus>
+                    <label class="form-label" for="email">Email tài khoản</label>
+                    <input
+                        class="form-control @error('email') is-invalid @enderror"
+                        type="email"
+                        id="email"
+                        name="email"
+                        value="{{ old('email') }}"
+                        maxlength="150"
+                        autocomplete="email"
+                        required
+                        autofocus
+                    >
                     @error('email')<div class="invalid-feedback">{{ $message }}</div>@enderror
                 </div>
-                <button class="btn btn-primary w-100" type="submit">Gửi liên kết đặt lại mật khẩu</button>
+                <button class="btn btn-primary w-100" type="submit">Tạo mã OTP</button>
             </form>
 
             <div class="text-center mt-3">

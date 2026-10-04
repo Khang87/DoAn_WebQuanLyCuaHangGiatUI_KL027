@@ -44,12 +44,12 @@ Route::get('/login', [LoginController::class, 'showLoginForm'])->name('login');
 Route::post('/login', [LoginController::class, 'login']);
 Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
 Route::get('/forgot-password', [PasswordResetController::class, 'showLinkRequestForm'])->name('password.request');
-Route::post('/forgot-password', [PasswordResetController::class, 'sendResetLink'])->name('password.email');
-Route::get('/reset-password/{token}', [PasswordResetController::class, 'showResetForm'])->name('password.reset');
-Route::post('/reset-password/{token}', [PasswordResetController::class, 'reset'])->name('password.update');
+Route::post('/forgot-password', [PasswordResetController::class, 'sendResetOtp'])->name('password.email');
+Route::get('/reset-password', [PasswordResetController::class, 'showResetForm'])->name('password.reset');
+Route::post('/reset-password', [PasswordResetController::class, 'resetPassword'])->name('password.update');
 
 // Protected Routes
-Route::middleware(['remembered.login', 'auth', 'reject.customer'])->group(function () {
+Route::middleware(['auth', 'reject.customer'])->group(function () {
 
     // Dashboard entry follows assigned capabilities rather than a fixed role.
     Route::get('/dashboard', function () {
@@ -133,6 +133,10 @@ Route::middleware(['remembered.login', 'auth', 'reject.customer'])->group(functi
         Route::post('/orders/{order}/complete-receiving', [DonHangController::class, 'completeReceiving'])
             ->name('orders.complete-receiving');
     });
+
+    Route::patch('/orders/{order}/status', [DonHangController::class, 'updateStatus'])
+        ->middleware('permission:orders.update_status')
+        ->name('orders.update-status');
 
     Route::middleware('permission:orders.delete')->group(function () {
         Route::delete('/orders/{order}', [DonHangController::class, 'destroy'])->name('orders.destroy');

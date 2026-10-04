@@ -10,7 +10,7 @@ use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
 
-return Application::configure(basePath: dirname(__DIR__))
+$app = Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
         web: __DIR__.'/../routes/web.php',
         api: __DIR__.'/../routes/api.php',
@@ -22,8 +22,8 @@ return Application::configure(basePath: dirname(__DIR__))
             'role' => EnsureUserHasRole::class,
             'permission' => EnsureUserHasPermission::class,
             'reject.customer' => RejectCustomerRole::class,
-            'remembered.login' => RestoreRememberedLogin::class,
         ]);
+        $middleware->web(append: [RestoreRememberedLogin::class]);
         $middleware->prependToPriorityList(AuthenticatesRequests::class, RestoreRememberedLogin::class);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
@@ -31,7 +31,10 @@ return Application::configure(basePath: dirname(__DIR__))
             fn (Request $request) => $request->is('api/*') || $request->expectsJson(),
         );
     })->create();
+
 // Chuyển thư mục lưu storage/cache tạm sang /tmp khi chạy trên Vercel
 if (isset($_ENV['VERCEL']) || isset($_SERVER['VERCEL'])) {
     $app->useStoragePath('/tmp/storage');
 }
+
+return $app;

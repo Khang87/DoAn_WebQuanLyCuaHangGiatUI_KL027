@@ -50,6 +50,11 @@
     --teal-bg: #E6FFFA;
     --teal-border: #99F6E4;
     --teal-emphasis: #0D9488;
+
+    /* Purple badge colors; Bootstrap does not include purple utilities. */
+    --purple-bg: #F1EAFE;
+    --purple-border: #C9B5F2;
+    --purple-emphasis: #4C2889;
     
     /* Layout */
     --sidebar-width: 260px;
@@ -1352,6 +1357,19 @@ select option:hover {
 .text-teal-emphasis { color: var(--teal-emphasis) !important; }
 .border-teal { border-color: var(--teal) !important; }
 .border-teal-subtle { border-color: var(--teal-border) !important; }
+
+/* Bootstrap's .badge defaults to white text, so define accessible purple utilities. */
+.bg-purple-subtle {
+    background-color: var(--purple-bg) !important;
+}
+
+.text-purple-emphasis {
+    color: var(--purple-emphasis) !important;
+}
+
+.border-purple {
+    border-color: var(--purple-border) !important;
+}
 
 /* ---------------------------------------------------------------------
    Forms

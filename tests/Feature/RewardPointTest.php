@@ -379,6 +379,7 @@ class RewardPointTest extends TestCase
             $table->decimal('DonGia', 18, 2);
             $table->decimal('ThanhTien', 18, 2);
             $table->string('GhiChu')->nullable();
+            $table->text('TinhTrangTruocKhiGiat')->nullable();
         });
 
         Schema::create('GiaoNhan', function (Blueprint $table): void {

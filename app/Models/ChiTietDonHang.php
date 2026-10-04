@@ -16,7 +16,8 @@ class ChiTietDonHang extends Model
 
     protected $fillable = [
         'DonHangID', 'DichVuID', 'LoaiDoGiatID', 'DonViTinhID',
-        'SoLuong', 'KhoiLuong', 'DonGia', 'ThanhTien', 'GhiChu', 'ChiTietDonHangID'];
+        'SoLuong', 'KhoiLuong', 'DonGia', 'ThanhTien', 'GhiChu',
+        'TinhTrangTruocKhiGiat', 'ChiTietDonHangID'];
 
     protected $casts = [
         'DonHangID' => 'integer',
@@ -27,6 +28,7 @@ class ChiTietDonHang extends Model
         'KhoiLuong' => 'float',
         'DonGia' => 'float',
         'ThanhTien' => 'float',
+        'TinhTrangTruocKhiGiat' => 'string',
     ];
 
     public function donHang()

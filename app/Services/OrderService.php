@@ -13,6 +13,7 @@ use App\Models\DonHang;
 use App\Models\DonViTinh;
 use App\Models\GiaoNhan;
 use App\Models\KhachHang;
+use App\Models\LoaiDoGiat;
 use App\Models\NhanVien;
 use App\Models\NhatKyHeThong;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
@@ -323,6 +324,7 @@ class OrderService
                 'KhoiLuong' => $isWeightUnit ? $weight : null,
                 'ThanhTien' => $lineSubtotal,
                 'GhiChu' => $item['GhiChu'] ?? $item['notes'] ?? null,
+                'TinhTrangTruocKhiGiat' => $item['TinhTrangTruocKhiGiat'] ?? null,
             ];
 
         }
@@ -682,7 +684,9 @@ class OrderService
                 $itemId = (int) ($item['ChiTietDonHangID'] ?? 0);
                 $existingItem = $existingItems->get($itemId);
 
-                if (
+                if (isset($item['DonGia']) && $item['DonGia'] !== '') {
+                    $priceOverridesByIndex[$index] = (float) $item['DonGia'];
+                } elseif (
                     $existingItem
                     && (int) $existingItem->DichVuID === (int) $item['DichVuID']
                     && (int) $existingItem->LoaiDoGiatID === (int) $item['LoaiDoGiatID']
@@ -690,6 +694,28 @@ class OrderService
                 ) {
                     $priceOverridesByIndex[$index] = (float) $existingItem->DonGia;
                 }
+            }
+
+            $garmentNames = LoaiDoGiat::query()
+                ->whereIn('LoaiDoGiatID', collect($items)->pluck('LoaiDoGiatID')->unique())
+                ->pluck('TenLoaiDoGiat', 'LoaiDoGiatID');
+
+            foreach ($items as $index => $item) {
+                $condition = trim((string) ($item['TinhTrangTruocKhiGiat'] ?? $item['GhiChu'] ?? ''));
+                $hasConditionField = isset($item['TinhTrangTruocKhiGiat']);
+                $additionalNotes = $hasConditionField ? trim((string) ($item['GhiChu'] ?? '')) : '';
+                $garmentName = $garmentNames->get((int) $item['LoaiDoGiatID']);
+                $notes = sprintf('[Tình trạng: %s; Loại: %s]', $condition, $garmentName)
+                    .($additionalNotes !== '' ? ' '.$additionalNotes : '');
+
+                if (mb_strlen($notes) > 500) {
+                    throw ValidationException::withMessages([
+                        "items.{$index}.GhiChu" => 'Tình trạng, tên loại đồ và ghi chú cộng lại không được vượt quá 500 ký tự.',
+                    ]);
+                }
+
+                $items[$index]['TinhTrangTruocKhiGiat'] = $condition;
+                $items[$index]['GhiChu'] = $notes;
             }
 
             [$rows, $subtotal] = $this->buildItems($items, $priceOverridesByIndex);
@@ -804,6 +830,15 @@ class OrderService
             ) {
                 throw ValidationException::withMessages([
                     'TrangThai' => 'Cần hoàn tất kiểm tra và tiếp nhận thực tế trước khi chuyển trạng thái đơn hàng.',
+                ]);
+            }
+
+            if (
+                $lockedOrder->statusEnum() === OrderStatus::Received
+                && ! in_array($status, [OrderStatus::Received->value, OrderStatus::Washing->value], true)
+            ) {
+                throw ValidationException::withMessages([
+                    'TrangThai' => 'Đơn hàng đã tiếp nhận cần bắt đầu giặt trước khi chuyển sang bước tiếp theo.',
                 ]);
             }
 

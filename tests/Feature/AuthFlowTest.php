@@ -2,16 +2,17 @@
 
 namespace Tests\Feature;
 
-use App\Mail\PasswordResetLinkMail;
 use App\Models\User;
 use App\Models\VaiTro;
 use App\Services\RememberedLogin;
+use App\Services\ResendOtpMailer;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
+use Resend\Exceptions\ErrorException;
 use Tests\TestCase;
 
 class AuthFlowTest extends TestCase
@@ -25,6 +26,7 @@ class AuthFlowTest extends TestCase
         config([
             'database.default' => 'sqlite',
             'database.connections.sqlite.database' => ':memory:',
+            'cache.auth_store' => 'file',
             'session.driver' => 'array',
         ]);
         DB::purge('sqlite');
@@ -86,7 +88,10 @@ class AuthFlowTest extends TestCase
         Cache::store('file')->forget(
             'auth:password-reset-throttle:'.hash('sha256', $this->staff->Email),
         );
-        Cache::store('file')->forget('auth:password-reset:'.$this->staff->getKey());
+        Cache::store('file')->forget('pwd_reset_'.$this->staff->Email);
+        Cache::store('file')->forget(
+            'auth:password-reset-throttle:'.hash('sha256', 'missing@example.test'),
+        );
         Cache::store('file')->forget('auth:remember-user:'.$this->staff->getKey());
     }
 
@@ -118,16 +123,56 @@ class AuthFlowTest extends TestCase
         $this->assertAuthenticatedAs($this->staff);
     }
 
+    public function test_remember_cookie_restores_user_before_showing_login_form(): void
+    {
+        $token = app(RememberedLogin::class)->issue($this->staff);
+
+        $this->withCookie(RememberedLogin::COOKIE_NAME, $token)
+            ->get(route('login'))
+            ->assertRedirect(route('admin.dashboard'));
+
+        $this->assertAuthenticatedAs($this->staff);
+    }
+
+    public function test_authenticated_user_is_redirected_away_from_login_form(): void
+    {
+        $this->actingAs($this->staff)
+            ->get(route('login'))
+            ->assertRedirect(route('admin.dashboard'));
+    }
+
+    public function test_remember_token_cannot_restore_a_disabled_account(): void
+    {
+        $rememberedLogin = app(RememberedLogin::class);
+        $token = $rememberedLogin->issue($this->staff);
+        $this->staff->update(['TrangThai' => 'Khóa']);
+
+        $this->assertNull($rememberedLogin->resolve($token));
+    }
+
     public function test_logout_revokes_the_remember_cookie_token(): void
     {
         $rememberedLogin = app(RememberedLogin::class);
         $token = $rememberedLogin->issue($this->staff);
 
-        $this->withCookie(RememberedLogin::COOKIE_NAME, $token)
+        $response = $this->withCookie(RememberedLogin::COOKIE_NAME, $token)
             ->post(route('logout'))
             ->assertRedirect(route('login'));
 
+        $response->assertCookieExpired(RememberedLogin::COOKIE_NAME);
         $this->assertGuest();
+        $this->assertNull($rememberedLogin->resolve($token));
+    }
+
+    public function test_logout_revokes_remember_token_even_when_cookie_is_missing(): void
+    {
+        $rememberedLogin = app(RememberedLogin::class);
+        $token = $rememberedLogin->issue($this->staff);
+
+        $this->actingAs($this->staff)
+            ->post(route('logout'))
+            ->assertRedirect(route('login'));
+
         $this->assertNull($rememberedLogin->resolve($token));
     }
 
@@ -146,51 +191,163 @@ class AuthFlowTest extends TestCase
             ->assertSee('Swal.fire');
     }
 
-    public function test_password_reset_email_link_updates_password_and_cannot_be_reused(): void
+    public function test_password_reset_otp_updates_password_and_cannot_be_reused(): void
     {
-        Mail::fake();
         $rememberToken = app(RememberedLogin::class)->issue($this->staff);
+        $otp = null;
+        $mailer = \Mockery::mock(ResendOtpMailer::class);
+        $mailer->shouldReceive('send')
+            ->once()
+            ->with($this->staff->Email, \Mockery::on(function (string $sentOtp) use (&$otp): bool {
+                $otp = $sentOtp;
+
+                return preg_match('/^\d{6}$/', $sentOtp) === 1;
+            }));
+        $this->app->instance(ResendOtpMailer::class, $mailer);
 
         $this->post(route('password.email'), [
             'email' => $this->staff->Email,
-        ])->assertRedirect();
+        ])->assertRedirect(route('password.reset'))
+            ->assertSessionHas('status')
+            ->assertSessionMissing('simulation_otp');
 
-        $resetUrl = null;
-        Mail::assertSent(PasswordResetLinkMail::class, function (PasswordResetLinkMail $mail) use (&$resetUrl): bool {
-            $resetUrl = $mail->resetUrl;
-
-            return true;
-        });
-
-        $this->assertNotNull($resetUrl);
-        $path = parse_url($resetUrl, PHP_URL_PATH);
-        $token = basename((string) $path);
-        parse_str((string) parse_url($resetUrl, PHP_URL_QUERY), $query);
-
-        $this->get($resetUrl)
+        $this->assertNotNull($otp);
+        $this->assertSame(
+            hash('sha256', $otp),
+            Cache::store('file')->get('pwd_reset_'.$this->staff->Email),
+        );
+        $this->get(route('password.reset'))
             ->assertOk()
-            ->assertSee('Đặt lại mật khẩu');
+            ->assertDontSee($otp);
 
-        $this->post(route('password.update', ['token' => $token]), [
-            'email' => $query['email'],
+        $this->post(route('password.update'), [
+            'email' => $this->staff->Email,
+            'otp' => $otp,
             'password' => 'NewPassword123',
             'password_confirmation' => 'NewPassword123',
         ])->assertRedirect(route('login'));
 
         $this->assertTrue(Hash::check('NewPassword123', $this->staff->fresh()->MatKhau));
         $this->assertNull(app(RememberedLogin::class)->resolve($rememberToken));
-        $this->get($resetUrl)->assertRedirect(route('password.request'));
+        $this->assertNull(Cache::store('file')->get('pwd_reset_'.$this->staff->Email));
+
+        $this->post(route('password.update'), [
+            'email' => $this->staff->Email,
+            'otp' => $otp,
+            'password' => 'AnotherPass123',
+            'password_confirmation' => 'AnotherPass123',
+        ])->assertRedirect(route('password.reset'))
+            ->assertSessionHas('error');
     }
 
     public function test_password_reset_request_does_not_disclose_unknown_emails(): void
     {
-        Mail::fake();
+        $mailer = \Mockery::mock(ResendOtpMailer::class);
+        $mailer->shouldNotReceive('send');
+        $this->app->instance(ResendOtpMailer::class, $mailer);
 
         $response = $this->post(route('password.email'), [
             'email' => 'missing@example.test',
         ]);
 
-        $response->assertSessionHas('status');
-        Mail::assertNothingSent();
+        $response->assertRedirect(route('password.reset'))
+            ->assertSessionHas('status')
+            ->assertSessionMissing('simulation_otp');
+    }
+
+    public function test_password_reset_email_failure_does_not_leave_a_valid_otp(): void
+    {
+        $mailer = \Mockery::mock(ResendOtpMailer::class);
+        $mailer->shouldReceive('send')
+            ->once()
+            ->andThrow(new \RuntimeException('Resend API unavailable.'));
+        $this->app->instance(ResendOtpMailer::class, $mailer);
+
+        $this->post(route('password.email'), [
+            'email' => $this->staff->Email,
+        ])->assertRedirect(route('password.request'))
+            ->assertSessionHas('error', 'Không thể gửi email mã OTP lúc này. Vui lòng thử lại sau.');
+
+        $this->assertNull(Cache::store('file')->get('pwd_reset_'.$this->staff->Email));
+        $this->assertFalse(Cache::store('file')->has(
+            'auth:password-reset-throttle:'.hash('sha256', $this->staff->Email),
+        ));
+    }
+
+    public function test_resend_failure_log_redacts_emails_otp_and_api_credentials(): void
+    {
+        config(['services.resend.key' => 'resend_test_secret']);
+        Log::shouldReceive('error')
+            ->once()
+            ->withArgs(function (string $message, array $context): bool {
+                $providerMessage = $context['provider_message'];
+
+                $this->assertStringNotContainsString($this->staff->Email, $providerMessage);
+                $this->assertStringNotContainsString('another@example.test', $providerMessage);
+                $this->assertStringNotContainsString('123456', $providerMessage);
+                $this->assertStringNotContainsString('resend_test_secret', $providerMessage);
+                $this->assertStringNotContainsString('re_abcdefghijklmnopqrst', $providerMessage);
+                $this->assertStringNotContainsString('Bearer test-bearer-secret', $providerMessage);
+                $this->assertSame('validation_error', $context['provider_error_type']);
+                $this->assertSame(403, $context['provider_error_code']);
+
+                return $message === 'Unable to send password reset OTP through Resend.';
+            });
+
+        $mailer = \Mockery::mock(ResendOtpMailer::class);
+        $mailer->shouldReceive('send')
+            ->once()
+            ->andReturnUsing(function (string $email, string $otp): void {
+                throw new ErrorException([
+                    'message' => "Failed to send {$otp} to {$email} and another@example.test; key resend_test_secret re_abcdefghijklmnopqrst; Bearer test-bearer-secret",
+                    'name' => 'validation_error',
+                    'statusCode' => 403,
+                ]);
+            });
+        $this->app->instance(ResendOtpMailer::class, $mailer);
+
+        $this->post(route('password.email'), [
+            'email' => $this->staff->Email,
+        ])->assertRedirect(route('password.request'))
+            ->assertSessionHas('error');
+
+        $this->assertNull(Cache::store('file')->get('pwd_reset_'.$this->staff->Email));
+        $this->assertFalse(Cache::store('file')->has(
+            'auth:password-reset-throttle:'.hash('sha256', $this->staff->Email),
+        ));
+    }
+
+    public function test_resend_sandbox_rejects_an_email_that_is_not_the_configured_recipient(): void
+    {
+        config([
+            'services.resend.sandbox_to' => 'resend-owner@example.test',
+        ]);
+
+        try {
+            app(ResendOtpMailer::class)->send('another-account@example.test', '123456');
+            $this->fail('The Resend sandbox must not send OTPs to an unverified recipient.');
+        } catch (\RuntimeException $exception) {
+            $this->assertSame(
+                'The recipient is not the configured Resend sandbox address.',
+                $exception->getMessage(),
+            );
+        }
+    }
+
+    public function test_expired_password_reset_otp_cannot_be_used(): void
+    {
+        Cache::store('file')->put(
+            'pwd_reset_'.$this->staff->Email,
+            hash('sha256', '123456'),
+            now()->subMinute(),
+        );
+
+        $this->post(route('password.update'), [
+            'email' => $this->staff->Email,
+            'otp' => '123456',
+            'password' => 'NewPassword123',
+            'password_confirmation' => 'NewPassword123',
+        ])->assertRedirect(route('password.reset'))
+            ->assertSessionHas('error', 'Email hoặc mã OTP không đúng hoặc mã đã hết hạn.');
     }
 }

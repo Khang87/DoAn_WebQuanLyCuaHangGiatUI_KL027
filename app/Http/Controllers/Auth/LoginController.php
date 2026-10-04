@@ -14,8 +14,12 @@ class LoginController extends Controller
     /**
      * Hiển thị form đăng nhập
      */
-    public function showLoginForm(): View
+    public function showLoginForm(): RedirectResponse|View
     {
+        if (Auth::check()) {
+            return redirect()->route('admin.dashboard');
+        }
+
         return view('auth.login');
     }
 
@@ -105,7 +109,11 @@ class LoginController extends Controller
      */
     public function logout(Request $request, RememberedLogin $rememberedLogin): RedirectResponse
     {
+        $user = Auth::user();
         $rememberedLogin->revoke($request->cookie(RememberedLogin::COOKIE_NAME));
+        if ($user) {
+            $rememberedLogin->revokeForUser($user);
+        }
         $rememberedLogin->queueCookie($request, null);
         Auth::logout();
 

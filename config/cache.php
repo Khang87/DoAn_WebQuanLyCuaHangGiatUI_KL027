@@ -15,7 +15,9 @@ return [
     |
     */
 
-    'default' => env('CACHE_STORE', 'database'),
+    'default' => env('CACHE_STORE', 'file'),
+
+    'auth_store' => env('AUTH_CACHE_STORE', env('CACHE_STORE', 'file')),
 
     /*
     |--------------------------------------------------------------------------

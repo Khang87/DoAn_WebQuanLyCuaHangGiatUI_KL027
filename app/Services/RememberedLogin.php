@@ -21,7 +21,7 @@ class RememberedLogin
     {
         $token = bin2hex(random_bytes(32));
         $tokenHash = hash('sha256', $token);
-        $cache = Cache::store('file');
+        $cache = Cache::store(config('cache.auth_store'));
         $userKey = $this->userCacheKey($user);
         $previousTokenHash = $cache->get($userKey);
 
@@ -46,7 +46,7 @@ class RememberedLogin
     public function resolve(string $token): ?User
     {
         $tokenHash = hash('sha256', $token);
-        $cache = Cache::store('file');
+        $cache = Cache::store(config('cache.auth_store'));
         $userId = $cache->get(self::CACHE_PREFIX.$tokenHash);
 
         if (! $userId) {
@@ -72,7 +72,7 @@ class RememberedLogin
     public function revoke(?string $token): void
     {
         if ($token !== null && $token !== '') {
-            $cache = Cache::store('file');
+            $cache = Cache::store(config('cache.auth_store'));
             $tokenHash = hash('sha256', $token);
             $userId = $cache->get(self::CACHE_PREFIX.$tokenHash);
             $cache->forget(self::CACHE_PREFIX.$tokenHash);
@@ -89,7 +89,7 @@ class RememberedLogin
 
     public function revokeForUser(User $user): void
     {
-        $cache = Cache::store('file');
+        $cache = Cache::store(config('cache.auth_store'));
         $userKey = $this->userCacheKey($user);
         $tokenHash = $cache->pull($userKey);
 
