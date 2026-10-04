@@ -77,7 +77,7 @@ class ServiceService
         if (
             $service->bangGias()->exists()
             || $service->chiTietDonHangs()->exists()
-            || $service->bookings()->exists()
+            || $service->chiTietBookings()->exists()
         ) {
             $service->update(['TrangThai' => 'Tạm ngưng']);
 

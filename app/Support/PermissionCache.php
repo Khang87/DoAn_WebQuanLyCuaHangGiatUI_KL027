@@ -101,7 +101,8 @@ final class PermissionCache
             ->leftJoin('VaiTro_Quyen', 'VaiTro_Quyen.VaiTroID', '=', 'VaiTro.VaiTroID')
             ->leftJoin('Quyen', function ($join) {
                 $join->on('Quyen.QuyenID', '=', 'VaiTro_Quyen.QuyenID')
-                    ->where('Quyen.TrangThai', '=', 'Hoạt động');
+                    ->where('Quyen.TrangThai', '=', 'Hoạt động')
+                    ->whereIn('Quyen.MaQuyen', self::configuredMaQuyens());
             })
             ->where('TaiKhoan_VaiTro.TaiKhoanID', $taiKhoanId)
             ->where('TaiKhoan.TrangThai', '=', 'Hoạt động')
@@ -134,5 +135,18 @@ final class PermissionCache
         }
 
         return app('request');
+    }
+
+    /**
+     * @return list<string>
+     */
+    private static function configuredMaQuyens(): array
+    {
+        return collect(PermissionRegistry::codes())
+            ->map(fn (string $code): ?string => QuyenMapper::resolveMaQuyen($code))
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
     }
 }

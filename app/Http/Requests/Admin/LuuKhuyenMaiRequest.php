@@ -38,7 +38,6 @@ class LuuKhuyenMaiRequest extends FormRequest
             'GiaTriGiam' => ['required', 'numeric', 'min:0', $this->discountValueWithinType()],
             'GiaTriDonToiThieu' => ['nullable', 'numeric', 'min:0'],
             'MucGiamToiDa' => ['nullable', 'numeric', 'min:0', $this->maxDiscountOnlyForPercentage()],
-            'DieuKienApDung' => ['nullable', 'string', 'max:500'],
             'NgayBatDau' => ['required', 'date'],
             'NgayKetThuc' => ['required', 'date', 'after_or_equal:NgayBatDau'],
             'TrangThai' => ['required', Rule::in(['Hoạt động', 'Tạm ngưng', 'Hết hạn'])],

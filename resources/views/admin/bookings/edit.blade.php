@@ -65,8 +65,8 @@
                         <div class="booking-item border rounded p-3 mb-3">
                             <div class="d-flex justify-content-between align-items-center mb-3"><strong>Dòng dịch vụ</strong><button type="button" class="btn btn-outline-danger btn-sm remove-booking-item">Xóa dòng</button></div>
                             <div class="row g-3">
-                                <div class="col-md-4"><label class="form-label">Dịch vụ</label><select class="form-select" name="items[{{ $index }}][DichVuID]"><option value="">Chọn dịch vụ</option>@foreach($services as $service)<option value="{{ $service->DichVuID }}" @selected((string) ($item['DichVuID'] ?? '') === (string) $service->DichVuID)>{{ $service->TenDichVu }}</option>@endforeach</select></div>
-                                <div class="col-md-4"><label class="form-label">Loại đồ giặt</label><select class="form-select" name="items[{{ $index }}][LoaiDoGiatID]"><option value="">Chọn loại đồ</option>@foreach($garments as $garment)<option value="{{ $garment->LoaiDoGiatID }}" @selected((string) ($item['LoaiDoGiatID'] ?? '') === (string) $garment->LoaiDoGiatID)>{{ $garment->TenLoaiDoGiat }}</option>@endforeach</select></div>
+                                <div class="col-md-4"><label class="form-label">Dịch vụ</label><select class="form-select booking-service" name="items[{{ $index }}][DichVuID]"><option value="">Chọn dịch vụ</option>@foreach($services as $service)<option value="{{ $service->DichVuID }}" @selected((string) ($item['DichVuID'] ?? '') === (string) $service->DichVuID)>{{ $service->TenDichVu }}</option>@endforeach</select></div>
+                                <div class="col-md-4"><label class="form-label">Loại đồ giặt</label><select class="form-select booking-garment" name="items[{{ $index }}][LoaiDoGiatID]"><option value="">Chọn loại đồ</option>@foreach($garments as $garment)<option value="{{ $garment->LoaiDoGiatID }}" @selected((string) ($item['LoaiDoGiatID'] ?? '') === (string) $garment->LoaiDoGiatID)>{{ $garment->TenLoaiDoGiat }}</option>@endforeach</select></div>
                                 <div class="col-md-4"><label class="form-label">Đơn vị tính</label><select class="form-select booking-unit" name="items[{{ $index }}][DonViTinhID]"><option value="">Chọn đơn vị</option>@foreach($units as $unit)<option value="{{ $unit->DonViTinhID }}" data-unit="{{ $unit->KyHieu ?: $unit->TenDonViTinh }}" @selected((string) ($item['DonViTinhID'] ?? '') === (string) $unit->DonViTinhID)>{{ $unit->TenDonViTinh }}{{ $unit->KyHieu ? ' ('.$unit->KyHieu.')' : '' }}</option>@endforeach</select></div>
                                 <div class="col-md-6"><label class="form-label">Số lượng</label><input type="number" step="1" min="1" class="form-control booking-quantity" name="items[{{ $index }}][SoLuong]" value="{{ $quantityValue }}"></div>
                                 <div class="col-md-6"><label class="form-label">Khối lượng (kg)</label><input type="number" step="0.01" min="0.01" class="form-control booking-weight" name="items[{{ $index }}][KhoiLuong]" value="{{ $item['KhoiLuong'] ?? '' }}"></div>
@@ -92,6 +92,7 @@
         const form = document.querySelector('form');
         const itemsContainer = document.getElementById('booking-items');
         const addItemButton = document.getElementById('add-booking-item');
+        const pricingUnitOptions = @json($pricingUnitOptions);
         let nextItemIndex = {{ count($bookingItems) }};
 
         function updateAddressRequirement() {
@@ -102,6 +103,34 @@
             const required = status.value === @json(\App\Enums\BookingStatus::Confirmed->value);
             staff.required = required;
             staffRequiredIndicator.classList.toggle('d-none', !required);
+        }
+
+        function syncUnitOptions(item, preserveSelection = true) {
+            const serviceId = item.querySelector('.booking-service').value;
+            const garmentId = item.querySelector('.booking-garment').value;
+            const unit = item.querySelector('.booking-unit');
+            const selectedUnitId = preserveSelection ? unit.value : '';
+            const matchingUnits = pricingUnitOptions.filter(option =>
+                String(option.serviceId) === serviceId
+                && String(option.garmentId) === garmentId
+            );
+
+            unit.replaceChildren(new Option('Chọn đơn vị', ''));
+            matchingUnits.forEach(option => {
+                const unitOption = new Option(option.label, option.unitId);
+                unitOption.dataset.unit = option.unit;
+                unit.add(unitOption);
+            });
+
+            if (matchingUnits.some(option => String(option.unitId) === selectedUnitId)) {
+                unit.value = selectedUnitId;
+            } else if (matchingUnits.length === 1) {
+                unit.value = String(matchingUnits[0].unitId);
+            } else {
+                unit.value = '';
+            }
+
+            unit.disabled = matchingUnits.length === 0;
         }
 
         function updateQuantityFields(item) {
@@ -127,12 +156,19 @@
             setTimeout(function () {
                 updateAddressRequirement();
                 updateStaffRequirement();
-                itemsContainer.querySelectorAll('.booking-item').forEach(updateQuantityFields);
+                itemsContainer.querySelectorAll('.booking-item').forEach(function (item) {
+                    syncUnitOptions(item);
+                    updateQuantityFields(item);
+                });
             });
         });
         itemsContainer.addEventListener('change', function (event) {
-            if (event.target.matches('.booking-unit')) {
-                updateQuantityFields(event.target.closest('.booking-item'));
+            const item = event.target.closest('.booking-item');
+            if (event.target.matches('.booking-service, .booking-garment')) {
+                syncUnitOptions(item, false);
+                updateQuantityFields(item);
+            } else if (event.target.matches('.booking-unit')) {
+                updateQuantityFields(item);
             }
         });
         itemsContainer.addEventListener('click', function (event) {
@@ -142,6 +178,7 @@
                     event.target.closest('.booking-item').remove();
                 } else {
                     rows[0].querySelectorAll('select, input').forEach(field => field.value = '');
+                    syncUnitOptions(rows[0], false);
                     updateQuantityFields(rows[0]);
                 }
             }
@@ -153,12 +190,16 @@
                 field.name = field.name.replace(/items\[\d+\]/, `items[${nextItemIndex}]`);
             });
             itemsContainer.appendChild(template);
+            syncUnitOptions(template, false);
             updateQuantityFields(template);
             nextItemIndex++;
         });
         updateAddressRequirement();
         updateStaffRequirement();
-        itemsContainer.querySelectorAll('.booking-item').forEach(updateQuantityFields);
+        itemsContainer.querySelectorAll('.booking-item').forEach(function (item) {
+            syncUnitOptions(item);
+            updateQuantityFields(item);
+        });
     });
 </script>
 @endsection

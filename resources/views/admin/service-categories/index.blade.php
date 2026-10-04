@@ -78,10 +78,16 @@
                                     <a href="{{ route('service-categories.edit', $category) }}" class="btn btn-order-action edit" title="Sửa"><i class="bi bi-pencil"></i></a>
                                 @endcan
                                 @can('service_categories.delete')
-                                    <form action="{{ route('service-categories.destroy', $category) }}" method="POST" class="d-inline" id="deleteCategoryForm_{{ $category->LoaiDichVuID }}">
-                                        @csrf @method('DELETE')
-                                        <button type="submit" class="btn btn-order-action delete" title="Xóa"><i class="bi bi-trash"></i></button>
-                                    </form>
+                                    <x-admin.detail.confirm-form
+                                        :action="route('service-categories.destroy', $category)"
+                                        title="Xóa danh mục?"
+                                        text="Nếu danh mục đang có dịch vụ, danh mục sẽ được chuyển sang trạng thái tạm ngưng."
+                                        label="Xóa"
+                                        icon="bi bi-trash"
+                                        variant="btn-order-action delete"
+                                        size=""
+                                        :iconOnly="true"
+                                    />
                                 @endcan
                             </div>
                         </td>
@@ -124,37 +130,3 @@
 </nav>
 @endif
 @endsection
-
-@push('scripts')
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        document.querySelectorAll('[id^="deleteCategoryForm_"]').forEach(function(form) {
-            form.addEventListener('submit', function(e) {
-                e.preventDefault();
-
-                if (typeof Swal === 'undefined') {
-                    if (confirm('Xóa danh mục này?')) {
-                        form.submit();
-                    }
-                    return;
-                }
-
-                Swal.fire({
-                    title: 'Xóa danh mục?',
-                    text: 'Hành động này không thể hoàn tác.',
-                    icon: 'warning',
-                    showCancelButton: true,
-                    confirmButtonColor: '#dc2626',
-                    cancelButtonColor: '#64748b',
-                    confirmButtonText: 'Xóa',
-                    cancelButtonText: 'Hủy'
-                }).then((result) => {
-                    if (result.isConfirmed) {
-                        form.submit();
-                    }
-                });
-            });
-        });
-    });
-</script>
-@endpush

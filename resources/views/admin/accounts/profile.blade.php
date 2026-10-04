@@ -61,7 +61,7 @@
                 </div>
                 <div class="col-md-6">
                     <label class="form-label">Vai trò</label>
-                    <input type="text" class="form-control" value="{{ $account->isManager() ? 'Quản lý' : ($account->role === 'staff' ? 'Nhân viên' : 'Khách hàng') }}" disabled>
+                    <input type="text" class="form-control" value="{{ $account->vaiTros->pluck('TenVaiTro')->join(', ') ?: 'Chưa gán vai trò' }}" disabled>
                 </div>
             </div>
             <div class="d-flex justify-content-end gap-2 mt-4">

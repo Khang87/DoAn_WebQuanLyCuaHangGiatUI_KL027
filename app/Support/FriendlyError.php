@@ -42,7 +42,7 @@ class FriendlyError
                 return 'Không thể tạo đơn hàng vì trigger Supabase đang đọc sai tên cột trạng thái: schema dùng "TrangThai" có phân biệt chữ hoa/thường. Booking chưa được xác nhận; giao dịch đã được hủy.';
             }
 
-            return 'Không thể tạo đơn hàng vì câu lệnh hoặc trigger trên CSDL Supabase đang tham chiếu đến cột không tồn tại hoặc sai chữ hoa/thường. Giao dịch đã được hủy; vui lòng liên hệ quản trị viên kiểm tra tên cột với schema.';
+            return 'Không thể xử lý '.$subject.' vì câu lệnh hoặc trigger trên CSDL Supabase đang tham chiếu đến cột không tồn tại hoặc sai chữ hoa/thường. Giao dịch đã được hủy; vui lòng liên hệ quản trị viên kiểm tra tên cột với schema.';
         }
 
         if (str_contains($raw, 'record_legacy_order_status_change')) {

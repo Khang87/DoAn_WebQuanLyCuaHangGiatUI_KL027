@@ -100,6 +100,17 @@
                                 @can('orders.view')
                                     <a href="{{ route('orders.show', $order) }}" class="btn btn-order-action view" title="Xem"><i class="bi bi-eye"></i></a>
                                 @endcan
+                                @if(! $order->isLocked() && $order->TrangThai !== \App\Enums\OrderStatus::Cancelled->value)
+                                    @can('payments.create')
+                                        <a href="{{ route('payments.create', ['order_id' => $order->getKey()]) }}"
+                                           class="btn btn-order-action payment"
+                                           title="Thanh toán"
+                                           aria-label="Thanh toán đơn {{ $order->MaDonHang }}"
+                                           data-payment-link>
+                                            <i class="bi bi-credit-card" aria-hidden="true"></i>
+                                        </a>
+                                    @endcan
+                                @endif
                                 @if($canManageSettled)
                                     @can('orders.edit')
                                         <a href="{{ route('orders.edit', $order) }}" class="btn btn-order-action edit" title="Sửa"><i class="bi bi-pencil"></i></a>
@@ -143,6 +154,18 @@
 @push('scripts')
 <script>
     document.addEventListener('DOMContentLoaded', function() {
+        document.querySelectorAll('[data-payment-link]').forEach(function(link) {
+            link.addEventListener('click', function() {
+                if (link.dataset.loading === 'true') {
+                    return;
+                }
+
+                link.dataset.loading = 'true';
+                link.setAttribute('aria-disabled', 'true');
+                link.innerHTML = '<span class="spinner-border spinner-border-sm" aria-hidden="true"></span><span class="visually-hidden">Đang chuyển đến thanh toán</span>';
+            });
+        });
+
         document.querySelectorAll('[id^="deleteOrderForm_"]').forEach(function(form) {
             form.addEventListener('submit', function(e) {
                 e.preventDefault();

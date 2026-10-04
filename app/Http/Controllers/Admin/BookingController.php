@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\LuuBookingRequest;
 use App\Http\Requests\Admin\XacNhanBookingRequest;
+use App\Models\BangGia;
 use App\Models\DichVu;
 use App\Models\DonViTinh;
 use App\Models\KhachHang;
@@ -83,8 +84,44 @@ class BookingController extends Controller
             ->where(fn ($query) => $query->where('TrangThai', 'Hoạt động')->orWhereIn('DonViTinhID', $unitIds))
             ->orderBy('TenDonViTinh')
             ->get();
+        $pricingUnitOptions = BangGia::query()
+            ->with('donViTinh')
+            ->where('TrangThai', 'Hoạt động')
+            ->where(function ($query): void {
+                $query->whereNull('NgayApDung')
+                    ->orWhereDate('NgayApDung', '<=', today());
+            })
+            ->where(function ($query): void {
+                $query->whereNull('NgayKetThuc')
+                    ->orWhereDate('NgayKetThuc', '>=', today());
+            })
+            ->get()
+            ->filter(fn (BangGia $pricing): bool => $pricing->donViTinh !== null)
+            ->unique(fn (BangGia $pricing): string => implode(':', [
+                $pricing->DichVuID,
+                $pricing->LoaiDoGiatID,
+                $pricing->DonViTinhID,
+            ]))
+            ->map(fn (BangGia $pricing): array => [
+                'serviceId' => $pricing->DichVuID,
+                'garmentId' => $pricing->LoaiDoGiatID,
+                'unitId' => $pricing->DonViTinhID,
+                'unit' => $pricing->unit,
+                'label' => $pricing->donViTinh->TenDonViTinh.(
+                    $pricing->donViTinh->KyHieu ? ' ('.$pricing->donViTinh->KyHieu.')' : ''
+                ),
+            ])
+            ->values();
 
-        return view('admin.bookings.edit', compact('booking', 'customers', 'employees', 'services', 'garments', 'units'));
+        return view('admin.bookings.edit', compact(
+            'booking',
+            'customers',
+            'employees',
+            'services',
+            'garments',
+            'units',
+            'pricingUnitOptions',
+        ));
     }
 
     public function update(LuuBookingRequest $request, int $id)

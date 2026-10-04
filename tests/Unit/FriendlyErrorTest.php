@@ -100,12 +100,16 @@ class FriendlyErrorTest extends TestCase
         );
 
         $this->assertSame(
-            'Không thể tạo đơn hàng vì câu lệnh hoặc trigger trên CSDL Supabase đang tham chiếu đến cột không tồn tại hoặc sai chữ hoa/thường. Giao dịch đã được hủy; vui lòng liên hệ quản trị viên kiểm tra tên cột với schema.',
+            'Không thể xử lý dữ liệu này vì câu lệnh hoặc trigger trên CSDL Supabase đang tham chiếu đến cột không tồn tại hoặc sai chữ hoa/thường. Giao dịch đã được hủy; vui lòng liên hệ quản trị viên kiểm tra tên cột với schema.',
             FriendlyError::message($exception),
         );
         $this->assertStringNotContainsString(
             'donhangid',
             FriendlyError::message($exception),
+        );
+        $this->assertStringContainsString(
+            'Không thể xử lý loại đồ giặt',
+            FriendlyError::message($exception, 'loại đồ giặt'),
         );
     }
 

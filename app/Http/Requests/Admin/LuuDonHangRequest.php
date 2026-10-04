@@ -5,6 +5,7 @@ namespace App\Http\Requests\Admin;
 use App\Enums\OrderStatus;
 use App\Models\DonHang;
 use App\Models\DonViTinh;
+use App\Models\KhuyenMai;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
@@ -13,6 +14,11 @@ class LuuDonHangRequest extends FormRequest
 {
     protected function prepareForValidation(): void
     {
+        $orderCode = $this->input('MaDonHang');
+        if (is_string($orderCode)) {
+            $this->merge(['MaDonHang' => trim($orderCode) ?: null]);
+        }
+
         $items = $this->input('items');
 
         if (! is_array($items)) {
@@ -66,6 +72,19 @@ class LuuDonHangRequest extends FormRequest
     public function withValidator(Validator $validator): void
     {
         $validator->after(function (Validator $validator): void {
+            $promotionCode = trim((string) $this->input('promotion_code', ''));
+            if ($promotionCode !== '') {
+                $promotion = KhuyenMai::findByCode($promotionCode);
+                if (! $promotion) {
+                    $validator->errors()->add('promotion_code', 'Mã khuyến mãi không tồn tại.');
+                } elseif (
+                    $this->filled('KhuyenMaiID')
+                    && (int) $this->input('KhuyenMaiID') !== (int) $promotion->KhuyenMaiID
+                ) {
+                    $validator->errors()->add('KhuyenMaiID', 'Mã voucher không khớp với chương trình đã chọn.');
+                }
+            }
+
             foreach ($this->input('items', []) as $index => $item) {
                 if (! is_array($item) || $validator->errors()->has("items.{$index}.DonViTinhID")) {
                     continue;

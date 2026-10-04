@@ -62,7 +62,15 @@ class ServiceCategoryService
 
     public function delete(LoaiDichVu $category): bool
     {
-        return $category->update(['TrangThai' => 'Tạm ngưng']);
+        if ($category->dichVus()->exists()) {
+            if (! $category->update(['TrangThai' => 'Tạm ngưng'])) {
+                throw new \RuntimeException('Không thể tạm ngưng danh mục dịch vụ.');
+            }
+
+            return false;
+        }
+
+        return (bool) $category->delete();
     }
 
     public function restore(int $id): ?LoaiDichVu

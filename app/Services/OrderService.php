@@ -41,6 +41,13 @@ class OrderService
      */
     public const POINTS_EARNED_PER_AMOUNT = 100;
 
+    public function nextOrderCode(): string
+    {
+        $nextId = ((int) DonHang::query()->max('DonHangID')) + 1;
+
+        return $this->formatOrderCode($nextId);
+    }
+
     /**
      * Lý do voucher cuối cùng bị loại trong lần gọi create()/update() gần nhất.
      */
@@ -140,11 +147,11 @@ class OrderService
                 'KhachHangID' => $booking->KhachHangID,
                 'NhanVienID' => $employeeId,
                 'BookingID' => $booking->BookingID,
-                'TrangThai' => OrderStatus::Pending->value,
+                'TrangThai' => OrderStatus::Received->value,
                 'GhiChu' => $notes,
             ], $amounts));
             $order->update([
-                'MaDonHang' => 'DH'.str_pad((string) $order->DonHangID, 3, '0', STR_PAD_LEFT),
+                'MaDonHang' => $this->formatOrderCode((int) $order->DonHangID),
             ]);
 
             foreach ($snapshots as $snapshot) {
@@ -441,9 +448,7 @@ class OrderService
         $this->promotionRejection = null;
 
         return DB::transaction(function () use ($data) {
-            if (empty($data['MaDonHang'])) {
-                $data['MaDonHang'] = $this->generateOrderCode();
-            }
+            $data['MaDonHang'] = 'TMP'.Str::ulid();
 
             $data['NgayTao'] = $data['NgayTao'] ?? now();
 
@@ -480,6 +485,10 @@ class OrderService
                 'NgayCapNhat' => now(),
             ], $amounts));
 
+            $order->update([
+                'MaDonHang' => $this->formatOrderCode((int) $order->getKey()),
+            ]);
+
             foreach ($items as $item) {
                 if (empty($item['DichVuID']) || empty($item['LoaiDoGiatID']) || empty($item['DonViTinhID'])) {
                     continue;
@@ -497,6 +506,8 @@ class OrderService
         if ($order->isLocked() && ! $overrideSettled) {
             throw SettledOrderException::forOrder($order->MaDonHang);
         }
+
+        unset($data['MaDonHang']);
 
         $this->promotionRejection = null;
 
@@ -660,16 +671,6 @@ class OrderService
     }
 
     /**
-     * Mã đơn hàng kế tiếp: DH + số thứ tự đệm 3 chữ số.
-     */
-    private function generateOrderCode(): string
-    {
-        $next = (int) (DonHang::max('DonHangID') ?? 0) + 1;
-
-        return 'DH'.str_pad((string) $next, 3, '0', STR_PAD_LEFT);
-    }
-
-    /**
      * Chỉ giữ lại các cột thuộc bảng DonHang từ dữ liệu form.
      *
      * Loại bỏ `items` (quan hệ 1-N được tạo riêng) và các khoá form phụ trợ.
@@ -682,5 +683,10 @@ class OrderService
         ];
 
         return array_intersect_key($data, array_flip($allowed));
+    }
+
+    private function formatOrderCode(int $orderId): string
+    {
+        return 'DH'.str_pad((string) $orderId, 4, '0', STR_PAD_LEFT);
     }
 }

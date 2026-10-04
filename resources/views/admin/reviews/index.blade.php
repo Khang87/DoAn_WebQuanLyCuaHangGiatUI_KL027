@@ -100,14 +100,14 @@
                         <td>
                             <div class="text-warning">
                                 @for($star = 1; $star <= 5; $star++)
-                                    @if ($star <= $review->rating)
+                                    @if ($star <= (int) $review->SoSao)
                                         <i class="fas fa-star text-warning"></i>
                                     @else
                                         <i class="far fa-star text-black-50 opacity-25"></i>
                                     @endif
                                 @endfor
                             </div>
-                            <small class="text-muted">{{ $review->rating }}/5</small>
+                            <small class="text-muted">{{ $review->SoSao }}/5</small>
                         </td>
                         <td style="max-width: 320px;">
                             <div class="text-truncate">{{ $review->content ?: $review->comment ?: 'Không có nội dung' }}</div>
@@ -158,7 +158,7 @@
             @if ($reviews->onLastPage())
                 <li class="page-item disabled"><span class="page-link"><i class="bi bi-chevron-right"></i></span></li>
             @else
-                <li class="page-item"><a class="page-link" href="{{ $reviews->appends(request()->query())->url($reviews->currentPage() + 1) }}">{{ $page }}</a></li>
+                <li class="page-item"><a class="page-link" href="{{ $reviews->appends(request()->query())->url($reviews->currentPage() + 1) }}"><i class="bi bi-chevron-right"></i></a></li>
             @endif
         </ul>
     </div>

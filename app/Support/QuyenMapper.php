@@ -8,10 +8,8 @@ namespace App\Support;
  *   - Mã quyền trong code / giao diện: `orders.view`  (App\Support\PermissionRegistry)
  *   - Mã quyền lưu trên Supabase:      `ORDER_VIEW`   (Quyen.MaQuyen)
  *
- * Bảng `Quyen` trên Supabase là dữ liệu chỉ đọc, không được thêm/sửa/xoá, nên
- * danh sách mã quyền ở đó là thuộc tính cố định. Lớp này là nơi duy nhất được
- * phép biết cách quy đổi qua lại giữa hai hệ thống; model, service và Blade chỉ
- * làm việc với một trong hai hệ.
+ * Chỉ mã được khai báo trong registry và có ánh xạ được chấp nhận để gán.
+ * Quyền mới phải được nhà phát triển thêm vào registry và mapper trước khi sử dụng.
  *
  * `resolveMaQuyen()` và `covers()` là hai chiều đảo của nhau: một mã quyền được
  * coi là "có" khi và chỉ khi mã `MaQuyen` mà nó quy đổi ra nằm trong danh sách
@@ -24,11 +22,10 @@ final class QuyenMapper
     public const FULL_ACCESS = 'SYSTEM_FULL_ACCESS';
 
     /**
-     * Toàn bộ mã quyền đang có trong bảng `Quyen` trên Supabase.
+     * Các mã quyền mặc định của ứng dụng.
      *
-     * Khai báo tĩnh để hai chiều quy đổi luôn nhất quán và không phải query DB
-     * lúc dựng Gate. Danh sách này phải khớp với dữ liệu thực tế; Service vẫn
-     * kiểm tra lại với bảng `Quyen` trước khi ghi.
+     * Các mã này giữ tương thích với dữ liệu quyền đã có. Quyền mới cần được
+     * thêm vào danh sách này và PermissionRegistry bởi nhà phát triển.
      *
      * @var list<string>
      */
@@ -51,6 +48,10 @@ final class QuyenMapper
         'ACCOUNT_MANAGE',
         'ROLE_MANAGE',
         self::FULL_ACCESS,
+        'MESSAGES_VIEW',
+        'MESSAGES_CREATE',
+        'SYSTEM_LOGS_VIEW',
+        'ACCOUNTING_VIEW',
     ];
 
     /**
@@ -102,11 +103,11 @@ final class QuyenMapper
     ];
 
     /**
-     * Module chỉ có một mã quyền duy nhất trong bảng `Quyen`, dùng mã đó cho mọi
+     * Module legacy chỉ có một mã quyền duy nhất trong bảng `Quyen`, dùng mã đó cho mọi
      * hành động của module thay vì để trống.
      *
-     * Bảng `Quyen` là dữ liệu chỉ đọc và chỉ có 18 mã, nên phần lớn module vận
-     * hành phải dùng chung mã `*_MANAGE` của mình. Không có bảng này thì các
+     * Snapshot hiện tại có các mã gộp, nên phần lớn module vận hành dùng chung
+     * mã `*_MANAGE` hiện có. Không có ánh xạ này thì các
      * route/menu như `garment-categories`, `bookings`, `coupons` sẽ bị chặn
      * với mọi tài khoản trừ Chủ cửa hàng.
      *
@@ -147,6 +148,18 @@ final class QuyenMapper
         'accounts' => 'ACCOUNT',
         'roles' => 'ROLE',
         'dashboard' => 'DASHBOARD',
+    ];
+
+    /**
+     * Quyền cần mã riêng trong catalog mới, không dùng chung quyền quản lý cũ.
+     *
+     * @var array<string, string>
+     */
+    private const GRANULAR_MAQUYEN = [
+        'messages.view' => 'MESSAGES_VIEW',
+        'messages.create' => 'MESSAGES_CREATE',
+        'system_logs.view' => 'SYSTEM_LOGS_VIEW',
+        'accounting.view' => 'ACCOUNTING_VIEW',
     ];
 
     /**
@@ -220,11 +233,11 @@ final class QuyenMapper
      *
      * Thứ tự ưu tiên:
      *   1. `CODE_MAQUYEN` cho hành động có mã riêng;
-     *   2. quy đổi trực tiếp `module` + `hành động` nếu mã đó có trong `Quyen`;
+     *   2. quy đổi trực tiếp `module` + `hành động` nếu mã đó có trong catalog;
      *   3. `MODULE_MAQUYEN` khi module chỉ có một mã quyền duy nhất
      *      (`garment_categories.*` -> `SERVICE_MANAGE`);
      *   4. mã `MODULE_MANAGE` suy ra từ tiền tố (`SERVICE_VIEW` -> `SERVICE_MANAGE`);
-     *   5. null — mã quyền này không có mặt trên Supabase nên không ghi được.
+     *   5. null — không có mã quyền được cấu hình tương ứng.
      */
     public static function resolveMaQuyen(string $code): ?string
     {
@@ -232,6 +245,7 @@ final class QuyenMapper
 
         $candidates = [
             self::CODE_MAQUYEN[$code] ?? null,
+            self::GRANULAR_MAQUYEN[$code] ?? null,
             self::toMaQuyen($code),
             self::MODULE_MAQUYEN[$module] ?? null,
             (self::MODULE_PREFIXES[$module] ?? strtoupper($module)).'_MANAGE',
@@ -251,6 +265,10 @@ final class QuyenMapper
      */
     public static function toMaQuyen(string $code): string
     {
+        if (isset(self::GRANULAR_MAQUYEN[$code])) {
+            return self::GRANULAR_MAQUYEN[$code];
+        }
+
         [$module, $action] = array_pad(explode('.', $code, 2), 2, 'view');
 
         $prefix = self::MODULE_PREFIXES[$module] ?? strtoupper($module);
@@ -262,9 +280,7 @@ final class QuyenMapper
     /**
      * Mã quyền này có mã tương ứng trong bảng `Quyen` hay không.
      *
-     * Mã không có (garments.*, bookings.*, payments.edit, reviews.*...) không thể
-     * cấp qua ma trận được, giao diện hiển thị ô tích chọn ở trạng thái khoá
-     * kèm chú thích thay vì giấu im lặng.
+     * Chỉ trả về true cho mã quyền được cấu hình trong ứng dụng.
      */
     public static function isResolvable(string $code): bool
     {

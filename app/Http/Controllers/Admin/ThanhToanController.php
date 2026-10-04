@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Enums\InvoiceStatus;
+use App\Enums\OrderStatus;
+use App\Enums\PaymentStatus;
 use App\Exceptions\SettledOrderException;
 use App\Http\Controllers\Concerns\RejectsSettledRecords;
 use App\Http\Controllers\Controller;
@@ -66,21 +68,61 @@ class ThanhToanController extends Controller
 
     public function create(Request $request)
     {
-        $orders = DonHang::with('khachHang')->where('TrangThai', '!=', 'Đã hủy')->orderBy('NgayTao', 'desc')->get();
-        $invoices = HoaDon::with('donHang.khachHang')->where('TrangThai', '!=', InvoiceStatus::Paid->value)->orderBy('NgayLap', 'desc')->get();
-
         $orderId = $request->query('order_id');
-        $invoiceId = $request->query('invoice_id');
-        $preselectedOrder = $orderId ? DonHang::find($orderId) : null;
-        $preselectedInvoice = $invoiceId ? HoaDon::find($invoiceId) : null;
+        $preselectedOrder = null;
+        $preselectedInvoice = null;
+        $preselectedAmount = null;
 
-        return view('admin.payments.create', compact('orders', 'invoices', 'preselectedOrder', 'preselectedInvoice'));
+        if ($orderId !== null) {
+            $preselectedOrder = DonHang::with(['khachHang', 'chiTietDonHangs.dichVu', 'hoaDons'])
+                ->find($orderId);
+
+            if (! $preselectedOrder) {
+                return redirect()->route('orders.index')->with('error', 'Không tìm thấy đơn hàng cần thanh toán.');
+            }
+
+            if ($preselectedOrder->isLocked()) {
+                return redirect()->route('orders.show', $preselectedOrder)
+                    ->with('error', 'Đơn hàng này đã được thanh toán.');
+            }
+
+            if ($preselectedOrder->TrangThai === OrderStatus::Cancelled->value) {
+                return redirect()->route('orders.index')->with('error', 'Không thể thanh toán đơn hàng đã hủy.');
+            }
+
+            $preselectedInvoice = $preselectedOrder->hoaDons->first();
+            $orderTotal = $preselectedOrder->hoaDons->first()?->ThanhTien ?? $preselectedOrder->ThanhTien;
+            $paidTotal = $preselectedOrder->thanhToans()
+                ->where('TrangThai', PaymentStatus::Paid->value)
+                ->sum('SoTien');
+            $preselectedAmount = max(0, (float) $orderTotal - (float) $paidTotal);
+        }
+
+        $orders = DonHang::with('khachHang')
+            ->whereNotIn('TrangThai', [OrderStatus::Cancelled->value, OrderStatus::Paid->value])
+            ->orderBy('NgayTao', 'desc')
+            ->get();
+        $invoices = HoaDon::with('donHang.khachHang')
+            ->where('TrangThai', '!=', InvoiceStatus::Paid->value)
+            ->when($preselectedOrder, fn ($query) => $query->where('DonHangID', $preselectedOrder->getKey()))
+            ->orderBy('NgayLap', 'desc')
+            ->get();
+
+        $invoiceId = $request->query('invoice_id');
+        if (! $preselectedOrder) {
+            $preselectedInvoice = $invoiceId ? HoaDon::find($invoiceId) : null;
+        }
+
+        return view('admin.payments.create', compact('orders', 'invoices', 'preselectedOrder', 'preselectedInvoice', 'preselectedAmount'));
     }
 
     public function store(LuuThanhToanRequest $request)
     {
         try {
-            $payment = $this->paymentService->create($request->validated());
+            $data = $request->validated();
+            $data['status'] = PaymentStatus::Paid->value;
+            $data['paid_at'] = now();
+            $payment = $this->paymentService->create($data);
 
             return redirect()->route('payments.show', $payment)->with('success', 'Thanh toán đã được tạo thành công.');
         } catch (\Exception $e) {

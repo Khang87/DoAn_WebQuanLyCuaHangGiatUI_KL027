@@ -173,7 +173,9 @@ class User extends Authenticatable
 
     public function getPhoneAttribute(): ?string
     {
-        return $this->SoDienThoai;
+        return $this->nhanVien?->SoDienThoai
+            ?? $this->khachHang?->SoDienThoai
+            ?? ($this->attributes['SoDienThoai'] ?? null);
     }
 
     public function getAvatarUrlAttribute(): string
@@ -196,7 +198,7 @@ class User extends Authenticatable
     {
         $slug = $this->roleSlug();
 
-        return $slug === 'owner' ? 'admin' : ($slug ?? 'customer');
+        return $slug === 'owner' ? 'admin' : ($slug ?? '');
     }
 
     /* ---------------------------------------------------------------------
@@ -215,8 +217,8 @@ class User extends Authenticatable
     public function roleSlug(): ?string
     {
         $slugs = collect($this->roleNames())
-            ->map(fn (string $tenVaiTro) => self::ROLE_SLUGS[mb_strtolower(trim($tenVaiTro))] ?? null)
-            ->filter()
+            ->map(fn (string $tenVaiTro) => self::ROLE_SLUGS[mb_strtolower(trim($tenVaiTro))]
+                ?? VaiTro::slugForName($tenVaiTro))
             ->values();
 
         foreach (['owner', 'manager', 'staff', 'customer'] as $priority) {
@@ -314,13 +316,24 @@ class User extends Authenticatable
         $codes = QuyenMapper::coveredCodes($this->maQuyens());
 
         if ($this->isOwner()) {
-            return $codes;
+            return array_values(array_unique([
+                ...$codes,
+                ...array_map(
+                    static fn (string $permission): string => strtolower(str_replace('_', '.', $permission)),
+                    $this->maQuyens(),
+                ),
+            ]));
         }
 
-        return array_values(array_filter(
-            $codes,
+        $dynamicCodes = array_map(
+            static fn (string $permission): string => strtolower(str_replace('_', '.', $permission)),
+            $this->maQuyens(),
+        );
+
+        return array_values(array_unique(array_filter(
+            [...$codes, ...$dynamicCodes],
             fn (string $code) => ! QuyenMapper::isOwnerOnly($code),
-        ));
+        )));
     }
 
     /**
@@ -343,7 +356,15 @@ class User extends Authenticatable
             return false;
         }
 
-        return QuyenMapper::covers($code, $this->maQuyens());
+        $grantedPermissions = $this->maQuyens();
+
+        if (QuyenMapper::covers($code, $grantedPermissions)) {
+            return true;
+        }
+
+        $directPermissionCode = strtoupper(str_replace('.', '_', $code));
+
+        return in_array($directPermissionCode, $grantedPermissions, true);
     }
 
     /* ---------------------------------------------------------------------

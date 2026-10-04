@@ -5,6 +5,7 @@ namespace App\Providers;
 use App\Models\Booking;
 use App\Models\DonHang;
 use App\Models\HoaDon;
+use App\Models\Quyen;
 use App\Models\User;
 use App\Observers\BookingObserver;
 use App\Observers\HoaDonObserver;
@@ -83,7 +84,19 @@ class AppServiceProvider extends ServiceProvider
                 return null;
             }
 
-            return $user->isOwner() ? true : null;
+            if ($user->isOwner()) {
+                return true;
+            }
+
+            if (
+                preg_match('/^[a-z][a-z0-9_]*(?:\.[a-z][a-z0-9_]*)+$/', $ability) === 1
+                && ! PermissionRegistry::isValidCode($ability)
+                && Quyen::query()->where('MaQuyen', strtoupper(str_replace('.', '_', $ability)))->exists()
+            ) {
+                return $user->canPermission($ability);
+            }
+
+            return null;
         });
 
         foreach (PermissionRegistry::codes() as $code) {

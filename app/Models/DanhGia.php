@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\ReviewStatus;
 use Illuminate\Database\Eloquent\Model;
 
 class DanhGia extends Model
@@ -26,6 +27,11 @@ class DanhGia extends Model
         'SoSao' => 'integer',
         'NgayDanhGia' => 'datetime',
     ];
+
+    public function getStatusAttribute(): string
+    {
+        return ReviewStatus::parse($this->attributes['TrangThai'] ?? null)->value;
+    }
 
     public function donHang()
     {

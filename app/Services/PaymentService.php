@@ -101,6 +101,21 @@ class PaymentService
             throw SettledOrderException::forOrder($targetOrderId);
         }
 
+        if (trim((string) ($data['transaction_code'] ?? '')) === '') {
+            $order = $targetOrderId ? DonHang::find($targetOrderId) : null;
+            $method = $data['method'] ?? $data['PhuongThuc'] ?? '';
+            $prefix = in_array($method, ['cash', 'Tiền mặt'], true) ? 'TM' : 'CK';
+            $baseCode = $prefix.'_'.($order?->MaDonHang ?: 'TT').'_'.now()->format('YmdHis');
+            $transactionCode = $baseCode;
+            $suffix = 1;
+
+            while (ThanhToan::query()->where('MaGiaoDich', $transactionCode)->exists()) {
+                $transactionCode = $baseCode.'_'.str_pad((string) $suffix++, 2, '0', STR_PAD_LEFT);
+            }
+
+            $data['transaction_code'] = $transactionCode;
+        }
+
         return DB::transaction(function () use ($data, $targetOrderId) {
             $data['order_id'] = $targetOrderId;
 

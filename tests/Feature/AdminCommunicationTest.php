@@ -235,11 +235,7 @@ class AdminCommunicationTest extends TestCase
 
             $response = $this->actingAs($user)->get(route('admin.system-logs.index'));
 
-            if ($index === 0) {
-                $response->assertForbidden();
-            } else {
-                $response->assertRedirect(route('staff.dashboard'));
-            }
+            $response->assertForbidden();
 
             $this->actingAs($user)
                 ->get(route('admin.messages.index'))
@@ -248,12 +244,13 @@ class AdminCommunicationTest extends TestCase
         }
     }
 
-    public function test_system_log_route_requires_the_owner_role_in_addition_to_manager_area_access(): void
+    public function test_system_log_route_is_protected_by_dynamic_permission_middleware(): void
     {
         $route = app('router')->getRoutes()->getByName('admin.system-logs.index');
 
-        $this->assertContains('role:manager|admin', $route->getAction('middleware'));
-        $this->assertContains('role:admin', $route->getAction('middleware'));
+        $this->assertContains('permission:system_logs.view', $route->getAction('middleware'));
+        $this->assertNotContains('role:manager|admin', $route->getAction('middleware'));
+        $this->assertNotContains('role:admin', $route->getAction('middleware'));
     }
 
     private function createAccount(string $username, ?int $customerId = null): User
@@ -276,6 +273,16 @@ class AdminCommunicationTest extends TestCase
         DB::table('TaiKhoan_VaiTro')->insert([
             'TaiKhoanID' => $user->TaiKhoanID,
             'VaiTroID' => $roleId,
+        ]);
+
+        $messagePermissionId = DB::table('Quyen')->insertGetId([
+            'MaQuyen' => 'MESSAGES_VIEW',
+            'TrangThai' => 'Hoạt động',
+        ], 'QuyenID');
+
+        DB::table('VaiTro_Quyen')->insert([
+            'VaiTroID' => $roleId,
+            'QuyenID' => $messagePermissionId,
         ]);
     }
 }

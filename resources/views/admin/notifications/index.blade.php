@@ -86,7 +86,7 @@
             @if ($notifications->onLastPage())
                 <li class="page-item disabled"><span class="page-link"><i class="bi bi-chevron-right"></i></span></li>
             @else
-                <li class="page-item"><a class="page-link" href="{{ $notifications->appends(request()->query())->url($notifications->currentPage() + 1) }}">{{ $page }}</a></li>
+                <li class="page-item"><a class="page-link" href="{{ $notifications->appends(request()->query())->url($notifications->currentPage() + 1) }}"><i class="bi bi-chevron-right"></i></a></li>
             @endif
         </ul>
     </div>

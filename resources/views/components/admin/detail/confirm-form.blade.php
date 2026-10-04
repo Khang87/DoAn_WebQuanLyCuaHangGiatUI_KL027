@@ -8,6 +8,7 @@
     'variant' => 'btn-outline-danger',
     'size' => 'btn-sm',
     'block' => false,
+    'iconOnly' => false,
     'color' => '#dc2626',
     'iconName' => 'warning',
 ])
@@ -31,8 +32,8 @@
         @method(strtoupper($method))
     @endif
     {{ $hidden ?? '' }}
-    <button type="submit" class="btn {{ $variant }} {{ $size }} {{ $block ? 'w-100' : '' }}">
-        <i class="{{ $icon }} me-1"></i>{{ $slot->isEmpty() ? $label : $slot }}
+    <button type="submit" class="btn {{ $variant }} {{ $size }} {{ $block ? 'w-100' : '' }}" @if($iconOnly) title="{{ $label }}" aria-label="{{ $label }}" @endif>
+        <i class="{{ $icon }} {{ $iconOnly ? '' : 'me-1' }}"></i>@unless($iconOnly){{ $slot->isEmpty() ? $label : $slot }}@endunless
     </button>
 </form>
 

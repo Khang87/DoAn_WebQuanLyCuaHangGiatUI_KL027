@@ -61,6 +61,7 @@ class LuuBangGiaRequest extends FormRequest
             'NgayApDung' => [
                 'required',
                 'date',
+                'after_or_equal:today',
                 function (string $attribute, mixed $value, \Closure $fail): void {
                     $endDate = $this->input('NgayKetThuc');
 
@@ -99,6 +100,14 @@ class LuuBangGiaRequest extends FormRequest
                 'required',
                 Rule::in(['Hoạt động', 'Hết hiệu lực', 'Tạm ngưng']),
             ],
+        ];
+    }
+
+    public function messages(): array
+    {
+        return [
+            'NgayApDung.after_or_equal' => 'Ngày áp dụng không được trước ngày hiện tại.',
+            'NgayKetThuc.after_or_equal' => 'Ngày kết thúc phải bằng hoặc sau ngày áp dụng.',
         ];
     }
 }

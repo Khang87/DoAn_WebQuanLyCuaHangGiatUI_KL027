@@ -1,0 +1,263 @@
+<?php
+
+namespace Tests\Feature;
+
+use App\Enums\OrderStatus;
+use App\Enums\PaymentStatus;
+use App\Http\Requests\Admin\LuuThanhToanRequest;
+use App\Services\PaymentService;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
+use Tests\TestCase;
+
+class PaymentOrderRedirectTest extends TestCase
+{
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        if (
+            config('database.default') !== 'sqlite'
+            || config('database.connections.sqlite.database') !== ':memory:'
+        ) {
+            $this->markTestSkipped('Payment order redirect tests require isolated SQLite in-memory storage.');
+        }
+
+        Schema::create('KhachHang', function (Blueprint $table): void {
+            $table->increments('KhachHangID');
+            $table->string('HoTen');
+        });
+
+        Schema::create('DonHang', function (Blueprint $table): void {
+            $table->increments('DonHangID');
+            $table->string('MaDonHang');
+            $table->unsignedInteger('KhachHangID')->nullable();
+            $table->string('TrangThai');
+            $table->dateTime('NgayTao')->nullable();
+            $table->decimal('ThanhTien', 12, 2)->default(0);
+        });
+
+        Schema::create('ChiTietDonHang', function (Blueprint $table): void {
+            $table->increments('ChiTietDonHangID');
+            $table->unsignedInteger('DonHangID');
+            $table->unsignedInteger('DichVuID')->nullable();
+        });
+
+        Schema::create('HoaDon', function (Blueprint $table): void {
+            $table->increments('HoaDonID');
+            $table->unsignedInteger('DonHangID')->nullable();
+            $table->string('MaHoaDon')->nullable();
+            $table->string('TrangThai')->nullable();
+            $table->dateTime('NgayLap')->nullable();
+            $table->decimal('ThanhTien', 12, 2)->nullable();
+        });
+
+        Schema::create('ThanhToan', function (Blueprint $table): void {
+            $table->increments('ThanhToanID');
+            $table->unsignedInteger('DonHangID')->nullable();
+            $table->decimal('SoTien', 12, 2)->default(0);
+            $table->string('PhuongThuc')->nullable();
+            $table->string('MaGiaoDich')->nullable();
+            $table->dateTime('ThoiGian')->nullable();
+            $table->string('TrangThai')->nullable();
+            $table->string('GhiChu')->nullable();
+        });
+    }
+
+    protected function tearDown(): void
+    {
+        foreach (['ThanhToan', 'HoaDon', 'ChiTietDonHang', 'DonHang', 'KhachHang'] as $tableName) {
+            Schema::dropIfExists($tableName);
+        }
+
+        parent::tearDown();
+    }
+
+    public function test_payment_form_receives_the_selected_order_and_remaining_amount(): void
+    {
+        DB::table('KhachHang')->insert([
+            'KhachHangID' => 3,
+            'HoTen' => 'Khách thử nghiệm',
+        ]);
+        DB::table('DonHang')->insert([
+            'DonHangID' => 37,
+            'MaDonHang' => 'DH0037',
+            'KhachHangID' => 3,
+            'TrangThai' => OrderStatus::Delivered->value,
+            'ThanhTien' => 50000,
+        ]);
+        DB::table('ThanhToan')->insert([
+            'DonHangID' => 37,
+            'TrangThai' => PaymentStatus::Paid->value,
+            'SoTien' => 10000,
+        ]);
+        DB::table('HoaDon')->insert([
+            'HoaDonID' => 19,
+            'DonHangID' => 37,
+            'MaHoaDon' => 'HD0037',
+            'TrangThai' => 'Chưa thanh toán',
+            'ThanhTien' => 50000,
+        ]);
+
+        $response = $this->withoutMiddleware()->get(route('payments.create', ['order_id' => 37]));
+
+        $response->assertOk()
+            ->assertSee('DH0037')
+            ->assertSee('Khách thử nghiệm')
+            ->assertSee('Số tiền còn phải thu: 40,000 đ')
+            ->assertSee('name="amount" value="40000"', false)
+            ->assertSee('name="order_id" disabled', false)
+            ->assertSee('name="order_id" value="37"', false)
+            ->assertSee('name="invoice_id" disabled', false)
+            ->assertSee('name="invoice_id" value="19"', false)
+            ->assertSee('value="40000" min="0" step="1000" disabled', false)
+            ->assertSee('name="amount" value="40000"', false)
+            ->assertSee('name="method" required', false)
+            ->assertSee('name="status" value="Thành công"', false)
+            ->assertSee('id="transaction_code"', false)
+            ->assertSee('maxlength="100" readonly', false)
+            ->assertSee('label class="form-label">Trạng thái</label>', false)
+            ->assertDontSee('Trạng thái <span class="text-danger', false)
+            ->assertSee('type="datetime-local" class="form-control" value="', false)
+            ->assertSee('type="datetime-local" class="form-control" value="'.now()->format('Y-m-d\TH:i').'" disabled', false)
+            ->assertDontSee('Số tiền thanh toán <span class="text-danger', false);
+    }
+
+    public function test_invoice_field_is_hidden_when_the_selected_order_has_no_invoice(): void
+    {
+        DB::table('DonHang')->insert([
+            'DonHangID' => 38,
+            'MaDonHang' => 'DH0038',
+            'TrangThai' => OrderStatus::Delivered->value,
+            'ThanhTien' => 25000,
+        ]);
+
+        $response = $this->withoutMiddleware()->get(route('payments.create', ['order_id' => 38]));
+
+        $response->assertOk()
+            ->assertSee('DH0038')
+            ->assertDontSee('<select class="form-select" name="invoice_id"', false)
+            ->assertDontSee('Đơn hàng chưa có hóa đơn');
+    }
+
+    public function test_invalid_order_id_redirects_to_orders_with_an_error_message(): void
+    {
+        $response = $this->withoutMiddleware()->get(route('payments.create', ['order_id' => 999]));
+
+        $response->assertRedirect(route('orders.index'))
+            ->assertSessionHas('error', 'Không tìm thấy đơn hàng cần thanh toán.');
+    }
+
+    public function test_paid_or_cancelled_orders_cannot_be_opened_for_payment(): void
+    {
+        DB::table('DonHang')->insert([
+            [
+                'DonHangID' => 1,
+                'MaDonHang' => 'DH0001',
+                'TrangThai' => OrderStatus::Paid->value,
+                'ThanhTien' => 10000,
+            ],
+            [
+                'DonHangID' => 2,
+                'MaDonHang' => 'DH0002',
+                'TrangThai' => OrderStatus::Cancelled->value,
+                'ThanhTien' => 10000,
+            ],
+        ]);
+
+        $paidResponse = $this->withoutMiddleware()->get(route('payments.create', ['order_id' => 1]));
+        $paidResponse->assertRedirect(route('orders.show', 1))
+            ->assertSessionHas('error', 'Đơn hàng này đã được thanh toán.');
+
+        $cancelledResponse = $this->withoutMiddleware()->get(route('payments.create', ['order_id' => 2]));
+        $cancelledResponse->assertRedirect(route('orders.index'))
+            ->assertSessionHas('error', 'Không thể thanh toán đơn hàng đã hủy.');
+    }
+
+    public function test_payment_creation_route_requires_the_payment_permission(): void
+    {
+        $middleware = $this->app['router']->getRoutes()
+            ->getByName('payments.create')
+            ->gatherMiddleware();
+
+        $this->assertContains('permission:payments.create', $middleware);
+    }
+
+    public function test_payment_amount_cannot_exceed_the_remaining_order_balance(): void
+    {
+        DB::table('DonHang')->insert([
+            'DonHangID' => 50,
+            'MaDonHang' => 'DH0050',
+            'TrangThai' => OrderStatus::Delivered->value,
+            'ThanhTien' => 50000,
+        ]);
+        DB::table('ThanhToan')->insert([
+            'DonHangID' => 50,
+            'TrangThai' => PaymentStatus::Paid->value,
+            'SoTien' => 20000,
+        ]);
+
+        $request = new LuuThanhToanRequest;
+        $request->replace([
+            'order_id' => 50,
+            'amount' => 30001,
+        ]);
+        $validator = validator($request->all(), $request->rules());
+        $request->withValidator($validator);
+
+        $this->assertTrue($validator->fails());
+        $this->assertSame(
+            'Số tiền thanh toán không được vượt quá số tiền còn phải thu (30,000 đ).',
+            $validator->errors()->first('amount'),
+        );
+    }
+
+    public function test_transaction_code_must_be_unique_when_provided(): void
+    {
+        DB::table('ThanhToan')->insert([
+            'MaGiaoDich' => 'TM_DH0050_20261004090000',
+            'TrangThai' => PaymentStatus::Paid->value,
+            'SoTien' => 100,
+        ]);
+
+        $request = new LuuThanhToanRequest;
+        $request->replace([
+            'transaction_code' => 'TM_DH0050_20261004090000',
+        ]);
+        $validator = validator(
+            $request->all(),
+            ['transaction_code' => $request->rules()['transaction_code']],
+            $request->messages(),
+        );
+
+        $this->assertTrue($validator->fails());
+        $this->assertSame(
+            'Mã giao dịch đã được sử dụng.',
+            $validator->errors()->first('transaction_code'),
+        );
+    }
+
+    public function test_server_generates_a_unique_cash_transaction_code_when_code_is_blank(): void
+    {
+        DB::table('DonHang')->insert([
+            'DonHangID' => 51,
+            'MaDonHang' => 'DH0051',
+            'TrangThai' => OrderStatus::Delivered->value,
+            'ThanhTien' => 50000,
+        ]);
+
+        $payment = app(PaymentService::class)->create([
+            'order_id' => 51,
+            'amount' => 10000,
+            'method' => 'cash',
+            'status' => PaymentStatus::Pending->value,
+        ]);
+
+        $this->assertMatchesRegularExpression(
+            '/^TM_DH0051_\d{14}(?:_\d+)?$/',
+            $payment->MaGiaoDich,
+        );
+        $this->assertSame(1, DB::table('ThanhToan')->where('MaGiaoDich', $payment->MaGiaoDich)->count());
+    }
+}

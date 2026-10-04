@@ -68,6 +68,16 @@ enum OrderStatus: string
         return $this === self::Paid;
     }
 
+    public function isCompletedMilestone(): bool
+    {
+        return in_array($this, [
+            self::Received,
+            self::Washed,
+            self::Delivered,
+            self::Paid,
+        ], true);
+    }
+
     /**
      * @return array<int, string>
      */

@@ -66,6 +66,7 @@
         >
             <x-admin.detail.info-grid :columns="2">
                 <x-admin.detail.info-item label="Tên danh mục" :value="$category->TenLoaiDichVu" />
+                <x-admin.detail.info-item label="Danh mục ID" :value="$category->LoaiDichVuID" />
                 <x-admin.detail.info-item label="Mã danh mục" :value="'DV' . str_pad($category->LoaiDichVuID, 4, '0', STR_PAD_LEFT)" />
                 <x-admin.detail.info-item label="Số dịch vụ" :value="$category->dichVus()->count()" />
                 <x-admin.detail.info-item label="Trạng thái">
@@ -104,7 +105,7 @@
                     <x-admin.detail.confirm-form
                         :action="route('service-categories.destroy', $category->LoaiDichVuID)"
                         title="Xóa danh mục dịch vụ?"
-                        text="Danh mục sẽ được chuyển sang trạng thái tạm ngưng."
+                        text="Danh mục chưa được dịch vụ sử dụng sẽ bị xóa; nếu đang được sử dụng, danh mục sẽ chuyển sang trạng thái tạm ngưng."
                         label="Xóa danh mục dịch vụ"
                         icon="bi-trash"
                         variant="btn-outline-danger"

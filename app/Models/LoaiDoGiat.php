@@ -45,9 +45,9 @@ class LoaiDoGiat extends Model
         return $this->hasMany(BangGia::class, 'LoaiDoGiatID', 'LoaiDoGiatID');
     }
 
-    public function bookings(): HasMany
+    public function chiTietBookings(): HasMany
     {
-        return $this->hasMany(Booking::class, 'LoaiDoGiatID', 'LoaiDoGiatID');
+        return $this->hasMany(ChiTietBooking::class, 'LoaiDoGiatID', 'LoaiDoGiatID');
     }
 
     public function getIdAttribute(): ?int

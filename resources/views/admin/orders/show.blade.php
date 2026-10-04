@@ -15,6 +15,7 @@
     $statusKeys = array_keys($statusFlow);
     $currentStatusIndex = array_search($order->status, $statusKeys, true);
     $isCancelled = $order->status === \App\Enums\OrderStatus::Cancelled->value;
+    $currentStatusIsCompleted = \App\Enums\OrderStatus::parse($order->status)->isCompletedMilestone();
 @endphp
 
 @push('styles')
@@ -180,10 +181,12 @@
                 @foreach($statusFlow as $key => $label)
                     @php
                         $isCurrentStatus = $key === $order->status;
-                        $isCompletedStatus = ! $isCancelled && $currentStatusIndex !== false && $loop->index < $currentStatusIndex;
-                        $timelineState = $isCurrentStatus
-                            ? 'current'
-                            : ($isCompletedStatus ? 'done' : 'muted');
+                        $isCompletedStatus = ! $isCancelled
+                            && $currentStatusIndex !== false
+                            && ($loop->index < $currentStatusIndex || ($isCurrentStatus && $currentStatusIsCompleted));
+                        $timelineState = $isCompletedStatus
+                            ? 'done'
+                            : ($isCurrentStatus ? 'current' : 'muted');
                     @endphp
                     <div class="detail-timeline__item detail-timeline__item--{{ $timelineState }}">
                         <span class="detail-timeline__dot">
@@ -191,7 +194,9 @@
                         </span>
                         <span>{{ $label }}</span>
                         @if($isCurrentStatus)
-                            <span class="badge bg-primary-subtle text-primary-emphasis border border-primary px-2 py-1 rounded-pill ms-auto">Hiện tại</span>
+                            <span class="badge {{ $isCompletedStatus ? 'bg-success-subtle text-success-emphasis border border-success' : 'bg-primary-subtle text-primary-emphasis border border-primary' }} px-2 py-1 rounded-pill ms-auto">
+                                {{ $isCompletedStatus ? 'Đã hoàn tất' : 'Hiện tại' }}
+                            </span>
                         @endif
                     </div>
                 @endforeach
@@ -284,6 +289,16 @@
                 <h5 class="card-title mb-0 fw-bold">Thao tác</h5>
             </div>
             <div class="card-body d-flex flex-column gap-2">
+                @if(! $isPaid && $order->TrangThai !== \App\Enums\OrderStatus::Cancelled->value)
+                    @can('payments.create')
+                        <a href="{{ route('payments.create', ['order_id' => $order->getKey()]) }}"
+                           class="btn btn-success w-100 py-2"
+                           data-payment-link>
+                            <i class="bi bi-credit-card me-1" aria-hidden="true"></i> Thanh toán
+                        </a>
+                    @endcan
+                @endif
+
                 @if($canEdit)
                     @can('orders.edit')
                         <a href="{{ route('orders.edit', $order->getKey()) }}" class="btn btn-primary w-100 py-2">
@@ -334,3 +349,21 @@
 </div>
 </div>
 @endsection
+
+@push('scripts')
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        document.querySelectorAll('[data-payment-link]').forEach(function(link) {
+            link.addEventListener('click', function() {
+                if (link.dataset.loading === 'true') {
+                    return;
+                }
+
+                link.dataset.loading = 'true';
+                link.setAttribute('aria-disabled', 'true');
+                link.innerHTML = '<span class="spinner-border spinner-border-sm me-1" aria-hidden="true"></span>Đang chuyển...';
+            });
+        });
+    });
+</script>
+@endpush

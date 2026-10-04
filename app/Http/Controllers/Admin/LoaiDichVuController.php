@@ -94,9 +94,12 @@ class LoaiDichVuController extends Controller
         }
 
         try {
-            $this->categoryService->delete($category);
+            $deleted = $this->categoryService->delete($category);
+            $message = $deleted
+                ? 'Danh mục đã được xóa.'
+                : 'Danh mục đang được dịch vụ sử dụng nên đã chuyển sang trạng thái tạm ngưng.';
 
-            return redirect()->route('service-categories.index')->with('success', 'Danh mục đã được tạm ngưng.');
+            return redirect()->route('service-categories.index')->with('success', $message);
         } catch (\Exception $e) {
             return redirect()->route('service-categories.index')->with('error', FriendlyError::message($e));
         }

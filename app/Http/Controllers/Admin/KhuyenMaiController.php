@@ -11,11 +11,6 @@ use Illuminate\Http\Request;
 
 class KhuyenMaiController extends Controller
 {
-    /**
-     * Mã điều kiện "chỉ đơn hàng đầu tiên" (Promotion::CONDITION_FIRST_ORDER_ONLY cũ).
-     */
-    private const CONDITION_FIRST_ORDER_ONLY = 'first_order_only';
-
     public function __construct(
         private PromotionService $promotionService,
     ) {}
@@ -41,7 +36,7 @@ class KhuyenMaiController extends Controller
     public function store(LuuKhuyenMaiRequest $request)
     {
         try {
-            $this->promotionService->create($this->payload($request));
+            $this->promotionService->create($request->validated());
 
             return redirect()->route('promotions.index')->with('success', 'Chương trình khuyến mãi đã được tạo thành công.');
         } catch (\Exception $e) {
@@ -90,30 +85,12 @@ class KhuyenMaiController extends Controller
         }
 
         try {
-            $this->promotionService->update($promotion, $this->payload($request));
+            $this->promotionService->update($promotion, $request->validated());
 
             return redirect()->route('promotions.index')->with('success', 'Chương trình khuyến mãi đã được cập nhật.');
         } catch (\Exception $e) {
             return redirect()->route('promotions.edit', $id)->with('error', FriendlyError::message($e))->withInput();
         }
-    }
-
-    /**
-     * Dữ liệu gửi lên sau khi đã validate.
-     *
-     * Checkbox không được tích không gửi field nào, nên phải tự chuẩn hoá
-     * `conditions` để người dùng bỏ được điều kiện "chỉ đơn đầu tiên"
-     * thay vì điều kiện cũ bị giữ lại mãi.
-     */
-    private function payload(LuuKhuyenMaiRequest $request): array
-    {
-        $data = $request->validated();
-
-        $data['DieuKienApDung'] = $request->boolean(self::CONDITION_FIRST_ORDER_ONLY)
-            ? self::CONDITION_FIRST_ORDER_ONLY
-            : null;
-
-        return $data;
     }
 
     public function destroy(int $id)

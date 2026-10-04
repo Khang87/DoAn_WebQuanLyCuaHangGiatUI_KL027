@@ -33,7 +33,7 @@ class LoaiDoGiatTest extends TestCase
             $table->string('TrangThai', 30)->default('Hoạt động');
         });
 
-        foreach (['BangGia', 'ChiTietDonHang', 'Booking'] as $tableName) {
+        foreach (['BangGia', 'ChiTietDonHang', 'ChiTietBooking'] as $tableName) {
             Schema::create($tableName, function (Blueprint $table): void {
                 $table->increments('ReferenceID');
                 $table->unsignedInteger('LoaiDoGiatID')->nullable();
@@ -46,7 +46,7 @@ class LoaiDoGiatTest extends TestCase
     protected function tearDown(): void
     {
         if ($this->testSchemaCreated) {
-            Schema::dropIfExists('Booking');
+            Schema::dropIfExists('ChiTietBooking');
             Schema::dropIfExists('ChiTietDonHang');
             Schema::dropIfExists('BangGia');
             Schema::dropIfExists('LoaiDoGiat');
@@ -66,7 +66,7 @@ class LoaiDoGiatTest extends TestCase
         $this->assertSame(['TenLoaiDoGiat', 'MoTa', 'TrangThai'], $category->getFillable());
         $this->assertSame('LoaiDoGiatID', $category->chiTietDonHangs()->getForeignKeyName());
         $this->assertSame('LoaiDoGiatID', $category->bangGias()->getForeignKeyName());
-        $this->assertSame('LoaiDoGiatID', $category->bookings()->getForeignKeyName());
+        $this->assertSame('LoaiDoGiatID', $category->chiTietBookings()->getForeignKeyName());
     }
 
     public function test_category_can_be_created_listed_updated_and_deleted(): void
@@ -93,24 +93,64 @@ class LoaiDoGiatTest extends TestCase
 
         $this->assertSame('Áo sơ mi cao cấp', $category->fresh()->TenLoaiDoGiat);
         $this->assertSame('Tạm ngưng', $category->fresh()->TrangThai);
-        $this->assertTrue(app(LoaiDoGiatService::class)->delete($category->fresh()));
+        $this->assertNull(app(LoaiDoGiatService::class)->delete($category->fresh()));
         $this->assertDatabaseMissing('LoaiDoGiat', ['LoaiDoGiatID' => $category->LoaiDoGiatID]);
     }
 
-    public function test_categories_referenced_by_prices_orders_or_bookings_are_disabled_not_deleted(): void
+    public function test_categories_referenced_by_prices_orders_or_booking_details_are_disabled_not_deleted(): void
     {
-        foreach (['BangGia', 'ChiTietDonHang', 'Booking'] as $tableName) {
+        foreach (['BangGia', 'ChiTietDonHang', 'ChiTietBooking'] as $tableName) {
             $category = app(LoaiDoGiatService::class)->create([
                 'TenLoaiDoGiat' => 'Loại '.$tableName,
             ]);
             DB::table($tableName)->insert(['LoaiDoGiatID' => $category->LoaiDoGiatID]);
 
-            $this->assertFalse(app(LoaiDoGiatService::class)->delete($category));
+            $error = app(LoaiDoGiatService::class)->delete($category);
+
+            $this->assertStringContainsString('Không thể xóa loại đồ giặt vì còn dữ liệu liên quan:', $error);
             $this->assertDatabaseHas('LoaiDoGiat', [
                 'LoaiDoGiatID' => $category->LoaiDoGiatID,
                 'TrangThai' => 'Tạm ngưng',
             ]);
         }
+    }
+
+    public function test_deleting_unreferenced_category_shows_success_flash(): void
+    {
+        $category = app(LoaiDoGiatService::class)->create([
+            'TenLoaiDoGiat' => 'Áo không liên quan',
+        ]);
+        $employee = $this->userWithPermissions('staff', ['garment_categories.delete']);
+
+        $this->actingAs($employee)
+            ->delete(route('loaidogiat.destroy', $category->LoaiDoGiatID))
+            ->assertRedirect(route('loaidogiat.index'))
+            ->assertSessionHas('success', 'Loại đồ giặt đã được xóa.')
+            ->assertSessionMissing('error');
+
+        $this->assertDatabaseMissing('LoaiDoGiat', ['LoaiDoGiatID' => $category->LoaiDoGiatID]);
+    }
+
+    public function test_deleting_referenced_category_shows_error_flash_with_related_record_types(): void
+    {
+        $category = app(LoaiDoGiatService::class)->create([
+            'TenLoaiDoGiat' => 'Áo đang dùng',
+        ]);
+        DB::table('ChiTietBooking')->insert([
+            'LoaiDoGiatID' => $category->LoaiDoGiatID,
+        ]);
+        $employee = $this->userWithPermissions('staff', ['garment_categories.delete']);
+
+        $this->actingAs($employee)
+            ->delete(route('loaidogiat.destroy', $category->LoaiDoGiatID))
+            ->assertRedirect(route('loaidogiat.index'))
+            ->assertSessionHas('error', 'Không thể xóa loại đồ giặt vì còn dữ liệu liên quan: 1 chi tiết lịch hẹn. Loại đồ đã được tạm ngưng.')
+            ->assertSessionMissing('success');
+
+        $this->assertDatabaseHas('LoaiDoGiat', [
+            'LoaiDoGiatID' => $category->LoaiDoGiatID,
+            'TrangThai' => 'Tạm ngưng',
+        ]);
     }
 
     public function test_category_names_must_be_unique(): void
@@ -187,7 +227,7 @@ class LoaiDoGiatTest extends TestCase
 
     public function test_manager_role_is_not_granted_category_access_by_role_alone(): void
     {
-        $manager = $this->userWithPermissions('manager', ['garment_categories.create']);
+        $manager = $this->userWithPermissions('manager', []);
 
         $this->actingAs($manager)
             ->post(route('loaidogiat.store'), [
@@ -197,7 +237,7 @@ class LoaiDoGiatTest extends TestCase
             ->assertForbidden();
     }
 
-    public function test_category_resource_uses_role_and_action_specific_permissions(): void
+    public function test_category_resource_uses_action_specific_permissions_without_role_middleware(): void
     {
         $routes = app('router')->getRoutes();
         $indexRoute = $routes->getByName('loaidogiat.index');
@@ -206,10 +246,7 @@ class LoaiDoGiatTest extends TestCase
         $this->assertNull($routes->getByName('garment-categories.index'));
         $this->assertNull($routes->getByName('laundry-categories.index'));
 
-        $this->assertContains(
-            'role:admin|staff|employee',
-            $indexRoute->getAction('middleware'),
-        );
+        $this->assertNotContains('role:admin|staff|employee', $indexRoute->getAction('middleware'));
         $this->assertContains(
             'permission:garment_categories.view',
             $indexRoute->getAction('middleware'),

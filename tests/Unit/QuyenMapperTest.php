@@ -36,13 +36,19 @@ class QuyenMapperTest extends TestCase
 
     public function test_it_maps_modules_that_only_have_one_ma_quyen(): void
     {
-        // Module vận hành dùng chung mã `*_MANAGE` của mình vì bảng `Quyen` chỉ
-        // có 18 mã. Không có phép ánh xạ này thì các route/menu này bị chặn với
-        // mọi tài khoản trừ Chủ cửa hàng.
+        // Module legacy vận hành dùng chung mã `*_MANAGE` hiện có.
         $this->assertSame('SERVICE_MANAGE', QuyenMapper::resolveMaQuyen('garment_conditions.edit'));
         $this->assertSame('SERVICE_MANAGE', QuyenMapper::resolveMaQuyen('garment_categories.view'));
         $this->assertSame('DELIVERY_MANAGE', QuyenMapper::resolveMaQuyen('bookings.edit'));
         $this->assertSame('PROMOTION_MANAGE', QuyenMapper::resolveMaQuyen('coupons.view'));
+    }
+
+    public function test_catalog_permissions_have_distinct_codes_for_dynamic_grants(): void
+    {
+        $this->assertSame('MESSAGES_VIEW', QuyenMapper::resolveMaQuyen('messages.view'));
+        $this->assertSame('MESSAGES_CREATE', QuyenMapper::resolveMaQuyen('messages.create'));
+        $this->assertSame('SYSTEM_LOGS_VIEW', QuyenMapper::resolveMaQuyen('system_logs.view'));
+        $this->assertSame('ACCOUNTING_VIEW', QuyenMapper::resolveMaQuyen('accounting.view'));
     }
 
     public function test_payments_view_and_edit_share_payment_create_but_delete_stays_unresolvable(): void
@@ -175,6 +181,6 @@ class QuyenMapperTest extends TestCase
                 && ! in_array($maQuyen, $used, true),
         ));
 
-        $this->assertSame(['DASHBOARD_VIEW'], $unused);
+        $this->assertSame([], $unused);
     }
 }

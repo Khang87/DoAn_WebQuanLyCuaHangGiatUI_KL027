@@ -24,6 +24,7 @@ class DatabaseSeeder extends Seeder
             NhanVienSeeder::class,
             CustomerSeeder::class,
             RoleAndPermissionSeeder::class,
+            RbacCatalogSeeder::class,
             ServiceSeeder::class,
             UserSeeder::class,
             PromotionSeeder::class,

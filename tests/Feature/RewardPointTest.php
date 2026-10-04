@@ -91,6 +91,7 @@ class RewardPointTest extends TestCase
         $customer = $this->createCustomer(3, 500);
 
         $order = app(OrderService::class)->create([
+            'MaDonHang' => 'MANUAL-CODE',
             'KhachHangID' => $customer->KhachHangID,
             'TrangThai' => OrderStatus::Pending->value,
             'DiemSuDung' => 500,
@@ -100,6 +101,7 @@ class RewardPointTest extends TestCase
         $this->assertSame(500, $order->DiemSuDung);
         $this->assertSame(5000.0, $order->TienGiamDoDiem);
         $this->assertSame(5000.0, $order->ThanhTien);
+        $this->assertSame('DH'.str_pad((string) $order->DonHangID, 4, '0', STR_PAD_LEFT), $order->MaDonHang);
         $this->assertSame(0, $customer->fresh()->points());
     }
 
@@ -110,12 +112,14 @@ class RewardPointTest extends TestCase
         $order = $this->createOrder($oldCustomer, 10000, 3);
 
         $updatedOrder = app(OrderService::class)->update($order, [
+            'MaDonHang' => 'DH9999',
             'KhachHangID' => $newCustomer->KhachHangID,
             'TrangThai' => OrderStatus::Pending->value,
             'DiemSuDung' => 4,
             'items' => [$this->orderItem()],
         ]);
 
+        $this->assertSame($order->MaDonHang, $updatedOrder->MaDonHang);
         $this->assertSame(5, $oldCustomer->fresh()->points());
         $this->assertSame(6, $newCustomer->fresh()->points());
         $this->assertSame($newCustomer->KhachHangID, $updatedOrder->KhachHangID);

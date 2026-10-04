@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\DiemTichLuy;
 use App\Models\KhachHang;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\DB;
 
 class CustomerService
 {
@@ -90,21 +91,36 @@ class CustomerService
         return $customer->fresh();
     }
 
-    public function delete(KhachHang $customer): bool
+    public function delete(KhachHang $customer): ?string
     {
-        if (
-            $customer->donHangs()->exists()
-            || $customer->bookings()->exists()
-            || $customer->danhGia()->exists()
-            || $customer->diemTichLuy()->exists()
-            || $customer->taiKhoan()->exists()
-        ) {
-            $customer->update(['TrangThai' => 'Ngừng hoạt động']);
+        return DB::transaction(function () use ($customer): ?string {
+            $relatedRecords = array_filter([
+                'đơn hàng' => $customer->donHangs()->count(),
+                'lịch hẹn' => $customer->bookings()->count(),
+                'đánh giá' => $customer->danhGia()->count(),
+                'tài khoản' => $customer->taiKhoan()->count(),
+            ]);
 
-            return false;
-        }
+            if ($relatedRecords !== []) {
+                $details = [];
 
-        return $customer->delete();
+                foreach ($relatedRecords as $recordType => $count) {
+                    $details[] = $count.' '.$recordType;
+                }
+
+                return 'Không thể xóa khách hàng vì còn dữ liệu liên quan: '.implode(', ', $details).'.';
+            }
+
+            DiemTichLuy::query()
+                ->where('KhachHangID', $customer->getKey())
+                ->delete();
+
+            if (! $customer->delete()) {
+                return 'Không thể xóa khách hàng. Vui lòng thử lại.';
+            }
+
+            return null;
+        });
     }
 
     public function restore(int $id): ?KhachHang

@@ -36,9 +36,9 @@ class DichVu extends Model
         return $this->hasMany(ChiTietDonHang::class, 'DichVuID');
     }
 
-    public function bookings()
+    public function chiTietBookings()
     {
-        return $this->hasMany(Booking::class, 'DichVuID');
+        return $this->hasMany(ChiTietBooking::class, 'DichVuID');
     }
 
     public function bangGias()

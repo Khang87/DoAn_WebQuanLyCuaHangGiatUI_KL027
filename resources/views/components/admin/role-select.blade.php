@@ -1,5 +1,6 @@
 @props([
     'name' => 'role',
+    'id' => null,
     'selected' => null,
     'label' => 'Vai trò',
     'required' => true,
@@ -19,7 +20,7 @@
 @endphp
 
 <label class="form-label">{{ $label }} @if($required)<span class="text-danger">*</span>@endif</label>
-<select class="form-select @error($name) is-invalid @enderror" name="{{ $name }}" @if($required) required @endif>
+<select @if($id) id="{{ $id }}" @endif class="form-select @error($name) is-invalid @enderror" name="{{ $name }}" @if($required) required @endif>
     @foreach($roles as $role)
         <option value="{{ $role->slug }}" @selected($current === $role->slug)>{{ $role->TenVaiTro }}</option>
     @endforeach

@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Enums\OrderStatus;
+use App\Enums\ReviewStatus;
 use App\Models\DanhGia;
 use App\Models\DonHang;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
@@ -19,7 +20,8 @@ class ReviewService
         }
 
         if (! empty($filters['status'])) {
-            $query->where('TrangThai', $filters['status']);
+            $status = ReviewStatus::tryFrom((string) $filters['status']);
+            $query->where('TrangThai', $status?->label() ?? $filters['status']);
         }
 
         if (! empty($filters['customer_id'])) {

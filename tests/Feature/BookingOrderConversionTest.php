@@ -90,7 +90,8 @@ class BookingOrderConversionTest extends TestCase
         $delivery = GiaoNhan::query()->where('DonHangID', $order->DonHangID)->firstOrFail();
 
         $this->assertCount(2, $items);
-        $this->assertSame('DH001', $order->MaDonHang);
+        $this->assertSame('DH'.str_pad((string) $order->DonHangID, 4, '0', STR_PAD_LEFT), $order->MaDonHang);
+        $this->assertSame(OrderStatus::Received->value, $order->TrangThai);
         $this->assertSame(45000.0, (float) $order->TongTien);
         $this->assertSame(45000.0, (float) $order->ThanhTien);
         $this->assertSame(1, $item->DichVuID);
@@ -111,7 +112,7 @@ class BookingOrderConversionTest extends TestCase
             ->where('HanhDong', 'Chuyển trạng thái đơn hàng')
             ->firstOrFail();
         $this->assertSame(['TrangThai' => null], $orderAudit->DuLieuCu);
-        $this->assertSame(['TrangThai' => OrderStatus::Pending->value], $orderAudit->DuLieuMoi);
+        $this->assertSame(['TrangThai' => OrderStatus::Received->value], $orderAudit->DuLieuMoi);
         $audit = NhatKyHeThong::query()->where('BangDuLieu', 'Booking')->firstOrFail();
         $this->assertSame(1, NhatKyHeThong::query()->where('BangDuLieu', 'Booking')->count());
         $this->assertSame('Xác nhận Booking', $audit->HanhDong);

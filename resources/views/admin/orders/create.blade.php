@@ -36,15 +36,21 @@
             @csrf
             <div class="row g-4">
                 <div class="col-md-6">
-                    <label class="form-label" for="code">Mã đơn hàng <span class="text-danger ms-1">*</span></label>
-                    <input type="text" class="form-control" id="code" name="MaDonHang" value="{{ old('MaDonHang') }}" placeholder="VD: DH001" required>
+                    <label class="form-label" for="code">Mã đơn hàng</label>
+                    <input type="text" class="form-control" id="code" value="{{ $nextOrderCode }}" readonly disabled aria-describedby="order-code-help">
+                    <div class="form-text" id="order-code-help">Mã được hệ thống tự tạo khi lưu đơn hàng.</div>
                 </div>
                 <div class="col-md-6">
-                    <label class="form-label" for="customer_id">Khách hàng <span class="text-danger ms-1">*</span></label>
-                    <select class="form-select" id="customer_id" name="KhachHangID" required>
+                    <label class="form-label" for="customer_search">Khách hàng <span class="text-danger ms-1">*</span></label>
+                    <div class="position-relative">
+                        <input type="search" class="form-control @error('KhachHangID') is-invalid @enderror" id="customer_search" placeholder="Nhập tên khách hàng..." autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="customer_suggestions" required>
+                        <div class="list-group position-absolute top-100 start-0 w-100 shadow d-none" id="customer_suggestions" role="listbox"></div>
+                    </div>
+                    @error('KhachHangID')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
+                    <select class="d-none" id="customer_id" name="KhachHangID" tabindex="-1" aria-hidden="true">
                         <option value="">Chọn khách hàng</option>
                         @foreach($customers as $customer)
-                            <option value="{{ $customer->KhachHangID }}" @selected(old('KhachHangID') == $customer->KhachHangID)>{{ $customer->HoTen }} (ID {{ $customer->KhachHangID }})</option>
+                            <option value="{{ $customer->KhachHangID }}" data-name="{{ $customer->HoTen }}" data-phone="{{ $customer->SoDienThoai }}" @selected(old('KhachHangID') == $customer->KhachHangID)>{{ $customer->HoTen }} (ID {{ $customer->KhachHangID }})</option>
                         @endforeach
                     </select>
                 </div>
@@ -64,7 +70,7 @@
                         name="TrangThai"
                         id="status"
                         :options="$statusFlow ?? \App\Enums\OrderStatus::options()"
-                        :selected="\App\Enums\OrderStatus::Pending->value"
+                        :selected="\App\Enums\OrderStatus::Received->value"
                         class="form-select"
                         required
                     />
@@ -112,7 +118,7 @@
                             <div class="row g-3 align-items-end">
                                 <div class="col-md-4">
                                     <label class="form-label" for="promotion_id">Mã giảm giá (Voucher)</label>
-                                    <select class="form-select" id="promotion_id" name="KhuyenMaiID">
+                                    <select class="form-select @error('KhuyenMaiID') is-invalid @enderror" id="promotion_id" name="KhuyenMaiID">
                                         <option value="">Không dùng voucher</option>
                                         @foreach($promotions as $promotion)
                                             <option value="{{ $promotion->KhuyenMaiID }}"
@@ -126,8 +132,10 @@
                                             </option>
                                         @endforeach
                                     </select>
-                                    <input type="text" class="form-control form-control-sm mt-2" id="promotion_code" name="promotion_code"
+                                    @error('KhuyenMaiID')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                                    <input type="text" class="form-control form-control-sm mt-2 @error('promotion_code') is-invalid @enderror" id="promotion_code" name="promotion_code"
                                            value="{{ old('promotion_code') }}" placeholder="Hoặc nhập mã voucher...">
+                                    @error('promotion_code')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
                                     <div class="form-text" id="promotionCodeHint"></div>
                                 </div>
                                 <div class="col-md-4">
@@ -180,6 +188,7 @@
 @endsection
 
 @push('scripts')
+<script src="{{ asset('assets/js/customer-autocomplete.js') }}"></script>
 <script>
 (function () {
     const POINT_VALUE = {{ App\Services\OrderService::POINT_VALUE }};

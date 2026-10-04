@@ -11,36 +11,36 @@ class UserPolicy
 
     public function viewAny(User $user): bool
     {
-        return $user->isManager();
+        return $user->canPermission('accounts.view');
     }
 
     public function view(User $user, User $target): bool
     {
-        return $user->isManager() || $user->id === $target->id;
+        return $user->canPermission('accounts.view') || $user->getKey() === $target->getKey();
     }
 
     public function create(User $user): bool
     {
-        return $user->isManager();
+        return $user->canPermission('accounts.create');
     }
 
     public function update(User $user, User $target): bool
     {
-        return $user->isManager() || $user->id === $target->id;
+        return $user->canPermission('accounts.edit') || $user->getKey() === $target->getKey();
     }
 
     public function delete(User $user, User $target): bool
     {
-        return $user->isManager();
+        return $user->canPermission('accounts.delete');
     }
 
     public function restore(User $user, User $target): bool
     {
-        return $user->isManager();
+        return $user->canPermission('accounts.edit');
     }
 
     public function forceDelete(User $user, User $target): bool
     {
-        return $user->isManager();
+        return $user->canPermission('accounts.delete');
     }
 }

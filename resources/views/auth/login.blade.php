@@ -103,7 +103,7 @@
                             <input class="form-check-input" type="checkbox" name="remember" id="remember">
                             <label class="form-check-label" for="remember">Ghi nhớ đăng nhập</label>
                         </div>
-                        <a href="#" class="text-primary small">Quên mật khẩu?</a>
+                        <a href="{{ route('password.request') }}" class="text-primary small">Quên mật khẩu?</a>
                     </div>
                 </div>
 
@@ -121,6 +121,23 @@
 
     <!-- Bootstrap JS -->
     <script src="{{ asset('assets/libs/bootstrap/js/bootstrap.bundle.min.js') }}"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.all.min.js"></script>
+
+    @if(session('success') || session('error') || $errors->any())
+        <script>
+            document.addEventListener('DOMContentLoaded', function () {
+                @if(session('success'))
+                    Swal.fire({ icon: 'success', title: 'Thành công!', text: @json(session('success')) });
+                @elseif(session('error') || $errors->any())
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Đăng nhập thất bại',
+                        text: @json(session('error') ?? $errors->first())
+                    });
+                @endif
+            });
+        </script>
+    @endif
 
     <!-- Toggle Password Visibility -->
     <script>

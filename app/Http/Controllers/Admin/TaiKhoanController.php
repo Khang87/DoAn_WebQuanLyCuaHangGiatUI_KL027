@@ -13,6 +13,7 @@ use App\Support\FriendlyError;
 use App\Support\PermissionCache;
 use Illuminate\Contracts\View\View;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -22,8 +23,6 @@ use Illuminate\Support\Facades\Schema;
 class TaiKhoanController extends Controller
 {
     use AuthorizesRequests;
-
-    private const OWNER_ROLE_ID = 1;
 
     public function __construct(
         private UserService $userService,
@@ -129,10 +128,20 @@ class TaiKhoanController extends Controller
 
         $employees = NhanVien::query()
             ->where('TrangThai', 'Hoạt động')
+            ->whereNotExists(function ($query): void {
+                $query->selectRaw('1')
+                    ->from('TaiKhoan')
+                    ->whereColumn('TaiKhoan.NhanVienID', 'NhanVien.NhanVienID');
+            })
             ->orderBy('HoTen')
             ->get(['NhanVienID', 'HoTen', 'SoDienThoai']);
         $customers = KhachHang::query()
             ->where('TrangThai', 'Hoạt động')
+            ->whereNotExists(function ($query): void {
+                $query->selectRaw('1')
+                    ->from('TaiKhoan')
+                    ->whereColumn('TaiKhoan.KhachHangID', 'KhachHang.KhachHangID');
+            })
             ->orderBy('HoTen')
             ->get(['KhachHangID', 'HoTen', 'SoDienThoai']);
 
@@ -146,10 +155,49 @@ class TaiKhoanController extends Controller
         try {
             $user = $this->userService->create($request->validated());
 
-            return redirect()->route('accounts.index')->with('success', 'Tài khoản đã được tạo thành công với vai trò: '.($user->isManager() ? 'Quản lý' : ($user->role === 'staff' ? 'Nhân viên' : 'Khách hàng')));
+            $roleName = $user->vaiTros->first()?->TenVaiTro ?? 'chưa gán vai trò';
+
+            return redirect()->route('accounts.index')->with('success', 'Tài khoản đã được tạo thành công với vai trò: '.$roleName);
         } catch (\Exception $e) {
             return redirect()->route('accounts.create')->with('error', FriendlyError::message($e))->withInput();
         }
+    }
+
+    public function storeQuickEmployee(Request $request): JsonResponse
+    {
+        $this->authorize('create', User::class);
+
+        $validated = $request->validate([
+            'HoTen' => ['required', 'string', 'max:100'],
+            'SoDienThoai' => [
+                'required',
+                'string',
+                'max:15',
+                'regex:/^0\d{9,10}$/',
+                'unique:NhanVien,SoDienThoai',
+            ],
+            'ChucDanh' => ['nullable', 'string', 'max:100'],
+        ], [
+            'HoTen.required' => 'Họ và tên là bắt buộc.',
+            'SoDienThoai.required' => 'Số điện thoại là bắt buộc.',
+            'SoDienThoai.regex' => 'Số điện thoại không đúng định dạng (ví dụ: 0901234567).',
+            'SoDienThoai.unique' => 'Số điện thoại đã được sử dụng cho hồ sơ nhân viên khác.',
+        ]);
+
+        $employee = NhanVien::query()->create([
+            'HoTen' => $validated['HoTen'],
+            'SoDienThoai' => $validated['SoDienThoai'],
+            'ChucDanh' => $validated['ChucDanh'] ?? null,
+            'TrangThai' => 'Hoạt động',
+        ]);
+
+        return response()->json([
+            'employee' => [
+                'NhanVienID' => $employee->getKey(),
+                'HoTen' => $employee->HoTen,
+                'SoDienThoai' => $employee->SoDienThoai,
+            ],
+        ], 201);
     }
 
     public function show(int $id)
@@ -415,8 +463,6 @@ class TaiKhoanController extends Controller
     private function hasOwnerRole(mixed $user): bool
     {
         return $user instanceof User
-            && $user->vaiTros()
-                ->where('VaiTro.VaiTroID', self::OWNER_ROLE_ID)
-                ->exists();
+            && $user->isOwner();
     }
 }

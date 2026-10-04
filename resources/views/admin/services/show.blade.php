@@ -66,7 +66,7 @@
                     <x-admin.detail.confirm-form
                         :action="route('services.destroy', $service)"
                         title="Xóa dịch vụ?"
-                        text="Hành động này không thể hoàn tác."
+                        text="Nếu dịch vụ đã được sử dụng trong bảng giá, đơn hàng hoặc lịch hẹn, dịch vụ sẽ chuyển sang trạng thái tạm ngưng."
                         label="Xóa dịch vụ"
                         icon="bi-trash"
                         variant="btn-outline-danger"

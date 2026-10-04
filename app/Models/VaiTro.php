@@ -129,7 +129,12 @@ class VaiTro extends Model
      */
     public function getSlugAttribute(): string
     {
-        $text = strtr(mb_strtolower(trim((string) $this->TenVaiTro)), self::VIETNAMESE_BASES);
+        return self::slugForName((string) $this->TenVaiTro);
+    }
+
+    public static function slugForName(string $name): string
+    {
+        $text = strtr(mb_strtolower(trim($name)), self::VIETNAMESE_BASES);
 
         // Bỏ dấu thanh và dấu phụ còn sót lại (u + tone, o + horn, ...).
         $text = preg_replace('/[̀-ͯ]/u', '', $text) ?? $text;

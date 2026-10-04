@@ -78,14 +78,14 @@
                         </a>
                     </li>
                     @endcan
-                    @if(auth()->user()?->hasRole(['owner', 'manager', 'staff']))
+                    @can('messages.view')
                     <li class="sidebar-menu-item">
                         <a href="{{ route('admin.messages.index') }}" class="sidebar-menu-link {{ request()->routeIs('admin.messages.*') ? 'active' : '' }}">
                             <i class="bi bi-chat-dots"></i>
                             <span>Tin nhắn khách hàng</span>
                         </a>
                     </li>
-                    @endif
+                    @endcan
                     @can('service_categories.view')
                     <li class="sidebar-menu-item">
                         <a href="{{ route('service-categories.index') }}" class="sidebar-menu-link {{ request()->routeIs('service-categories.*') ? 'active' : '' }}">
@@ -168,7 +168,7 @@
                 </ul>
             </div>
 
-@if(auth()->user()?->can('promotions.view') || auth()->user()?->can('reports.view') || auth()->user()?->isManager())
+@if(auth()->user()?->can('promotions.view') || auth()->user()?->can('reports.view'))
             <!-- Khuyen mai & Bao cao (Chi quan ly) -->
             <div class="sidebar-menu-section">
                 <div class="sidebar-menu-title">Khuyến mãi & Báo cáo</div>
@@ -224,7 +224,13 @@
                     <li class="sidebar-menu-item">
                         <a href="{{ route('roles.index') }}" class="sidebar-menu-link {{ request()->routeIs('roles.*') ? 'active' : '' }}">
                             <i class="bi bi-shield-lock"></i>
-                            <span>Quản lý phân quyền</span>
+                            <span>Nhóm quyền</span>
+                        </a>
+                    </li>
+                    <li class="sidebar-menu-item">
+                        <a href="{{ route('permissions.index') }}" class="sidebar-menu-link {{ request()->routeIs('permissions.*') ? 'active' : '' }}">
+                            <i class="bi bi-key"></i>
+                            <span>Danh mục quyền</span>
                         </a>
                     </li>
                     @endcan
@@ -302,7 +308,7 @@
             </div>
 
                 <!-- Quick Actions -->
-                @if(auth()->check() && (auth()->user()->isManager() || auth()->user()->isStaff()))
+                @if(auth()->check() && (auth()->user()->can('orders.create') || auth()->user()->can('customers.create') || auth()->user()->can('invoices.create') || auth()->user()->can('services.create') || auth()->user()->can('promotions.create') || auth()->user()->can('deliveries.create')))
                 <div class="dropdown">
                     <button class="navbar-action-btn dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" title="Lối tắt nhanh">
                         <i class="bi bi-lightning-charge"></i>

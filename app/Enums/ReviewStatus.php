@@ -70,7 +70,15 @@ enum ReviewStatus: string
             return $default;
         }
 
-        return self::tryFrom(mb_strtolower(trim((string) $value))) ?? $default;
+        $normalized = mb_strtolower(trim((string) $value));
+
+        foreach (self::cases() as $case) {
+            if ($normalized === mb_strtolower($case->value) || $normalized === mb_strtolower($case->label())) {
+                return $case;
+            }
+        }
+
+        return $default;
     }
 
     public static function labelFor(mixed $value, self $default = self::Visible): string

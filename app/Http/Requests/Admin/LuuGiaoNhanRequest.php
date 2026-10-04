@@ -3,7 +3,9 @@
 namespace App\Http\Requests\Admin;
 
 use App\Enums\DeliveryStatus;
+use Carbon\Carbon;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Validator;
 
 class LuuGiaoNhanRequest extends FormRequest
 {
@@ -26,6 +28,25 @@ class LuuGiaoNhanRequest extends FormRequest
         ];
     }
 
+    public function withValidator(Validator $validator): void
+    {
+        $validator->after(function (Validator $validator): void {
+            if ($validator->errors()->has('pickup_date') || $validator->errors()->has('pickup_time')) {
+                return;
+            }
+
+            $scheduledAt = Carbon::createFromFormat(
+                'Y-m-d H:i',
+                $validator->getData()['pickup_date'].' '.$validator->getData()['pickup_time'],
+                config('app.timezone'),
+            );
+
+            if ($scheduledAt->lessThanOrEqualTo(now())) {
+                $validator->errors()->add('pickup_time', 'Thời gian giao nhận phải sau thời điểm hiện tại.');
+            }
+        });
+    }
+
     public function messages(): array
     {
         return [
@@ -37,8 +58,10 @@ class LuuGiaoNhanRequest extends FormRequest
             'address.required' => 'Địa chỉ giao nhận là bắt buộc.',
             'address.max' => 'Địa chỉ không được vượt quá 255 ký tự.',
             'pickup_date.required' => 'Ngày giao nhận là bắt buộc.',
+            'pickup_date.date' => 'Ngày giao nhận không hợp lệ.',
             'pickup_time.required' => 'Giờ giao nhận là bắt buộc.',
             'pickup_time.date_format' => 'Định dạng giờ phải là HH:MM.',
+            'pickup_time.after' => 'Thời gian giao nhận phải sau thời điểm hiện tại.',
             'status.in' => 'Trạng thái không hợp lệ.',
             'notes.max' => 'Ghi chú không được vượt quá 500 ký tự.',
         ];

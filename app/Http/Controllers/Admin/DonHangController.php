@@ -102,9 +102,10 @@ class DonHangController extends Controller
         $employees = NhanVien::orderBy('HoTen')->get(['NhanVienID', 'HoTen']);
         $statusFlow = $this->orderService->getStatusFlow();
         $pricings = $this->pricingOptions();
+        $nextOrderCode = $this->orderService->nextOrderCode();
 
         return view('admin.orders.create', array_merge(
-            compact('customers', 'services', 'garments', 'promotions', 'employees', 'statusFlow', 'pricings'),
+            compact('customers', 'services', 'garments', 'promotions', 'employees', 'statusFlow', 'pricings', 'nextOrderCode'),
             $this->categoryOptions()
         ));
     }
@@ -240,7 +241,7 @@ class DonHangController extends Controller
                     ->with('error', $rejection.' Đơn hàng vẫn được lưu nhưng không áp dụng voucher.');
             }
 
-            return redirect()->route('orders.index')->with('success', 'Đơn hàng đã được cập nhật.');
+            return redirect()->route('orders.show', $order)->with('success', 'Đơn hàng đã được cập nhật.');
         } catch (\Exception $e) {
             return redirect()->route('orders.edit', $order)->with('error', FriendlyError::message($e))->withInput();
         }

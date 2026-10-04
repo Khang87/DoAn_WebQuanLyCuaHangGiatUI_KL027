@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Admin;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class LuuKhachHangRequest extends FormRequest
 {
@@ -17,7 +18,7 @@ class LuuKhachHangRequest extends FormRequest
 
         return [
             'HoTen' => ['required', 'string', 'max:255'],
-            'Email' => ['nullable', 'email', 'max:255', 'unique:KhachHang,Email,'.($id ?? '')],
+            'Email' => ['nullable', 'email', 'max:255', Rule::unique('KhachHang', 'Email')->ignore($id, 'KhachHangID')],
             'SoDienThoai' => ['nullable', 'string', 'max:30'],
             'DiaChi' => ['nullable', 'string', 'max:500'],
             'DiemHienTai' => ['nullable', 'integer', 'min:0'],

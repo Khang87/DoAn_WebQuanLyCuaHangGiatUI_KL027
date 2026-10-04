@@ -34,4 +34,15 @@ class OrderStatusSchemaTest extends TestCase
         $this->assertStringContainsString('"DuLieuMoi" jsonb', $schema);
         $this->assertStringNotContainsString('donhang_trangthai', $schema);
     }
+
+    public function test_completed_order_milestones_are_distinguished_from_in_progress_statuses(): void
+    {
+        foreach ([OrderStatus::Received, OrderStatus::Washed, OrderStatus::Delivered, OrderStatus::Paid] as $status) {
+            $this->assertTrue($status->isCompletedMilestone());
+        }
+
+        foreach ([OrderStatus::Pending, OrderStatus::Washing, OrderStatus::Delivering, OrderStatus::Cancelled] as $status) {
+            $this->assertFalse($status->isCompletedMilestone());
+        }
+    }
 }

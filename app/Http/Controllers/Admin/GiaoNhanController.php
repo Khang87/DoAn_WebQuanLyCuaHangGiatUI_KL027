@@ -106,7 +106,9 @@ class GiaoNhanController extends Controller
         }
 
         try {
-            $this->deliveryService->delete($delivery);
+            if (! $this->deliveryService->delete($delivery)) {
+                return redirect()->route('deliveries.index')->with('error', 'Không thể xóa giao nhận. Vui lòng thử lại.');
+            }
 
             return redirect()->route('deliveries.index')->with('success', 'Đã xóa giao nhận.');
         } catch (\Exception $e) {

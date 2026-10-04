@@ -5,11 +5,11 @@
 
 @section('content')
 @php
-    $roleLabel = $account->isManager() ? 'Quản lý' : ($account->role === 'staff' ? 'Nhân viên' : 'Khách hàng');
-    $roleClass = $account->isManager()
+    $roleLabel = $account->vaiTros->pluck('TenVaiTro')->join(', ') ?: 'Chưa gán vai trò';
+    $roleClass = $account->isOwner()
         ? 'bg-danger-subtle text-danger-emphasis border border-danger'
-        : ($account->role === 'staff' ? 'bg-primary-subtle text-primary-emphasis border border-primary' : 'bg-success-subtle text-success-emphasis border border-success');
-    $roleIcon = $account->isManager() ? 'fa-shield-alt' : ($account->role === 'staff' ? 'fa-user-tie' : 'fa-user');
+        : 'bg-primary-subtle text-primary-emphasis border border-primary';
+    $roleIcon = $account->isOwner() ? 'fa-shield-alt' : 'fa-user-tie';
 @endphp
 
 <x-admin.detail.page-header
@@ -78,7 +78,7 @@
                     </a>
                 @endcan
 
-@unless($account->isManager())
+@can('accounts.reset_password')
             <x-admin.detail.confirm-form
                 :action="route('accounts.reset-password', $account->getKey())"
                 method="POST"
@@ -92,7 +92,7 @@
                 block
                 :iconName="'question'"
             />
-        @endunless
+        @endcan
 
         @if($account->getKey() !== auth()->id())
             <x-admin.detail.confirm-form

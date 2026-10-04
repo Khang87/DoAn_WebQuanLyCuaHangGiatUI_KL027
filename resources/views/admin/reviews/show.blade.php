@@ -16,13 +16,13 @@
     <x-slot:badge>
         <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle px-3 py-2 rounded-pill d-inline-flex align-items-center gap-1">
             @for($star = 1; $star <= 5; $star++)
-                @if ($star <= $review->rating)
+                @if ($star <= (int) $review->SoSao)
                     <i class="fas fa-star text-warning"></i>
                 @else
                     <i class="far fa-star text-black-50 opacity-25"></i>
                 @endif
             @endfor
-            <span class="ms-1 fw-bold text-dark">{{ $review->rating }}/5</span>
+            <span class="ms-1 fw-bold text-dark">{{ $review->SoSao }}/5</span>
         </span>
         <x-admin.status-badge :status="$reviewStatus" :enum="\App\Enums\ReviewStatus::class" />
     </x-slot:badge>
@@ -35,7 +35,11 @@
             <div class="d-flex justify-content-between align-items-center mb-3">
                 <div class="fs-4 text-warning">
                     @for($star = 1; $star <= 5; $star++)
-                        <i class="fas fa-star{{ $star <= $review->rating ? '' : '-regular' }}"></i>
+                        @if ($star <= (int) $review->SoSao)
+                            <i class="fas fa-star"></i>
+                        @else
+                            <i class="far fa-star"></i>
+                        @endif
                     @endfor
                 </div>
                 <span class="detail-field__label">Chấm điểm</span>
@@ -104,7 +108,7 @@
                 <h5 class="card-title mb-0 fw-bold">Thao tác</h5>
             </div>
             <div class="card-body d-flex flex-column gap-2">
-                @if(auth()->user()?->isManager())
+                @can('reviews.toggle')
                     <x-admin.detail.confirm-form
                         :action="route('reviews.toggle', $review)"
                         method="PATCH"
@@ -117,7 +121,7 @@
                         :iconName="'question'"
                         :block="true"
                     />
-                @endif
+                @endcan
 
                 <a href="{{ route('reviews.index') }}" class="btn btn-outline-secondary w-100 py-2 text-dark">
                     <i class="fas fa-arrow-left me-1"></i> Quay lại danh sách

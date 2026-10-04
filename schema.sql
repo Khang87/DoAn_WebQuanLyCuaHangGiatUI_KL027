@@ -430,6 +430,7 @@ ALTER TABLE ONLY "public"."Quyen" ADD CONSTRAINT "Quyen_pkey" PRIMARY KEY ("Quye
 ALTER TABLE ONLY "public"."TaiKhoan" ADD CONSTRAINT "CK_TaiKhoan_DoiTuong" CHECK ("NhanVienID" IS NOT NULL AND "KhachHangID" IS NULL OR "NhanVienID" IS NULL AND "KhachHangID" IS NOT NULL);
 ALTER TABLE ONLY "public"."TaiKhoan" ADD CONSTRAINT "TaiKhoan_KhachHangID_fkey" FOREIGN KEY ("KhachHangID") REFERENCES "KhachHang"("KhachHangID");
 ALTER TABLE ONLY "public"."TaiKhoan" ADD CONSTRAINT "TaiKhoan_NhanVienID_fkey" FOREIGN KEY ("NhanVienID") REFERENCES "NhanVien"("NhanVienID");
+ALTER TABLE ONLY "public"."TaiKhoan" ADD CONSTRAINT "TaiKhoan_Email_key" UNIQUE ("Email");
 ALTER TABLE ONLY "public"."TaiKhoan" ADD CONSTRAINT "TaiKhoan_TenDangNhap_key" UNIQUE ("TenDangNhap");
 ALTER TABLE ONLY "public"."TaiKhoan" ADD CONSTRAINT "TaiKhoan_TrangThai_check" CHECK ("TrangThai"::text = ANY (ARRAY['Hoạt động'::character varying, 'Khóa'::character varying, 'Ngừng hoạt động'::character varying]::text[]));
 ALTER TABLE ONLY "public"."TaiKhoan" ADD CONSTRAINT "TaiKhoan_pkey" PRIMARY KEY ("TaiKhoanID");

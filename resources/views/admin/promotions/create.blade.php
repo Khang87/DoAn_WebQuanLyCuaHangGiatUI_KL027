@@ -50,14 +50,6 @@
                     <input type="number" id="MucGiamToiDa" name="MucGiamToiDa" min="0" step="0.01" class="form-control @error('MucGiamToiDa') is-invalid @enderror" value="{{ old('MucGiamToiDa') }}">
                     @error('MucGiamToiDa')<div class="invalid-feedback">{{ $message }}</div>@enderror
                 </div>
-                <div class="col-md-6">
-                    <label class="form-label" for="DieuKienApDung">Điều kiện áp dụng</label>
-                    <input type="hidden" name="DieuKienApDung" value="">
-                    <div class="form-check mt-2">
-                        <input class="form-check-input" type="checkbox" name="first_order_only" id="first_order_only" value="1" @checked(old('DieuKienApDung') === 'first_order_only')>
-                        <label class="form-check-label" for="first_order_only">Chỉ áp dụng cho đơn đầu tiên của khách</label>
-                    </div>
-                </div>
                 <div class="col-md-4">
                     <label class="form-label" for="NgayBatDau">Ngày bắt đầu <span class="text-danger">*</span></label>
                     <input type="date" id="NgayBatDau" name="NgayBatDau" class="form-control @error('NgayBatDau') is-invalid @enderror" value="{{ old('NgayBatDau') }}" required>

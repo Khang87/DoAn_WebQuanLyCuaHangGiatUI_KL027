@@ -119,6 +119,19 @@ final class PermissionRegistry
                 'accounts.reset_password' => 'Đặt lại mật khẩu',
                 'roles.manage' => 'Quản lý vai trò & quyền hạn',
             ],
+            'Tin nhắn' => [
+                'messages.view' => 'Xem tin nhắn khách hàng',
+                'messages.create' => 'Gửi tin nhắn khách hàng',
+            ],
+            'Hệ thống' => [
+                'system_logs.view' => 'Xem nhật ký hệ thống',
+            ],
+            'Dashboard' => [
+                'dashboard.view' => 'Xem trang tổng quan',
+            ],
+            'Kế toán' => [
+                'accounting.view' => 'Xem chức năng kế toán',
+            ],
         ];
     }
 

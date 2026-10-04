@@ -3,6 +3,8 @@
 use App\Http\Middleware\EnsureUserHasPermission;
 use App\Http\Middleware\EnsureUserHasRole;
 use App\Http\Middleware\RejectCustomerRole;
+use App\Http\Middleware\RestoreRememberedLogin;
+use Illuminate\Contracts\Auth\Middleware\AuthenticatesRequests;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -20,7 +22,9 @@ return Application::configure(basePath: dirname(__DIR__))
             'role' => EnsureUserHasRole::class,
             'permission' => EnsureUserHasPermission::class,
             'reject.customer' => RejectCustomerRole::class,
+            'remembered.login' => RestoreRememberedLogin::class,
         ]);
+        $middleware->prependToPriorityList(AuthenticatesRequests::class, RestoreRememberedLogin::class);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(

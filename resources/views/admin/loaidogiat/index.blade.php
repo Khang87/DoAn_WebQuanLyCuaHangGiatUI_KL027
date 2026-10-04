@@ -8,7 +8,7 @@
 <div class="page-toolbar">
     @can('garment_categories.create')
         <a href="{{ route('loaidogiat.create') }}" class="btn btn-create">
-            <i class="bi bi-plus-lg"></i>Thêm danh mục
+            <i class="bi bi-plus-lg"></i>Thêm loại đồ giặt
         </a>
     @endcan
     <p class="text-muted page-toolbar__desc">Quản lý danh mục loại đồ giặt được dùng trong bảng giá và đơn hàng.</p>
@@ -124,14 +124,14 @@
                 e.preventDefault();
 
                 if (typeof Swal === 'undefined') {
-                    if (confirm('Bạn có chắc muốn xóa danh mục này?')) {
+                    if (confirm('Bạn có chắc muốn xóa loại đồ giặt này?')) {
                         form.submit();
                     }
                     return;
                 }
 
                 Swal.fire({
-                    title: 'Xóa danh mục?',
+                    title: 'Xóa loại đồ giặt?',
                     text: 'Hành động này không thể hoàn tác.',
                     icon: 'warning',
                     showCancelButton: true,
