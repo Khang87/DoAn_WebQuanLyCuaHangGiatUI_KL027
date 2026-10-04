@@ -3,8 +3,15 @@
   "outputDirectory": "public",
   "builds": [
     {
+      "src": "package.json",
+      "use": "@vercel/static-build",
+      "config": {
+        "distDir": "public/build"
+      }
+    },
+    {
       "src": "public/index.php",
-      "use": "vercel-php@0.6.0"
+      "use": "vercel-php@0.7.3"
     }
   ],
   "routes": [
