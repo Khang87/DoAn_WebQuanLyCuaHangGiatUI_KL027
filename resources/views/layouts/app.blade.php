@@ -104,6 +104,12 @@
                     @endcan
                     @can('garment_categories.view')
                     <li class="sidebar-menu-item">
+                        <a href="{{ route('garment-categories.index') }}" class="sidebar-menu-link {{ request()->routeIs('garment-categories.*') ? 'active' : '' }}">
+                            <i class="bi bi-folder2-open"></i>
+                            <span>Danh mục đồ giặt</span>
+                        </a>
+                    </li>
+                    <li class="sidebar-menu-item">
                         <a href="{{ route('loaidogiat.index') }}" class="sidebar-menu-link {{ request()->routeIs('loaidogiat.*') ? 'active' : '' }}">
                             <i class="bi bi-tags"></i>
                             <span>Loại đồ giặt</span>
@@ -268,21 +274,27 @@
                 $dropdownNotifications = $authUser
                     ? $authUser->notifications()->latest()->take(5)->get()
                     : collect();
-                $unreadCount = $dropdownNotifications->whereNull('read_at')->count();
+                $unreadCount = $authUser
+                    ? $authUser->notifications()->where('DaDoc', false)->count()
+                    : 0;
             @endphp
             <div class="dropdown">
-                <button class="navbar-action-btn dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                <button class="navbar-action-btn dropdown-toggle notification-bell-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Thông báo{{ $unreadCount > 0 ? ', có '.$unreadCount.' tin chưa đọc' : '' }}">
                     <i class="bi bi-bell"></i>
-                    <span class="navbar-action-badge">{{ $unreadCount > 0 ? $unreadCount : '' }}</span>
+                    @if($unreadCount > 0)
+                        <span class="navbar-action-badge" aria-hidden="true"></span>
+                    @endif
                 </button>
                 <div class="dropdown-menu dropdown-menu-end notification-dropdown">
                     <div class="p-3 border-bottom d-flex justify-content-between align-items-center">
                         <h6 class="mb-0">Thông báo</h6>
-                        <span class="badge bg-danger-subtle text-danger-emphasis border border-danger ms-2">{{ $unreadCount }} mới</span>
+                        @if($unreadCount > 0)
+                            <span class="badge bg-danger-subtle text-danger-emphasis border border-danger ms-2">{{ $unreadCount }} mới</span>
+                        @endif
                     </div>
                     <div class="p-2" style="max-height: 300px; overflow-y: auto;">
                         @forelse($dropdownNotifications as $notif)
-                            <a href="{{ route('notifications.index', ['id' => $notif->id]) }}"
+                            <a href="{{ route('notifications.show', $notif->ThongBaoID) }}"
                                class="dropdown-item d-flex align-items-center py-2 border-bottom notification-item {{ $notif->read_at ? '' : 'notification-item-unread' }}">
                                 <div class="notification-icon {{ $notif->read_at ? 'bg-secondary' : 'bg-primary' }} text-white me-3">
                                     <i class="bi {{ $notif->read_at ? 'bi-check2' : 'bi-bell' }}"></i>

@@ -26,11 +26,20 @@ class LoaiDoGiatTest extends TestCase
             $this->markTestSkipped('LoaiDoGiat tests require isolated SQLite in-memory storage.');
         }
 
+        Schema::create('DanhMucLoaiDoGiat', function (Blueprint $table): void {
+            $table->bigIncrements('DanhMucID');
+            $table->string('TenDanhMuc', 100);
+            $table->text('MoTa')->nullable();
+            $table->string('TrangThai', 30)->default('Hoạt động');
+            $table->dateTime('NgayTao')->useCurrent();
+        });
+
         Schema::create('LoaiDoGiat', function (Blueprint $table): void {
             $table->increments('LoaiDoGiatID');
             $table->string('TenLoaiDoGiat', 150)->unique();
             $table->string('MoTa', 255)->nullable();
             $table->string('TrangThai', 30)->default('Hoạt động');
+            $table->unsignedBigInteger('DanhMucID')->nullable();
         });
 
         foreach (['BangGia', 'ChiTietDonHang', 'ChiTietBooking'] as $tableName) {
@@ -50,6 +59,7 @@ class LoaiDoGiatTest extends TestCase
             Schema::dropIfExists('ChiTietDonHang');
             Schema::dropIfExists('BangGia');
             Schema::dropIfExists('LoaiDoGiat');
+            Schema::dropIfExists('DanhMucLoaiDoGiat');
         }
 
         parent::tearDown();
@@ -63,10 +73,28 @@ class LoaiDoGiatTest extends TestCase
         $this->assertSame('LoaiDoGiatID', $category->getKeyName());
         $this->assertTrue($category->getIncrementing());
         $this->assertFalse($category->usesTimestamps());
-        $this->assertSame(['TenLoaiDoGiat', 'MoTa', 'TrangThai'], $category->getFillable());
+        $this->assertSame(['TenLoaiDoGiat', 'MoTa', 'TrangThai', 'DanhMucID'], $category->getFillable());
         $this->assertSame('LoaiDoGiatID', $category->chiTietDonHangs()->getForeignKeyName());
         $this->assertSame('LoaiDoGiatID', $category->bangGias()->getForeignKeyName());
         $this->assertSame('LoaiDoGiatID', $category->chiTietBookings()->getForeignKeyName());
+        $this->assertSame('DanhMucID', $category->danhMuc()->getForeignKeyName());
+    }
+
+    public function test_category_filter_limits_garment_types_to_selected_catalog_category(): void
+    {
+        DB::table('DanhMucLoaiDoGiat')->insert([
+            ['DanhMucID' => 10, 'TenDanhMuc' => 'Quần áo'],
+            ['DanhMucID' => 20, 'TenDanhMuc' => 'Chăn ga'],
+        ]);
+        DB::table('LoaiDoGiat')->insert([
+            ['TenLoaiDoGiat' => 'Áo sơ mi', 'DanhMucID' => 10],
+            ['TenLoaiDoGiat' => 'Chăn mỏng', 'DanhMucID' => 20],
+        ]);
+
+        $garments = app(LoaiDoGiatService::class)->getAll(['category_id' => 10])
+            ->getCollection();
+
+        $this->assertSame(['Áo sơ mi'], $garments->pluck('TenLoaiDoGiat')->all());
     }
 
     public function test_category_can_be_created_listed_updated_and_deleted(): void
@@ -243,7 +271,7 @@ class LoaiDoGiatTest extends TestCase
         $indexRoute = $routes->getByName('loaidogiat.index');
 
         $this->assertSame('loai-do-giat', $indexRoute->uri());
-        $this->assertNull($routes->getByName('garment-categories.index'));
+        $this->assertSame('garment-categories', $routes->getByName('garment-categories.index')->uri());
         $this->assertNull($routes->getByName('laundry-categories.index'));
 
         $this->assertNotContains('role:admin|staff|employee', $indexRoute->getAction('middleware'));
@@ -269,7 +297,7 @@ class LoaiDoGiatTest extends TestCase
     {
         $employee = $this->userWithPermissions('staff', ['garment_categories.view']);
 
-        foreach (['/garments', '/garment-categories', '/laundry-categories'] as $legacyPath) {
+        foreach (['/garments', '/laundry-categories'] as $legacyPath) {
             $this->actingAs($employee)
                 ->get($legacyPath)
                 ->assertRedirect(route('loaidogiat.index'));

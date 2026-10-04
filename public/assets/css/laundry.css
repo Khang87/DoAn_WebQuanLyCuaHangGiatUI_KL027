@@ -365,12 +365,17 @@ body {
 
 .navbar-action-badge {
     position: absolute;
-    top: 4px;
-    right: 4px;
-    width: 8px;
-    height: 8px;
+    top: 5px;
+    right: 5px;
+    width: 9px;
+    height: 9px;
     background-color: var(--danger);
     border-radius: 50%;
+    box-shadow: 0 0 0 2px var(--card-bg);
+}
+
+.navbar-action-btn.notification-bell-toggle::after {
+    display: none;
 }
 
 /* ---------------------------------------------------------------------

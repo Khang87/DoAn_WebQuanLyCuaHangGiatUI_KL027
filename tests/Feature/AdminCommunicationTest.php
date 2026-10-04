@@ -6,6 +6,7 @@ use App\Http\Controllers\Admin\SystemLogController;
 use App\Models\DonHang;
 use App\Models\KhachHang;
 use App\Models\NhatKyHeThong;
+use App\Models\ThongBao;
 use App\Models\TinNhan;
 use App\Models\User;
 use App\Services\MessageService;
@@ -242,6 +243,53 @@ class AdminCommunicationTest extends TestCase
                 ->assertOk()
                 ->assertDontSee('Nhật ký hệ thống');
         }
+    }
+
+    public function test_notification_bell_shows_unread_dot_and_item_opens_its_detail(): void
+    {
+        $staff = $this->createAccount('notification-staff');
+        $this->assignRole($staff, 'Owner');
+        $roleId = DB::table('TaiKhoan_VaiTro')
+            ->where('TaiKhoanID', $staff->TaiKhoanID)
+            ->value('VaiTroID');
+        $permissionId = DB::table('Quyen')->insertGetId([
+            'MaQuyen' => 'NOTIFICATIONS_VIEW',
+            'TrangThai' => 'Hoạt động',
+        ], 'QuyenID');
+        DB::table('VaiTro_Quyen')->insert([
+            'VaiTroID' => $roleId,
+            'QuyenID' => $permissionId,
+        ]);
+
+        $this->actingAs($staff)
+            ->get(route('admin.messages.index'))
+            ->assertOk()
+            ->assertDontSee('navbar-action-badge');
+
+        $notification = ThongBao::query()->create([
+            'TaiKhoanID' => $staff->TaiKhoanID,
+            'LoaiThongBao' => 'system',
+            'TieuDe' => 'Có yêu cầu đặt giặt mới',
+            'NoiDung' => 'Khách vừa tạo một yêu cầu đặt giặt.',
+            'ThoiGianGui' => now(),
+            'DaDoc' => false,
+        ]);
+
+        $this->get(route('admin.messages.index'))
+            ->assertOk()
+            ->assertSee('navbar-action-badge')
+            ->assertSee(route('notifications.show', $notification->ThongBaoID), false);
+
+        $this->get(route('notifications.show', $notification->ThongBaoID))
+            ->assertOk()
+            ->assertSee('Nội dung thông báo')
+            ->assertSee($notification->TieuDe);
+
+        $this->assertTrue($notification->fresh()->DaDoc);
+
+        $this->get(route('admin.messages.index'))
+            ->assertOk()
+            ->assertDontSee('navbar-action-badge');
     }
 
     public function test_system_log_route_is_protected_by_dynamic_permission_middleware(): void

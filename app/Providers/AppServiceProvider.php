@@ -61,6 +61,7 @@ class AppServiceProvider extends ServiceProvider
         Paginator::useBootstrapFive();
 
         $this->registerPermissionGates();
+
     }
 
     /**

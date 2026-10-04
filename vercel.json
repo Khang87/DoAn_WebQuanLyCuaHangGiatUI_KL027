@@ -6,11 +6,70 @@
     "api/index.php": {
       "runtime": "vercel-php@0.8.0"
     }
+
   },
-  "rewrites": [
+  "routes": [
     {
-      "source": "/(.*)",
-      "destination": "/api/index.php"
+      "src": "/",
+      "dest": "/api/index.php"
+    },
+    {
+      "src": "/index.php",
+      "dest": "/api/index.php"
+    },
+    {
+      "handle": "filesystem"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/api/index.php"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/(.*)\\.css",
+      "headers": [
+        {
+          "key": "Content-Type",
+          "value": "text/css; charset=utf-8"
+        }
+      ]
+    },
+    {
+      "source": "/(.*)\\.js",
+      "headers": [
+        {
+          "key": "Content-Type",
+          "value": "text/javascript; charset=utf-8"
+        }
+      ]
+    },
+    {
+      "source": "/(.*)\\.svg",
+      "headers": [
+        {
+          "key": "Content-Type",
+          "value": "image/svg+xml"
+        }
+      ]
+    },
+    {
+      "source": "/(.*)\\.woff2",
+      "headers": [
+        {
+          "key": "Content-Type",
+          "value": "font/woff2"
+        }
+      ]
+    },
+    {
+      "source": "/(.*)\\.woff",
+      "headers": [
+        {
+          "key": "Content-Type",
+          "value": "font/woff"
+        }
+      ]
     }
   ]
 }

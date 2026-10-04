@@ -22,6 +22,7 @@ class LoaiDoGiatController extends Controller
         $categories = $this->loaiDoGiatService->getAll([
             'search' => $request->input('search'),
             'status' => $request->input('status'),
+            'category_id' => $request->integer('DanhMucID') ?: null,
             'sort_by' => $request->input('sort_by'),
             'sort_order' => $request->input('sort_order'),
         ]);

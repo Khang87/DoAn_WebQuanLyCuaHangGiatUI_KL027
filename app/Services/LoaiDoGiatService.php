@@ -23,6 +23,10 @@ class LoaiDoGiatService
             $query->where('TrangThai', $filters['status']);
         }
 
+        if (! empty($filters['category_id'])) {
+            $query->where('DanhMucID', $filters['category_id']);
+        }
+
         $allowedSorts = ['LoaiDoGiatID', 'TenLoaiDoGiat', 'TrangThai'];
         $sortBy = in_array($filters['sort_by'] ?? null, $allowedSorts) ? $filters['sort_by'] : 'LoaiDoGiatID';
         $sortOrder = ($filters['sort_order'] ?? 'asc') === 'asc' ? 'asc' : 'desc';

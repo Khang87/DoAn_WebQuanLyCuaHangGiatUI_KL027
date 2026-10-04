@@ -5,6 +5,7 @@ use App\Http\Controllers\Admin\BookingController;
 use App\Http\Controllers\Admin\ChiTietDonHangController;
 use App\Http\Controllers\Admin\CouponController;
 use App\Http\Controllers\Admin\DanhGiaController;
+use App\Http\Controllers\Admin\DanhMucLoaiDoGiatController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\DichVuController;
 use App\Http\Controllers\Admin\DonHangController;
@@ -189,6 +190,11 @@ Route::middleware(['auth', 'reject.customer'])->group(function () {
         ->middlewareFor(['create', 'store'], 'permission:service_categories.create')
         ->middlewareFor(['edit', 'update'], 'permission:service_categories.edit')
         ->middlewareFor('destroy', 'permission:service_categories.delete');
+    Route::resource('garment-categories', DanhMucLoaiDoGiatController::class)
+        ->middlewareFor(['index', 'show'], 'permission:garment_categories.view')
+        ->middlewareFor(['create', 'store'], 'permission:garment_categories.create')
+        ->middlewareFor(['edit', 'update'], 'permission:garment_categories.edit')
+        ->middlewareFor('destroy', 'permission:garment_categories.delete');
     Route::resource('services', DichVuController::class)
         ->middlewareFor(['index', 'show'], 'permission:services.view')
         ->middlewareFor(['create', 'store'], 'permission:services.create')
@@ -277,7 +283,7 @@ Route::middleware(['auth', 'reject.customer'])->group(function () {
         ->middlewareFor(['edit', 'update'], 'permission:garment_categories.edit')
         ->middlewareFor('destroy', 'permission:garment_categories.delete');
 
-    foreach (['garments', 'garment-categories', 'laundry-categories'] as $legacyPath) {
+    foreach (['garments', 'laundry-categories'] as $legacyPath) {
         Route::get($legacyPath, fn () => redirect()->route('loaidogiat.index'))
             ->middleware('permission:garment_categories.view')
             ->name($legacyPath.'.legacy-redirect');
