@@ -273,15 +273,11 @@ class TaiKhoanController extends Controller
             return redirect()->route('accounts.index')->with('error', FriendlyError::message($e));
         }
 
-        if (! $result) {
-            abort(422, 'Không thể xóa tài khoản đang đăng nhập.');
+        if ($result !== null) {
+            return redirect()->route('accounts.index')->with('error', $result);
         }
 
-        $message = $account->exists
-            ? 'Tài khoản có dữ liệu liên quan nên đã được vô hiệu hóa.'
-            : 'Tài khoản đã được xóa.';
-
-        return redirect()->route('accounts.index')->with('success', $message);
+        return redirect()->route('accounts.index')->with('success', 'Tài khoản đã được xóa.');
     }
 
     public function toggleStatus(int $id)

@@ -34,7 +34,7 @@ Sky Laundry hỗ trợ số hóa hoạt động hằng ngày của cửa hàng g
 - Booking được xác nhận sẽ tự chuyển thành đơn hàng và phiếu giao trong transaction. UI không hiện nút tạo đơn cho Booking đang chờ xác nhận; nếu đã có đơn thì hiển thị liên kết tới đơn hiện hữu thay vì tạo trùng.
 - Booking chỉ được tiếp nhận và chuyển thành đơn khi đã chọn nhân viên phụ trách hợp lệ. Sau khi đơn được tạo từ Booking, nhân viên phụ trách bị khóa trên form sửa; backend cũng từ chối request cố thay đổi người phụ trách.
 - Form sửa Booking lọc dịch vụ theo danh mục đã chọn. Danh mục không có dịch vụ sẽ hiển thị thông báo và vô hiệu hóa ô dịch vụ; đơn vị tính tiếp tục chỉ khả dụng khi có bảng giá hiệu lực phù hợp.
-- Điểm tích lũy dùng các hằng số nghiệp vụ trong `OrderService`: mỗi 1.000 VNĐ giá trị đơn tương ứng 100 điểm khi đơn chuyển sang `Đã giao`; mỗi điểm giảm 10 VNĐ. Form tạo/sửa đơn và xác nhận Booking dùng công tắc bật/tắt thay cho nhập số điểm; khi bật, hệ thống tự giới hạn số điểm theo số dư và số tiền còn phải trả. Cộng điểm có audit và chống cộng lặp; giao dịch tạo/sửa đơn hoàn điểm cũ, trừ điểm mới nguyên tử và rollback nếu số dư không đủ.
+- Điểm tích lũy dùng các hằng số nghiệp vụ trong `OrderService`: cứ đủ 1.000 VNĐ `ThanhTien` của đơn sẽ được cộng 100 điểm khi đơn chuyển sang `Đã giao` (tính theo phần nguyên; ví dụ `ThanhTien` 12.500 VNĐ được 1.200 điểm). Khi đổi điểm, 1 điểm giảm 1 VNĐ, nên 1.000 điểm giảm 1.000 VNĐ. Form tạo/sửa đơn và xác nhận Booking dùng công tắc bật/tắt thay cho nhập số điểm; khi bật, hệ thống tự giới hạn số điểm theo số dư và số tiền còn phải trả. Cộng điểm có audit và chống cộng lặp; giao dịch tạo/sửa đơn hoàn điểm cũ, trừ điểm mới nguyên tử và rollback nếu số dư không đủ.
 - Form khuyến mãi tự bật/tắt trường “Mức giảm tối đa” theo loại khuyến mãi: giảm cố định sẽ vô hiệu hóa và xóa mức tối đa; giảm theo phần trăm cho phép nhập mức tối đa.
 - Hồ sơ tài khoản hỗ trợ tải avatar trực tiếp lên Supabase Storage bằng signed upload URL; ứng dụng chỉ lưu URL công khai trong hồ sơ tài khoản và kiểm tra đường dẫn avatar thuộc đúng tài khoản đang đăng nhập.
 - Danh sách khách hàng hỗ trợ sắp xếp theo tổng điểm tích lũy, xử lý khách chưa có bản ghi điểm như 0 điểm và sắp xếp ổn định khi bằng điểm.
@@ -101,9 +101,9 @@ Các tỷ lệ nằm tại `App\Services\OrderService`:
 
 | Hằng số | Giá trị | Ý nghĩa |
 |---|---:|---|
-| `POINTS_PER_AMOUNT` | 1.000 VNĐ | Mốc giá trị thanh toán để tính thưởng |
-| `POINTS_EARNED_PER_AMOUNT` | 100 điểm | Điểm thưởng cho mỗi mốc trên khi đơn chuyển sang `Đã giao` |
-| `POINT_VALUE` | 10 VNĐ/điểm | Giá trị giảm giá; ví dụ 100 điểm giảm 1.000 VNĐ |
+| `POINTS_PER_AMOUNT` | 1.000 VNĐ `ThanhTien` | Mốc giá trị thanh toán để tính thưởng |
+| `POINTS_EARNED_PER_AMOUNT` | 100 điểm | Điểm thưởng cho mỗi mốc `POINTS_PER_AMOUNT` khi đơn chuyển sang `Đã giao` |
+| `POINT_VALUE` | 1 VNĐ/điểm | Giá trị giảm giá; ví dụ 1.000 điểm giảm 1.000 VNĐ |
 
 Điểm thưởng được tính theo phần nguyên của `ThanhTien / POINTS_PER_AMOUNT`, nhân `POINTS_EARNED_PER_AMOUNT`. Điểm sử dụng được giới hạn bởi số dư và phần tiền còn lại sau khuyến mãi.
 

@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\LichSuThayDoiHoaDon;
 use App\Models\NhatKyHeThong;
+use App\Models\ThongBao;
 use App\Models\TinNhan;
 use App\Models\User;
 use App\Models\VaiTro;
@@ -138,34 +139,51 @@ class UserService
         });
     }
 
-    public function delete(User $user): bool
+    public function delete(User $user): ?string
     {
         if ((int) $user->getKey() === (int) auth()->id()) {
-            return false;
+            return 'Không thể xóa tài khoản đang đăng nhập.';
         }
 
-        return DB::transaction(function () use ($user): bool {
+        return DB::transaction(function () use ($user): ?string {
             $lockedUser = User::query()->lockForUpdate()->findOrFail($user->getKey());
             $before = $this->accountAuditSnapshot($lockedUser);
+            $userId = (int) $lockedUser->getKey();
+            $relatedRecords = [
+                'thông báo' => ThongBao::query()->where('TaiKhoanID', $userId)->count(),
+                'tin nhắn' => TinNhan::query()
+                    ->where('NguoiGuiID', $userId)
+                    ->orWhere('NguoiNhanID', $userId)
+                    ->count(),
+                'lịch sử thay đổi hóa đơn' => LichSuThayDoiHoaDon::query()
+                    ->where('TaiKhoanID', $userId)
+                    ->count(),
+                'nhật ký hệ thống' => NhatKyHeThong::query()
+                    ->where('TaiKhoanID', $userId)
+                    ->count(),
+            ];
+            $blockingRecords = [];
 
-            if ($this->hasRelatedRecords($lockedUser)) {
-                $lockedUser->update(['TrangThai' => 'Ngừng hoạt động']);
-                $after = $this->accountAuditSnapshot($lockedUser->fresh('vaiTros'));
-
-                if ($before !== $after) {
-                    $this->recordAccountAudit($lockedUser, 'Vô hiệu hóa tài khoản', $before, $after);
+            foreach ($relatedRecords as $label => $count) {
+                if ($count > 0) {
+                    $blockingRecords[] = "{$count} {$label}";
                 }
-
-                return true;
             }
 
+            if ($blockingRecords !== []) {
+                return 'Không thể xóa cứng tài khoản vì còn dữ liệu liên quan: '
+                    .implode(', ', $blockingRecords)
+                    .'. Tài khoản được giữ nguyên.';
+            }
+
+            $lockedUser->vaiTros()->detach();
             $deleted = (bool) $lockedUser->delete();
 
             if ($deleted) {
                 $this->recordAccountAudit($lockedUser, 'Xóa tài khoản', $before, []);
             }
 
-            return $deleted;
+            return $deleted ? null : 'Không thể xóa tài khoản. Vui lòng thử lại.';
         });
     }
 
@@ -263,19 +281,5 @@ class UserService
         }
 
         $user->vaiTros()->sync([$role->VaiTroID]);
-    }
-
-    private function hasRelatedRecords(User $user): bool
-    {
-        $userId = (int) $user->getKey();
-
-        return $user->vaiTros()->exists()
-            || $user->thongBaos()->exists()
-            || TinNhan::query()
-                ->where('NguoiGuiID', $userId)
-                ->orWhere('NguoiNhanID', $userId)
-                ->exists()
-            || LichSuThayDoiHoaDon::where('TaiKhoanID', $userId)->exists()
-                || NhatKyHeThong::where('TaiKhoanID', $userId)->exists();
     }
 }

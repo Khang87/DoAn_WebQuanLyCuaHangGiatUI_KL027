@@ -54,6 +54,22 @@ class UserAccountAuditTest extends TestCase
             $table->primary(['TaiKhoanID', 'VaiTroID']);
         });
 
+        Schema::create('ThongBao', function (Blueprint $table): void {
+            $table->increments('ThongBaoID');
+            $table->unsignedInteger('TaiKhoanID');
+        });
+
+        Schema::create('TinNhan', function (Blueprint $table): void {
+            $table->increments('TinNhanID');
+            $table->unsignedInteger('NguoiGuiID');
+            $table->unsignedInteger('NguoiNhanID');
+        });
+
+        Schema::create('LichSuThayDoiHoaDon', function (Blueprint $table): void {
+            $table->increments('LichSuID');
+            $table->unsignedInteger('TaiKhoanID');
+        });
+
         Schema::create('NhatKyHeThong', function (Blueprint $table): void {
             $table->increments('NhatKyID');
             $table->unsignedInteger('TaiKhoanID')->nullable();
@@ -129,5 +145,57 @@ class UserAccountAuditTest extends TestCase
         $this->assertArrayNotHasKey('remember_token', $passwordChange->DuLieuCu);
         $this->assertArrayNotHasKey('remember_token', $passwordChange->DuLieuMoi);
         $this->assertSame(3, NhatKyHeThong::query()->count());
+    }
+
+    public function test_deleting_account_physically_removes_it_and_its_role_links(): void
+    {
+        $user = User::query()->create([
+            'TenDangNhap' => 'removable@example.com',
+            'MatKhau' => 'not-used',
+            'Email' => 'removable@example.com',
+            'TrangThai' => 'Khóa',
+        ]);
+        DB::table('TaiKhoan_VaiTro')->insert([
+            'TaiKhoanID' => $user->TaiKhoanID,
+            'VaiTroID' => 1,
+        ]);
+
+        $result = app(UserService::class)->delete($user);
+
+        $this->assertNull($result);
+        $this->assertDatabaseMissing('TaiKhoan', ['TaiKhoanID' => $user->TaiKhoanID]);
+        $this->assertDatabaseMissing('TaiKhoan_VaiTro', ['TaiKhoanID' => $user->TaiKhoanID]);
+        $this->assertDatabaseHas('NhatKyHeThong', [
+            'TaiKhoanID' => auth()->id(),
+            'HanhDong' => 'Xóa tài khoản',
+            'BanGhiID' => $user->TaiKhoanID,
+        ]);
+    }
+
+    public function test_account_with_historical_references_is_kept_unchanged(): void
+    {
+        $user = User::query()->create([
+            'TenDangNhap' => 'referenced@example.com',
+            'MatKhau' => 'not-used',
+            'Email' => 'referenced@example.com',
+            'TrangThai' => 'Khóa',
+        ]);
+        DB::table('NhatKyHeThong')->insert([
+            'TaiKhoanID' => $user->TaiKhoanID,
+            'HanhDong' => 'Đăng nhập',
+            'BangDuLieu' => 'TaiKhoan',
+            'ThoiGian' => now(),
+        ]);
+
+        $result = app(UserService::class)->delete($user);
+
+        $this->assertSame(
+            'Không thể xóa cứng tài khoản vì còn dữ liệu liên quan: 1 nhật ký hệ thống. Tài khoản được giữ nguyên.',
+            $result,
+        );
+        $this->assertDatabaseHas('TaiKhoan', [
+            'TaiKhoanID' => $user->TaiKhoanID,
+            'TrangThai' => 'Khóa',
+        ]);
     }
 }

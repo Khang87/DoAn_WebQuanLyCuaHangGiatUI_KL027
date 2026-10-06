@@ -395,14 +395,6 @@ class User extends Authenticatable
         return ! $this->isActive();
     }
 
-    public function delete()
-    {
-        $this->TrangThai = 'Đã khóa';
-        $this->save();
-
-        return true;
-    }
-
     public function restore(): void
     {
         $this->TrangThai = 'Hoạt động';
