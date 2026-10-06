@@ -445,6 +445,7 @@ class TaiKhoanController extends Controller
                 return response()->json([
                     'success' => false,
                     'message' => 'Không thể chuẩn bị tải avatar lên Supabase.',
+                    'provider_status' => $response->status(),
                     'provider_error' => $providerError,
                 ], 502);
             }

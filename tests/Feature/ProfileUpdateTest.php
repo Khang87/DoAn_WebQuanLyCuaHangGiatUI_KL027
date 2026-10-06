@@ -379,6 +379,7 @@ class ProfileUpdateTest extends TestCase
             ])
             ->assertStatus(502)
             ->assertJsonPath('success', false)
+            ->assertJsonPath('provider_status', 403)
             ->assertJsonPath('provider_error', 'Bucket AVATARS missing; [REDACTED]')
             ->assertJsonMissing(['provider_error' => 'Bucket AVATARS missing; test-service-role-key']);
     }
