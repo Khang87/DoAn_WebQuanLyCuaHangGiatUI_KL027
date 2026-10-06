@@ -358,14 +358,14 @@ class ProfileUpdateTest extends TestCase
         ]);
         Http::fake([
             'https://project.supabase.co/storage/v1/object/upload/sign/AVATARS/avatars/13' => Http::response([
-                'message' => 'Bucket avatars missing; Authorization: Bearer test-service-role-key',
+                'message' => 'Bucket AVATARS missing; test-service-role-key',
             ], 403),
         ]);
         Log::shouldReceive('error')
             ->once()
             ->withArgs(function (string $message, array $context): bool {
                 $this->assertSame(403, $context['status']);
-                $this->assertStringContainsString('Bucket avatars missing', $context['provider_error']);
+                $this->assertStringContainsString('Bucket AVATARS missing', $context['provider_error']);
                 $this->assertStringNotContainsString('test-service-role-key', $context['provider_error']);
                 $this->assertStringNotContainsString('test-anon-key', $context['provider_error']);
 
@@ -378,7 +378,9 @@ class ProfileUpdateTest extends TestCase
                 'file_size' => 500,
             ])
             ->assertStatus(502)
-            ->assertJsonPath('success', false);
+            ->assertJsonPath('success', false)
+            ->assertJsonPath('provider_error', 'Bucket AVATARS missing; [REDACTED]')
+            ->assertJsonMissing(['provider_error' => 'Bucket AVATARS missing; test-service-role-key']);
     }
 
     public function test_avatar_upload_url_requires_all_supabase_credentials(): void

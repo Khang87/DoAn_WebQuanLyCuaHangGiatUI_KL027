@@ -431,18 +431,21 @@ class TaiKhoanController extends Controller
             ])->acceptJson()->timeout(10)->post($signingUrl, ['upsert' => true]);
 
             if (! $response->successful()) {
+                $providerError = $this->supabaseErrorMessage(
+                    $response->json(),
+                    [$anonKey, $serviceRoleKey],
+                );
+
                 Log::error('Supabase avatar upload URL request failed.', [
                     'account_id' => $account->getKey(),
                     'status' => $response->status(),
-                    'provider_error' => $this->supabaseErrorMessage(
-                        $response->json(),
-                        [$anonKey, $serviceRoleKey],
-                    ),
+                    'provider_error' => $providerError,
                 ]);
 
                 return response()->json([
                     'success' => false,
                     'message' => 'Không thể chuẩn bị tải avatar lên Supabase.',
+                    'provider_error' => $providerError,
                 ], 502);
             }
 
