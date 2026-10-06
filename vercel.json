@@ -1,7 +1,7 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "outputDirectory": "public",
-  "buildCommand": "npm run build",
+  "buildCommand": "php artisan config:clear && npm run build",
   "functions": {
     "api/index.php": {
       "runtime": "vercel-php@0.8.0"

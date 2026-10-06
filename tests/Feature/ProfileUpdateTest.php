@@ -344,6 +344,43 @@ class ProfileUpdateTest extends TestCase
             ->assertJsonPath('success', false);
     }
 
+    public function test_avatar_upload_url_logs_supabase_error_without_exposing_credentials(): void
+    {
+        DB::table('TaiKhoan')->insert([
+            'TaiKhoanID' => 13,
+            'TenDangNhap' => 'avatar13',
+        ]);
+        config([
+            'services.supabase.project_url' => 'https://project.supabase.co',
+            'services.supabase.anon_key' => 'test-anon-key',
+            'services.supabase.service_role_key' => 'test-service-role-key',
+            'services.supabase.avatar_bucket' => 'avatars',
+        ]);
+        Http::fake([
+            'https://project.supabase.co/storage/v1/object/upload/sign/avatars/avatars/13' => Http::response([
+                'message' => 'Bucket avatars missing; Authorization: Bearer test-service-role-key',
+            ], 403),
+        ]);
+        Log::shouldReceive('error')
+            ->once()
+            ->withArgs(function (string $message, array $context): bool {
+                $this->assertSame(403, $context['status']);
+                $this->assertStringContainsString('Bucket avatars missing', $context['provider_error']);
+                $this->assertStringNotContainsString('test-service-role-key', $context['provider_error']);
+                $this->assertStringNotContainsString('test-anon-key', $context['provider_error']);
+
+                return str_contains($message, 'Supabase avatar upload URL request failed.');
+            });
+
+        $this->actingAs(User::query()->findOrFail(13))
+            ->postJson(route('profile.avatar.upload-url'), [
+                'content_type' => 'image/png',
+                'file_size' => 500,
+            ])
+            ->assertStatus(502)
+            ->assertJsonPath('success', false);
+    }
+
     public function test_avatar_upload_url_requires_all_supabase_credentials(): void
     {
         DB::table('TaiKhoan')->insert([

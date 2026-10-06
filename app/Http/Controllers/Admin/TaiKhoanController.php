@@ -434,6 +434,10 @@ class TaiKhoanController extends Controller
                 Log::error('Supabase avatar upload URL request failed.', [
                     'account_id' => $account->getKey(),
                     'status' => $response->status(),
+                    'provider_error' => $this->supabaseErrorMessage(
+                        $response->json(),
+                        [$anonKey, $serviceRoleKey],
+                    ),
                 ]);
 
                 return response()->json([
@@ -645,6 +649,36 @@ class TaiKhoanController extends Controller
             '~\Ahttps://[a-z0-9-]+\.supabase\.co/?\z~iD',
             trim($projectUrl),
         ) === 1;
+    }
+
+    /**
+     * @param  list<string>  $secrets
+     */
+    private function supabaseErrorMessage(mixed $responseBody, array $secrets): ?string
+    {
+        if (! is_array($responseBody)) {
+            return null;
+        }
+
+        $message = $responseBody['message']
+            ?? $responseBody['error_description']
+            ?? $responseBody['error']
+            ?? null;
+
+        if (! is_string($message) || $message === '') {
+            return null;
+        }
+
+        $message = preg_replace('/Bearer\s+\S+/i', 'Bearer [REDACTED]', $message) ?? $message;
+        $message = preg_replace('/(token|apikey|api_key)=?[^\s&]*/i', '$1=[REDACTED]', $message) ?? $message;
+
+        foreach ($secrets as $secret) {
+            if ($secret !== '') {
+                $message = str_replace($secret, '[REDACTED]', $message);
+            }
+        }
+
+        return mb_substr($message, 0, 500);
     }
 
     private function supabaseAvatarPath(User $account): string
