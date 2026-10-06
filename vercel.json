@@ -3,11 +3,6 @@
   "framework": null,
   "outputDirectory": "public",
   "buildCommand": "npm run build",
-  "functions": {
-    "api/index.php": {
-      "runtime": "vercel-php@0.8.0"
-    }
-  },
   "routes": [
     {
       "handle": "filesystem"
