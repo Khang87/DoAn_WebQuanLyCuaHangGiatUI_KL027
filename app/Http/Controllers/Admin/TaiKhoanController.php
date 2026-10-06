@@ -13,6 +13,7 @@ use App\Support\FriendlyError;
 use App\Support\PermissionCache;
 use Illuminate\Contracts\View\View;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -402,6 +403,14 @@ class TaiKhoanController extends Controller
 
         try {
             if (! $this->isSupabaseAvatarConfigured()) {
+                Log::error('Supabase avatar upload is not configured correctly.', [
+                    'account_id' => $account->getKey(),
+                    'missing_config' => $this->missingSupabaseAvatarConfig(),
+                    'project_url_valid' => $this->isValidSupabaseProjectUrl(
+                        (string) config('services.supabase.project_url'),
+                    ),
+                ]);
+
                 return response()->json([
                     'success' => false,
                     'message' => 'Chức năng tải avatar lên Supabase chưa được cấu hình.',
@@ -411,12 +420,13 @@ class TaiKhoanController extends Controller
             $path = $this->supabaseAvatarPath($account);
             $projectUrl = rtrim((string) config('services.supabase.project_url'), '/');
             $bucket = (string) config('services.supabase.avatar_bucket');
+            $anonKey = (string) config('services.supabase.anon_key');
             $serviceRoleKey = (string) config('services.supabase.service_role_key');
             $signingUrl = $projectUrl.'/storage/v1/object/upload/sign/'
                 .rawurlencode($bucket).'/'.$this->encodeStoragePath($path);
 
             $response = Http::withHeaders([
-                'apikey' => $serviceRoleKey,
+                'apikey' => $anonKey,
                 'Authorization' => 'Bearer '.$serviceRoleKey,
             ])->acceptJson()->timeout(10)->post($signingUrl, ['upsert' => true]);
 
@@ -460,10 +470,22 @@ class TaiKhoanController extends Controller
                 'path' => $path,
                 'token' => $token,
             ]);
+        } catch (ConnectionException $exception) {
+            Log::error('Connecting to Supabase for an avatar upload URL failed.', [
+                'account_id' => $account->getKey(),
+                'exception' => $exception::class,
+                'exception_message' => $exception->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Không thể kết nối Supabase để chuẩn bị tải avatar. Vui lòng thử lại.',
+            ], 502);
         } catch (Throwable $exception) {
             Log::error('Preparing direct Supabase avatar upload failed.', [
                 'account_id' => $account->getKey(),
                 'exception' => $exception::class,
+                'exception_message' => $exception->getMessage(),
             ]);
 
             return response()->json([
@@ -595,11 +617,34 @@ class TaiKhoanController extends Controller
 
     private function isSupabaseAvatarConfigured(): bool
     {
-        return collect([
-            config('services.supabase.project_url'),
-            config('services.supabase.service_role_key'),
-            config('services.supabase.avatar_bucket'),
-        ])->every(fn (?string $value): bool => filled($value));
+        return $this->missingSupabaseAvatarConfig() === []
+            && $this->isValidSupabaseProjectUrl((string) config('services.supabase.project_url'));
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function missingSupabaseAvatarConfig(): array
+    {
+        $requiredConfig = [
+            'services.supabase.project_url',
+            'services.supabase.anon_key',
+            'services.supabase.service_role_key',
+            'services.supabase.avatar_bucket',
+        ];
+
+        return array_values(array_filter(
+            $requiredConfig,
+            fn (string $key): bool => ! filled(config($key)),
+        ));
+    }
+
+    private function isValidSupabaseProjectUrl(string $projectUrl): bool
+    {
+        return preg_match(
+            '~\Ahttps://[a-z0-9-]+\.supabase\.co/?\z~iD',
+            trim($projectUrl),
+        ) === 1;
     }
 
     private function supabaseAvatarPath(User $account): string

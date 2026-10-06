@@ -30,14 +30,18 @@ class GarmentCategoryService
         }
 
         $sortMap = [
-            'latest' => ['DanhMucID', 'desc'],
-            'oldest' => ['DanhMucID', 'asc'],
+            'latest' => ['NgayTao', 'desc'],
+            'oldest' => ['NgayTao', 'asc'],
             'name_asc' => ['TenDanhMuc', 'asc'],
             'name_desc' => ['TenDanhMuc', 'desc'],
         ];
         [$sortBy, $sortOrder] = $sortMap[$filters['sort'] ?? 'latest'] ?? $sortMap['latest'];
 
-        return $query->orderBy($sortBy, $sortOrder)->paginate(10)->withQueryString();
+        return $query
+            ->orderBy($sortBy, $sortOrder)
+            ->orderBy('DanhMucID', $sortOrder)
+            ->paginate(10)
+            ->withQueryString();
     }
 
     public function find(int $id): ?DanhMucLoaiDoGiat

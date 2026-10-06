@@ -60,6 +60,7 @@
                         <th class="fw-bold text-dark">Tên danh mục</th>
                         <th class="fw-bold text-dark">Mô tả</th>
                         <th class="fw-bold text-dark">Số loại đồ</th>
+                        <th class="fw-bold text-dark">Ngày tạo</th>
                         <th class="fw-bold text-dark">Trạng thái</th>
                         <th class="fw-bold text-dark">Thao tác</th>
                     </tr>
@@ -72,6 +73,7 @@
                             <td><strong>{{ $category->TenDanhMuc }}</strong></td>
                             <td>{{ \Illuminate\Support\Str::limit($category->MoTa, 50) ?: '—' }}</td>
                             <td>{{ $category->loai_do_giats_count }}</td>
+                            <td>{{ $category->NgayTao?->format('d/m/Y H:i') ?? '—' }}</td>
                             <td>
                                 <x-admin.status-badge :status="$category->TrangThai" :enum="\App\Enums\RecordStatus::class" />
                             </td>
@@ -104,7 +106,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="7" class="text-center text-muted py-4">Chưa có danh mục loại đồ giặt nào</td>
+                            <td colspan="8" class="text-center text-muted py-4">Chưa có danh mục loại đồ giặt nào</td>
                         </tr>
                     @endforelse
                 </tbody>

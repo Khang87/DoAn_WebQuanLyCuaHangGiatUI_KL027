@@ -45,19 +45,26 @@
                 <span class="detail-field__label">Chấm điểm</span>
             </div>
 
-            <div class="detail-text mb-4">{{ $review->content ?: $review->comment ?: 'Không có nội dung' }}</div>
+            <div class="detail-text mb-4">{{ $review->BinhLuan ?: 'Không có nội dung' }}</div>
 
             <x-admin.detail.info-grid :columns="2">
                 <x-admin.detail.info-item label="Đơn hàng">
-                    @if($review->order_id)
-                        <a href="{{ route('orders.show', $review->order_id) }}" class="text-decoration-none">
-                            {{ $review->order?->code ?: 'Xem đơn hàng' }}
+                    @if($review->DonHangID)
+                        <a href="{{ route('orders.show', $review->DonHangID) }}" class="text-decoration-none">
+                            {{ $review->donHang?->MaDonHang ?: 'Xem đơn hàng' }}
                         </a>
                     @else
                         <span class="detail-empty-value">—</span>
                     @endif
                 </x-admin.detail.info-item>
-                <x-admin.detail.info-item label="Khách hàng" :value="$review->customer?->name ?: $review->order?->customer?->name" />
+                <x-admin.detail.info-item label="Mã khách hàng">
+                    @if($review->KhachHangID)
+                        <span>KH{{ str_pad((string) $review->KhachHangID, 3, '0', STR_PAD_LEFT) }}</span>
+                        <small class="d-block text-muted">{{ $review->khachHang?->HoTen ?: '—' }}</small>
+                    @else
+                        <span class="detail-empty-value">—</span>
+                    @endif
+                </x-admin.detail.info-item>
                 <x-admin.detail.info-item label="Ngày đánh giá" :value="$review->created_at?->format('d/m/Y H:i')" />
                 <x-admin.detail.info-item label="Trạng thái">
                     <x-admin.status-badge :status="$reviewStatus" :enum="\App\Enums\ReviewStatus::class" :pill="false" />

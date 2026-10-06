@@ -82,8 +82,9 @@
                     <tr>
                         <th>STT</th>
                         <th>Mã đánh giá</th>
+                        <th>Ngày đánh giá</th>
                         <th>Mã đơn hàng</th>
-                        <th>Khách hàng</th>
+                        <th>Mã khách hàng</th>
                         <th>Đánh giá</th>
                         <th>Nội dung</th>
                         <th>Trạng thái</th>
@@ -94,9 +95,17 @@
                     @forelse($reviews as $review)
                     <tr>
                         <td>{{ $loop->iteration }}</td>
-                        <td>{{ $review->code ?? 'DG' . str_pad($review->id, 4, '0', STR_PAD_LEFT) }}</td>
-                        <td><span class="fw-semibold text-dark">{{ $review->order?->code ?: '—' }}</span></td>
-                        <td>{{ $review->customer?->name ?: $review->order?->customer?->name ?: '—' }}</td>
+                        <td>{{ $review->code ?? 'DG' . str_pad((string) $review->DanhGiaID, 4, '0', STR_PAD_LEFT) }}</td>
+                        <td>{{ $review->NgayDanhGia?->format('d/m/Y H:i') ?? '—' }}</td>
+                        <td><span class="fw-semibold text-dark">{{ $review->donHang?->MaDonHang ?: '—' }}</span></td>
+                        <td>
+                            @if($review->KhachHangID)
+                                <div class="fw-semibold">KH{{ str_pad((string) $review->KhachHangID, 3, '0', STR_PAD_LEFT) }}</div>
+                                <small class="text-muted">{{ $review->khachHang?->HoTen ?: '—' }}</small>
+                            @else
+                                —
+                            @endif
+                        </td>
                         <td>
                             <div class="text-warning">
                                 @for($star = 1; $star <= 5; $star++)
@@ -110,7 +119,7 @@
                             <small class="text-muted">{{ $review->SoSao }}/5</small>
                         </td>
                         <td style="max-width: 320px;">
-                            <div class="text-truncate">{{ $review->content ?: $review->comment ?: 'Không có nội dung' }}</div>
+                            <div class="text-truncate">{{ $review->BinhLuan ?: 'Không có nội dung' }}</div>
                             @if($review->shop_response)
                                 <small class="text-success">Đã phản hồi</small>
                             @endif
@@ -130,7 +139,7 @@
                         </td>
                     </tr>
                     @empty
-                    <tr><td colspan="8" class="text-center text-muted py-4">Chưa có đánh giá nào</td></tr>
+                    <tr><td colspan="9" class="text-center text-muted py-4">Chưa có đánh giá nào</td></tr>
                     @endforelse
                 </tbody>
             </table>

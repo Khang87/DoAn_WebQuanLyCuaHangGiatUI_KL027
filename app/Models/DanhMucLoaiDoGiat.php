@@ -23,6 +23,7 @@ class DanhMucLoaiDoGiat extends Model
 
     protected $casts = [
         'DanhMucID' => 'integer',
+        'NgayTao' => 'datetime',
     ];
 
     public function loaiDoGiats(): HasMany

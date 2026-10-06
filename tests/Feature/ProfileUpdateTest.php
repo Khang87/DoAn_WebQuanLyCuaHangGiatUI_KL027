@@ -4,8 +4,10 @@ namespace Tests\Feature;
 
 use App\Models\User;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
@@ -297,6 +299,8 @@ class ProfileUpdateTest extends TestCase
         );
 
         Http::assertSent(fn ($request): bool => $request->method() === 'POST'
+            && $request->hasHeader('apikey', 'test-anon-key'));
+        Http::assertSent(fn ($request): bool => $request->method() === 'POST'
             && $request->url() === 'https://project.supabase.co/storage/v1/object/upload/sign/avatars/avatars/13'
             && $request->hasHeader('Authorization', 'Bearer test-service-role-key')
             && $request['upsert'] === true);
@@ -307,6 +311,95 @@ class ProfileUpdateTest extends TestCase
             'AvatarURL' => $avatarUrl,
         ]);
         $this->assertSame($avatarUrl, User::query()->findOrFail(13)->avatar_url);
+    }
+
+    public function test_avatar_upload_url_returns_502_and_logs_supabase_connection_failures(): void
+    {
+        DB::table('TaiKhoan')->insert([
+            'TaiKhoanID' => 13,
+            'TenDangNhap' => 'avatar13',
+        ]);
+        config([
+            'services.supabase.project_url' => 'https://project.supabase.co',
+            'services.supabase.anon_key' => 'test-anon-key',
+            'services.supabase.service_role_key' => 'test-service-role-key',
+            'services.supabase.avatar_bucket' => 'avatars',
+        ]);
+        Http::fake(function (): never {
+            throw new ConnectionException('cURL error 28: connection timed out');
+        });
+        Log::shouldReceive('error')
+            ->once()
+            ->withArgs(fn (string $message, array $context): bool => str_contains($message, 'Connecting to Supabase')
+                && $context['account_id'] === 13
+                && $context['exception'] === ConnectionException::class
+                && str_contains($context['exception_message'], 'connection timed out'));
+
+        $this->actingAs(User::query()->findOrFail(13))
+            ->postJson(route('profile.avatar.upload-url'), [
+                'content_type' => 'image/png',
+                'file_size' => 500,
+            ])
+            ->assertStatus(502)
+            ->assertJsonPath('success', false);
+    }
+
+    public function test_avatar_upload_url_requires_all_supabase_credentials(): void
+    {
+        DB::table('TaiKhoan')->insert([
+            'TaiKhoanID' => 13,
+            'TenDangNhap' => 'avatar13',
+        ]);
+        config([
+            'services.supabase.project_url' => 'https://project.supabase.co',
+            'services.supabase.anon_key' => null,
+            'services.supabase.service_role_key' => 'test-service-role-key',
+            'services.supabase.avatar_bucket' => 'avatars',
+        ]);
+        Log::shouldReceive('error')
+            ->once()
+            ->withArgs(fn (string $message, array $context): bool => str_contains($message, 'not configured')
+                && $context['missing_config'] === ['services.supabase.anon_key']
+                && $context['project_url_valid'] === true);
+
+        $this->actingAs(User::query()->findOrFail(13))
+            ->postJson(route('profile.avatar.upload-url'), [
+                'content_type' => 'image/png',
+                'file_size' => 500,
+            ])
+            ->assertStatus(503)
+            ->assertJsonPath('success', false);
+
+        Http::assertNothingSent();
+    }
+
+    public function test_avatar_upload_url_rejects_non_supabase_project_urls(): void
+    {
+        DB::table('TaiKhoan')->insert([
+            'TaiKhoanID' => 13,
+            'TenDangNhap' => 'avatar13',
+        ]);
+        config([
+            'services.supabase.project_url' => 'http://project.supabase.co',
+            'services.supabase.anon_key' => 'test-anon-key',
+            'services.supabase.service_role_key' => 'test-service-role-key',
+            'services.supabase.avatar_bucket' => 'avatars',
+        ]);
+        Log::shouldReceive('error')
+            ->once()
+            ->withArgs(fn (string $message, array $context): bool => str_contains($message, 'not configured')
+                && $context['missing_config'] === []
+                && $context['project_url_valid'] === false);
+
+        $this->actingAs(User::query()->findOrFail(13))
+            ->postJson(route('profile.avatar.upload-url'), [
+                'content_type' => 'image/png',
+                'file_size' => 500,
+            ])
+            ->assertStatus(503)
+            ->assertJsonPath('success', false);
+
+        Http::assertNothingSent();
     }
 
     public function test_avatar_url_cannot_be_saved_for_another_accounts_storage_path(): void

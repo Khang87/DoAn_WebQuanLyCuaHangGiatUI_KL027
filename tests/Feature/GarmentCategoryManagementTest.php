@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Enums\RecordStatus;
 use App\Models\DanhMucLoaiDoGiat;
 use App\Models\LoaiDoGiat;
 use App\Services\GarmentCategoryService;
@@ -85,6 +86,38 @@ class GarmentCategoryManagementTest extends TestCase
         );
         $this->assertTrue($service->delete($bedding));
         $this->assertNull($bedding->fresh());
+    }
+
+    public function test_category_list_displays_creation_date_and_sorts_by_it(): void
+    {
+        DB::table('DanhMucLoaiDoGiat')->insert([
+            [
+                'DanhMucID' => 1,
+                'TenDanhMuc' => 'Danh mục cũ',
+                'TrangThai' => 'Hoạt động',
+                'NgayTao' => '2026-10-01 08:15:00',
+            ],
+            [
+                'DanhMucID' => 2,
+                'TenDanhMuc' => 'Danh mục mới',
+                'TrangThai' => 'Hoạt động',
+                'NgayTao' => '2026-10-05 16:40:00',
+            ],
+        ]);
+
+        $categories = app(GarmentCategoryService::class)->getAll(['sort' => 'latest']);
+        $html = view('admin.garment-categories.index', [
+            'categories' => $categories,
+            'statuses' => RecordStatus::databaseOptions(),
+        ])->render();
+
+        $this->assertSame(
+            ['Danh mục mới', 'Danh mục cũ'],
+            $categories->getCollection()->pluck('TenDanhMuc')->all(),
+        );
+        $this->assertStringContainsString('<th class="fw-bold text-dark">Ngày tạo</th>', $html);
+        $this->assertStringContainsString('05/10/2026 16:40', $html);
+        $this->assertStringContainsString('01/10/2026 08:15', $html);
     }
 
     public function test_category_in_use_is_suspended_instead_of_deleted(): void
