@@ -303,7 +303,7 @@ class ProfileUpdateTest extends TestCase
         Http::assertSent(fn ($request): bool => $request->method() === 'POST'
             && $request->url() === 'https://project.supabase.co/storage/v1/object/upload/sign/AVATARS/avatars/13'
             && $request->hasHeader('Authorization', 'Bearer test-service-role-key')
-            && $request['upsert'] === true);
+            && $request->hasHeader('x-upsert', 'true'));
         Http::assertSent(fn ($request): bool => $request->method() === 'HEAD'
             && $request->url() === 'https://project.supabase.co/storage/v1/object/public/AVATARS/avatars/13');
         $this->assertDatabaseHas('TaiKhoan', [

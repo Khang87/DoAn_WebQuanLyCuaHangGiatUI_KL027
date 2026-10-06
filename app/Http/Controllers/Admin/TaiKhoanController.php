@@ -428,7 +428,8 @@ class TaiKhoanController extends Controller
             $response = Http::withHeaders([
                 'apikey' => $anonKey,
                 'Authorization' => 'Bearer '.$serviceRoleKey,
-            ])->acceptJson()->timeout(10)->post($signingUrl, ['upsert' => true]);
+                'x-upsert' => 'true',
+            ])->acceptJson()->timeout(10)->post($signingUrl, new \stdClass);
 
             if (! $response->successful()) {
                 $providerError = $this->supabaseErrorMessage(
