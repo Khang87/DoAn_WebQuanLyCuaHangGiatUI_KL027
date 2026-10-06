@@ -200,12 +200,22 @@ Các test tự động bên dưới dùng SQLite in-memory. Kết quả gần nh
 | 112 | TC-BOOKING-UI-01 — giao diện sửa Booking | Đổi danh mục làm lọc lại dịch vụ và đơn vị tính; danh mục rỗng hiển thị thông báo và khóa ô dịch vụ. | Kiểm tra giao diện trình duyệt | ⚠️ Đã kiểm tra lọc danh mục có dịch vụ; chưa xác minh riêng nhánh danh mục rỗng |
 | 113 | TC-BOOKING-UI-02 — giao diện sửa Booking | Trường nhân viên bị khóa và nền xám sau khi Booking đã có đơn; backend vẫn từ chối request đổi nhân viên. | Kiểm tra trình duyệt + Feature — `tests/Feature/BookingOrderConversionTest.php` | ✅ Đã kiểm tra UI và test backend |
 | 114 | TC-PROMO-UI-01 — giao diện khuyến mãi | Loại giảm cố định vô hiệu hóa/làm xám mức giảm tối đa; loại phần trăm bật lại trường này. | Kiểm tra giao diện tạo/sửa khuyến mãi | ⏳ NOT RUN trong lần cập nhật tài liệu |
-| 115 | TC-PROFILE-AVATAR-01 — `ProfileUpdate` | Signed upload URL tải ảnh lên Supabase Storage; chỉ lưu URL sau khi xác minh object, và từ chối đường dẫn thuộc tài khoản khác. | Feature — `tests/Feature/ProfileUpdateTest.php` | ⏳ Có test; chưa chạy trong lần cập nhật tài liệu |
+| 115 | TC-PROFILE-AVATAR-01 — `ProfileUpdate` | Signed upload URL tải ảnh lên Supabase Storage; chỉ lưu URL sau khi xác minh object, và từ chối đường dẫn thuộc tài khoản khác. | Feature — `tests/Feature/ProfileUpdateTest.php` | ✅ PHPUnit cục bộ: 13 test / 54 assertions cùng `UserAvatarUrlTest`; không phải kiểm thử production |
 | 116 | TC-CUSTOMER-SORT-01 — `CustomerSort` | Sắp xếp khách theo điểm, xem khách không có điểm như 0 và giữ thứ tự ổn định khi bằng điểm. | Feature — `tests/Feature/CustomerSortTest.php` | ⏳ Có test; chưa chạy trong lần cập nhật tài liệu |
 | 117 | TC-SCHEMA-RO-01 — Snapshot Supabase | Đối chiếu snapshot `schema.sql` với metadata catalog chỉ đọc; không thực thi DDL, migration hoặc ghi dữ liệu. | Đối chiếu metadata PostgreSQL, ngày 06/10/2026 | ✅ Đã đối chiếu; không phải PHPUnit test |
+
+### Kiểm tra production — Avatar
+
+Domain production: [https://do-an-web-quan-ly-cua-hang-giat-ui.vercel.app](https://do-an-web-quan-ly-cua-hang-giat-ui.vercel.app).
+
+| Mã kiểm tra | Kịch bản | Kết quả |
+|---|---|---|
+| TC-PROD-AVATAR-01 | Mở trang đăng nhập production và kiểm tra route hồ sơ được bảo vệ. | ✅ `/login` trả HTTP 200; truy cập `/profile` chưa đăng nhập được chuyển hướng về `/login`. |
+| TC-PROD-AVATAR-02 | Đăng nhập tài khoản test, xin signed URL cho bucket `AVATARS`, upload ảnh và xác minh ảnh/URL đã lưu. | ❌ Thử ngày 06/10/2026: trang phát đúng bucket `AVATARS`, nhưng upload-URL endpoint trả HTTP 502. Thất bại trước khi gửi ảnh; URL avatar không đổi và không ghi object/URL mới. Cần xem Vercel runtime log để xác định phản hồi Supabase rồi thử lại. |
 
 ### Giới hạn phạm vi kiểm thử
 
 - Audit đơn hàng được test trực tiếp qua `OrderService`. Chưa có test tích hợp riêng gọi từng luồng Payment hoặc Dashboard để chứng minh việc ghi audit qua các endpoint đó.
 - Test SQLite in-memory kiểm chứng nhánh nghiệp vụ nhưng không chạy advisory transaction lock PostgreSQL và không xác minh race-condition/deadlock dưới tải đồng thời. Không test nào ở đây kết nối hoặc ghi lên Supabase Live.
+- Kiểm tra production avatar đã xác minh đăng nhập, bucket `AVATARS` và gọi được endpoint ký URL; endpoint hiện trả HTTP 502. Không xác minh được cấu hình credentials ở phía server hoặc ghi ảnh/URL thành công. PHPUnit chạy cục bộ không thay thế kiểm thử tích hợp production.
 - Chưa có class riêng tên `ChatAuthorizationTest`; kiểm thử giao tiếp hiện nằm trong `AdminCommunicationTest`. Các ca hiện có kiểm tra route quản trị cho Quản lý/Nhân viên và gửi tới tài khoản khách hàng liên kết, nhưng chưa kiểm thử việc khách hàng đăng nhập không thể đọc hội thoại đơn khác hoặc badge UI theo vai trò. Giao diện hiện phân biệt người gửi bằng nhãn “Cửa hàng”/tên tài khoản.

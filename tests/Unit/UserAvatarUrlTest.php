@@ -65,10 +65,10 @@ class UserAvatarUrlTest extends TestCase
     {
         $user = new User;
         $user->setAttribute('TaiKhoanID', 17);
-        $user->setAttribute('AvatarURL', 'https://project.supabase.co/storage/v1/object/public/avatars/avatars/17');
+        $user->setAttribute('AvatarURL', 'https://project.supabase.co/storage/v1/object/public/AVATARS/avatars/17');
 
         $this->assertSame(
-            'https://project.supabase.co/storage/v1/object/public/avatars/avatars/17',
+            'https://project.supabase.co/storage/v1/object/public/AVATARS/avatars/17',
             $user->avatar_url,
         );
     }
@@ -78,9 +78,9 @@ class UserAvatarUrlTest extends TestCase
         config([
             'filesystems.disks.supabase.key' => 'access-key',
             'filesystems.disks.supabase.secret' => 'secret-key',
-            'filesystems.disks.supabase.bucket' => 'avatars',
+            'filesystems.disks.supabase.bucket' => 'AVATARS',
             'filesystems.disks.supabase.endpoint' => 'https://project.supabase.co/storage/v1/s3',
-            'filesystems.disks.supabase.url' => 'https://project.supabase.co/storage/v1/object/public/avatars',
+            'filesystems.disks.supabase.url' => 'https://project.supabase.co/storage/v1/object/public/AVATARS',
         ]);
         Storage::shouldReceive('disk')
             ->once()
@@ -89,7 +89,7 @@ class UserAvatarUrlTest extends TestCase
             {
                 public function url(string $path): string
                 {
-                    return 'https://project.supabase.co/storage/v1/object/public/avatars/'.$path;
+                    return 'https://project.supabase.co/storage/v1/object/public/AVATARS/'.$path;
                 }
             });
 
@@ -97,7 +97,7 @@ class UserAvatarUrlTest extends TestCase
         $user->setAttribute('TaiKhoanID', 17);
 
         $this->assertSame(
-            'https://project.supabase.co/storage/v1/object/public/avatars/avatars/17',
+            'https://project.supabase.co/storage/v1/object/public/AVATARS/avatars/17',
             $user->avatar_url,
         );
     }

@@ -12,6 +12,13 @@ Sky Laundry là hệ thống quản lý cửa hàng giặt ủi, hỗ trợ quy 
 
 Thông tin phiên bản được đối chiếu từ các tệp cấu hình phụ thuộc của dự án; dự án hiện không dùng Laravel 10 hay PHP 8.1.
 
+## Triển khai production
+
+- Domain production: [https://do-an-web-quan-ly-cua-hang-giat-ui.vercel.app](https://do-an-web-quan-ly-cua-hang-giat-ui.vercel.app).
+- Kiểm tra công khai ngày 06/10/2026: `/login` trả HTTP 200; `/profile` yêu cầu đăng nhập và chuyển về trang đăng nhập.
+- Ảnh đại diện dùng biến môi trường `SUPABASE_AVATAR_BUCKET`; giá trị chính xác của bucket trên Supabase là `AVATARS`. Mã ứng dụng chuẩn hóa giá trị cấu hình sang chữ hoa trước khi tạo upload URL và gọi Supabase Storage.
+- Đã thử upload bằng tài khoản test trên production: trang truyền đúng bucket `AVATARS`, nhưng endpoint xin signed URL trả HTTP 502 trước khi nhận tệp. Chưa xác minh việc lưu avatar thành công; ảnh hiện tại không đổi. Cần kiểm tra Vercel runtime log/Supabase response rồi thử lại. Xem [TESTCASES.md](./TESTCASES.md).
+
 ## Giới thiệu dự án
 
 Sky Laundry hỗ trợ số hóa hoạt động hằng ngày của cửa hàng giặt ủi: tiếp nhận lịch hẹn và đơn hàng, quản lý dịch vụ và bảng giá, theo dõi xử lý/giao nhận, lập hóa đơn, ghi nhận thanh toán và xem báo cáo. Hệ thống có các quyền riêng cho Chủ cửa hàng, Quản lý, Nhân viên và Khách hàng; giao diện web phục vụ vận hành cửa hàng, còn API cung cấp dữ liệu cho các ứng dụng client được cấp quyền.
@@ -148,6 +155,7 @@ Lần chạy đầy đủ được ghi nhận trước đó: **311 test được
 - **Công tắc dùng điểm:** Tạo/sửa đơn và xác nhận Booking dùng công tắc thay vì nhập số điểm. Khi bật, giao diện dự tính số điểm tối đa áp dụng được sau khuyến mãi; server vẫn tự tính và xác thực số điểm thực tế trong transaction.
 - **Khuyến mãi:** Trường mức giảm tối đa bị làm xám/vô hiệu hóa với mức giảm cố định và được gửi rỗng để loại bỏ giới hạn cũ; trường này được bật với mức giảm phần trăm.
 - **Ảnh hồ sơ:** Tải avatar qua signed URL lên Supabase Storage; server xác minh object thuộc tài khoản hiện tại trước khi lưu URL.
+- **Triển khai:** Domain production hiện tại là [do-an-web-quan-ly-cua-hang-giat-ui.vercel.app](https://do-an-web-quan-ly-cua-hang-giat-ui.vercel.app). Trang đăng nhập và hồ sơ đã mở được; lần thử upload bằng tài khoản test thất bại với HTTP 502 ở bước xin signed URL, trước khi gửi ảnh. Chưa xác minh tải và lưu avatar thành công trên production.
 - **Snapshot Supabase:** `schema.sql` được cập nhật theo truy vấn metadata chỉ đọc ngày 06/10/2026. Snapshot phản ánh thêm các cột mới của `Booking`/`KhachHang`, kiểu `Booking.DiaChiNhan` và các ràng buộc Booking; không chạy DDL, migration hay ghi dữ liệu lên Supabase.
 - **Kiểm thử:** Lần chạy tập trung mới nhất cho `BookingOrderConversionTest` đạt **35 passed, 180 assertions**. Đây là test SQLite in-memory, không phải chạy toàn bộ suite hoặc kiểm thử ghi trên Supabase Live.
 
