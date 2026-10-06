@@ -547,7 +547,7 @@ class TaiKhoanController extends Controller
             $avatarUrl .= '?v='.now()->format('Uu');
             $account->AvatarURL = $avatarUrl;
             $account->save();
-            $this->deleteLocalAvatarFiles($account);
+            $this->deleteLocalAvatarFiles($account, bestEffort: true);
 
             return response()->json([
                 'success' => true,
@@ -597,13 +597,26 @@ class TaiKhoanController extends Controller
         $account->save();
     }
 
-    private function deleteLocalAvatarFiles(User $account, ?string $exceptPath = null): void
-    {
+    private function deleteLocalAvatarFiles(
+        User $account,
+        ?string $exceptPath = null,
+        bool $bestEffort = false,
+    ): void {
         $avatarFiles = glob(public_path('uploads/avatars/avatar_'.$account->getKey().'.*')) ?: [];
         $exceptPath = $exceptPath ? realpath($exceptPath) : null;
 
         foreach ($avatarFiles as $avatarFile) {
             if (! is_file($avatarFile) || ($exceptPath && realpath($avatarFile) === $exceptPath)) {
+                continue;
+            }
+
+            if ($bestEffort) {
+                if (! @unlink($avatarFile)) {
+                    Log::warning('Could not remove a stale local avatar after Supabase upload.', [
+                        'account_id' => $account->getKey(),
+                    ]);
+                }
+
                 continue;
             }
 
