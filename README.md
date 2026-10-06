@@ -17,7 +17,7 @@ Thông tin phiên bản được đối chiếu từ các tệp cấu hình ph�
 - Domain production: [https://do-an-web-quan-ly-cua-hang-giat-ui.vercel.app](https://do-an-web-quan-ly-cua-hang-giat-ui.vercel.app).
 - Kiểm tra công khai ngày 06/10/2026: `/login` trả HTTP 200; `/profile` yêu cầu đăng nhập và chuyển về trang đăng nhập.
 - Ảnh đại diện dùng biến môi trường `SUPABASE_AVATAR_BUCKET`; Bucket ID chính xác là `avatars` (phân biệt chữ hoa/thường). Cấu hình Laravel giữ nguyên casing thay vì tự chuyển sang chữ hoa.
-- Sau deploy `e6ec88f`, trang hồ sơ production hiển thị bucket `avatars` và endpoint xin signed upload URL trả HTTP 200 thành công. Chưa gửi ảnh lên Storage hoặc lưu URL avatar vào hồ sơ, nên chưa xác minh toàn bộ luồng upload/lưu; không có object hoặc dữ liệu Supabase nào bị ghi trong lần kiểm tra này. Xem [TESTCASES.md](./TESTCASES.md).
+- Trên production, bucket `avatars` đã được xác nhận; sau deploy `2776f72`, kiểm thử ảnh PNG 1×1 hoàn tất: xin signed URL, upload Storage, xác minh object và lưu URL hồ sơ đều thành công (HTTP 200), ảnh vẫn hiển thị sau khi tải lại trang. Ảnh đại diện cũ của tài khoản test được thay bằng ảnh thử theo xác nhận của người dùng; không thay đổi schema, migration hay cấu hình bucket. Xem [TESTCASES.md](./TESTCASES.md).
 
 ## Giới thiệu dự án
 
@@ -155,7 +155,7 @@ Lần chạy đầy đủ được ghi nhận trước đó: **311 test được
 - **Công tắc dùng điểm:** Tạo/sửa đơn và xác nhận Booking dùng công tắc thay vì nhập số điểm. Khi bật, giao diện dự tính số điểm tối đa áp dụng được sau khuyến mãi; server vẫn tự tính và xác thực số điểm thực tế trong transaction.
 - **Khuyến mãi:** Trường mức giảm tối đa bị làm xám/vô hiệu hóa với mức giảm cố định và được gửi rỗng để loại bỏ giới hạn cũ; trường này được bật với mức giảm phần trăm.
 - **Ảnh hồ sơ:** Tải avatar qua signed URL lên Supabase Storage; server xác minh object thuộc tài khoản hiện tại trước khi lưu URL.
-- **Triển khai:** Domain production hiện tại là [do-an-web-quan-ly-cua-hang-giat-ui.vercel.app](https://do-an-web-quan-ly-cua-hang-giat-ui.vercel.app). Trang đăng nhập và hồ sơ mở được; bản deploy `e6ec88f` hiển thị bucket `avatars` và xin signed upload URL thành công (HTTP 200). Chưa gửi ảnh hoặc lưu URL mới để không ghi dữ liệu Supabase.
+- **Triển khai:** Domain production hiện tại là [do-an-web-quan-ly-cua-hang-giat-ui.vercel.app](https://do-an-web-quan-ly-cua-hang-giat-ui.vercel.app). Bản deploy `2776f72` đã chạy thành công luồng upload avatar production với bucket `avatars`; signed URL, upload Storage, xác minh public image và lưu URL hồ sơ đều thành công, ảnh còn hiển thị sau reload.
 - **Snapshot Supabase:** `schema.sql` được cập nhật theo truy vấn metadata chỉ đọc ngày 06/10/2026. Snapshot phản ánh thêm các cột mới của `Booking`/`KhachHang`, kiểu `Booking.DiaChiNhan` và các ràng buộc Booking; không chạy DDL, migration hay ghi dữ liệu lên Supabase.
 - **Kiểm thử:** Lần chạy tập trung mới nhất cho `BookingOrderConversionTest` đạt **35 passed, 180 assertions**. Đây là test SQLite in-memory, không phải chạy toàn bộ suite hoặc kiểm thử ghi trên Supabase Live.
 

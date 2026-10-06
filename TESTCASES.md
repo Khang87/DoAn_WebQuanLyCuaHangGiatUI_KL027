@@ -211,11 +211,11 @@ Domain production: [https://do-an-web-quan-ly-cua-hang-giat-ui.vercel.app](https
 | Mã kiểm tra | Kịch bản | Kết quả |
 |---|---|---|
 | TC-PROD-AVATAR-01 | Mở trang đăng nhập production và kiểm tra route hồ sơ được bảo vệ. | ✅ `/login` trả HTTP 200; truy cập `/profile` chưa đăng nhập được chuyển hướng về `/login`. |
-| TC-PROD-AVATAR-02 | Đăng nhập tài khoản test, xin signed URL cho bucket `avatars`, upload ảnh và xác minh ảnh/URL đã lưu. | 🟡 Sau deploy `e6ec88f` ngày 06/10/2026: trang hồ sơ hiển thị bucket `avatars`; endpoint xin signed upload URL trả HTTP 200 và có token. Đã xác minh cấu hình bucket và bước ký URL tới Supabase. Không gửi ảnh/không lưu URL để tránh ghi Storage object hoặc dữ liệu hồ sơ Supabase; vì vậy upload tệp và lưu avatar end-to-end vẫn chưa được xác minh. |
+| TC-PROD-AVATAR-02 | Đăng nhập tài khoản test, xin signed URL cho bucket `avatars`, upload ảnh và xác minh ảnh/URL đã lưu. | ✅ Ngày 06/10/2026 trên deploy `2776f72`: signed URL HTTP 200, upload Storage HTTP 200, endpoint hoàn tất/lưu URL HTTP 200, public image HEAD HTTP 200 (`image/png`, 68 bytes); tải lại hồ sơ vẫn thấy avatar từ `avatars`. Dùng PNG 1×1 theo xác nhận của người dùng; không thay đổi schema, migration hoặc bucket. |
 
 ### Giới hạn phạm vi kiểm thử
 
 - Audit đơn hàng được test trực tiếp qua `OrderService`. Chưa có test tích hợp riêng gọi từng luồng Payment hoặc Dashboard để chứng minh việc ghi audit qua các endpoint đó.
 - Test SQLite in-memory kiểm chứng nhánh nghiệp vụ nhưng không chạy advisory transaction lock PostgreSQL và không xác minh race-condition/deadlock dưới tải đồng thời. Không test nào ở đây kết nối hoặc ghi lên Supabase Live.
-- Kiểm tra production xác nhận route hồ sơ dùng bucket `avatars` và Supabase ký signed upload URL thành công (HTTP 200). Không gửi bytes ảnh hoặc gọi bước lưu avatar; không tạo object, cập nhật hồ sơ, hay thay đổi schema/bucket/dữ liệu Supabase. PHPUnit cục bộ không thay thế kiểm thử tích hợp upload end-to-end.
+- Kiểm thử end-to-end production đã dùng một ảnh PNG 1×1 và xác nhận URL/avatar còn tồn tại sau reload. Phạm vi này không kiểm tra các loại/kích cỡ ảnh khác hoặc tải lên đồng thời; không chạy DDL/migration và không thay đổi cấu hình bucket. PHPUnit cục bộ không thay thế kiểm thử trình duyệt trên production.
 - Chưa có class riêng tên `ChatAuthorizationTest`; kiểm thử giao tiếp hiện nằm trong `AdminCommunicationTest`. Các ca hiện có kiểm tra route quản trị cho Quản lý/Nhân viên và gửi tới tài khoản khách hàng liên kết, nhưng chưa kiểm thử việc khách hàng đăng nhập không thể đọc hội thoại đơn khác hoặc badge UI theo vai trò. Giao diện hiện phân biệt người gửi bằng nhãn “Cửa hàng”/tên tài khoản.
