@@ -261,14 +261,14 @@ class ProfileUpdateTest extends TestCase
             'services.supabase.project_url' => 'https://project.supabase.co',
             'services.supabase.anon_key' => 'test-anon-key',
             'services.supabase.service_role_key' => 'test-service-role-key',
-            'services.supabase.avatar_bucket' => 'AVATARS',
+            'services.supabase.avatar_bucket' => 'avatars',
         ]);
         Http::fake([
-            'https://project.supabase.co/storage/v1/object/upload/sign/AVATARS/avatars/13' => Http::response([
-                'signedURL' => '/object/upload/sign/AVATARS/avatars/13?token=signed-token',
+            'https://project.supabase.co/storage/v1/object/upload/sign/avatars/avatars/13' => Http::response([
+                'signedURL' => '/object/upload/sign/avatars/avatars/13?token=signed-token',
                 'token' => 'signed-token',
             ]),
-            'https://project.supabase.co/storage/v1/object/public/AVATARS/avatars/13' => Http::response('', 200, [
+            'https://project.supabase.co/storage/v1/object/public/avatars/avatars/13' => Http::response('', 200, [
                 'Content-Type' => 'image/gif',
                 'Content-Length' => '500',
             ]),
@@ -294,18 +294,18 @@ class ProfileUpdateTest extends TestCase
             ->assertJsonPath('success', true);
         $avatarUrl = $completeResponse->json('avatar_url');
         $this->assertStringStartsWith(
-            'https://project.supabase.co/storage/v1/object/public/AVATARS/avatars/13?v=',
+            'https://project.supabase.co/storage/v1/object/public/avatars/avatars/13?v=',
             $avatarUrl,
         );
 
         Http::assertSent(fn ($request): bool => $request->method() === 'POST'
             && $request->hasHeader('apikey', 'test-anon-key'));
         Http::assertSent(fn ($request): bool => $request->method() === 'POST'
-            && $request->url() === 'https://project.supabase.co/storage/v1/object/upload/sign/AVATARS/avatars/13'
+            && $request->url() === 'https://project.supabase.co/storage/v1/object/upload/sign/avatars/avatars/13'
             && $request->hasHeader('Authorization', 'Bearer test-service-role-key')
             && $request->hasHeader('x-upsert', 'true'));
         Http::assertSent(fn ($request): bool => $request->method() === 'HEAD'
-            && $request->url() === 'https://project.supabase.co/storage/v1/object/public/AVATARS/avatars/13');
+            && $request->url() === 'https://project.supabase.co/storage/v1/object/public/avatars/avatars/13');
         $this->assertDatabaseHas('TaiKhoan', [
             'TaiKhoanID' => 13,
             'AvatarURL' => $avatarUrl,
@@ -323,7 +323,7 @@ class ProfileUpdateTest extends TestCase
             'services.supabase.project_url' => 'https://project.supabase.co',
             'services.supabase.anon_key' => 'test-anon-key',
             'services.supabase.service_role_key' => 'test-service-role-key',
-            'services.supabase.avatar_bucket' => 'AVATARS',
+            'services.supabase.avatar_bucket' => 'avatars',
         ]);
         Http::fake(function (): never {
             throw new ConnectionException('cURL error 28: connection timed out');
@@ -354,18 +354,18 @@ class ProfileUpdateTest extends TestCase
             'services.supabase.project_url' => 'https://project.supabase.co',
             'services.supabase.anon_key' => 'test-anon-key',
             'services.supabase.service_role_key' => 'test-service-role-key',
-            'services.supabase.avatar_bucket' => 'AVATARS',
+            'services.supabase.avatar_bucket' => 'avatars',
         ]);
         Http::fake([
-            'https://project.supabase.co/storage/v1/object/upload/sign/AVATARS/avatars/13' => Http::response([
-                'message' => 'Bucket AVATARS missing; test-service-role-key',
+            'https://project.supabase.co/storage/v1/object/upload/sign/avatars/avatars/13' => Http::response([
+                'message' => 'Bucket avatars missing; test-service-role-key',
             ], 403),
         ]);
         Log::shouldReceive('error')
             ->once()
             ->withArgs(function (string $message, array $context): bool {
                 $this->assertSame(403, $context['status']);
-                $this->assertStringContainsString('Bucket AVATARS missing', $context['provider_error']);
+                $this->assertStringContainsString('Bucket avatars missing', $context['provider_error']);
                 $this->assertStringNotContainsString('test-service-role-key', $context['provider_error']);
                 $this->assertStringNotContainsString('test-anon-key', $context['provider_error']);
 
@@ -380,8 +380,8 @@ class ProfileUpdateTest extends TestCase
             ->assertStatus(502)
             ->assertJsonPath('success', false)
             ->assertJsonPath('provider_status', 403)
-            ->assertJsonPath('provider_error', 'Bucket AVATARS missing; [REDACTED]')
-            ->assertJsonMissing(['provider_error' => 'Bucket AVATARS missing; test-service-role-key']);
+            ->assertJsonPath('provider_error', 'Bucket avatars missing; [REDACTED]')
+            ->assertJsonMissing(['provider_error' => 'Bucket avatars missing; test-service-role-key']);
     }
 
     public function test_avatar_upload_url_requires_all_supabase_credentials(): void
@@ -394,7 +394,7 @@ class ProfileUpdateTest extends TestCase
             'services.supabase.project_url' => 'https://project.supabase.co',
             'services.supabase.anon_key' => null,
             'services.supabase.service_role_key' => 'test-service-role-key',
-            'services.supabase.avatar_bucket' => 'AVATARS',
+            'services.supabase.avatar_bucket' => 'avatars',
         ]);
         Log::shouldReceive('error')
             ->once()
@@ -423,7 +423,7 @@ class ProfileUpdateTest extends TestCase
             'services.supabase.project_url' => 'http://project.supabase.co',
             'services.supabase.anon_key' => 'test-anon-key',
             'services.supabase.service_role_key' => 'test-service-role-key',
-            'services.supabase.avatar_bucket' => 'AVATARS',
+            'services.supabase.avatar_bucket' => 'avatars',
         ]);
         Log::shouldReceive('error')
             ->once()

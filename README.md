@@ -16,8 +16,8 @@ Thông tin phiên bản được đối chiếu từ các tệp cấu hình ph�
 
 - Domain production: [https://do-an-web-quan-ly-cua-hang-giat-ui.vercel.app](https://do-an-web-quan-ly-cua-hang-giat-ui.vercel.app).
 - Kiểm tra công khai ngày 06/10/2026: `/login` trả HTTP 200; `/profile` yêu cầu đăng nhập và chuyển về trang đăng nhập.
-- Ảnh đại diện dùng biến môi trường `SUPABASE_AVATAR_BUCKET`; giá trị chính xác của bucket trên Supabase là `AVATARS`. Mã ứng dụng chuẩn hóa giá trị cấu hình sang chữ hoa trước khi tạo upload URL và gọi Supabase Storage.
-- Đã thử upload bằng tài khoản test trên production: trang gửi đúng bucket `AVATARS` tới đúng project host, nhưng Supabase trả HTTP 400 “The related resource does not exist” khi xin signed URL; endpoint Laravel trả HTTP 502 trước khi nhận tệp. Protocol đã được sửa theo SDK Supabase và deploy lại nhưng lỗi vẫn còn. Chưa lưu ảnh; cần xác minh bucket ID và service-role key cùng thuộc project này. Không tạo/sửa bucket hoặc ghi dữ liệu Supabase. Xem [TESTCASES.md](./TESTCASES.md).
+- Ảnh đại diện dùng biến môi trường `SUPABASE_AVATAR_BUCKET`; Bucket ID chính xác là `avatars` (phân biệt chữ hoa/thường). Cấu hình Laravel giữ nguyên casing thay vì tự chuyển sang chữ hoa.
+- Kiểm tra production trước khi sửa cho thấy ứng dụng gửi `AVATARS` và Supabase trả HTTP 400 “The related resource does not exist” khi xin signed URL. Bucket ID đã được xác nhận là `avatars`; biến môi trường Production trên Vercel đã được sửa sang `avatars`. Bản sửa code cần được deploy trước khi upload có thể được kiểm tra lại. Chưa ghi object hoặc URL mới, và không có thay đổi database/Supabase. Xem [TESTCASES.md](./TESTCASES.md).
 
 ## Giới thiệu dự án
 
@@ -155,7 +155,7 @@ Lần chạy đầy đủ được ghi nhận trước đó: **311 test được
 - **Công tắc dùng điểm:** Tạo/sửa đơn và xác nhận Booking dùng công tắc thay vì nhập số điểm. Khi bật, giao diện dự tính số điểm tối đa áp dụng được sau khuyến mãi; server vẫn tự tính và xác thực số điểm thực tế trong transaction.
 - **Khuyến mãi:** Trường mức giảm tối đa bị làm xám/vô hiệu hóa với mức giảm cố định và được gửi rỗng để loại bỏ giới hạn cũ; trường này được bật với mức giảm phần trăm.
 - **Ảnh hồ sơ:** Tải avatar qua signed URL lên Supabase Storage; server xác minh object thuộc tài khoản hiện tại trước khi lưu URL.
-- **Triển khai:** Domain production hiện tại là [do-an-web-quan-ly-cua-hang-giat-ui.vercel.app](https://do-an-web-quan-ly-cua-hang-giat-ui.vercel.app). Trang đăng nhập và hồ sơ mở được; lần thử upload bằng tài khoản test thất bại với Supabase HTTP 400 “The related resource does not exist” ở bước xin signed URL. Protocol đã được sửa và deploy lại nhưng response vẫn như cũ; chưa xác minh tải/lưu avatar thành công trên production.
+- **Triển khai:** Domain production hiện tại là [do-an-web-quan-ly-cua-hang-giat-ui.vercel.app](https://do-an-web-quan-ly-cua-hang-giat-ui.vercel.app). Trang đăng nhập và hồ sơ mở được. Đã xác nhận Bucket ID là `avatars` và cập nhật biến Production trên Vercel; cần deploy code không còn ép chữ hoa rồi thử lại upload. Chưa có object hoặc URL avatar mới được ghi lên Supabase.
 - **Snapshot Supabase:** `schema.sql` được cập nhật theo truy vấn metadata chỉ đọc ngày 06/10/2026. Snapshot phản ánh thêm các cột mới của `Booking`/`KhachHang`, kiểu `Booking.DiaChiNhan` và các ràng buộc Booking; không chạy DDL, migration hay ghi dữ liệu lên Supabase.
 - **Kiểm thử:** Lần chạy tập trung mới nhất cho `BookingOrderConversionTest` đạt **35 passed, 180 assertions**. Đây là test SQLite in-memory, không phải chạy toàn bộ suite hoặc kiểm thử ghi trên Supabase Live.
 
