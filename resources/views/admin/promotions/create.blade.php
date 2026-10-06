@@ -4,6 +4,9 @@
 @section('page-title', 'Thêm khuyến mãi')
 
 @section('content')
+@php
+    $isFixedDiscount = old('LoaiKhuyenMai', \App\Models\KhuyenMai::DISCOUNT_PERCENTAGE) === \App\Models\KhuyenMai::DISCOUNT_FIXED;
+@endphp
 <div class="card">
     <div class="card-body">
         <div class="d-flex justify-content-between align-items-center mb-4">
@@ -61,8 +64,10 @@
                     </div>
                     <div class="col-md-6">
                         <label class="form-label" for="MucGiamToiDa">Mức giảm tối đa</label>
-                        <input type="number" id="MucGiamToiDa" name="MucGiamToiDa" min="0" step="0.01" class="form-control @error('MucGiamToiDa') is-invalid @enderror" value="{{ old('MucGiamToiDa') }}">
+                        <input type="number" id="MucGiamToiDa" name="MucGiamToiDa" min="0" step="0.01" class="form-control @error('MucGiamToiDa') is-invalid @enderror {{ $isFixedDiscount ? 'bg-light' : '' }}" value="{{ $isFixedDiscount ? '' : old('MucGiamToiDa') }}" @disabled($isFixedDiscount) aria-describedby="max-discount-help">
+                        <input type="hidden" name="MucGiamToiDa" value="" data-clear-max-discount @disabled(! $isFixedDiscount)>
                         @error('MucGiamToiDa')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                        <div class="form-text" id="max-discount-help">Chỉ áp dụng khi giảm theo phần trăm.</div>
                     </div>
                 </div>
             </section>
@@ -105,3 +110,5 @@
     </div>
 </div>
 @endsection
+
+@include('admin.promotions.partials.discount-type-script')

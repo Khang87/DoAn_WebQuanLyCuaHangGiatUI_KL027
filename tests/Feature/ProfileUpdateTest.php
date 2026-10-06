@@ -4,10 +4,9 @@ namespace Tests\Feature;
 
 use App\Models\User;
 use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Schema;
-use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class ProfileUpdateTest extends TestCase
@@ -249,7 +248,7 @@ class ProfileUpdateTest extends TestCase
         ]);
     }
 
-    public function test_avatar_upload_stores_a_predictable_path_and_returns_its_public_url(): void
+    public function test_avatar_is_uploaded_directly_to_supabase_and_its_public_url_is_saved(): void
     {
         DB::table('TaiKhoan')->insert([
             'TaiKhoanID' => 13,
@@ -257,33 +256,78 @@ class ProfileUpdateTest extends TestCase
         ]);
 
         config([
-            'filesystems.disks.supabase.key' => 'test-key',
-            'filesystems.disks.supabase.secret' => 'test-secret',
-            'filesystems.disks.supabase.bucket' => 'avatars',
-            'filesystems.disks.supabase.endpoint' => 'https://project.supabase.co/storage/v1/s3',
-            'filesystems.disks.supabase.url' => 'https://project.supabase.co/storage/v1/object/public/avatars',
+            'services.supabase.project_url' => 'https://project.supabase.co',
+            'services.supabase.anon_key' => 'test-anon-key',
+            'services.supabase.service_role_key' => 'test-service-role-key',
+            'services.supabase.avatar_bucket' => 'avatars',
         ]);
-        Storage::fake('supabase');
+        Http::fake([
+            'https://project.supabase.co/storage/v1/object/upload/sign/avatars/avatars/13' => Http::response([
+                'signedURL' => '/object/upload/sign/avatars/avatars/13?token=signed-token',
+                'token' => 'signed-token',
+            ]),
+            'https://project.supabase.co/storage/v1/object/public/avatars/avatars/13' => Http::response('', 200, [
+                'Content-Type' => 'image/gif',
+                'Content-Length' => '500',
+            ]),
+        ]);
 
         $user = User::query()->findOrFail(13);
 
         $this->actingAs($user)
-            ->postJson(route('profile.avatar'), [
-                'avatar' => UploadedFile::fake()->image('avatar.gif'),
+            ->postJson(route('profile.avatar.upload-url'), [
+                'content_type' => 'image/gif',
+                'file_size' => 500,
             ])
             ->assertOk()
             ->assertJsonPath('success', true)
-            ->assertJsonPath('avatar_url', Storage::disk('supabase')->url('avatars/13'));
+            ->assertJsonPath('path', 'avatars/13')
+            ->assertJsonPath('token', 'signed-token');
 
-        Storage::disk('supabase')->assertExists('avatars/13');
+        $completeResponse = $this->postJson(route('profile.avatar'), [
+            'path' => 'avatars/13',
+            'content_type' => 'image/gif',
+        ])
+            ->assertOk()
+            ->assertJsonPath('success', true);
+        $avatarUrl = $completeResponse->json('avatar_url');
+        $this->assertStringStartsWith(
+            'https://project.supabase.co/storage/v1/object/public/avatars/avatars/13?v=',
+            $avatarUrl,
+        );
+
+        Http::assertSent(fn ($request): bool => $request->method() === 'POST'
+            && $request->url() === 'https://project.supabase.co/storage/v1/object/upload/sign/avatars/avatars/13'
+            && $request->hasHeader('Authorization', 'Bearer test-service-role-key')
+            && $request['upsert'] === true);
+        Http::assertSent(fn ($request): bool => $request->method() === 'HEAD'
+            && $request->url() === 'https://project.supabase.co/storage/v1/object/public/avatars/avatars/13');
         $this->assertDatabaseHas('TaiKhoan', [
             'TaiKhoanID' => 13,
-            'AvatarURL' => Storage::disk('supabase')->url('avatars/13'),
+            'AvatarURL' => $avatarUrl,
         ]);
-        $this->assertSame(
-            Storage::disk('supabase')->url('avatars/13'),
-            User::query()->findOrFail(13)->avatar_url,
-        );
+        $this->assertSame($avatarUrl, User::query()->findOrFail(13)->avatar_url);
+    }
+
+    public function test_avatar_url_cannot_be_saved_for_another_accounts_storage_path(): void
+    {
+        DB::table('TaiKhoan')->insert([
+            'TaiKhoanID' => 13,
+            'TenDangNhap' => 'avatar13',
+        ]);
+
+        $this->actingAs(User::query()->findOrFail(13))
+            ->postJson(route('profile.avatar'), [
+                'path' => 'avatars/14',
+                'content_type' => 'image/png',
+            ])
+            ->assertUnprocessable()
+            ->assertJsonPath('success', false);
+
+        $this->assertDatabaseHas('TaiKhoan', [
+            'TaiKhoanID' => 13,
+            'AvatarURL' => null,
+        ]);
     }
 
     private function assignRole(int $accountId, int $roleId): void

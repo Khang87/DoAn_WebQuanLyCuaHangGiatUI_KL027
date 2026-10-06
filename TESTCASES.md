@@ -186,6 +186,24 @@ Các mục dưới đây là checklist hồi quy cho thay đổi gỡ tính năn
 | TC-SET-03 | Mở trang hồ sơ cá nhân. | Trang hồ sơ vẫn hiển thị, không có liên kết tới trang Cài đặt đã gỡ bỏ. | ⏳ NOT RUN |
 | TC-SET-04 | Tra cứu quyền hệ thống liên quan đến cấu hình. | Không còn mã quyền `settings.view` trong registry hoặc ánh xạ quyền. | ⏳ NOT RUN |
 
+## Nhóm 7: Cập nhật Booking, điểm tích lũy và giao diện quản trị (06/10/2026)
+
+Các test tự động bên dưới dùng SQLite in-memory. Kết quả gần nhất của `BookingOrderConversionTest` là **35 passed, 180 assertions**. Các ca điểm tích lũy được xác nhận trong lần chạy kết hợp Booking/RewardPoint trước đó (**46 tests, 215 assertions**); suite tổng thể chưa được chạy lại sau các cập nhật này.
+
+| STT | Mã Test / Tên Class Test | Mô tả kịch bản test | Môi trường/File test | Trạng thái |
+|---:|---|---|---|---|
+| 107 | TC-BOOKING-STAFF-01 — `BookingOrderConversion` | Không cho xác nhận Booking/tạo đơn nếu chưa có nhân viên phụ trách hợp lệ. | Feature — `tests/Feature/BookingOrderConversionTest.php` | ✅ PASSED |
+| 108 | TC-BOOKING-STAFF-02 — `BookingOrderConversion` | Từ chối thay nhân viên phụ trách khi Booking đã liên kết đơn hàng. | Feature — `tests/Feature/BookingOrderConversionTest.php` | ✅ PASSED |
+| 109 | TC-POINT-08 — `RewardPoint` | Khi bật công tắc ở form tạo đơn, tự dùng số điểm tối đa trong giới hạn số dư và số tiền còn phải trả. | Feature — `tests/Feature/RewardPointTest.php` | ✅ PASSED — lần chạy kết hợp |
+| 110 | TC-POINT-09 — `RewardPoint` | Khi tắt công tắc ở form tạo đơn, không trừ điểm khách hàng. | Feature — `tests/Feature/RewardPointTest.php` | ✅ PASSED — lần chạy kết hợp |
+| 111 | TC-POINT-10 — `RewardPoint` | Khi bật công tắc xác nhận Booking, áp dụng toàn bộ điểm khả dụng nhưng không vượt số tiền đơn. | Feature — `tests/Feature/RewardPointTest.php` | ✅ PASSED — lần chạy kết hợp |
+| 112 | TC-BOOKING-UI-01 — giao diện sửa Booking | Đổi danh mục làm lọc lại dịch vụ và đơn vị tính; danh mục rỗng hiển thị thông báo và khóa ô dịch vụ. | Kiểm tra giao diện trình duyệt | ⚠️ Đã kiểm tra lọc danh mục có dịch vụ; chưa xác minh riêng nhánh danh mục rỗng |
+| 113 | TC-BOOKING-UI-02 — giao diện sửa Booking | Trường nhân viên bị khóa và nền xám sau khi Booking đã có đơn; backend vẫn từ chối request đổi nhân viên. | Kiểm tra trình duyệt + Feature — `tests/Feature/BookingOrderConversionTest.php` | ✅ Đã kiểm tra UI và test backend |
+| 114 | TC-PROMO-UI-01 — giao diện khuyến mãi | Loại giảm cố định vô hiệu hóa/làm xám mức giảm tối đa; loại phần trăm bật lại trường này. | Kiểm tra giao diện tạo/sửa khuyến mãi | ⏳ NOT RUN trong lần cập nhật tài liệu |
+| 115 | TC-PROFILE-AVATAR-01 — `ProfileUpdate` | Signed upload URL tải ảnh lên Supabase Storage; chỉ lưu URL sau khi xác minh object, và từ chối đường dẫn thuộc tài khoản khác. | Feature — `tests/Feature/ProfileUpdateTest.php` | ⏳ Có test; chưa chạy trong lần cập nhật tài liệu |
+| 116 | TC-CUSTOMER-SORT-01 — `CustomerSort` | Sắp xếp khách theo điểm, xem khách không có điểm như 0 và giữ thứ tự ổn định khi bằng điểm. | Feature — `tests/Feature/CustomerSortTest.php` | ⏳ Có test; chưa chạy trong lần cập nhật tài liệu |
+| 117 | TC-SCHEMA-RO-01 — Snapshot Supabase | Đối chiếu snapshot `schema.sql` với metadata catalog chỉ đọc; không thực thi DDL, migration hoặc ghi dữ liệu. | Đối chiếu metadata PostgreSQL, ngày 06/10/2026 | ✅ Đã đối chiếu; không phải PHPUnit test |
+
 ### Giới hạn phạm vi kiểm thử
 
 - Audit đơn hàng được test trực tiếp qua `OrderService`. Chưa có test tích hợp riêng gọi từng luồng Payment hoặc Dashboard để chứng minh việc ghi audit qua các endpoint đó.

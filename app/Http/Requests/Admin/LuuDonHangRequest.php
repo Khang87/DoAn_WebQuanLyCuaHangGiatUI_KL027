@@ -55,6 +55,7 @@ class LuuDonHangRequest extends FormRequest
             'KhuyenMaiID' => ['nullable', 'integer', 'exists:KhuyenMai,KhuyenMaiID'],
             'promotion_code' => ['nullable', 'string', 'max:50'],
             'DiemSuDung' => ['nullable', 'integer', 'min:0'],
+            'use_points' => ['nullable', 'boolean'],
             'PhiGiaoHang' => ['nullable', 'numeric', 'min:0'],
             'TrangThai' => ['required', 'in:'.implode(',', OrderStatus::values())],
             'GhiChu' => ['nullable', 'string', 'max:500'],

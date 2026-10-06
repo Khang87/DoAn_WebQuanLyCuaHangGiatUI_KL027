@@ -33,9 +33,17 @@
             </div>
         </div>
 
-        <form action="{{ route('profile.update') }}" method="POST" enctype="multipart/form-data">
+        <div
+            id="avatarUploadConfig"
+            data-project-url="{{ config('services.supabase.project_url') }}"
+            data-anon-key="{{ config('services.supabase.anon_key') }}"
+            data-bucket="{{ config('services.supabase.avatar_bucket') }}"
+            data-upload-url="{{ route('profile.avatar.upload-url') }}"
+            data-complete-url="{{ route('profile.avatar') }}"
+        ></div>
+        <form action="{{ route('profile.update') }}" method="POST">
             @csrf @method('PUT')
-            <input type="file" name="avatar" id="avatarInput" accept="image/*" class="d-none">
+            <input type="file" id="avatarInput" accept="image/jpeg,image/png,image/gif,image/webp" class="d-none">
             <input type="hidden" name="remove_avatar" id="removeAvatarFlag" value="0">
             <div class="row g-4">
                 <div class="col-md-6">
@@ -115,67 +123,5 @@
 @endsection
 
 @push('scripts')
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const avatarInput = document.getElementById('avatarInput');
-        const avatarPreview = document.getElementById('avatarPreview');
-        const removeAvatarFlag = document.getElementById('removeAvatarFlag');
-
-        const notifyError = function (message) {
-            if (typeof Swal === 'undefined') {
-                window.alert(message);
-                return;
-            }
-            Swal.fire({ icon: 'error', title: 'Ảnh không hợp lệ', text: message, confirmButtonText: 'Đã hiểu' });
-        };
-
-        avatarInput.addEventListener('change', function(e) {
-            const file = e.target.files[0];
-            if (!file) return;
-
-            if (!file.type.match('image.*')) {
-                notifyError('Vui lòng chọn file hình ảnh.');
-                this.value = '';
-                return;
-            }
-            if (file.size > 2 * 1024 * 1024) {
-                notifyError('Kích thước file không được vượt quá 2MB.');
-                this.value = '';
-                return;
-            }
-
-            // Preview instantly
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                avatarPreview.src = e.target.result;
-            };
-            reader.readAsDataURL(file);
-            removeAvatarFlag.value = '0';
-
-            // Upload via AJAX
-            const formData = new FormData();
-            formData.append('avatar', file);
-            formData.append('_token', '{{ csrf_token() }}');
-
-            fetch('{{ route('profile.avatar') }}', {
-                method: 'POST',
-                body: formData,
-            })
-            .then(r => r.json())
-            .then(data => {
-                if (data.success) {
-                    // Sync header (navbar) and sidebar avatar images
-                    document.querySelectorAll('[data-user-avatar]').forEach(function(img) {
-                        img.src = data.avatar_url;
-                    });
-                } else {
-                    notifyError(data.message || 'Tải ảnh lên thất bại.');
-                }
-            })
-            .catch(function() {
-                notifyError('Có lỗi xảy ra khi tải ảnh lên.');
-            });
-        });
-    });
-</script>
+@vite('resources/js/profile-avatar.js')
 @endpush

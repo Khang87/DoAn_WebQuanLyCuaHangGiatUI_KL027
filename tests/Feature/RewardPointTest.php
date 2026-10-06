@@ -88,12 +88,26 @@ class RewardPointTest extends TestCase
         $order = app(BookingService::class)->confirmPendingBooking($booking, 1, 100);
 
         $this->assertSame(100, $order->DiemSuDung);
-        $this->assertSame(1000.0, $order->TienGiamDoDiem);
-        $this->assertSame(9000.0, $order->ThanhTien);
+        $this->assertSame(100.0, $order->TienGiamDoDiem);
+        $this->assertSame(9900.0, $order->ThanhTien);
         $this->assertSame(400, $customer->fresh()->points());
     }
 
-    public function test_order_creation_redeems_points_at_ten_vnd_per_point(): void
+    public function test_booking_conversion_can_redeem_all_available_points_when_enabled(): void
+    {
+        $customer = $this->createCustomer(1, 500);
+        $booking = $this->createBooking($customer);
+        $this->actingAsBookingEmployee();
+
+        $order = app(BookingService::class)->confirmPendingBooking($booking, 1, 0, true);
+
+        $this->assertSame(500, $order->DiemSuDung);
+        $this->assertSame(500.0, $order->TienGiamDoDiem);
+        $this->assertSame(9500.0, $order->ThanhTien);
+        $this->assertSame(0, $customer->fresh()->points());
+    }
+
+    public function test_order_creation_redeems_points_at_one_vnd_per_point(): void
     {
         $customer = $this->createCustomer(3, 500);
 
@@ -106,10 +120,47 @@ class RewardPointTest extends TestCase
         ]);
 
         $this->assertSame(500, $order->DiemSuDung);
-        $this->assertSame(5000.0, $order->TienGiamDoDiem);
-        $this->assertSame(5000.0, $order->ThanhTien);
+        $this->assertSame(500.0, $order->TienGiamDoDiem);
+        $this->assertSame(9500.0, $order->ThanhTien);
         $this->assertSame('DH'.str_pad((string) $order->DonHangID, 4, '0', STR_PAD_LEFT), $order->MaDonHang);
         $this->assertSame(0, $customer->fresh()->points());
+    }
+
+    public function test_order_creation_redeems_all_available_points_when_enabled(): void
+    {
+        $customer = $this->createCustomer(4, 500);
+
+        $order = app(OrderService::class)->create([
+            'MaDonHang' => 'ALL-POINTS',
+            'KhachHangID' => $customer->KhachHangID,
+            'TrangThai' => OrderStatus::Pending->value,
+            'use_points' => true,
+            'DiemSuDung' => 1,
+            'items' => [$this->orderItem()],
+        ]);
+
+        $this->assertSame(500, $order->DiemSuDung);
+        $this->assertSame(500.0, $order->TienGiamDoDiem);
+        $this->assertSame(9500.0, $order->ThanhTien);
+        $this->assertSame(0, $customer->fresh()->points());
+    }
+
+    public function test_order_creation_does_not_redeem_points_when_switch_is_off(): void
+    {
+        $customer = $this->createCustomer(5, 500);
+
+        $order = app(OrderService::class)->create([
+            'MaDonHang' => 'NO-POINTS',
+            'KhachHangID' => $customer->KhachHangID,
+            'TrangThai' => OrderStatus::Pending->value,
+            'use_points' => false,
+            'DiemSuDung' => 500,
+            'items' => [$this->orderItem()],
+        ]);
+
+        $this->assertSame(0, $order->DiemSuDung);
+        $this->assertSame(10000.0, $order->ThanhTien);
+        $this->assertSame(500, $customer->fresh()->points());
     }
 
     public function test_updating_order_to_another_customer_refunds_the_old_customer_and_redeems_from_the_new_one(): void
@@ -131,7 +182,7 @@ class RewardPointTest extends TestCase
         $this->assertSame(6, $newCustomer->fresh()->points());
         $this->assertSame($newCustomer->KhachHangID, $updatedOrder->KhachHangID);
         $this->assertSame(4, $updatedOrder->DiemSuDung);
-        $this->assertSame(9960.0, $updatedOrder->ThanhTien);
+        $this->assertSame(9996.0, $updatedOrder->ThanhTien);
     }
 
     public function test_repeated_order_edits_only_adjust_the_difference_in_redeemed_points(): void
@@ -187,9 +238,9 @@ class RewardPointTest extends TestCase
 
     public function test_points_discount_never_exceeds_the_value_of_points_redeemed(): void
     {
-        $amounts = app(OrderService::class)->calculateAmounts(5000, null, 100, 500);
+        $amounts = app(OrderService::class)->calculateAmounts(5000, null, 1000, 1000);
 
-        $this->assertSame(100, $amounts['DiemSuDung']);
+        $this->assertSame(1000, $amounts['DiemSuDung']);
         $this->assertSame(1000.0, $amounts['TienGiamDoDiem']);
         $this->assertSame(4000.0, $amounts['ThanhTien']);
     }

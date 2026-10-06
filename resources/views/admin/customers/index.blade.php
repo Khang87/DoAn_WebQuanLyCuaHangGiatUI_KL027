@@ -26,6 +26,7 @@
         <select name="sort" class="form-select form-select-sm filter-select shadow-sm rounded-3" onchange="this.form.submit()">
             <option value="latest" @selected(request('sort', 'latest') === 'latest')>Mới nhất</option>
             <option value="oldest" @selected(request('sort') === 'oldest')>Cũ nhất</option>
+            <option value="id_asc" @selected(request('sort') === 'id_asc')>ID khách hàng tăng dần</option>
             <option value="name_asc" @selected(request('sort') === 'name_asc')>Tên A → Z</option>
             <option value="name_desc" @selected(request('sort') === 'name_desc')>Tên Z → A</option>
             <option value="points_desc" @selected(request('sort') === 'points_desc')>Điểm tích lũy cao → thấp</option>

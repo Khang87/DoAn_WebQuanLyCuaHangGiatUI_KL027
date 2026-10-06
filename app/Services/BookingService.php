@@ -8,6 +8,7 @@ use App\Models\BangGia;
 use App\Models\Booking;
 use App\Models\ChiTietBooking;
 use App\Models\DonHang;
+use App\Models\KhachHang;
 use App\Models\NhatKyHeThong;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
@@ -65,7 +66,8 @@ class BookingService
     {
         return Booking::query()
             ->with([
-                'khachHang',
+                'khachHang.diemTichLuy',
+                'khachHang.taiKhoan',
                 'chiTietBookings.dichVu',
                 'chiTietBookings.loaiDoGiat',
                 'chiTietBookings.donViTinh',
@@ -105,6 +107,17 @@ class BookingService
                 ->findOrFail($booking->BookingID);
             $before = $this->bookingAuditSnapshot($lockedBooking);
             $beforeItems = $this->bookingItemsAuditSnapshot($lockedBooking);
+            $hasConvertedOrder = $this->hasConvertedOrder($lockedBooking);
+
+            if (
+                $hasConvertedOrder
+                && array_key_exists('staff_id', $data)
+                && (int) $data['staff_id'] !== (int) $lockedBooking->NhanVienID
+            ) {
+                throw ValidationException::withMessages([
+                    'staff_id' => 'Không thể thay đổi nhân viên phụ trách sau khi Booking đã được chuyển thành đơn hàng.',
+                ]);
+            }
 
             if (
                 ($data['status'] ?? null) === BookingStatus::Cancelled->value
@@ -116,12 +129,13 @@ class BookingService
                 ]);
             }
 
-            if ($this->hasConvertedOrder($lockedBooking) && array_key_exists('items', $data)) {
+            if ($hasConvertedOrder && array_key_exists('items', $data)) {
                 throw ValidationException::withMessages([
                     'items' => 'Không thể sửa các dòng dịch vụ sau khi Booking đã được chuyển thành đơn hàng.',
                 ]);
             }
 
+            unset($data['customer_id']);
             $mappedData = $this->mapRequestData($data);
             $wasPending = $lockedBooking->TrangThai === BookingStatus::Pending->value;
             $isBeingConfirmed = ($data['status'] ?? null) === BookingStatus::Confirmed->value;
@@ -150,7 +164,7 @@ class BookingService
             }
 
             return $lockedBooking->fresh([
-                'khachHang',
+                'khachHang.diemTichLuy',
                 'chiTietBookings.dichVu',
                 'chiTietBookings.loaiDoGiat',
                 'chiTietBookings.donViTinh',
@@ -268,12 +282,22 @@ class BookingService
         });
     }
 
-    public function confirmPendingBooking(Booking $booking, int $employeeId, int $pointsUsed = 0): DonHang
-    {
-        return DB::transaction(function () use ($booking, $employeeId, $pointsUsed): DonHang {
+    public function confirmPendingBooking(
+        Booking $booking,
+        int $employeeId,
+        int $pointsUsed = 0,
+        bool $useAllAvailablePoints = false,
+    ): DonHang {
+        return DB::transaction(function () use ($booking, $employeeId, $pointsUsed, $useAllAvailablePoints): DonHang {
             $lockedBooking = Booking::query()
                 ->lockForUpdate()
                 ->findOrFail($booking->BookingID);
+
+            if ($useAllAvailablePoints) {
+                $pointsUsed = (int) (
+                    KhachHang::query()->find($lockedBooking->KhachHangID)?->points() ?? 0
+                );
+            }
 
             if ($lockedBooking->statusEnum() !== BookingStatus::Pending) {
                 throw ValidationException::withMessages([

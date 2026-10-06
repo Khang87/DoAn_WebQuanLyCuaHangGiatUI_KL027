@@ -1,11 +1,12 @@
 -- Supabase PostgreSQL live schema snapshot.
--- Generated from pg_catalog via read-only transactions on 2026-10-04.
+-- Updated from PostgreSQL information_schema/pg_catalog via read-only queries on 2026-10-06.
 -- Schema only: no table rows. This local reference was not executed against Supabase.
 --
 -- Laravel naming/reference notes for this snapshot:
 --   User       -> public."TaiKhoan" ("AvatarURL" stores the public URL; avatar
 --                                  files are stored outside PostgreSQL)
---   Customer   -> public."KhachHang" ("SoDienThoai" is unique; "Email" is not)
+--   Customer   -> public."KhachHang" ("SoDienThoai" is unique; "Email" is not;
+--                                     "AvatarUrl" is optional)
 --   Order      -> public."DonHang" ("TrangThai", "TienGiamDoDiem",
 --                                  and "TienGiamKhuyenMai" are the stored fields)
 --   Garment    -> public."LoaiDoGiat" ("DanhMucID" is required and references
@@ -78,7 +79,7 @@ CREATE TABLE IF NOT EXISTS "public"."Booking" (
     "MaBooking" character varying(30) NOT NULL,
     "KhachHangID" integer NOT NULL,
     "HinhThucNhanDo" character varying(30) NOT NULL,
-    "DiaChiNhan" character varying(255),
+    "DiaChiNhan" text,
     "NgayHen" date NOT NULL,
     "GioHen" time without time zone NOT NULL,
     "GhiChu" character varying(500),
@@ -91,7 +92,14 @@ CREATE TABLE IF NOT EXISTS "public"."Booking" (
     "ThoiGianXacNhan" timestamp without time zone,
     "DiemSuDung" integer DEFAULT 0 NOT NULL,
     "TienGiamDoDiem" numeric(18,2) DEFAULT 0 NOT NULL,
-    "DiemDaTru" boolean DEFAULT false NOT NULL
+    "DiemDaTru" boolean DEFAULT false NOT NULL,
+    "KhuyenMaiID" integer,
+    "KhuyenMaiDaTru" boolean DEFAULT false NOT NULL,
+    "PhuongThucThanhToan" character varying(30) DEFAULT 'Tiền mặt'::character varying NOT NULL,
+    "HinhThucTraDo" text,
+    "DiaChiTra" text,
+    "HinhThucGiaoDo" character varying(30) DEFAULT 'Tại cửa hàng'::character varying NOT NULL,
+    "DiaChiGiao" text
 );
 
 CREATE TABLE IF NOT EXISTS "public"."ChiTietBooking" (
@@ -216,7 +224,8 @@ CREATE TABLE IF NOT EXISTS "public"."KhachHang" (
     "Email" character varying(150),
     "DiaChi" character varying(255),
     "NgayTao" timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    "TrangThai" character varying(30) DEFAULT 'Hoạt động'::character varying NOT NULL
+    "TrangThai" character varying(30) DEFAULT 'Hoạt động'::character varying NOT NULL,
+    "AvatarUrl" text
 );
 
 CREATE TABLE IF NOT EXISTS "public"."KhuyenMai" (
@@ -384,11 +393,14 @@ ALTER TABLE ONLY "public"."BangGia" ADD CONSTRAINT "BangGia_TrangThai_check" CHE
 ALTER TABLE ONLY "public"."BangGia" ADD CONSTRAINT "BangGia_pkey" PRIMARY KEY ("BangGiaID");
 ALTER TABLE ONLY "public"."BangGia" ADD CONSTRAINT "CK_BangGia_Ngay" CHECK ("NgayKetThuc" IS NULL OR "NgayKetThuc" >= "NgayApDung");
 ALTER TABLE ONLY "public"."Booking" ADD CONSTRAINT "Booking_DiemSuDung_check" CHECK ("DiemSuDung" >= 0);
+ALTER TABLE ONLY "public"."Booking" ADD CONSTRAINT "Booking_HinhThucGiaoDo_check" CHECK ("HinhThucGiaoDo"::text = ANY (ARRAY['Tại cửa hàng'::character varying, 'Tại nhà'::character varying]::text[]));
 ALTER TABLE ONLY "public"."Booking" ADD CONSTRAINT "Booking_HinhThucNhanDo_check" CHECK ("HinhThucNhanDo"::text = ANY (ARRAY['Tại cửa hàng'::character varying, 'Tại nhà'::character varying]::text[]));
 ALTER TABLE ONLY "public"."Booking" ADD CONSTRAINT "Booking_KhachHangID_fkey" FOREIGN KEY ("KhachHangID") REFERENCES "KhachHang"("KhachHangID");
+ALTER TABLE ONLY "public"."Booking" ADD CONSTRAINT "Booking_KhuyenMaiID_fkey" FOREIGN KEY ("KhuyenMaiID") REFERENCES "KhuyenMai"("KhuyenMaiID");
 ALTER TABLE ONLY "public"."Booking" ADD CONSTRAINT "Booking_MaBooking_key" UNIQUE ("MaBooking");
 ALTER TABLE ONLY "public"."Booking" ADD CONSTRAINT "Booking_NhanVienID_fkey" FOREIGN KEY ("NhanVienID") REFERENCES "NhanVien"("NhanVienID") ON DELETE SET NULL;
 ALTER TABLE ONLY "public"."Booking" ADD CONSTRAINT "Booking_NhanVienXacNhanID_fkey" FOREIGN KEY ("NhanVienXacNhanID") REFERENCES "NhanVien"("NhanVienID");
+ALTER TABLE ONLY "public"."Booking" ADD CONSTRAINT "Booking_PhuongThucThanhToan_check" CHECK ("PhuongThucThanhToan"::text = ANY (ARRAY['Tiền mặt'::character varying, 'Chuyển khoản'::character varying]::text[]));
 ALTER TABLE ONLY "public"."Booking" ADD CONSTRAINT "Booking_TienGiamDoDiem_check" CHECK ("TienGiamDoDiem" >= 0::numeric);
 ALTER TABLE ONLY "public"."Booking" ADD CONSTRAINT "Booking_pkey" PRIMARY KEY ("BookingID");
 ALTER TABLE ONLY "public"."Booking" ADD CONSTRAINT "booking_trangthai_check" CHECK ("TrangThai"::text = ANY (ARRAY['ChoTiepNhan'::character varying, 'DaXacNhan'::character varying, 'DaHuy'::character varying, 'HoanThanh'::character varying]::text[]));

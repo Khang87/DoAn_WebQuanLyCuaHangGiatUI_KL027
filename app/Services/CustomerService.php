@@ -28,6 +28,7 @@ class CustomerService
         $sortMap = [
             'latest' => ['NgayTao', 'desc'],
             'oldest' => ['NgayTao', 'asc'],
+            'id_asc' => ['KhachHangID', 'asc'],
             'name_asc' => ['HoTen', 'asc'],
             'name_desc' => ['HoTen', 'desc'],
         ];

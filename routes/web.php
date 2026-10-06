@@ -290,7 +290,12 @@ Route::middleware(['auth', 'reject.customer'])->group(function () {
     // User Profile (Staff & Admin) — ai cũng tự sửa được hồ sơ của mình
     Route::get('/profile', [TaiKhoanController::class, 'profile'])->name('profile');
     Route::put('/profile', [TaiKhoanController::class, 'updateProfile'])->name('profile.update');
-    Route::post('/profile/avatar', [TaiKhoanController::class, 'updateAvatar'])->name('profile.avatar');
+    Route::post('/profile/avatar/upload-url', [TaiKhoanController::class, 'createAvatarUploadUrl'])
+        ->middleware('throttle:10,1')
+        ->name('profile.avatar.upload-url');
+    Route::post('/profile/avatar', [TaiKhoanController::class, 'completeAvatarUpload'])
+        ->middleware('throttle:20,1')
+        ->name('profile.avatar');
     Route::post('/profile/change-password', [TaiKhoanController::class, 'changePassword'])->name('profile.change-password');
 });
 

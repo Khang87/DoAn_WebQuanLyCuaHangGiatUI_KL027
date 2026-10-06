@@ -9,6 +9,7 @@ use App\Models\BangGia;
 use App\Models\DichVu;
 use App\Models\DonViTinh;
 use App\Models\KhachHang;
+use App\Models\LoaiDichVu;
 use App\Models\LoaiDoGiat;
 use App\Models\NhanVien;
 use App\Services\BookingService;
@@ -67,7 +68,7 @@ class BookingController extends Controller
             abort(404);
         }
 
-        $customers = KhachHang::orderBy('HoTen')->get();
+        $responsibleEmployeeLocked = $booking->donHangs->isNotEmpty();
         $employees = NhanVien::where('TrangThai', 'Hoạt động')->orderBy('HoTen')->get();
         $serviceIds = $booking->chiTietBookings->pluck('DichVuID')->all();
         $garmentIds = $booking->chiTietBookings->pluck('LoaiDoGiatID')->all();
@@ -76,6 +77,14 @@ class BookingController extends Controller
             ->where(fn ($query) => $query->where('TrangThai', 'Hoạt động')->orWhereIn('DichVuID', $serviceIds))
             ->orderBy('TenDichVu')
             ->get();
+        $serviceOptions = $services->map(fn (DichVu $service): array => [
+            'id' => $service->DichVuID,
+            'name' => $service->TenDichVu,
+            'categoryId' => $service->LoaiDichVuID,
+        ])->values();
+        $serviceCategories = LoaiDichVu::query()
+            ->orderBy('TenLoaiDichVu')
+            ->get(['LoaiDichVuID', 'TenLoaiDichVu']);
         $garments = LoaiDoGiat::query()
             ->where(fn ($query) => $query->where('TrangThai', 'Hoạt động')->orWhereIn('LoaiDoGiatID', $garmentIds))
             ->orderBy('TenLoaiDoGiat')
@@ -115,9 +124,11 @@ class BookingController extends Controller
 
         return view('admin.bookings.edit', compact(
             'booking',
-            'customers',
+            'responsibleEmployeeLocked',
             'employees',
             'services',
+            'serviceOptions',
+            'serviceCategories',
             'garments',
             'units',
             'pricingUnitOptions',
@@ -177,10 +188,13 @@ class BookingController extends Controller
         }
 
         try {
+            $validated = $request->validated();
+            $pointsToggleSubmitted = array_key_exists('use_points', $validated);
             $order = $this->bookingService->confirmPendingBooking(
                 $booking,
-                (int) $request->validated()['NhanVienID'],
-                (int) ($request->validated()['DiemSuDung'] ?? 0),
+                (int) $validated['NhanVienID'],
+                $pointsToggleSubmitted ? 0 : (int) ($validated['DiemSuDung'] ?? 0),
+                $pointsToggleSubmitted && (bool) $validated['use_points'],
             );
 
             return redirect()->route('orders.show', $order)->with(

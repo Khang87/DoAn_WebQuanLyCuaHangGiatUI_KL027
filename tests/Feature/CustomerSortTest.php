@@ -79,4 +79,14 @@ class CustomerSortTest extends TestCase
 
         $this->assertSame([1, 3, 4, 2], $customers->getCollection()->pluck('KhachHangID')->all());
     }
+
+    public function test_customers_can_be_sorted_by_id_in_ascending_order(): void
+    {
+        DB::table('KhachHang')->where('KhachHangID', 1)->update(['NgayTao' => '2026-01-01']);
+        DB::table('KhachHang')->where('KhachHangID', 4)->update(['NgayTao' => '2026-12-01']);
+
+        $customers = app(CustomerService::class)->getAll(['sort' => 'id_asc']);
+
+        $this->assertSame([1, 2, 3, 4], $customers->getCollection()->pluck('KhachHangID')->all());
+    }
 }

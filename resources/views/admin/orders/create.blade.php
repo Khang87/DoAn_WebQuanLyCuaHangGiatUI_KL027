@@ -139,9 +139,17 @@
                                     <div class="form-text" id="promotionCodeHint"></div>
                                 </div>
                                 <div class="col-md-4">
-                                    <label class="form-label" for="points_used">Số điểm sử dụng</label>
-                                    <input type="number" class="form-control" id="points_used" name="DiemSuDung" value="{{ old('DiemSuDung', 0) }}" min="0">
-                                    <div class="form-text" id="customerPointsText">Khách đang có 0 điểm (tương đương 0 VNĐ)</div>
+                                    <input type="hidden" id="points_used" name="DiemSuDung" value="{{ old('DiemSuDung', 0) }}">
+                                    <input type="hidden" name="use_points" value="0">
+                                    <div class="rounded-3 border bg-white p-2">
+                                        <div class="form-check form-switch mb-0">
+                                            <input class="form-check-input" type="checkbox" role="switch" id="use_points" name="use_points" value="1" @checked((bool) old('use_points', false))>
+                                            <label class="form-check-label fw-semibold" for="use_points">Dùng điểm tích lũy</label>
+                                        </div>
+                                        <div class="form-text mt-1" id="pointsToggleStatus" aria-live="polite">Đang tắt — không trừ điểm của khách.</div>
+                                        <div class="form-text" id="customerPointsText">Chọn khách hàng để xem số điểm hiện có.</div>
+                                    </div>
+                                    @error('DiemSuDung')<div class="text-danger small">{{ $message }}</div>@enderror
                                 </div>
                             </div>
                         </div>
@@ -207,7 +215,9 @@
     const promotionCodeInput = document.getElementById('promotion_code');
     const promotionCodeHint = document.getElementById('promotionCodeHint');
     const pointsInput = document.getElementById('points_used');
+    const pointsToggle = document.getElementById('use_points');
     const pointsText = document.getElementById('customerPointsText');
+    const pointsToggleStatus = document.getElementById('pointsToggleStatus');
     const customerSelect = document.getElementById('customer_id');
 
     // Danh sách mã voucher hợp lệ để tra cứu khi người dùng gõ tay mã code.
@@ -356,7 +366,6 @@
         const id = customerSelect.value;
         const available = id ? (customerPoints[id] || 0) : 0;
         pointsText.textContent = `Khách đang có ${fmt(available)} điểm (tương đương ${fmt(available * POINT_VALUE)} VNĐ)`;
-        pointsInput.max = available;
     }
 
     function updateTotals() {
@@ -367,8 +376,15 @@
         const remaining = Math.max(0, subtotal - promoDiscount);
 
         const available = customerSelect.value ? (customerPoints[customerSelect.value] || 0) : 0;
-        const usedPoints = Math.max(0, Math.min(Number(pointsInput.value) || 0, available));
-        const pointsDiscount = Math.min(usedPoints * POINT_VALUE, remaining);
+        const redeemablePoints = Math.floor(remaining / POINT_VALUE);
+        const usedPoints = pointsToggle.checked
+            ? Math.max(0, Math.min(available, redeemablePoints))
+            : 0;
+        pointsInput.value = usedPoints;
+        pointsToggleStatus.textContent = pointsToggle.checked
+            ? `Đang bật — dự kiến dùng ${fmt(usedPoints)} điểm.`
+            : 'Đang tắt — không trừ điểm của khách.';
+        const pointsDiscount = usedPoints * POINT_VALUE;
 
         out.subtotal.textContent = fmt(subtotal);
         out.promotion.textContent = fmt(promoDiscount);
@@ -391,7 +407,10 @@
         updateRow(row, isSelection);
         updateTotals();
     });
-    pointsInput.addEventListener('input', updateTotals);
+    pointsToggle.addEventListener('change', () => {
+        updateCustomerPointsHint();
+        updateTotals();
+    });
     promotionSelect.addEventListener('change', () => {
         const option = promotionSelect.options[promotionSelect.selectedIndex];
         promotionCodeInput.value = (option && option.value) ? option.dataset.code : '';

@@ -153,19 +153,24 @@
                             </select>
                             @error('NhanVienID')<div class="invalid-feedback d-block mb-2">{{ $message }}</div>@enderror
                             <input type="hidden" name="booking_id" value="{{ $booking->BookingID }}">
-                            <label class="form-label" for="booking-points-used">Dùng điểm tích lũy</label>
-                            <input
-                                class="form-control mb-2"
-                                id="booking-points-used"
-                                type="number"
-                                name="DiemSuDung"
-                                min="0"
-                                max="{{ $booking->khachHang?->points ?? 0 }}"
-                                value="{{ old('DiemSuDung', 0) }}"
-                            >
-                            <div class="form-text mb-2">
-                                Khách đang có {{ number_format($booking->khachHang?->points ?? 0) }} điểm (tương đương {{ number_format(($booking->khachHang?->points ?? 0) * \App\Services\OrderService::POINT_VALUE) }} VNĐ)
+                            <input type="hidden" name="use_points" value="0">
+                            <div class="rounded-3 border bg-white p-3 mb-2">
+                                <div class="form-check form-switch mb-1">
+                                    <input
+                                        class="form-check-input"
+                                        type="checkbox"
+                                        role="switch"
+                                        id="booking-use-points"
+                                        name="use_points"
+                                        value="1"
+                                        @checked((bool) old('use_points', false))
+                                    >
+                                    <label class="form-check-label fw-semibold" for="booking-use-points">Dùng điểm tích lũy</label>
+                                </div>
+                                <div class="form-text" id="booking-points-toggle-status" aria-live="polite">Đang tắt — không trừ điểm của khách.</div>
+                                <div class="form-text mt-2">Khách đang có {{ number_format($booking->khachHang?->points ?? 0) }} điểm (tương đương {{ number_format(($booking->khachHang?->points ?? 0) * \App\Services\OrderService::POINT_VALUE) }} VNĐ). Khi bật, hệ thống tự dùng tối đa điểm có thể áp dụng cho đơn.</div>
                             </div>
+                            @error('DiemSuDung')<div class="text-danger small mb-2">{{ $message }}</div>@enderror
                             <button type="submit" class="btn btn-outline-primary py-2 w-100">
                                 <i class="bi bi-box-arrow-in-down me-1" aria-hidden="true"></i> Tiếp nhận &amp; tạo đơn
                             </button>
@@ -216,6 +221,20 @@
 @push('scripts')
 <script>
     document.addEventListener('DOMContentLoaded', function() {
+        const pointsToggle = document.getElementById('booking-use-points');
+        const pointsToggleStatus = document.getElementById('booking-points-toggle-status');
+
+        if (pointsToggle && pointsToggleStatus) {
+            const updatePointsToggleStatus = function() {
+                pointsToggleStatus.textContent = pointsToggle.checked
+                    ? 'Đang bật — hệ thống sẽ tự dùng điểm tối đa theo tổng tiền đơn.'
+                    : 'Đang tắt — không trừ điểm của khách.';
+            };
+
+            pointsToggle.addEventListener('change', updatePointsToggleStatus);
+            updatePointsToggleStatus();
+        }
+
         document.querySelectorAll('[data-confirm-booking-form]').forEach(function(form) {
             form.addEventListener('submit', function() {
                 const button = form.querySelector('button[type="submit"]');

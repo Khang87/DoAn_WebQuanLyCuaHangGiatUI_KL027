@@ -25,7 +25,12 @@ Sky Laundry hỗ trợ số hóa hoạt động hằng ngày của cửa hàng g
 - Booking hỗ trợ nhiều dòng dịch vụ; mức khối lượng tối thiểu được tính riêng trên từng dòng KG, không cộng gộp toàn Booking.
 - Bộ máy bảng giá tra cứu chính xác theo `(DichVuID, LoaiDoGiatID, DonViTinhID)`, lấy ngày áp dụng mới nhất; thao tác tạo/sửa/khôi phục khóa theo tuple bằng PostgreSQL transaction advisory lock để chống race condition giữa các tiến trình Laravel.
 - Booking được xác nhận sẽ tự chuyển thành đơn hàng và phiếu giao trong transaction. UI không hiện nút tạo đơn cho Booking đang chờ xác nhận; nếu đã có đơn thì hiển thị liên kết tới đơn hiện hữu thay vì tạo trùng.
-- Điểm tích lũy dùng các hằng số nghiệp vụ trong `OrderService`: mỗi 1.000 VNĐ giá trị đơn tương ứng 100 điểm khi đơn chuyển sang `Đã giao`; mỗi điểm giảm 10 VNĐ. Có thể dùng điểm khi tạo/sửa đơn quản trị hoặc xác nhận/chuyển Booking thành đơn hàng. Cộng điểm có audit và chống cộng lặp; giao dịch tạo/sửa đơn hoàn điểm cũ, trừ điểm mới nguyên tử và rollback nếu số dư không đủ.
+- Booking chỉ được tiếp nhận và chuyển thành đơn khi đã chọn nhân viên phụ trách hợp lệ. Sau khi đơn được tạo từ Booking, nhân viên phụ trách bị khóa trên form sửa; backend cũng từ chối request cố thay đổi người phụ trách.
+- Form sửa Booking lọc dịch vụ theo danh mục đã chọn. Danh mục không có dịch vụ sẽ hiển thị thông báo và vô hiệu hóa ô dịch vụ; đơn vị tính tiếp tục chỉ khả dụng khi có bảng giá hiệu lực phù hợp.
+- Điểm tích lũy dùng các hằng số nghiệp vụ trong `OrderService`: mỗi 1.000 VNĐ giá trị đơn tương ứng 100 điểm khi đơn chuyển sang `Đã giao`; mỗi điểm giảm 10 VNĐ. Form tạo/sửa đơn và xác nhận Booking dùng công tắc bật/tắt thay cho nhập số điểm; khi bật, hệ thống tự giới hạn số điểm theo số dư và số tiền còn phải trả. Cộng điểm có audit và chống cộng lặp; giao dịch tạo/sửa đơn hoàn điểm cũ, trừ điểm mới nguyên tử và rollback nếu số dư không đủ.
+- Form khuyến mãi tự bật/tắt trường “Mức giảm tối đa” theo loại khuyến mãi: giảm cố định sẽ vô hiệu hóa và xóa mức tối đa; giảm theo phần trăm cho phép nhập mức tối đa.
+- Hồ sơ tài khoản hỗ trợ tải avatar trực tiếp lên Supabase Storage bằng signed upload URL; ứng dụng chỉ lưu URL công khai trong hồ sơ tài khoản và kiểm tra đường dẫn avatar thuộc đúng tài khoản đang đăng nhập.
+- Danh sách khách hàng hỗ trợ sắp xếp theo tổng điểm tích lũy, xử lý khách chưa có bản ghi điểm như 0 điểm và sắp xếp ổn định khi bằng điểm.
 - Ghi nhật ký `NhatKyHeThong` cho tạo/xác nhận Booking (bao gồm người và thời điểm xác nhận), đổi trạng thái đơn hàng và thay đổi tài khoản; snapshot tài khoản không ghi mật khẩu.
 - Màn hình Nhật ký hệ thống tại `/admin/system-logs` dành riêng cho Chủ cửa hàng; có lọc theo bảng dữ liệu, hành động, khoảng ngày và dropdown tài khoản, phân trang, xem snapshot trước/sau và liên kết tới Booking/đơn liên quan. Nhật ký có `TaiKhoanID` NULL được hiển thị là “Hệ thống”; thời gian được trình bày ngày/giờ thành hai dòng và cặp nút “Lọc”/“Xóa lọc” dùng cùng kích thước, căn chỉnh.
 - Chat theo đơn hàng tại `/admin/messages` cho Chủ cửa hàng, Quản lý và Nhân viên; danh sách đơn phân trang, xem tối đa 100 tin nhắn gần nhất theo đơn và gửi tới tài khoản khách hàng được liên kết với đơn. Nhãn người gửi phân biệt tin của “Cửa hàng” với tên tài khoản người gửi; `TinNhan` chỉ lưu hội thoại, không dùng làm technical audit hoặc system log.
@@ -135,6 +140,16 @@ Chỉ sử dụng tài khoản được cấp trong môi trường cục bộ ho
 ### Trạng thái kiểm thử hồi quy
 
 Lần chạy đầy đủ được ghi nhận trước đó: **311 test được phát hiện, 119 PASSED, 192 skipped, 624 assertions**. Các test skipped không được tính là kiểm thử thành công. Bộ test dùng SQLite in-memory theo `phpunit.xml`, không phải kiểm thử tích hợp ghi dữ liệu trên Supabase Live. Các xác minh hồi quy mới hơn được ghi trong [TESTCASES.md](./TESTCASES.md); số liệu suite đầy đủ chỉ được cập nhật sau khi chạy lại toàn bộ suite.
+
+### Cập nhật tính năng (06/10/2026)
+
+- **Tiếp nhận Booking:** Bắt buộc chọn nhân viên phụ trách trước khi tiếp nhận và tạo đơn. Sau khi Booking có đơn hàng liên kết, nhân viên phụ trách không thể sửa; cả giao diện và backend đều bảo vệ trạng thái này.
+- **Dịch vụ theo danh mục:** Form sửa Booking có thêm chọn danh mục; danh sách dịch vụ thay đổi theo danh mục. Nếu danh mục không có dịch vụ, form nêu rõ và khóa lựa chọn dịch vụ. Các lựa chọn đơn vị/khối lượng cũ được làm mới khi đổi danh mục.
+- **Công tắc dùng điểm:** Tạo/sửa đơn và xác nhận Booking dùng công tắc thay vì nhập số điểm. Khi bật, giao diện dự tính số điểm tối đa áp dụng được sau khuyến mãi; server vẫn tự tính và xác thực số điểm thực tế trong transaction.
+- **Khuyến mãi:** Trường mức giảm tối đa bị làm xám/vô hiệu hóa với mức giảm cố định và được gửi rỗng để loại bỏ giới hạn cũ; trường này được bật với mức giảm phần trăm.
+- **Ảnh hồ sơ:** Tải avatar qua signed URL lên Supabase Storage; server xác minh object thuộc tài khoản hiện tại trước khi lưu URL.
+- **Snapshot Supabase:** `schema.sql` được cập nhật theo truy vấn metadata chỉ đọc ngày 06/10/2026. Snapshot phản ánh thêm các cột mới của `Booking`/`KhachHang`, kiểu `Booking.DiaChiNhan` và các ràng buộc Booking; không chạy DDL, migration hay ghi dữ liệu lên Supabase.
+- **Kiểm thử:** Lần chạy tập trung mới nhất cho `BookingOrderConversionTest` đạt **35 passed, 180 assertions**. Đây là test SQLite in-memory, không phải chạy toàn bộ suite hoặc kiểm thử ghi trên Supabase Live.
 
 ### Cải tiến & tái cấu trúc Loại đồ giặt và bảng giá
 

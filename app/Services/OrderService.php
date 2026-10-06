@@ -30,7 +30,7 @@ class OrderService
     /**
      * Giá trị giảm giá của một điểm tích lũy tính theo VNĐ.
      */
-    public const POINT_VALUE = 10;
+    public const POINT_VALUE = 1;
 
     /**
      * Số tiền thanh toán cần thiết để nhận một lô điểm tích lũy.
@@ -466,7 +466,9 @@ class OrderService
             );
 
             $customerPoints = $customer?->points() ?? 0;
-            $pointsRequested = (int) ($data['DiemSuDung'] ?? 0);
+            $pointsRequested = array_key_exists('use_points', $data)
+                ? ((bool) $data['use_points'] ? $customerPoints : 0)
+                : (int) ($data['DiemSuDung'] ?? 0);
             $this->assertRequestedPointsAvailable($pointsRequested, $customerPoints);
 
             $amounts = $this->calculateAmounts(
@@ -557,10 +559,12 @@ class OrderService
             $promotion = $this->applyPromotionConditions($promotion, $customer, $subtotal, $lockedOrder->DonHangID);
 
             $previousPoints = (int) $lockedOrder->DiemSuDung;
-            $pointsRequested = (int) ($data['DiemSuDung'] ?? 0);
             $sameCustomer = ! $customerChanged;
             $customerPoints = ($customer?->points() ?? 0)
                 + ($sameCustomer ? $previousPoints : 0);
+            $pointsRequested = array_key_exists('use_points', $data)
+                ? ((bool) $data['use_points'] ? $customerPoints : 0)
+                : (int) ($data['DiemSuDung'] ?? 0);
 
             $this->assertRequestedPointsAvailable($pointsRequested, $customerPoints);
 

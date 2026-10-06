@@ -20,6 +20,7 @@ class XacNhanBookingRequest extends FormRequest
         return [
             'NhanVienID' => ['required', 'integer', 'exists:NhanVien,NhanVienID'],
             'DiemSuDung' => ['nullable', 'integer', 'min:0'],
+            'use_points' => ['nullable', 'boolean'],
         ];
     }
 

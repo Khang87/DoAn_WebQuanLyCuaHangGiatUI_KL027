@@ -24,6 +24,7 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\ViewErrorBag;
 use Illuminate\Validation\ValidationException;
 use PDOException;
 use Tests\TestCase;
@@ -44,7 +45,7 @@ class BookingOrderConversionTest extends TestCase
 
     protected function tearDown(): void
     {
-        foreach (['NhatKyHeThong', 'ChiTietBooking', 'ChiTietDonHang', 'GiaoNhan', 'HoaDon', 'ThanhToan', 'DiemTichLuy', 'DonHang', 'Booking', 'BangGia', 'DonViTinh', 'LoaiDoGiat', 'DanhMucLoaiDoGiat', 'DichVu', 'NhanVien', 'KhachHang'] as $table) {
+        foreach (['NhatKyHeThong', 'ChiTietBooking', 'ChiTietDonHang', 'GiaoNhan', 'HoaDon', 'ThanhToan', 'DiemTichLuy', 'DonHang', 'Booking', 'BangGia', 'DonViTinh', 'LoaiDoGiat', 'DanhMucLoaiDoGiat', 'DichVu', 'NhanVien', 'TaiKhoan', 'KhachHang'] as $table) {
             Schema::dropIfExists($table);
         }
 
@@ -132,6 +133,39 @@ class BookingOrderConversionTest extends TestCase
         $this->assertSame(1, NhatKyHeThong::query()->where('BangDuLieu', 'Booking')->count());
     }
 
+    public function test_booking_edit_shows_customer_details_from_the_linked_account_when_customer_fields_are_missing(): void
+    {
+        DB::table('KhachHang')->insert(['KhachHangID' => 9]);
+        DB::table('TaiKhoan')->insert([
+            'TaiKhoanID' => 4,
+            'KhachHangID' => 9,
+            'TenDangNhap' => 'Khách hàng liên kết',
+            'SoDienThoai' => '0901234567',
+            'Email' => 'customer@example.test',
+        ]);
+        $booking = $this->createBooking();
+
+        $booking = $this->bookingService->find($booking->BookingID);
+        $content = view('admin.bookings.edit', [
+            'booking' => $booking,
+            'responsibleEmployeeLocked' => false,
+            'employees' => collect(),
+            'services' => collect(),
+            'serviceOptions' => collect(),
+            'serviceCategories' => collect(),
+            'garments' => collect(),
+            'units' => collect(),
+            'pricingUnitOptions' => collect(),
+            'errors' => new ViewErrorBag,
+        ])->render();
+
+        $this->assertStringContainsString('value="Khách hàng liên kết" disabled', $content);
+        $this->assertStringContainsString('value="0901234567" disabled', $content);
+        $this->assertStringContainsString('value="customer@example.test" disabled', $content);
+        $this->assertStringContainsString('bg-light text-muted', $content);
+        $this->assertStringNotContainsString('name="HoTen"', $content);
+    }
+
     public function test_confirm_route_changes_pending_booking_and_creates_one_order(): void
     {
         DB::table('DonViTinh')->insert([
@@ -161,6 +195,12 @@ class BookingOrderConversionTest extends TestCase
             RejectCustomerRole::class,
         ]);
 
+        $this->from(route('bookings.show', $booking->BookingID))
+            ->post(route('bookings.confirm', $booking->BookingID))
+            ->assertRedirect(route('bookings.show', $booking->BookingID))
+            ->assertSessionHasErrors('NhanVienID');
+        $this->assertSame(0, DonHang::query()->count());
+
         DB::table('NhanVien')->insert([
             'NhanVienID' => 2,
             'HoTen' => 'Nhân viên được giao',
@@ -186,6 +226,33 @@ class BookingOrderConversionTest extends TestCase
         $this->assertSame(1, DonHang::query()->where('BookingID', $booking->BookingID)->count());
     }
 
+    public function test_booking_employee_cannot_be_changed_after_an_order_is_created(): void
+    {
+        $booking = $this->createBooking([
+            'TrangThai' => BookingStatus::Confirmed->value,
+            'NhanVienID' => 1,
+        ]);
+        DonHang::query()->create([
+            'MaDonHang' => 'DH002',
+            'BookingID' => $booking->BookingID,
+            'KhachHangID' => 9,
+            'TrangThai' => OrderStatus::Pending->value,
+        ]);
+        DB::table('NhanVien')->insert([
+            'NhanVienID' => 2,
+            'HoTen' => 'Nhân viên khác',
+        ]);
+
+        try {
+            $this->bookingService->update($booking, ['staff_id' => 2]);
+            $this->fail('The responsible employee must be immutable after order conversion.');
+        } catch (ValidationException $exception) {
+            $this->assertArrayHasKey('staff_id', $exception->errors());
+        }
+
+        $this->assertSame(1, $booking->fresh()->NhanVienID);
+    }
+
     public function test_booking_edit_cannot_bypass_the_receive_and_create_order_action(): void
     {
         $booking = $this->createBooking();
@@ -202,6 +269,20 @@ class BookingOrderConversionTest extends TestCase
 
         $this->assertSame(BookingStatus::Pending->value, $booking->fresh()->TrangThai);
         $this->assertSame(0, DonHang::query()->count());
+    }
+
+    public function test_booking_update_does_not_allow_changing_its_customer(): void
+    {
+        $booking = $this->createBooking();
+        $this->actingAsBookingEmployee();
+
+        $updatedBooking = $this->bookingService->update($booking, [
+            'customer_id' => 999,
+            'address' => 'Địa chỉ mới',
+        ]);
+
+        $this->assertSame(9, $updatedBooking->KhachHangID);
+        $this->assertSame('Địa chỉ mới', $updatedBooking->DiaChiNhan);
     }
 
     public function test_confirm_route_requires_a_responsible_employee_before_creating_an_order(): void
@@ -1263,6 +1344,17 @@ class BookingOrderConversionTest extends TestCase
     {
         Schema::create('KhachHang', function (Blueprint $table): void {
             $table->increments('KhachHangID');
+            $table->string('HoTen')->nullable();
+            $table->string('SoDienThoai')->nullable();
+            $table->string('Email')->nullable();
+        });
+
+        Schema::create('TaiKhoan', function (Blueprint $table): void {
+            $table->increments('TaiKhoanID');
+            $table->unsignedInteger('KhachHangID')->nullable();
+            $table->string('TenDangNhap');
+            $table->string('SoDienThoai')->nullable();
+            $table->string('Email')->nullable();
         });
 
         Schema::create('DichVu', function (Blueprint $table): void {

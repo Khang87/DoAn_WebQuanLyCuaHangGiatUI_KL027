@@ -18,6 +18,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
@@ -390,59 +391,146 @@ class TaiKhoanController extends Controller
         }
     }
 
-    public function updateAvatar(Request $request)
+    public function createAvatarUploadUrl(Request $request): JsonResponse
     {
         $account = $request->user();
 
         $validated = $request->validate([
-            'avatar' => ['required', 'image', 'mimes:jpeg,jpg,png,gif,webp', 'max:2048'],
+            'content_type' => ['required', 'in:image/jpeg,image/png,image/gif,image/webp'],
+            'file_size' => ['required', 'integer', 'min:1', 'max:2097152'],
         ]);
-        $file = $validated['avatar'];
 
         try {
-            if ($this->isSupabaseStorageConfigured()) {
-                $path = $file->storeAs('avatars', (string) $account->getKey(), [
-                    'disk' => 'supabase',
-                    'visibility' => 'public',
-                    'ContentType' => $file->getMimeType(),
-                    'CacheControl' => 'no-cache, max-age=0, must-revalidate',
-                ]);
-
-                if (! is_string($path) || $path === '') {
-                    throw new \RuntimeException('Supabase Storage từ chối tải ảnh lên.');
-                }
-
-                $this->deleteLocalAvatarFiles($account);
-                $avatarUrl = Storage::disk('supabase')->url($path);
-            } else {
-                $dir = public_path('uploads/avatars');
-                if (! is_dir($dir) && ! mkdir($dir, 0755, true) && ! is_dir($dir)) {
-                    throw new \RuntimeException('Không thể tạo thư mục lưu ảnh đại diện.');
-                }
-
-                $filename = 'avatar_'.$account->getKey().'.'.$file->extension();
-                $avatarFile = $file->move($dir, $filename);
-                $this->deleteLocalAvatarFiles($account, $avatarFile->getPathname());
-                $avatarUrl = asset('uploads/avatars/'.$filename).'?v='.filemtime($avatarFile->getPathname());
+            if (! $this->isSupabaseAvatarConfigured()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Chức năng tải avatar lên Supabase chưa được cấu hình.',
+                ], 503);
             }
 
+            $path = $this->supabaseAvatarPath($account);
+            $projectUrl = rtrim((string) config('services.supabase.project_url'), '/');
+            $bucket = (string) config('services.supabase.avatar_bucket');
+            $serviceRoleKey = (string) config('services.supabase.service_role_key');
+            $signingUrl = $projectUrl.'/storage/v1/object/upload/sign/'
+                .rawurlencode($bucket).'/'.$this->encodeStoragePath($path);
+
+            $response = Http::withHeaders([
+                'apikey' => $serviceRoleKey,
+                'Authorization' => 'Bearer '.$serviceRoleKey,
+            ])->acceptJson()->timeout(10)->post($signingUrl, ['upsert' => true]);
+
+            if (! $response->successful()) {
+                Log::error('Supabase avatar upload URL request failed.', [
+                    'account_id' => $account->getKey(),
+                    'status' => $response->status(),
+                ]);
+
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Không thể chuẩn bị tải avatar lên Supabase.',
+                ], 502);
+            }
+
+            $signedUrl = $response->json('signedURL')
+                ?? $response->json('signedUrl')
+                ?? $response->json('url');
+            $token = $response->json('token');
+
+            if (! is_string($token) || $token === '') {
+                if (is_string($signedUrl) && $signedUrl !== '') {
+                    parse_str((string) parse_url($signedUrl, PHP_URL_QUERY), $query);
+                    $token = $query['token'] ?? null;
+                }
+            }
+
+            if (! is_string($token) || $token === '') {
+                Log::error('Supabase avatar upload URL response did not contain a token.', [
+                    'account_id' => $account->getKey(),
+                ]);
+
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Supabase không trả về mã tải avatar hợp lệ.',
+                ], 502);
+            }
+
+            return response()->json([
+                'success' => true,
+                'path' => $path,
+                'token' => $token,
+            ]);
+        } catch (Throwable $exception) {
+            Log::error('Preparing direct Supabase avatar upload failed.', [
+                'account_id' => $account->getKey(),
+                'exception' => $exception::class,
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Không thể chuẩn bị tải avatar lên. Vui lòng thử lại.',
+            ], 500);
+        }
+    }
+
+    public function completeAvatarUpload(Request $request): JsonResponse
+    {
+        $account = $request->user();
+        $validated = $request->validate([
+            'path' => ['required', 'string', 'max:255'],
+            'content_type' => ['required', 'in:image/jpeg,image/png,image/gif,image/webp'],
+        ]);
+        $path = $this->supabaseAvatarPath($account);
+
+        if ($validated['path'] !== $path) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Đường dẫn avatar không hợp lệ.',
+            ], 422);
+        }
+
+        try {
+            $avatarUrl = $this->supabaseAvatarPublicUrl($path);
+            $response = Http::timeout(10)->head($avatarUrl);
+            $contentType = strtolower(trim(explode(';', (string) $response->header('Content-Type'))[0]));
+            $contentLength = (int) $response->header('Content-Length', 0);
+
+            if (
+                ! $response->successful()
+                || $contentType !== $validated['content_type']
+                || ($contentLength > 0 && $contentLength > 2 * 1024 * 1024)
+            ) {
+                Log::warning('Uploaded avatar could not be verified in Supabase Storage.', [
+                    'account_id' => $account->getKey(),
+                    'status' => $response->status(),
+                    'content_type' => $contentType,
+                    'content_length' => $contentLength,
+                ]);
+
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Không xác minh được ảnh đã tải lên. Vui lòng thử lại.',
+                ], 422);
+            }
+
+            $avatarUrl .= '?v='.now()->format('Uu');
             $account->AvatarURL = $avatarUrl;
             $account->save();
+            $this->deleteLocalAvatarFiles($account);
 
             return response()->json([
                 'success' => true,
                 'avatar_url' => $avatarUrl,
             ]);
         } catch (Throwable $exception) {
-            Log::error('Profile avatar upload failed.', [
+            Log::error('Saving Supabase avatar URL failed.', [
                 'account_id' => $account->getKey(),
-                'disk' => $this->isSupabaseStorageConfigured() ? 'supabase' : 'local',
                 'exception' => $exception::class,
             ]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Không thể tải ảnh đại diện lên. Vui lòng thử lại.',
+                'message' => 'Không thể lưu URL avatar. Vui lòng thử lại.',
             ], 500);
         }
     }
@@ -451,7 +539,22 @@ class TaiKhoanController extends Controller
     {
         $this->deleteLocalAvatarFiles($account, $exceptPath);
 
-        if ($this->isSupabaseStorageConfigured()) {
+        if ($this->isSupabaseAvatarConfigured()) {
+            $projectUrl = rtrim((string) config('services.supabase.project_url'), '/');
+            $bucket = rawurlencode((string) config('services.supabase.avatar_bucket'));
+            $path = $this->encodeStoragePath($this->supabaseAvatarPath($account));
+            $serviceRoleKey = (string) config('services.supabase.service_role_key');
+            $response = Http::withHeaders([
+                'apikey' => $serviceRoleKey,
+                'Authorization' => 'Bearer '.$serviceRoleKey,
+            ])->timeout(10)->delete(
+                $projectUrl.'/storage/v1/object/'.$bucket.'/'.$path,
+            );
+
+            if (! $response->successful()) {
+                throw new \RuntimeException('Không thể xóa ảnh đại diện trên Supabase Storage.');
+            }
+        } elseif ($this->isSupabaseStorageConfigured()) {
             $deleted = Storage::disk('supabase')->delete($this->supabaseAvatarPath($account));
 
             if (! $deleted) {
@@ -490,9 +593,32 @@ class TaiKhoanController extends Controller
         ])->every(fn (?string $value): bool => filled($value));
     }
 
+    private function isSupabaseAvatarConfigured(): bool
+    {
+        return collect([
+            config('services.supabase.project_url'),
+            config('services.supabase.service_role_key'),
+            config('services.supabase.avatar_bucket'),
+        ])->every(fn (?string $value): bool => filled($value));
+    }
+
     private function supabaseAvatarPath(User $account): string
     {
         return 'avatars/'.$account->getKey();
+    }
+
+    private function supabaseAvatarPublicUrl(string $path): string
+    {
+        $projectUrl = rtrim((string) config('services.supabase.project_url'), '/');
+        $bucket = rawurlencode((string) config('services.supabase.avatar_bucket'));
+        $encodedPath = implode('/', array_map('rawurlencode', explode('/', $path)));
+
+        return $projectUrl.'/storage/v1/object/public/'.$bucket.'/'.$encodedPath;
+    }
+
+    private function encodeStoragePath(string $path): string
+    {
+        return implode('/', array_map('rawurlencode', explode('/', $path)));
     }
 
     public function changePassword(Request $request)
