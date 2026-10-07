@@ -12,6 +12,8 @@ use App\Models\DichVu;
 use App\Models\DonHang;
 use App\Models\DonViTinh;
 use App\Models\LoaiDoGiat;
+use App\Services\PricingService;
+use App\Services\TinhTienGiatUiService;
 use App\Support\FriendlyError;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -19,6 +21,8 @@ use Symfony\Component\HttpFoundation\Response;
 class ChiTietDonHangController extends Controller
 {
     use RejectsSettledRecords;
+
+    public function __construct(private PricingService $pricingService, private TinhTienGiatUiService $calculator) {}
 
     /**
      * Đơn đã quyết toán thì các dòng mặt hàng của đơn cũng bị khoá theo.
@@ -184,7 +188,7 @@ class ChiTietDonHangController extends Controller
     private function withResolvedPricing(array $data): array
     {
         if (empty($data['DonGia'])) {
-            $pricing = BangGia::getLatestPricing(
+            $pricing = $this->pricingService->getLatestPricing(
                 (int) ($data['DichVuID'] ?? 0),
                 (int) ($data['LoaiDoGiatID'] ?? 0),
                 ! empty($data['DonViTinhID']) ? (int) $data['DonViTinhID'] : null
@@ -200,7 +204,7 @@ class ChiTietDonHangController extends Controller
     }
 
     /**
-     * Tính Thành tiền: đơn vị kg → Đơn giá × Số lượng × Khối lượng;
+     * Tính Thành tiền: đơn vị kg → Đơn giá × max(Khối lượng, mức tối thiểu);
      * đơn vị khác → Đơn giá × Số lượng (bỏ qua khối lượng).
      */
     private function withComputedSubtotal(array $data): array
@@ -209,14 +213,7 @@ class ChiTietDonHangController extends Controller
             ? DonViTinh::find($data['DonViTinhID'])?->KyHieu
             : null;
 
-        $isWeightUnit = BangGia::isWeightUnit($unit);
-        $weight = max(0, (float) ($data['KhoiLuong'] ?? 0));
-        $price = (float) ($data['DonGia'] ?? 0);
-        $quantity = (float) ($data['SoLuong'] ?? 0);
-
-        $data['ThanhTien'] = $isWeightUnit && $weight > 0
-            ? round($price * $quantity * $weight, 2)
-            : round($price * $quantity, 2);
+        $data['ThanhTien'] = $this->calculator->tinhThanhTienChiTiet(array_merge($data, ['KyHieu' => $unit]));
 
         return $data;
     }

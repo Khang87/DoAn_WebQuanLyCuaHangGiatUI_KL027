@@ -366,7 +366,7 @@ class BookingOrderConversionTest extends TestCase
         $orderService->shouldReceive('createFromBooking')
             ->once()
             ->andThrow($queryException);
-        $this->app->instance(BookingService::class, new BookingService($orderService));
+        $this->app->instance(BookingService::class, new BookingService($orderService, app(PricingService::class)));
         Log::shouldReceive('error')
             ->once()
             ->with('Booking operation failed', \Mockery::on(
@@ -1700,6 +1700,7 @@ class BookingOrderConversionTest extends TestCase
 
         Schema::create('HoaDon', function (Blueprint $table): void {
             $table->increments('HoaDonID');
+            $table->string('TrangThai')->nullable();
             $table->unsignedInteger('DonHangID');
         });
 

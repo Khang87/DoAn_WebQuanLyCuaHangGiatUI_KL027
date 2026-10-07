@@ -1,11 +1,11 @@
 -- Supabase PostgreSQL live schema snapshot.
--- Updated from PostgreSQL information_schema/pg_catalog via read-only queries on 2026-10-06.
+-- Table columns verified via read-only pg_catalog queries on 2026-10-07.
 -- Schema only: no table rows. This local reference was not executed against Supabase.
 --
--- Application contract reviewed 2026-10-07 (no Live catalog access in this session):
+-- Application contract verified against Live QLGiatUi on 2026-10-07:
 --   Booking uses independent HinhThucNhanDo/DiaChiNhan and HinhThucTraDo/DiaChiTra.
---   HinhThucGiaoDo/DiaChiGiao below are legacy columns retained from the snapshot;
---   Laravel does not use them. Their presence is not a request to create columns.
+--   HinhThucGiaoDo/DiaChiGiao remain used by submit_laundry_booking_with_delivery;
+--   that RPC mirrors them to HinhThucTraDo/DiaChiTra. Retain all four existing columns.
 --   Booking -> actual inspection -> DonHang (Da tiep nhan), with home-only delivery legs.
 -- Laravel naming/reference notes for this snapshot:
 --   User       -> public."TaiKhoan" ("AvatarURL" stores the public URL; avatar
@@ -104,7 +104,11 @@ CREATE TABLE IF NOT EXISTS "public"."Booking" (
     "HinhThucTraDo" text,
     "DiaChiTra" text,
     "HinhThucGiaoDo" character varying(30) DEFAULT 'Tại cửa hàng'::character varying NOT NULL,
-    "DiaChiGiao" text
+    "DiaChiGiao" text,
+    "PickupDistanceMeters" integer DEFAULT 0 NOT NULL,
+    "PickupDeliveryFee" numeric(12,2) DEFAULT 0 NOT NULL,
+    "DeliveryDistanceMeters" integer DEFAULT 0 NOT NULL,
+    "DeliveryFee" numeric(12,2) DEFAULT 0 NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS "public"."ChiTietBooking" (
@@ -604,14 +608,14 @@ CREATE OR REPLACE FUNCTION private.create_legacy_order_invoice()
  SET search_path TO ''
 AS $function$
 BEGIN
-	INSERT INTO public.hoadon (
-		mahoadon,
-		donhangid,
-		tongtien,
-		giamgia,
-		phigiaohang,
-		thanhtien,
-		trangthai
+	INSERT INTO public."HoaDon" (
+		"MaHoaDon",
+		"DonHangID",
+		"TongTien",
+		"GiamGia",
+		"PhiGiaoHang",
+		"ThanhTien",
+		"TrangThai"
 	) VALUES (
 		'HD-' || to_char(clock_timestamp(), 'YYYYMMDDHH24MISS') || '-' ||
 			substr(replace(gen_random_uuid()::text, '-', ''), 1, 8),
@@ -624,308 +628,50 @@ BEGIN
 	);
 	RETURN NEW;
 END;
-$function$
-;
+$function$;
 
--- Routine schema: private
-CREATE OR REPLACE FUNCTION private.create_order_invoice()
- RETURNS trigger
- LANGUAGE plpgsql
- SECURITY DEFINER
- SET search_path TO ''
-AS $function$
-BEGIN
-	INSERT INTO public.hoadon (
-		mahoadon,
-		donhangid,
-		tongtien,
-		giamgia,
-		phigiaohang,
-		thanhtien,
-		trangthai
-	) VALUES (
-		'HD-' || to_char(clock_timestamp(), 'YYYYMMDDHH24MISS') || '-' ||
-			substr(replace(gen_random_uuid()::text, '-', ''), 1, 8),
-		NEW.donhangid,
-		NEW.tongtien,
-		NEW.tiengiamdodiem + NEW.tiengiamkhuyenmai,
-		NEW.phigiaohang,
-		NEW.thanhtien,
-		'Chưa thanh toán'
-	);
-	RETURN NEW;
-END;
-$function$
-;
-
--- Routine schema: private
-CREATE OR REPLACE FUNCTION private.current_account_id()
- RETURNS bigint
- LANGUAGE sql
- STABLE SECURITY DEFINER
- SET search_path TO ''
-AS $function$
-  SELECT account."TaiKhoanID"
-  FROM public."TaiKhoan" AS account
-  WHERE account."UserAuthId" = (SELECT auth.uid())
-    AND account."TrangThai" = 'Hoạt động';
-$function$
-;
-
--- Routine schema: private
-CREATE OR REPLACE FUNCTION private.current_customer_id()
- RETURNS bigint
- LANGUAGE sql
- STABLE SECURITY DEFINER
- SET search_path TO ''
-AS $function$
-  SELECT account."KhachHangID"
-  FROM public."TaiKhoan" AS account
-  JOIN public."KhachHang" AS customer
-    ON customer."KhachHangID" = account."KhachHangID"
-  WHERE account."UserAuthId" = (SELECT auth.uid())
-    AND account."TrangThai" = 'Hoạt động'
-    AND customer."TrangThai" = 'Hoạt động';
-$function$
-;
-
--- Routine schema: private
-CREATE OR REPLACE FUNCTION private.current_employee_id()
- RETURNS bigint
- LANGUAGE sql
- STABLE SECURITY DEFINER
- SET search_path TO ''
-AS $function$
-  SELECT account."NhanVienID"
-  FROM public."TaiKhoan" AS account
-  JOIN public."NhanVien" AS employee
-    ON employee."NhanVienID" = account."NhanVienID"
-  WHERE account."UserAuthId" = (SELECT auth.uid())
-    AND account."TrangThai" = 'Hoạt động'
-    AND employee."TrangThai" = 'Hoạt động';
-$function$
-;
-
--- Routine schema: private
-CREATE OR REPLACE FUNCTION private.has_role(role_name text)
- RETURNS boolean
- LANGUAGE sql
- STABLE SECURITY DEFINER
- SET search_path TO ''
-AS $function$
-  SELECT EXISTS (
-    SELECT 1
-    FROM public."TaiKhoan" AS account
-    JOIN public."TaiKhoan_VaiTro" AS account_role
-      ON account_role."TaiKhoanID" = account."TaiKhoanID"
-    JOIN public."VaiTro" AS app_role
-      ON app_role."VaiTroID" = account_role."VaiTroID"
-    WHERE account."UserAuthId" = (SELECT auth.uid())
-      AND account."TrangThai" = 'Hoạt động'
-      AND app_role."TenVaiTro" = role_name
-      AND app_role."TrangThai" = 'Hoạt động'
-  );
-$function$
-;
-
--- Routine schema: private
-CREATE OR REPLACE FUNCTION private.is_staff()
- RETURNS boolean
- LANGUAGE sql
- STABLE SECURITY DEFINER
- SET search_path TO ''
-AS $function$
-			SELECT (SELECT private.has_role('Nhân viên'))
-				OR (SELECT private.has_role('Quản lý'))
-				OR (SELECT private.has_role('Chủ cửa hàng'));
-		$function$
-;
-
--- Routine schema: private
-CREATE OR REPLACE FUNCTION private.normalize_phone(phone_number text)
- RETURNS text
- LANGUAGE sql
- IMMUTABLE
- SET search_path TO ''
-AS $function$
-			WITH digits AS (
-				SELECT regexp_replace(coalesce(phone_number, ''), '[^0-9]', '', 'g') AS value
-			)
-			SELECT CASE
-				WHEN value = '' THEN NULL
-				WHEN value LIKE '84%' THEN '+' || value
-				WHEN value LIKE '0%' THEN '+84' || substr(value, 2)
-				ELSE '+' || value
-			END
-			FROM digits;
-		$function$
-;
-
--- Routine schema: private
-CREATE OR REPLACE FUNCTION private.notify_booking_created()
- RETURNS trigger
- LANGUAGE plpgsql
- SECURITY DEFINER
- SET search_path TO ''
-AS $function$
-DECLARE
-  customer_account_id bigint;
-  customer_name text;
-BEGIN
-  customer_account_id := private.account_id_for_customer(NEW."KhachHangID");
-
-  SELECT "HoTen"
-  INTO customer_name
-  FROM public."KhachHang"
-  WHERE "KhachHangID" = NEW."KhachHangID";
-
-  IF customer_account_id IS NOT NULL THEN
-    INSERT INTO public."ThongBao" (
-      "TaiKhoanID", "TieuDe", "NoiDung", "ThoiGianGui", "DaDoc", "DonHangID", "LoaiThongBao"
-    )
-    SELECT
-      customer_account_id::integer,
-      'Yêu cầu đặt giặt đã gửi'::varchar,
-      ('Yêu cầu ' || NEW."MaBooking" || ' đã được gửi. Cửa hàng sẽ tiếp nhận trong thời gian sớm nhất.')::varchar,
-      now()::timestamp,
-      false,
-      NULL::integer,
-      'order_created'::varchar
-    WHERE NOT EXISTS (
-      SELECT 1
-      FROM public."ThongBao" AS notification
-      WHERE notification."TaiKhoanID" = customer_account_id
-        AND notification."LoaiThongBao" = 'order_created'
-        AND notification."DonHangID" IS NULL
-        AND notification."NoiDung" LIKE '%' || NEW."MaBooking" || '%'
-    );
-  END IF;
-
-  PERFORM public.notify_staff_new_booking(
-    NEW."BookingID",
-    NEW."MaBooking",
-    customer_name
-  );
-
-  RETURN NEW;
-END;
-$function$
-;
-
--- Routine schema: private
-CREATE OR REPLACE FUNCTION private.notify_customers_new_promotion()
- RETURNS trigger
- LANGUAGE plpgsql
- SECURITY DEFINER
- SET search_path TO ''
-AS $function$
-BEGIN
-  IF NEW."TrangThai" = 'Hoạt động'
-     AND NEW."NgayBatDau" <= CURRENT_DATE
-     AND NEW."NgayKetThuc" >= CURRENT_DATE THEN
-    INSERT INTO public."ThongBao" (
-      "TaiKhoanID", "TieuDe", "NoiDung", "ThoiGianGui", "DaDoc", "DonHangID", "LoaiThongBao"
-    )
-    SELECT
-      account."TaiKhoanID"::integer,
-      'Có khuyến mãi mới'::varchar,
-      ('Khuyến mãi ' || NEW."TenKhuyenMai" || ' (' || NEW."MaKhuyenMai" || ') đã sẵn sàng để sử dụng.')::varchar,
-      now()::timestamp,
-      false,
-      NULL::integer,
-      'promotion'::varchar
-    FROM public."TaiKhoan" AS account
-    JOIN public."KhachHang" AS customer
-      ON customer."KhachHangID" = account."KhachHangID"
-    WHERE account."TrangThai" = 'Hoạt động'
-      AND customer."TrangThai" = 'Hoạt động';
-  END IF;
-
-  RETURN NEW;
-END;
-$function$
-;
-
--- Routine schema: private
 CREATE OR REPLACE FUNCTION private.record_legacy_order_status_change()
  RETURNS trigger
  LANGUAGE plpgsql
-AS $function$
-BEGIN
-    -- Chỉ ghi nhận khi tạo mới đơn hàng hoặc khi trạng thái đơn hàng bị thay đổi
-    IF (TG_OP = 'INSERT') OR (TG_OP = 'UPDATE' AND OLD."TrangThai" IS DISTINCT FROM NEW."TrangThai") THEN
-        INSERT INTO public."NhatKyHeThong" (
-            "TaiKhoanID",
-            "HanhDong",
-            "BangDuLieu",
-            "BanGhiID",
-            "DuLieuCu",
-            "DuLieuMoi",
-            "LyDo",
-            "ThoiGian",
-            "IPAddress"
-        )
-        VALUES (
-            NULL,
-            'Thay đổi trạng thái đơn hàng',
-            'DonHang',
-            NEW."DonHangID",
-            CASE
-                WHEN TG_OP = 'UPDATE' THEN jsonb_build_object('TrangThai', OLD."TrangThai")
-                ELSE NULL
-            END,
-            jsonb_build_object('TrangThai', NEW."TrangThai"),
-            NULL,
-            CURRENT_TIMESTAMP,
-            NULL
-        );
-    END IF;
-
-    RETURN NEW;
-END;
-$function$
-;
-
--- Routine schema: private
-CREATE OR REPLACE FUNCTION private.record_order_status_change()
- RETURNS trigger
- LANGUAGE plpgsql
- SECURITY DEFINER
  SET search_path TO ''
 AS $function$
+DECLARE points_awarded integer; action_name text; customer_balance integer; paid_total numeric; grand_total numeric;
 BEGIN
-	IF TG_OP = 'INSERT' THEN
-		INSERT INTO public.donhang_trangthai (
-			donhangid,
-			taikhoanid,
-			trangthaicu,
-			trangthaimoi
-		) VALUES (
-			NEW.donhangid,
-			(SELECT private.current_account_id()),
-			NULL,
-			NEW.trangthai
-		);
-	ELSIF OLD.trangthai IS DISTINCT FROM NEW.trangthai THEN
-		INSERT INTO public.donhang_trangthai (
-			donhangid,
-			taikhoanid,
-			trangthaicu,
-			trangthaimoi
-		) VALUES (
-			NEW.donhangid,
-			(SELECT private.current_account_id()),
-			OLD.trangthai,
-			NEW.trangthai
-		);
-	END IF;
-
-	RETURN NEW;
+ IF TG_OP='UPDATE' AND OLD."TrangThai" IS NOT DISTINCT FROM NEW."TrangThai" THEN RETURN NEW; END IF;
+ INSERT INTO public."NhatKyHeThong"("TaiKhoanID","HanhDong","BangDuLieu","BanGhiID","DuLieuCu","DuLieuMoi","ThoiGian")
+ VALUES(NULL,'Thay đổi trạng thái đơn hàng','DonHang',NEW."DonHangID",CASE WHEN TG_OP='UPDATE' THEN jsonb_build_object('TrangThai',OLD."TrangThai") END,jsonb_build_object('TrangThai',NEW."TrangThai"),now());
+ IF NEW."TrangThai"='Đã hủy' THEN
+  UPDATE public."HoaDon" SET "TrangThai"='Đã hủy' WHERE "DonHangID"=NEW."DonHangID";
+  UPDATE public."GiaoNhan" SET "TrangThai"='Đã hủy' WHERE "DonHangID"=NEW."DonHangID";
+ END IF;
+ IF NEW."TrangThai"='Đã giao' THEN
+  action_name:='Cộng điểm tích lũy đơn hàng';
+  IF NOT EXISTS(SELECT 1 FROM public."NhatKyHeThong" WHERE "BangDuLieu"='DonHang' AND "BanGhiID"=NEW."DonHangID" AND "HanhDong"=action_name) THEN
+   points_awarded:=floor(NEW."ThanhTien"/1000)::integer*100;
+   INSERT INTO public."DiemTichLuy"("KhachHangID","DiemHienTai") VALUES(NEW."KhachHangID",0) ON CONFLICT("KhachHangID") DO NOTHING;
+   SELECT "DiemHienTai" INTO customer_balance FROM public."DiemTichLuy" WHERE "KhachHangID"=NEW."KhachHangID" FOR UPDATE;
+   UPDATE public."DiemTichLuy" SET "DiemHienTai"="DiemHienTai"+points_awarded,"NgayCapNhat"=now() WHERE "KhachHangID"=NEW."KhachHangID";
+   INSERT INTO public."NhatKyHeThong"("HanhDong","BangDuLieu","BanGhiID","DuLieuCu","DuLieuMoi","ThoiGian")
+   VALUES(action_name,'DonHang',NEW."DonHangID",jsonb_build_object('DiemHienTai',customer_balance),jsonb_build_object('DiemCong',points_awarded,'DiemHienTai',customer_balance+points_awarded,'ThanhTien',NEW."ThanhTien"),now());
+  END IF;
+  SELECT coalesce((SELECT "ThanhTien" FROM public."HoaDon" WHERE "DonHangID"=NEW."DonHangID" ORDER BY "HoaDonID" LIMIT 1),NEW."ThanhTien") INTO grand_total;
+  SELECT coalesce(sum("SoTien"),0) INTO paid_total FROM public."ThanhToan" WHERE "DonHangID"=NEW."DonHangID" AND "TrangThai"='Thành công';
+  IF grand_total>0 AND paid_total>=grand_total THEN
+   UPDATE public."HoaDon" SET "TrangThai"='Đã thanh toán' WHERE "DonHangID"=NEW."DonHangID";
+   UPDATE public."DonHang" SET "TrangThai"='Đã thanh toán',"NgayCapNhat"=now() WHERE "DonHangID"=NEW."DonHangID";
+  END IF;
+ ELSIF NEW."TrangThai"='Đã hủy' AND NEW."DiemSuDung">0 THEN
+  action_name:='Hoàn điểm tích lũy đơn hàng';
+  IF NOT EXISTS(SELECT 1 FROM public."NhatKyHeThong" WHERE "BangDuLieu"='DonHang' AND "BanGhiID"=NEW."DonHangID" AND "HanhDong"=action_name) THEN
+   INSERT INTO public."DiemTichLuy"("KhachHangID","DiemHienTai") VALUES(NEW."KhachHangID",0) ON CONFLICT("KhachHangID") DO NOTHING;
+   UPDATE public."DiemTichLuy" SET "DiemHienTai"="DiemHienTai"+NEW."DiemSuDung","NgayCapNhat"=now() WHERE "KhachHangID"=NEW."KhachHangID";
+   INSERT INTO public."NhatKyHeThong"("HanhDong","BangDuLieu","BanGhiID","DuLieuMoi","ThoiGian") VALUES(action_name,'DonHang',NEW."DonHangID",jsonb_build_object('DiemHoan',NEW."DiemSuDung"),now());
+  END IF;
+ END IF;
+ RETURN NEW;
 END;
-$function$
-;
+$function$;
 
--- Routine schema: public
 CREATE OR REPLACE FUNCTION public.cancel_laundry_booking(p_bookingid bigint)
  RETURNS void
  LANGUAGE plpgsql
@@ -940,33 +686,40 @@ BEGIN
   IF (SELECT auth.uid()) IS NULL OR customer_id IS NULL THEN
     RAISE EXCEPTION 'An active customer account is required';
   END IF;
-
   SELECT *
   INTO booking_row
   FROM public."Booking"
   WHERE "BookingID" = p_bookingid
     AND "KhachHangID" = customer_id
   FOR UPDATE;
-
   IF NOT FOUND THEN
     RAISE EXCEPTION 'Booking not found';
   END IF;
-
+  IF booking_row."TrangThai"='DaHuy' THEN RETURN; END IF;
   IF booking_row."TrangThai" <> 'ChoTiepNhan'
      OR EXISTS (SELECT 1 FROM public."DonHang" WHERE "BookingID" = p_bookingid) THEN
     RAISE EXCEPTION 'Only pending bookings can be canceled';
   END IF;
-
+  IF booking_row."DiemDaTru" AND booking_row."DiemSuDung">0 THEN
+    UPDATE public."DiemTichLuy" SET "DiemHienTai"="DiemHienTai"+booking_row."DiemSuDung","NgayCapNhat"=now() WHERE "KhachHangID"=customer_id;
+    IF NOT FOUND THEN RAISE EXCEPTION 'Reserved points ledger is missing'; END IF;
+  END IF;
   UPDATE public."Booking"
-  SET "TrangThai" = 'DaHuy',
+  SET "DiemDaTru"=false,"DiemSuDung"=0,"TienGiamDoDiem"=0,"KhuyenMaiDaTru"=false,
+      "TrangThai" = 'DaHuy',
       "NgayCapNhat" = now()
   WHERE "BookingID" = p_bookingid;
-
+  IF booking_row."KhuyenMaiDaTru"
+     AND booking_row."KhuyenMaiID" IS NOT NULL THEN
+    UPDATE public."KhuyenMai"
+    SET "SoLuongSuDung" = "SoLuongSuDung" + 1
+    WHERE "KhuyenMaiID" = booking_row."KhuyenMaiID"
+      AND "SoLuongSuDung" IS NOT NULL;
+  END IF;
   SELECT "HoTen"
   INTO customer_name
   FROM public."KhachHang"
   WHERE "KhachHangID" = customer_id;
-
   INSERT INTO public."ThongBao" (
     "TaiKhoanID", "TieuDe", "NoiDung", "ThoiGianGui", "DaDoc", "DonHangID", "LoaiThongBao"
   )
@@ -977,7 +730,7 @@ BEGIN
       ' vừa hủy yêu cầu ' || booking_row."MaBooking" || '.',
     now(),
     false,
-    NULL,
+    NULL::integer,
     'booking_cancelled'
   FROM public."TaiKhoan_VaiTro" AS account_role
   JOIN public."VaiTro" AS role
@@ -988,1086 +741,85 @@ BEGIN
     AND role."TrangThai" = 'Hoạt động'
     AND account."TrangThai" = 'Hoạt động';
 END;
-$function$
-;
+$function$;
 
--- Routine schema: public
-CREATE OR REPLACE FUNCTION public.complete_customer_profile(p_full_name text DEFAULT NULL::text)
- RETURNS void
- LANGUAGE plpgsql
- SECURITY DEFINER
- SET search_path TO ''
-AS $function$
-DECLARE
-	current_user_id uuid := (SELECT auth.uid());
-	verified_phone text;
-	normalized_phone text;
-	verified_email text;
-	customer_name text := nullif(btrim(p_full_name), '');
-	customer_id bigint;
-	account_id bigint;
-	account_count integer;
-	customer_count integer;
-	customer_role_id bigint;
-BEGIN
-	IF current_user_id IS NULL THEN
-		RAISE EXCEPTION 'Authentication is required';
-	END IF;
-
-	SELECT users.phone, users.email
-		INTO verified_phone, verified_email
-	FROM auth.users AS users
-	WHERE users.id = current_user_id
-		AND users.phone_confirmed_at IS NOT NULL;
-
-	IF verified_phone IS NULL THEN
-		RAISE EXCEPTION 'A verified phone number is required';
-	END IF;
-
-	normalized_phone := private.normalize_phone(verified_phone);
-	IF normalized_phone IS NULL THEN
-		RAISE EXCEPTION 'A valid phone number is required';
-	END IF;
-
-	SELECT account.taikhoanid, account.khachhangid
-		INTO account_id, customer_id
-	FROM public.taikhoan AS account
-	WHERE account.userauthid = current_user_id
-		AND account.trangthai = 'Hoạt động';
-
-	IF account_id IS NOT NULL THEN
-		IF customer_id IS NOT NULL AND customer_name IS NOT NULL THEN
-			UPDATE public.khachhang
-			SET hoten = customer_name,
-					email = coalesce(verified_email, email)
-			WHERE khachhangid = customer_id;
-		END IF;
-		RETURN;
-	END IF;
-
-	SELECT count(*)::integer, min(account.taikhoanid)
-		INTO account_count, account_id
-	FROM public.taikhoan AS account
-	WHERE private.normalize_phone(account.sodienthoai) = normalized_phone;
-
-	IF account_count > 1 THEN
-		RAISE EXCEPTION 'Multiple accounts use this phone number';
-	END IF;
-
-	IF account_id IS NOT NULL THEN
-		SELECT account.khachhangid
-			INTO customer_id
-		FROM public.taikhoan AS account
-		WHERE account.taikhoanid = account_id
-		FOR UPDATE;
-
-		IF customer_id IS NULL THEN
-			RAISE EXCEPTION 'Staff accounts must be linked by a manager';
-		END IF;
-
-		UPDATE public.taikhoan
-		SET userauthid = current_user_id,
-			email = coalesce(verified_email, email)
-		WHERE taikhoanid = account_id
-			AND (userauthid IS NULL OR userauthid = current_user_id)
-			AND trangthai = 'Hoạt động';
-
-		IF NOT FOUND THEN
-			RAISE EXCEPTION 'This customer account cannot be linked';
-		END IF;
-
-		IF customer_name IS NOT NULL THEN
-			UPDATE public.khachhang
-			SET hoten = customer_name,
-				email = coalesce(verified_email, email)
-			WHERE khachhangid = customer_id;
-		END IF;
-	ELSE
-		SELECT count(*)::integer, min(customer.khachhangid)
-			INTO customer_count, customer_id
-		FROM public.khachhang AS customer
-		WHERE private.normalize_phone(customer.sodienthoai) = normalized_phone;
-
-		IF customer_count > 1 THEN
-			RAISE EXCEPTION 'Multiple customer profiles use this phone number';
-		END IF;
-
-		IF customer_id IS NULL THEN
-			IF customer_name IS NULL THEN
-				RAISE EXCEPTION 'A full name is required to create a customer profile';
-			END IF;
-
-			INSERT INTO public.khachhang (hoten, sodienthoai, email)
-			VALUES (customer_name, verified_phone, verified_email)
-			RETURNING khachhangid INTO customer_id;
-		ELSIF customer_name IS NOT NULL THEN
-			UPDATE public.khachhang
-			SET hoten = customer_name,
-					email = coalesce(verified_email, email)
-			WHERE khachhangid = customer_id;
-		END IF;
-
-		SELECT count(*)::integer, min(account.taikhoanid)
-			INTO account_count, account_id
-		FROM public.taikhoan AS account
-		WHERE account.khachhangid = customer_id;
-
-		IF account_count > 1 THEN
-			RAISE EXCEPTION 'Multiple accounts are attached to this customer profile';
-		END IF;
-
-		IF account_id IS NULL THEN
-			INSERT INTO public.taikhoan (
-				tendangnhap,
-				matkhau,
-				email,
-				sodienthoai,
-				khachhangid,
-				userauthid
-			) VALUES (
-				'auth-' || current_user_id::text,
-				NULL,
-				verified_email,
-				verified_phone,
-				customer_id,
-				current_user_id
-			)
-			RETURNING taikhoanid INTO account_id;
-		ELSE
-			UPDATE public.taikhoan
-			SET userauthid = current_user_id,
-					email = coalesce(verified_email, email)
-			WHERE taikhoanid = account_id
-				AND userauthid IS NULL;
-
-			IF NOT FOUND THEN
-				RAISE EXCEPTION 'This customer profile is already linked to another account';
-			END IF;
-		END IF;
-	END IF;
-
-	IF customer_id IS NOT NULL THEN
-		SELECT role.vaitroid INTO customer_role_id
-		FROM public.vaitro AS role
-		WHERE role.tenvaitro = 'Khách hàng'
-			AND role.trangthai = 'Hoạt động';
-
-		IF customer_role_id IS NULL THEN
-			RAISE EXCEPTION 'The active customer role is not configured';
-		END IF;
-
-		INSERT INTO public.taikhoan_vaitro (taikhoanid, vaitroid)
-		VALUES (account_id, customer_role_id)
-		ON CONFLICT DO NOTHING;
-	END IF;
-END;
-$function$
-;
-
--- Routine schema: public
-CREATE OR REPLACE FUNCTION public.complete_google_customer_profile(p_full_name text DEFAULT NULL::text)
- RETURNS void
- LANGUAGE plpgsql
- SECURITY DEFINER
- SET search_path TO ''
-AS $function$
-DECLARE
-  current_user_id uuid := (SELECT auth.uid());
-  verified_email text;
-  customer_name text;
-  customer_id bigint;
-  account_id bigint;
-  customer_role_id bigint;
-BEGIN
-  IF current_user_id IS NULL THEN
-    RAISE EXCEPTION 'Authentication is required';
-  END IF;
-
-  SELECT users.email,
-    coalesce(
-      nullif(btrim(p_full_name), ''),
-      nullif(btrim(users.raw_user_meta_data ->> 'full_name'), ''),
-      nullif(btrim(users.raw_user_meta_data ->> 'name'), ''),
-      users.email
-    )
-  INTO verified_email, customer_name
-  FROM auth.users AS users
-  WHERE users.id = current_user_id;
-
-  IF verified_email IS NULL THEN
-    RAISE EXCEPTION 'A verified Google email is required';
-  END IF;
-
-  IF to_regclass('public.taikhoan') IS NOT NULL THEN
-    SELECT account.taikhoanid, account.khachhangid
-    INTO account_id, customer_id
-    FROM public.taikhoan AS account
-    WHERE account.userauthid = current_user_id
-      AND account.trangthai = 'Hoạt động';
-
-    IF account_id IS NOT NULL THEN
-      UPDATE public.khachhang
-      SET hoten = customer_name, email = verified_email
-      WHERE khachhangid = customer_id;
-      RETURN;
-    END IF;
-
-    SELECT customer.khachhangid INTO customer_id
-    FROM public.khachhang AS customer
-    WHERE lower(customer.email) = lower(verified_email)
-    LIMIT 1;
-
-    IF customer_id IS NULL THEN
-      INSERT INTO public.khachhang (hoten, sodienthoai, email)
-      VALUES (customer_name, NULL, verified_email)
-      RETURNING khachhangid INTO customer_id;
-    ELSE
-      UPDATE public.khachhang
-      SET hoten = customer_name, email = verified_email
-      WHERE khachhangid = customer_id;
-    END IF;
-
-    INSERT INTO public.taikhoan (
-      tendangnhap, matkhau, email, sodienthoai, khachhangid, userauthid
-    ) VALUES (
-      'auth-' || current_user_id::text, NULL, verified_email, NULL,
-      customer_id, current_user_id
-    )
-    RETURNING taikhoanid INTO account_id;
-
-    SELECT role.vaitroid INTO customer_role_id
-    FROM public.vaitro AS role
-    WHERE role.tenvaitro = 'Khách hàng'
-      AND role.trangthai = 'Hoạt động';
-
-    IF customer_role_id IS NULL THEN
-      RAISE EXCEPTION 'The active customer role is not configured';
-    END IF;
-
-    INSERT INTO public.taikhoan_vaitro (taikhoanid, vaitroid)
-    VALUES (account_id, customer_role_id)
-    ON CONFLICT DO NOTHING;
-  ELSE
-    SELECT account."TaiKhoanID", account."KhachHangID"
-    INTO account_id, customer_id
-    FROM public."TaiKhoan" AS account
-    WHERE account."UserAuthId" = current_user_id
-      AND account."TrangThai" = 'Hoạt động';
-
-    IF account_id IS NOT NULL THEN
-      UPDATE public."KhachHang"
-      SET "HoTen" = customer_name, "Email" = verified_email
-      WHERE "KhachHangID" = customer_id;
-      RETURN;
-    END IF;
-
-    SELECT customer."KhachHangID" INTO customer_id
-    FROM public."KhachHang" AS customer
-    WHERE lower(customer."Email") = lower(verified_email)
-    LIMIT 1;
-
-    IF customer_id IS NULL THEN
-      INSERT INTO public."KhachHang" ("HoTen", "SoDienThoai", "Email")
-      VALUES (customer_name, NULL, verified_email)
-      RETURNING "KhachHangID" INTO customer_id;
-    ELSE
-      UPDATE public."KhachHang"
-      SET "HoTen" = customer_name, "Email" = verified_email
-      WHERE "KhachHangID" = customer_id;
-    END IF;
-
-    INSERT INTO public."TaiKhoan" (
-      "TenDangNhap", "MatKhau", "Email", "SoDienThoai",
-      "KhachHangID", "UserAuthId"
-    ) VALUES (
-      'auth-' || current_user_id::text, NULL, verified_email, NULL,
-      customer_id, current_user_id
-    )
-    RETURNING "TaiKhoanID" INTO account_id;
-
-    SELECT role."VaiTroID" INTO customer_role_id
-    FROM public."VaiTro" AS role
-    WHERE role."TenVaiTro" = 'Khách hàng'
-      AND role."TrangThai" = 'Hoạt động';
-
-    IF customer_role_id IS NULL THEN
-      RAISE EXCEPTION 'The active customer role is not configured';
-    END IF;
-
-    INSERT INTO public."TaiKhoan_VaiTro" ("TaiKhoanID", "VaiTroID")
-    VALUES (account_id, customer_role_id)
-    ON CONFLICT DO NOTHING;
-  END IF;
-END;
-$function$
-;
-
--- Routine schema: public
 CREATE OR REPLACE FUNCTION public.confirm_laundry_booking(p_bookingid bigint)
  RETURNS jsonb
  LANGUAGE plpgsql
  SECURITY DEFINER
  SET search_path TO ''
 AS $function$
-
-DECLARE
-
-    booking_row public."Booking"%ROWTYPE;
-
-    order_id bigint;
-    order_number text;
-
-    current_employee bigint :=
-        (SELECT private.current_employee_id());
-
-    pickup_at timestamp with time zone;
-
-    total_amount numeric(18,2);
-
-    detail_count integer;
-
+DECLARE booking_row public."Booking"%ROWTYPE; order_row public."DonHang"%ROWTYPE;
 BEGIN
-
-    -- =====================================================
-    -- 1. Kiểm tra quyền nhân viên
-    -- =====================================================
-
-    IF (SELECT auth.uid()) IS NULL
-       OR NOT (SELECT private.is_staff())
-       OR (
-           current_employee IS NULL
-           AND NOT (SELECT private.has_role('Quản lý'))
-           AND NOT (SELECT private.has_role('Chủ cửa hàng'))
-       ) THEN
-
-        RAISE EXCEPTION
-            'An active staff account is required';
-
-    END IF;
-
-
-    -- =====================================================
-    -- 2. Khóa Booking
-    -- =====================================================
-
-    SELECT *
-    INTO booking_row
-    FROM public."Booking"
-    WHERE "BookingID" = p_bookingid
-    FOR UPDATE;
-
-
-    IF NOT FOUND THEN
-
-        RAISE EXCEPTION
-            'Booking not found';
-
-    END IF;
-
-
-    -- =====================================================
-    -- 3. Idempotent:
-    -- Nếu Booking đã xác nhận và đã có Order
-    -- thì trả Order cũ
-    -- =====================================================
-
-    IF booking_row."TrangThai" = 'DaXacNhan' THEN
-
-        SELECT "DonHangID"
-        INTO order_id
-        FROM public."DonHang"
-        WHERE "BookingID" = p_bookingid;
-
-
-        IF order_id IS NOT NULL THEN
-
-            RETURN jsonb_build_object(
-                'donhangid',
-                order_id,
-
-                'bookingid',
-                p_bookingid
-            );
-
-        END IF;
-
-    END IF;
-
-
-    -- =====================================================
-    -- 4. Chỉ Booking đang chờ tiếp nhận
-    -- mới được xác nhận
-    -- =====================================================
-
-    IF booking_row."TrangThai" <> 'ChoTiepNhan' THEN
-
-        RAISE EXCEPTION
-            'Only pending bookings can be confirmed';
-
-    END IF;
-
-
-    -- =====================================================
-    -- 5. Booking phải có ít nhất 1 ChiTietBooking
-    -- =====================================================
-
-    SELECT
-        COUNT(*),
-        COALESCE(
-            SUM("ThanhTien"),
-            0
-        )
-
-    INTO
-        detail_count,
-        total_amount
-
-    FROM public."ChiTietBooking"
-
-    WHERE "BookingID" = p_bookingid;
-
-
-    IF detail_count = 0 THEN
-
-        RAISE EXCEPTION
-            'Booking must contain at least one detail';
-
-    END IF;
-
-
-    -- =====================================================
-    -- 6. Sinh mã đơn hàng
-    -- =====================================================
-
-    order_number :=
-        'DH-' ||
-        to_char(
-            clock_timestamp(),
-            'YYYYMMDDHH24MISS'
-        ) ||
-        '-' ||
-        substr(
-            replace(
-                gen_random_uuid()::text,
-                '-',
-                ''
-            ),
-            1,
-            8
-        );
-
-
-    -- =====================================================
-    -- 7. Tạo DonHang chính thức
-    -- =====================================================
-
-    INSERT INTO public."DonHang" (
-        "MaDonHang",
-        "BookingID",
-        "KhachHangID",
-        "NhanVienID",
-        "TrangThai",
-        "TongTien",
-        "PhiGiaoHang",
-        "ThanhTien",
-        "GhiChu"
-    )
-
-    VALUES (
-        order_number,
-        p_bookingid,
-        booking_row."KhachHangID",
-        current_employee,
-        'Đã tiếp nhận',
-        total_amount,
-        0,
-        total_amount,
-        booking_row."GhiChu"
-    )
-
-    RETURNING "DonHangID"
-    INTO order_id;
-
-
-    -- =====================================================
-    -- 8. Copy tất cả ChiTietBooking
-    -- -> ChiTietDonHang
-    -- =====================================================
-
-    INSERT INTO public."ChiTietDonHang" (
-        "DonHangID",
-        "DichVuID",
-        "LoaiDoGiatID",
-        "DonViTinhID",
-        "SoLuong",
-        "KhoiLuong",
-        "DonGia",
-        "ThanhTien",
-        "GhiChu"
-    )
-
-    SELECT
-        order_id,
-        cb."DichVuID",
-        cb."LoaiDoGiatID",
-        cb."DonViTinhID",
-        cb."SoLuong",
-        cb."KhoiLuong",
-        cb."DonGia",
-        cb."ThanhTien",
-        cb."GhiChu"
-
-    FROM public."ChiTietBooking" AS cb
-
-    WHERE cb."BookingID" = p_bookingid
-
-    ORDER BY cb."ChiTietBookingID";
-
-
-    -- =====================================================
-    -- 9. Nếu nhận đồ tại nhà
-    -- -> tạo GiaoNhan NHAN_DO
-    -- =====================================================
-
-    IF booking_row."HinhThucNhanDo" = 'Tại nhà' THEN
-
-        pickup_at :=
-            (
-                booking_row."NgayHen" +
-                booking_row."GioHen"
-            )
-            AT TIME ZONE 'Asia/Ho_Chi_Minh';
-
-
-        INSERT INTO public."GiaoNhan" (
-            "DonHangID",
-            "LoaiGiaoNhan",
-            "HinhThuc",
-            "DiaChi",
-            "ThoiGianDuKien",
-            "TrangThai"
-        )
-
-        VALUES (
-            order_id,
-            'NHAN_DO',
-            'Tại nhà',
-            booking_row."DiaChiNhan",
-            pickup_at,
-            'Chờ thực hiện'
-        );
-
-    END IF;
-
-
-    -- =====================================================
-    -- 10. Cập nhật Booking
-    -- =====================================================
-
-    UPDATE public."Booking"
-
-    SET
-        "TrangThai" = 'DaXacNhan',
-
-        "NhanVienXacNhanID" = current_employee,
-
-        "ThoiGianXacNhan" = now(),
-
-        "NgayCapNhat" = now()
-
-    WHERE "BookingID" = p_bookingid;
-
-
-    -- =====================================================
-    -- 11. Trả kết quả
-    -- =====================================================
-
-    RETURN jsonb_build_object(
-
-        'donhangid',
-        order_id,
-
-        'madonhang',
-        order_number,
-
-        'bookingid',
-        p_bookingid,
-
-        'trangthai',
-        'Đã tiếp nhận',
-
-        'tongtien',
-        total_amount,
-
-        'sochitiet',
-        detail_count
-
-    );
-
+ IF auth.uid() IS NULL OR NOT coalesce(private.is_staff(),false) THEN RAISE EXCEPTION 'An active staff account is required'; END IF;
+ SELECT * INTO booking_row FROM public."Booking" WHERE "BookingID"=p_bookingid FOR UPDATE;
+ IF NOT FOUND THEN RAISE EXCEPTION 'Booking not found'; END IF;
+ SELECT * INTO order_row FROM public."DonHang" WHERE "BookingID"=p_bookingid ORDER BY "DonHangID" LIMIT 1;
+ IF FOUND THEN RETURN jsonb_build_object('donhangid',order_row."DonHangID",'madonhang',order_row."MaDonHang",'bookingid',p_bookingid,'trangthai',order_row."TrangThai",'tongtien',order_row."TongTien"); END IF;
+ -- This existing RPC has no inspected items/condition argument. Never interpret
+ -- a customer estimate (or an empty booking) as an inspection performed by staff.
+ RAISE EXCEPTION 'Inspection required: use the Web inspection form to record actual measurements and item condition before creating an order' USING ERRCODE='22023';
 END;
-$function$
-;
+$function$;
 
--- Routine schema: public
 CREATE OR REPLACE FUNCTION public.confirm_laundry_booking_without_details(p_bookingid bigint)
  RETURNS jsonb
  LANGUAGE plpgsql
  SECURITY DEFINER
  SET search_path TO ''
 AS $function$
-DECLARE
-  booking_row public."Booking"%ROWTYPE;
-  order_id bigint;
-  order_number text;
-  current_employee bigint := (SELECT private.current_employee_id());
-  pickup_at timestamptz;
+DECLARE booking_row public."Booking"%ROWTYPE; order_row public."DonHang"%ROWTYPE;
 BEGIN
-  IF (SELECT auth.uid()) IS NULL
-    OR NOT (SELECT private.is_staff())
-    OR (current_employee IS NULL
-        AND NOT (SELECT private.has_role('Quản lý'))
-        AND NOT (SELECT private.has_role('Chủ cửa hàng'))) THEN
-    RAISE EXCEPTION 'An active staff account is required';
-  END IF;
-
-  SELECT * INTO booking_row
-  FROM public."Booking"
-  WHERE "BookingID" = p_bookingid
-  FOR UPDATE;
-
-  IF NOT FOUND THEN
-    RAISE EXCEPTION 'Booking not found';
-  END IF;
-
-  SELECT "DonHangID" INTO order_id
-  FROM public."DonHang"
-  WHERE "BookingID" = p_bookingid;
-  IF order_id IS NOT NULL THEN
-    RETURN jsonb_build_object('donhangid', order_id, 'bookingid', p_bookingid);
-  END IF;
-
-  IF booking_row."TrangThai" <> 'ChoTiepNhan' THEN
-    RAISE EXCEPTION 'Only pending bookings can be confirmed';
-  END IF;
-
-  IF EXISTS (
-    SELECT 1 FROM public."ChiTietBooking"
-    WHERE "BookingID" = p_bookingid
-  ) THEN
-    RAISE EXCEPTION 'Booking already contains laundry details';
-  END IF;
-
-  order_number := 'DH-' || to_char(clock_timestamp(), 'YYYYMMDDHH24MISS') ||
-    '-' || substr(replace(gen_random_uuid()::text, '-', ''), 1, 8);
-
-  INSERT INTO public."DonHang" (
-    "MaDonHang", "BookingID", "KhachHangID", "NhanVienID", "TrangThai",
-    "TongTien", "PhiGiaoHang", "ThanhTien", "GhiChu"
-  ) VALUES (
-    order_number, p_bookingid, booking_row."KhachHangID", current_employee,
-    'Đã tiếp nhận', 0, 0, 0,
-    coalesce(booking_row."GhiChu" || E'\n', '') ||
-      'Khách hàng yêu cầu cửa hàng kiểm nhận và báo giá.'
-  ) RETURNING "DonHangID" INTO order_id;
-
-  IF booking_row."HinhThucNhanDo" = 'Tại nhà' THEN
-    pickup_at := (booking_row."NgayHen" + booking_row."GioHen")
-      AT TIME ZONE 'Asia/Ho_Chi_Minh';
-    INSERT INTO public."GiaoNhan" (
-      "DonHangID", "LoaiGiaoNhan", "HinhThuc", "DiaChi",
-      "ThoiGianDuKien", "TrangThai"
-    ) VALUES (
-      order_id, 'NHAN_DO', 'Tại nhà', booking_row."DiaChiNhan", pickup_at,
-      'Chờ thực hiện'
-    );
-  END IF;
-
-  UPDATE public."Booking"
-  SET "TrangThai" = 'DaXacNhan',
-      "NhanVienXacNhanID" = current_employee,
-      "ThoiGianXacNhan" = now(),
-      "NgayCapNhat" = now()
-  WHERE "BookingID" = p_bookingid;
-
-  RETURN jsonb_build_object(
-    'donhangid', order_id,
-    'madonhang', order_number,
-    'bookingid', p_bookingid,
-    'trangthai', 'Đã tiếp nhận',
-    'tongtien', 0,
-    'sochitiet', 0
-  );
+ IF auth.uid() IS NULL OR NOT coalesce(private.is_staff(),false) THEN RAISE EXCEPTION 'An active staff account is required'; END IF;
+ SELECT * INTO booking_row FROM public."Booking" WHERE "BookingID"=p_bookingid FOR UPDATE;
+ IF NOT FOUND THEN RAISE EXCEPTION 'Booking not found'; END IF;
+ SELECT * INTO order_row FROM public."DonHang" WHERE "BookingID"=p_bookingid ORDER BY "DonHangID" LIMIT 1;
+ IF FOUND THEN RETURN jsonb_build_object('donhangid',order_row."DonHangID",'madonhang',order_row."MaDonHang",'bookingid',p_bookingid,'trangthai',order_row."TrangThai",'tongtien',order_row."TongTien"); END IF;
+ -- This existing RPC has no inspected items/condition argument. Never interpret
+ -- a customer estimate (or an empty booking) as an inspection performed by staff.
+ RAISE EXCEPTION 'Inspection required: use the Web inspection form to record actual measurements and item condition before creating an order' USING ERRCODE='22023';
 END;
-$function$
-;
+$function$;
 
--- Routine schema: public
 CREATE OR REPLACE FUNCTION public.confirm_order_payment(p_thanhtoanid bigint, p_success boolean, p_ghichu text DEFAULT NULL::text)
  RETURNS void
  LANGUAGE plpgsql
  SECURITY DEFINER
  SET search_path TO ''
 AS $function$
-DECLARE
-
-    current_employee bigint :=
-        (SELECT private.current_employee_id());
-
-    payment public."ThanhToan"%ROWTYPE;
-
-    order_record public."DonHang"%ROWTYPE;
-
-    invoice public."HoaDon"%ROWTYPE;
-
-    paid_total numeric(18,2);
-
+DECLARE payment public."ThanhToan"%ROWTYPE; order_row public."DonHang"%ROWTYPE; invoice public."HoaDon"%ROWTYPE;
+ order_id bigint; paid_total numeric; target_status text;
 BEGIN
-
-    -- =====================================================
-    -- 1. Kiểm tra quyền nhân viên
-    -- =====================================================
-
-    IF (SELECT auth.uid()) IS NULL
-       OR NOT (SELECT private.is_staff())
-       OR (
-           current_employee IS NULL
-           AND NOT (SELECT private.has_role('Quản lý'))
-           AND NOT (SELECT private.has_role('Chủ cửa hàng'))
-       ) THEN
-
-        RAISE EXCEPTION
-            'An active staff account is required';
-
-    END IF;
-
-
-    -- =====================================================
-    -- 2. Lấy và khóa Payment
-    -- =====================================================
-
-    SELECT *
-    INTO payment
-
-    FROM public."ThanhToan"
-
-    WHERE "ThanhToanID" = p_thanhtoanid
-
-    FOR UPDATE;
-
-
-    IF NOT FOUND
-       OR payment."TrangThai" <> 'Chờ thanh toán' THEN
-
-        RAISE EXCEPTION
-            'Pending payment not found';
-
-    END IF;
-
-
-    -- =====================================================
-    -- 3. Lấy và khóa Order
-    -- =====================================================
-
-    SELECT *
-    INTO order_record
-
-    FROM public."DonHang"
-
-    WHERE "DonHangID" = payment."DonHangID"
-
-    FOR UPDATE;
-
-
-    IF NOT FOUND THEN
-
-        RAISE EXCEPTION
-            'Order not found';
-
-    END IF;
-
-
-    -- =====================================================
-    -- 4. Lấy và khóa Invoice
-    -- =====================================================
-
-    SELECT *
-    INTO invoice
-
-    FROM public."HoaDon"
-
-    WHERE "DonHangID" = payment."DonHangID"
-
-    FOR UPDATE;
-
-
-    IF NOT FOUND THEN
-
-        RAISE EXCEPTION
-            'Invoice not found';
-
-    END IF;
-
-
-    -- =====================================================
-    -- 5. Thanh toán thành công
-    -- =====================================================
-
-    IF p_success THEN
-
-        UPDATE public."ThanhToan"
-
-        SET
-            "TrangThai" = 'Thành công',
-
-            "GhiChu" =
-                left(
-                    coalesce(
-                        nullif(
-                            btrim(p_ghichu),
-                            ''
-                        ),
-                        "GhiChu"
-                    ),
-                    500
-                )
-
-        WHERE "ThanhToanID" = p_thanhtoanid;
-
-
-        -- Tổng tiền đã thanh toán thành công
-        SELECT
-            coalesce(
-                sum("SoTien"),
-                0
-            )
-
-        INTO paid_total
-
-        FROM public."ThanhToan"
-
-        WHERE "DonHangID" = payment."DonHangID"
-
-          AND "TrangThai" = 'Thành công';
-
-
-        -- Nếu đã thanh toán đủ
-        IF paid_total >= invoice."ThanhTien" THEN
-
-            UPDATE public."HoaDon"
-
-            SET
-                "TrangThai" = 'Đã thanh toán'
-
-            WHERE "HoaDonID" = invoice."HoaDonID";
-
-
-            -- Chỉ chuyển Order sang Đã thanh toán
-            -- nếu hiện tại đang Đã giao
-            UPDATE public."DonHang"
-
-            SET
-                "TrangThai" = 'Đã thanh toán',
-
-                "NgayCapNhat" = now()
-
-            WHERE "DonHangID" = order_record."DonHangID"
-
-              AND "TrangThai" = 'Đã giao';
-
-        END IF;
-
-
-    -- =====================================================
-    -- 6. Thanh toán thất bại
-    -- =====================================================
-
-    ELSE
-
-        UPDATE public."ThanhToan"
-
-        SET
-            "TrangThai" = 'Thất bại',
-
-            "GhiChu" =
-                left(
-                    coalesce(
-                        nullif(
-                            btrim(p_ghichu),
-                            ''
-                        ),
-                        "GhiChu"
-                    ),
-                    500
-                )
-
-        WHERE "ThanhToanID" = p_thanhtoanid;
-
-    END IF;
-
-END;
-$function$
-;
-
--- Routine schema: public
-CREATE OR REPLACE FUNCTION public.get_current_roles()
- RETURNS text[]
- LANGUAGE plpgsql
- STABLE SECURITY DEFINER
- SET search_path TO ''
-AS $function$
-DECLARE
-  current_user_id uuid := (SELECT auth.uid());
-  account_roles text[];
-BEGIN
-  IF current_user_id IS NULL THEN
-    RETURN ARRAY[]::text[];
+ IF auth.uid() IS NULL OR NOT coalesce(private.is_staff(),false) THEN RAISE EXCEPTION 'An active staff account is required'; END IF;
+ IF p_success IS NULL THEN RAISE EXCEPTION 'A payment outcome is required'; END IF;
+ SELECT "DonHangID" INTO order_id FROM public."ThanhToan" WHERE "ThanhToanID"=p_thanhtoanid;
+ IF NOT FOUND THEN RAISE EXCEPTION 'Payment not found'; END IF;
+ -- Every path locks order before payment/invoice: matches Web and request RPC.
+ SELECT * INTO order_row FROM public."DonHang" WHERE "DonHangID"=order_id FOR UPDATE;
+ SELECT * INTO payment FROM public."ThanhToan" WHERE "ThanhToanID"=p_thanhtoanid FOR UPDATE;
+ IF payment."DonHangID"<>order_id THEN RAISE EXCEPTION 'Payment order changed'; END IF;
+ target_status:=CASE WHEN p_success THEN 'Thành công' ELSE 'Thất bại' END;
+ IF payment."TrangThai"=target_status THEN
+  RETURN;
+ END IF;
+ IF payment."TrangThai"<>'Chờ thanh toán' THEN RAISE EXCEPTION 'Only pending payments can be confirmed'; END IF;
+ IF order_row."TrangThai"='Đã hủy' THEN RAISE EXCEPTION 'Canceled orders cannot accept payments'; END IF;
+ SELECT * INTO invoice FROM public."HoaDon" WHERE "DonHangID"=order_id ORDER BY "HoaDonID" LIMIT 1 FOR UPDATE;
+ IF NOT FOUND THEN RAISE EXCEPTION 'Invoice not found'; END IF;
+ SELECT coalesce(sum("SoTien"),0) INTO paid_total FROM public."ThanhToan" WHERE "DonHangID"=order_id AND "TrangThai"='Thành công';
+ IF p_success AND (payment."SoTien"<=0 OR paid_total+payment."SoTien">invoice."ThanhTien") THEN RAISE EXCEPTION 'Payment exceeds the remaining invoice balance'; END IF;
+ UPDATE public."ThanhToan" SET "TrangThai"=target_status,"ThoiGian"=now(),"GhiChu"=coalesce(nullif(btrim(p_ghichu),''),"GhiChu") WHERE "ThanhToanID"=p_thanhtoanid;
+ IF p_success THEN
+  paid_total:=paid_total+payment."SoTien";
+  IF paid_total>=invoice."ThanhTien" THEN
+   UPDATE public."HoaDon" SET "TrangThai"='Đã thanh toán' WHERE "HoaDonID"=invoice."HoaDonID";
+   IF order_row."TrangThai"='Đã giao' THEN UPDATE public."DonHang" SET "TrangThai"='Đã thanh toán',"NgayCapNhat"=now() WHERE "DonHangID"=order_id; END IF;
   END IF;
-
-  IF to_regclass('public.taikhoan') IS NOT NULL THEN
-    SELECT coalesce(array_agg(role.tenvaitro), ARRAY[]::text[])
-    INTO account_roles
-    FROM public.taikhoan AS account
-    JOIN public.taikhoan_vaitro AS account_role
-      ON account_role.taikhoanid = account.taikhoanid
-    JOIN public.vaitro AS role ON role.vaitroid = account_role.vaitroid
-    WHERE account.userauthid = current_user_id
-      AND account.trangthai = 'Hoạt động'
-      AND role.trangthai = 'Hoạt động';
-  ELSE
-    SELECT coalesce(array_agg(role."TenVaiTro"), ARRAY[]::text[])
-    INTO account_roles
-    FROM public."TaiKhoan" AS account
-    JOIN public."TaiKhoan_VaiTro" AS account_role
-      ON account_role."TaiKhoanID" = account."TaiKhoanID"
-    JOIN public."VaiTro" AS role
-      ON role."VaiTroID" = account_role."VaiTroID"
-    WHERE account."UserAuthId" = current_user_id
-      AND account."TrangThai" = 'Hoạt động'
-      AND role."TrangThai" = 'Hoạt động';
-  END IF;
-
-  RETURN coalesce(account_roles, ARRAY[]::text[]);
+ END IF;
+ RETURN;
 END;
-$function$
-;
+$function$;
 
--- Routine schema: public
-CREATE OR REPLACE FUNCTION public.get_customer_loyalty()
- RETURNS jsonb
- LANGUAGE plpgsql
- SECURITY DEFINER
- SET search_path TO ''
-AS $function$
-DECLARE
-  customer_id bigint := (SELECT private.current_customer_id());
-  current_points integer;
-  active_vouchers jsonb;
-BEGIN
-  IF customer_id IS NULL THEN
-    RAISE EXCEPTION 'An active customer account is required';
-  END IF;
-
-  SELECT coalesce(points."DiemHienTai", 0)
-  INTO current_points
-  FROM public."DiemTichLuy" AS points
-  WHERE points."KhachHangID" = customer_id;
-
-  SELECT coalesce(
-    jsonb_agg(
-      jsonb_build_object(
-        'khuyenmaiid', promotion."KhuyenMaiID",
-        'makhuyenmai', promotion."MaKhuyenMai",
-        'tenkhuyenmai', promotion."TenKhuyenMai",
-        'loaikhuyenmai', promotion."LoaiKhuyenMai",
-        'giatrigiam', promotion."GiaTriGiam",
-        'giatridontoithieu', promotion."GiaTriDonToiThieu",
-        'mucgiamtoida', promotion."MucGiamToiDa",
-        'dieukienapdung', promotion."DieuKienApDung"
-      )
-      ORDER BY promotion."NgayKetThuc"
-    ),
-    '[]'::jsonb
-  )
-  INTO active_vouchers
-  FROM public."KhuyenMai" AS promotion
-  WHERE promotion."TrangThai" = 'Hoạt động'
-    AND promotion."NgayBatDau" <= current_date
-    AND promotion."NgayKetThuc" >= current_date
-    AND (
-      promotion."SoLuongSuDung" IS NULL
-      OR promotion."SoLuongSuDung" > 0
-    );
-
-  RETURN jsonb_build_object(
-    'points', coalesce(current_points, 0),
-    'vouchers', active_vouchers
-  );
-END;
-$function$
-;
-
--- Routine schema: public
-CREATE OR REPLACE FUNCTION public.get_laundry_order_status_history(p_donhangid bigint)
- RETURNS TABLE(trangthaicu text, trangthaimoi text, lydo text, thoigian timestamp without time zone)
- LANGUAGE sql
- STABLE SECURITY DEFINER
- SET search_path TO ''
-AS $function$
-  SELECT
-    event."DuLieuCu" ->> 'TrangThai',
-    event."DuLieuMoi" ->> 'TrangThai',
-    event."LyDo"::text,
-    event."ThoiGian"
-  FROM public."NhatKyHeThong" AS event
-  WHERE (SELECT private.can_access_order(p_donhangid))
-    AND event."BangDuLieu" = 'DonHang'
-    AND event."BanGhiID" = p_donhangid
-    AND event."HanhDong" = 'Thay đổi trạng thái đơn hàng'
-  ORDER BY event."ThoiGian";
-$function$
-;
-
--- Routine schema: public
-CREATE OR REPLACE FUNCTION public.notify_staff_new_booking(p_bookingid bigint, p_booking_number text, p_customer_name text)
- RETURNS void
- LANGUAGE plpgsql
- SECURITY DEFINER
- SET search_path TO ''
-AS $function$
-BEGIN
-  INSERT INTO public."ThongBao" (
-    "TaiKhoanID", "TieuDe", "NoiDung", "ThoiGianGui", "DaDoc", "DonHangID", "LoaiThongBao"
-  )
-  SELECT DISTINCT
-    account_role."TaiKhoanID"::integer,
-    'Có yêu cầu đặt giặt mới'::varchar,
-    ('Khách hàng ' || coalesce(nullif(btrim(p_customer_name), ''), 'Khách hàng') ||
-      ' vừa gửi yêu cầu ' || coalesce(nullif(btrim(p_booking_number), ''), '#' || p_bookingid::text) || '.')::varchar,
-    now()::timestamp,
-    false,
-    NULL::integer,
-    'new_booking'::varchar
-  FROM public."TaiKhoan_VaiTro" AS account_role
-  JOIN public."VaiTro" AS role
-    ON role."VaiTroID" = account_role."VaiTroID"
-  JOIN public."TaiKhoan" AS account
-    ON account."TaiKhoanID" = account_role."TaiKhoanID"
-  WHERE role."TenVaiTro" IN ('Nhân viên', 'Quản lý', 'Chủ cửa hàng')
-    AND role."TrangThai" = 'Hoạt động'
-    AND account."TrangThai" = 'Hoạt động'
-    AND NOT EXISTS (
-      SELECT 1
-      FROM public."ThongBao" AS notification
-      WHERE notification."TaiKhoanID" = account_role."TaiKhoanID"
-        AND notification."LoaiThongBao" = 'new_booking'
-        AND notification."DonHangID" IS NULL
-        AND notification."NoiDung" LIKE '%' || coalesce(nullif(btrim(p_booking_number), ''), '#' || p_bookingid::text) || '%'
-    );
-END;
-$function$
-;
-
--- Routine schema: public
 CREATE OR REPLACE FUNCTION public.request_order_payment(p_donhangid bigint, p_phuongthuc text, p_idempotency_key uuid)
  RETURNS jsonb
  LANGUAGE plpgsql
@@ -2075,187 +827,113 @@ CREATE OR REPLACE FUNCTION public.request_order_payment(p_donhangid bigint, p_ph
  SET search_path TO ''
 AS $function$
 DECLARE
-
     customer_id bigint :=
         (SELECT private.current_customer_id());
-
     order_record public."DonHang"%ROWTYPE;
-
     invoice public."HoaDon"%ROWTYPE;
-
     existing_payment public."ThanhToan"%ROWTYPE;
-
     amount_due numeric(18,2);
-
     payment_id bigint;
-
 BEGIN
-
     -- =====================================================
     -- 1. Kiểm tra khách hàng
     -- =====================================================
-
     IF (SELECT auth.uid()) IS NULL
        OR customer_id IS NULL THEN
-
         RAISE EXCEPTION
             'An active customer account is required';
-
     END IF;
-
-
     -- =====================================================
     -- 2. Kiểm tra phương thức thanh toán
     -- =====================================================
-
     IF p_phuongthuc NOT IN (
         'Tiền mặt',
         'Chuyển khoản'
     ) THEN
-
         RAISE EXCEPTION
             'Unsupported payment method';
-
     END IF;
-
-
     -- =====================================================
     -- 3. Kiểm tra Idempotency
     -- =====================================================
-
     IF p_idempotency_key IS NULL THEN
-
         RAISE EXCEPTION
             'An idempotency key is required';
-
     END IF;
-
-
     PERFORM pg_catalog.pg_advisory_xact_lock(
         pg_catalog.hashtextextended(
             p_idempotency_key::text,
             0
         )
     );
-
-
     -- =====================================================
     -- 4. Kiểm tra Payment đã tạo trước đó
     -- =====================================================
-
     SELECT *
     INTO existing_payment
-
     FROM public."ThanhToan"
-
-    WHERE "IdempotencyKey" =
-          p_idempotency_key;
-
-
+    WHERE "MaGiaoDich" = 'RPC-'||p_idempotency_key::text;
     IF FOUND THEN
-
+        IF existing_payment."DonHangID"<>p_donhangid OR existing_payment."PhuongThuc" IS DISTINCT FROM p_phuongthuc THEN RAISE EXCEPTION 'Idempotency key is already in use'; END IF;
         IF NOT EXISTS (
-
             SELECT 1
-
             FROM public."DonHang" AS order_row
-
             WHERE order_row."DonHangID" =
                   existing_payment."DonHangID"
-
               AND order_row."KhachHangID" =
                   customer_id
-
         ) THEN
-
             RAISE EXCEPTION
                 'Idempotency key is already in use';
-
         END IF;
-
-
         RETURN jsonb_build_object(
-
             'thanhtoanid',
             existing_payment."ThanhToanID",
-
             'sotien',
             existing_payment."SoTien",
-
             'trangthai',
             existing_payment."TrangThai",
-
             'phuongthuc',
             existing_payment."PhuongThuc"
-
         );
-
     END IF;
-
-
     -- =====================================================
     -- 5. Lấy và khóa Order
     -- =====================================================
-
     SELECT *
     INTO order_record
-
     FROM public."DonHang"
-
     WHERE "DonHangID" = p_donhangid
-
       AND "KhachHangID" = customer_id
-
     FOR UPDATE;
-
-
     IF NOT FOUND THEN
-
         RAISE EXCEPTION
             'Order not found';
-
     END IF;
-
-
     -- Chỉ thanh toán sau khi giao
     IF order_record."TrangThai" NOT IN (
         'Đã giao',
         'Đã thanh toán'
     ) THEN
-
         RAISE EXCEPTION
             'Payment is available after the order is delivered';
-
     END IF;
-
-
     -- =====================================================
     -- 6. Lấy Invoice
     -- =====================================================
-
     SELECT *
     INTO invoice
-
     FROM public."HoaDon"
-
     WHERE "DonHangID" = p_donhangid
-
     FOR UPDATE;
-
-
     IF NOT FOUND
        OR invoice."TrangThai" <> 'Chưa thanh toán' THEN
-
         RAISE EXCEPTION
             'No unpaid invoice is available';
-
     END IF;
-
-
     -- =====================================================
     -- 7. Tính số tiền còn phải trả
     -- =====================================================
-
     SELECT
         greatest(
             invoice."ThanhTien"
@@ -2270,156 +948,57 @@ BEGIN
             ),
             0
         )
-
     INTO amount_due
-
     FROM public."ThanhToan" AS payment
-
     WHERE payment."DonHangID" =
           p_donhangid;
-
-
     IF amount_due <= 0 THEN
-
         RAISE EXCEPTION
             'The invoice has no remaining balance';
-
     END IF;
-
-
     -- =====================================================
     -- 8. Tạo Payment
     -- =====================================================
-
     INSERT INTO public."ThanhToan" (
-
         "DonHangID",
         "PhuongThuc",
         "SoTien",
         "TrangThai",
-        "IdempotencyKey",
+        "MaGiaoDich",
         "GhiChu"
-
     )
-
     VALUES (
-
         p_donhangid,
-
         p_phuongthuc,
-
         amount_due,
-
         'Chờ thanh toán',
-
-        p_idempotency_key,
-
+        'RPC-'||p_idempotency_key::text,
         CASE
             WHEN p_phuongthuc = 'Chuyển khoản'
             THEN
                 'Khách chọn chuyển khoản; chờ cửa hàng đối soát.'
-
             ELSE
                 'Khách chọn tiền mặt; chờ cửa hàng thu tiền.'
         END
-
     )
-
     RETURNING "ThanhToanID"
     INTO payment_id;
-
-
     -- =====================================================
     -- 9. Trả kết quả
     -- =====================================================
-
     RETURN jsonb_build_object(
-
         'thanhtoanid',
         payment_id,
-
         'sotien',
         amount_due,
-
         'trangthai',
         'Chờ thanh toán',
-
         'phuongthuc',
         p_phuongthuc
-
     );
-
 END;
-$function$
-;
+$function$;
 
--- Routine schema: public
-CREATE OR REPLACE FUNCTION public.save_customer_address(p_diachiid bigint, p_tennguoinhan text, p_sodienthoai text, p_diachi text, p_ghichu text, p_macdinh boolean)
- RETURNS bigint
- LANGUAGE plpgsql
- SECURITY DEFINER
- SET search_path TO ''
-AS $function$
-DECLARE
-	customer_id bigint := (SELECT private.current_customer_id());
-	address_id bigint;
-BEGIN
-	IF (SELECT auth.uid()) IS NULL OR customer_id IS NULL THEN
-		RAISE EXCEPTION 'An active customer account is required';
-	END IF;
-	IF nullif(btrim(p_diachi), '') IS NULL THEN
-		RAISE EXCEPTION 'Address is required';
-	END IF;
-
-	IF p_diachiid IS NULL THEN
-		INSERT INTO public.khachhang_diachi (
-			khachhangid,
-			tennguoinhan,
-			sodienthoai,
-			diachi,
-			ghichu,
-			macdinh
-		) VALUES (
-			customer_id,
-			nullif(btrim(p_tennguoinhan), ''),
-			nullif(btrim(p_sodienthoai), ''),
-			btrim(p_diachi),
-			nullif(btrim(p_ghichu), ''),
-			false
-		) RETURNING diachiid INTO address_id;
-	ELSE
-		UPDATE public.khachhang_diachi
-		SET tennguoinhan = nullif(btrim(p_tennguoinhan), ''),
-			sodienthoai = nullif(btrim(p_sodienthoai), ''),
-			diachi = btrim(p_diachi),
-			ghichu = nullif(btrim(p_ghichu), '')
-		WHERE diachiid = p_diachiid
-			AND khachhangid = customer_id
-		RETURNING diachiid INTO address_id;
-
-		IF address_id IS NULL THEN
-			RAISE EXCEPTION 'Address not found';
-		END IF;
-	END IF;
-
-	IF coalesce(p_macdinh, false) THEN
-		UPDATE public.khachhang_diachi
-		SET macdinh = false
-		WHERE khachhangid = customer_id
-			AND macdinh;
-
-		UPDATE public.khachhang_diachi
-		SET macdinh = true
-		WHERE diachiid = address_id
-			AND khachhangid = customer_id;
-	END IF;
-
-	RETURN address_id;
-END;
-$function$
-;
-
--- Routine schema: public
 CREATE OR REPLACE FUNCTION public.submit_laundry_booking_without_details(p_hinhthucnhando text, p_diachinhan text, p_ngayhen date, p_giohen time without time zone, p_ghichu text, p_idempotency_key uuid)
  RETURNS jsonb
  LANGUAGE plpgsql
@@ -2435,12 +1014,15 @@ BEGIN
   IF customer_id IS NULL THEN
     RAISE EXCEPTION 'Authentication required';
   END IF;
-
+  IF p_idempotency_key IS NULL THEN RAISE EXCEPTION 'An idempotency key is required'; END IF;
+  PERFORM pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended(p_idempotency_key::text,0));
+  IF p_hinhthucnhando IS NULL OR p_hinhthucnhando NOT IN ('Tại cửa hàng','Tại nhà') THEN RAISE EXCEPTION 'Unsupported pickup method'; END IF;
+  IF p_hinhthucnhando='Tại nhà' AND nullif(btrim(p_diachinhan),'') IS NULL THEN RAISE EXCEPTION 'A pickup address is required'; END IF;
+  IF p_ngayhen IS NULL OR p_ngayhen<current_date OR p_giohen IS NULL THEN RAISE EXCEPTION 'A current pickup appointment is required'; END IF;
   SELECT * INTO existing_booking
   FROM public."Booking"
   WHERE "IdempotencyKey" = p_idempotency_key
     AND "KhachHangID" = customer_id;
-
   IF FOUND THEN
     RETURN jsonb_build_object(
       'bookingid', existing_booking."BookingID",
@@ -2450,19 +1032,17 @@ BEGIN
       'itemcount', 0
     );
   END IF;
-
+  IF EXISTS(SELECT 1 FROM public."Booking" WHERE "IdempotencyKey"=p_idempotency_key) THEN RAISE EXCEPTION 'Idempotency key is already in use'; END IF;
   booking_number := 'BK-' || to_char(clock_timestamp(), 'YYYYMMDDHH24MISS') ||
     '-' || substr(replace(gen_random_uuid()::text, '-', ''), 1, 8);
-
   INSERT INTO public."Booking" (
-    "MaBooking", "KhachHangID", "HinhThucNhanDo", "DiaChiNhan",
+    "MaBooking", "KhachHangID", "HinhThucNhanDo", "DiaChiNhan", "HinhThucTraDo",
     "NgayHen", "GioHen", "GhiChu", "TrangThai", "IdempotencyKey"
   ) VALUES (
     booking_number, customer_id, p_hinhthucnhando,
-    nullif(btrim(p_diachinhan), ''), p_ngayhen, p_giohen,
+    nullif(btrim(p_diachinhan), ''), 'Tại cửa hàng', p_ngayhen, p_giohen,
     nullif(btrim(p_ghichu), ''), 'ChoTiepNhan', p_idempotency_key
   ) RETURNING "BookingID" INTO booking_id;
-
   RETURN jsonb_build_object(
     'bookingid', booking_id,
     'mabooking', booking_number,
@@ -2471,727 +1051,88 @@ BEGIN
     'itemcount', 0
   );
 END;
-$function$
-;
+$function$;
 
--- Routine schema: public
 CREATE OR REPLACE FUNCTION public.submit_laundry_order(p_banggiaid bigint, p_measurement numeric, p_hinhthucnhando text, p_diachinhan text, p_ngayhen date, p_giohen time without time zone, p_ghichu text, p_idempotency_key uuid)
  RETURNS jsonb
  LANGUAGE plpgsql
  SECURITY DEFINER
  SET search_path TO ''
 AS $function$
-
-DECLARE
-
-    customer_id bigint :=
-        (SELECT private.current_customer_id());
-
-    existing_booking public."Booking"%ROWTYPE;
-
-    price_row record;
-
-    measurement numeric(10,2);
-    line_total numeric(18,2);
-
-    booking_id bigint;
-    booking_number text;
-
-    quantity numeric(10,2);
-    weight_kg numeric(10,2);
-
-    detail_id bigint;
-
+DECLARE result jsonb; detail_id bigint;
 BEGIN
-
-    -- =====================================================
-    -- 1. Kiểm tra khách hàng đăng nhập
-    -- =====================================================
-
-    IF (SELECT auth.uid()) IS NULL
-       OR customer_id IS NULL THEN
-
-        RAISE EXCEPTION
-            'An active customer account is required';
-
-    END IF;
-
-
-    IF p_idempotency_key IS NULL THEN
-
-        RAISE EXCEPTION
-            'An idempotency key is required';
-
-    END IF;
-
-
-    -- =====================================================
-    -- 2. Khóa theo idempotency key
-    -- =====================================================
-
-    PERFORM pg_catalog.pg_advisory_xact_lock(
-        pg_catalog.hashtextextended(
-            p_idempotency_key::text,
-            0
-        )
-    );
-
-
-    -- =====================================================
-    -- 3. Kiểm tra Booking đã tạo trước đó
-    -- =====================================================
-
-    SELECT *
-    INTO existing_booking
-
-    FROM public."Booking" AS booking
-
-    WHERE booking."IdempotencyKey" =
-          p_idempotency_key;
-
-
-    IF FOUND THEN
-
-        IF existing_booking."KhachHangID" <> customer_id THEN
-
-            RAISE EXCEPTION
-                'Idempotency key is already in use';
-
-        END IF;
-
-
-        RETURN jsonb_build_object(
-
-            'bookingid',
-            existing_booking."BookingID",
-
-            'mabooking',
-            existing_booking."MaBooking",
-
-            'trangthai',
-            existing_booking."TrangThai",
-
-            'thanhtien',
-            COALESCE(
-                (
-                    SELECT SUM(cb."ThanhTien")
-
-                    FROM public."ChiTietBooking" AS cb
-
-                    WHERE cb."BookingID" =
-                          existing_booking."BookingID"
-                ),
-                0
-            )
-
-        );
-
-    END IF;
-
-
-    -- =====================================================
-    -- 4. Validate số lượng / khối lượng
-    -- =====================================================
-
-    IF p_measurement IS NULL
-       OR p_measurement <= 0
-       OR p_measurement > 99999999.99
-       OR p_measurement <> round(p_measurement, 2) THEN
-
-        RAISE EXCEPTION
-            'Measurement must be positive and have at most two decimals';
-
-    END IF;
-
-
-    -- =====================================================
-    -- 5. Validate hình thức nhận đồ
-    -- =====================================================
-
-    IF p_hinhthucnhando NOT IN (
-        'Tại cửa hàng',
-        'Tại nhà'
-    ) THEN
-
-        RAISE EXCEPTION
-            'Unsupported pickup method';
-
-    END IF;
-
-
-    -- =====================================================
-    -- 6. Validate lịch hẹn
-    -- =====================================================
-
-    IF p_ngayhen IS NULL
-       OR p_ngayhen < current_date
-       OR p_ngayhen > current_date + 30
-       OR p_giohen IS NULL THEN
-
-        RAISE EXCEPTION
-            'Pickup appointment must be within the next 30 days';
-
-    END IF;
-
-
-    -- =====================================================
-    -- 7. Nếu nhận tại nhà thì bắt buộc có địa chỉ
-    -- =====================================================
-
-    IF p_hinhthucnhando = 'Tại nhà'
-       AND nullif(
-            btrim(p_diachinhan),
-            ''
-       ) IS NULL THEN
-
-        RAISE EXCEPTION
-            'A pickup address is required';
-
-    END IF;
-
-
-    -- =====================================================
-    -- 8. Lấy bảng giá đang hoạt động
-    -- =====================================================
-
-    SELECT
-        price."DichVuID",
-        price."LoaiDoGiatID",
-        price."DonViTinhID",
-        price."DonGia",
-        unit."Ten",
-        unit."KyHieu"
-
-    INTO price_row
-
-    FROM public."BangGia" AS price
-
-    JOIN public."DichVu" AS service
-        ON service."DichVuID" =
-           price."DichVuID"
-
-    JOIN public."LoaiDoGiat" AS item_type
-        ON item_type."LoaiDoGiatID" =
-           price."LoaiDoGiatID"
-
-    JOIN public."DonViTinh" AS unit
-        ON unit."DonViTinhID" =
-           price."DonViTinhID"
-
-    WHERE price."BangGiaID" =
-          p_banggiaid
-
-      AND price."TrangThai" = 'Hoạt động'
-
-      AND price."NgayApDung" <= current_date
-
-      AND (
-          price."NgayKetThuc" IS NULL
-          OR price."NgayKetThuc" >= current_date
-      )
-
-      AND service."TrangThai" = 'Hoạt động'
-
-      AND item_type."TrangThai" = 'Hoạt động'
-
-      AND unit."TrangThai" = 'Hoạt động'
-
-    FOR SHARE OF price;
-
-
-    IF NOT FOUND THEN
-
-        RAISE EXCEPTION
-            'The selected price is no longer available';
-
-    END IF;
-
-
-    -- =====================================================
-    -- 9. Tính số lượng / khối lượng
-    -- =====================================================
-
-    measurement :=
-        p_measurement::numeric(10,2);
-
-
-    line_total :=
-        round(
-            price_row."DonGia" * measurement,
-            2
-        );
-
-
-    IF lower(
-        coalesce(
-            price_row."KyHieu",
-            price_row."Ten"
-        )
-    ) IN ('kg', 'kilogram') THEN
-
-        weight_kg := measurement;
-        quantity := NULL;
-
-    ELSE
-
-        quantity := measurement;
-        weight_kg := NULL;
-
-    END IF;
-
-
-    -- =====================================================
-    -- 10. Sinh mã Booking
-    -- =====================================================
-
-    booking_number :=
-        'BK-' ||
-        to_char(
-            clock_timestamp(),
-            'YYYYMMDDHH24MISS'
-        ) ||
-        '-' ||
-        substr(
-            replace(
-                gen_random_uuid()::text,
-                '-',
-                ''
-            ),
-            1,
-            8
-        );
-
-
-    -- =====================================================
-    -- 11. Tạo Booking
-    -- =====================================================
-
-    INSERT INTO public."Booking" (
-
-        "MaBooking",
-        "KhachHangID",
-        "HinhThucNhanDo",
-        "DiaChiNhan",
-        "NgayHen",
-        "GioHen",
-        "GhiChu",
-        "TrangThai",
-        "IdempotencyKey"
-
-    )
-
-    VALUES (
-
-        booking_number,
-        customer_id,
-        p_hinhthucnhando,
-
-        nullif(
-            btrim(p_diachinhan),
-            ''
-        ),
-
-        p_ngayhen,
-        p_giohen,
-
-        nullif(
-            btrim(p_ghichu),
-            ''
-        ),
-
-        'ChoTiepNhan',
-        p_idempotency_key
-
-    )
-
-    RETURNING "BookingID"
-    INTO booking_id;
-
-
-    -- =====================================================
-    -- 12. Tạo ChiTietBooking
-    -- =====================================================
-
-    INSERT INTO public."ChiTietBooking" (
-
-        "BookingID",
-        "DichVuID",
-        "LoaiDoGiatID",
-        "DonViTinhID",
-        "SoLuong",
-        "KhoiLuong",
-        "DonGia",
-        "ThanhTien",
-        "GhiChu"
-
-    )
-
-    VALUES (
-
-        booking_id,
-
-        price_row."DichVuID",
-
-        price_row."LoaiDoGiatID",
-
-        price_row."DonViTinhID",
-
-        quantity,
-
-        weight_kg,
-
-        price_row."DonGia",
-
-        line_total,
-
-        nullif(
-            btrim(p_ghichu),
-            ''
-        )
-
-    )
-
-    RETURNING "ChiTietBookingID"
-    INTO detail_id;
-
-
-    -- =====================================================
-    -- 13. Trả kết quả
-    -- =====================================================
-
-    RETURN jsonb_build_object(
-
-        'bookingid',
-        booking_id,
-
-        'mabooking',
-        booking_number,
-
-        'chitietbookingid',
-        detail_id,
-
-        'trangthai',
-        'ChoTiepNhan',
-
-        'thanhtien',
-        line_total
-
-    );
-
+ result:=public.submit_laundry_order_cart(jsonb_build_array(jsonb_build_object('banggiaid',p_banggiaid,'measurement',p_measurement)),p_hinhthucnhando,p_diachinhan,p_ngayhen,p_giohen,p_ghichu,p_idempotency_key);
+ SELECT min("ChiTietBookingID") INTO detail_id FROM public."ChiTietBooking" WHERE "BookingID"=(result->>'bookingid')::bigint;
+ RETURN result||jsonb_build_object('chitietbookingid',detail_id);
 END;
-$function$
-;
+$function$;
 
--- Routine schema: public
 CREATE OR REPLACE FUNCTION public.submit_laundry_order_cart(p_items jsonb, p_hinhthucnhando text, p_diachinhan text, p_ngayhen date, p_giohen time without time zone, p_ghichu text, p_idempotency_key uuid)
  RETURNS jsonb
  LANGUAGE plpgsql
  SECURITY DEFINER
  SET search_path TO ''
 AS $function$
-
 DECLARE
-
-    customer_id bigint :=
-        (SELECT private.current_customer_id());
-
-    existing_booking record;
-    booking_id bigint;
-    booking_number text;
-    detail_count integer := 0;
-    total_amount numeric := 0;
-    item jsonb;
-    price_row record;
-    measurement numeric;
-    quantity numeric;
-    weight_kg numeric;
-    line_total numeric;
-    detail_id integer;
-    pickup_at timestamptz;
-
+ customer_id bigint := private.current_customer_id();
+ booking_row public."Booking"%ROWTYPE;
+ booking_id bigint;
+ detail_count integer := 0;
+ total_amount numeric := 0;
+ item jsonb;
+ price_row record;
+ measurement numeric;
+ quantity numeric;
+ weight_kg numeric;
+ line_total numeric;
 BEGIN
-
-    -- =====================================================
-    -- 1. Kiểm tra đăng nhập
-    -- =====================================================
-
-    IF customer_id IS NULL THEN
-
-        RAISE EXCEPTION
-            'Authentication required';
-
-    END IF;
-
-
-    -- =====================================================
-    -- 2. Kiểm tra idempotency
-    -- =====================================================
-
-    SELECT * INTO existing_booking
-    FROM public."Booking"
-    WHERE "IdempotencyKey" = p_idempotency_key
-      AND "KhachHangID" = customer_id;
-
-    IF FOUND THEN
-
-        RETURN jsonb_build_object(
-
-            'bookingid',
-            existing_booking."BookingID",
-
-            'mabooking',
-            existing_booking."MaBooking",
-
-            'trangthai',
-            existing_booking."TrangThai",
-
-            'thanhtien',
-            COALESCE(
-                (
-                    SELECT SUM(cb."ThanhTien")
-
-                    FROM public."ChiTietBooking" AS cb
-
-                    WHERE cb."BookingID" =
-                          existing_booking."BookingID"
-                ),
-                0
-            )
-
-        );
-
-    END IF;
-
-
-    -- =====================================================
-    -- 3. Validate items không rỗng
-    -- =====================================================
-
-    IF p_items IS NULL OR jsonb_array_length(p_items) = 0 THEN
-
-        RAISE EXCEPTION
-            'Cart must contain at least one item';
-
-    END IF;
-
-
-    -- =====================================================
-    -- 4. Tạo booking number
-    -- =====================================================
-
-    booking_number :=
-        'BK-' ||
-        to_char(
-            clock_timestamp(),
-            'YYYYMMDDHH24MISS'
-        ) ||
-        '-' ||
-        substr(
-            replace(
-                gen_random_uuid()::text,
-                '-',
-                ''
-            ),
-            1,
-            8
-        );
-
-
-    -- =====================================================
-    -- 5. Insert Booking
-    -- =====================================================
-
-    INSERT INTO public."Booking" (
-
-        "MaBooking",
-        "KhachHangID",
-        "HinhThucNhanDo",
-        "DiaChiNhan",
-        "NgayHen",
-        "GioHen",
-        "GhiChu",
-        "TrangThai",
-        "IdempotencyKey"
-
-    )
-
-    VALUES (
-
-        booking_number,
-        customer_id,
-        p_hinhthucnhando,
-
-        nullif(
-            btrim(p_diachinhan),
-            ''
-        ),
-
-        p_ngayhen,
-        p_giohen,
-
-        nullif(
-            btrim(p_ghichu),
-            ''
-        ),
-
-        'ChoTiepNhan',
-        p_idempotency_key
-
-    )
-
-    RETURNING "BookingID"
-    INTO booking_id;
-
-
-    -- =====================================================
-    -- 6. Loop qua từng item và insert ChiTietBooking
-    -- =====================================================
-
-    FOR item IN SELECT * FROM jsonb_array_elements(p_items)
-    LOOP
-
-        -- Lấy thông tin giá
-        SELECT
-            bg."DonGia",
-            bg."DichVuID",
-            bg."LoaiDoGiatID",
-            bg."DonViTinhID",
-            lower(coalesce(dvt."KyHieu", dvt."TenDonViTinh")) AS unit_symbol
-
-        INTO price_row
-
-        FROM public."BangGia" AS bg
-
-        INNER JOIN public."DichVu" AS dv
-        ON bg."DichVuID" = dv."DichVuID"
-
-        INNER JOIN public."LoaiDoGiat" AS ldg
-        ON bg."LoaiDoGiatID" = ldg."LoaiDoGiatID"
-
-        INNER JOIN public."DonViTinh" AS dvt
-        ON bg."DonViTinhID" = dvt."DonViTinhID"
-
-        WHERE bg."BangGiaID" = (item->>'banggiaid')::bigint
-          AND bg."TrangThai" = 'Hoạt động'
-          AND dv."TrangThai" = 'Hoạt động'
-          AND ldg."TrangThai" = 'Hoạt động'
-          AND dvt."TrangThai" = 'Hoạt động';
-
-
-        IF NOT FOUND THEN
-
-            RAISE EXCEPTION
-                'Price ID % is no longer available',
-                item->>'banggiaid';
-
-        END IF;
-
-
-        -- Validate measurement
-        measurement := (item->>'measurement')::numeric(10,2);
-
-        IF measurement IS NULL
-           OR measurement <= 0
-           OR measurement > 99999999.99
-           OR measurement <> round(measurement, 2) THEN
-
-            RAISE EXCEPTION
-                'Invalid measurement for price ID %',
-                item->>'banggiaid';
-
-        END IF;
-
-
-        -- Tính toán
-        line_total := round(price_row."DonGia" * measurement, 2);
-
-        IF price_row.unit_symbol IN ('kg', 'kilogram') THEN
-            weight_kg := measurement;
-            quantity := NULL;
-        ELSE
-            quantity := measurement;
-            weight_kg := NULL;
-        END IF;
-
-
-        -- Insert ChiTietBooking
-        INSERT INTO public."ChiTietBooking" (
-
-            "BookingID",
-            "DichVuID",
-            "LoaiDoGiatID",
-            "DonViTinhID",
-            "SoLuong",
-            "KhoiLuong",
-            "DonGia",
-            "ThanhTien",
-            "GhiChu"
-
-        )
-
-        VALUES (
-
-            booking_id,
-
-            price_row."DichVuID",
-
-            price_row."LoaiDoGiatID",
-
-            price_row."DonViTinhID",
-
-            quantity,
-
-            weight_kg,
-
-            price_row."DonGia",
-
-            line_total,
-
-            nullif(
-                btrim(p_ghichu),
-                ''
-            )
-
-        );
-
-
-        detail_count := detail_count + 1;
-        total_amount := total_amount + line_total;
-
-    END LOOP;
-
-
-    -- Giao nhận chỉ được tạo sau khi nhân viên xác nhận booking.
-    -- Function confirm_laundry_booking đã tạo bản ghi GiaoNhan với DonHangID.
-
-    -- =====================================================
-    -- 7. Trả kết quả
-    -- =====================================================
-
-    RETURN jsonb_build_object(
-
-        'bookingid',
-        booking_id,
-
-        'mabooking',
-        booking_number,
-
-        'trangthai',
-        'ChoTiepNhan',
-
-        'thanhtien',
-        total_amount,
-
-        'itemcount',
-        detail_count
-
-    );
-
+ IF auth.uid() IS NULL OR customer_id IS NULL THEN RAISE EXCEPTION 'An active customer account is required'; END IF;
+ IF p_idempotency_key IS NULL THEN RAISE EXCEPTION 'An idempotency key is required'; END IF;
+ PERFORM pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended(p_idempotency_key::text,0));
+ SELECT * INTO booking_row FROM public."Booking" WHERE "IdempotencyKey"=p_idempotency_key;
+ IF FOUND THEN
+  IF booking_row."KhachHangID"<>customer_id THEN RAISE EXCEPTION 'Idempotency key is already in use'; END IF;
+  SELECT count(*),coalesce(sum("ThanhTien"),0) INTO detail_count,total_amount FROM public."ChiTietBooking" WHERE "BookingID"=booking_row."BookingID";
+  RETURN jsonb_build_object('bookingid',booking_row."BookingID",'mabooking',booking_row."MaBooking",'trangthai',booking_row."TrangThai",'thanhtien',total_amount,'itemcount',detail_count);
+ END IF;
+ IF p_items IS NULL OR jsonb_typeof(p_items)<>'array' OR jsonb_array_length(p_items)=0 THEN RAISE EXCEPTION 'Cart must contain at least one item'; END IF;
+ IF p_hinhthucnhando IS NULL OR p_hinhthucnhando NOT IN ('Tại cửa hàng','Tại nhà') THEN RAISE EXCEPTION 'Unsupported pickup method'; END IF;
+ IF p_hinhthucnhando='Tại nhà' AND nullif(btrim(p_diachinhan),'') IS NULL THEN RAISE EXCEPTION 'A pickup address is required'; END IF;
+ IF p_ngayhen IS NULL OR p_ngayhen<current_date OR p_giohen IS NULL THEN RAISE EXCEPTION 'A current pickup appointment is required'; END IF;
+ INSERT INTO public."Booking"("MaBooking","KhachHangID","HinhThucNhanDo","DiaChiNhan","HinhThucTraDo","NgayHen","GioHen","GhiChu","TrangThai","IdempotencyKey")
+ VALUES('BK-'||substr(replace(gen_random_uuid()::text,'-',''),1,24),customer_id,p_hinhthucnhando,CASE WHEN p_hinhthucnhando='Tại nhà' THEN nullif(btrim(p_diachinhan),'') END,'Tại cửa hàng',p_ngayhen,p_giohen,nullif(btrim(p_ghichu),''),'ChoTiepNhan',p_idempotency_key)
+ RETURNING "BookingID" INTO booking_id;
+ UPDATE public."Booking" SET "MaBooking"='BK'||lpad(booking_id::text,greatest(4,length(booking_id::text)),'0') WHERE "BookingID"=booking_id;
+ FOR item IN SELECT value FROM jsonb_array_elements(p_items) LOOP
+  -- A client price ID identifies the tuple, never fixes a stale/future price.
+  SELECT bg.*,lower(btrim(coalesce(u."KyHieu",u."TenDonViTinh"))) AS unit_symbol INTO price_row
+  FROM public."BangGia" chosen JOIN public."BangGia" bg ON bg."DichVuID"=chosen."DichVuID" AND bg."LoaiDoGiatID"=chosen."LoaiDoGiatID" AND bg."DonViTinhID"=chosen."DonViTinhID"
+  JOIN public."DonViTinh" u ON u."DonViTinhID"=bg."DonViTinhID"
+  WHERE chosen."BangGiaID"=(item->>'banggiaid')::bigint AND bg."TrangThai"='Hoạt động'
+   AND (bg."NgayApDung" IS NULL OR bg."NgayApDung"<=current_date) AND (bg."NgayKetThuc" IS NULL OR bg."NgayKetThuc">=current_date)
+  ORDER BY bg."NgayApDung" DESC NULLS LAST,bg."BangGiaID" DESC LIMIT 1;
+  IF NOT FOUND THEN RAISE EXCEPTION 'No effective price is available for the selected tuple'; END IF;
+  measurement := (item->>'measurement')::numeric;
+  IF measurement IS NULL OR measurement<=0 OR measurement>99999999.99 THEN RAISE EXCEPTION 'Invalid measurement'; END IF;
+  IF price_row.unit_symbol IN ('kg','kgs','kilogram') THEN
+   measurement:=round(measurement,2);
+   IF measurement<=0 THEN RAISE EXCEPTION 'Invalid measurement'; END IF;
+   weight_kg := measurement; quantity := NULL;
+   line_total := round(price_row."DonGia"*greatest(measurement,3),0);
+  ELSE
+   IF measurement<>trunc(measurement) THEN RAISE EXCEPTION 'Piece quantity must be an integer'; END IF;
+   quantity := measurement; weight_kg := NULL;
+   line_total := round(price_row."DonGia"*measurement,0);
+  END IF;
+  INSERT INTO public."ChiTietBooking"("BookingID","DichVuID","LoaiDoGiatID","DonViTinhID","SoLuong","KhoiLuong","DonGia","ThanhTien","GhiChu")
+  VALUES(booking_id,price_row."DichVuID",price_row."LoaiDoGiatID",price_row."DonViTinhID",quantity,weight_kg,price_row."DonGia",line_total,nullif(btrim(p_ghichu),''));
+  detail_count:=detail_count+1;total_amount:=total_amount+line_total;
+ END LOOP;
+ SELECT * INTO booking_row FROM public."Booking" WHERE "BookingID"=booking_id;
+ RETURN jsonb_build_object('bookingid',booking_id,'mabooking',booking_row."MaBooking",'trangthai','ChoTiepNhan','thanhtien',total_amount,'itemcount',detail_count);
 END;
-$function$
-;
+$function$;
 
--- Routine schema: public
 CREATE OR REPLACE FUNCTION public.submit_laundry_order_cart_with_points(p_items jsonb, p_hinhthucnhando text, p_diachinhan text, p_ngayhen date, p_giohen time without time zone, p_ghichu text, p_idempotency_key uuid, p_use_points boolean DEFAULT false)
  RETURNS jsonb
  LANGUAGE plpgsql
@@ -3199,148 +1140,22 @@ CREATE OR REPLACE FUNCTION public.submit_laundry_order_cart_with_points(p_items 
  SET search_path TO ''
 AS $function$
 DECLARE
-  customer_id bigint := (SELECT private.current_customer_id());
-  booking_result jsonb;
-  booking_id bigint;
-  booking_row public."Booking"%ROWTYPE;
-  available_points integer := 0;
-  points_to_use integer := 0;
-  points_discount numeric(18,2) := 0;
-  total_amount numeric(18,2) := 0;
-  remaining_points integer := 0;
+ result jsonb; booking_row public."Booking"%ROWTYPE;
+ customer_id bigint:=private.current_customer_id(); available_points integer; requested_points integer; total_amount numeric;
 BEGIN
-  IF customer_id IS NULL THEN
-    RAISE EXCEPTION 'Authentication required';
-  END IF;
-
-  booking_result := public.submit_laundry_order_cart(
-    p_items,
-    p_hinhthucnhando,
-    p_diachinhan,
-    p_ngayhen,
-    p_giohen,
-    p_ghichu,
-    p_idempotency_key
-  );
-  booking_id := (booking_result->>'bookingid')::bigint;
-
-  SELECT *
-  INTO booking_row
-  FROM public."Booking"
-  WHERE "BookingID" = booking_id
-    AND "KhachHangID" = customer_id
-  FOR UPDATE;
-
-  IF NOT FOUND THEN
-    RAISE EXCEPTION 'Booking not found';
-  END IF;
-
-  SELECT COALESCE(SUM("ThanhTien"), 0)
-  INTO total_amount
-  FROM public."ChiTietBooking"
-  WHERE "BookingID" = booking_id;
-
-  IF NOT booking_row."DiemDaTru" THEN
-    IF COALESCE(p_use_points, false) THEN
-      SELECT "DiemHienTai"
-      INTO available_points
-      FROM public."DiemTichLuy"
-      WHERE "KhachHangID" = customer_id
-      FOR UPDATE;
-
-      IF FOUND THEN
-        points_to_use := LEAST(available_points::numeric, FLOOR(total_amount / 10))::integer;
-        points_discount := points_to_use * 10;
-
-        IF points_to_use > 0 THEN
-          UPDATE public."DiemTichLuy"
-          SET "DiemHienTai" = "DiemHienTai" - points_to_use,
-              "NgayCapNhat" = now()
-          WHERE "KhachHangID" = customer_id;
-        END IF;
-      END IF;
-    END IF;
-
-    UPDATE public."Booking"
-    SET "DiemSuDung" = points_to_use,
-        "TienGiamDoDiem" = points_discount,
-        "DiemDaTru" = true
-    WHERE "BookingID" = booking_id;
-  END IF;
-
-  SELECT COALESCE("DiemHienTai", 0)
-  INTO remaining_points
-  FROM public."DiemTichLuy"
-  WHERE "KhachHangID" = customer_id;
-
-  SELECT *
-  INTO booking_row
-  FROM public."Booking"
-  WHERE "BookingID" = booking_id;
-
-  RETURN booking_result || jsonb_build_object(
-    'thanhtien', total_amount,
-    'diemsudung', booking_row."DiemSuDung",
-    'tiengiamdodiem', booking_row."TienGiamDoDiem",
-    'thanhtoan', GREATEST(total_amount - booking_row."TienGiamDoDiem", 0),
-    'diemconlai', COALESCE(remaining_points, 0)
-  );
+ result:=public.submit_laundry_order_cart(p_items,p_hinhthucnhando,p_diachinhan,p_ngayhen,p_giohen,p_ghichu,p_idempotency_key);
+ SELECT * INTO booking_row FROM public."Booking" WHERE "BookingID"=(result->>'bookingid')::bigint AND "KhachHangID"=customer_id FOR UPDATE;
+ SELECT coalesce("DiemHienTai",0) INTO available_points FROM public."DiemTichLuy" WHERE "KhachHangID"=customer_id;
+ available_points:=coalesce(available_points,0);total_amount:=(result->>'thanhtien')::numeric;
+ -- Preserve an old reservation on replay. New bookings store intent only.
+ IF booking_row."TrangThai"='ChoTiepNhan' AND NOT booking_row."DiemDaTru" THEN
+  requested_points:=CASE WHEN coalesce(p_use_points,false) THEN least(available_points::numeric,floor(total_amount))::integer ELSE 0 END;
+  UPDATE public."Booking" SET "DiemSuDung"=requested_points,"TienGiamDoDiem"=requested_points,"DiemDaTru"=false WHERE "BookingID"=booking_row."BookingID" RETURNING * INTO booking_row;
+ END IF;
+ RETURN result||jsonb_build_object('diemsudung',booking_row."DiemSuDung",'tiengiamdodiem',booking_row."TienGiamDoDiem",'thanhtoan',greatest(total_amount-booking_row."TienGiamDoDiem",0),'diemconlai',available_points,'diemdadatru',booking_row."DiemDaTru");
 END;
-$function$
-;
+$function$;
 
--- Routine schema: public
-CREATE OR REPLACE FUNCTION public.submit_order_review(p_donhangid bigint, p_sosao integer, p_binhluan text DEFAULT NULL::text)
- RETURNS jsonb
- LANGUAGE plpgsql
- SECURITY DEFINER
- SET search_path TO ''
-AS $function$
-DECLARE
-  customer_id bigint := (SELECT private.current_customer_id());
-  review_id bigint;
-BEGIN
-  IF customer_id IS NULL THEN
-    RAISE EXCEPTION 'Authentication required';
-  END IF;
-
-  IF p_sosao < 1 OR p_sosao > 5 THEN
-    RAISE EXCEPTION 'Rating must be between 1 and 5';
-  END IF;
-
-  IF NOT EXISTS (
-    SELECT 1
-    FROM public."DonHang" AS order_record
-    WHERE order_record."DonHangID" = p_donhangid
-      AND order_record."KhachHangID" = customer_id
-      AND order_record."TrangThai" IN ('Đã giao', 'Đã thanh toán')
-  ) THEN
-    RAISE EXCEPTION 'Only completed customer orders can be reviewed';
-  END IF;
-
-  INSERT INTO public."DanhGia" (
-    "DonHangID", "KhachHangID", "SoSao", "BinhLuan", "NgayDanhGia", "TrangThai"
-  ) VALUES (
-    p_donhangid::integer,
-    customer_id::integer,
-    p_sosao,
-    nullif(left(btrim(p_binhluan), 1000), ''),
-    now(),
-    'Hiển thị'
-  )
-  ON CONFLICT ("DonHangID") DO UPDATE
-  SET "SoSao" = EXCLUDED."SoSao",
-      "BinhLuan" = EXCLUDED."BinhLuan",
-      "NgayDanhGia" = now(),
-      "TrangThai" = 'Hiển thị'
-  RETURNING "DanhGiaID" INTO review_id;
-
-  RETURN jsonb_build_object('danhgiaid', review_id);
-END;
-$function$
-;
-
--- Routine schema: public
 CREATE OR REPLACE FUNCTION public.transition_laundry_order(p_donhangid bigint, p_trangthaimoi text, p_lydo text DEFAULT NULL::text)
  RETURNS void
  LANGUAGE plpgsql
@@ -3368,41 +1183,35 @@ BEGIN
      ) THEN
     RAISE EXCEPTION 'An active staff account is required';
   END IF;
-
   SELECT *
   INTO order_record
   FROM public."DonHang"
   WHERE "DonHangID" = p_donhangid
   FOR UPDATE;
-
   IF NOT FOUND THEN
     RAISE EXCEPTION 'Order not found';
   END IF;
-
+  IF p_trangthaimoi=order_record."TrangThai" THEN RETURN; END IF;
   valid_transition := CASE order_record."TrangThai"
-    WHEN 'Chờ tiếp nhận' THEN p_trangthaimoi IN ('Đã tiếp nhận', 'Đã hủy')
+    WHEN 'Chờ tiếp nhận' THEN p_trangthaimoi = 'Đã hủy'
     WHEN 'Đã tiếp nhận' THEN p_trangthaimoi IN ('Đang giặt', 'Đã hủy')
     WHEN 'Đang giặt' THEN p_trangthaimoi = 'Hoàn thành giặt'
     WHEN 'Hoàn thành giặt' THEN p_trangthaimoi IN ('Đang giao', 'Đã giao')
     WHEN 'Đang giao' THEN p_trangthaimoi = 'Đã giao'
     ELSE false
   END;
-
   IF NOT valid_transition THEN
     RAISE EXCEPTION 'Invalid order status transition: % -> %',
       order_record."TrangThai", p_trangthaimoi;
   END IF;
-
   IF p_trangthaimoi = 'Đã hủy' AND nullif(btrim(p_lydo), '') IS NULL THEN
     RAISE EXCEPTION 'A cancellation reason is required';
   END IF;
-
+  IF p_trangthaimoi='Đã hủy' AND EXISTS (SELECT 1 FROM public."ThanhToan" WHERE "DonHangID"=p_donhangid AND "TrangThai"='Thành công') THEN RAISE EXCEPTION 'Collected payments must be refunded before cancellation'; END IF;
   UPDATE public."DonHang"
   SET "TrangThai" = p_trangthaimoi,
-      "NhanVienID" = coalesce(current_employee, "NhanVienID"),
       "NgayCapNhat" = now()
   WHERE "DonHangID" = p_donhangid;
-
   INSERT INTO public."NhatKyHeThong" (
     "TaiKhoanID", "HanhDong", "BangDuLieu", "BanGhiID",
     "DuLieuCu", "DuLieuMoi", "LyDo", "ThoiGian"
@@ -3416,9 +1225,7 @@ BEGIN
     nullif(left(btrim(p_lydo), 500), ''),
     now()
   );
-
   customer_account_id := private.account_id_for_customer(order_record."KhachHangID");
-
   IF customer_account_id IS NOT NULL THEN
     INSERT INTO public."ThongBao" (
       "TaiKhoanID", "TieuDe", "NoiDung", "ThoiGianGui", "DaDoc", "DonHangID", "LoaiThongBao"
@@ -3436,290 +1243,4 @@ BEGIN
     );
   END IF;
 END;
-$function$
-;
-
--- Routine schema: public
-CREATE OR REPLACE FUNCTION public.update_customer_profile(p_full_name text, p_email text DEFAULT NULL::text, p_phone text DEFAULT NULL::text, p_address text DEFAULT NULL::text)
- RETURNS jsonb
- LANGUAGE plpgsql
- SECURITY DEFINER
- SET search_path TO ''
-AS $function$
-DECLARE
-  customer_id bigint := (SELECT private.current_customer_id());
-  account_id bigint;
-BEGIN
-  IF customer_id IS NULL THEN
-    RAISE EXCEPTION 'Authentication required';
-  END IF;
-
-  IF nullif(btrim(p_full_name), '') IS NULL THEN
-    RAISE EXCEPTION 'Full name is required';
-  END IF;
-
-  SELECT "TaiKhoanID"
-  INTO account_id
-  FROM public."TaiKhoan"
-  WHERE "KhachHangID" = customer_id
-    AND "UserAuthId" = (SELECT auth.uid())
-  LIMIT 1;
-
-  UPDATE public."KhachHang"
-  SET "HoTen" = left(btrim(p_full_name), 150),
-      "Email" = nullif(left(btrim(p_email), 255), ''),
-      "SoDienThoai" = nullif(left(btrim(p_phone), 20), ''),
-      "DiaChi" = nullif(left(btrim(p_address), 255), '')
-  WHERE "KhachHangID" = customer_id;
-
-  UPDATE public."TaiKhoan"
-  SET "Email" = nullif(left(btrim(p_email), 255), ''),
-      "SoDienThoai" = nullif(left(btrim(p_phone), 20), '')
-  WHERE "TaiKhoanID" = account_id;
-
-  RETURN jsonb_build_object('khachhangid', customer_id, 'taikhoanid', account_id);
-END;
-$function$
-;
-
-CREATE OR REPLACE VIEW "public"."banggia" AS
- SELECT "BangGiaID" AS banggiaid,
-    "DichVuID" AS dichvuid,
-    "LoaiDoGiatID" AS loaidogiatid,
-    "DonViTinhID" AS donvitinhid,
-    "DonGia" AS dongia,
-    "NgayApDung" AS ngayapdung,
-    "NgayKetThuc" AS ngayketthuc,
-    "TrangThai" AS trangthai
-   FROM "BangGia";;
-
-CREATE OR REPLACE VIEW "public"."danhgia" AS
- SELECT "DanhGiaID" AS danhgiaid,
-    "DonHangID" AS donhangid,
-    "KhachHangID" AS khachhangid,
-    "SoSao" AS sosao,
-    "BinhLuan" AS binhluan,
-    "NgayDanhGia" AS ngaydanhgia,
-    "TrangThai" AS trangthai
-   FROM "DanhGia";;
-
-CREATE OR REPLACE VIEW "public"."dichvu" AS
- SELECT "DichVuID" AS dichvuid,
-    "LoaiDichVuID" AS loaidichvuid,
-    "TenDichVu" AS tendichvu,
-    "MoTa" AS mota,
-    "ThoiGianDuKien" AS thoigiandukien,
-    "TrangThai" AS trangthai,
-    "NgayTao" AS ngaytao
-   FROM "DichVu";;
-
-CREATE OR REPLACE VIEW "public"."donvitinh" AS
- SELECT "DonViTinhID" AS donvitinhid,
-    "TenDonViTinh" AS tendonvitinh,
-    "KyHieu" AS kyhieu,
-    "TrangThai" AS trangthai
-   FROM "DonViTinh";;
-
-CREATE OR REPLACE VIEW "public"."hoadon" AS
- SELECT "HoaDonID" AS hoadonid,
-    "MaHoaDon" AS mahoadon,
-    "DonHangID" AS donhangid,
-    "TongTien" AS tongtien,
-    "GiamGia" AS giamgia,
-    "PhiGiaoHang" AS phigiaohang,
-    "ThanhTien" AS thanhtien,
-    "NgayLap" AS ngaylap,
-    "TrangThai" AS trangthai
-   FROM "HoaDon";;
-
-CREATE OR REPLACE VIEW "public"."khachhang" AS
- SELECT "KhachHangID" AS khachhangid,
-    "HoTen" AS hoten,
-    "SoDienThoai" AS sodienthoai,
-    "Email" AS email,
-    "DiaChi" AS diachi,
-    "NgayTao" AS ngaytao,
-    "TrangThai" AS trangthai
-   FROM "KhachHang";;
-
-CREATE OR REPLACE VIEW "public"."lichsuthaydoihoadon" AS
- SELECT "LichSuID" AS lichsuid,
-    "HoaDonID" AS hoadonid,
-    "TaiKhoanID" AS taikhoanid,
-    "ThoiGian" AS thoigian,
-    "TruongThayDoi" AS truongthaydoi,
-    "GiaTriCu" AS giatricu,
-    "GiaTriMoi" AS giatrimoi,
-    "LyDo" AS lydo
-   FROM "LichSuThayDoiHoaDon";;
-
-CREATE OR REPLACE VIEW "public"."loaidichvu" AS
- SELECT "LoaiDichVuID" AS loaidichvuid,
-    "TenLoaiDichVu" AS tenloaidichvu,
-    "MoTa" AS mota,
-    "TrangThai" AS trangthai
-   FROM "LoaiDichVu";;
-
-CREATE OR REPLACE VIEW "public"."loaidogiat" AS
- SELECT "LoaiDoGiatID" AS loaidogiatid,
-    "TenLoaiDoGiat" AS tenloaidogiat,
-    "MoTa" AS mota,
-    "TrangThai" AS trangthai
-   FROM "LoaiDoGiat";;
-
-CREATE OR REPLACE VIEW "public"."nhanvien" AS
- SELECT "NhanVienID" AS nhanvienid,
-    "HoTen" AS hoten,
-    "SoDienThoai" AS sodienthoai,
-    "Email" AS email,
-    "DiaChi" AS diachi,
-    "ChucDanh" AS chucdanh,
-    "NgayVaoLam" AS ngayvaolam,
-    "TrangThai" AS trangthai
-   FROM "NhanVien";;
-
-CREATE OR REPLACE VIEW "public"."quyen" AS
- SELECT "QuyenID" AS quyenid,
-    "MaQuyen" AS maquyen,
-    "TenQuyen" AS tenquyen,
-    "MoTa" AS mota,
-    "TrangThai" AS trangthai
-   FROM "Quyen";;
-
-CREATE OR REPLACE VIEW "public"."taikhoan" AS
- SELECT "TaiKhoanID" AS taikhoanid,
-    "TenDangNhap" AS tendangnhap,
-    "MatKhau" AS matkhau,
-    "Email" AS email,
-    "SoDienThoai" AS sodienthoai,
-    "NhanVienID" AS nhanvienid,
-    "KhachHangID" AS khachhangid,
-    "TrangThai" AS trangthai,
-    "NgayTao" AS ngaytao,
-    "UserAuthId" AS userauthid
-   FROM "TaiKhoan";;
-
-CREATE OR REPLACE VIEW "public"."taikhoan_vaitro" AS
- SELECT "TaiKhoanID" AS taikhoanid,
-    "VaiTroID" AS vaitroid
-   FROM "TaiKhoan_VaiTro";;
-
-CREATE OR REPLACE VIEW "public"."thanhtoan" AS
- SELECT "ThanhToanID" AS thanhtoanid,
-    "DonHangID" AS donhangid,
-    "SoTien" AS sotien,
-    "PhuongThuc" AS phuongthuc,
-    "MaGiaoDich" AS magiaodich,
-    "ThoiGian" AS thoigian,
-    "TrangThai" AS trangthai,
-    "GhiChu" AS ghichu
-   FROM "ThanhToan";;
-
-CREATE OR REPLACE VIEW "public"."thongbao" AS
- SELECT "ThongBaoID" AS thongbaoid,
-    "TaiKhoanID" AS taikhoanid,
-    "DonHangID" AS donhangid,
-    "LoaiThongBao" AS loaithongbao,
-    "TieuDe" AS tieude,
-    "NoiDung" AS noidung,
-    "ThoiGianGui" AS thoigiangui,
-    "DaDoc" AS dadoc
-   FROM "ThongBao";;
-
-CREATE OR REPLACE VIEW "public"."tinnhan" AS
- SELECT "TinNhanID" AS tinnhanid,
-    "NguoiGuiID" AS nguoiguiid,
-    "NguoiNhanID" AS nguoinhanid,
-    "DonHangID" AS donhangid,
-    "NoiDung" AS noidung,
-    "ThoiGianGui" AS thoigiangui,
-    "TrangThai" AS trangthai
-   FROM "TinNhan";;
-
-CREATE OR REPLACE VIEW "public"."vaitro" AS
- SELECT "VaiTroID" AS vaitroid,
-    "TenVaiTro" AS tenvaitro,
-    "MoTa" AS mota,
-    "TrangThai" AS trangthai
-   FROM "VaiTro";;
-
-CREATE OR REPLACE VIEW "public"."vaitro_quyen" AS
- SELECT "VaiTroID" AS vaitroid,
-    "QuyenID" AS quyenid
-   FROM "VaiTro_Quyen";;
-
-ALTER TABLE "public"."BangGia" ENABLE ROW LEVEL SECURITY;
-ALTER TABLE "public"."Booking" ENABLE ROW LEVEL SECURITY;
-ALTER TABLE "public"."ChiTietBooking" ENABLE ROW LEVEL SECURITY;
-ALTER TABLE "public"."ChiTietDonHang" ENABLE ROW LEVEL SECURITY;
-ALTER TABLE "public"."DanhGia" ENABLE ROW LEVEL SECURITY;
-ALTER TABLE "public"."DanhMucLoaiDoGiat" ENABLE ROW LEVEL SECURITY;
-ALTER TABLE "public"."DichVu" ENABLE ROW LEVEL SECURITY;
-ALTER TABLE "public"."DiemTichLuy" ENABLE ROW LEVEL SECURITY;
-ALTER TABLE "public"."DonHang" ENABLE ROW LEVEL SECURITY;
-ALTER TABLE "public"."DonViTinh" ENABLE ROW LEVEL SECURITY;
-ALTER TABLE "public"."GiaoNhan" ENABLE ROW LEVEL SECURITY;
-ALTER TABLE "public"."HoaDon" ENABLE ROW LEVEL SECURITY;
-ALTER TABLE "public"."KhachHang" ENABLE ROW LEVEL SECURITY;
-ALTER TABLE "public"."KhuyenMai" ENABLE ROW LEVEL SECURITY;
-ALTER TABLE "public"."LichSuThayDoiHoaDon" ENABLE ROW LEVEL SECURITY;
-ALTER TABLE "public"."LoaiDichVu" ENABLE ROW LEVEL SECURITY;
-ALTER TABLE "public"."LoaiDoGiat" ENABLE ROW LEVEL SECURITY;
-ALTER TABLE "public"."NhanVien" ENABLE ROW LEVEL SECURITY;
-ALTER TABLE "public"."NhatKyHeThong" ENABLE ROW LEVEL SECURITY;
-ALTER TABLE "public"."Quyen" ENABLE ROW LEVEL SECURITY;
-ALTER TABLE "public"."TaiKhoan" ENABLE ROW LEVEL SECURITY;
-ALTER TABLE "public"."TaiKhoan_VaiTro" ENABLE ROW LEVEL SECURITY;
-ALTER TABLE "public"."ThanhToan" ENABLE ROW LEVEL SECURITY;
-ALTER TABLE "public"."ThongBao" ENABLE ROW LEVEL SECURITY;
-ALTER TABLE "public"."TinNhan" ENABLE ROW LEVEL SECURITY;
-ALTER TABLE "public"."VaiTro" ENABLE ROW LEVEL SECURITY;
-ALTER TABLE "public"."VaiTro_Quyen" ENABLE ROW LEVEL SECURITY;
-ALTER TABLE "public"."khachhang_diachi" ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "laundry_compat_catalog_price" ON "public"."BangGia" AS PERMISSIVE FOR SELECT TO "anon", "authenticated" USING (((("TrangThai")::text = 'Hoạt động'::text) AND ("NgayApDung" <= CURRENT_DATE) AND (("NgayKetThuc" IS NULL) OR ("NgayKetThuc" >= CURRENT_DATE))));
-CREATE POLICY "mobile_active_prices_read" ON "public"."BangGia" AS PERMISSIVE FOR SELECT TO "anon", "authenticated" USING (((("TrangThai")::text = 'Hoạt động'::text) AND ("NgayApDung" <= CURRENT_DATE) AND (("NgayKetThuc" IS NULL) OR ("NgayKetThuc" >= CURRENT_DATE))));
-CREATE POLICY "laundry_compat_booking_read" ON "public"."Booking" AS PERMISSIVE FOR SELECT TO "authenticated" USING ((("KhachHangID" = ( SELECT private.current_customer_id() AS current_customer_id)) OR ( SELECT private.is_staff() AS is_staff)));
-CREATE POLICY "laundry_compat_booking_detail_read" ON "public"."ChiTietBooking" AS PERMISSIVE FOR SELECT TO "authenticated" USING ((EXISTS ( SELECT 1
-   FROM "Booking" booking
-  WHERE ((booking."BookingID" = "ChiTietBooking"."BookingID") AND ((booking."KhachHangID" = ( SELECT private.current_customer_id() AS current_customer_id)) OR ( SELECT private.is_staff() AS is_staff))))));
-CREATE POLICY "laundry_compat_order_detail_read" ON "public"."ChiTietDonHang" AS PERMISSIVE FOR SELECT TO "authenticated" USING (( SELECT private.can_access_order(("ChiTietDonHang"."DonHangID")::bigint) AS can_access_order));
-CREATE POLICY "laundry_compat_review_insert" ON "public"."DanhGia" AS PERMISSIVE FOR INSERT TO "authenticated" WITH CHECK ((("KhachHangID" = ( SELECT private.current_customer_id() AS current_customer_id)) AND (EXISTS ( SELECT 1
-   FROM "DonHang" order_record
-  WHERE ((order_record."DonHangID" = "DanhGia"."DonHangID") AND (order_record."KhachHangID" = ( SELECT private.current_customer_id() AS current_customer_id)) AND ((order_record."TrangThai")::text = ANY ((ARRAY['Đã giao'::character varying, 'Đã thanh toán'::character varying])::text[])))))));
-CREATE POLICY "laundry_compat_review_read" ON "public"."DanhGia" AS PERMISSIVE FOR SELECT TO "authenticated" USING ((("KhachHangID" = ( SELECT private.current_customer_id() AS current_customer_id)) OR ( SELECT private.is_staff() AS is_staff)));
-CREATE POLICY "laundry_compat_catalog_service" ON "public"."DichVu" AS PERMISSIVE FOR SELECT TO "anon", "authenticated" USING ((("TrangThai")::text = 'Hoạt động'::text));
-CREATE POLICY "mobile_active_services_read" ON "public"."DichVu" AS PERMISSIVE FOR SELECT TO "anon", "authenticated" USING ((("TrangThai")::text = 'Hoạt động'::text));
-CREATE POLICY "laundry_compat_loyalty_read" ON "public"."DiemTichLuy" AS PERMISSIVE FOR SELECT TO "authenticated" USING ((("KhachHangID" = ( SELECT private.current_customer_id() AS current_customer_id)) OR ( SELECT private.is_staff() AS is_staff)));
-CREATE POLICY "laundry_compat_order_read" ON "public"."DonHang" AS PERMISSIVE FOR SELECT TO "authenticated" USING ((("KhachHangID" = ( SELECT private.current_customer_id() AS current_customer_id)) OR ( SELECT private.is_staff() AS is_staff)));
-CREATE POLICY "laundry_compat_catalog_unit" ON "public"."DonViTinh" AS PERMISSIVE FOR SELECT TO "anon", "authenticated" USING ((("TrangThai")::text = 'Hoạt động'::text));
-CREATE POLICY "mobile_active_units_read" ON "public"."DonViTinh" AS PERMISSIVE FOR SELECT TO "anon", "authenticated" USING ((("TrangThai")::text = 'Hoạt động'::text));
-CREATE POLICY "laundry_compat_delivery_read" ON "public"."GiaoNhan" AS PERMISSIVE FOR SELECT TO "authenticated" USING (( SELECT private.can_access_order(("GiaoNhan"."DonHangID")::bigint) AS can_access_order));
-CREATE POLICY "laundry_compat_invoice_read" ON "public"."HoaDon" AS PERMISSIVE FOR SELECT TO "authenticated" USING (( SELECT private.can_access_order(("HoaDon"."DonHangID")::bigint) AS can_access_order));
-CREATE POLICY "laundry_compat_customer_read" ON "public"."KhachHang" AS PERMISSIVE FOR SELECT TO "authenticated" USING ((("KhachHangID" = ( SELECT private.current_customer_id() AS current_customer_id)) OR ( SELECT private.is_staff() AS is_staff)));
-CREATE POLICY "laundry_compat_customer_update" ON "public"."KhachHang" AS PERMISSIVE FOR UPDATE TO "authenticated" USING (("KhachHangID" = ( SELECT private.current_customer_id() AS current_customer_id))) WITH CHECK (("KhachHangID" = ( SELECT private.current_customer_id() AS current_customer_id)));
-CREATE POLICY "laundry_compat_catalog_promotion" ON "public"."KhuyenMai" AS PERMISSIVE FOR SELECT TO "anon", "authenticated" USING (((("TrangThai")::text = 'Hoạt động'::text) AND ("NgayBatDau" <= CURRENT_DATE) AND ("NgayKetThuc" >= CURRENT_DATE) AND (("SoLuongSuDung" IS NULL) OR ("SoLuongSuDung" > 0))));
-CREATE POLICY "laundry_compat_invoice_history_read" ON "public"."LichSuThayDoiHoaDon" AS PERMISSIVE FOR SELECT TO "authenticated" USING ((EXISTS ( SELECT 1
-   FROM "HoaDon" invoice
-  WHERE ((invoice."HoaDonID" = "LichSuThayDoiHoaDon"."HoaDonID") AND ( SELECT private.can_access_order((invoice."DonHangID")::bigint) AS can_access_order)))));
-CREATE POLICY "laundry_compat_catalog_service_type" ON "public"."LoaiDichVu" AS PERMISSIVE FOR SELECT TO "anon", "authenticated" USING ((("TrangThai")::text = 'Hoạt động'::text));
-CREATE POLICY "laundry_compat_catalog_item_type" ON "public"."LoaiDoGiat" AS PERMISSIVE FOR SELECT TO "anon", "authenticated" USING ((("TrangThai")::text = 'Hoạt động'::text));
-CREATE POLICY "mobile_active_item_types_read" ON "public"."LoaiDoGiat" AS PERMISSIVE FOR SELECT TO "anon", "authenticated" USING ((("TrangThai")::text = 'Hoạt động'::text));
-CREATE POLICY "laundry_compat_employee_read" ON "public"."NhanVien" AS PERMISSIVE FOR SELECT TO "authenticated" USING ((("NhanVienID" = ( SELECT private.current_employee_id() AS current_employee_id)) OR ( SELECT private.has_role('Quản lý'::text) AS has_role) OR ( SELECT private.has_role('Chủ cửa hàng'::text) AS has_role)));
-CREATE POLICY "laundry_compat_permission_read" ON "public"."Quyen" AS PERMISSIVE FOR SELECT TO "authenticated" USING ((( SELECT private.current_account_id() AS current_account_id) IS NOT NULL));
-CREATE POLICY "laundry_compat_account_read" ON "public"."TaiKhoan" AS PERMISSIVE FOR SELECT TO "authenticated" USING ((("TaiKhoanID" = ( SELECT private.current_account_id() AS current_account_id)) OR ( SELECT private.has_role('Quản lý'::text) AS has_role) OR ( SELECT private.has_role('Chủ cửa hàng'::text) AS has_role)));
-CREATE POLICY "laundry_compat_account_role_read" ON "public"."TaiKhoan_VaiTro" AS PERMISSIVE FOR SELECT TO "authenticated" USING ((("TaiKhoanID" = ( SELECT private.current_account_id() AS current_account_id)) OR ( SELECT private.has_role('Quản lý'::text) AS has_role) OR ( SELECT private.has_role('Chủ cửa hàng'::text) AS has_role)));
-CREATE POLICY "laundry_compat_payment_read" ON "public"."ThanhToan" AS PERMISSIVE FOR SELECT TO "authenticated" USING (( SELECT private.can_access_order(("ThanhToan"."DonHangID")::bigint) AS can_access_order));
-CREATE POLICY "laundry_compat_notification_delete" ON "public"."ThongBao" AS PERMISSIVE FOR DELETE TO "authenticated" USING (("TaiKhoanID" = ( SELECT private.current_account_id() AS current_account_id)));
-CREATE POLICY "laundry_compat_notification_read" ON "public"."ThongBao" AS PERMISSIVE FOR SELECT TO "authenticated" USING (("TaiKhoanID" = ( SELECT private.current_account_id() AS current_account_id)));
-CREATE POLICY "laundry_compat_notification_update" ON "public"."ThongBao" AS PERMISSIVE FOR UPDATE TO "authenticated" USING (("TaiKhoanID" = ( SELECT private.current_account_id() AS current_account_id))) WITH CHECK (("TaiKhoanID" = ( SELECT private.current_account_id() AS current_account_id)));
-CREATE POLICY "laundry_compat_message_read" ON "public"."TinNhan" AS PERMISSIVE FOR SELECT TO "authenticated" USING ((("NguoiGuiID" = ( SELECT private.current_account_id() AS current_account_id)) OR ("NguoiNhanID" = ( SELECT private.current_account_id() AS current_account_id)) OR (("DonHangID" IS NOT NULL) AND ( SELECT private.is_staff() AS is_staff) AND ( SELECT private.can_access_order(("TinNhan"."DonHangID")::bigint) AS can_access_order))));
-CREATE POLICY "laundry_compat_role_read" ON "public"."VaiTro" AS PERMISSIVE FOR SELECT TO "authenticated" USING (((("TrangThai")::text = 'Hoạt động'::text) AND (( SELECT private.current_account_id() AS current_account_id) IS NOT NULL)));
-CREATE POLICY "laundry_compat_role_permission_read" ON "public"."VaiTro_Quyen" AS PERMISSIVE FOR SELECT TO "authenticated" USING ((( SELECT private.current_account_id() AS current_account_id) IS NOT NULL));
-CREATE POLICY "laundry_compat_address_delete" ON "public"."khachhang_diachi" AS PERMISSIVE FOR DELETE TO "authenticated" USING ((khachhangid = ( SELECT private.current_customer_id() AS current_customer_id)));
-CREATE POLICY "laundry_compat_address_read" ON "public"."khachhang_diachi" AS PERMISSIVE FOR SELECT TO "authenticated" USING ((khachhangid = ( SELECT private.current_customer_id() AS current_customer_id)));
-
-CREATE TRIGGER notify_booking_created AFTER INSERT ON "Booking" FOR EACH ROW EXECUTE FUNCTION private.notify_booking_created();
-CREATE TRIGGER laundry_compat_create_order_invoice AFTER INSERT ON "DonHang" FOR EACH ROW EXECUTE FUNCTION private.create_legacy_order_invoice();
-CREATE TRIGGER laundry_compat_record_order_insert AFTER INSERT ON "DonHang" FOR EACH ROW EXECUTE FUNCTION private.record_legacy_order_status_change();
-CREATE TRIGGER laundry_compat_record_order_status AFTER UPDATE OF "TrangThai" ON "DonHang" FOR EACH ROW EXECUTE FUNCTION private.record_legacy_order_status_change();
-CREATE TRIGGER notify_customers_new_promotion AFTER INSERT ON "KhuyenMai" FOR EACH ROW EXECUTE FUNCTION private.notify_customers_new_promotion();
+$function$;

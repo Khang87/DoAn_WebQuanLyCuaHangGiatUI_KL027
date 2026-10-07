@@ -50,6 +50,7 @@ class RewardPointTest extends TestCase
             'DichVu',
             'NhanVien',
             'KhachHang',
+            'KhuyenMai',
         ] as $table) {
             Schema::dropIfExists($table);
         }
@@ -68,7 +69,6 @@ class RewardPointTest extends TestCase
         $service->updateStatus($order->fresh(), OrderStatus::Washed->value);
         $service->updateStatus($order->fresh(), OrderStatus::Delivering->value);
         $service->updateStatus($order, OrderStatus::Delivered->value);
-        $service->updateStatus($order->fresh(), OrderStatus::Delivering->value);
         $service->updateStatus($order->fresh(), OrderStatus::Delivered->value);
 
         $this->assertSame(10002, $customer->fresh()->points());
@@ -289,6 +289,162 @@ class RewardPointTest extends TestCase
         $this->assertSame(3, $order->fresh()->DiemSuDung);
     }
 
+    public function test_legacy_booking_reservation_is_not_redeemed_twice_at_inspection(): void
+    {
+        $customer = $this->createCustomer(1, 400);
+        $booking = $this->createBooking($customer);
+        $booking->forceFill(['DiemDaTru' => true, 'DiemSuDung' => 100, 'TienGiamDoDiem' => 100])->saveQuietly();
+        $this->actingAsBookingEmployee();
+        $order = app(BookingService::class)->inspectBookingAndCreateOrder($booking, 1,
+            [array_merge($this->orderItem(), ['TinhTrangTruocKhiGiat' => 'Bình thường'])], 100);
+        $this->assertSame(400, $customer->fresh()->points());
+        $this->assertSame(100, $order->DiemSuDung);
+        $this->assertFalse($booking->fresh()->DiemDaTru);
+        app(BookingService::class)->inspectBookingAndCreateOrder($booking->fresh(), 1,
+            [array_merge($this->orderItem(), ['TinhTrangTruocKhiGiat' => 'Bình thường'])], 100);
+        $this->assertSame(400, $customer->fresh()->points());
+    }
+
+    public function test_canceling_a_legacy_pending_booking_returns_reserved_points_once(): void
+    {
+        $customer = $this->createCustomer(1, 400);
+        $booking = $this->createBooking($customer);
+        $booking->forceFill(['DiemDaTru' => true, 'DiemSuDung' => 100, 'TienGiamDoDiem' => 100])->saveQuietly();
+        $service = app(BookingService::class);
+        $service->update($booking, ['status' => BookingStatus::Cancelled->value]);
+        $service->update($booking->fresh(), ['status' => BookingStatus::Cancelled->value]);
+        $this->assertSame(500, $customer->fresh()->points());
+        $this->assertFalse($booking->fresh()->DiemDaTru);
+    }
+
+    public function test_canceled_order_refunds_points_once_and_deleting_it_does_not_refund_again(): void
+    {
+        $customer = $this->createCustomer(1, 400);
+        $order = $this->createOrder($customer, 10000, 100);
+        $order->update(['TrangThai' => OrderStatus::Received->value]);
+        $service = app(OrderService::class);
+        $service->updateStatus($order, OrderStatus::Cancelled->value, false, 'Khách yêu cầu hủy');
+        $service->updateStatus($order->fresh(), OrderStatus::Cancelled->value);
+        $this->assertSame(500, $customer->fresh()->points());
+        $service->delete($order->fresh());
+        $this->assertSame(500, $customer->fresh()->points());
+    }
+
+    public function test_inspection_reprices_estimated_booking_details_at_current_effective_price(): void
+    {
+        $customer = $this->createCustomer(1, 0);
+        $booking = $this->createBooking($customer);
+        DB::table('BangGia')->insert([
+            'BangGiaID' => 2, 'DichVuID' => 1, 'LoaiDoGiatID' => 1, 'DonViTinhID' => 1,
+            'DonGia' => 20000, 'NgayApDung' => today()->toDateString(), 'TrangThai' => 'Hoạt động',
+        ]);
+        $this->actingAsBookingEmployee();
+        $order = app(BookingService::class)->inspectBookingAndCreateOrder($booking, 1,
+            [array_merge($this->orderItem(), ['TinhTrangTruocKhiGiat' => 'Bình thường'])]);
+        $this->assertSame(20000.0, $order->TongTien);
+        $this->assertSame(20000.0, $order->chiTietDonHangs()->first()->DonGia);
+        $this->assertSame(10000.0, (float) $booking->chiTietBookings()->first()->DonGia);
+    }
+
+    public function test_washing_order_cannot_jump_to_delivered_or_move_backwards(): void
+    {
+        $customer = $this->createCustomer(1, 0);
+        $order = $this->createOrder($customer, 10000, 0);
+        $order->update(['TrangThai' => OrderStatus::Washing->value]);
+        foreach ([OrderStatus::Delivered, OrderStatus::Received, OrderStatus::Cancelled] as $target) {
+            try {
+                app(OrderService::class)->updateStatus($order, $target->value);
+                $this->fail('Invalid transition should be rejected.');
+            } catch (ValidationException $exception) {
+                $this->assertArrayHasKey('TrangThai', $exception->errors());
+            }
+        }
+        $this->assertSame(OrderStatus::Washing->value, $order->fresh()->TrangThai);
+    }
+
+    public function test_unpaid_delivered_order_cannot_be_manually_marked_as_settled(): void
+    {
+        $customer = $this->createCustomer(1, 0);
+        $order = $this->createOrder($customer, 10000, 0);
+        $order->update(['TrangThai' => OrderStatus::Delivered->value]);
+        $this->expectException(ValidationException::class);
+        app(OrderService::class)->updateStatus($order, OrderStatus::Paid->value);
+    }
+
+    private function reservedPromotion(Booking $booking, bool $expired = false): void
+    {
+        DB::table('KhuyenMai')->insert([
+            'KhuyenMaiID' => 1, 'MaKhuyenMai' => 'TEST', 'TenKhuyenMai' => 'Test',
+            'LoaiKhuyenMai' => 'Tiền mặt', 'GiaTriGiam' => 9900,
+            'NgayBatDau' => today()->subDays(10)->toDateString(),
+            'NgayKetThuc' => ($expired ? today()->subDay() : today()->addDay())->toDateString(),
+            'SoLuongSuDung' => 0, 'TrangThai' => 'Hoạt động',
+        ]);
+        $booking->forceFill(['KhuyenMaiID' => 1, 'KhuyenMaiDaTru' => true])->saveQuietly();
+    }
+
+    public function test_reserved_promotion_is_applied_before_points_and_delivery_fees_are_added_after_discounts(): void
+    {
+        $customer = $this->createCustomer(1, 500);
+        $booking = $this->createBooking($customer);
+        $this->reservedPromotion($booking);
+        $booking->forceFill(['PickupDeliveryFee' => 1000, 'DeliveryFee' => 1000])->saveQuietly();
+        $this->actingAsBookingEmployee();
+        $order = app(BookingService::class)->inspectBookingAndCreateOrder($booking, 1,
+            [array_merge($this->orderItem(), ['TinhTrangTruocKhiGiat' => 'Bình thường'])], 500);
+        $this->assertSame(9900.0, $order->TienGiamKhuyenMai);
+        $this->assertSame(100, $order->DiemSuDung);
+        $this->assertSame(2000.0, $order->PhiGiaoHang);
+        $this->assertSame(2000.0, $order->ThanhTien);
+        $this->assertSame(400, $customer->fresh()->points());
+    }
+
+    public function test_expired_reserved_promotion_is_released_once_at_inspection(): void
+    {
+        $customer = $this->createCustomer(1, 0);
+        $booking = $this->createBooking($customer);
+        $this->reservedPromotion($booking, true);
+        $this->actingAsBookingEmployee();
+        $service = app(BookingService::class);
+        $items = [array_merge($this->orderItem(), ['TinhTrangTruocKhiGiat' => 'Bình thường'])];
+        $order = $service->inspectBookingAndCreateOrder($booking, 1, $items);
+        $service->inspectBookingAndCreateOrder($booking->fresh(), 1, $items);
+        $this->assertSame(0.0, $order->TienGiamKhuyenMai);
+        $this->assertEquals(1, DB::table('KhuyenMai')->value('SoLuongSuDung'));
+        $this->assertNull($booking->fresh()->getAttribute('KhuyenMaiID'));
+    }
+
+    public function test_canceling_a_booking_releases_its_reserved_promotion_once(): void
+    {
+        $booking = $this->createBooking($this->createCustomer(1, 0));
+        $this->reservedPromotion($booking);
+        $service = app(BookingService::class);
+        $service->update($booking, ['status' => BookingStatus::Cancelled->value]);
+        $service->update($booking->fresh(), ['status' => BookingStatus::Cancelled->value]);
+        $this->assertEquals(1, DB::table('KhuyenMai')->value('SoLuongSuDung'));
+    }
+
+    public function test_updating_an_order_deducts_only_points_effectively_used_after_promotion(): void
+    {
+        $customer = $this->createCustomer(1, 500);
+        $booking = $this->createBooking($customer);
+        $this->reservedPromotion($booking);
+        $order = $this->createOrder($customer, 10000, 0);
+        $updated = app(OrderService::class)->update($order, [
+            'KhuyenMaiID' => 1, 'DiemSuDung' => 500, 'items' => [$this->orderItem()],
+        ]);
+        $this->assertSame(100, $updated->DiemSuDung);
+        $this->assertSame(400, $customer->fresh()->points());
+    }
+
+    public function test_owner_override_does_not_allow_skipping_washing(): void
+    {
+        $order = $this->createOrder($this->createCustomer(1, 0), 10000, 0);
+        $order->update(['TrangThai' => OrderStatus::Received->value]);
+        $this->expectException(ValidationException::class);
+        app(OrderService::class)->updateStatus($order, OrderStatus::Delivered->value, true);
+    }
+
     private function createCustomer(int $id, int $points): KhachHang
     {
         $customer = KhachHang::query()->create([
@@ -387,6 +543,20 @@ class RewardPointTest extends TestCase
 
     private function createSchema(): void
     {
+        Schema::create('KhuyenMai', function (Blueprint $table): void {
+            $table->increments('KhuyenMaiID');
+            $table->string('MaKhuyenMai');
+            $table->string('TenKhuyenMai');
+            $table->string('LoaiKhuyenMai');
+            $table->decimal('GiaTriGiam', 18, 2);
+            $table->decimal('GiaTriDonToiThieu', 18, 2)->nullable();
+            $table->decimal('MucGiamToiDa', 18, 2)->nullable();
+            $table->integer('SoLuongSuDung')->nullable();
+            $table->string('DieuKienApDung')->nullable();
+            $table->date('NgayBatDau');
+            $table->date('NgayKetThuc');
+            $table->string('TrangThai');
+        });
         Schema::create('KhachHang', function (Blueprint $table): void {
             $table->increments('KhachHangID');
             $table->string('HoTen')->nullable();
@@ -446,6 +616,13 @@ class RewardPointTest extends TestCase
             $table->unsignedInteger('NhanVienID')->nullable();
             $table->unsignedInteger('NhanVienXacNhanID')->nullable();
             $table->dateTime('ThoiGianXacNhan')->nullable();
+            $table->unsignedInteger('KhuyenMaiID')->nullable();
+            $table->boolean('KhuyenMaiDaTru')->default(false);
+            $table->decimal('PickupDeliveryFee', 18, 2)->default(0);
+            $table->decimal('DeliveryFee', 18, 2)->default(0);
+            $table->boolean('DiemDaTru')->default(false);
+            $table->integer('DiemSuDung')->default(0);
+            $table->decimal('TienGiamDoDiem', 18, 2)->default(0);
         });
 
         Schema::create('ChiTietBooking', function (Blueprint $table): void {

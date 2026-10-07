@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\PricingService;
 use App\Support\CatalogCache;
 use Illuminate\Database\Eloquent\Model;
 
@@ -84,22 +85,7 @@ class BangGia extends Model
      */
     public static function getLatestPricing(int $serviceId, int $garmentId, ?int $unitId = null): ?self
     {
-        return static::where('DichVuID', $serviceId)
-            ->where('LoaiDoGiatID', $garmentId)
-            ->when($unitId !== null, fn ($query) => $query->where('DonViTinhID', $unitId))
-            ->where('TrangThai', 'Hoạt động')
-            ->where(function ($query) {
-                $query->whereNull('NgayApDung')
-                    ->orWhereDate('NgayApDung', '<=', now());
-            })
-            ->where(function ($query) {
-                $query->whereNull('NgayKetThuc')
-                    ->orWhereDate('NgayKetThuc', '>=', now());
-            })
-            ->orderByRaw('CASE WHEN "NgayApDung" IS NULL THEN 1 ELSE 0 END')
-            ->orderByDesc('NgayApDung')
-            ->orderByDesc('BangGiaID')
-            ->first();
+        return app(PricingService::class)->getLatestPricing($serviceId, $garmentId, $unitId);
     }
 
     public static function getLatestPrice(int $serviceId, int $garmentId, ?int $unitId = null): ?float

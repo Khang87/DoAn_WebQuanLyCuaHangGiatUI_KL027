@@ -23,7 +23,7 @@ class LoaiDoGiatTest extends TestCase
             config('database.default') !== 'sqlite'
             || config('database.connections.sqlite.database') !== ':memory:'
         ) {
-            $this->markTestSkipped('LoaiDoGiat tests require isolated SQLite in-memory storage.');
+            $this->fail('LoaiDoGiat tests require isolated SQLite in-memory storage.');
         }
 
         Schema::create('DanhMucLoaiDoGiat', function (Blueprint $table): void {

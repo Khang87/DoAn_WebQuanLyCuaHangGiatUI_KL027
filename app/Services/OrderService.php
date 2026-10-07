@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Enums\DeliveryStatus;
 use App\Enums\OrderStatus;
+use App\Enums\PaymentStatus;
 use App\Enums\ReceiveMethod;
 use App\Enums\ReturnMethod;
 use App\Exceptions\SettledOrderException;
@@ -14,6 +15,7 @@ use App\Models\DonHang;
 use App\Models\DonViTinh;
 use App\Models\GiaoNhan;
 use App\Models\KhachHang;
+use App\Models\KhuyenMai;
 use App\Models\LoaiDoGiat;
 use App\Models\NhanVien;
 use App\Models\NhatKyHeThong;
@@ -27,6 +29,7 @@ class OrderService
 {
     public function __construct(
         private TinhTienGiatUiService $tinhTienGiatUiService,
+        private PricingService $pricingService,
     ) {}
 
     /**
@@ -70,13 +73,13 @@ class OrderService
      *   Tạm tính            = Σ (số lượng hoặc kg × Đơn giá lịch sử theo BangGia)
      *   Tiền giảm khuyến mãi = KhuyenMai::calculateDiscount(Tạm tính)
      *   Tiền giảm do điểm    = số điểm dùng × POINT_VALUE
-     *   Tổng thanh toán      = Tạm tính - giảm khuyến mãi - giảm điểm (không nhỏ hơn 0)
+     *   Tổng thanh toán      = max(0, Tạm tính - giảm khuyến mãi - giảm điểm) + phí giao hàng
      *
      * Mỗi khoản giảm được chặn tối đa bằng số tiền còn lại để tổng không âm.
      *
-     * @return array{TongTien: float, TienGiamKhuyenMai: float, DiemSuDung: int, TienGiamDoDiem: float, ThanhTien: float}
+     * @return array{TongTien: float, TienGiamKhuyenMai: float, DiemSuDung: int, TienGiamDoDiem: float, PhiGiaoHang: float, ThanhTien: float}
      */
-    public function calculateAmounts(float $subtotal, ?KhuyenMai $promotion, int $pointsUsed, int $customerPoints): array
+    public function calculateAmounts(float $subtotal, ?KhuyenMai $promotion, int $pointsUsed, int $customerPoints, float $deliveryFee = 0): array
     {
         $subtotal = max(0, $subtotal);
 
@@ -95,7 +98,8 @@ class OrderService
             'TienGiamKhuyenMai' => round($discountByPromotion, 2),
             'DiemSuDung' => $effectivePoints,
             'TienGiamDoDiem' => round($discountByPoints, 2),
-            'ThanhTien' => round(max(0, $subtotal - $discountByPromotion - $discountByPoints), 2),
+            'PhiGiaoHang' => round(max(0, $deliveryFee), 2),
+            'ThanhTien' => round(max(0, $subtotal - $discountByPromotion - $discountByPoints) + max(0, $deliveryFee), 2),
         ];
     }
 
@@ -107,6 +111,7 @@ class OrderService
     public function createFromBooking(Booking $booking, array $items, int $employeeId, int $pointsUsed = 0): DonHang
     {
         return DB::transaction(function () use ($booking, $items, $employeeId, $pointsUsed): DonHang {
+            Booking::query()->whereKey($booking->BookingID)->lockForUpdate()->firstOrFail();
             $existingOrder = DonHang::query()
                 ->where('BookingID', $booking->BookingID)
                 ->first();
@@ -151,9 +156,25 @@ class OrderService
 
             $bookingCode = $booking->MaBooking ?: Booking::nextCode();
             $customer = KhachHang::query()->find($booking->KhachHangID);
-            $customerPoints = $customer?->points() ?? 0;
+            // Older App bookings may already have reserved points. Return that
+            // reservation inside this transaction before redeeming the inspected order.
+            if ($booking->getAttribute('DiemDaTru') && (int) $booking->getAttribute('DiemSuDung') > 0) {
+                $customer?->addPoints((int) $booking->getAttribute('DiemSuDung'));
+            }
+            $customerPoints = $customer?->fresh()->points() ?? 0;
             $this->assertRequestedPointsAvailable($pointsUsed, $customerPoints);
-            $amounts = $this->calculateAmounts($total, null, $pointsUsed, $customerPoints);
+            $promotion = $booking->getAttribute('KhuyenMaiID')
+                ? $this->applyPromotionConditions(KhuyenMai::find($booking->getAttribute('KhuyenMaiID')), $customer, $total)
+                : null;
+            if ($promotion === null && $booking->getAttribute('KhuyenMaiID')) {
+                if ($booking->getAttribute('KhuyenMaiDaTru')) {
+                    KhuyenMai::whereKey($booking->getAttribute('KhuyenMaiID'))->whereNotNull('SoLuongSuDung')->increment('SoLuongSuDung');
+                }
+                $booking->forceFill(['KhuyenMaiID' => null, 'KhuyenMaiDaTru' => false])->saveQuietly();
+            }
+            $deliveryFee = (float) $booking->getAttribute('PickupDeliveryFee') + (float) $booking->getAttribute('DeliveryFee');
+            $amounts = $this->calculateAmounts($total, $promotion, $pointsUsed, $customerPoints, $deliveryFee);
+            $amounts['KhuyenMaiID'] = $promotion?->KhuyenMaiID;
 
             if ($amounts['DiemSuDung'] > 0 && ! $customer->deductPoints($amounts['DiemSuDung'])) {
                 throw ValidationException::withMessages([
@@ -211,6 +232,10 @@ class OrderService
                 ]);
             }
 
+            if (array_key_exists('DiemDaTru', $booking->getAttributes())) {
+                $booking->fill(['DiemDaTru' => false, 'DiemSuDung' => 0, 'TienGiamDoDiem' => 0]);
+            }
+
             return $order;
         });
     }
@@ -251,36 +276,7 @@ class OrderService
             }
         }
 
-        $pricingByTuple = [];
-        if ($pricingTuples !== []) {
-            $pricingRows = BangGia::query()
-                ->select(['BangGiaID', 'DichVuID', 'LoaiDoGiatID', 'DonViTinhID', 'DonGia'])
-                ->where('TrangThai', 'Hoạt động')
-                ->where(function ($dateQuery): void {
-                    $dateQuery->whereNull('NgayApDung')->orWhereDate('NgayApDung', '<=', today());
-                })
-                ->where(function ($dateQuery): void {
-                    $dateQuery->whereNull('NgayKetThuc')->orWhereDate('NgayKetThuc', '>=', today());
-                })
-                ->where(function ($tupleQuery) use ($pricingTuples): void {
-                    foreach ($pricingTuples as $tuple) {
-                        $tupleQuery->orWhere(function ($query) use ($tuple): void {
-                            $query->where('DichVuID', $tuple['DichVuID'])
-                                ->where('LoaiDoGiatID', $tuple['LoaiDoGiatID'])
-                                ->where('DonViTinhID', $tuple['DonViTinhID']);
-                        });
-                    }
-                })
-                ->orderByRaw('CASE WHEN "NgayApDung" IS NULL THEN 1 ELSE 0 END')
-                ->orderByDesc('NgayApDung')
-                ->orderByDesc('BangGiaID')
-                ->get();
-
-            foreach ($pricingRows as $pricingRow) {
-                $key = $pricingRow->DichVuID.':'.$pricingRow->LoaiDoGiatID.':'.$pricingRow->DonViTinhID;
-                $pricingByTuple[$key] ??= $pricingRow;
-            }
-        }
+        $pricingByTuple = $this->pricingService->getLatestPricingForTuples($pricingTuples);
 
         $units = $unitIds === []
             ? collect()
@@ -511,7 +507,8 @@ class OrderService
                 $subtotal,
                 $promotion,
                 $pointsRequested,
-                $customerPoints
+                $customerPoints,
+                (float) ($data['PhiGiaoHang'] ?? 0),
             );
 
             // Trừ điểm tích lũy của khách hàng ngay trong cùng transaction.
@@ -575,6 +572,14 @@ class OrderService
                 ]);
             }
 
+            if (isset($data['TrangThai'])) {
+                $this->assertStatusTransition($lockedOrder, $data['TrangThai'], $overrideSettled, $data['cancellation_reason'] ?? null);
+            }
+
+            if ($lockedOrder->statusEnum() === OrderStatus::Cancelled) {
+                throw ValidationException::withMessages(['order' => 'Đơn đã hủy chỉ được xem, không thể sửa số tiền hoặc điểm.']);
+            }
+
             [$items, $subtotal] = $this->buildItems($data['items'] ?? []);
 
             // Form gửi KhuyenMaiID (có thể rỗng) và/hoặc promotion_code.
@@ -608,11 +613,12 @@ class OrderService
                 $subtotal,
                 $promotion,
                 $pointsRequested,
-                $customerPoints
+                $customerPoints,
+                (float) ($data['PhiGiaoHang'] ?? $lockedOrder->PhiGiaoHang),
             );
 
             if ($sameCustomer) {
-                $pointsDifference = $pointsRequested - $previousPoints;
+                $pointsDifference = $amounts['DiemSuDung'] - $previousPoints;
 
                 if ($pointsDifference > 0 && (! $customer || ! $customer->deductPoints($pointsDifference))) {
                     throw ValidationException::withMessages([
@@ -659,6 +665,7 @@ class OrderService
                 'NgayCapNhat' => now(),
             ], $amounts));
             $lockedOrder->save();
+            $this->recordCancellationReason($lockedOrder, $data['cancellation_reason'] ?? null);
 
             $changedFields = array_intersect($auditedFields, array_keys($lockedOrder->getChanges()));
             if ($changedFields !== []) {
@@ -820,6 +827,7 @@ class OrderService
                 $promotion,
                 $previousPoints,
                 $customerPoints,
+                (float) $lockedOrder->PhiGiaoHang,
             );
 
             if ($amounts['DiemSuDung'] > 0 && (! $customer || ! $customer->deductPoints($amounts['DiemSuDung']))) {
@@ -851,9 +859,16 @@ class OrderService
             throw SettledOrderException::forOrder($order->MaDonHang);
         }
 
-        return DB::transaction(function () use ($order) {
+        return DB::transaction(function () use ($order, $overrideSettled) {
+            $order = DonHang::query()->lockForUpdate()->find($order->getKey());
+            if ($order === null) {
+                return false;
+            }
+            if ($order->isLocked() && ! $overrideSettled) {
+                throw SettledOrderException::forOrder($order->MaDonHang);
+            }
             // Hoàn lại điểm tích lũy đã trừ cho khách.
-            if ($order->KhachHangID && (int) $order->DiemSuDung > 0) {
+            if ($order->KhachHangID && (int) $order->DiemSuDung > 0 && $order->TrangThai !== OrderStatus::Cancelled->value) {
                 KhachHang::find($order->KhachHangID)?->addPoints((int) $order->DiemSuDung);
             }
 
@@ -865,13 +880,13 @@ class OrderService
      * Đổi trạng thái đơn. Đơn đã quyết toán thì không được đi lại trạng thái
      * vì sẽ làm sai lịch sử tiền đã thu.
      */
-    public function updateStatus(DonHang $order, string $status, bool $overrideSettled = false): DonHang
+    public function updateStatus(DonHang $order, string $status, bool $overrideSettled = false, ?string $reason = null): DonHang
     {
         if ($order->isLocked() && ! $overrideSettled) {
             throw SettledOrderException::forOrder($order->MaDonHang);
         }
 
-        return DB::transaction(function () use ($order, $status, $overrideSettled): DonHang {
+        return DB::transaction(function () use ($order, $status, $overrideSettled, $reason): DonHang {
             $lockedOrder = DonHang::query()
                 ->lockForUpdate()
                 ->findOrFail($order->getKey());
@@ -886,31 +901,68 @@ class OrderService
                 ]);
             }
 
-            if (
-                $lockedOrder->statusEnum() === OrderStatus::Pending
-                && $status !== OrderStatus::Pending->value
-            ) {
-                throw ValidationException::withMessages([
-                    'TrangThai' => 'Cần hoàn tất kiểm tra và tiếp nhận thực tế trước khi chuyển trạng thái đơn hàng.',
-                ]);
-            }
-
-            if (
-                $lockedOrder->statusEnum() === OrderStatus::Received
-                && ! in_array($status, [OrderStatus::Received->value, OrderStatus::Washing->value], true)
-            ) {
-                throw ValidationException::withMessages([
-                    'TrangThai' => 'Đơn hàng đã tiếp nhận cần bắt đầu giặt trước khi chuyển sang bước tiếp theo.',
-                ]);
-            }
+            $this->assertStatusTransition($lockedOrder, $status, $overrideSettled, $reason);
 
             $lockedOrder->update([
                 'TrangThai' => $status,
                 'NgayCapNhat' => now(),
             ]);
 
+            $this->recordCancellationReason($lockedOrder, $reason);
+
             return $lockedOrder->fresh();
         });
+    }
+
+    private function recordCancellationReason(DonHang $order, ?string $reason): void
+    {
+        if ($order->TrangThai !== OrderStatus::Cancelled->value || trim((string) $reason) === '') {
+            return;
+        }
+        $action = 'Hủy đơn hàng';
+        if (! NhatKyHeThong::where('BangDuLieu', 'DonHang')->where('BanGhiID', $order->getKey())->where('HanhDong', $action)->exists()) {
+            NhatKyHeThong::create([
+                'TaiKhoanID' => auth()->id(), 'HanhDong' => $action, 'BangDuLieu' => 'DonHang',
+                'BanGhiID' => $order->getKey(), 'LyDo' => trim((string) $reason), 'ThoiGian' => now(),
+            ]);
+        }
+    }
+
+    private function assertStatusTransition(DonHang $lockedOrder, string $status, bool $overrideSettled, ?string $reason = null): void
+    {
+        $target = OrderStatus::tryFrom($status);
+        if ($target === null) {
+            throw ValidationException::withMessages(['TrangThai' => 'Trạng thái đơn hàng không hợp lệ.']);
+        }
+        $current = $lockedOrder->statusEnum();
+        if (! $current->canTransitionTo($target) && ! ($overrideSettled && $current === OrderStatus::Paid && $target === OrderStatus::Delivered)) {
+            throw ValidationException::withMessages([
+                'TrangThai' => $current === OrderStatus::Pending
+                    ? 'Cần hoàn tất kiểm tra và tiếp nhận thực tế trước khi chuyển trạng thái đơn hàng.'
+                    : 'Không thể bỏ bước hoặc quay ngược trạng thái đơn hàng.',
+            ]);
+        }
+        if ($target === OrderStatus::Cancelled && $current !== $target && trim((string) $reason) === '') {
+            throw ValidationException::withMessages(['cancellation_reason' => 'Vui lòng nhập lý do hủy đơn hàng.']);
+        }
+        if ($target === OrderStatus::Paid) {
+            $total = (float) ($lockedOrder->hoaDons()->first()?->ThanhTien ?? $lockedOrder->ThanhTien);
+            $paid = (float) $lockedOrder->thanhToans()->where('TrangThai', PaymentStatus::Paid->value)->sum('SoTien');
+            if (! in_array($current, [OrderStatus::Delivered, OrderStatus::Paid], true) || $paid < $total) {
+                throw ValidationException::withMessages(['TrangThai' => 'Chỉ quyết toán đơn đã giao và đã thu đủ tiền.']);
+            }
+        }
+        if ($current === OrderStatus::Paid && $target === OrderStatus::Delivered) {
+            $total = (float) ($lockedOrder->hoaDons()->first()?->ThanhTien ?? $lockedOrder->ThanhTien);
+            $paid = (float) $lockedOrder->thanhToans()->where('TrangThai', PaymentStatus::Paid->value)->sum('SoTien');
+            if ($paid >= $total) {
+                throw ValidationException::withMessages(['TrangThai' => 'Đơn đã thu đủ tiền không thể mở lại trạng thái chưa quyết toán.']);
+            }
+        }
+        if ($target === OrderStatus::Cancelled && $lockedOrder->thanhToans()->where('TrangThai', PaymentStatus::Paid->value)->exists()) {
+            throw ValidationException::withMessages(['TrangThai' => 'Đơn đã thu tiền cần xử lý hoàn tiền trước khi hủy.']);
+        }
+
     }
 
     private function assertRequestedPointsAvailable(int $pointsRequested, int $availablePoints): void

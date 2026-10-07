@@ -89,7 +89,7 @@ class PaymentService
     {
         // Đơn đã quyết toán thì không được ghi thêm khoản thu.
         $invoice = ! empty($data['invoice_id']) ? HoaDon::find($data['invoice_id']) : null;
-        $targetOrderId = $data['order_id'] ?? $invoice?->DonHangID;
+        $targetOrderId = $data['order_id'] ?? $data['DonHangID'] ?? $invoice?->DonHangID;
 
         if ($invoice && ! empty($data['order_id']) && (int) $data['order_id'] !== (int) $invoice->DonHangID) {
             throw ValidationException::withMessages([
@@ -117,9 +117,14 @@ class PaymentService
         }
 
         return DB::transaction(function () use ($data, $targetOrderId) {
+            $lockedOrder = DonHang::query()->lockForUpdate()->findOrFail($targetOrderId);
+            if ($lockedOrder->isLocked()) {
+                throw SettledOrderException::forOrder($targetOrderId);
+            }
             $data['order_id'] = $targetOrderId;
-
-            $payment = ThanhToan::create($this->mapInput($data));
+            $attributes = $this->mapInput($data);
+            $this->validateAmount($lockedOrder, $attributes);
+            $payment = ThanhToan::create($attributes);
 
             $invoice = $payment->donHang?->hoaDons?->first();
             $order = $payment->donHang;
@@ -142,41 +147,54 @@ class PaymentService
 
     public function update(ThanhToan $payment, array $data, bool $override = false): ThanhToan
     {
-        if (isset($data['order_id']) && (int) $data['order_id'] !== (int) $payment->DonHangID) {
-            throw ValidationException::withMessages([
-                'order_id' => 'Không thể chuyển khoản thanh toán sang đơn hàng khác.',
-            ]);
-        }
+        $orderId = (int) $payment->DonHangID;
 
-        if (! empty($data['invoice_id'])) {
-            $invoice = HoaDon::find($data['invoice_id']);
-            if ($invoice && (int) $invoice->DonHangID !== (int) $payment->DonHangID) {
+        return DB::transaction(function () use ($payment, $data, $override, $orderId): ThanhToan {
+            $lockedOrder = DonHang::query()->lockForUpdate()->findOrFail($orderId);
+            $payment = ThanhToan::query()->lockForUpdate()->findOrFail($payment->getKey());
+            if (isset($data['order_id']) && (int) $data['order_id'] !== (int) $payment->DonHangID) {
                 throw ValidationException::withMessages([
-                    'invoice_id' => 'Hóa đơn không thuộc đơn hàng của khoản thanh toán.',
+                    'order_id' => 'Không thể chuyển khoản thanh toán sang đơn hàng khác.',
                 ]);
             }
-        }
 
-        if (! $override) {
-            $this->guardSettledPayment($payment);
-        }
+            if (! empty($data['invoice_id'])) {
+                $invoice = HoaDon::find($data['invoice_id']);
+                if ($invoice && (int) $invoice->DonHangID !== (int) $payment->DonHangID) {
+                    throw ValidationException::withMessages([
+                        'invoice_id' => 'Hóa đơn không thuộc đơn hàng của khoản thanh toán.',
+                    ]);
+                }
+            }
 
-        $payment->update($this->mapInput($data));
+            if (! $override) {
+                $this->guardSettledPayment($payment);
+            }
 
-        $invoice = $payment->donHang?->hoaDons?->first();
-        if ($invoice) {
-            $this->updateInvoiceStatus($invoice);
-        }
+            $attributes = $this->mapInput($data);
+            if (! array_key_exists('TrangThai', $data) && ! array_key_exists('status', $data)) {
+                unset($attributes['TrangThai']);
+            }
+            if (! $override) {
+                $this->validateAmount($lockedOrder, array_merge($payment->getAttributes(), $attributes), (int) $payment->getKey());
+            }
+            $payment->update($attributes);
 
-        $order = $payment->donHang;
-        if ($order) {
-            $totalPaid = $this->paidTotalFor($order);
-            $grandTotal = $order->hoaDons?->first()?->ThanhTien ?? $order->ThanhTien;
+            $invoice = $payment->donHang?->hoaDons?->first();
+            if ($invoice) {
+                $this->updateInvoiceStatus($invoice);
+            }
 
-            $this->synchronizeOrderPaymentStatus($order, $totalPaid, (float) $grandTotal, $override);
-        }
+            $order = $payment->donHang;
+            if ($order) {
+                $totalPaid = $this->paidTotalFor($order);
+                $grandTotal = $order->hoaDons?->first()?->ThanhTien ?? $order->ThanhTien;
 
-        return $payment->fresh();
+                $this->synchronizeOrderPaymentStatus($order, $totalPaid, (float) $grandTotal, $override);
+            }
+
+            return $payment->fresh();
+        });
     }
 
     /**
@@ -240,6 +258,20 @@ class PaymentService
         return (float) $order->thanhToans()
             ->where('TrangThai', PaymentStatus::Paid->value)
             ->sum('SoTien');
+    }
+
+    private function validateAmount(DonHang $order, array $attributes, ?int $excludePaymentId = null): void
+    {
+        if ($order->statusEnum() === OrderStatus::Cancelled) {
+            throw ValidationException::withMessages(['order_id' => 'Không thể thu tiền cho đơn đã hủy.']);
+        }
+        $amount = (float) ($attributes['SoTien'] ?? 0);
+        $grandTotal = (float) ($order->hoaDons()->first()?->ThanhTien ?? $order->ThanhTien);
+        $paid = (float) $order->thanhToans()->where('TrangThai', PaymentStatus::Paid->value)
+            ->when($excludePaymentId !== null, fn ($q) => $q->where('ThanhToanID', '!=', $excludePaymentId))->sum('SoTien');
+        if ($amount <= 0 || $amount > max(0, $grandTotal - $paid)) {
+            throw ValidationException::withMessages(['amount' => 'Số tiền phải lớn hơn 0 và không vượt quá số tiền còn phải thu.']);
+        }
     }
 
     private function synchronizeOrderPaymentStatus(

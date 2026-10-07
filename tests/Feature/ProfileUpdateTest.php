@@ -21,7 +21,7 @@ class ProfileUpdateTest extends TestCase
             config('database.default') !== 'sqlite'
             || config('database.connections.sqlite.database') !== ':memory:'
         ) {
-            $this->markTestSkipped('Profile update tests require isolated SQLite in-memory storage.');
+            $this->fail('Profile update tests require isolated SQLite in-memory storage.');
         }
 
         Schema::create('TaiKhoan', function (Blueprint $table): void {

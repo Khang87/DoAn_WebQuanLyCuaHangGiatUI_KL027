@@ -58,6 +58,7 @@ class LuuDonHangRequest extends FormRequest
             'use_points' => ['nullable', 'boolean'],
             'PhiGiaoHang' => ['nullable', 'numeric', 'min:0'],
             'TrangThai' => ['required', 'in:'.implode(',', OrderStatus::values())],
+            'cancellation_reason' => ['nullable', 'required_if:TrangThai,Đã hủy', 'string', 'max:500'],
             'GhiChu' => ['nullable', 'string', 'max:500'],
             'items' => ['nullable', 'array'],
             'items.*.DichVuID' => ['required', 'integer', 'exists:DichVu,DichVuID'],

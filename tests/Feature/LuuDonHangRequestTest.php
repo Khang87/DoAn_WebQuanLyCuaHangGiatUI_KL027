@@ -24,7 +24,7 @@ class LuuDonHangRequestTest extends TestCase
             config('database.default') !== 'sqlite'
             || config('database.connections.sqlite.database') !== ':memory:'
         ) {
-            $this->markTestSkipped('Order request validation tests require isolated SQLite in-memory storage.');
+            $this->fail('Order request validation tests require isolated SQLite in-memory storage.');
         }
 
         Schema::create('DonHang', function (Blueprint $table): void {

@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\BangGia;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -100,9 +101,58 @@ class PricingService
         });
     }
 
-    public function getLatestPrice(int $serviceId, int $garmentId): ?float
+    public function getLatestPrice(int $serviceId, int $garmentId, ?int $unitId = null): ?float
     {
-        return BangGia::getLatestPrice($serviceId, $garmentId);
+        return $this->getLatestPricing($serviceId, $garmentId, $unitId)?->DonGia;
+    }
+
+    /** The effective price is selected once, with the same ordering for every caller. */
+    private function effectivePrices(): Builder
+    {
+        $date = today()->toDateString();
+
+        return BangGia::query()
+            ->where('TrangThai', 'Hoạt động')
+            ->where(fn ($query) => $query->whereNull('NgayApDung')->orWhereDate('NgayApDung', '<=', $date))
+            ->where(fn ($query) => $query->whereNull('NgayKetThuc')->orWhereDate('NgayKetThuc', '>=', $date))
+            ->orderByRaw('CASE WHEN "NgayApDung" IS NULL THEN 1 ELSE 0 END')
+            ->orderByDesc('NgayApDung')
+            ->orderByDesc('BangGiaID');
+    }
+
+    public function getLatestPricing(int $serviceId, int $garmentId, ?int $unitId = null): ?BangGia
+    {
+        return $this->effectivePrices()
+            ->where('DichVuID', $serviceId)
+            ->where('LoaiDoGiatID', $garmentId)
+            ->when($unitId !== null, fn ($query) => $query->where('DonViTinhID', $unitId))
+            ->first();
+    }
+
+    /** @return array<string, BangGia> Prices for all requested tuples in one query. */
+    public function getLatestPricingForTuples(array $tuples): array
+    {
+        if ($tuples === []) {
+            return [];
+        }
+
+        $rows = $this->effectivePrices()
+            ->where(function ($query) use ($tuples): void {
+                foreach ($tuples as $tuple) {
+                    $query->orWhere(fn ($q) => $q
+                        ->where('DichVuID', $tuple['DichVuID'])
+                        ->where('LoaiDoGiatID', $tuple['LoaiDoGiatID'])
+                        ->where('DonViTinhID', $tuple['DonViTinhID']));
+                }
+            })->get();
+        $prices = [];
+
+        foreach ($rows as $row) {
+            $key = $row->DichVuID.':'.$row->LoaiDoGiatID.':'.$row->DonViTinhID;
+            $prices[$key] ??= $row;
+        }
+
+        return $prices;
     }
 
     public function hasOverlappingPeriod(

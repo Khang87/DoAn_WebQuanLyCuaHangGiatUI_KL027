@@ -46,6 +46,7 @@
                         <th>Mã giao nhận</th>
                         <th>Mã đơn hàng</th>
                         <th>Khách hàng</th>
+                        <th>Loại giao nhận</th>
                         <th>Hình thức</th>
                         <th>Nhân viên</th>
                         <th>Thời gian</th>
@@ -61,12 +62,13 @@
                         <td><span class="text-dark">{{ $delivery->donHang?->MaDonHang ?: '—' }}</span></td>
                         <td>{{ $delivery->donHang?->khachHang?->HoTen ?: $delivery->nhanVien?->HoTen ?: '—' }}</td>
                         <td>
-                            @if($delivery->HinhThuc === 'nhan_do')
+                            @if($delivery->LoaiGiaoNhan === 'NHAN_DO')
                                 <i class="bi bi-box-arrow-in-down me-1"></i>Nhận đồ
                             @else
                                 <i class="bi bi-truck me-1"></i>Giao đồ
                             @endif
                         </td>
+                        <td>{{ $delivery->HinhThuc }}</td>
                         <td>{{ $delivery->nhanVien?->HoTen ?: 'Chưa phân công' }}</td>
                         <td>
                             {{ $delivery->ThoiGianDuKien?->format('d/m/Y') ?: '—' }}
@@ -93,7 +95,7 @@
                         </td>
                     </tr>
                     @empty
-                    <tr><td colspan="9" class="text-center text-muted py-4">Chưa có dữ liệu giao nhận</td></tr>
+                    <tr><td colspan="10" class="text-center text-muted py-4">Chưa có dữ liệu giao nhận</td></tr>
                     @endforelse
                 </tbody>
             </table>

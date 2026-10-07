@@ -104,6 +104,11 @@
                 </div>
 
                 <div class="col-12">
+                    <label class="form-label" for="cancellation-reason">Lý do hủy (khi chọn Đã hủy)</label>
+                    <input class="form-control" id="cancellation-reason" name="cancellation_reason" maxlength="500" value="{{ old('cancellation_reason') }}">
+                    @error('cancellation_reason')<div class="text-danger small">{{ $message }}</div>@enderror
+                </div>
+                <div class="col-12">
                     <div class="d-flex justify-content-between align-items-center mb-2">
                         <label class="form-label mb-0">Các mặt hàng trong đơn</label>
                         <button type="button" class="btn btn-sm btn-outline-primary" id="addItem"><i class="bi bi-plus-lg me-1"></i>Thêm mặt hàng</button>

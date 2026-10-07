@@ -20,7 +20,7 @@ class CustomerSortTest extends TestCase
             config('database.default') !== 'sqlite'
             || config('database.connections.sqlite.database') !== ':memory:'
         ) {
-            $this->markTestSkipped('Customer sort tests require isolated SQLite in-memory storage.');
+            $this->fail('Customer sort tests require isolated SQLite in-memory storage.');
         }
 
         Schema::create('KhachHang', function (Blueprint $table): void {

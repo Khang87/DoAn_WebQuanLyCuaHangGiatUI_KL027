@@ -35,7 +35,7 @@ class Booking extends Model
         'MaBooking', 'KhachHangID', 'HinhThucNhanDo', 'DiaChiNhan', 'HinhThucTraDo', 'DiaChiTra',
         'NgayHen', 'GioHen', 'GhiChu', 'TrangThai', 'NgayTao', 'NgayCapNhat',
         'IdempotencyKey', 'BookingID', 'NhanVienID', 'NhanVienXacNhanID',
-        'ThoiGianXacNhan'];
+        'ThoiGianXacNhan', 'DiemSuDung', 'TienGiamDoDiem', 'DiemDaTru'];
 
     protected $casts = [
         'BookingID' => 'integer',
@@ -46,6 +46,9 @@ class Booking extends Model
         'NgayTao' => 'datetime',
         'NgayCapNhat' => 'datetime',
         'ThoiGianXacNhan' => 'datetime',
+        'DiemSuDung' => 'integer',
+        'TienGiamDoDiem' => 'float',
+        'DiemDaTru' => 'boolean',
     ];
 
     public function khachHang()

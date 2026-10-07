@@ -10,7 +10,7 @@
 
 <x-admin.detail.page-header
     title="Phiếu giao nhận {{ $deliveryCode }}"
-    :subtitle="($delivery->HinhThuc === 'nhan_do' ? 'Nhận đồ' : 'Giao đồ') . ' · ' . ($delivery->ThoiGianDuKien?->format('d/m/Y') ?: 'Chưa hẹn ngày')"
+    :subtitle="($delivery->LoaiGiaoNhan === 'NHAN_DO' ? 'Nhận đồ' : 'Giao đồ') . ' · ' . ($delivery->ThoiGianDuKien?->format('d/m/Y') ?: 'Chưa hẹn ngày')"
 >
     <x-slot:badge>
         <x-admin.status-badge :status="$delivery->TrangThai" :enum="\App\Enums\DeliveryStatus::class" />
@@ -23,11 +23,12 @@
         <x-admin.detail.panel title="Thông tin giao nhận" icon="bi-truck" :iconClass="'bg-primary-subtle text-primary'">
             <x-admin.detail.info-grid :columns="2">
                 <x-admin.detail.info-item label="Mã phiếu" :value="$deliveryCode" />
-                <x-admin.detail.info-item label="Hình thức">
+                <x-admin.detail.info-item label="Loại giao nhận">
                     <span class="badge bg-primary-subtle text-primary-emphasis border border-primary px-3 py-2 rounded-pill">
-                        <i class="bi {{ $delivery->HinhThuc === 'nhan_do' ? 'bi-box-arrow-in-down' : 'bi-truck' }} me-1"></i>{{ $delivery->HinhThuc === 'nhan_do' ? 'Nhận đồ' : 'Giao đồ' }}
+                        <i class="bi {{ $delivery->LoaiGiaoNhan === 'NHAN_DO' ? 'bi-box-arrow-in-down' : 'bi-truck' }} me-1"></i>{{ $delivery->LoaiGiaoNhan === 'NHAN_DO' ? 'Nhận đồ' : 'Giao đồ' }}
                     </span>
                 </x-admin.detail.info-item>
+                <x-admin.detail.info-item label="Hình thức" :value="$delivery->HinhThuc" />
                 <x-admin.detail.info-item label="Đơn hàng">
                     @if($delivery->donHang)
                         <a href="{{ route('orders.show', $delivery->donHang->DonHangID) }}" class="text-decoration-none">

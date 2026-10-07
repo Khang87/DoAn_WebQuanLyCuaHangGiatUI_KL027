@@ -22,7 +22,7 @@ class DashboardRevenueChartTest extends TestCase
             config('database.default') !== 'sqlite'
             || config('database.connections.sqlite.database') !== ':memory:'
         ) {
-            $this->markTestSkipped('Dashboard chart tests require isolated SQLite in-memory storage.');
+            $this->fail('Dashboard chart tests require isolated SQLite in-memory storage.');
         }
 
         Schema::create('DonHang', function (Blueprint $table): void {
