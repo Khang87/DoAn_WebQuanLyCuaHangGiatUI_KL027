@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\BangGia;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -118,6 +119,22 @@ class PricingService
             ->orderByRaw('CASE WHEN "NgayApDung" IS NULL THEN 1 ELSE 0 END')
             ->orderByDesc('NgayApDung')
             ->orderByDesc('BangGiaID');
+    }
+
+    /** Effective selectable prices, retaining every service/garment/unit tuple. */
+    public function orderOptions(): Collection
+    {
+        return $this->effectivePrices()
+            ->with('donViTinh')
+            ->whereNotNull('DonGia')
+            ->whereHas('donViTinh', fn ($query) => $query
+                ->where('TrangThai', 'Hoạt động')
+                ->where(fn ($labels) => $labels
+                    ->where(fn ($label) => $label->whereNotNull('KyHieu')->where('KyHieu', '<>', ''))
+                    ->orWhere(fn ($label) => $label->whereNotNull('TenDonViTinh')->where('TenDonViTinh', '<>', ''))))
+            ->get()
+            ->unique(fn ($price) => $price->DichVuID.':'.$price->LoaiDoGiatID.':'.$price->DonViTinhID)
+            ->values();
     }
 
     public function getLatestPricing(int $serviceId, int $garmentId, ?int $unitId = null): ?BangGia

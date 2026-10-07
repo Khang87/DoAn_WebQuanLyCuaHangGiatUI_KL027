@@ -107,6 +107,41 @@ class RewardPointTest extends TestCase
         $this->assertSame(0, $customer->fresh()->points());
     }
 
+    public function test_manual_creation_rejects_uninspected_or_completed_orders_without_side_effects(): void
+    {
+        $customer = $this->createCustomer(901, 500);
+        $validInput = [
+            'KhachHangID' => $customer->KhachHangID,
+            'NhanVienID' => 1,
+            'TrangThai' => OrderStatus::Received->value,
+            'DiemSuDung' => 100,
+            'items' => [array_merge($this->orderItem(), ['TinhTrangTruocKhiGiat' => 'Bình thường'])],
+        ];
+        $invalidInputs = [];
+        foreach (OrderStatus::cases() as $status) {
+            if ($status !== OrderStatus::Received) {
+                $invalidInputs[] = [['TrangThai' => $status->value], 'TrangThai'];
+            }
+        }
+        $invalidInputs[] = [['BookingID' => 99], 'BookingID'];
+        $invalidInputs[] = [['items' => []], 'items'];
+        foreach ([null, '', '   ', str_repeat('a', 321)] as $condition) {
+            $invalidInputs[] = [['items' => [array_merge($this->orderItem(), ['TinhTrangTruocKhiGiat' => $condition])]], 'items.0.TinhTrangTruocKhiGiat'];
+        }
+        foreach ($invalidInputs as [$changes, $errorKey]) {
+            try {
+                app(OrderService::class)->create(array_replace($validInput, $changes));
+                $this->fail('Invalid manual creation must be rejected: '.$errorKey);
+            } catch (ValidationException $exception) {
+                $this->assertArrayHasKey($errorKey, $exception->errors());
+            }
+            $this->assertSame(0, DonHang::query()->count());
+            $this->assertSame(0, DB::table('ChiTietDonHang')->count());
+            $this->assertSame(0, DB::table('NhatKyHeThong')->count());
+            $this->assertSame(500, $customer->fresh()->points());
+        }
+    }
+
     public function test_order_creation_redeems_points_at_one_vnd_per_point(): void
     {
         $customer = $this->createCustomer(3, 500);
@@ -114,7 +149,8 @@ class RewardPointTest extends TestCase
         $order = app(OrderService::class)->create([
             'MaDonHang' => 'MANUAL-CODE',
             'KhachHangID' => $customer->KhachHangID,
-            'TrangThai' => OrderStatus::Pending->value,
+            'NhanVienID' => 1,
+            'TrangThai' => OrderStatus::Received->value,
             'DiemSuDung' => 500,
             'items' => [$this->orderItem()],
         ]);
@@ -133,7 +169,8 @@ class RewardPointTest extends TestCase
         $order = app(OrderService::class)->create([
             'MaDonHang' => 'ALL-POINTS',
             'KhachHangID' => $customer->KhachHangID,
-            'TrangThai' => OrderStatus::Pending->value,
+            'NhanVienID' => 1,
+            'TrangThai' => OrderStatus::Received->value,
             'use_points' => true,
             'DiemSuDung' => 1,
             'items' => [$this->orderItem()],
@@ -152,7 +189,8 @@ class RewardPointTest extends TestCase
         $order = app(OrderService::class)->create([
             'MaDonHang' => 'NO-POINTS',
             'KhachHangID' => $customer->KhachHangID,
-            'TrangThai' => OrderStatus::Pending->value,
+            'NhanVienID' => 1,
+            'TrangThai' => OrderStatus::Received->value,
             'use_points' => false,
             'DiemSuDung' => 500,
             'items' => [$this->orderItem()],
@@ -252,7 +290,8 @@ class RewardPointTest extends TestCase
         try {
             app(OrderService::class)->create([
                 'KhachHangID' => $customer->KhachHangID,
-                'TrangThai' => OrderStatus::Pending->value,
+                'NhanVienID' => 1,
+                'TrangThai' => OrderStatus::Received->value,
                 'DiemSuDung' => 6,
                 'items' => [$this->orderItem()],
             ]);
@@ -505,6 +544,7 @@ class RewardPointTest extends TestCase
             'LoaiDoGiatID' => 1,
             'DonViTinhID' => 1,
             'SoLuong' => 1,
+            'TinhTrangTruocKhiGiat' => 'Bình thường',
         ];
     }
 
@@ -579,6 +619,7 @@ class RewardPointTest extends TestCase
 
         Schema::create('NhanVien', function (Blueprint $table): void {
             $table->increments('NhanVienID');
+            $table->string('TrangThai')->default('Hoạt động');
         });
 
         Schema::create('DonViTinh', function (Blueprint $table): void {

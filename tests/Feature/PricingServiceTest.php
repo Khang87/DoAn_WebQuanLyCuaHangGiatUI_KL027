@@ -81,6 +81,25 @@ class PricingServiceTest extends TestCase
         $this->assertSame(2, $prices['1:1:2']->BangGiaID);
     }
 
+    public function test_expired_price_with_newer_start_does_not_override_valid_price(): void
+    {
+        $this->price(1, ['NgayApDung' => '2026-10-01']);
+        $this->price(2, ['NgayApDung' => '2026-10-05', 'NgayKetThuc' => '2026-10-06']);
+
+        $pricing = app(PricingService::class);
+        $this->assertSame(1, $pricing->getLatestPricing(1, 1, 1)->BangGiaID);
+        $batch = $pricing->getLatestPricingForTuples([
+            ['DichVuID' => 1, 'LoaiDoGiatID' => 1, 'DonViTinhID' => 1],
+        ]);
+        $this->assertSame(1, $batch['1:1:1']->BangGiaID);
+    }
+
+    public function test_price_with_future_end_date_remains_effective(): void
+    {
+        $this->price(1, ['NgayKetThuc' => '2026-10-08']);
+        $this->assertSame(1, app(PricingService::class)->getLatestPricing(1, 1, 1)->BangGiaID);
+    }
+
     public function test_no_effective_price_returns_null_and_empty_batch_does_not_query(): void
     {
         $this->price(1, ['NgayApDung' => '2026-10-08']);
