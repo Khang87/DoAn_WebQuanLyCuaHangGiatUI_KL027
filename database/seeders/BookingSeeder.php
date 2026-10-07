@@ -2,8 +2,9 @@
 
 namespace Database\Seeders;
 
-use App\Enums\BookingMethod;
 use App\Enums\BookingStatus;
+use App\Enums\ReceiveMethod;
+use App\Enums\ReturnMethod;
 use App\Models\Booking;
 use App\Models\KhachHang;
 use App\Models\NhanVien;
@@ -47,7 +48,7 @@ class BookingSeeder extends Seeder
             'Thời gian không phù hợp với giờ mở cửa',
         ];
 
-        $methods = BookingMethod::values();
+        $methods = ReceiveMethod::values();
 
         $statuses = [
             BookingStatus::Pending->value,
@@ -81,6 +82,8 @@ class BookingSeeder extends Seeder
                 'HinhThucNhanDo' => $methods[array_rand($methods)],
                 'NgayHen' => $scheduledDate->format('Y-m-d'),
                 'GioHen' => $scheduledTime,
+                'HinhThucTraDo' => ReturnMethod::Store->value,
+                'DiaChiTra' => null,
                 'DiaChiNhan' => $addresses[($i - 1) % count($addresses)],
                 'GhiChu' => $notes,
                 'TrangThai' => $status,

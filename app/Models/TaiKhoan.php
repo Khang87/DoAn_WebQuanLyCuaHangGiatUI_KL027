@@ -29,7 +29,7 @@ class TaiKhoan extends Model
 
     protected $fillable = [
         'TenDangNhap', 'MatKhau', 'Email', 'SoDienThoai', 'NhanVienID',
-        'KhachHangID', 'TrangThai', 'NgayTao', 'UserAuthId', 'TaiKhoanID'];
+        'KhachHangID', 'TrangThai', 'NgayTao', 'UserAuthId', 'AvatarURL', 'TaiKhoanID'];
 
     protected $casts = [
         'TaiKhoanID' => 'integer',

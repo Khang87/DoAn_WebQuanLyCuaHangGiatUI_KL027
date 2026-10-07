@@ -82,9 +82,9 @@
             <x-admin.detail.confirm-form
                 :action="route('accounts.reset-password', $account->getKey())"
                 method="POST"
-                title="Đặt lại mật khẩu?"
-                text="Mật khẩu sẽ được đặt lại về mặc định."
-                label="Đặt lại mật khẩu"
+                title="Gửi mã đặt lại mật khẩu?"
+                text="Gửi mã OTP đến email của tài khoản để người dùng tự đặt mật khẩu mới."
+                label="Gửi mã đặt lại mật khẩu"
                 icon="bi-key"
                 variant="btn-outline-primary"
                 color="#f59e0b"

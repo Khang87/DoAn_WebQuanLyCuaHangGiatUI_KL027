@@ -159,6 +159,9 @@ Route::middleware(['auth', 'reject.customer'])->group(function () {
         ->middlewareFor(['index', 'show'], 'permission:bookings.view')
         ->middlewareFor(['edit', 'update'], 'permission:bookings.edit')
         ->middlewareFor('destroy', 'permission:bookings.delete');
+    Route::get('bookings/{booking}/inspection', [BookingController::class, 'inspection'])
+        ->middleware('permission:bookings.confirm')
+        ->name('bookings.inspection');
     Route::post('bookings/{booking}/confirm', [BookingController::class, 'confirm'])
         ->middleware('permission:bookings.confirm')
         ->name('bookings.confirm');

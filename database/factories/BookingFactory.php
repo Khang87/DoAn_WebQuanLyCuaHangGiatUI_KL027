@@ -2,8 +2,9 @@
 
 namespace Database\Factories;
 
-use App\Enums\BookingMethod;
 use App\Enums\BookingStatus;
+use App\Enums\ReceiveMethod;
+use App\Enums\ReturnMethod;
 use App\Models\Booking;
 use App\Models\KhachHang;
 use App\Models\NhanVien;
@@ -20,9 +21,11 @@ class BookingFactory extends Factory
         return [
             'KhachHangID' => $this->existingOrNewCustomerId(),
             'NhanVienID' => NhanVien::query()->inRandomOrder()->value('NhanVienID'),
-            'HinhThucNhanDo' => fake()->randomElement(BookingMethod::values()),
+            'HinhThucNhanDo' => fake()->randomElement(ReceiveMethod::values()),
             'NgayHen' => fake()->dateTimeBetween('+1 day', '+7 days'),
             'GioHen' => fake()->numberBetween(8, 18).':00:00',
+            'HinhThucTraDo' => ReturnMethod::Store->value,
+            'DiaChiTra' => null,
             'DiaChiNhan' => fake()->address(),
             'GhiChu' => fake()->optional()->sentence(),
             'TrangThai' => fake()->randomElement([

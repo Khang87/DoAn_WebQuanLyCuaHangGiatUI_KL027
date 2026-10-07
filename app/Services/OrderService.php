@@ -2,9 +2,10 @@
 
 namespace App\Services;
 
-use App\Enums\BookingMethod;
 use App\Enums\DeliveryStatus;
 use App\Enums\OrderStatus;
+use App\Enums\ReceiveMethod;
+use App\Enums\ReturnMethod;
 use App\Exceptions\SettledOrderException;
 use App\Models\BangGia;
 use App\Models\Booking;
@@ -18,6 +19,7 @@ use App\Models\NhanVien;
 use App\Models\NhatKyHeThong;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
@@ -100,11 +102,11 @@ class OrderService
     /**
      * Create an order and delivery record from a validated booking snapshot.
      *
-     * @param  array<int, array<string, mixed>>  $snapshots
+     * @param  array<int, array<string, mixed>>  $items
      */
-    public function createFromBooking(Booking $booking, array $snapshots, int $employeeId, int $pointsUsed = 0): DonHang
+    public function createFromBooking(Booking $booking, array $items, int $employeeId, int $pointsUsed = 0): DonHang
     {
-        return DB::transaction(function () use ($booking, $snapshots, $employeeId, $pointsUsed): DonHang {
+        return DB::transaction(function () use ($booking, $items, $employeeId, $pointsUsed): DonHang {
             $existingOrder = DonHang::query()
                 ->where('BookingID', $booking->BookingID)
                 ->first();
@@ -121,8 +123,33 @@ class OrderService
                 ]);
             }
 
+            Validator::make($booking->only(['HinhThucNhanDo', 'DiaChiNhan', 'HinhThucTraDo', 'DiaChiTra']), [
+                'HinhThucNhanDo' => ['required', 'in:'.implode(',', ReceiveMethod::values())],
+                'DiaChiNhan' => ['nullable', 'string', 'max:255', 'required_if:HinhThucNhanDo,'.ReceiveMethod::Home->value],
+                'HinhThucTraDo' => ['required', 'in:'.implode(',', ReturnMethod::values())],
+                'DiaChiTra' => ['nullable', 'string', 'max:255', 'required_if:HinhThucTraDo,'.ReturnMethod::Home->value],
+            ])->validate();
+            Validator::make(['items' => $items], [
+                'items' => ['required', 'array', 'min:1'],
+                'items.*.DichVuID' => ['required', 'integer', 'exists:DichVu,DichVuID'],
+                'items.*.LoaiDoGiatID' => ['required', 'integer', 'exists:LoaiDoGiat,LoaiDoGiatID'],
+                'items.*.DonViTinhID' => ['required', 'integer', 'exists:DonViTinh,DonViTinhID'],
+                'items.*.SoLuong' => ['nullable', 'numeric', 'min:1'],
+                'items.*.KhoiLuong' => ['nullable', 'numeric', 'gt:0'],
+                'items.*.TinhTrangTruocKhiGiat' => ['required', 'string', 'max:320'],
+                'items.*.GhiChu' => ['nullable', 'string', 'max:160'],
+            ])->validate();
+            foreach ($items as $index => $item) {
+                $items[$index]['TinhTrangTruocKhiGiat'] = trim($item['TinhTrangTruocKhiGiat']);
+                if ($items[$index]['TinhTrangTruocKhiGiat'] === '') {
+                    throw ValidationException::withMessages([
+                        "items.{$index}.TinhTrangTruocKhiGiat" => 'Vui lòng nhập tình trạng trước khi giặt.',
+                    ]);
+                }
+            }
+            [$snapshots, $total] = $this->buildItems($items);
+
             $bookingCode = $booking->MaBooking ?: Booking::nextCode();
-            $total = array_sum(array_column($snapshots, 'ThanhTien'));
             $customer = KhachHang::query()->find($booking->KhachHangID);
             $customerPoints = $customer?->points() ?? 0;
             $this->assertRequestedPointsAvailable($pointsUsed, $customerPoints);
@@ -148,7 +175,7 @@ class OrderService
                 'KhachHangID' => $booking->KhachHangID,
                 'NhanVienID' => $employeeId,
                 'BookingID' => $booking->BookingID,
-                'TrangThai' => OrderStatus::Pending->value,
+                'TrangThai' => OrderStatus::Received->value,
                 'GhiChu' => $notes,
             ], $amounts));
             $order->update([
@@ -162,18 +189,27 @@ class OrderService
                 ));
             }
 
-            GiaoNhan::create([
-                'DonHangID' => $order->DonHangID,
-                'NhanVienID' => $employeeId,
-                'HinhThuc' => $booking->HinhThucNhanDo,
-                'LoaiGiaoNhan' => $booking->methodEnum()->deliveryType(),
-                'DiaChi' => $booking->methodEnum() === BookingMethod::GiaoDo
-                    ? $booking->DiaChiNhan
-                    : null,
-                'ThoiGianDuKien' => $booking->NgayHen->format('Y-m-d').' '.$booking->GioHen->format('H:i:s'),
-                'TrangThai' => DeliveryStatus::Pending->dbValue(),
-                'GhiChu' => $booking->GhiChu,
-            ]);
+            foreach ([
+                ['method' => $booking->receiveMethodEnum(), 'home' => ReceiveMethod::Home, 'type' => 'NHAN_DO', 'address' => $booking->DiaChiNhan],
+                ['method' => $booking->returnMethodEnum(), 'home' => ReturnMethod::Home, 'type' => 'GIAO_DO', 'address' => $booking->DiaChiTra],
+            ] as $leg) {
+                if ($leg['method'] !== $leg['home']) {
+                    continue;
+                }
+                GiaoNhan::create([
+                    'DonHangID' => $order->DonHangID,
+                    'NhanVienID' => $employeeId,
+                    'HinhThuc' => $leg['method']->value,
+                    'LoaiGiaoNhan' => $leg['type'],
+                    'DiaChi' => $leg['address'],
+                    // NgayHen/GioHen is the receiving appointment, never the return schedule.
+                    'ThoiGianDuKien' => $leg['type'] === 'NHAN_DO'
+                        ? $booking->NgayHen->format('Y-m-d').' '.$booking->GioHen->format('H:i:s')
+                        : null,
+                    'TrangThai' => DeliveryStatus::Pending->dbValue(),
+                    'GhiChu' => $booking->GhiChu,
+                ]);
+            }
 
             return $order;
         });

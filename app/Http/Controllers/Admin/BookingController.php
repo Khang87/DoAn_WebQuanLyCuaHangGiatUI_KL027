@@ -33,6 +33,7 @@ class BookingController extends Controller
             'search' => $request->input('search'),
             'customer_id' => $request->input('customer_id'),
             'method' => $request->input('method'),
+            'return_method' => $request->input('return_method'),
             'status' => $request->input('status'),
             'sort_by' => $request->input('sort_by'),
             'sort_order' => $request->input('sort_order'),
@@ -60,12 +61,24 @@ class BookingController extends Controller
         return view('admin.bookings.show', compact('booking', 'employees'));
     }
 
-    public function edit(int $id)
+    public function inspection(int $id)
+    {
+        return $this->edit($id, true);
+    }
+
+    public function edit(int $id, bool $inspectionMode = false)
     {
         $booking = $this->bookingService->find($id);
 
         if (! $booking) {
             abort(404);
+        }
+
+        if ($inspectionMode && $booking->donHangs->isNotEmpty()) {
+            return redirect()->route('orders.show', $booking->donHangs->first());
+        }
+        if ($inspectionMode && ! $booking->isConvertibleToOrder()) {
+            return redirect()->route('bookings.show', $booking)->with('error', 'Chỉ Booking chờ xác nhận mới có thể kiểm tra thực tế.');
         }
 
         $responsibleEmployeeLocked = $booking->donHangs->isNotEmpty();
@@ -124,6 +137,7 @@ class BookingController extends Controller
 
         return view('admin.bookings.edit', compact(
             'booking',
+            'inspectionMode',
             'responsibleEmployeeLocked',
             'employees',
             'services',
@@ -190,19 +204,21 @@ class BookingController extends Controller
         try {
             $validated = $request->validated();
             $pointsToggleSubmitted = array_key_exists('use_points', $validated);
-            $order = $this->bookingService->confirmPendingBooking(
+            $order = $this->bookingService->inspectBookingAndCreateOrder(
                 $booking,
-                (int) $validated['NhanVienID'],
+                (int) $validated['staff_id'],
+                $validated['items'],
                 $pointsToggleSubmitted ? 0 : (int) ($validated['DiemSuDung'] ?? 0),
                 $pointsToggleSubmitted && (bool) $validated['use_points'],
+                $validated,
             );
 
             return redirect()->route('orders.show', $order)->with(
                 'success',
-                'Đã tiếp nhận Booking và tạo đơn hàng '.$order->MaDonHang.' ở trạng thái chờ kiểm tra thực tế.',
+                'Đã tiếp nhận Booking và tạo đơn hàng '.$order->MaDonHang.' ở trạng thái Đã tiếp nhận.',
             );
         } catch (ValidationException $e) {
-            return redirect()->route('bookings.edit', $booking)->withErrors($e->errors())->withInput();
+            return redirect()->route('bookings.inspection', $booking)->withErrors($e->errors())->withInput();
         } catch (Throwable $e) {
             $this->logBookingFailure($booking->BookingID, 'confirm', $e);
 

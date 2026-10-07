@@ -2,8 +2,9 @@
 
 namespace App\Models;
 
-use App\Enums\BookingMethod;
 use App\Enums\BookingStatus;
+use App\Enums\ReceiveMethod;
+use App\Enums\ReturnMethod;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -31,7 +32,7 @@ class Booking extends Model
     public const CODE_PREFIX = 'DL';
 
     protected $fillable = [
-        'MaBooking', 'KhachHangID', 'HinhThucNhanDo', 'DiaChiNhan',
+        'MaBooking', 'KhachHangID', 'HinhThucNhanDo', 'DiaChiNhan', 'HinhThucTraDo', 'DiaChiTra',
         'NgayHen', 'GioHen', 'GhiChu', 'TrangThai', 'NgayTao', 'NgayCapNhat',
         'IdempotencyKey', 'BookingID', 'NhanVienID', 'NhanVienXacNhanID',
         'ThoiGianXacNhan'];
@@ -161,18 +162,23 @@ class Booking extends Model
         return BookingStatus::parse($this->TrangThai);
     }
 
-    public function methodEnum(): BookingMethod
+    public function receiveMethodEnum(): ?ReceiveMethod
     {
-        return BookingMethod::parse($this->HinhThucNhanDo);
+        return ReceiveMethod::tryFrom((string) $this->HinhThucNhanDo);
+    }
+
+    public function returnMethodEnum(): ?ReturnMethod
+    {
+        return ReturnMethod::tryFrom((string) $this->HinhThucTraDo);
     }
 
     /**
      * Trạng thái có đủ điều kiện chuyển thành đơn hàng hay không.
-     * "Chờ xác nhận" chưa đủ, chỉ "Đã xác nhận" mới sinh đơn.
+     * Booking chờ xác nhận được kiểm tra thực tế trước khi tạo đơn.
      */
     public function isConvertibleToOrder(): bool
     {
-        return $this->statusEnum() === BookingStatus::Confirmed;
+        return $this->statusEnum() === BookingStatus::Pending;
     }
 
     public function getStatusLabelAttribute(): string
@@ -182,12 +188,17 @@ class Booking extends Model
 
     public function getMethodLabelAttribute(): string
     {
-        return $this->methodEnum()->label();
+        return $this->receiveMethodEnum()?->label() ?? 'Chưa bổ sung';
+    }
+
+    public function getReturnMethodLabelAttribute(): string
+    {
+        return $this->returnMethodEnum()?->label() ?? 'Chưa bổ sung';
     }
 
     public function getMethodIconAttribute(): string
     {
-        return $this->methodEnum()->icon();
+        return $this->receiveMethodEnum()?->icon() ?? 'bi-question-circle';
     }
 
     /**

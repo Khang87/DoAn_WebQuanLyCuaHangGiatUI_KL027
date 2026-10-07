@@ -85,7 +85,7 @@ class RewardPointTest extends TestCase
         $booking = $this->createBooking($customer);
         $this->actingAsBookingEmployee();
 
-        $order = app(BookingService::class)->confirmPendingBooking($booking, 1, 100);
+        $order = app(BookingService::class)->inspectBookingAndCreateOrder($booking, 1, [array_merge($this->orderItem(), ['TinhTrangTruocKhiGiat' => 'Bình thường'])], 100);
 
         $this->assertSame(100, $order->DiemSuDung);
         $this->assertSame(100.0, $order->TienGiamDoDiem);
@@ -99,7 +99,7 @@ class RewardPointTest extends TestCase
         $booking = $this->createBooking($customer);
         $this->actingAsBookingEmployee();
 
-        $order = app(BookingService::class)->confirmPendingBooking($booking, 1, 0, true);
+        $order = app(BookingService::class)->inspectBookingAndCreateOrder($booking, 1, [array_merge($this->orderItem(), ['TinhTrangTruocKhiGiat' => 'Bình thường'])], 0, true);
 
         $this->assertSame(500, $order->DiemSuDung);
         $this->assertSame(500.0, $order->TienGiamDoDiem);
@@ -322,6 +322,8 @@ class RewardPointTest extends TestCase
         $booking = Booking::query()->create([
             'KhachHangID' => $customer->KhachHangID,
             'HinhThucNhanDo' => 'Tại nhà',
+            'DiaChiNhan' => '12 Nguyễn Huệ',
+            'HinhThucTraDo' => 'Tại cửa hàng',
             'NgayHen' => '2026-10-05',
             'GioHen' => '14:30',
             'TrangThai' => BookingStatus::Pending->value,
@@ -433,6 +435,8 @@ class RewardPointTest extends TestCase
             $table->unsignedInteger('KhachHangID');
             $table->string('HinhThucNhanDo');
             $table->string('DiaChiNhan')->nullable();
+            $table->string('HinhThucTraDo')->nullable();
+            $table->string('DiaChiTra')->nullable();
             $table->date('NgayHen');
             $table->time('GioHen');
             $table->string('GhiChu')->nullable();
