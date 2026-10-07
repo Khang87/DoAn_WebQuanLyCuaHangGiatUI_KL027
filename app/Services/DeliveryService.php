@@ -3,8 +3,11 @@
 namespace App\Services;
 
 use App\Enums\DeliveryStatus;
+use App\Models\DonHang;
 use App\Models\GiaoNhan;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class DeliveryService
 {
@@ -68,23 +71,63 @@ class DeliveryService
 
     public function create(array $data): GiaoNhan
     {
-        if (empty($data['order_id'])) {
-            throw new \InvalidArgumentException('Giao nhận phải gắn với một đơn hàng.');
-        }
+        return DB::transaction(function () use ($data): GiaoNhan {
+            $order = DonHang::query()->lockForUpdate()->findOrFail($data['order_id'] ?? null);
+            DeliveryRules::assertMutableOrder($order);
+            $data = DeliveryRules::validate($data, $order);
+            $attributes = $this->mapAttributes($data);
+            $this->assertNoConflictingLeg($attributes);
 
-        return GiaoNhan::create($this->mapAttributes($data));
+            return GiaoNhan::create($attributes);
+        });
     }
 
     public function update(GiaoNhan $delivery, array $data): GiaoNhan
     {
-        $delivery->update($this->mapAttributes($data));
+        return DB::transaction(function () use ($delivery, $data): GiaoNhan {
+            $order = DonHang::query()->lockForUpdate()->findOrFail($delivery->DonHangID);
+            $current = GiaoNhan::query()->lockForUpdate()->findOrFail($delivery->getKey());
+            DeliveryRules::assertMutableOrder($order);
+            if ($current->DonHangID !== $order->DonHangID) {
+                throw ValidationException::withMessages(['order_id' => 'Phiếu đã thay đổi, vui lòng tải lại.']);
+            }
+            $validated = DeliveryRules::validate($data, $order, $current);
+            $this->assertNoConflictingLeg($this->mapAttributes($validated), $current->getKey());
+            $attributes = $this->mapAttributes(array_intersect_key($validated, $data));
+            if ($current->ThoiGianDuKien?->format('Y-m-d H:i') === ($validated['pickup_date'].' '.$validated['pickup_time'])) {
+                unset($attributes['ThoiGianDuKien']);
+            }
+            $current->update($attributes);
 
-        return $delivery->fresh();
+            return $current->fresh();
+        });
     }
 
     public function delete(GiaoNhan $delivery): bool
     {
-        return $delivery->delete();
+        return DB::transaction(function () use ($delivery): bool {
+            $order = DonHang::query()->lockForUpdate()->findOrFail($delivery->DonHangID);
+            $current = GiaoNhan::query()->lockForUpdate()->findOrFail($delivery->getKey());
+            DeliveryRules::assertMutableOrder($order);
+            if ($current->DonHangID !== $order->DonHangID || DeliveryStatus::parse($current->TrangThai) === DeliveryStatus::Completed) {
+                throw ValidationException::withMessages(['delivery' => 'Không thể xóa phiếu đã hoàn thành hoặc đã thay đổi.']);
+            }
+
+            return $current->delete();
+        });
+    }
+
+    private function assertNoConflictingLeg(array $attributes, ?int $exceptId = null): void
+    {
+        if ($attributes['TrangThai'] === DeliveryStatus::Cancelled->dbValue()) {
+            return;
+        }
+        if (GiaoNhan::query()->where('DonHangID', $attributes['DonHangID'])
+            ->where('LoaiGiaoNhan', $attributes['LoaiGiaoNhan'])
+            ->where('TrangThai', '!=', DeliveryStatus::Cancelled->dbValue())
+            ->when($exceptId !== null, fn ($query) => $query->whereKeyNot($exceptId))->exists()) {
+            throw ValidationException::withMessages(['method' => 'Đơn hàng đã có phiếu còn hiệu lực cho chặng này.']);
+        }
     }
 
     private function mapAttributes(array $data): array
@@ -96,7 +139,7 @@ class DeliveryService
         }
 
         if (array_key_exists('employee_id', $data)) {
-            $attributes['NhanVienID'] = $data['employee_id'];
+            $attributes['NhanVienID'] = empty($data['employee_id']) ? null : (int) $data['employee_id'];
         }
 
         if (array_key_exists('method', $data)) {
@@ -109,7 +152,6 @@ class DeliveryService
 
         if (array_key_exists('address', $data)) {
             $attributes['DiaChi'] = $data['address'];
-            $attributes['HinhThuc'] = $data['fulfillment'] ?? 'Tại nhà';
         }
 
         if (array_key_exists('fulfillment', $data)) {
@@ -120,13 +162,12 @@ class DeliveryService
         }
 
         if (array_key_exists('pickup_date', $data) && array_key_exists('pickup_time', $data)) {
-            $attributes['ThoiGianDuKien'] = $data['pickup_date'].' '.$data['pickup_time'];
+            $attributes['ThoiGianDuKien'] = empty($data['pickup_date']) ? null : $data['pickup_date'].' '.$data['pickup_time'];
         }
 
         if (array_key_exists('status', $data)) {
             $attributes['TrangThai'] = DeliveryStatus::parse($data['status'])->dbValue();
-        } elseif (! empty($data['order_id'])) {
-            $attributes['TrangThai'] = DeliveryStatus::Pending->dbValue();
+
         }
 
         if (array_key_exists('notes', $data)) {

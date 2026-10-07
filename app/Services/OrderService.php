@@ -17,7 +17,6 @@ use App\Models\GiaoNhan;
 use App\Models\KhachHang;
 use App\Models\KhuyenMai;
 use App\Models\LoaiDoGiat;
-use App\Models\NhanVien;
 use App\Models\NhatKyHeThong;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
@@ -111,7 +110,11 @@ class OrderService
     public function createFromBooking(Booking $booking, array $items, int $employeeId, int $pointsUsed = 0): DonHang
     {
         return DB::transaction(function () use ($booking, $items, $employeeId, $pointsUsed): DonHang {
-            Booking::query()->whereKey($booking->BookingID)->lockForUpdate()->firstOrFail();
+            $callerBooking = $booking;
+            $inspectionChanges = array_intersect_key($booking->getDirty(), array_flip([
+                'HinhThucNhanDo', 'DiaChiNhan', 'HinhThucTraDo', 'DiaChiTra', 'NgayHen', 'GioHen', 'GhiChu',
+            ]));
+            $booking = Booking::query()->whereKey($booking->BookingID)->lockForUpdate()->firstOrFail();
             $existingOrder = DonHang::query()
                 ->where('BookingID', $booking->BookingID)
                 ->first();
@@ -120,13 +123,13 @@ class OrderService
                 return $existingOrder;
             }
 
-            if (! NhanVien::query()->whereKey($employeeId)->exists()) {
-                throw ValidationException::withMessages([
-                    'NhanVienID' => $employeeId > 0
-                        ? 'Nhân viên không tồn tại.'
-                        : 'Vui lòng chọn nhân viên phụ trách.',
-                ]);
+            if (! $booking->isConvertibleToOrder()) {
+                throw ValidationException::withMessages(['booking' => 'Chỉ Booking chờ xác nhận mới có thể được kiểm tra và tạo đơn.']);
             }
+            // Preserve edits from inspection, never stale customer/status/reward markers.
+            $booking->fill($inspectionChanges);
+
+            EmployeeAssignment::assertAssignable($employeeId, 'NhanVienID');
 
             Validator::make($booking->only(['HinhThucNhanDo', 'DiaChiNhan', 'HinhThucTraDo', 'DiaChiTra']), [
                 'HinhThucNhanDo' => ['required', 'in:'.implode(',', ReceiveMethod::values())],
@@ -234,6 +237,7 @@ class OrderService
 
             if (array_key_exists('DiemDaTru', $booking->getAttributes())) {
                 $booking->fill(['DiemDaTru' => false, 'DiemSuDung' => 0, 'TienGiamDoDiem' => 0]);
+                $callerBooking->fill(['DiemDaTru' => false, 'DiemSuDung' => 0, 'TienGiamDoDiem' => 0]);
             }
 
             return $order;
@@ -484,6 +488,7 @@ class OrderService
 
         // Direct callers must obey the same inspection boundary as the Web form.
         Validator::make($data, [
+            'NhanVienID' => ['required', 'integer', EmployeeAssignment::rule()],
             'BookingID' => ['prohibited'],
             'TrangThai' => ['required', 'in:'.OrderStatus::Received->value],
             'items' => ['required', 'array', 'min:1'],
@@ -498,6 +503,8 @@ class OrderService
         unset($item);
 
         return DB::transaction(function () use ($data) {
+            EmployeeAssignment::assertAssignable((int) $data['NhanVienID'], 'NhanVienID');
+
             $data['MaDonHang'] = 'TMP'.Str::ulid();
 
             $data['NgayTao'] = $data['NgayTao'] ?? now();
@@ -593,6 +600,10 @@ class OrderService
 
             if ($lockedOrder->statusEnum() === OrderStatus::Cancelled) {
                 throw ValidationException::withMessages(['order' => 'Đơn đã hủy chỉ được xem, không thể sửa số tiền hoặc điểm.']);
+            }
+
+            if (array_key_exists('NhanVienID', $data)) {
+                EmployeeAssignment::assertAssignable((int) $data['NhanVienID'], 'NhanVienID', $lockedOrder->NhanVienID);
             }
 
             [$items, $subtotal] = $this->buildItems($data['items'] ?? []);

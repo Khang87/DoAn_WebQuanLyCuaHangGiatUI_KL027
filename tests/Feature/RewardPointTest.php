@@ -149,6 +149,7 @@ class RewardPointTest extends TestCase
         $order = app(OrderService::class)->create([
             'MaDonHang' => 'MANUAL-CODE',
             'KhachHangID' => $customer->KhachHangID,
+            'NhanVienID' => 1,
             'TrangThai' => OrderStatus::Received->value,
             'DiemSuDung' => 500,
             'items' => [$this->orderItem()],
@@ -168,6 +169,7 @@ class RewardPointTest extends TestCase
         $order = app(OrderService::class)->create([
             'MaDonHang' => 'ALL-POINTS',
             'KhachHangID' => $customer->KhachHangID,
+            'NhanVienID' => 1,
             'TrangThai' => OrderStatus::Received->value,
             'use_points' => true,
             'DiemSuDung' => 1,
@@ -187,6 +189,7 @@ class RewardPointTest extends TestCase
         $order = app(OrderService::class)->create([
             'MaDonHang' => 'NO-POINTS',
             'KhachHangID' => $customer->KhachHangID,
+            'NhanVienID' => 1,
             'TrangThai' => OrderStatus::Received->value,
             'use_points' => false,
             'DiemSuDung' => 500,
@@ -287,6 +290,7 @@ class RewardPointTest extends TestCase
         try {
             app(OrderService::class)->create([
                 'KhachHangID' => $customer->KhachHangID,
+                'NhanVienID' => 1,
                 'TrangThai' => OrderStatus::Received->value,
                 'DiemSuDung' => 6,
                 'items' => [$this->orderItem()],
@@ -615,6 +619,7 @@ class RewardPointTest extends TestCase
 
         Schema::create('NhanVien', function (Blueprint $table): void {
             $table->increments('NhanVienID');
+            $table->string('TrangThai')->default('Hoạt động');
         });
 
         Schema::create('DonViTinh', function (Blueprint $table): void {

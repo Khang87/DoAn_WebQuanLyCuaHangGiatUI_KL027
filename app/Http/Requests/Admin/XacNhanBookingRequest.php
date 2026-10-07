@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Admin;
 
 use App\Models\Booking;
+use App\Services\EmployeeAssignment;
 use Illuminate\Validation\Validator;
 
 class XacNhanBookingRequest extends LuuBookingRequest
@@ -13,7 +14,7 @@ class XacNhanBookingRequest extends LuuBookingRequest
         unset($rules['status']);
 
         return array_merge($rules, [
-            'staff_id' => ['required', 'integer', 'exists:NhanVien,NhanVienID'],
+            'staff_id' => ['required', 'integer', EmployeeAssignment::rule()],
             'items' => ['required', 'array', 'min:1'],
             'items.*.TinhTrangTruocKhiGiat' => ['required', 'string', 'max:320'],
             'items.*.GhiChu' => ['nullable', 'string', 'max:160'],

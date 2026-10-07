@@ -6,6 +6,7 @@ use App\Enums\OrderStatus;
 use App\Models\DonHang;
 use App\Models\DonViTinh;
 use App\Models\KhuyenMai;
+use App\Services\EmployeeAssignment;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
@@ -48,11 +49,12 @@ class LuuDonHangRequest extends FormRequest
             : ($order ?? $this->route('id'));
 
         $isCreating = $this->isMethod('POST');
+        $currentOrder = $isCreating ? null : ($order instanceof DonHang ? $order : DonHang::find($id));
 
         return [
             'MaDonHang' => ['nullable', 'string', 'max:30', Rule::unique('DonHang', 'MaDonHang')->ignore($id, 'DonHangID')],
             'KhachHangID' => ['required', 'integer', 'exists:KhachHang,KhachHangID'],
-            'NhanVienID' => ['required', 'integer', 'exists:NhanVien,NhanVienID'],
+            'NhanVienID' => ['required', 'integer', EmployeeAssignment::rule($currentOrder?->NhanVienID)],
             'BookingID' => $isCreating ? ['prohibited'] : ['nullable', 'integer', 'exists:Booking,BookingID'],
             'KhuyenMaiID' => ['nullable', 'integer', 'exists:KhuyenMai,KhuyenMaiID'],
             'promotion_code' => ['nullable', 'string', 'max:50'],
@@ -128,7 +130,7 @@ class LuuDonHangRequest extends FormRequest
             'KhachHangID.required' => 'Khách hàng là bắt buộc.',
             'KhachHangID.exists' => 'Khách hàng không tồn tại.',
             'NhanVienID.required' => 'Vui lòng chọn nhân viên phụ trách.',
-            'NhanVienID.exists' => 'Nhân viên không tồn tại.',
+            'NhanVienID.exists' => 'Vui lòng chọn nhân viên đang hoạt động.',
             'KhuyenMaiID.exists' => 'Chương trình khuyến mãi không tồn tại.',
             'TrangThai.required' => 'Trạng thái là bắt buộc.',
             'TrangThai.in' => $this->isMethod('POST')

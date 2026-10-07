@@ -7,7 +7,6 @@ use App\Http\Controllers\Concerns\RejectsSettledRecords;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\HoanTatTiepNhanRequest;
 use App\Http\Requests\Admin\LuuDonHangRequest;
-use App\Models\BangGia;
 use App\Models\DanhMucLoaiDoGiat;
 use App\Models\DichVu;
 use App\Models\DonViTinh;
@@ -17,6 +16,7 @@ use App\Models\LoaiDichVu;
 use App\Models\LoaiDoGiat;
 use App\Models\NhanVien;
 use App\Services\OrderService;
+use App\Services\PricingService;
 use App\Support\FriendlyError;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -30,67 +30,14 @@ class DonHangController extends Controller
         private OrderService $orderService,
     ) {}
 
-    /**
-     * Bảng giá đang hiệu lực cho UI: mỗi cặp dịch vụ + loại đồ chỉ giữ một
-     * mức giá mới nhất, cùng tiêu chí với OrderService.
-     */
     private function pricingOptions()
     {
-        return BangGia::with('donViTinh')
-            ->where('TrangThai', 'Hoạt động')
-            ->whereNotNull('DonGia')
-            ->whereHas('donViTinh', function ($query): void {
-                $query->where('TrangThai', 'Hoạt động')
-                    ->where(function ($unitQuery): void {
-                        $unitQuery->where(function ($labelQuery): void {
-                            $labelQuery->whereNotNull('KyHieu')
-                                ->where('KyHieu', '<>', '');
-                        })->orWhere(function ($labelQuery): void {
-                            $labelQuery->whereNotNull('TenDonViTinh')
-                                ->where('TenDonViTinh', '<>', '');
-                        });
-                    });
-            })
-            ->where(function ($query): void {
-                $query->whereNull('NgayApDung')
-                    ->orWhereDate('NgayApDung', '<=', today());
-            })
-            ->where(function ($query): void {
-                $query->whereNull('NgayKetThuc')
-                    ->orWhereDate('NgayKetThuc', '>=', today());
-            })
-            ->orderByRaw('CASE WHEN "NgayApDung" IS NULL THEN 1 ELSE 0 END')
-            ->orderByDesc('NgayApDung')
-            ->orderByDesc('BangGiaID')
-            ->get()
-            ->unique(fn ($pricing) => $pricing->DichVuID.'-'.$pricing->LoaiDoGiatID)
-            ->values();
+        return app(PricingService::class)->orderOptions();
     }
 
     private function receivingPricingOptions()
     {
-        return BangGia::query()
-            ->with('donViTinh')
-            ->where('TrangThai', 'Hoạt động')
-            ->whereNotNull('DonGia')
-            ->where(function ($query): void {
-                $query->whereNull('NgayApDung')
-                    ->orWhereDate('NgayApDung', '<=', today());
-            })
-            ->where(function ($query): void {
-                $query->whereNull('NgayKetThuc')
-                    ->orWhereDate('NgayKetThuc', '>=', today());
-            })
-            ->orderByRaw('CASE WHEN "NgayApDung" IS NULL THEN 1 ELSE 0 END')
-            ->orderByDesc('NgayApDung')
-            ->orderByDesc('BangGiaID')
-            ->get()
-            ->unique(fn ($pricing) => implode(':', [
-                $pricing->DichVuID,
-                $pricing->LoaiDoGiatID,
-                $pricing->DonViTinhID,
-            ]))
-            ->values();
+        return $this->pricingOptions();
     }
 
     /**
@@ -129,7 +76,7 @@ class DonHangController extends Controller
         $services = DichVu::where('TrangThai', 'Hoạt động')->orderBy('TenDichVu')->get();
         $garments = LoaiDoGiat::where('TrangThai', 'Hoạt động')->orderBy('TenLoaiDoGiat')->get();
         $promotions = KhuyenMai::where('TrangThai', 'Hoạt động')->get();
-        $employees = NhanVien::orderBy('HoTen')->get(['NhanVienID', 'HoTen']);
+        $employees = NhanVien::where('TrangThai', 'Hoạt động')->orderBy('HoTen')->get(['NhanVienID', 'HoTen']);
         $statusFlow = $this->orderService->getStatusFlow();
         $pricings = $this->pricingOptions();
         $nextOrderCode = $this->orderService->nextOrderCode();
@@ -299,7 +246,7 @@ class DonHangController extends Controller
         $services = DichVu::where('TrangThai', 'Hoạt động')->orderBy('TenDichVu')->get();
         $garments = LoaiDoGiat::where('TrangThai', 'Hoạt động')->orderBy('TenLoaiDoGiat')->get();
         $promotions = KhuyenMai::where('TrangThai', 'Hoạt động')->get();
-        $employees = NhanVien::orderBy('HoTen')->get(['NhanVienID', 'HoTen']);
+        $employees = NhanVien::where(fn ($query) => $query->where('TrangThai', 'Hoạt động')->orWhere('NhanVienID', $order->NhanVienID))->orderBy('HoTen')->get(['NhanVienID', 'HoTen']);
         $statusFlow = $this->orderService->getStatusFlow();
         $pricings = $this->pricingOptions();
 
