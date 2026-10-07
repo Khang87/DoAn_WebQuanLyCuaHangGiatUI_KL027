@@ -8,6 +8,7 @@ use App\Models\BangGia;
 use App\Models\Booking;
 use App\Models\DonHang;
 use App\Models\KhachHang;
+use App\Models\KhuyenMai;
 use App\Models\NhatKyHeThong;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
@@ -17,6 +18,7 @@ class BookingService
 {
     public function __construct(
         private OrderService $orderService,
+        private PricingService $pricingService,
     ) {}
 
     public function getAll(array $filters = []): LengthAwarePaginator
@@ -154,6 +156,9 @@ class BookingService
                 $this->syncBookingItems($lockedBooking, $data['items']);
             }
 
+            if (($mappedData['TrangThai'] ?? null) === BookingStatus::Cancelled->value) {
+                $this->releaseLegacyPoints($lockedBooking);
+            }
             $lockedBooking->updateQuietly($mappedData);
             $lockedBooking->refresh();
             $after = $this->bookingAuditSnapshot($lockedBooking);
@@ -215,6 +220,8 @@ class BookingService
                 return false;
             }
 
+            $this->releaseLegacyPoints($lockedBooking);
+
             return (bool) $lockedBooking->delete();
         });
     }
@@ -254,7 +261,8 @@ class BookingService
             $lockedBooking->fill($this->mapRequestData($bookingData));
 
             if ($useAllAvailablePoints) {
-                $pointsUsed = (int) (KhachHang::query()->find($lockedBooking->KhachHangID)?->points() ?? 0);
+                $pointsUsed = (int) (KhachHang::query()->find($lockedBooking->KhachHangID)?->points() ?? 0)
+                    + ($lockedBooking->getAttribute('DiemDaTru') ? (int) $lockedBooking->getAttribute('DiemSuDung') : 0);
             }
 
             $order = $this->orderService->createFromBooking($lockedBooking, $items, $employeeId, $pointsUsed);
@@ -271,6 +279,18 @@ class BookingService
 
             return $order->fresh();
         });
+    }
+
+    private function releaseLegacyPoints(Booking $booking): void
+    {
+        if ($booking->getAttribute('DiemDaTru')) {
+            KhachHang::find($booking->KhachHangID)?->addPoints((int) $booking->getAttribute('DiemSuDung'));
+            $booking->forceFill(['DiemDaTru' => false, 'DiemSuDung' => 0, 'TienGiamDoDiem' => 0])->saveQuietly();
+        }
+        if ($booking->getAttribute('KhuyenMaiDaTru') && $booking->getAttribute('KhuyenMaiID')) {
+            KhuyenMai::whereKey($booking->getAttribute('KhuyenMaiID'))->whereNotNull('SoLuongSuDung')->increment('SoLuongSuDung');
+            $booking->forceFill(['KhuyenMaiDaTru' => false])->saveQuietly();
+        }
     }
 
     /**
@@ -312,7 +332,7 @@ class BookingService
             $unitId = (int) ($item['DonViTinhID'] ?? 0);
             $quantity = ($item['SoLuong'] ?? '') !== '' ? (float) $item['SoLuong'] : null;
             $weight = ($item['KhoiLuong'] ?? '') !== '' ? round((float) $item['KhoiLuong'], 2) : null;
-            $pricing = BangGia::getLatestPricing($serviceId, $garmentId, $unitId);
+            $pricing = $this->pricingService->getLatestPricing($serviceId, $garmentId, $unitId);
 
             if (! $pricing) {
                 throw ValidationException::withMessages([
@@ -337,10 +357,6 @@ class BookingService
                 ]);
             }
 
-            $billableAmount = $isWeightUnit
-                ? max($weight, (float) config('giatui.khoi_luong_toi_thieu', 3.0))
-                : $quantity;
-
             $rows[] = [
                 'DichVuID' => $serviceId,
                 'LoaiDoGiatID' => $garmentId,
@@ -348,7 +364,7 @@ class BookingService
                 'SoLuong' => $isWeightUnit ? null : $quantity,
                 'KhoiLuong' => $isWeightUnit ? $weight : null,
                 'DonGia' => (float) $pricing->DonGia,
-                'ThanhTien' => round((float) $pricing->DonGia * $billableAmount, 2),
+                'ThanhTien' => app(TinhTienGiatUiService::class)->tinhThanhTienChiTiet(['DonGia' => $pricing->DonGia, 'KyHieu' => $pricing->unit, 'SoLuong' => $quantity, 'KhoiLuong' => $weight]),
                 'GhiChu' => $item['GhiChu'] ?? null,
             ];
         }

@@ -419,7 +419,8 @@ class DonHangController extends Controller
         }
 
         try {
-            $this->orderService->updateStatus($order, (string) $request->input('TrangThai', $request->input('status')), $override);
+            $validated = $request->validate(['cancellation_reason' => ['nullable', 'string', 'max:500']]);
+            $this->orderService->updateStatus($order, (string) $request->input('TrangThai', $request->input('status')), $override, $validated['cancellation_reason'] ?? null);
 
             return back()->with('success', 'Trạng thái đơn hàng đã được cập nhật.');
         } catch (ValidationException $exception) {

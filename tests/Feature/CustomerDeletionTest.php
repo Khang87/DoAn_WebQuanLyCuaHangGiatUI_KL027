@@ -20,7 +20,7 @@ class CustomerDeletionTest extends TestCase
             config('database.default') !== 'sqlite'
             || config('database.connections.sqlite.database') !== ':memory:'
         ) {
-            $this->markTestSkipped('Customer deletion tests require isolated SQLite in-memory storage.');
+            $this->fail('Customer deletion tests require isolated SQLite in-memory storage.');
         }
 
         Schema::create('KhachHang', function (Blueprint $table): void {

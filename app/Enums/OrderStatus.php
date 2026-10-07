@@ -89,6 +89,23 @@ enum OrderStatus: string
         };
     }
 
+    public function canTransitionTo(self $target): bool
+    {
+        if ($this === $target) {
+            return true;
+        }
+
+        return match ($this) {
+            self::Pending => $target === self::Cancelled,
+            self::Received => in_array($target, [self::Washing, self::Cancelled], true),
+            self::Washing => $target === self::Washed,
+            self::Washed => in_array($target, [self::Delivering, self::Delivered], true),
+            self::Delivering => $target === self::Delivered,
+            self::Delivered => $target === self::Paid,
+            default => false,
+        };
+    }
+
     /**
      * @return array<int, string>
      */

@@ -2,7 +2,18 @@
 
 Lần chạy được ghi nhận bằng `php artisan test --compact` trên cấu hình SQLite in-memory trong `phpunit.xml`.
 
-**Suite đầy đủ ngày 07/10/2026:** 450 ca, **258 PASSED**, 192 skipped, **0 failed**, 1.370 assertions. SQLite `:memory:`, container PHP 8.4 tắt mạng, mailer mock. Các bảng lịch sử bên dưới mô tả các đợt trước; nhóm hồi quy ngày 07/10/2026 mô tả hành vi hiện hành. Không ghi dữ liệu thử nghiệm lên Supabase Live.
+**Suite đầy đủ mới nhất ngày 07/10/2026:** **303 PASSED, 0 skipped, 0 failed, 1.555 assertions**. 192 case legacy đã được phân loại: 8 khôi phục/chuyển fixture, 184 loại khỏi suite vì schema/quy tắc cũ hoặc placeholder; không báo chúng là passed. Chi tiết: [LEGACY_TESTS.md](docs/testing/LEGACY_TESTS.md). SQLite `:memory:`, container PHP 8.4 tắt mạng, mailer mock. Các bảng lịch sử bên dưới mô tả các đợt trước; nhóm hồi quy ngày 07/10/2026 mô tả hành vi hiện hành. Không ghi dữ liệu thử nghiệm lên Supabase Live.
+
+
+## Đồng bộ nghiệp vụ Web/RPC — kết quả hiện hành
+
+- PricingServiceTest: bảng giá hiệu lực, hai biên ngày, ưu tiên ngày/ID, fallback NULL, đơn vị tính và truy vấn theo lô.
+- RewardPointTest: giá tại kiểm kê; giữ chỗ cũ; khuyến mãi trước điểm; phí giao nhận; điểm thực áp dụng khi sửa; hoàn/cộng một lần; không bỏ qua trạng thái dù có quyền hiệu chỉnh.
+- PaymentOrderRedirectTest: chặn vượt số tiền còn lại, chặn thanh toán đơn hủy và kiểm tra lại số dư dưới khóa giao dịch.
+- DeliverySchedulingTest: Loại giao nhận đọc đúng cột, địa chỉ chỉ bắt buộc với hình thức tại nhà.
+- ActionButtonIconStyleTest: 6 case CSS khôi phục; ReportsServiceTest: 2 case báo cáo chuyển sang fixture cô lập.
+- `tests/Postgres/business_rules.sql`: PostgreSQL 17 cục bộ, kiểm tra RPC đặt lịch/điểm/giá/idempotency/kiểm kê/trạng thái/thanh toán/hoàn điểm; toàn bộ chạy thành công, cuối giao dịch rollback. Các ASSERT SQL không cộng vào số 303 test PHP.
+- Supabase Live: cập nhật 13 hàm sẵn có; fingerprint catalog trước/sau giống nhau cho bảng/cột/trigger/ràng buộc và metadata chữ ký/owner/ACL. Không đưa fixture lên Live.
 
 ## Hồi quy ngày 07/10/2026 — nhận/trả độc lập và kiểm tra thực tế
 
@@ -24,7 +35,7 @@ Kết quả mới nhất xem mục Trạng thái kiểm thử hồi quy trong RE
 | TC-PWD-FAILURE | Gửi mail lỗi không đổi mật khẩu, xóa OTP; tài khoản thiếu email bị từ chối | AuthFlowTest |
 | TC-PWD-PERMISSION | Không có quyền reset bị chặn 403, không gọi mailer | AuthFlowTest |
 
-Có **22 ca mới** (18 ca Booking tính cả data provider, 4 ca reset tài khoản). Các kiểm thử Booking cũ được cập nhật theo form inspection và trạng thái tạo đơn mới; các kiểm thử đơn cũ Chờ tiếp nhận vẫn được giữ. 192 ca legacy đã bị skip từ trước vì schema cũ; không tính chúng là passed.
+Có **22 ca mới** (18 ca Booking tính cả data provider, 4 ca reset tài khoản). Các kiểm thử Booking cũ được cập nhật theo form inspection và trạng thái tạo đơn mới; các kiểm thử đơn cũ Chờ tiếp nhận vẫn được giữ. Ở đợt lịch sử này còn 192 case legacy skipped; đợt làm sạch mới nhất đã phân loại và xử lý theo bảng kiểm kê liên kết đầu tài liệu.
 
 ## Nhóm 1: Booking & Order Conversion
 
@@ -246,4 +257,4 @@ Domain production: [https://do-an-web-quan-ly-cua-hang-giat-ui.vercel.app](https
 
 `tests/Feature/InternalOtpTest.php` kiểm tra gửi OTP hai kênh, TTL 10 phút, giới hạn 5 lần sai, chống dùng lại, gửi lại sau cooldown, lỗi gửi email, giới hạn tài khoản nội bộ, email trùng/đổi, tài khoản bị khóa, bảo vệ thông báo cá nhân, giữ quyền mặc định khi sửa nhóm và đăng nhập hộp thư cho nhóm mới/khách hàng. Kiểm thử dùng SQLite/cache cục bộ và mock Resend; không tác động Supabase hay gửi email thật.
 
-Kết quả kiểm chứng ngày 2026-10-07: **275 passed, 192 skipped, 0 failed (1472 assertions)**. Laravel Pint, route cache và Blade view cache đều thành công. Các bài skipped là bộ legacy đã bị bỏ qua trong cấu hình có sẵn.
+Kết quả lịch sử trước đợt làm sạch ngày 2026-10-07: **275 passed, 192 skipped, 0 failed (1472 assertions)**; không phải số liệu suite hiện hành. Laravel Pint, route cache và Blade view cache đều thành công. Các bài skipped là bộ legacy đã bị bỏ qua trong cấu hình có sẵn.

@@ -153,7 +153,7 @@
                     <div class="col-12">
                         <input type="hidden" name="use_points" value="0">
                         <div class="form-check form-switch">
-                            <input class="form-check-input" type="checkbox" role="switch" id="booking-use-points" name="use_points" value="1" @checked((bool) old('use_points', false))>
+                            <input class="form-check-input" type="checkbox" role="switch" id="booking-use-points" name="use_points" value="1" @checked((bool) old('use_points', (int) $booking->DiemSuDung > 0))>
                             <label class="form-check-label" for="booking-use-points">Dùng điểm tích lũy (tối đa theo tổng tiền thực tế)</label>
                         </div>
                         <div class="form-text">Khách đang có {{ number_format($customer?->points() ?? 0) }} điểm. Điểm chỉ được trừ khi tạo đơn thành công.</div>

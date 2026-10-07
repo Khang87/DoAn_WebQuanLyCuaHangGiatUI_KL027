@@ -14,13 +14,19 @@ class LuuGiaoNhanRequest extends FormRequest
         return true;
     }
 
+    protected function prepareForValidation(): void
+    {
+        $this->merge(['fulfillment' => $this->input('fulfillment', 'Tại nhà')]);
+    }
+
     public function rules(): array
     {
         return [
             'order_id' => ['required', 'exists:DonHang,DonHangID'],
             'employee_id' => ['nullable', 'integer', 'exists:NhanVien,NhanVienID'],
             'method' => ['required', 'in:nhan_do,giao_do'],
-            'address' => ['required', 'string', 'max:255'],
+            'fulfillment' => ['sometimes', 'in:Tại cửa hàng,Tại nhà'],
+            'address' => ['nullable', 'required_if:fulfillment,Tại nhà', 'string', 'max:255'],
             'pickup_date' => ['required', 'date'],
             'pickup_time' => ['required', 'date_format:H:i'],
             'status' => ['nullable', 'in:'.implode(',', DeliveryStatus::values())],
@@ -55,7 +61,8 @@ class LuuGiaoNhanRequest extends FormRequest
             'employee_id.exists' => 'Nhân viên không tồn tại.',
             'method.required' => 'Loại giao nhận là bắt buộc.',
             'method.in' => 'Loại giao nhận không hợp lệ.',
-            'address.required' => 'Địa chỉ giao nhận là bắt buộc.',
+            'address.required_if' => 'Địa chỉ giao nhận là bắt buộc khi thực hiện tại nhà.',
+            'fulfillment.in' => 'Hình thức phải là Tại cửa hàng hoặc Tại nhà.',
             'address.max' => 'Địa chỉ không được vượt quá 255 ký tự.',
             'pickup_date.required' => 'Ngày giao nhận là bắt buộc.',
             'pickup_date.date' => 'Ngày giao nhận không hợp lệ.',

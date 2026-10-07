@@ -159,7 +159,17 @@ Chỉ sử dụng tài khoản được cấp trong môi trường cục bộ ho
 
 ### Trạng thái kiểm thử hồi quy
 
-Lần chạy đầy đủ ngày **07/10/2026**: **450 ca được phát hiện, 258 PASSED, 192 skipped, 0 failed, 1.370 assertions** (6,61 giây). Bộ test dùng SQLite `:memory:` trong container PHP 8.4 tắt mạng; email dùng mock. 192 ca legacy bị skip từ trước vì schema cũ, không tính là passed. Nhóm Booking riêng đạt **53 passed, 306 assertions**. Chi tiết ở [TESTCASES.md](./TESTCASES.md). Laravel Pint cho 19 file PHP thay đổi, kiểm tra cú pháp PHP, biên dịch Blade và `git diff --check` đều thành công. Build Vite chuẩn chưa hoàn tất vì không tải được `fonts.bunny.net`; build assets ngoại tuyến với bước tải font tạm thời được bỏ qua đạt, không sửa cấu hình Vite của repo. Đây không phải kiểm thử tích hợp PostgreSQL/Supabase Live hoặc gửi email thật qua Resend.
+Lần chạy đầy đủ mới nhất ngày **07/10/2026**: **303 PASSED, 0 skipped, 0 failed, 1.555 assertions** (5,85 giây), SQLite `:memory:` trong container PHP 8.4 tắt mạng; email dùng mock. Trong 192 case legacy trước đây, **8 case được khôi phục/chuyển sang fixture hiện hành và 184 case được loại khỏi suite sau phân loại**; không tính case bị loại là passed hoặc khẳng định đã thay thế 1:1. Xem [bảng kiểm kê legacy](./docs/testing/LEGACY_TESTS.md) và [TESTCASES.md](./TESTCASES.md). Laravel Pint, Blade cache và route cache đều thành công.
+
+Các kiểm tra nghiệp vụ RPC chạy thành công trên PostgreSQL 17 cục bộ, dùng fixture riêng và rollback dữ liệu thử nghiệm. **13 hàm hiện có đã được cập nhật trên Supabase Live**; kiểm tra catalog trước/sau xác nhận không đổi bảng/cột, trigger, ràng buộc, chữ ký hàm, owner hoặc ACL. Không tạo migration và không ghi fixture lên Live. Xem [hợp đồng nghiệp vụ Web/App](./docs/supabase/BUSINESS_RULES.md) và [đối chiếu schema](./docs/supabase/SCHEMA_AUDIT.md). Không có mã nguồn Flutter trong repo này, nên chưa kiểm thử giao diện Flutter end-to-end; RPC xác nhận booking mới yêu cầu kiểm kê qua Web.
+
+### Đồng bộ nghiệp vụ ngày 07/10/2026
+
+- Giá hiệu lực tập trung tại `PricingService`, dùng chung cho booking, đơn và chi tiết đơn; chốt giá khi kiểm kê.
+- Điểm: **1 điểm = 1đ**, trừ khi tạo đơn sau kiểm kê; hoàn khoản giữ chỗ cũ và chống cộng/hoàn lặp.
+- Khuyến mãi được áp dụng trước điểm; phí giao nhận cộng sau giảm giá. Thanh toán khóa đơn trước khoản thu và không vượt số tiền còn phải thu.
+- Trạng thái đơn tuân thủ thứ tự xử lý; hủy trước khi giặt phải có lý do, không có khoản thu thành công.
+- Giao nhận phân biệt **Loại giao nhận** (Nhận đồ/Giao đồ) và **Hình thức** (Tại cửa hàng/Tại nhà). Bốn cột phí/khoảng cách Booking đã có trên Live được bổ sung vào snapshot; các cột tương thích vẫn đang được RPC sử dụng được giữ lại.
 
 ### Cập nhật tính năng (06/10/2026)
 

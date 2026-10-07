@@ -1,0 +1,1938 @@
+[
+  {
+    "legacy_file": "tests/Legacy/AccountControllerTest.php",
+    "case": "Tests\\Feature\\AccountControllerTest::test_admin_can_list_accounts",
+    "classification": "retired-outdated-schema",
+    "reason": "Outdated English models/columns or old booking workflow. Related current tests listed below; this is not a claim of one-to-one coverage.",
+    "related_current_tests": [
+      "tests/Feature/UserAccountAuditTest.php",
+      "tests/Feature/InternalOtpTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/AccountControllerTest.php",
+    "case": "Tests\\Feature\\AccountControllerTest::test_admin_can_create_account_with_specified_role",
+    "classification": "retired-outdated-schema",
+    "reason": "Outdated English models/columns or old booking workflow. Related current tests listed below; this is not a claim of one-to-one coverage.",
+    "related_current_tests": [
+      "tests/Feature/UserAccountAuditTest.php",
+      "tests/Feature/InternalOtpTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/AccountControllerTest.php",
+    "case": "Tests\\Feature\\AccountControllerTest::test_new_account_defaults_to_customer_role",
+    "classification": "retired-outdated-schema",
+    "reason": "Outdated English models/columns or old booking workflow. Related current tests listed below; this is not a claim of one-to-one coverage.",
+    "related_current_tests": [
+      "tests/Feature/UserAccountAuditTest.php",
+      "tests/Feature/InternalOtpTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/AccountControllerTest.php",
+    "case": "Tests\\Feature\\AccountControllerTest::test_admin_cannot_delete_themselves",
+    "classification": "retired-outdated-schema",
+    "reason": "Outdated English models/columns or old booking workflow. Related current tests listed below; this is not a claim of one-to-one coverage.",
+    "related_current_tests": [
+      "tests/Feature/UserAccountAuditTest.php",
+      "tests/Feature/InternalOtpTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/AccountControllerTest.php",
+    "case": "Tests\\Feature\\AccountControllerTest::test_admin_can_delete_other_user",
+    "classification": "retired-outdated-schema",
+    "reason": "Outdated English models/columns or old booking workflow. Related current tests listed below; this is not a claim of one-to-one coverage.",
+    "related_current_tests": [
+      "tests/Feature/UserAccountAuditTest.php",
+      "tests/Feature/InternalOtpTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/ActionButtonIconStyleTest.php",
+    "case": "Tests\\Feature\\ActionButtonIconStyleTest::test_action_button_icons_are_forced_to_black",
+    "classification": "restored",
+    "reason": "Pure CSS; no dependency on retired schema. Moved to Feature and unskipped.",
+    "related_current_tests": [
+      "tests/Feature/ActionButtonIconStyleTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/ActionButtonIconStyleTest.php",
+    "case": "Tests\\Feature\\ActionButtonIconStyleTest::test_icon_fill_and_stroke_are_also_forced",
+    "classification": "restored",
+    "reason": "Pure CSS; no dependency on retired schema. Moved to Feature and unskipped.",
+    "related_current_tests": [
+      "tests/Feature/ActionButtonIconStyleTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/ActionButtonIconStyleTest.php",
+    "case": "Tests\\Feature\\ActionButtonIconStyleTest::test_action_button_frame_is_neutral",
+    "classification": "restored",
+    "reason": "Pure CSS; no dependency on retired schema. Moved to Feature and unskipped.",
+    "related_current_tests": [
+      "tests/Feature/ActionButtonIconStyleTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/ActionButtonIconStyleTest.php",
+    "case": "Tests\\Feature\\ActionButtonIconStyleTest::test_hover_only_changes_background_and_keeps_icon_black",
+    "classification": "restored",
+    "reason": "Pure CSS; no dependency on retired schema. Moved to Feature and unskipped.",
+    "related_current_tests": [
+      "tests/Feature/ActionButtonIconStyleTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/ActionButtonIconStyleTest.php",
+    "case": "Tests\\Feature\\ActionButtonIconStyleTest::test_no_legacy_coloured_icon_hover_rules_remain",
+    "classification": "restored",
+    "reason": "Pure CSS; no dependency on retired schema. Moved to Feature and unskipped.",
+    "related_current_tests": [
+      "tests/Feature/ActionButtonIconStyleTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/ActionButtonIconStyleTest.php",
+    "case": "Tests\\Feature\\ActionButtonIconStyleTest::test_dangerous_buttons_are_excluded_from_the_flat_style",
+    "classification": "restored",
+    "reason": "Pure CSS; no dependency on retired schema. Moved to Feature and unskipped.",
+    "related_current_tests": [
+      "tests/Feature/ActionButtonIconStyleTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/AuthTest.php",
+    "case": "Tests\\Feature\\AuthTest::test_login_screen_can_be_rendered",
+    "classification": "retired-outdated-schema",
+    "reason": "Outdated English models/columns or old booking workflow. Related current tests listed below; this is not a claim of one-to-one coverage.",
+    "related_current_tests": [
+      "tests/Feature/AuthFlowTest.php",
+      "tests/Feature/AuthorizationBoundaryTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/AuthTest.php",
+    "case": "Tests\\Feature\\AuthTest::test_users_can_authenticate_using_the_login_screen",
+    "classification": "retired-outdated-schema",
+    "reason": "Outdated English models/columns or old booking workflow. Related current tests listed below; this is not a claim of one-to-one coverage.",
+    "related_current_tests": [
+      "tests/Feature/AuthFlowTest.php",
+      "tests/Feature/AuthorizationBoundaryTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/AuthTest.php",
+    "case": "Tests\\Feature\\AuthTest::test_users_can_not_authenticate_with_invalid_password",
+    "classification": "retired-outdated-schema",
+    "reason": "Outdated English models/columns or old booking workflow. Related current tests listed below; this is not a claim of one-to-one coverage.",
+    "related_current_tests": [
+      "tests/Feature/AuthFlowTest.php",
+      "tests/Feature/AuthorizationBoundaryTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/AuthTest.php",
+    "case": "Tests\\Feature\\AuthTest::test_customer_cannot_login_on_web",
+    "classification": "retired-outdated-schema",
+    "reason": "Outdated English models/columns or old booking workflow. Related current tests listed below; this is not a claim of one-to-one coverage.",
+    "related_current_tests": [
+      "tests/Feature/AuthFlowTest.php",
+      "tests/Feature/AuthorizationBoundaryTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/AuthTest.php",
+    "case": "Tests\\Feature\\AuthTest::test_users_can_logout",
+    "classification": "retired-outdated-schema",
+    "reason": "Outdated English models/columns or old booking workflow. Related current tests listed below; this is not a claim of one-to-one coverage.",
+    "related_current_tests": [
+      "tests/Feature/AuthFlowTest.php",
+      "tests/Feature/AuthorizationBoundaryTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/AuthTest.php",
+    "case": "Tests\\Feature\\AuthTest::test_seeded_manager_and_staff_can_login_with_hashed_password",
+    "classification": "retired-outdated-schema",
+    "reason": "Outdated English models/columns or old booking workflow. Related current tests listed below; this is not a claim of one-to-one coverage.",
+    "related_current_tests": [
+      "tests/Feature/AuthFlowTest.php",
+      "tests/Feature/AuthorizationBoundaryTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/AuthTest.php",
+    "case": "Tests\\Feature\\AuthTest::test_seeded_passwords_are_stored_as_hashes",
+    "classification": "retired-outdated-schema",
+    "reason": "Outdated English models/columns or old booking workflow. Related current tests listed below; this is not a claim of one-to-one coverage.",
+    "related_current_tests": [
+      "tests/Feature/AuthFlowTest.php",
+      "tests/Feature/AuthorizationBoundaryTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/BookingAutoOrderCreationTest.php",
+    "case": "Tests\\Feature\\BookingAutoOrderCreationTest::test_booking_is_given_a_reference_code_on_creation",
+    "classification": "retired-outdated-schema",
+    "reason": "Outdated English models/columns or old booking workflow. Related current tests listed below; this is not a claim of one-to-one coverage.",
+    "related_current_tests": [
+      "tests/Feature/BookingOrderConversionTest.php",
+      "tests/Feature/RewardPointTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/BookingAutoOrderCreationTest.php",
+    "case": "Tests\\Feature\\BookingAutoOrderCreationTest::test_reference_codes_are_unique_across_bookings",
+    "classification": "retired-outdated-schema",
+    "reason": "Outdated English models/columns or old booking workflow. Related current tests listed below; this is not a claim of one-to-one coverage.",
+    "related_current_tests": [
+      "tests/Feature/BookingOrderConversionTest.php",
+      "tests/Feature/RewardPointTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/BookingAutoOrderCreationTest.php",
+    "case": "Tests\\Feature\\BookingAutoOrderCreationTest::test_updating_booking_to_confirmed_creates_an_order_automatically",
+    "classification": "retired-outdated-schema",
+    "reason": "Outdated English models/columns or old booking workflow. Related current tests listed below; this is not a claim of one-to-one coverage.",
+    "related_current_tests": [
+      "tests/Feature/BookingOrderConversionTest.php",
+      "tests/Feature/RewardPointTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/BookingAutoOrderCreationTest.php",
+    "case": "Tests\\Feature\\BookingAutoOrderCreationTest::test_keeping_status_confirmed_does_not_create_a_duplicate_order",
+    "classification": "retired-outdated-schema",
+    "reason": "Outdated English models/columns or old booking workflow. Related current tests listed below; this is not a claim of one-to-one coverage.",
+    "related_current_tests": [
+      "tests/Feature/BookingOrderConversionTest.php",
+      "tests/Feature/RewardPointTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/BookingAutoOrderCreationTest.php",
+    "case": "Tests\\Feature\\BookingAutoOrderCreationTest::test_pending_booking_does_not_get_an_order",
+    "classification": "retired-outdated-schema",
+    "reason": "Outdated English models/columns or old booking workflow. Related current tests listed below; this is not a claim of one-to-one coverage.",
+    "related_current_tests": [
+      "tests/Feature/BookingOrderConversionTest.php",
+      "tests/Feature/RewardPointTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/BookingAutoOrderCreationTest.php",
+    "case": "Tests\\Feature\\BookingAutoOrderCreationTest::test_cancelled_booking_does_not_get_an_order",
+    "classification": "retired-outdated-schema",
+    "reason": "Outdated English models/columns or old booking workflow. Related current tests listed below; this is not a claim of one-to-one coverage.",
+    "related_current_tests": [
+      "tests/Feature/BookingOrderConversionTest.php",
+      "tests/Feature/RewardPointTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/BookingAutoOrderCreationTest.php",
+    "case": "Tests\\Feature\\BookingAutoOrderCreationTest::test_later_status_still_creates_the_missing_order",
+    "classification": "retired-outdated-schema",
+    "reason": "Outdated English models/columns or old booking workflow. Related current tests listed below; this is not a claim of one-to-one coverage.",
+    "related_current_tests": [
+      "tests/Feature/BookingOrderConversionTest.php",
+      "tests/Feature/RewardPointTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/BookingAutoOrderCreationTest.php",
+    "case": "Tests\\Feature\\BookingAutoOrderCreationTest::test_confirm_route_reuses_the_order_created_earlier",
+    "classification": "retired-outdated-schema",
+    "reason": "Outdated English models/columns or old booking workflow. Related current tests listed below; this is not a claim of one-to-one coverage.",
+    "related_current_tests": [
+      "tests/Feature/BookingOrderConversionTest.php",
+      "tests/Feature/RewardPointTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/BookingAutoOrderCreationTest.php",
+    "case": "Tests\\Feature\\BookingAutoOrderCreationTest::test_order_exposes_the_booking_reference_code",
+    "classification": "retired-outdated-schema",
+    "reason": "Outdated English models/columns or old booking workflow. Related current tests listed below; this is not a claim of one-to-one coverage.",
+    "related_current_tests": [
+      "tests/Feature/BookingOrderConversionTest.php",
+      "tests/Feature/RewardPointTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/BookingAutoOrderCreationTest.php",
+    "case": "Tests\\Feature\\BookingAutoOrderCreationTest::test_order_created_without_booking_has_no_reference_code",
+    "classification": "retired-outdated-schema",
+    "reason": "Outdated English models/columns or old booking workflow. Related current tests listed below; this is not a claim of one-to-one coverage.",
+    "related_current_tests": [
+      "tests/Feature/BookingOrderConversionTest.php",
+      "tests/Feature/RewardPointTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/BookingAutoOrderCreationTest.php",
+    "case": "Tests\\Feature\\BookingAutoOrderCreationTest::test_booking_views_render_the_reference_code_and_order",
+    "classification": "retired-outdated-schema",
+    "reason": "Outdated English models/columns or old booking workflow. Related current tests listed below; this is not a claim of one-to-one coverage.",
+    "related_current_tests": [
+      "tests/Feature/BookingOrderConversionTest.php",
+      "tests/Feature/RewardPointTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/CustomerControllerTest.php",
+    "case": "Tests\\Feature\\CustomerControllerTest::test_can_list_customers",
+    "classification": "retired-outdated-schema",
+    "reason": "Outdated English models/columns or old booking workflow. Related current tests listed below; this is not a claim of one-to-one coverage.",
+    "related_current_tests": [
+      "tests/Feature/CustomerUpdateTest.php",
+      "tests/Feature/CustomerDeletionTest.php",
+      "tests/Feature/CustomerSortTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/CustomerControllerTest.php",
+    "case": "Tests\\Feature\\CustomerControllerTest::test_can_create_customer",
+    "classification": "retired-outdated-schema",
+    "reason": "Outdated English models/columns or old booking workflow. Related current tests listed below; this is not a claim of one-to-one coverage.",
+    "related_current_tests": [
+      "tests/Feature/CustomerUpdateTest.php",
+      "tests/Feature/CustomerDeletionTest.php",
+      "tests/Feature/CustomerSortTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/CustomerControllerTest.php",
+    "case": "Tests\\Feature\\CustomerControllerTest::test_can_show_customer",
+    "classification": "retired-outdated-schema",
+    "reason": "Outdated English models/columns or old booking workflow. Related current tests listed below; this is not a claim of one-to-one coverage.",
+    "related_current_tests": [
+      "tests/Feature/CustomerUpdateTest.php",
+      "tests/Feature/CustomerDeletionTest.php",
+      "tests/Feature/CustomerSortTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/CustomerControllerTest.php",
+    "case": "Tests\\Feature\\CustomerControllerTest::test_can_update_customer",
+    "classification": "retired-outdated-schema",
+    "reason": "Outdated English models/columns or old booking workflow. Related current tests listed below; this is not a claim of one-to-one coverage.",
+    "related_current_tests": [
+      "tests/Feature/CustomerUpdateTest.php",
+      "tests/Feature/CustomerDeletionTest.php",
+      "tests/Feature/CustomerSortTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/CustomerControllerTest.php",
+    "case": "Tests\\Feature\\CustomerControllerTest::test_can_delete_customer",
+    "classification": "retired-outdated-schema",
+    "reason": "Outdated English models/columns or old booking workflow. Related current tests listed below; this is not a claim of one-to-one coverage.",
+    "related_current_tests": [
+      "tests/Feature/CustomerUpdateTest.php",
+      "tests/Feature/CustomerDeletionTest.php",
+      "tests/Feature/CustomerSortTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/DashboardControllerTest.php",
+    "case": "Tests\\Feature\\DashboardControllerTest::test_authenticated_users_can_visit_dashboard",
+    "classification": "retired-outdated-schema",
+    "reason": "Outdated English models/columns or old booking workflow. Related current tests listed below; this is not a claim of one-to-one coverage.",
+    "related_current_tests": [
+      "tests/Feature/DashboardRevenueChartTest.php",
+      "tests/Feature/ReportsServiceTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/DashboardControllerTest.php",
+    "case": "Tests\\Feature\\DashboardControllerTest::test_unauthenticated_users_are_redirected_from_dashboard",
+    "classification": "retired-outdated-schema",
+    "reason": "Outdated English models/columns or old booking workflow. Related current tests listed below; this is not a claim of one-to-one coverage.",
+    "related_current_tests": [
+      "tests/Feature/DashboardRevenueChartTest.php",
+      "tests/Feature/ReportsServiceTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/DashboardControllerTest.php",
+    "case": "Tests\\Feature\\DashboardControllerTest::test_admin_see_full_dashboard_with_financial_widgets",
+    "classification": "retired-outdated-schema",
+    "reason": "Outdated English models/columns or old booking workflow. Related current tests listed below; this is not a claim of one-to-one coverage.",
+    "related_current_tests": [
+      "tests/Feature/DashboardRevenueChartTest.php",
+      "tests/Feature/ReportsServiceTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/DashboardControllerTest.php",
+    "case": "Tests\\Feature\\DashboardControllerTest::test_manager_role_also_reaches_admin_dashboard",
+    "classification": "retired-outdated-schema",
+    "reason": "Outdated English models/columns or old booking workflow. Related current tests listed below; this is not a claim of one-to-one coverage.",
+    "related_current_tests": [
+      "tests/Feature/DashboardRevenueChartTest.php",
+      "tests/Feature/ReportsServiceTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/DashboardControllerTest.php",
+    "case": "Tests\\Feature\\DashboardControllerTest::test_staff_see_only_operational_dashboard_without_financial_widgets",
+    "classification": "retired-outdated-schema",
+    "reason": "Outdated English models/columns or old booking workflow. Related current tests listed below; this is not a claim of one-to-one coverage.",
+    "related_current_tests": [
+      "tests/Feature/DashboardRevenueChartTest.php",
+      "tests/Feature/ReportsServiceTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/DashboardControllerTest.php",
+    "case": "Tests\\Feature\\DashboardControllerTest::test_staff_is_redirected_to_staff_dashboard_when_opening_admin_dashboard",
+    "classification": "retired-outdated-schema",
+    "reason": "Outdated English models/columns or old booking workflow. Related current tests listed below; this is not a claim of one-to-one coverage.",
+    "related_current_tests": [
+      "tests/Feature/DashboardRevenueChartTest.php",
+      "tests/Feature/ReportsServiceTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/DashboardControllerTest.php",
+    "case": "Tests\\Feature\\DashboardControllerTest::test_admin_gets_forbidden_on_staff_dashboard",
+    "classification": "retired-outdated-schema",
+    "reason": "Outdated English models/columns or old booking workflow. Related current tests listed below; this is not a claim of one-to-one coverage.",
+    "related_current_tests": [
+      "tests/Feature/DashboardRevenueChartTest.php",
+      "tests/Feature/ReportsServiceTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/DashboardControllerTest.php",
+    "case": "Tests\\Feature\\DashboardControllerTest::test_staff_is_redirected_away_from_manager_only_modules",
+    "classification": "retired-outdated-schema",
+    "reason": "Outdated English models/columns or old booking workflow. Related current tests listed below; this is not a claim of one-to-one coverage.",
+    "related_current_tests": [
+      "tests/Feature/DashboardRevenueChartTest.php",
+      "tests/Feature/ReportsServiceTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/DashboardControllerTest.php",
+    "case": "Tests\\Feature\\DashboardControllerTest::test_dashboards_render_correctly_with_real_records",
+    "classification": "retired-outdated-schema",
+    "reason": "Outdated English models/columns or old booking workflow. Related current tests listed below; this is not a claim of one-to-one coverage.",
+    "related_current_tests": [
+      "tests/Feature/DashboardRevenueChartTest.php",
+      "tests/Feature/ReportsServiceTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/DashboardControllerTest.php",
+    "case": "Tests\\Feature\\DashboardControllerTest::test_staff_can_quickly_update_order_status",
+    "classification": "retired-outdated-schema",
+    "reason": "Outdated English models/columns or old booking workflow. Related current tests listed below; this is not a claim of one-to-one coverage.",
+    "related_current_tests": [
+      "tests/Feature/DashboardRevenueChartTest.php",
+      "tests/Feature/ReportsServiceTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/DashboardControllerTest.php",
+    "case": "Tests\\Feature\\DashboardControllerTest::test_staff_cannot_set_an_invalid_order_status",
+    "classification": "retired-outdated-schema",
+    "reason": "Outdated English models/columns or old booking workflow. Related current tests listed below; this is not a claim of one-to-one coverage.",
+    "related_current_tests": [
+      "tests/Feature/DashboardRevenueChartTest.php",
+      "tests/Feature/ReportsServiceTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/DeleteBrowserFlowTest.php",
+    "case": "Tests\\Feature\\DeleteBrowserFlowTest::test_delete_via_browser_style_post_spoofed_method",
+    "classification": "retired-outdated-schema",
+    "reason": "Outdated English models/columns or old booking workflow. Related current tests listed below; this is not a claim of one-to-one coverage.",
+    "related_current_tests": [
+      "tests/Feature/CustomerDeletionTest.php",
+      "tests/Feature/ServiceCatalogDeletionTest.php",
+      "tests/Feature/UserAccountAuditTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/DeleteBrowserFlowTest.php",
+    "case": "Tests\\Feature\\DeleteBrowserFlowTest::test_index_html_contains_csrf_and_method_override",
+    "classification": "retired-outdated-schema",
+    "reason": "Outdated English models/columns or old booking workflow. Related current tests listed below; this is not a claim of one-to-one coverage.",
+    "related_current_tests": [
+      "tests/Feature/CustomerDeletionTest.php",
+      "tests/Feature/ServiceCatalogDeletionTest.php",
+      "tests/Feature/UserAccountAuditTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/DeleteBrowserFlowTest.php",
+    "case": "Tests\\Feature\\DeleteBrowserFlowTest::test_deleted_record_disappears_from_index",
+    "classification": "retired-outdated-schema",
+    "reason": "Outdated English models/columns or old booking workflow. Related current tests listed below; this is not a claim of one-to-one coverage.",
+    "related_current_tests": [
+      "tests/Feature/CustomerDeletionTest.php",
+      "tests/Feature/ServiceCatalogDeletionTest.php",
+      "tests/Feature/UserAccountAuditTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/DeleteBrowserFlowTest.php",
+    "case": "Tests\\Feature\\DeleteBrowserFlowTest::test_deleted_records_disappear_from_index_across_modules",
+    "classification": "retired-outdated-schema",
+    "reason": "Outdated English models/columns or old booking workflow. Related current tests listed below; this is not a claim of one-to-one coverage.",
+    "related_current_tests": [
+      "tests/Feature/CustomerDeletionTest.php",
+      "tests/Feature/ServiceCatalogDeletionTest.php",
+      "tests/Feature/UserAccountAuditTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/DeleteBrowserFlowTest.php",
+    "case": "Tests\\Feature\\DeleteBrowserFlowTest::test_soft_deleted_record_is_still_reachable_by_id",
+    "classification": "retired-rule",
+    "reason": "Retired English schema / soft-delete or legacy nullable-customer/config behavior; current physical deletion and Vietnamese schema are the supported contract.",
+    "related_current_tests": [
+      "tests/Feature/CustomerDeletionTest.php",
+      "tests/Feature/ServiceCatalogDeletionTest.php",
+      "tests/Feature/UserAccountAuditTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/DeleteBrowserFlowTest.php",
+    "case": "Tests\\Feature\\DeleteBrowserFlowTest::test_delete_form_is_not_nested",
+    "classification": "retired-outdated-schema",
+    "reason": "Outdated English models/columns or old booking workflow. Related current tests listed below; this is not a claim of one-to-one coverage.",
+    "related_current_tests": [
+      "tests/Feature/CustomerDeletionTest.php",
+      "tests/Feature/ServiceCatalogDeletionTest.php",
+      "tests/Feature/UserAccountAuditTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/DeliveryControllerTest.php",
+    "case": "Tests\\Feature\\DeliveryControllerTest::test_can_list_deliveries",
+    "classification": "retired-outdated-schema",
+    "reason": "Outdated English models/columns or old booking workflow. Related current tests listed below; this is not a claim of one-to-one coverage.",
+    "related_current_tests": [
+      "tests/Feature/DeliverySchedulingTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/DeliveryControllerTest.php",
+    "case": "Tests\\Feature\\DeliveryControllerTest::test_can_search_deliveries",
+    "classification": "retired-outdated-schema",
+    "reason": "Outdated English models/columns or old booking workflow. Related current tests listed below; this is not a claim of one-to-one coverage.",
+    "related_current_tests": [
+      "tests/Feature/DeliverySchedulingTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/DeliveryControllerTest.php",
+    "case": "Tests\\Feature\\DeliveryControllerTest::test_search_returns_empty_state_when_no_results",
+    "classification": "retired-outdated-schema",
+    "reason": "Outdated English models/columns or old booking workflow. Related current tests listed below; this is not a claim of one-to-one coverage.",
+    "related_current_tests": [
+      "tests/Feature/DeliverySchedulingTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/DeliveryControllerTest.php",
+    "case": "Tests\\Feature\\DeliveryControllerTest::test_can_delete_delivery",
+    "classification": "retired-outdated-schema",
+    "reason": "Outdated English models/columns or old booking workflow. Related current tests listed below; this is not a claim of one-to-one coverage.",
+    "related_current_tests": [
+      "tests/Feature/DeliverySchedulingTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/DetailViewConsistencyTest.php",
+    "case": "Tests\\Feature\\DetailViewConsistencyTest::test_order_detail_uses_the_standard_layout",
+    "classification": "retired-outdated-schema",
+    "reason": "Outdated English models/columns or old booking workflow. Related current tests listed below; this is not a claim of one-to-one coverage.",
+    "related_current_tests": [
+      "tests/Feature/ReviewDisplayTest.php",
+      "tests/Feature/AdminCommunicationTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/DetailViewConsistencyTest.php",
+    "case": "Tests\\Feature\\DetailViewConsistencyTest::test_customer_detail_uses_the_standard_layout",
+    "classification": "retired-outdated-schema",
+    "reason": "Outdated English models/columns or old booking workflow. Related current tests listed below; this is not a claim of one-to-one coverage.",
+    "related_current_tests": [
+      "tests/Feature/ReviewDisplayTest.php",
+      "tests/Feature/AdminCommunicationTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/DetailViewConsistencyTest.php",
+    "case": "Tests\\Feature\\DetailViewConsistencyTest::test_booking_detail_uses_the_standard_layout",
+    "classification": "retired-outdated-schema",
+    "reason": "Outdated English models/columns or old booking workflow. Related current tests listed below; this is not a claim of one-to-one coverage.",
+    "related_current_tests": [
+      "tests/Feature/ReviewDisplayTest.php",
+      "tests/Feature/AdminCommunicationTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/DetailViewConsistencyTest.php",
+    "case": "Tests\\Feature\\DetailViewConsistencyTest::test_service_detail_uses_the_standard_layout",
+    "classification": "retired-outdated-schema",
+    "reason": "Outdated English models/columns or old booking workflow. Related current tests listed below; this is not a claim of one-to-one coverage.",
+    "related_current_tests": [
+      "tests/Feature/ReviewDisplayTest.php",
+      "tests/Feature/AdminCommunicationTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/DetailViewConsistencyTest.php",
+    "case": "Tests\\Feature\\DetailViewConsistencyTest::test_invoice_detail_uses_the_standard_layout",
+    "classification": "retired-outdated-schema",
+    "reason": "Outdated English models/columns or old booking workflow. Related current tests listed below; this is not a claim of one-to-one coverage.",
+    "related_current_tests": [
+      "tests/Feature/ReviewDisplayTest.php",
+      "tests/Feature/AdminCommunicationTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/DetailViewConsistencyTest.php",
+    "case": "Tests\\Feature\\DetailViewConsistencyTest::test_delivery_detail_uses_the_standard_layout",
+    "classification": "retired-outdated-schema",
+    "reason": "Outdated English models/columns or old booking workflow. Related current tests listed below; this is not a claim of one-to-one coverage.",
+    "related_current_tests": [
+      "tests/Feature/ReviewDisplayTest.php",
+      "tests/Feature/AdminCommunicationTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/DetailViewConsistencyTest.php",
+    "case": "Tests\\Feature\\DetailViewConsistencyTest::test_payment_detail_uses_the_standard_layout",
+    "classification": "retired-outdated-schema",
+    "reason": "Outdated English models/columns or old booking workflow. Related current tests listed below; this is not a claim of one-to-one coverage.",
+    "related_current_tests": [
+      "tests/Feature/ReviewDisplayTest.php",
+      "tests/Feature/AdminCommunicationTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/DetailViewConsistencyTest.php",
+    "case": "Tests\\Feature\\DetailViewConsistencyTest::test_account_detail_uses_the_standard_layout",
+    "classification": "retired-outdated-schema",
+    "reason": "Outdated English models/columns or old booking workflow. Related current tests listed below; this is not a claim of one-to-one coverage.",
+    "related_current_tests": [
+      "tests/Feature/ReviewDisplayTest.php",
+      "tests/Feature/AdminCommunicationTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/DetailViewConsistencyTest.php",
+    "case": "Tests\\Feature\\DetailViewConsistencyTest::test_coupon_detail_uses_the_standard_layout",
+    "classification": "retired-outdated-schema",
+    "reason": "Outdated English models/columns or old booking workflow. Related current tests listed below; this is not a claim of one-to-one coverage.",
+    "related_current_tests": [
+      "tests/Feature/ReviewDisplayTest.php",
+      "tests/Feature/AdminCommunicationTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/DetailViewConsistencyTest.php",
+    "case": "Tests\\Feature\\DetailViewConsistencyTest::test_promotion_detail_uses_the_standard_layout",
+    "classification": "retired-outdated-schema",
+    "reason": "Outdated English models/columns or old booking workflow. Related current tests listed below; this is not a claim of one-to-one coverage.",
+    "related_current_tests": [
+      "tests/Feature/ReviewDisplayTest.php",
+      "tests/Feature/AdminCommunicationTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/DetailViewConsistencyTest.php",
+    "case": "Tests\\Feature\\DetailViewConsistencyTest::test_pricing_detail_uses_the_standard_layout",
+    "classification": "retired-outdated-schema",
+    "reason": "Outdated English models/columns or old booking workflow. Related current tests listed below; this is not a claim of one-to-one coverage.",
+    "related_current_tests": [
+      "tests/Feature/ReviewDisplayTest.php",
+      "tests/Feature/AdminCommunicationTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/DetailViewConsistencyTest.php",
+    "case": "Tests\\Feature\\DetailViewConsistencyTest::test_service_category_detail_uses_the_standard_layout",
+    "classification": "retired-outdated-schema",
+    "reason": "Outdated English models/columns or old booking workflow. Related current tests listed below; this is not a claim of one-to-one coverage.",
+    "related_current_tests": [
+      "tests/Feature/ReviewDisplayTest.php",
+      "tests/Feature/AdminCommunicationTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/DetailViewConsistencyTest.php",
+    "case": "Tests\\Feature\\DetailViewConsistencyTest::test_garment_detail_uses_the_standard_layout",
+    "classification": "retired-outdated-schema",
+    "reason": "Outdated English models/columns or old booking workflow. Related current tests listed below; this is not a claim of one-to-one coverage.",
+    "related_current_tests": [
+      "tests/Feature/ReviewDisplayTest.php",
+      "tests/Feature/AdminCommunicationTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/DetailViewConsistencyTest.php",
+    "case": "Tests\\Feature\\DetailViewConsistencyTest::test_order_item_detail_uses_the_standard_layout",
+    "classification": "retired-outdated-schema",
+    "reason": "Outdated English models/columns or old booking workflow. Related current tests listed below; this is not a claim of one-to-one coverage.",
+    "related_current_tests": [
+      "tests/Feature/ReviewDisplayTest.php",
+      "tests/Feature/AdminCommunicationTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/DetailViewConsistencyTest.php",
+    "case": "Tests\\Feature\\DetailViewConsistencyTest::test_review_detail_uses_the_standard_layout",
+    "classification": "retired-outdated-schema",
+    "reason": "Outdated English models/columns or old booking workflow. Related current tests listed below; this is not a claim of one-to-one coverage.",
+    "related_current_tests": [
+      "tests/Feature/ReviewDisplayTest.php",
+      "tests/Feature/AdminCommunicationTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/DetailViewConsistencyTest.php",
+    "case": "Tests\\Feature\\DetailViewConsistencyTest::test_notification_detail_uses_the_standard_layout",
+    "classification": "retired-outdated-schema",
+    "reason": "Outdated English models/columns or old booking workflow. Related current tests listed below; this is not a claim of one-to-one coverage.",
+    "related_current_tests": [
+      "tests/Feature/ReviewDisplayTest.php",
+      "tests/Feature/AdminCommunicationTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/DetailViewConsistencyTest.php",
+    "case": "Tests\\Feature\\DetailViewConsistencyTest::test_garment_condition_detail_view_exists",
+    "classification": "retired-outdated-schema",
+    "reason": "Outdated English models/columns or old booking workflow. Related current tests listed below; this is not a claim of one-to-one coverage.",
+    "related_current_tests": [
+      "tests/Feature/ReviewDisplayTest.php",
+      "tests/Feature/AdminCommunicationTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/DetailViewConsistencyTest.php",
+    "case": "Tests\\Feature\\DetailViewConsistencyTest::test_no_detail_view_renders_buttons_in_the_header",
+    "classification": "retired-outdated-schema",
+    "reason": "Outdated English models/columns or old booking workflow. Related current tests listed below; this is not a claim of one-to-one coverage.",
+    "related_current_tests": [
+      "tests/Feature/ReviewDisplayTest.php",
+      "tests/Feature/AdminCommunicationTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/DetailViewConsistencyTest.php",
+    "case": "Tests\\Feature\\DetailViewConsistencyTest::test_no_detail_view_uses_the_old_vnd_currency_suffix",
+    "classification": "retired-outdated-schema",
+    "reason": "Outdated English models/columns or old booking workflow. Related current tests listed below; this is not a claim of one-to-one coverage.",
+    "related_current_tests": [
+      "tests/Feature/ReviewDisplayTest.php",
+      "tests/Feature/AdminCommunicationTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/DetailViewConsistencyTest.php",
+    "case": "Tests\\Feature\\DetailViewConsistencyTest::test_no_detail_view_duplicates_the_delete_confirmation_script",
+    "classification": "retired-outdated-schema",
+    "reason": "Outdated English models/columns or old booking workflow. Related current tests listed below; this is not a claim of one-to-one coverage.",
+    "related_current_tests": [
+      "tests/Feature/ReviewDisplayTest.php",
+      "tests/Feature/AdminCommunicationTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/DynamicRbacTest.php",
+    "case": "Tests\\Feature\\DynamicRbacTest::test_seeder_creates_four_roles_and_permissions",
+    "classification": "retired-outdated-schema",
+    "reason": "Outdated English models/columns or old booking workflow. Related current tests listed below; this is not a claim of one-to-one coverage.",
+    "related_current_tests": [
+      "tests/Feature/DynamicRolePermissionTest.php",
+      "tests/Feature/AuthorizationBoundaryTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/DynamicRbacTest.php",
+    "case": "Tests\\Feature\\DynamicRbacTest::test_owner_only_permissions_are_never_granted_to_other_roles",
+    "classification": "retired-outdated-schema",
+    "reason": "Outdated English models/columns or old booking workflow. Related current tests listed below; this is not a claim of one-to-one coverage.",
+    "related_current_tests": [
+      "tests/Feature/DynamicRolePermissionTest.php",
+      "tests/Feature/AuthorizationBoundaryTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/DynamicRbacTest.php",
+    "case": "Tests\\Feature\\DynamicRbacTest::test_owner_holds_financial_privileges",
+    "classification": "retired-outdated-schema",
+    "reason": "Outdated English models/columns or old booking workflow. Related current tests listed below; this is not a claim of one-to-one coverage.",
+    "related_current_tests": [
+      "tests/Feature/DynamicRolePermissionTest.php",
+      "tests/Feature/AuthorizationBoundaryTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/DynamicRbacTest.php",
+    "case": "Tests\\Feature\\DynamicRbacTest::test_staff_cannot_ever_gain_owner_only_permission",
+    "classification": "retired-outdated-schema",
+    "reason": "Outdated English models/columns or old booking workflow. Related current tests listed below; this is not a claim of one-to-one coverage.",
+    "related_current_tests": [
+      "tests/Feature/DynamicRolePermissionTest.php",
+      "tests/Feature/AuthorizationBoundaryTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/DynamicRbacTest.php",
+    "case": "Tests\\Feature\\DynamicRbacTest::test_owner_can_open_permission_matrix",
+    "classification": "retired-outdated-schema",
+    "reason": "Outdated English models/columns or old booking workflow. Related current tests listed below; this is not a claim of one-to-one coverage.",
+    "related_current_tests": [
+      "tests/Feature/DynamicRolePermissionTest.php",
+      "tests/Feature/AuthorizationBoundaryTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/DynamicRbacTest.php",
+    "case": "Tests\\Feature\\DynamicRbacTest::test_manager_cannot_open_permission_matrix",
+    "classification": "retired-outdated-schema",
+    "reason": "Outdated English models/columns or old booking workflow. Related current tests listed below; this is not a claim of one-to-one coverage.",
+    "related_current_tests": [
+      "tests/Feature/DynamicRolePermissionTest.php",
+      "tests/Feature/AuthorizationBoundaryTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/DynamicRbacTest.php",
+    "case": "Tests\\Feature\\DynamicRbacTest::test_owner_can_save_matrix",
+    "classification": "retired-outdated-schema",
+    "reason": "Outdated English models/columns or old booking workflow. Related current tests listed below; this is not a claim of one-to-one coverage.",
+    "related_current_tests": [
+      "tests/Feature/DynamicRolePermissionTest.php",
+      "tests/Feature/AuthorizationBoundaryTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/DynamicRbacTest.php",
+    "case": "Tests\\Feature\\DynamicRbacTest::test_saving_matrix_rejects_owner_only_permission_for_manager",
+    "classification": "retired-outdated-schema",
+    "reason": "Outdated English models/columns or old booking workflow. Related current tests listed below; this is not a claim of one-to-one coverage.",
+    "related_current_tests": [
+      "tests/Feature/DynamicRolePermissionTest.php",
+      "tests/Feature/AuthorizationBoundaryTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/DynamicRbacTest.php",
+    "case": "Tests\\Feature\\DynamicRbacTest::test_owner_can_edit_paid_order",
+    "classification": "retired-outdated-schema",
+    "reason": "Outdated English models/columns or old booking workflow. Related current tests listed below; this is not a claim of one-to-one coverage.",
+    "related_current_tests": [
+      "tests/Feature/DynamicRolePermissionTest.php",
+      "tests/Feature/AuthorizationBoundaryTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/DynamicRbacTest.php",
+    "case": "Tests\\Feature\\DynamicRbacTest::test_manager_cannot_edit_paid_order",
+    "classification": "retired-outdated-schema",
+    "reason": "Outdated English models/columns or old booking workflow. Related current tests listed below; this is not a claim of one-to-one coverage.",
+    "related_current_tests": [
+      "tests/Feature/DynamicRolePermissionTest.php",
+      "tests/Feature/AuthorizationBoundaryTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/DynamicRbacTest.php",
+    "case": "Tests\\Feature\\DynamicRbacTest::test_staff_cannot_edit_paid_order",
+    "classification": "retired-outdated-schema",
+    "reason": "Outdated English models/columns or old booking workflow. Related current tests listed below; this is not a claim of one-to-one coverage.",
+    "related_current_tests": [
+      "tests/Feature/DynamicRolePermissionTest.php",
+      "tests/Feature/AuthorizationBoundaryTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/DynamicRbacTest.php",
+    "case": "Tests\\Feature\\DynamicRbacTest::test_manager_cannot_delete_paid_order",
+    "classification": "retired-outdated-schema",
+    "reason": "Outdated English models/columns or old booking workflow. Related current tests listed below; this is not a claim of one-to-one coverage.",
+    "related_current_tests": [
+      "tests/Feature/DynamicRolePermissionTest.php",
+      "tests/Feature/AuthorizationBoundaryTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/DynamicRbacTest.php",
+    "case": "Tests\\Feature\\DynamicRbacTest::test_manager_cannot_open_paid_invoice_edit_page",
+    "classification": "retired-outdated-schema",
+    "reason": "Outdated English models/columns or old booking workflow. Related current tests listed below; this is not a claim of one-to-one coverage.",
+    "related_current_tests": [
+      "tests/Feature/DynamicRolePermissionTest.php",
+      "tests/Feature/AuthorizationBoundaryTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/DynamicRbacTest.php",
+    "case": "Tests\\Feature\\DynamicRbacTest::test_manager_cannot_delete_paid_invoice",
+    "classification": "retired-outdated-schema",
+    "reason": "Outdated English models/columns or old booking workflow. Related current tests listed below; this is not a claim of one-to-one coverage.",
+    "related_current_tests": [
+      "tests/Feature/DynamicRolePermissionTest.php",
+      "tests/Feature/AuthorizationBoundaryTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/DynamicRbacTest.php",
+    "case": "Tests\\Feature\\DynamicRbacTest::test_employee_legacy_role_maps_to_staff_permissions",
+    "classification": "retired-outdated-schema",
+    "reason": "Outdated English models/columns or old booking workflow. Related current tests listed below; this is not a claim of one-to-one coverage.",
+    "related_current_tests": [
+      "tests/Feature/DynamicRolePermissionTest.php",
+      "tests/Feature/AuthorizationBoundaryTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/DynamicRbacTest.php",
+    "case": "Tests\\Feature\\DynamicRbacTest::test_has_role_accepts_legacy_names",
+    "classification": "retired-outdated-schema",
+    "reason": "Outdated English models/columns or old booking workflow. Related current tests listed below; this is not a claim of one-to-one coverage.",
+    "related_current_tests": [
+      "tests/Feature/DynamicRolePermissionTest.php",
+      "tests/Feature/AuthorizationBoundaryTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/DynamicRbacTest.php",
+    "case": "Tests\\Feature\\DynamicRbacTest::test_paid_order_buttons_hidden_for_manager_but_shown_for_owner",
+    "classification": "retired-outdated-schema",
+    "reason": "Outdated English models/columns or old booking workflow. Related current tests listed below; this is not a claim of one-to-one coverage.",
+    "related_current_tests": [
+      "tests/Feature/DynamicRolePermissionTest.php",
+      "tests/Feature/AuthorizationBoundaryTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/DynamicRbacTest.php",
+    "case": "Tests\\Feature\\DynamicRbacTest::test_new_account_gets_matching_dynamic_role",
+    "classification": "retired-outdated-schema",
+    "reason": "Outdated English models/columns or old booking workflow. Related current tests listed below; this is not a claim of one-to-one coverage.",
+    "related_current_tests": [
+      "tests/Feature/DynamicRolePermissionTest.php",
+      "tests/Feature/AuthorizationBoundaryTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/DynamicRbacTest.php",
+    "case": "Tests\\Feature\\DynamicRbacTest::test_staff_cannot_manage_roles",
+    "classification": "retired-outdated-schema",
+    "reason": "Outdated English models/columns or old booking workflow. Related current tests listed below; this is not a claim of one-to-one coverage.",
+    "related_current_tests": [
+      "tests/Feature/DynamicRolePermissionTest.php",
+      "tests/Feature/AuthorizationBoundaryTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/GarmentControllerTest.php",
+    "case": "Tests\\Feature\\GarmentControllerTest::test_can_list_garments",
+    "classification": "retired-outdated-schema",
+    "reason": "Outdated English models/columns or old booking workflow. Related current tests listed below; this is not a claim of one-to-one coverage.",
+    "related_current_tests": [
+      "tests/Feature/LoaiDoGiatTest.php",
+      "tests/Feature/GarmentCategoryManagementTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/GarmentControllerTest.php",
+    "case": "Tests\\Feature\\GarmentControllerTest::test_can_create_garment",
+    "classification": "retired-outdated-schema",
+    "reason": "Outdated English models/columns or old booking workflow. Related current tests listed below; this is not a claim of one-to-one coverage.",
+    "related_current_tests": [
+      "tests/Feature/LoaiDoGiatTest.php",
+      "tests/Feature/GarmentCategoryManagementTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/GarmentControllerTest.php",
+    "case": "Tests\\Feature\\GarmentControllerTest::test_can_show_garment",
+    "classification": "retired-outdated-schema",
+    "reason": "Outdated English models/columns or old booking workflow. Related current tests listed below; this is not a claim of one-to-one coverage.",
+    "related_current_tests": [
+      "tests/Feature/LoaiDoGiatTest.php",
+      "tests/Feature/GarmentCategoryManagementTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/GarmentControllerTest.php",
+    "case": "Tests\\Feature\\GarmentControllerTest::test_can_update_garment",
+    "classification": "retired-outdated-schema",
+    "reason": "Outdated English models/columns or old booking workflow. Related current tests listed below; this is not a claim of one-to-one coverage.",
+    "related_current_tests": [
+      "tests/Feature/LoaiDoGiatTest.php",
+      "tests/Feature/GarmentCategoryManagementTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/GarmentControllerTest.php",
+    "case": "Tests\\Feature\\GarmentControllerTest::test_can_delete_garment",
+    "classification": "retired-outdated-schema",
+    "reason": "Outdated English models/columns or old booking workflow. Related current tests listed below; this is not a claim of one-to-one coverage.",
+    "related_current_tests": [
+      "tests/Feature/LoaiDoGiatTest.php",
+      "tests/Feature/GarmentCategoryManagementTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/InvoiceControllerTest.php",
+    "case": "Tests\\Feature\\InvoiceControllerTest::test_admin_can_access_invoice_export_route",
+    "classification": "retired-outdated-schema",
+    "reason": "Outdated English models/columns or old booking workflow. Related current tests listed below; this is not a claim of one-to-one coverage.",
+    "related_current_tests": [
+      "tests/Feature/InvoiceHistoryObserverTest.php",
+      "tests/Feature/PaymentOrderRedirectTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/InvoiceControllerTest.php",
+    "case": "Tests\\Feature\\InvoiceControllerTest::test_staff_cannot_access_invoice_export_route",
+    "classification": "retired-outdated-schema",
+    "reason": "Outdated English models/columns or old booking workflow. Related current tests listed below; this is not a claim of one-to-one coverage.",
+    "related_current_tests": [
+      "tests/Feature/InvoiceHistoryObserverTest.php",
+      "tests/Feature/PaymentOrderRedirectTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/InvoiceControllerTest.php",
+    "case": "Tests\\Feature\\InvoiceControllerTest::test_unauthenticated_users_are_redirected_from_invoice_export",
+    "classification": "retired-outdated-schema",
+    "reason": "Outdated English models/columns or old booking workflow. Related current tests listed below; this is not a claim of one-to-one coverage.",
+    "related_current_tests": [
+      "tests/Feature/InvoiceHistoryObserverTest.php",
+      "tests/Feature/PaymentOrderRedirectTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/InvoiceControllerTest.php",
+    "case": "Tests\\Feature\\InvoiceControllerTest::test_invoice_export_includes_query_parameters",
+    "classification": "retired-outdated-schema",
+    "reason": "Outdated English models/columns or old booking workflow. Related current tests listed below; this is not a claim of one-to-one coverage.",
+    "related_current_tests": [
+      "tests/Feature/InvoiceHistoryObserverTest.php",
+      "tests/Feature/PaymentOrderRedirectTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/ModuleConsistencyTest.php",
+    "case": "Tests\\Feature\\ModuleConsistencyTest::test_services_index_has_no_lock_or_unlock_button",
+    "classification": "retired-outdated-schema",
+    "reason": "Outdated English models/columns or old booking workflow. Related current tests listed below; this is not a claim of one-to-one coverage.",
+    "related_current_tests": [
+      "tests/Feature/BookingOrderConversionTest.php",
+      "tests/Feature/ReviewDisplayTest.php",
+      "tests/Feature/ServiceCatalogDeletionTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/ModuleConsistencyTest.php",
+    "case": "Tests\\Feature\\ModuleConsistencyTest::test_services_module_has_no_toggle_status_route",
+    "classification": "retired-outdated-schema",
+    "reason": "Outdated English models/columns or old booking workflow. Related current tests listed below; this is not a claim of one-to-one coverage.",
+    "related_current_tests": [
+      "tests/Feature/BookingOrderConversionTest.php",
+      "tests/Feature/ReviewDisplayTest.php",
+      "tests/Feature/ServiceCatalogDeletionTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/ModuleConsistencyTest.php",
+    "case": "Tests\\Feature\\ModuleConsistencyTest::test_confirmed_booking_converts_into_an_order_and_delivery",
+    "classification": "retired-outdated-schema",
+    "reason": "Outdated English models/columns or old booking workflow. Related current tests listed below; this is not a claim of one-to-one coverage.",
+    "related_current_tests": [
+      "tests/Feature/BookingOrderConversionTest.php",
+      "tests/Feature/ReviewDisplayTest.php",
+      "tests/Feature/ServiceCatalogDeletionTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/ModuleConsistencyTest.php",
+    "case": "Tests\\Feature\\ModuleConsistencyTest::test_pending_booking_cannot_be_converted_into_an_order",
+    "classification": "retired-outdated-schema",
+    "reason": "Outdated English models/columns or old booking workflow. Related current tests listed below; this is not a claim of one-to-one coverage.",
+    "related_current_tests": [
+      "tests/Feature/BookingOrderConversionTest.php",
+      "tests/Feature/ReviewDisplayTest.php",
+      "tests/Feature/ServiceCatalogDeletionTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/ModuleConsistencyTest.php",
+    "case": "Tests\\Feature\\ModuleConsistencyTest::test_delivery_and_booking_use_vietnamese_method_labels",
+    "classification": "retired-outdated-schema",
+    "reason": "Outdated English models/columns or old booking workflow. Related current tests listed below; this is not a claim of one-to-one coverage.",
+    "related_current_tests": [
+      "tests/Feature/BookingOrderConversionTest.php",
+      "tests/Feature/ReviewDisplayTest.php",
+      "tests/Feature/ServiceCatalogDeletionTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/ModuleConsistencyTest.php",
+    "case": "Tests\\Feature\\ModuleConsistencyTest::test_reviews_index_shows_average_rating_rounded_to_one_decimal",
+    "classification": "retired-outdated-schema",
+    "reason": "Outdated English models/columns or old booking workflow. Related current tests listed below; this is not a claim of one-to-one coverage.",
+    "related_current_tests": [
+      "tests/Feature/BookingOrderConversionTest.php",
+      "tests/Feature/ReviewDisplayTest.php",
+      "tests/Feature/ServiceCatalogDeletionTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/ModuleConsistencyTest.php",
+    "case": "Tests\\Feature\\ModuleConsistencyTest::test_invoice_total_is_accepted_from_the_form",
+    "classification": "retired-outdated-schema",
+    "reason": "Outdated English models/columns or old booking workflow. Related current tests listed below; this is not a claim of one-to-one coverage.",
+    "related_current_tests": [
+      "tests/Feature/BookingOrderConversionTest.php",
+      "tests/Feature/ReviewDisplayTest.php",
+      "tests/Feature/ServiceCatalogDeletionTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/OrderControllerTest.php",
+    "case": "Tests\\Feature\\OrderControllerTest::test_can_list_orders",
+    "classification": "retired-placeholder",
+    "reason": "No executable assertions remain; cannot count as a tested requirement.",
+    "related_current_tests": [
+      "tests/Feature/BookingOrderConversionTest.php",
+      "tests/Feature/RewardPointTest.php",
+      "tests/Feature/LuuDonHangRequestTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/OrderControllerTest.php",
+    "case": "Tests\\Feature\\OrderControllerTest::test_can_create_order",
+    "classification": "retired-placeholder",
+    "reason": "No executable assertions remain; cannot count as a tested requirement.",
+    "related_current_tests": [
+      "tests/Feature/BookingOrderConversionTest.php",
+      "tests/Feature/RewardPointTest.php",
+      "tests/Feature/LuuDonHangRequestTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/OrderControllerTest.php",
+    "case": "Tests\\Feature\\OrderControllerTest::test_order_total_is_computed_server_side_and_ignores_client_value",
+    "classification": "retired-placeholder",
+    "reason": "No executable assertions remain; cannot count as a tested requirement.",
+    "related_current_tests": [
+      "tests/Feature/BookingOrderConversionTest.php",
+      "tests/Feature/RewardPointTest.php",
+      "tests/Feature/LuuDonHangRequestTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/OrderControllerTest.php",
+    "case": "Tests\\Feature\\OrderControllerTest::test_order_applies_promotion_and_points_discount",
+    "classification": "retired-placeholder",
+    "reason": "No executable assertions remain; cannot count as a tested requirement.",
+    "related_current_tests": [
+      "tests/Feature/BookingOrderConversionTest.php",
+      "tests/Feature/RewardPointTest.php",
+      "tests/Feature/LuuDonHangRequestTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/OrderControllerTest.php",
+    "case": "Tests\\Feature\\OrderControllerTest::test_points_used_cannot_exceed_customer_balance",
+    "classification": "retired-placeholder",
+    "reason": "No executable assertions remain; cannot count as a tested requirement.",
+    "related_current_tests": [
+      "tests/Feature/BookingOrderConversionTest.php",
+      "tests/Feature/RewardPointTest.php",
+      "tests/Feature/LuuDonHangRequestTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/OrderControllerTest.php",
+    "case": "Tests\\Feature\\OrderControllerTest::test_total_amount_is_never_negative",
+    "classification": "retired-placeholder",
+    "reason": "No executable assertions remain; cannot count as a tested requirement.",
+    "related_current_tests": [
+      "tests/Feature/BookingOrderConversionTest.php",
+      "tests/Feature/RewardPointTest.php",
+      "tests/Feature/LuuDonHangRequestTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/OrderControllerTest.php",
+    "case": "Tests\\Feature\\OrderControllerTest::test_updating_order_restores_previously_redeemed_points",
+    "classification": "retired-placeholder",
+    "reason": "No executable assertions remain; cannot count as a tested requirement.",
+    "related_current_tests": [
+      "tests/Feature/BookingOrderConversionTest.php",
+      "tests/Feature/RewardPointTest.php",
+      "tests/Feature/LuuDonHangRequestTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/OrderControllerTest.php",
+    "case": "Tests\\Feature\\OrderControllerTest::test_can_show_order",
+    "classification": "retired-placeholder",
+    "reason": "No executable assertions remain; cannot count as a tested requirement.",
+    "related_current_tests": [
+      "tests/Feature/BookingOrderConversionTest.php",
+      "tests/Feature/RewardPointTest.php",
+      "tests/Feature/LuuDonHangRequestTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/OrderControllerTest.php",
+    "case": "Tests\\Feature\\OrderControllerTest::test_can_update_order",
+    "classification": "retired-placeholder",
+    "reason": "No executable assertions remain; cannot count as a tested requirement.",
+    "related_current_tests": [
+      "tests/Feature/BookingOrderConversionTest.php",
+      "tests/Feature/RewardPointTest.php",
+      "tests/Feature/LuuDonHangRequestTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/OrderControllerTest.php",
+    "case": "Tests\\Feature\\OrderControllerTest::test_can_delete_order",
+    "classification": "retired-placeholder",
+    "reason": "No executable assertions remain; cannot count as a tested requirement.",
+    "related_current_tests": [
+      "tests/Feature/BookingOrderConversionTest.php",
+      "tests/Feature/RewardPointTest.php",
+      "tests/Feature/LuuDonHangRequestTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/OrderControllerTest.php",
+    "case": "Tests\\Feature\\OrderControllerTest::test_kg_priced_service_uses_weight_instead_of_quantity",
+    "classification": "retired-placeholder",
+    "reason": "No executable assertions remain; cannot count as a tested requirement.",
+    "related_current_tests": [
+      "tests/Feature/BookingOrderConversionTest.php",
+      "tests/Feature/RewardPointTest.php",
+      "tests/Feature/LuuDonHangRequestTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/OrderControllerTest.php",
+    "case": "Tests\\Feature\\OrderControllerTest::test_non_kg_service_uses_quantity",
+    "classification": "retired-placeholder",
+    "reason": "No executable assertions remain; cannot count as a tested requirement.",
+    "related_current_tests": [
+      "tests/Feature/BookingOrderConversionTest.php",
+      "tests/Feature/RewardPointTest.php",
+      "tests/Feature/LuuDonHangRequestTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/OrderControllerTest.php",
+    "case": "Tests\\Feature\\OrderControllerTest::test_voucher_usage_is_counted_and_released",
+    "classification": "retired-placeholder",
+    "reason": "No executable assertions remain; cannot count as a tested requirement.",
+    "related_current_tests": [
+      "tests/Feature/BookingOrderConversionTest.php",
+      "tests/Feature/RewardPointTest.php",
+      "tests/Feature/LuuDonHangRequestTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/OrderControllerTest.php",
+    "case": "Tests\\Feature\\OrderControllerTest::test_order_can_apply_voucher_by_code",
+    "classification": "retired-placeholder",
+    "reason": "No executable assertions remain; cannot count as a tested requirement.",
+    "related_current_tests": [
+      "tests/Feature/BookingOrderConversionTest.php",
+      "tests/Feature/RewardPointTest.php",
+      "tests/Feature/LuuDonHangRequestTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/OrderControllerTest.php",
+    "case": "Tests\\Feature\\OrderControllerTest::test_voucher_at_usage_limit_gives_no_discount",
+    "classification": "retired-placeholder",
+    "reason": "No executable assertions remain; cannot count as a tested requirement.",
+    "related_current_tests": [
+      "tests/Feature/BookingOrderConversionTest.php",
+      "tests/Feature/RewardPointTest.php",
+      "tests/Feature/LuuDonHangRequestTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/OrderControllerTest.php",
+    "case": "Tests\\Feature\\OrderControllerTest::test_create_and_edit_pages_render_with_pricing_data",
+    "classification": "retired-placeholder",
+    "reason": "No executable assertions remain; cannot count as a tested requirement.",
+    "related_current_tests": [
+      "tests/Feature/BookingOrderConversionTest.php",
+      "tests/Feature/RewardPointTest.php",
+      "tests/Feature/LuuDonHangRequestTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/OrderNullCustomerTest.php",
+    "case": "Tests\\Feature\\OrderNullCustomerTest::test_index_renders_when_customer_is_soft_deleted",
+    "classification": "retired-rule",
+    "reason": "Retired English schema / soft-delete or legacy nullable-customer/config behavior; current physical deletion and Vietnamese schema are the supported contract.",
+    "related_current_tests": [
+      "tests/Feature/LuuDonHangRequestTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/OrderNullCustomerTest.php",
+    "case": "Tests\\Feature\\OrderNullCustomerTest::test_index_still_shows_name_of_soft_deleted_customer",
+    "classification": "retired-rule",
+    "reason": "Retired English schema / soft-delete or legacy nullable-customer/config behavior; current physical deletion and Vietnamese schema are the supported contract.",
+    "related_current_tests": [
+      "tests/Feature/LuuDonHangRequestTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/OrderNullCustomerTest.php",
+    "case": "Tests\\Feature\\OrderNullCustomerTest::test_show_page_renders_when_customer_is_soft_deleted",
+    "classification": "retired-rule",
+    "reason": "Retired English schema / soft-delete or legacy nullable-customer/config behavior; current physical deletion and Vietnamese schema are the supported contract.",
+    "related_current_tests": [
+      "tests/Feature/LuuDonHangRequestTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/OrderNullCustomerTest.php",
+    "case": "Tests\\Feature\\OrderNullCustomerTest::test_order_index_avatar_block_never_dereferences_null_customer",
+    "classification": "retired-rule",
+    "reason": "Retired English schema / soft-delete or legacy nullable-customer/config behavior; current physical deletion and Vietnamese schema are the supported contract.",
+    "related_current_tests": [
+      "tests/Feature/LuuDonHangRequestTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/OrderPaymentStatusTest.php",
+    "case": "Tests\\Feature\\OrderPaymentStatusTest::test_unpaid_order_is_pending",
+    "classification": "retired-outdated-schema",
+    "reason": "Outdated English models/columns or old booking workflow. Related current tests listed below; this is not a claim of one-to-one coverage.",
+    "related_current_tests": [
+      "tests/Feature/RewardPointTest.php",
+      "tests/Feature/PaymentOrderRedirectTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/OrderPaymentStatusTest.php",
+    "case": "Tests\\Feature\\OrderPaymentStatusTest::test_partially_paid_order_is_partial",
+    "classification": "retired-outdated-schema",
+    "reason": "Outdated English models/columns or old booking workflow. Related current tests listed below; this is not a claim of one-to-one coverage.",
+    "related_current_tests": [
+      "tests/Feature/RewardPointTest.php",
+      "tests/Feature/PaymentOrderRedirectTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/OrderPaymentStatusTest.php",
+    "case": "Tests\\Feature\\OrderPaymentStatusTest::test_fully_paid_order_is_paid",
+    "classification": "retired-outdated-schema",
+    "reason": "Outdated English models/columns or old booking workflow. Related current tests listed below; this is not a claim of one-to-one coverage.",
+    "related_current_tests": [
+      "tests/Feature/RewardPointTest.php",
+      "tests/Feature/PaymentOrderRedirectTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/OrderPaymentStatusTest.php",
+    "case": "Tests\\Feature\\OrderPaymentStatusTest::test_failed_payment_does_not_count_as_paid",
+    "classification": "retired-outdated-schema",
+    "reason": "Outdated English models/columns or old booking workflow. Related current tests listed below; this is not a claim of one-to-one coverage.",
+    "related_current_tests": [
+      "tests/Feature/RewardPointTest.php",
+      "tests/Feature/PaymentOrderRedirectTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/OrderPaymentStatusTest.php",
+    "case": "Tests\\Feature\\OrderPaymentStatusTest::test_refunded_payment_does_not_count_as_paid",
+    "classification": "retired-outdated-schema",
+    "reason": "Outdated English models/columns or old booking workflow. Related current tests listed below; this is not a claim of one-to-one coverage.",
+    "related_current_tests": [
+      "tests/Feature/RewardPointTest.php",
+      "tests/Feature/PaymentOrderRedirectTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/OrderPaymentStatusTest.php",
+    "case": "Tests\\Feature\\OrderPaymentStatusTest::test_index_shows_payment_status_column",
+    "classification": "retired-outdated-schema",
+    "reason": "Outdated English models/columns or old booking workflow. Related current tests listed below; this is not a claim of one-to-one coverage.",
+    "related_current_tests": [
+      "tests/Feature/RewardPointTest.php",
+      "tests/Feature/PaymentOrderRedirectTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/OrderPaymentStatusTest.php",
+    "case": "Tests\\Feature\\OrderPaymentStatusTest::test_index_shows_phone_column",
+    "classification": "retired-outdated-schema",
+    "reason": "Outdated English models/columns or old booking workflow. Related current tests listed below; this is not a claim of one-to-one coverage.",
+    "related_current_tests": [
+      "tests/Feature/RewardPointTest.php",
+      "tests/Feature/PaymentOrderRedirectTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/PaidRecordsAreLockedTest.php",
+    "case": "Tests\\Feature\\PaidRecordsAreLockedTest::test_order_locked_when_payment_covers_total",
+    "classification": "retired-outdated-schema",
+    "reason": "Outdated English models/columns or old booking workflow. Related current tests listed below; this is not a claim of one-to-one coverage.",
+    "related_current_tests": [
+      "tests/Feature/RewardPointTest.php",
+      "tests/Feature/BookingOrderConversionTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/PaidRecordsAreLockedTest.php",
+    "case": "Tests\\Feature\\PaidRecordsAreLockedTest::test_order_not_locked_when_payment_is_partial",
+    "classification": "retired-outdated-schema",
+    "reason": "Outdated English models/columns or old booking workflow. Related current tests listed below; this is not a claim of one-to-one coverage.",
+    "related_current_tests": [
+      "tests/Feature/RewardPointTest.php",
+      "tests/Feature/BookingOrderConversionTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/PaidRecordsAreLockedTest.php",
+    "case": "Tests\\Feature\\PaidRecordsAreLockedTest::test_cannot_edit_order_that_is_fully_paid",
+    "classification": "retired-outdated-schema",
+    "reason": "Outdated English models/columns or old booking workflow. Related current tests listed below; this is not a claim of one-to-one coverage.",
+    "related_current_tests": [
+      "tests/Feature/RewardPointTest.php",
+      "tests/Feature/BookingOrderConversionTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/PaidRecordsAreLockedTest.php",
+    "case": "Tests\\Feature\\PaidRecordsAreLockedTest::test_cannot_delete_order_that_is_fully_paid",
+    "classification": "retired-outdated-schema",
+    "reason": "Outdated English models/columns or old booking workflow. Related current tests listed below; this is not a claim of one-to-one coverage.",
+    "related_current_tests": [
+      "tests/Feature/RewardPointTest.php",
+      "tests/Feature/BookingOrderConversionTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/PaidRecordsAreLockedTest.php",
+    "case": "Tests\\Feature\\PaidRecordsAreLockedTest::test_cannot_update_or_delete_paid_invoice",
+    "classification": "retired-outdated-schema",
+    "reason": "Outdated English models/columns or old booking workflow. Related current tests listed below; this is not a claim of one-to-one coverage.",
+    "related_current_tests": [
+      "tests/Feature/RewardPointTest.php",
+      "tests/Feature/BookingOrderConversionTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/PaidRecordsAreLockedTest.php",
+    "case": "Tests\\Feature\\PaidRecordsAreLockedTest::test_paid_invoice_edit_page_is_blocked",
+    "classification": "retired-outdated-schema",
+    "reason": "Outdated English models/columns or old booking workflow. Related current tests listed below; this is not a claim of one-to-one coverage.",
+    "related_current_tests": [
+      "tests/Feature/RewardPointTest.php",
+      "tests/Feature/BookingOrderConversionTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/PaidRecordsAreLockedTest.php",
+    "case": "Tests\\Feature\\PaidRecordsAreLockedTest::test_paid_payment_is_locked",
+    "classification": "retired-outdated-schema",
+    "reason": "Outdated English models/columns or old booking workflow. Related current tests listed below; this is not a claim of one-to-one coverage.",
+    "related_current_tests": [
+      "tests/Feature/RewardPointTest.php",
+      "tests/Feature/BookingOrderConversionTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/PaidRecordsAreLockedTest.php",
+    "case": "Tests\\Feature\\PaidRecordsAreLockedTest::test_pending_payment_is_not_locked",
+    "classification": "retired-outdated-schema",
+    "reason": "Outdated English models/columns or old booking workflow. Related current tests listed below; this is not a claim of one-to-one coverage.",
+    "related_current_tests": [
+      "tests/Feature/RewardPointTest.php",
+      "tests/Feature/BookingOrderConversionTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/PaidRecordsAreLockedTest.php",
+    "case": "Tests\\Feature\\PaidRecordsAreLockedTest::test_owner_can_edit_or_delete_paid_payment",
+    "classification": "retired-outdated-schema",
+    "reason": "Outdated English models/columns or old booking workflow. Related current tests listed below; this is not a claim of one-to-one coverage.",
+    "related_current_tests": [
+      "tests/Feature/RewardPointTest.php",
+      "tests/Feature/BookingOrderConversionTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/PaidRecordsAreLockedTest.php",
+    "case": "Tests\\Feature\\PaidRecordsAreLockedTest::test_manager_cannot_edit_or_delete_paid_payment",
+    "classification": "retired-outdated-schema",
+    "reason": "Outdated English models/columns or old booking workflow. Related current tests listed below; this is not a claim of one-to-one coverage.",
+    "related_current_tests": [
+      "tests/Feature/RewardPointTest.php",
+      "tests/Feature/BookingOrderConversionTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/PaidRecordsAreLockedTest.php",
+    "case": "Tests\\Feature\\PaidRecordsAreLockedTest::test_cannot_edit_order_item_of_paid_order",
+    "classification": "retired-outdated-schema",
+    "reason": "Outdated English models/columns or old booking workflow. Related current tests listed below; this is not a claim of one-to-one coverage.",
+    "related_current_tests": [
+      "tests/Feature/RewardPointTest.php",
+      "tests/Feature/BookingOrderConversionTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/PaidRecordsAreLockedTest.php",
+    "case": "Tests\\Feature\\PaidRecordsAreLockedTest::test_soft_deleted_payment_is_not_counted_as_collected_money",
+    "classification": "retired-rule",
+    "reason": "Retired English schema / soft-delete or legacy nullable-customer/config behavior; current physical deletion and Vietnamese schema are the supported contract.",
+    "related_current_tests": [
+      "tests/Feature/RewardPointTest.php",
+      "tests/Feature/BookingOrderConversionTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/PaidRecordsAreLockedTest.php",
+    "case": "Tests\\Feature\\PaidRecordsAreLockedTest::test_soft_deleted_order_item_is_excluded_from_order_aggregates",
+    "classification": "retired-rule",
+    "reason": "Retired English schema / soft-delete or legacy nullable-customer/config behavior; current physical deletion and Vietnamese schema are the supported contract.",
+    "related_current_tests": [
+      "tests/Feature/RewardPointTest.php",
+      "tests/Feature/BookingOrderConversionTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/PaidRecordsAreLockedTest.php",
+    "case": "Tests\\Feature\\PaidRecordsAreLockedTest::test_soft_deleted_order_is_excluded_from_customer_totals",
+    "classification": "retired-rule",
+    "reason": "Retired English schema / soft-delete or legacy nullable-customer/config behavior; current physical deletion and Vietnamese schema are the supported contract.",
+    "related_current_tests": [
+      "tests/Feature/RewardPointTest.php",
+      "tests/Feature/BookingOrderConversionTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/PaidRecordsAreLockedTest.php",
+    "case": "Tests\\Feature\\PaidRecordsAreLockedTest::test_cannot_record_payment_against_a_settled_order",
+    "classification": "retired-outdated-schema",
+    "reason": "Outdated English models/columns or old booking workflow. Related current tests listed below; this is not a claim of one-to-one coverage.",
+    "related_current_tests": [
+      "tests/Feature/RewardPointTest.php",
+      "tests/Feature/BookingOrderConversionTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/PaidRecordsAreLockedTest.php",
+    "case": "Tests\\Feature\\PaidRecordsAreLockedTest::test_partial_payment_cannot_unlock_a_completed_order",
+    "classification": "retired-outdated-schema",
+    "reason": "Outdated English models/columns or old booking workflow. Related current tests listed below; this is not a claim of one-to-one coverage.",
+    "related_current_tests": [
+      "tests/Feature/RewardPointTest.php",
+      "tests/Feature/BookingOrderConversionTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/PaidRecordsAreLockedTest.php",
+    "case": "Tests\\Feature\\PaidRecordsAreLockedTest::test_cannot_create_invoice_for_a_settled_order",
+    "classification": "retired-outdated-schema",
+    "reason": "Outdated English models/columns or old booking workflow. Related current tests listed below; this is not a claim of one-to-one coverage.",
+    "related_current_tests": [
+      "tests/Feature/RewardPointTest.php",
+      "tests/Feature/BookingOrderConversionTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/PaidRecordsAreLockedTest.php",
+    "case": "Tests\\Feature\\PaidRecordsAreLockedTest::test_payment_lock_rule_can_be_disabled_by_config",
+    "classification": "retired-rule",
+    "reason": "Retired English schema / soft-delete or legacy nullable-customer/config behavior; current physical deletion and Vietnamese schema are the supported contract.",
+    "related_current_tests": [
+      "tests/Feature/RewardPointTest.php",
+      "tests/Feature/BookingOrderConversionTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/PaidRecordsAreLockedTest.php",
+    "case": "Tests\\Feature\\PaidRecordsAreLockedTest::test_index_hides_edit_buttons_for_locked_records",
+    "classification": "retired-outdated-schema",
+    "reason": "Outdated English models/columns or old booking workflow. Related current tests listed below; this is not a claim of one-to-one coverage.",
+    "related_current_tests": [
+      "tests/Feature/RewardPointTest.php",
+      "tests/Feature/BookingOrderConversionTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/PaidRecordsAreLockedTest.php",
+    "case": "Tests\\Feature\\PaidRecordsAreLockedTest::test_invoice_payment_and_item_index_hide_actions_when_locked",
+    "classification": "retired-outdated-schema",
+    "reason": "Outdated English models/columns or old booking workflow. Related current tests listed below; this is not a claim of one-to-one coverage.",
+    "related_current_tests": [
+      "tests/Feature/RewardPointTest.php",
+      "tests/Feature/BookingOrderConversionTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/ReportsRouteSmokeTest.php",
+    "case": "Tests\\Feature\\ReportsRouteSmokeTest::test_reports_page_renders_for_owner",
+    "classification": "ported",
+    "reason": "Replaced live-account dependency with in-memory fixtures and rendered HTTP route tests.",
+    "related_current_tests": [
+      "tests/Feature/ReportsServiceTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/ReportsRouteSmokeTest.php",
+    "case": "Tests\\Feature\\ReportsRouteSmokeTest::test_reports_page_renders_with_date_filters",
+    "classification": "ported",
+    "reason": "Replaced live-account dependency with in-memory fixtures and rendered HTTP route tests.",
+    "related_current_tests": [
+      "tests/Feature/ReportsServiceTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/ServiceCategoryControllerTest.php",
+    "case": "Tests\\Feature\\ServiceCategoryControllerTest::test_can_list_service_categories",
+    "classification": "retired-outdated-schema",
+    "reason": "Outdated English models/columns or old booking workflow. Related current tests listed below; this is not a claim of one-to-one coverage.",
+    "related_current_tests": [
+      "tests/Feature/ServiceCatalogDeletionTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/ServiceCategoryControllerTest.php",
+    "case": "Tests\\Feature\\ServiceCategoryControllerTest::test_index_renders_with_empty_result_set",
+    "classification": "retired-outdated-schema",
+    "reason": "Outdated English models/columns or old booking workflow. Related current tests listed below; this is not a claim of one-to-one coverage.",
+    "related_current_tests": [
+      "tests/Feature/ServiceCatalogDeletionTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/ServiceCategoryControllerTest.php",
+    "case": "Tests\\Feature\\ServiceCategoryControllerTest::test_index_renders_with_sort_query_parameters",
+    "classification": "retired-outdated-schema",
+    "reason": "Outdated English models/columns or old booking workflow. Related current tests listed below; this is not a claim of one-to-one coverage.",
+    "related_current_tests": [
+      "tests/Feature/ServiceCatalogDeletionTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/ServiceCategoryControllerTest.php",
+    "case": "Tests\\Feature\\ServiceCategoryControllerTest::test_index_renders_with_search_and_status_filters",
+    "classification": "retired-outdated-schema",
+    "reason": "Outdated English models/columns or old booking workflow. Related current tests listed below; this is not a claim of one-to-one coverage.",
+    "related_current_tests": [
+      "tests/Feature/ServiceCatalogDeletionTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/ServiceCategoryControllerTest.php",
+    "case": "Tests\\Feature\\ServiceCategoryControllerTest::test_can_create_service_category",
+    "classification": "retired-outdated-schema",
+    "reason": "Outdated English models/columns or old booking workflow. Related current tests listed below; this is not a claim of one-to-one coverage.",
+    "related_current_tests": [
+      "tests/Feature/ServiceCatalogDeletionTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/ServiceCategoryControllerTest.php",
+    "case": "Tests\\Feature\\ServiceCategoryControllerTest::test_can_update_service_category",
+    "classification": "retired-outdated-schema",
+    "reason": "Outdated English models/columns or old booking workflow. Related current tests listed below; this is not a claim of one-to-one coverage.",
+    "related_current_tests": [
+      "tests/Feature/ServiceCatalogDeletionTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/ServiceCategoryControllerTest.php",
+    "case": "Tests\\Feature\\ServiceCategoryControllerTest::test_can_delete_service_category",
+    "classification": "retired-outdated-schema",
+    "reason": "Outdated English models/columns or old booking workflow. Related current tests listed below; this is not a claim of one-to-one coverage.",
+    "related_current_tests": [
+      "tests/Feature/ServiceCatalogDeletionTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/ServiceControllerTest.php",
+    "case": "Tests\\Feature\\ServiceControllerTest::test_can_list_services",
+    "classification": "retired-outdated-schema",
+    "reason": "Outdated English models/columns or old booking workflow. Related current tests listed below; this is not a claim of one-to-one coverage.",
+    "related_current_tests": [
+      "tests/Feature/ServiceCatalogDeletionTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/ServiceControllerTest.php",
+    "case": "Tests\\Feature\\ServiceControllerTest::test_can_create_service",
+    "classification": "retired-outdated-schema",
+    "reason": "Outdated English models/columns or old booking workflow. Related current tests listed below; this is not a claim of one-to-one coverage.",
+    "related_current_tests": [
+      "tests/Feature/ServiceCatalogDeletionTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/ServiceControllerTest.php",
+    "case": "Tests\\Feature\\ServiceControllerTest::test_can_update_service",
+    "classification": "retired-outdated-schema",
+    "reason": "Outdated English models/columns or old booking workflow. Related current tests listed below; this is not a claim of one-to-one coverage.",
+    "related_current_tests": [
+      "tests/Feature/ServiceCatalogDeletionTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/ServiceControllerTest.php",
+    "case": "Tests\\Feature\\ServiceControllerTest::test_can_delete_service",
+    "classification": "retired-outdated-schema",
+    "reason": "Outdated English models/columns or old booking workflow. Related current tests listed below; this is not a claim of one-to-one coverage.",
+    "related_current_tests": [
+      "tests/Feature/ServiceCatalogDeletionTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/SoftDeleteRelationIntegrityTest.php",
+    "case": "Tests\\Feature\\SoftDeleteRelationIntegrityTest::test_pages_still_render_after_parent_is_soft_deleted#customer",
+    "classification": "retired-rule",
+    "reason": "Retired English schema / soft-delete or legacy nullable-customer/config behavior; current physical deletion and Vietnamese schema are the supported contract.",
+    "related_current_tests": [
+      "tests/Feature/CustomerDeletionTest.php",
+      "tests/Feature/ServiceCatalogDeletionTest.php",
+      "tests/Feature/UserAccountAuditTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/SoftDeleteRelationIntegrityTest.php",
+    "case": "Tests\\Feature\\SoftDeleteRelationIntegrityTest::test_pages_still_render_after_parent_is_soft_deleted#service",
+    "classification": "retired-rule",
+    "reason": "Retired English schema / soft-delete or legacy nullable-customer/config behavior; current physical deletion and Vietnamese schema are the supported contract.",
+    "related_current_tests": [
+      "tests/Feature/CustomerDeletionTest.php",
+      "tests/Feature/ServiceCatalogDeletionTest.php",
+      "tests/Feature/UserAccountAuditTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/SoftDeleteRelationIntegrityTest.php",
+    "case": "Tests\\Feature\\SoftDeleteRelationIntegrityTest::test_pages_still_render_after_parent_is_soft_deleted#garment",
+    "classification": "retired-rule",
+    "reason": "Retired English schema / soft-delete or legacy nullable-customer/config behavior; current physical deletion and Vietnamese schema are the supported contract.",
+    "related_current_tests": [
+      "tests/Feature/CustomerDeletionTest.php",
+      "tests/Feature/ServiceCatalogDeletionTest.php",
+      "tests/Feature/UserAccountAuditTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/SoftDeleteRelationIntegrityTest.php",
+    "case": "Tests\\Feature\\SoftDeleteRelationIntegrityTest::test_pages_still_render_after_parent_is_soft_deleted#promotion",
+    "classification": "retired-rule",
+    "reason": "Retired English schema / soft-delete or legacy nullable-customer/config behavior; current physical deletion and Vietnamese schema are the supported contract.",
+    "related_current_tests": [
+      "tests/Feature/CustomerDeletionTest.php",
+      "tests/Feature/ServiceCatalogDeletionTest.php",
+      "tests/Feature/UserAccountAuditTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/SoftDeleteRelationIntegrityTest.php",
+    "case": "Tests\\Feature\\SoftDeleteRelationIntegrityTest::test_pages_still_render_after_parent_is_soft_deleted#booking",
+    "classification": "retired-rule",
+    "reason": "Retired English schema / soft-delete or legacy nullable-customer/config behavior; current physical deletion and Vietnamese schema are the supported contract.",
+    "related_current_tests": [
+      "tests/Feature/CustomerDeletionTest.php",
+      "tests/Feature/ServiceCatalogDeletionTest.php",
+      "tests/Feature/UserAccountAuditTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/SoftDeleteRelationIntegrityTest.php",
+    "case": "Tests\\Feature\\SoftDeleteRelationIntegrityTest::test_pages_still_render_after_parent_is_soft_deleted#invoice",
+    "classification": "retired-rule",
+    "reason": "Retired English schema / soft-delete or legacy nullable-customer/config behavior; current physical deletion and Vietnamese schema are the supported contract.",
+    "related_current_tests": [
+      "tests/Feature/CustomerDeletionTest.php",
+      "tests/Feature/ServiceCatalogDeletionTest.php",
+      "tests/Feature/UserAccountAuditTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/SoftDeleteRelationIntegrityTest.php",
+    "case": "Tests\\Feature\\SoftDeleteRelationIntegrityTest::test_pages_still_render_after_parent_is_soft_deleted#order",
+    "classification": "retired-rule",
+    "reason": "Retired English schema / soft-delete or legacy nullable-customer/config behavior; current physical deletion and Vietnamese schema are the supported contract.",
+    "related_current_tests": [
+      "tests/Feature/CustomerDeletionTest.php",
+      "tests/Feature/ServiceCatalogDeletionTest.php",
+      "tests/Feature/UserAccountAuditTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/SoftDeleteRelationIntegrityTest.php",
+    "case": "Tests\\Feature\\SoftDeleteRelationIntegrityTest::test_soft_deleted_parent_name_is_still_displayed",
+    "classification": "retired-rule",
+    "reason": "Retired English schema / soft-delete or legacy nullable-customer/config behavior; current physical deletion and Vietnamese schema are the supported contract.",
+    "related_current_tests": [
+      "tests/Feature/CustomerDeletionTest.php",
+      "tests/Feature/ServiceCatalogDeletionTest.php",
+      "tests/Feature/UserAccountAuditTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/SoftDeleteRelationIntegrityTest.php",
+    "case": "Tests\\Feature\\SoftDeleteRelationIntegrityTest::test_soft_deleted_service_name_still_shows_in_order_items",
+    "classification": "retired-rule",
+    "reason": "Retired English schema / soft-delete or legacy nullable-customer/config behavior; current physical deletion and Vietnamese schema are the supported contract.",
+    "related_current_tests": [
+      "tests/Feature/CustomerDeletionTest.php",
+      "tests/Feature/ServiceCatalogDeletionTest.php",
+      "tests/Feature/UserAccountAuditTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/StatusConsistencyTest.php",
+    "case": "Tests\\Feature\\StatusConsistencyTest::test_every_status_dropdown_renders_the_enum_option_set",
+    "classification": "retired-placeholder",
+    "reason": "No executable assertions remain; cannot count as a tested requirement.",
+    "related_current_tests": [
+      "tests/Unit/OrderStatusSchemaTest.php",
+      "tests/Unit/ReviewStatusTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/StatusConsistencyTest.php",
+    "case": "Tests\\Feature\\StatusConsistencyTest::test_table_badges_use_the_enum_label",
+    "classification": "retired-placeholder",
+    "reason": "No executable assertions remain; cannot count as a tested requirement.",
+    "related_current_tests": [
+      "tests/Unit/OrderStatusSchemaTest.php",
+      "tests/Unit/ReviewStatusTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/StatusConsistencyTest.php",
+    "case": "Tests\\Feature\\StatusConsistencyTest::test_filter_and_edit_dropdowns_expose_the_same_values",
+    "classification": "retired-placeholder",
+    "reason": "No executable assertions remain; cannot count as a tested requirement.",
+    "related_current_tests": [
+      "tests/Unit/OrderStatusSchemaTest.php",
+      "tests/Unit/ReviewStatusTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/StatusConsistencyTest.php",
+    "case": "Tests\\Feature\\StatusConsistencyTest::test_forbidden_status_wordings_are_absent",
+    "classification": "retired-placeholder",
+    "reason": "No executable assertions remain; cannot count as a tested requirement.",
+    "related_current_tests": [
+      "tests/Unit/OrderStatusSchemaTest.php",
+      "tests/Unit/ReviewStatusTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/StatusConsistencyTest.php",
+    "case": "Tests\\Feature\\StatusConsistencyTest::test_enum_options_and_labels_never_diverge",
+    "classification": "retired-placeholder",
+    "reason": "No executable assertions remain; cannot count as a tested requirement.",
+    "related_current_tests": [
+      "tests/Unit/OrderStatusSchemaTest.php",
+      "tests/Unit/ReviewStatusTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/StatusConsistencyTest.php",
+    "case": "Tests\\Feature\\StatusConsistencyTest::test_payment_and_invoice_modules_share_the_same_wording",
+    "classification": "retired-placeholder",
+    "reason": "No executable assertions remain; cannot count as a tested requirement.",
+    "related_current_tests": [
+      "tests/Unit/OrderStatusSchemaTest.php",
+      "tests/Unit/ReviewStatusTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/StatusConsistencyTest.php",
+    "case": "Tests\\Feature\\StatusConsistencyTest::test_status_resolvers_are_tolerant_to_unknown_values",
+    "classification": "retired-placeholder",
+    "reason": "No executable assertions remain; cannot count as a tested requirement.",
+    "related_current_tests": [
+      "tests/Unit/OrderStatusSchemaTest.php",
+      "tests/Unit/ReviewStatusTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/StatusConsistencyTest.php",
+    "case": "Tests\\Feature\\StatusConsistencyTest::test_status_pages_do_not_throw_undefined_variable_errors",
+    "classification": "retired-placeholder",
+    "reason": "No executable assertions remain; cannot count as a tested requirement.",
+    "related_current_tests": [
+      "tests/Unit/OrderStatusSchemaTest.php",
+      "tests/Unit/ReviewStatusTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/StatusConsistencyTest.php",
+    "case": "Tests\\Feature\\StatusConsistencyTest::test_customer_module_has_no_status_conflict",
+    "classification": "retired-placeholder",
+    "reason": "No executable assertions remain; cannot count as a tested requirement.",
+    "related_current_tests": [
+      "tests/Unit/OrderStatusSchemaTest.php",
+      "tests/Unit/ReviewStatusTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/UserAvatarSyncTest.php",
+    "case": "Tests\\Feature\\UserAvatarSyncTest::test_header_and_sidebar_use_the_same_avatar_source",
+    "classification": "retired-outdated-schema",
+    "reason": "Outdated English models/columns or old booking workflow. Related current tests listed below; this is not a claim of one-to-one coverage.",
+    "related_current_tests": [
+      "tests/Feature/ProfileUpdateTest.php",
+      "tests/Unit/UserAvatarUrlTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/UserAvatarSyncTest.php",
+    "case": "Tests\\Feature\\UserAvatarSyncTest::test_avatar_falls_back_to_deterministic_image_when_no_avatar_column_value",
+    "classification": "retired-outdated-schema",
+    "reason": "Outdated English models/columns or old booking workflow. Related current tests listed below; this is not a claim of one-to-one coverage.",
+    "related_current_tests": [
+      "tests/Feature/ProfileUpdateTest.php",
+      "tests/Unit/UserAvatarUrlTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/UserAvatarSyncTest.php",
+    "case": "Tests\\Feature\\UserAvatarSyncTest::test_header_profile_button_uses_expandable_class_and_no_inline_size",
+    "classification": "retired-outdated-schema",
+    "reason": "Outdated English models/columns or old booking workflow. Related current tests listed below; this is not a claim of one-to-one coverage.",
+    "related_current_tests": [
+      "tests/Feature/ProfileUpdateTest.php",
+      "tests/Unit/UserAvatarUrlTest.php"
+    ]
+  },
+  {
+    "legacy_file": "tests/Legacy/UserAvatarSyncTest.php",
+    "case": "Tests\\Feature\\UserAvatarSyncTest::test_only_user_menu_button_gets_the_expandable_class",
+    "classification": "retired-outdated-schema",
+    "reason": "Outdated English models/columns or old booking workflow. Related current tests listed below; this is not a claim of one-to-one coverage.",
+    "related_current_tests": [
+      "tests/Feature/ProfileUpdateTest.php",
+      "tests/Unit/UserAvatarUrlTest.php"
+    ]
+  }
+]

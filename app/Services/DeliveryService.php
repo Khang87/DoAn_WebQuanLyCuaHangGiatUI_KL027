@@ -109,7 +109,14 @@ class DeliveryService
 
         if (array_key_exists('address', $data)) {
             $attributes['DiaChi'] = $data['address'];
-            $attributes['HinhThuc'] = 'Tại nhà';
+            $attributes['HinhThuc'] = $data['fulfillment'] ?? 'Tại nhà';
+        }
+
+        if (array_key_exists('fulfillment', $data)) {
+            $attributes['HinhThuc'] = $data['fulfillment'];
+            if ($data['fulfillment'] === 'Tại cửa hàng') {
+                $attributes['DiaChi'] = null;
+            }
         }
 
         if (array_key_exists('pickup_date', $data) && array_key_exists('pickup_time', $data)) {

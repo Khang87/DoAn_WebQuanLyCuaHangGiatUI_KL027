@@ -10,6 +10,7 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\ViewErrorBag;
 use Mockery;
 use Tests\TestCase;
 
@@ -23,7 +24,7 @@ class DeliverySchedulingTest extends TestCase
             config('database.default') !== 'sqlite'
             || config('database.connections.sqlite.database') !== ':memory:'
         ) {
-            $this->markTestSkipped('Delivery scheduling tests require isolated SQLite in-memory storage.');
+            $this->fail('Delivery scheduling tests require isolated SQLite in-memory storage.');
         }
 
         Schema::create('DonHang', function (Blueprint $table): void {
@@ -100,6 +101,28 @@ class DeliverySchedulingTest extends TestCase
             ->assertRedirect(route('deliveries.index'))
             ->assertSessionHas('error', 'Không thể xóa giao nhận. Vui lòng thử lại.')
             ->assertSessionMissing('success');
+    }
+
+    public function test_store_fulfillment_accepts_no_address_but_home_requires_an_address(): void
+    {
+        Carbon::setTestNow('2026-10-07 10:00:00');
+        $request = new LuuGiaoNhanRequest;
+        $data = ['order_id' => 1, 'method' => 'nhan_do', 'fulfillment' => 'Tại cửa hàng',
+            'pickup_date' => '2026-10-08', 'pickup_time' => '10:00'];
+        $this->assertFalse(Validator::make($data, $request->rules())->fails());
+        $data['fulfillment'] = 'Tại nhà';
+        $this->assertArrayHasKey('address', Validator::make($data, $request->rules())->errors()->toArray());
+    }
+
+    public function test_edit_form_selects_delivery_type_from_loai_giao_nhan_and_shows_fulfillment_separately(): void
+    {
+        $delivery = new GiaoNhan;
+        $delivery->forceFill(['GiaoNhanID' => 1, 'LoaiGiaoNhan' => 'GIAO_DO', 'HinhThuc' => 'Tại cửa hàng']);
+        $html = view('admin.deliveries.edit', ['delivery' => $delivery, 'orders' => collect(), 'employees' => collect(), 'errors' => new ViewErrorBag])->render();
+        $this->assertStringContainsString('Loại giao nhận', $html);
+        $this->assertMatchesRegularExpression('/value="giao_do"\s+selected/', $html);
+        $this->assertMatchesRegularExpression('/value="Tại cửa hàng"\s+selected/', $html);
+        $this->assertStringContainsString('name="fulfillment"', $html);
     }
 
     private function deliveryValidator(string $date, string $time): \Illuminate\Validation\Validator

@@ -5,10 +5,12 @@ namespace Tests\Feature;
 use App\Enums\OrderStatus;
 use App\Enums\PaymentStatus;
 use App\Http\Requests\Admin\LuuThanhToanRequest;
+use App\Models\ThanhToan;
 use App\Services\PaymentService;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Validation\ValidationException;
 use Tests\TestCase;
 
 class PaymentOrderRedirectTest extends TestCase
@@ -21,7 +23,7 @@ class PaymentOrderRedirectTest extends TestCase
             config('database.default') !== 'sqlite'
             || config('database.connections.sqlite.database') !== ':memory:'
         ) {
-            $this->markTestSkipped('Payment order redirect tests require isolated SQLite in-memory storage.');
+            $this->fail('Payment order redirect tests require isolated SQLite in-memory storage.');
         }
 
         Schema::create('KhachHang', function (Blueprint $table): void {
@@ -340,5 +342,40 @@ class PaymentOrderRedirectTest extends TestCase
             'Số tiền thanh toán không được vượt quá số tiền còn phải thu (20,000 đ).',
             $validator->errors()->first('amount'),
         );
+    }
+
+    public function test_service_rejects_overpayment_and_leaves_existing_collected_payments_unchanged(): void
+    {
+        DB::table('DonHang')->insert(['DonHangID' => 1, 'MaDonHang' => 'TEST', 'TrangThai' => OrderStatus::Received->value, 'ThanhTien' => 10000]);
+        DB::table('ThanhToan')->insert(['DonHangID' => 1, 'SoTien' => 6000, 'TrangThai' => PaymentStatus::Paid->value]);
+        try {
+            app(PaymentService::class)->create(['order_id' => 1, 'amount' => 5000, 'method' => 'cash']);
+            $this->fail('Overpayment should be rejected.');
+        } catch (ValidationException $exception) {
+            $this->assertArrayHasKey('amount', $exception->errors());
+        }
+        $this->assertSame(1, DB::table('ThanhToan')->count());
+        $this->assertEquals(6000, DB::table('ThanhToan')->sum('SoTien'));
+    }
+
+    public function test_service_cannot_collect_money_for_a_canceled_order(): void
+    {
+        DB::table('DonHang')->insert(['DonHangID' => 1, 'MaDonHang' => 'TEST', 'TrangThai' => OrderStatus::Cancelled->value, 'ThanhTien' => 10000]);
+        $this->expectException(ValidationException::class);
+        app(PaymentService::class)->create(['order_id' => 1, 'amount' => 5000, 'method' => 'cash']);
+    }
+
+    public function test_confirmation_validates_current_balance_after_another_payment_was_collected(): void
+    {
+        DB::table('DonHang')->insert(['DonHangID' => 1, 'MaDonHang' => 'TEST', 'TrangThai' => OrderStatus::Received->value, 'ThanhTien' => 10000]);
+        $pending = ThanhToan::create(['DonHangID' => 1, 'SoTien' => 10000, 'TrangThai' => PaymentStatus::Pending->value]);
+        DB::table('ThanhToan')->insert(['DonHangID' => 1, 'SoTien' => 6000, 'TrangThai' => PaymentStatus::Paid->value]);
+        try {
+            app(PaymentService::class)->update($pending, ['status' => PaymentStatus::Paid->value]);
+            $this->fail('Stale payment amount must not be confirmed.');
+        } catch (ValidationException $exception) {
+            $this->assertArrayHasKey('amount', $exception->errors());
+        }
+        $this->assertSame(PaymentStatus::Pending->value, $pending->fresh()->TrangThai);
     }
 }

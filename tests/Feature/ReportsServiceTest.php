@@ -26,6 +26,7 @@ class ReportsServiceTest extends TestCase
         'LoaiDoGiat',
         'DonViTinh',
         'ChiTietDonHang',
+        'ThongBao',
     ];
 
     private bool $testSchemaCreated = false;
@@ -38,7 +39,7 @@ class ReportsServiceTest extends TestCase
             config('database.default') !== 'sqlite'
             || config('database.connections.sqlite.database') !== ':memory:'
         ) {
-            $this->markTestSkipped('ReportsService tests require the isolated SQLite in-memory connection.');
+            $this->fail('ReportsService tests require the isolated SQLite in-memory connection.');
         }
 
         $this->createTestSchema();
@@ -242,12 +243,33 @@ class ReportsServiceTest extends TestCase
         $response->assertSessionHasErrors('range');
     }
 
+    public function test_reports_page_renders_for_owner_with_isolated_fixtures(): void
+    {
+        $this->actingAs($this->reportOwner())->get('/reports')
+            ->assertOk()->assertSee('Báo cáo', false);
+    }
+
+    public function test_reports_page_renders_with_all_supported_date_filters(): void
+    {
+        $this->actingAs($this->reportOwner());
+        foreach (['today', '7_days', 'this_month', 'last_month'] as $range) {
+            $this->get('/reports?range='.$range)->assertOk();
+        }
+        $this->get('/reports?range=custom&date_from=2026-01-01&date_to=2026-12-31')->assertOk();
+    }
+
     /**
      * Test-only schema for the in-memory SQLite connection; no migrations or
      * application/Supabase schema are touched.
      */
     private function createTestSchema(): void
     {
+        Schema::create('ThongBao', function (Blueprint $table): void {
+            $table->increments('ThongBaoID');
+            $table->integer('TaiKhoanID')->nullable();
+            $table->boolean('DaDoc')->default(false);
+            $table->timestamp('ThoiGianGui')->nullable();
+        });
         Schema::create('DonHang', function (Blueprint $table): void {
             $table->increments('DonHangID');
             $table->string('MaDonHang');

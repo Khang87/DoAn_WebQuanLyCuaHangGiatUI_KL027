@@ -2,6 +2,8 @@
 
 namespace App\Observers;
 
+use App\Enums\DeliveryStatus;
+use App\Enums\InvoiceStatus;
 use App\Enums\OrderStatus;
 use App\Enums\PaymentStatus;
 use App\Models\DonHang;
@@ -34,6 +36,31 @@ class OrderObserver
             $this->awardCompletionPoints($order);
             $this->markPaidIfFullySettled($order);
         }
+
+        if ($order->TrangThai === OrderStatus::Cancelled->value) {
+            $this->refundRedeemedPoints($order);
+            $order->hoaDons()->update(['TrangThai' => InvoiceStatus::Cancelled->value]);
+            $order->giaoNhans()->update(['TrangThai' => DeliveryStatus::Cancelled->dbValue()]);
+        }
+    }
+
+    private function refundRedeemedPoints(DonHang $order): void
+    {
+        DB::transaction(function () use ($order): void {
+            $locked = DonHang::query()->lockForUpdate()->findOrFail($order->getKey());
+            $action = 'Hoàn điểm tích lũy đơn hàng';
+            if ($locked->DiemSuDung <= 0 || NhatKyHeThong::query()
+                ->where('BangDuLieu', 'DonHang')->where('BanGhiID', $locked->getKey())
+                ->where('HanhDong', $action)->exists()) {
+                return;
+            }
+            $locked->khachHang()->firstOrFail()->addPoints((int) $locked->DiemSuDung);
+            NhatKyHeThong::create([
+                'TaiKhoanID' => Auth::id(), 'HanhDong' => $action,
+                'BangDuLieu' => 'DonHang', 'BanGhiID' => $locked->getKey(),
+                'DuLieuMoi' => ['DiemHoan' => (int) $locked->DiemSuDung], 'ThoiGian' => now(),
+            ]);
+        });
     }
 
     private function recordStatusChange(DonHang $order, ?string $oldStatus, ?string $newStatus): void
