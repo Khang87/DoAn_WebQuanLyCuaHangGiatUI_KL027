@@ -31,6 +31,7 @@ class AdminCommunicationTest extends TestCase
             $table->string('TenDangNhap');
             $table->string('MatKhau')->nullable();
             $table->unsignedInteger('KhachHangID')->nullable();
+            $table->unsignedInteger('NhanVienID')->nullable();
             $table->string('TrangThai')->default('Hoạt động');
         });
 
@@ -199,6 +200,7 @@ class AdminCommunicationTest extends TestCase
         $staff = $this->createAccount('notification-staff');
         $unrelated = $this->createAccount('notification-unrelated');
         $this->assignRole($customer, 'Khách hàng');
+        $staff->update(['NhanVienID' => 1]);
         $this->assignRole($staff, 'Nhân viên');
         $this->actingAs($staff)->withoutMiddleware();
 

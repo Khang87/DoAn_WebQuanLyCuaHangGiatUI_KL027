@@ -345,3 +345,7 @@ Liệt kê các route đã đăng ký; lệnh này không thay đổi cơ sở d
 ```sh
 php artisan route:list
 ```
+
+### Admin-triggered OTP và hộp thư mặc định
+
+OTP nội bộ dùng Redis hiện có (10 phút), gửi cùng mã qua Resend và bảng `ThongBao`; không có thay đổi schema Supabase. Sau triển khai chạy `php artisan notifications:grant-default` để gán quyền hộp thư cá nhân cho mọi nhóm hiện có. Nhóm mới từ UI được gán tự động và quyền mặc định được giữ qua mọi màn hình sửa quyền. Xem mã nguồn, routes, cấu hình và hướng dẫn triển khai tại [docs/ADMIN_TRIGGERED_OTP.md](docs/ADMIN_TRIGGERED_OTP.md).

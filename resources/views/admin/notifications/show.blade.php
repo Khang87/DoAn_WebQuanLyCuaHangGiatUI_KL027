@@ -40,6 +40,9 @@
     {{-- ============ CỘT CHÍNH (8/12) ============ --}}
     <div class="col-lg-7">
         <x-admin.detail.panel title="Nội dung thông báo" icon="bi-bell" :iconClass="'bg-primary-subtle text-primary'">
+            @if($notification->LoaiThongBao === 'internal_password_otp')
+                <a class="btn btn-primary mb-3" href="{{ route('internal-password.reset') }}">Đặt lại mật khẩu</a>
+            @endif
             <div class="detail-text mb-3">{{ $notification->NoiDung }}</div>
             <x-admin.detail.info-grid :columns="2">
                 <x-admin.detail.info-item label="Loại thông báo" :value="$typeLabels[$type] ?? 'Thông báo'" />

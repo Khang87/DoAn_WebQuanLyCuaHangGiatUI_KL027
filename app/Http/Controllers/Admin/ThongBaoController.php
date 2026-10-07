@@ -22,19 +22,19 @@ class ThongBaoController extends Controller
         // đánh dấu thông báo đó là đã đọc trước khi hiển thị danh sách.
         $requestedId = $request->input('id');
         if (is_numeric($requestedId)) {
-            $this->notificationService->markAsRead((int) $requestedId);
+            $this->notificationService->markAsRead((int) $requestedId, (int) $request->user()->getKey());
         }
 
         $notifications = $this->notificationService->getAll([
             'search' => $request->input('search'),
-            'user_id' => $request->input('user_id'),
+            'user_id' => (int) $request->user()->getKey(),
             'type' => $request->input('type'),
             'order_id' => $request->input('order_id'),
             'read' => $request->input('read'),
         ]);
 
-        $users = TaiKhoan::where('TrangThai', 'Hoạt động')->orderBy('TenDangNhap')->get();
-        $orders = DonHang::orderBy('NgayTao', 'desc')->get();
+        $users = collect([$request->user()]);
+        $orders = collect();
 
         return view('admin.notifications.index', compact('notifications', 'users', 'orders'));
     }
@@ -72,7 +72,7 @@ class ThongBaoController extends Controller
                     }
                 },
             ],
-            'LoaiThongBao' => 'nullable|string|max:100',
+            'LoaiThongBao' => 'nullable|string|max:50|not_in:internal_password_otp',
             'TieuDe' => 'required|string|max:200',
             'NoiDung' => 'required|string|max:1000',
             'DonHangID' => 'nullable|exists:DonHang,DonHangID',
@@ -100,7 +100,7 @@ class ThongBaoController extends Controller
 
     public function show(int $id)
     {
-        $notification = $this->notificationService->findForDetails($id);
+        $notification = $this->notificationService->findForDetails($id, (int) auth()->id());
 
         if (! $notification) {
             abort(404);
@@ -116,6 +116,8 @@ class ThongBaoController extends Controller
     public function edit(int $id)
     {
         $notification = $this->notificationService->find($id);
+        // OTP messages cannot be edited, reassigned, or deleted through management routes.
+        abort_if($notification?->LoaiThongBao === 'internal_password_otp', 404);
 
         if (! $notification) {
             abort(404);
@@ -130,6 +132,8 @@ class ThongBaoController extends Controller
     public function update(Request $request, int $id)
     {
         $notification = $this->notificationService->find($id);
+        // OTP messages cannot be edited, reassigned, or deleted through management routes.
+        abort_if($notification?->LoaiThongBao === 'internal_password_otp', 404);
 
         if (! $notification) {
             abort(404);
@@ -137,7 +141,7 @@ class ThongBaoController extends Controller
 
         $validated = $request->validate([
             'TaiKhoanID' => 'required|exists:TaiKhoan,TaiKhoanID',
-            'LoaiThongBao' => 'nullable|string|max:100',
+            'LoaiThongBao' => 'nullable|string|max:50|not_in:internal_password_otp',
             'TieuDe' => 'required|string|max:200',
             'NoiDung' => 'required|string|max:1000',
             'DonHangID' => 'nullable|exists:DonHang,DonHangID',
@@ -156,6 +160,8 @@ class ThongBaoController extends Controller
     public function destroy(int $id)
     {
         $notification = $this->notificationService->find($id);
+        // OTP messages cannot be edited, reassigned, or deleted through management routes.
+        abort_if($notification?->LoaiThongBao === 'internal_password_otp', 404);
 
         if (! $notification) {
             abort(404);
@@ -172,7 +178,7 @@ class ThongBaoController extends Controller
 
     public function markAsRead(int $id)
     {
-        $notification = $this->notificationService->markAsRead($id);
+        $notification = $this->notificationService->markAsRead($id, (int) auth()->id());
 
         if (! $notification) {
             abort(404);

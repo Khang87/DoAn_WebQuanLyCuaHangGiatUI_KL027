@@ -78,12 +78,13 @@
                     </a>
                 @endcan
 
-@can('accounts.reset_password')
+        @can('accounts.reset_password')
+        @if($account->NhanVienID && ! $account->KhachHangID && $account->TrangThai === 'Hoạt động')
             <x-admin.detail.confirm-form
                 :action="route('accounts.reset-password', $account->getKey())"
                 method="POST"
                 title="Gửi mã đặt lại mật khẩu?"
-                text="Gửi mã OTP đến email của tài khoản để người dùng tự đặt mật khẩu mới."
+                text="Gửi OTP qua email và thông báo riêng. Mã có hiệu lực trong 10 phút để người dùng tự đặt mật khẩu mới."
                 label="Gửi mã đặt lại mật khẩu"
                 icon="bi-key"
                 variant="btn-outline-primary"
@@ -92,6 +93,7 @@
                 block
                 :iconName="'question'"
             />
+        @endif
         @endcan
 
         @if($account->getKey() !== auth()->id())

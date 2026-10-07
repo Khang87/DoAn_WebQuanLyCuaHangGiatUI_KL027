@@ -241,3 +241,9 @@ Domain production: [https://do-an-web-quan-ly-cua-hang-giat-ui.vercel.app](https
 - Test SQLite in-memory kiểm chứng nhánh nghiệp vụ nhưng không chạy advisory transaction lock PostgreSQL và không xác minh race-condition/deadlock dưới tải đồng thời. Không test nào ở đây kết nối hoặc ghi lên Supabase Live.
 - Kiểm thử end-to-end production đã dùng một ảnh PNG 1×1 và xác nhận URL/avatar còn tồn tại sau reload. Phạm vi này không kiểm tra các loại/kích cỡ ảnh khác hoặc tải lên đồng thời; không chạy DDL/migration và không thay đổi cấu hình bucket. PHPUnit cục bộ không thay thế kiểm thử trình duyệt trên production.
 - Chưa có class riêng tên `ChatAuthorizationTest`; kiểm thử giao tiếp hiện nằm trong `AdminCommunicationTest`. Các ca hiện có kiểm tra route quản trị cho Quản lý/Nhân viên và gửi tới tài khoản khách hàng liên kết, nhưng chưa kiểm thử việc khách hàng đăng nhập không thể đọc hội thoại đơn khác hoặc badge UI theo vai trò. Giao diện hiện phân biệt người gửi bằng nhãn “Cửa hàng”/tên tài khoản.
+
+### Admin-triggered OTP và quyền Thông báo mặc định
+
+`tests/Feature/InternalOtpTest.php` kiểm tra gửi OTP hai kênh, TTL 10 phút, giới hạn 5 lần sai, chống dùng lại, gửi lại sau cooldown, lỗi gửi email, giới hạn tài khoản nội bộ, email trùng/đổi, tài khoản bị khóa, bảo vệ thông báo cá nhân, giữ quyền mặc định khi sửa nhóm và đăng nhập hộp thư cho nhóm mới/khách hàng. Kiểm thử dùng SQLite/cache cục bộ và mock Resend; không tác động Supabase hay gửi email thật.
+
+Kết quả kiểm chứng ngày 2026-10-07: **275 passed, 192 skipped, 0 failed (1472 assertions)**. Laravel Pint, route cache và Blade view cache đều thành công. Các bài skipped là bộ legacy đã bị bỏ qua trong cấu hình có sẵn.

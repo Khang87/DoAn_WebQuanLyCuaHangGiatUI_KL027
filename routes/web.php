@@ -24,6 +24,7 @@ use App\Http\Controllers\Admin\TaiKhoanController;
 use App\Http\Controllers\Admin\ThanhToanController;
 use App\Http\Controllers\Admin\ThongBaoController;
 use App\Http\Controllers\Admin\VaiTroController;
+use App\Http\Controllers\Auth\InternalPasswordResetController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\PasswordResetController;
 use App\Http\Controllers\Staff\DashboardController as StaffDashboardController;
@@ -49,6 +50,9 @@ Route::post('/forgot-password', [PasswordResetController::class, 'sendResetOtp']
 Route::get('/reset-password', [PasswordResetController::class, 'showResetForm'])->name('password.reset');
 Route::post('/reset-password', [PasswordResetController::class, 'resetPassword'])->name('password.update');
 
+Route::get('/internal/reset-password', [InternalPasswordResetController::class, 'show'])->name('internal-password.reset');
+Route::post('/internal/reset-password', [InternalPasswordResetController::class, 'update'])->middleware('throttle:10,1')->name('internal-password.update');
+
 // Protected Routes
 Route::middleware(['auth', 'reject.customer'])->group(function () {
 
@@ -69,6 +73,7 @@ Route::middleware(['auth', 'reject.customer'])->group(function () {
             ['orders.index', 'orders.view'],
             ['customers.index', 'customers.view'],
             ['reports.index', 'reports.view'],
+            ['notifications.index', 'notifications.view'],
         ] as [$route, $permission]) {
             if ($user->canPermission($permission)) {
                 return redirect()->route($route);
@@ -247,18 +252,10 @@ Route::middleware(['auth', 'reject.customer'])->group(function () {
     Route::post('accounts/{account}/reset-password', [TaiKhoanController::class, 'resetPassword'])->middleware('permission:accounts.reset_password')->name('accounts.reset-password');
 
     // Notifications Management
-    Route::resource('notifications', ThongBaoController::class)
-        ->middlewareFor(['index', 'show'], 'permission:notifications.view')
+    Route::resource('notifications', ThongBaoController::class)->except(['index', 'show'])
         ->middlewareFor(['create', 'store'], 'permission:notifications.create')
         ->middlewareFor(['edit', 'update'], 'permission:notifications.edit')
         ->middlewareFor('destroy', 'permission:notifications.delete');
-    Route::patch('notifications/{notification}/mark-read', [ThongBaoController::class, 'markAsRead'])
-        ->middleware('permission:notifications.edit')
-        ->name('notifications.mark-read');
-    Route::post('notifications/mark-all-read', [ThongBaoController::class, 'markAllAsRead'])
-        ->middleware('permission:notifications.view')
-        ->name('notifications.mark-all-read');
-
     // ===== PHÂN QUYỀN ĐỘNG (RBAC) =====
     Route::get('roles', [VaiTroController::class, 'index'])->name('roles.index');
     Route::post('roles', [VaiTroController::class, 'store'])->name('roles.store');
@@ -305,4 +302,12 @@ Route::middleware(['auth', 'reject.customer'])->group(function () {
 // Default route redirect to login or dashboard
 Route::get('/', function () {
     return redirect()->route('login');
+});
+
+// Personal inbox is available to every role, including customers.
+Route::middleware(['auth', 'permission:notifications.view'])->group(function () {
+    Route::get('notifications', [ThongBaoController::class, 'index'])->name('notifications.index');
+    Route::get('notifications/{notification}', [ThongBaoController::class, 'show'])->whereNumber('notification')->name('notifications.show');
+    Route::patch('notifications/{notification}/mark-read', [ThongBaoController::class, 'markAsRead'])->name('notifications.mark-read');
+    Route::post('notifications/mark-all-read', [ThongBaoController::class, 'markAllAsRead'])->name('notifications.mark-all-read');
 });
