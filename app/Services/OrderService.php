@@ -482,6 +482,21 @@ class OrderService
     {
         $this->promotionRejection = null;
 
+        // Direct callers must obey the same inspection boundary as the Web form.
+        Validator::make($data, [
+            'BookingID' => ['prohibited'],
+            'TrangThai' => ['required', 'in:'.OrderStatus::Received->value],
+            'items' => ['required', 'array', 'min:1'],
+            'items.*.TinhTrangTruocKhiGiat' => ['required', 'string', 'max:320'],
+        ], [
+            'BookingID.prohibited' => 'Hãy tạo đơn từ màn hình kiểm kê Booking.',
+            'TrangThai.in' => 'Đơn mới chỉ được tạo ở trạng thái Đã tiếp nhận sau khi kiểm kê.',
+        ])->validate();
+        foreach ($data['items'] as &$item) {
+            $item['TinhTrangTruocKhiGiat'] = trim($item['TinhTrangTruocKhiGiat']);
+        }
+        unset($item);
+
         return DB::transaction(function () use ($data) {
             $data['MaDonHang'] = 'TMP'.Str::ulid();
 

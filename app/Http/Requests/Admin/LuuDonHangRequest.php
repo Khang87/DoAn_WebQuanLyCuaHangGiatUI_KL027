@@ -47,26 +47,29 @@ class LuuDonHangRequest extends FormRequest
             ? $order->getKey()
             : ($order ?? $this->route('id'));
 
+        $isCreating = $this->isMethod('POST');
+
         return [
             'MaDonHang' => ['nullable', 'string', 'max:30', Rule::unique('DonHang', 'MaDonHang')->ignore($id, 'DonHangID')],
             'KhachHangID' => ['required', 'integer', 'exists:KhachHang,KhachHangID'],
             'NhanVienID' => ['required', 'integer', 'exists:NhanVien,NhanVienID'],
-            'BookingID' => ['nullable', 'integer', 'exists:Booking,BookingID'],
+            'BookingID' => $isCreating ? ['prohibited'] : ['nullable', 'integer', 'exists:Booking,BookingID'],
             'KhuyenMaiID' => ['nullable', 'integer', 'exists:KhuyenMai,KhuyenMaiID'],
             'promotion_code' => ['nullable', 'string', 'max:50'],
             'DiemSuDung' => ['nullable', 'integer', 'min:0'],
             'use_points' => ['nullable', 'boolean'],
             'PhiGiaoHang' => ['nullable', 'numeric', 'min:0'],
-            'TrangThai' => ['required', 'in:'.implode(',', OrderStatus::values())],
+            'TrangThai' => ['required', Rule::in($isCreating ? [OrderStatus::Received->value] : OrderStatus::values())],
             'cancellation_reason' => ['nullable', 'required_if:TrangThai,Đã hủy', 'string', 'max:500'],
             'GhiChu' => ['nullable', 'string', 'max:500'],
-            'items' => ['nullable', 'array'],
+            'items' => $isCreating ? ['required', 'array', 'min:1'] : ['nullable', 'array'],
             'items.*.DichVuID' => ['required', 'integer', 'exists:DichVu,DichVuID'],
             'items.*.LoaiDoGiatID' => ['required', 'integer', 'exists:LoaiDoGiat,LoaiDoGiatID'],
             'items.*.DonViTinhID' => ['required', 'integer', 'exists:DonViTinh,DonViTinhID'],
             'items.*.DonGia' => ['nullable', 'numeric', 'min:0'],
             'items.*.SoLuong' => ['nullable', 'integer', 'min:1'],
             'items.*.KhoiLuong' => ['nullable', 'numeric', 'min:0'],
+            'items.*.TinhTrangTruocKhiGiat' => [$isCreating ? 'required' : 'sometimes', 'string', 'max:320'],
             'items.*.GhiChu' => ['nullable', 'string', 'max:500'],
         ];
     }
@@ -128,7 +131,12 @@ class LuuDonHangRequest extends FormRequest
             'NhanVienID.exists' => 'Nhân viên không tồn tại.',
             'KhuyenMaiID.exists' => 'Chương trình khuyến mãi không tồn tại.',
             'TrangThai.required' => 'Trạng thái là bắt buộc.',
-            'TrangThai.in' => 'Trạng thái không hợp lệ.',
+            'TrangThai.in' => $this->isMethod('POST')
+                ? 'Đơn mới chỉ được tạo ở trạng thái Đã tiếp nhận sau khi kiểm kê.'
+                : 'Trạng thái không hợp lệ.',
+            'BookingID.prohibited' => 'Hãy tạo đơn từ màn hình kiểm kê Booking.',
+            'items.required' => 'Vui lòng kiểm kê ít nhất một mặt hàng trước khi tạo đơn.',
+            'items.*.TinhTrangTruocKhiGiat.required' => 'Vui lòng nhập tình trạng trước khi giặt.',
             'GhiChu.max' => 'Ghi chú không quá 500 ký tự.',
             'items.*.DichVuID.required' => 'Hãy chọn dịch vụ cho từng mặt hàng.',
             'items.*.LoaiDoGiatID.required' => 'Hãy chọn loại đồ giặt cho từng mặt hàng.',
