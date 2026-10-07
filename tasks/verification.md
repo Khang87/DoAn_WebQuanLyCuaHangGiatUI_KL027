@@ -33,4 +33,9 @@ Date: 07/10/2026. Application base: `0f030d1`. Work branch: `codex/postgres-veri
 - npm audit: **0 vulnerabilities** after the narrowly scoped override. Only package version changed in lock graph is shell-quote 1.9.0 → 1.11.0. npm also normalized lockfile name/platform libc metadata; no manual lockfile edit. Changelog 1.11.0 and official advisory reviewed.
 - Pint passed for all 8 new PostgreSQL PHP files; shell syntax, workflow YAML/events/permissions/SHA pins and `git diff --check` passed. TESTCASES has 316 consecutive rows, including 26 additions and all 29 legacy rows retained.
 - Native Vite build failed fetching fonts.bunny.net (EAI_AGAIN/network policy); project Vite config untouched. Composer audit failed with HTTP proxy 403 for packagist.org advisory API. These are recorded as blocked checks, not passes; no policy bypass or ignored gate.
-- CI file contains strict PHP/PostgreSQL and frontend/build/audit jobs. Actual GitHub workflow execution and required-check branch protection remain to be verified after publication. Local fixture tests do not establish production ACL/RLS, JWT integration, browser E2E, pricing/payment race coverage or Supabase Live correctness.
+- CI file contains strict PHP/PostgreSQL and frontend/build/audit jobs. GitHub workflow execution passed on publication; required-check branch protection is separate repository configuration and has not been changed. Local fixture tests do not establish production ACL/RLS, JWT integration, browser E2E, pricing/payment race coverage or Supabase Live correctness.
+
+## Published CI evidence
+
+- GitHub Actions [run 37644219054](https://github.com/Khang87/DoAn_WebQuanLyCuaHangGiatUI_KL027/actions/runs/37644219054), exact head `512ae1240722db28961bb0ef15173ab3e2cf70bc`: **PHP and PostgreSQL** and **Frontend and build** both succeeded. Every check step passed, including native production build, Chromium, PostgreSQL and both dependency audits. This resolves the local network limitations without weakening checks.
+- PR: [#8](https://github.com/Khang87/DoAn_WebQuanLyCuaHangGiatUI_KL027/pull/8). The final documentation commit must also have successful checks before merge.

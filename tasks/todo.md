@@ -71,4 +71,4 @@
 - Files: `tasks/verification.md` and relevant test instructions. Dependency: RV6.
 
 ## Checkpoint C
-- [ ] Approved scope is complete; all checks pass or remaining failures are explicitly documented without weakened gates.
+- [x] Approved scope is complete; all checks pass or remaining failures are explicitly documented without weakened gates. GitHub Actions run 37644219054 passed both jobs on 512ae12, including native build and both audits.

@@ -309,7 +309,7 @@
 | 284 | TC-PG-RACE-DELIVERY | Đồng thời PostgreSQL | Hai tiến trình tạo cùng chặng GIAO_DO | Một thành công, một validation method; chỉ một phiếu noncancelled | tests/Postgres/concurrency.php | Đạt; mutation guard bị phát hiện |
 | 285 | TC-PG-RACE-POINTS | Đồng thời PostgreSQL | Hai Booking cùng khách có 500 điểm, mỗi Booking yêu cầu 400 | Một thành công; còn 100; loser rollback Order/detail/chặng/audit và giữ booking pending | tests/Postgres/concurrency.php | Đạt: quan sát hai phiên chờ khóa |
 | 286 | TC-PG-QUOTE-SECURITY | Dependency security | Quote token chứa ký tự xuống dòng sau comment | Từ chối; quote/parse thông thường vẫn round-trip | tests/Frontend/shell-quote.test.mjs | Đạt; thất bại trước bản vá 1.11.0 |
-| 287 | TC-PG-CI-GATES | CI | PR vào main hoặc push main | Chạy PHP/PostgreSQL và frontend/build/audit; lỗi trả nonzero | .github/workflows/verification.yml | Đã cấu hình; cần xác minh workflow trên GitHub |
+| 287 | TC-PG-CI-GATES | CI | PR vào main hoặc push main | Chạy PHP/PostgreSQL và frontend/build/audit; lỗi trả nonzero | .github/workflows/verification.yml | Đạt trên GitHub Actions run 37644219054, commit 512ae12 |
 
 | Nhóm kiểm thử |
 | --- |

@@ -168,7 +168,7 @@ Runner PostgreSQL 17 mới chạy SQL RPC có sẵn, **66 assertions hợp đồ
 bash scripts/test-postgres.sh
 ```
 
-Chromium controls regression và test bảo mật `shell-quote` đạt. Override riêng sang `shell-quote=1.11.0` khắc phục GHSA-pqg4-j6r4-53mv; `npm audit --audit-level=high` báo 0 vulnerabilities. `npm run build` nguyên bản vẫn bị chặn tải Bunny font trong môi trường hiện tại; Composer audit bị chặn advisory endpoint `packagist.org`. Không thay build config hay tắt audit để báo thành công.
+Chromium controls regression và test bảo mật `shell-quote` đạt. Override riêng sang `shell-quote=1.11.0` khắc phục GHSA-pqg4-j6r4-53mv; `npm audit --audit-level=high` báo 0 vulnerabilities. `npm run build` nguyên bản và Composer audit bị hạn chế mạng khi chạy local; cả hai đã đạt trên GitHub Actions [run 37644219054](https://github.com/Khang87/DoAn_WebQuanLyCuaHangGiatUI_KL027/actions/runs/37644219054), commit `512ae12`, cùng toàn bộ hai job PHP/PostgreSQL và frontend/build/audit. Không thay build config hay tắt audit.
 
 [TESTCASES.md](./TESTCASES.md) có **316 ca**, hoàn toàn dưới dạng bảng Markdown, STT **1–316**: **287 ca luồng hiện tại**, gồm 26 ca PostgreSQL/runner/CI/security mới, và **29 ca legacy**. Nhóm hiện tại giữ **21 ca `TC-OTP-NOTIFY-01`–`21`**. Số dòng tài liệu không phải số test PHPUnit; ca chỉ có đặc tả vẫn không được ghi PASSED.
 
