@@ -1,5 +1,7 @@
 -- TEST ONLY: disposable local database; never run this file on Supabase.
 DO $$ BEGIN IF current_database()<>'laundry_rpc_test' THEN RAISE EXCEPTION 'Only the disposable laundry_rpc_test database is allowed'; END IF; END $$;
+CREATE TABLE public.test_fixture_identity (id boolean PRIMARY KEY DEFAULT true CHECK (id));
+COMMENT ON TABLE public.test_fixture_identity IS 'laundry verification fixture v1';
 CREATE SCHEMA auth;
 CREATE SCHEMA private;
 CREATE SCHEMA extensions;
@@ -996,8 +998,8 @@ BEGIN
   );
 END;
 $function$;
-\i /source/docs/supabase/rpc-business-rules.rollback.sql
-\i /source/docs/supabase/rpc-business-rules.sql
+\ir ../../docs/supabase/rpc-business-rules.rollback.sql
+\ir ../../docs/supabase/rpc-business-rules.sql
 CREATE TRIGGER test_create_invoice AFTER INSERT ON public."DonHang" FOR EACH ROW EXECUTE FUNCTION private.create_legacy_order_invoice();
 CREATE TRIGGER test_status_insert AFTER INSERT ON public."DonHang" FOR EACH ROW EXECUTE FUNCTION private.record_legacy_order_status_change();
 CREATE TRIGGER test_status_update AFTER UPDATE OF "TrangThai" ON public."DonHang" FOR EACH ROW EXECUTE FUNCTION private.record_legacy_order_status_change();
