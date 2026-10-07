@@ -282,6 +282,11 @@ class InternalOtpTest extends TestCase
         $this->post(route('login'), ['email' => $this->staff->Email, 'password' => 'OldPassword123'])
             ->assertRedirect(route('notifications.index'));
         $this->get(route('dashboard'))->assertRedirect(route('notifications.index'));
+        $this->get(route('notifications.index'))->assertOk()
+            ->assertSee('<span>Thông báo</span>', false)
+            ->assertDontSee('<span>Khuyến mãi</span>', false)
+            ->assertDontSee('<span>Báo cáo & Thống kê</span>', false)
+            ->assertDontSee('<span>Tài khoản</span>', false);
     }
 
     public function test_customers_with_default_permission_can_log_in_to_inbox_only(): void

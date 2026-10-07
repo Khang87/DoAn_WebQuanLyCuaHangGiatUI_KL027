@@ -197,8 +197,9 @@
                     @endcan
                 </ul>
             </div>
+            @endif
 
-            <!-- He thong (Chi quan ly) -->
+            <!-- Hệ thống: mỗi module kiểm tra quyền riêng. -->
             <div class="sidebar-menu-section">
                 <div class="sidebar-menu-title">Hệ thống</div>
                 <ul class="sidebar-menu-list">
@@ -242,7 +243,6 @@
                     @endcan
                 </ul>
             </div>
-            @endif
         </div>
 
         <!-- Sidebar Profile -->
