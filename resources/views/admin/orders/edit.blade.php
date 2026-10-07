@@ -48,10 +48,6 @@
                 $customer->KhachHangID => (int) ($customer->diemTichLuy?->DiemHienTai ?? 0),
             ])->toJson();
 
-            $units = collect($units);
-            $unitLabels = $units->mapWithKeys(fn ($unit) => [
-                $unit->DonViTinhID => $unit->KyHieu ?: $unit->TenDonViTinh,
-            ])->all();
         @endphp
         <form action="{{ route('orders.update', $order->DonHangID) }}" method="POST" id="orderForm">
             @csrf
@@ -354,8 +350,7 @@
         if (event.target.matches('.item-service')) {
             syncGarmentOptions(row);
         }
-        const isSelection = event.target.matches('.item-service, .item-garment, .item-unit-value');
-        updateRow(row, isSelection);
+        updateRow(row);
         updateTotals();
     });
     pointsToggle.addEventListener('change', () => {
@@ -421,7 +416,6 @@
             syncGarmentOptions(row);
             row.querySelector('.item-unit-value').value = '';
             row.querySelector('.item-price').value = '0';
-            delete row.querySelector('.item-price').dataset.autoFilled;
             updateTotals();
         }
     });

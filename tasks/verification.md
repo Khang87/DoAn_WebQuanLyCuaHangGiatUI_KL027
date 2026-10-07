@@ -3,7 +3,7 @@
 Baseline: 573a5102. Scope and autonomous implementation/push/merge authorized in conversation.
 
 - PHP 8.4.26 / Laravel 13.34.0: **328 tests, 1,715 assertions, no failures/skips**, using phpunit.xml SQLite :memory: in a Docker container with network disabled.
-- Chromium 140 through CDP: real DOM regression passes for multi-unit selection, per-unit price, readonly/tampered price restoration, quantity/weight switching, minimum kg, and missing tuple. No npm dependency added. This is a focused controls test, not a production browser-to-database test.
+- Chromium 151.0.7922.173 through CDP: real DOM regression passes for multi-unit selection, per-unit price, readonly/tampered price restoration, quantity/weight switching, minimum kg, and missing tuple. No npm dependency added. This is a focused controls test, not a production browser-to-database test.
 - Mutation verification: reversing allowed-order-state guard fails the return execution test; dropping the selected unit from price lookup fails the browser regression. Both files restored before green verification.
 - Pint on changed PHP files and Blade compilation passed. Container has no Git, so explicit file lists replace --dirty.
 - Original npm run build cannot download fonts.bunny.net in this environment. Vite build with only the font download removed in a temporary configuration outside the repository passes (48 modules). Project vite.config.js unchanged. Remote deployment checks are inspected before merge.
@@ -18,3 +18,5 @@ Baseline: 573a5102. Scope and autonomous implementation/push/merge authorized in
 - Preserve unrelated fields and original timestamp seconds during delivery edits.
 - Retain inactive staff only for unchanged historical assignments. New assignments must be active.
 - Refresh locked Booking status/customer/reward markers; overlay only dirty inspection fields. Preserve unsaved edited receive/return addresses and caller reward-marker cleanup.
+
+Behavior-preserving cleanup separately removes obsolete unit-label/refresh-price scaffolding and controller pass-through wrappers; targeted Booking/order tests and Blade compilation verify it.

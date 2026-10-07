@@ -28,17 +28,8 @@ class DonHangController extends Controller
 
     public function __construct(
         private OrderService $orderService,
+        private PricingService $pricingService,
     ) {}
-
-    private function pricingOptions()
-    {
-        return app(PricingService::class)->orderOptions();
-    }
-
-    private function receivingPricingOptions()
-    {
-        return $this->pricingOptions();
-    }
 
     /**
      * Danh sách nhóm dịch vụ và đơn vị tính lấy từ các bảng tiếng Việt hiện có.
@@ -78,7 +69,7 @@ class DonHangController extends Controller
         $promotions = KhuyenMai::where('TrangThai', 'Hoạt động')->get();
         $employees = NhanVien::where('TrangThai', 'Hoạt động')->orderBy('HoTen')->get(['NhanVienID', 'HoTen']);
         $statusFlow = $this->orderService->getStatusFlow();
-        $pricings = $this->pricingOptions();
+        $pricings = $this->pricingService->orderOptions();
         $nextOrderCode = $this->orderService->nextOrderCode();
 
         return view('admin.orders.create', array_merge(
@@ -130,7 +121,7 @@ class DonHangController extends Controller
             $units = DonViTinh::orderBy('TenDonViTinh')->get();
             $garmentCategories = DanhMucLoaiDoGiat::orderBy('TenDanhMuc')
                 ->get(['DanhMucID', 'TenDanhMuc']);
-            $inspectionPricings = $this->receivingPricingOptions();
+            $inspectionPricings = $this->pricingService->orderOptions();
         }
 
         return view('admin.orders.show', compact(
@@ -248,7 +239,7 @@ class DonHangController extends Controller
         $promotions = KhuyenMai::where('TrangThai', 'Hoạt động')->get();
         $employees = NhanVien::where(fn ($query) => $query->where('TrangThai', 'Hoạt động')->orWhere('NhanVienID', $order->NhanVienID))->orderBy('HoTen')->get(['NhanVienID', 'HoTen']);
         $statusFlow = $this->orderService->getStatusFlow();
-        $pricings = $this->pricingOptions();
+        $pricings = $this->pricingService->orderOptions();
 
         return view('admin.orders.edit', array_merge(
             compact('order', 'customers', 'services', 'garments', 'promotions', 'employees', 'statusFlow', 'pricings'),
