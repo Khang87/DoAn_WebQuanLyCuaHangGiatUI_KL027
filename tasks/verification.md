@@ -20,3 +20,17 @@ Baseline: 573a5102. Scope and autonomous implementation/push/merge authorized in
 - Refresh locked Booking status/customer/reward markers; overlay only dirty inspection fields. Preserve unsaved edited receive/return addresses and caller reward-marker cleanup.
 
 Behavior-preserving cleanup separately removes obsolete unit-label/refresh-price scaffolding and controller pass-through wrappers; targeted Booking/order tests and Blade compilation verify it.
+
+
+# Verification: PostgreSQL and CI review priorities
+
+Date: 07/10/2026. Application base: `0f030d1`. Work branch: `codex/postgres-verification-ci-20261007`. Specs, scope map and plan approved by owner. Application PHP, routes, financial policy and SQLite config unchanged.
+
+- Existing PHPUnit suite on PHP 8.4.26 / Laravel 13.34.0: **328 tests, 1,715 assertions**, no warnings/risky failures with strict flags; `.env` excluded, APP_URL fixed to localhost:8000, ephemeral key and proper cache/data directories. Blade compile passed.
+- PostgreSQL 17 runner: **4 unsafe-target refusals**, existing RPC SQL assertions, **66 Web/RPC assertions** (including wrong fixture marker), **3 real concurrent scenarios / 21 assertions**. Both worker sessions observed waiting on locks before release. Success and failed/mutated runs removed their owned containers.
+- Guard mutation on an isolated source copy changed DeliveryService's noncancelled predicate to cancelled. Concurrent creation returned two successes; suite correctly failed with exit 1. Original application source was never modified; full original PostgreSQL runner passed afterwards.
+- Frontend: original Chromium 151 controls test passed with required sandbox permissions; new shell-quote security test failed on 1.9.0 and passed on 1.11.0. Four line terminators rejected; ordinary quoted arguments round-trip.
+- npm audit: **0 vulnerabilities** after the narrowly scoped override. Only package version changed in lock graph is shell-quote 1.9.0 → 1.11.0. npm also normalized lockfile name/platform libc metadata; no manual lockfile edit. Changelog 1.11.0 and official advisory reviewed.
+- Pint passed for all 8 new PostgreSQL PHP files; shell syntax, workflow YAML/events/permissions/SHA pins and `git diff --check` passed. TESTCASES has 316 consecutive rows, including 26 additions and all 29 legacy rows retained.
+- Native Vite build failed fetching fonts.bunny.net (EAI_AGAIN/network policy); project Vite config untouched. Composer audit failed with HTTP proxy 403 for packagist.org advisory API. These are recorded as blocked checks, not passes; no policy bypass or ignored gate.
+- CI file contains strict PHP/PostgreSQL and frontend/build/audit jobs. Actual GitHub workflow execution and required-check branch protection remain to be verified after publication. Local fixture tests do not establish production ACL/RLS, JWT integration, browser E2E, pricing/payment race coverage or Supabase Live correctness.

@@ -1,0 +1,81 @@
+name: Verification
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: verification-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  php-postgres:
+    name: PHP and PostgreSQL
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      APP_ENV: testing
+      APP_URL: http://localhost:8000
+      CACHE_STORE: array
+      SESSION_DRIVER: array
+      QUEUE_CONNECTION: sync
+      MAIL_MAILER: array
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: shivammathur/setup-php@b604ade2a87db23f8871b7182e69ec5e75effb45 # v2
+        with:
+          php-version: '8.4'
+          extensions: pdo_sqlite, pdo_pgsql, mbstring, dom, xml, zip, gd
+          tools: composer:v2
+          coverage: none
+      - name: Install locked PHP dependencies
+        run: |
+          mkdir -p storage/framework/cache/data storage/framework/views storage/framework/sessions storage/logs bootstrap/cache
+          composer install --no-interaction --prefer-dist --no-progress
+      - name: PHP syntax and changed-file formatting
+        env:
+          BASE_COMMIT: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          find app bootstrap config routes tests -name '*.php' -print0 | xargs -0 -n1 php -l > /dev/null
+          bash scripts/check-php-format.sh
+      - name: SQLite regression suite and Blade compilation
+        run: |
+          export APP_KEY="base64:$(openssl rand -base64 32)"
+          php vendor/bin/phpunit --fail-on-warning --fail-on-risky
+          php artisan view:cache
+      - name: PostgreSQL RPC, Web contracts and concurrency
+        run: bash scripts/test-postgres.sh
+      - name: PHP dependency security audit
+        run: composer audit --locked --no-interaction
+
+  frontend:
+    name: Frontend and build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install locked frontend dependencies
+        run: npm ci --ignore-scripts
+      - name: Real Chromium controls regression
+        env:
+          CHROMIUM_BIN: google-chrome
+        run: node --test tests/Frontend/*.test.mjs
+      - name: Native production build
+        run: npm run build
+      - name: Frontend dependency security audit
+        run: npm audit --audit-level=high
