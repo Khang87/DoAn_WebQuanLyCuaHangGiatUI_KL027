@@ -78,3 +78,7 @@ psql -U postgres -d laundry_rpc_test -v ON_ERROR_STOP=1 -f /source/tests/Postgre
 ```
 
 Bộ PHP: `php artisan test --compact`. PHPUnit buộc SQLite `:memory:` và DB_URL rỗng; cấu hình sai phải fail, không tạo skipped giả. Kết quả hai bộ độc lập không gộp số ASSERT PostgreSQL thành số test PHPUnit. Báo cáo 192 case cũ: `docs/testing/LEGACY_TESTS.md`.
+
+## Kiểm chứng tự động Web/RPC
+
+Runner `bash scripts/test-postgres.sh` dùng PostgreSQL 17 cục bộ dùng một lần, không nạp `.env` Live. Ngoài SQL RPC có sẵn, bộ mới chạy Laravel trên cùng fixture, đối chiếu giá/điểm/lifecycle và kiểm tra ba race với các process độc lập. Chi tiết quyền theo tác nhân, phạm vi fixture và giới hạn ACL/RLS/E2E tại [POSTGRES_VERIFICATION.md](../testing/POSTGRES_VERIFICATION.md). Giá chỉnh tự do trong tiếp nhận Pending là hợp đồng legacy, không phải form Inspection Booking; không mở rộng price override ở luồng mới.

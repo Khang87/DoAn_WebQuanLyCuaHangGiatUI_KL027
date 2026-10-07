@@ -18,5 +18,10 @@
     },
     "dependencies": {
         "@supabase/supabase-js": "^2.117.2"
+    },
+    "overrides": {
+        "concurrently": {
+            "shell-quote": "1.11.0"
+        }
     }
 }

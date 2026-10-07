@@ -160,15 +160,23 @@ Chỉ sử dụng tài khoản được cấp trong môi trường cục bộ ho
 
 ### Trạng thái kiểm thử hồi quy
 
-Kết quả đầy đủ gần nhất được ghi nhận ở bản vá hợp đồng đơn hàng ngày **07/10/2026**: **328 tests, 1.715 assertions, 0 failed, 0 skipped**, PHP 8.4.26 / Laravel 13.34.0, SQLite `:memory:` trong container tắt mạng. Đây là baseline đã chạy trước lần cập nhật tài liệu; lần này không chạy lại suite. Chi tiết môi trường, mutation và giới hạn xem [tasks/verification.md](./tasks/verification.md).
+Đợt kiểm chứng ngày **07/10/2026** trên mã ứng dụng nền `0f030d1` và các bổ sung kiểm thử hiện tại: **328 tests, 1.715 assertions**, đạt với PHP 8.4.26 / Laravel 13.34.0, SQLite `:memory:` trong container tắt mạng, không nạp `.env` production. PHPUnit chạy với `--fail-on-warning --fail-on-risky`; biên dịch Blade đạt.
 
-Hồi quy DOM bằng Chromium 151 đã xác minh chọn nhiều đơn vị, đơn giá readonly, khôi phục giá bị sửa, đổi số lượng/khối lượng, KG tối thiểu và tuple thiếu giá. Đây là kiểm thử controls cô lập, chưa phải luồng production từ browser đến database. Pint và biên dịch Blade đã đạt trong bản vá. `npm run build` bị chặn tải font Bunny tại môi trường kiểm thử; build với cấu hình tạm bỏ riêng bước tải font đạt 48 modules, không thay đổi Vite config của dự án.
+Runner PostgreSQL 17 mới chạy SQL RPC có sẵn, **66 assertions hợp đồng Web/RPC**, **3 race / 21 assertions** và 4 ca từ chối cấu hình trước kết nối. Ba race quan sát hai phiên cùng chờ khóa trước khi kiểm tra kết quả lưu. Mutation đảo guard phiếu trùng bị bộ test phát hiện trên bản sao cách ly. Hướng dẫn: [POSTGRES_VERIFICATION.md](./docs/testing/POSTGRES_VERIFICATION.md).
 
-[TESTCASES.md](./TESTCASES.md) có **290 ca**, toàn bộ dưới dạng bảng Markdown, STT **1–290**: **261 ca luồng hiện tại** và **29 ca legacy**. Trong nhóm hiện tại có **21 ca `TC-OTP-NOTIFY-01`–`21`**: 17 ca đối chiếu từng method của `InternalOtpTest`, 4 ca bổ sung cho biên/triển khai. Số dòng tài liệu không phải số test PHPUnit; ca bổ sung chưa thực thi không được ghi PASSED.
+```bash
+bash scripts/test-postgres.sh
+```
 
-Giữ hồi quy `Chờ tiếp nhận` / `completeReceivingInspection()` vì mã tương thích còn tồn tại và chưa có kiểm kê xác nhận dữ liệu cũ đã hết. Các test schema/quy tắc cũ/placeholder đã phân loại trong [LEGACY_TESTS.md](./docs/testing/LEGACY_TESTS.md) không đồng nghĩa được bỏ kiểm thử đơn cũ còn được hỗ trợ.
+Chromium controls regression và test bảo mật `shell-quote` đạt. Override riêng sang `shell-quote=1.11.0` khắc phục GHSA-pqg4-j6r4-53mv; `npm audit --audit-level=high` báo 0 vulnerabilities. `npm run build` nguyên bản và Composer audit bị hạn chế mạng khi chạy local; cả hai đã đạt trên GitHub Actions [run 37644219054](https://github.com/Khang87/DoAn_WebQuanLyCuaHangGiatUI_KL027/actions/runs/37644219054), commit `512ae12`, cùng toàn bộ hai job PHP/PostgreSQL và frontend/build/audit. Không thay build config hay tắt audit.
 
-Các kết quả RPC PostgreSQL 17, cập nhật 13 hàm Live và kiểm tra avatar production là kết quả lịch sử của các đợt riêng, xem [BUSINESS_RULES.md](./docs/supabase/BUSINESS_RULES.md), [SCHEMA_AUDIT.md](./docs/supabase/SCHEMA_AUDIT.md) và [TESTCASES.md](./TESTCASES.md). Lần cập nhật này không kiểm thử production, Redis/Resend thật hoặc Supabase Live. SQLite không chứng minh race-condition/khóa PostgreSQL; repo không có mã nguồn Flutter để kiểm thử giao diện Flutter end-to-end.
+[TESTCASES.md](./TESTCASES.md) có **316 ca**, hoàn toàn dưới dạng bảng Markdown, STT **1–316**: **287 ca luồng hiện tại**, gồm 26 ca PostgreSQL/runner/CI/security mới, và **29 ca legacy**. Nhóm hiện tại giữ **21 ca `TC-OTP-NOTIFY-01`–`21`**. Số dòng tài liệu không phải số test PHPUnit; ca chỉ có đặc tả vẫn không được ghi PASSED.
+
+Workflow [Verification](./.github/workflows/verification.yml) chạy PHP/PostgreSQL và frontend/build/audit trên PR vào `main` hoặc push `main`. Cần quan sát kết quả đúng commit và cấu hình required checks trong ruleset trước khi gọi CI là cơ chế bắt buộc chặn merge; không suy ra điều đó từ Vercel success.
+
+Giữ hồi quy `Chờ tiếp nhận` / `completeReceivingInspection()` cho đến khi loại bỏ đầy đủ code, consumer và dữ liệu tương thích. Các test schema/quy tắc cũ/placeholder đã phân loại trong [LEGACY_TESTS.md](./docs/testing/LEGACY_TESTS.md) không thay thế kiểm thử đơn cũ còn được hỗ trợ.
+
+Không kiểm thử production, Redis/Resend thật hoặc Supabase Live trong đợt này. PostgreSQL fixture kiểm chứng service/RPC, không chứng minh toàn bộ ACL/RLS Live hoặc browser → HTTP → database E2E. Chưa kiểm chứng các race khác như pricing/payment. Không có mã nguồn Flutter trong repo. Xem [tasks/verification.md](./tasks/verification.md).
 
 ### Hợp đồng hiện hành: giá, phân công và giao nhận
 
@@ -252,20 +260,20 @@ Các kết quả RPC PostgreSQL 17, cập nhật 13 hàm Live và kiểm tra ava
 - Lần chạy đầy đủ gần nhất và các ca được ghi chi tiết nằm tại mục **Trạng thái kiểm thử hồi quy** và [TESTCASES.md](./TESTCASES.md). Các nhóm bao gồm Booking nhiều dòng, audit, RBAC Nhật ký hệ thống, dropdown lọc tài khoản, chat theo đơn, điểm tích lũy, XOR số lượng/khối lượng, giá theo tuple, chặn overlap, ngày hiệu lực biên, tính phí KG theo từng dòng và quan hệ địa chỉ khách hàng.
 - `php artisan view:cache`, `vendor/bin/pint --dirty --format agent`, kiểm tra lỗi trên các file PHP đã sửa và `git diff --check` đều hoàn tất thành công.
 - Test chạy với SQLite in-memory; kết quả không phải kiểm thử tích hợp ghi dữ liệu trên Supabase Live.
-- Thứ tự ưu tiên `NgayApDung` mới nhất và các mốc ngày biên đã có regression test trên SQLite. Chưa có test PostgreSQL tích hợp chạy đồng thời để chứng minh advisory lock/race-condition không deadlock; cũng chưa có test tích hợp riêng gọi từng endpoint Payment/Dashboard để xác nhận audit qua từng đường đi.
+- Thứ tự ưu tiên `NgayApDung` mới nhất và các mốc ngày biên đã có regression test trên SQLite. Đã có test PostgreSQL đồng thời cho Booking, delivery leg và số dư điểm, nhưng chưa chứng minh pricing advisory lock không deadlock; cũng chưa có test tích hợp riêng gọi từng endpoint Payment/Dashboard để xác nhận audit qua từng đường đi.
 
 #### RPC `transition_laundry_order` — trạng thái và bước tiếp theo
 
 - Chữ ký đã xác minh trên Supabase Live: `transition_laundry_order(p_donhangid bigint, p_trangthaimoi text, p_lydo text DEFAULT NULL) RETURNS void`. Function lấy định danh người thao tác từ `auth.uid()` trong Supabase JWT; chữ ký không có tham số `p_nhan_vien_id`.
-- Kết nối PostgreSQL hiện dùng bởi Laravel chưa thiết lập JWT theo người dùng đăng nhập. Ngoài ra, RPC hiện không hỗ trợ trạng thái **“Đã thanh toán”**.
+- Laravel dùng service authoritative cho quản trị; connection PostgreSQL của Laravel chưa thiết lập JWT theo người dùng đăng nhập. RPC khách hàng có ownership/actor contract riêng. RPC thanh toán có thể quyết toán **Đã thanh toán** sau giao và thu đủ; không dùng transition RPC để bỏ qua điều kiện thu tiền.
 - Vì vậy, Web Admin hiện chưa được chuyển sang gọi RPC và việc tích hợp đang được hoãn. Bước tiếp theo là thiết kế cơ chế cấp/truyền JWT Supabase theo người dùng và thống nhất quy trình cho trạng thái thanh toán trước khi thay đổi các luồng chuyển trạng thái. Không truyền tham số ngoài chữ ký, giả mạo JWT hoặc bỏ qua kiểm tra phân quyền của function.
 
 ### Công việc dự kiến
 
-- Thiết kế tích hợp RPC `transition_laundry_order` với JWT Supabase theo người dùng và thống nhất xử lý trạng thái thanh toán chưa được RPC hỗ trợ.
+- Giữ hợp đồng Web/RPC và quyền theo từng bên gọi; nếu chuyển Laravel sang gọi RPC phải thiết kế JWT và quyền rõ ràng, giữ điều kiện quyết toán hiện có.
 - Tiếp tục đối chiếu các ánh xạ của `DonHang`, `ChiTietDonHang` và `HoaDon` với snapshot mới nhất trong `schema.sql` và truy vấn thực tế.
 - Chỉ xây dựng cổng Khách hàng xem đơn khi mọi truy vấn đều giới hạn theo `KhachHangID` của tài khoản đang đăng nhập.
-- Bổ sung kiểm thử đồng thời PostgreSQL và các ca tài liệu chưa có coverage tự động; giữ hồi quy đơn legacy cho tới khi mã và dữ liệu tương thích đều đã được loại bỏ.
+- Mở rộng kiểm thử PostgreSQL cho các race chưa được bao phủ và các ca tài liệu chưa có coverage tự động; giữ hồi quy đơn legacy cho tới khi mã và dữ liệu tương thích đều đã được loại bỏ.
 
 ## Kiến trúc và nguyên tắc an toàn dữ liệu
 
