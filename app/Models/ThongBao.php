@@ -6,6 +6,18 @@ use Illuminate\Database\Eloquent\Model;
 
 class ThongBao extends Model
 {
+    protected static function booted(): void
+    {
+        // Expired OTPs disappear from the inbox and header even without a scheduler.
+        static::addGlobalScope('activeOtp', function ($query): void {
+            $query->where(function ($q): void {
+                $q->whereNull('LoaiThongBao')
+                    ->orWhere('LoaiThongBao', '!=', 'internal_password_otp')
+                    ->orWhere('ThoiGianGui', '>', now()->subMinutes(10));
+            });
+        });
+    }
+
     protected $table = 'ThongBao';
 
     protected $primaryKey = 'ThongBaoID';

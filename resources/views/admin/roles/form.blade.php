@@ -118,18 +118,22 @@
                                             @php
                                                 $permissionId = (int) $permission->getKey();
                                                 $isOwnerOnly = in_array($permission->MaQuyen, $ownerOnly ?? [], true);
-                                                $isChecked = $assignedPermissionIds->contains($permissionId);
+                                                $isDefault = $permission->MaQuyen === \App\Services\DefaultNotificationPermission::CODE;
+                                                $isChecked = $isDefault || $assignedPermissionIds->contains($permissionId);
                                             @endphp
                                             <label class="d-flex align-items-start gap-2 py-2 {{ ! $loop->last ? 'border-bottom' : '' }}">
                                                 <input class="form-check-input mt-1 flex-shrink-0" type="checkbox"
                                                        name="permission_ids[]" value="{{ $permissionId }}"
                                                        @checked($isChecked)
-                                                       @disabled($isOwnerOnly || $role->TrangThai !== 'Hoạt động')>
+                                                       @disabled($isDefault || $isOwnerOnly || $role->TrangThai !== 'Hoạt động')>
                                                 <span class="min-w-0">
                                                     <span class="d-block fw-medium">{{ $permission->TenQuyen }}</span>
                                                     <span class="small text-muted"><code>{{ $permission->MaQuyen }}</code></span>
                                                     @if($permission->MoTa)
                                                         <span class="d-block small text-muted">{{ $permission->MoTa }}</span>
+                                                    @endif
+                                                    @if($isDefault)
+                                                        <span class="badge bg-primary-subtle text-primary mt-1">Mặc định cho mọi nhóm</span>
                                                     @endif
                                                     @if($isOwnerOnly)
                                                         <span class="badge bg-warning-subtle text-warning-emphasis mt-1">Chỉ Chủ cửa hàng</span>

@@ -31,6 +31,7 @@ final class QuyenMapper
      */
     public const KNOWN_MAQUYEN = [
         'DASHBOARD_VIEW',
+        'NOTIFICATION_VIEW',
         'ORDER_VIEW',
         'ORDER_CREATE',
         'ORDER_UPDATE',

@@ -4,7 +4,6 @@ namespace App\Services;
 
 use App\Models\TaiKhoan;
 use App\Models\ThongBao;
-use App\Models\VaiTro;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 
@@ -60,9 +59,9 @@ class NotificationService
         return ThongBao::find($id);
     }
 
-    public function findForDetails(int $id): ?ThongBao
+    public function findForDetails(int $id, ?int $recipientId = null): ?ThongBao
     {
-        return ThongBao::with(['taiKhoan', 'donHang'])->find($id);
+        return ThongBao::query()->when($recipientId !== null, fn ($q) => $q->where('TaiKhoanID', $recipientId))->with(['taiKhoan', 'donHang'])->find($id);
     }
 
     public function create(array $data): ThongBao
@@ -79,11 +78,7 @@ class NotificationService
         if ($recipient === 'all_customers') {
             $query->whereHas('vaiTros', fn ($roleQuery) => $roleQuery->where('TenVaiTro', 'Khách hàng'));
         } elseif ($recipient === 'all_staff') {
-            $query->whereHas('vaiTros', fn ($roleQuery) => $roleQuery->whereIn('TenVaiTro', [
-                VaiTro::OWNER,
-                'Quản lý',
-                'Nhân viên',
-            ]));
+            $query->whereNotNull('NhanVienID')->whereNull('KhachHangID');
         } elseif ($recipient !== 'all') {
             $query->where('TaiKhoanID', (int) $recipient);
         }
@@ -127,9 +122,9 @@ class NotificationService
         return $notification->delete();
     }
 
-    public function markAsRead(int $id): ?ThongBao
+    public function markAsRead(int $id, int $recipientId): ?ThongBao
     {
-        $notification = ThongBao::find($id);
+        $notification = ThongBao::where('TaiKhoanID', $recipientId)->find($id);
         if ($notification) {
             $notification->update(['DaDoc' => true]);
         }

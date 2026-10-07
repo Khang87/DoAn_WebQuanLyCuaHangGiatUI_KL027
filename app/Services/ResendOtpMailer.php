@@ -2,11 +2,16 @@
 
 namespace App\Services;
 
+use Resend\Client;
+use Resend\Transporters\HttpTransporter;
+use Resend\ValueObjects\ApiKey;
+use Resend\ValueObjects\Transporter\BaseUri;
+use Resend\ValueObjects\Transporter\Headers;
 use RuntimeException;
 
 class ResendOtpMailer
 {
-    public function send(string $email, string $otp): void
+    public function send(string $email, string $otp, int $minutes = 15): void
     {
         $sandboxRecipient = config('services.resend.sandbox_to');
         if (
@@ -27,12 +32,18 @@ class ResendOtpMailer
             throw new RuntimeException('Resend sender address is not configured.');
         }
 
-        \Resend::client($apiKey)->emails->send([
+        $client = new Client(new HttpTransporter(
+            new \GuzzleHttp\Client(['timeout' => 10, 'connect_timeout' => 5]),
+            BaseUri::from(getenv('RESEND_BASE_URL') ?: 'api.resend.com'),
+            Headers::withAuthorization(ApiKey::from($apiKey)),
+        ));
+        $client->emails->send([
             'from' => $from,
             'to' => $email,
             'subject' => 'Mã khôi phục mật khẩu',
             'html' => '<p>Mã OTP của bạn là: <strong>'.e($otp).'</strong></p>'
-                .'<p>Mã có hiệu lực trong 15 phút. Nếu bạn không yêu cầu đặt lại mật khẩu, hãy bỏ qua email này.</p>',
+                .'<p>Mã có hiệu lực trong '.$minutes.' phút. Nếu bạn không yêu cầu đặt lại mật khẩu, hãy bỏ qua email này.</p>'
+                .($minutes === 10 ? '<p><a href="'.e(route('internal-password.reset')).'">Đặt lại mật khẩu nội bộ</a></p>' : ''),
         ]);
     }
 }

@@ -17,7 +17,7 @@ class LoginController extends Controller
     public function showLoginForm(): RedirectResponse|View
     {
         if (Auth::check()) {
-            return redirect()->route('admin.dashboard');
+            return redirect()->route(Auth::user()->isCustomer() ? 'notifications.index' : 'dashboard');
         }
 
         return view('auth.login');
@@ -47,8 +47,14 @@ class LoginController extends Controller
 
             $user = Auth::user();
 
-            // Kiểm tra role khách hàng - từ chối đăng nhập trên Web
+            // Customers with the default inbox permission can access only their personal inbox.
             if ($user->isCustomer()) {
+                if ($user->canPermission('notifications.view')) {
+                    $rememberedLogin->revoke($request->cookie(RememberedLogin::COOKIE_NAME));
+                    $rememberedLogin->queueCookie($request, null);
+
+                    return redirect()->route('notifications.index')->with('success', 'Đăng nhập thành công.');
+                }
                 $rememberedLogin->revoke($request->cookie(RememberedLogin::COOKIE_NAME));
                 $rememberedLogin->queueCookie($request, null);
                 Auth::logout();
@@ -88,6 +94,10 @@ class LoginController extends Controller
 
             if ($user->canPermission('reports.view')) {
                 return redirect()->route('reports.index')->with('success', 'Đăng nhập thành công.');
+            }
+
+            if ($user->canPermission('notifications.view')) {
+                return redirect()->route('notifications.index')->with('success', 'Đăng nhập thành công.');
             }
 
             Auth::logout();

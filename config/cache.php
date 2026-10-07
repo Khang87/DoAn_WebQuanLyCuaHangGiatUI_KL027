@@ -17,6 +17,8 @@ return [
 
     'default' => env('CACHE_STORE', env('VERCEL') ? 'redis' : 'file'),
 
+    'internal_otp_store' => env('INTERNAL_OTP_CACHE_STORE', 'redis'),
+
     'auth_store' => env(
         'AUTH_CACHE_STORE',
         env('VERCEL') ? 'redis' : env('CACHE_STORE', 'file'),

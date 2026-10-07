@@ -28,7 +28,7 @@
                 <div class="alert alert-danger" role="alert">{{ $errors->first() }}</div>
             @endif
 
-            <form method="POST" action="{{ route('password.update') }}">
+            <form method="POST" action="{{ route($submitRoute ?? 'password.update') }}">
                 @csrf
                 <div class="mb-3">
                     <label class="form-label" for="email">Email tài khoản</label>
@@ -51,7 +51,7 @@
                         type="text"
                         id="otp"
                         name="otp"
-                        value="{{ old('otp') }}"
+
                         inputmode="numeric"
                         pattern="[0-9]{6}"
                         maxlength="6"
@@ -90,7 +90,11 @@
             </form>
 
             <div class="text-center mt-3">
-                <a href="{{ route('password.request') }}">Yêu cầu mã OTP mới</a>
+                @if($internalReset ?? false)
+                    <p>Liên hệ quản trị viên để yêu cầu mã OTP mới.</p>
+                @else
+                    <a href="{{ route('password.request') }}">Yêu cầu mã OTP mới</a>
+                @endif
             </div>
         </div>
     </div>

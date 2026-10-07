@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 use App\Models\Quyen;
 use App\Models\VaiTro;
+use App\Services\DefaultNotificationPermission;
 use App\Support\PermissionRegistry;
 use App\Support\QuyenMapper;
 use Illuminate\Database\Seeder;
@@ -54,5 +55,6 @@ class RbacCatalogSeeder extends Seeder
                 'QuyenID' => $permissionId,
             ]);
         }
+        app(DefaultNotificationPermission::class)->backfill();
     }
 }

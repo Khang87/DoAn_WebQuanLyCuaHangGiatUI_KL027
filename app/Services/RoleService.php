@@ -137,11 +137,16 @@ class RoleService
 
     public function createRole(array $attributes): VaiTro
     {
-        return VaiTro::query()->create([
-            'TenVaiTro' => trim($attributes['TenVaiTro']),
-            'MoTa' => $attributes['MoTa'] ?? null,
-            'TrangThai' => 'Hoạt động',
-        ]);
+        return DB::transaction(function () use ($attributes): VaiTro {
+            $role = VaiTro::query()->create([
+                'TenVaiTro' => trim($attributes['TenVaiTro']),
+                'MoTa' => $attributes['MoTa'] ?? null,
+                'TrangThai' => 'Hoạt động',
+            ]);
+            app(DefaultNotificationPermission::class)->assign($role);
+
+            return $role;
+        });
     }
 
     public function updateRole(VaiTro $role, array $attributes): VaiTro
@@ -201,6 +206,7 @@ class RoleService
      */
     public function syncPermissions(array $matrix): array
     {
+        app(DefaultNotificationPermission::class)->backfill();
         $permissions = Quyen::query()
             ->whereIn('MaQuyen', $this->configuredMaQuyens())
             ->get(['QuyenID', 'MaQuyen', 'TrangThai']);
@@ -263,6 +269,7 @@ class RoleService
                 $vaiTro->quyens()->sync(array_values(array_unique([
                     ...array_map('intval', array_keys($ids)),
                     ...$preservedInactiveIds,
+                    (int) app(DefaultNotificationPermission::class)->permission()->getKey(),
                 ])));
 
                 $granted += count($ids);
@@ -282,6 +289,11 @@ class RoleService
      */
     public function syncPermissionRoles(Quyen $permission, array $roleIds): void
     {
+        if ($permission->MaQuyen === DefaultNotificationPermission::CODE) {
+            app(DefaultNotificationPermission::class)->backfill();
+
+            return;
+        }
         if (! $this->isManagedPermission($permission)) {
             throw ValidationException::withMessages([
                 'permission' => 'Chỉ có thể gán quyền đã được cấu hình trong danh mục ứng dụng.',
@@ -399,6 +411,7 @@ class RoleService
             $lockedRole->quyens()->sync(array_values(array_unique([
                 ...$permissionIds,
                 ...$inactivePermissionIds,
+                (int) app(DefaultNotificationPermission::class)->permission()->getKey(),
             ])));
         });
 

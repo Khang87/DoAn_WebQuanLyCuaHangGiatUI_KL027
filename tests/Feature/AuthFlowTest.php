@@ -5,9 +5,11 @@ namespace Tests\Feature;
 use App\Http\Middleware\EnsureUserHasPermission;
 use App\Models\User;
 use App\Models\VaiTro;
+use App\Services\InternalPasswordOtpService;
 use App\Services\RememberedLogin;
 use App\Services\ResendOtpMailer;
 use App\Services\UserService;
+use App\Support\PermissionCache;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -142,7 +144,7 @@ class AuthFlowTest extends TestCase
 
         $this->withCookie(RememberedLogin::COOKIE_NAME, $token)
             ->get(route('login'))
-            ->assertRedirect(route('admin.dashboard'));
+            ->assertRedirect(route('dashboard'));
 
         $this->assertAuthenticatedAs($this->staff);
     }
@@ -151,7 +153,7 @@ class AuthFlowTest extends TestCase
     {
         $this->actingAs($this->staff)
             ->get(route('login'))
-            ->assertRedirect(route('admin.dashboard'));
+            ->assertRedirect(route('dashboard'));
     }
 
     public function test_remember_token_cannot_restore_a_disabled_account(): void
@@ -374,27 +376,27 @@ class AuthFlowTest extends TestCase
             $otp = $code;
 
             return preg_match('/^\d{6}$/', $code) === 1;
-        }));
+        }), 10);
         $this->app->instance(ResendOtpMailer::class, $mailer);
 
         $this->post(route('accounts.reset-password', $this->staff))->assertRedirect(route('accounts.show', $this->staff))
             ->assertSessionHas('success')->assertSessionMissing('simulation_otp');
         $this->assertSame($oldHash, $this->staff->fresh()->MatKhau);
-        $this->assertSame(hash('sha256', $otp), Cache::store('file')->get('pwd_reset_'.$this->staff->Email));
+        $this->assertTrue(Hash::check($otp, Cache::store('file')->get(app(InternalPasswordOtpService::class)->key($this->staff->Email))['hash']));
         $this->assertStringNotContainsString($otp, (string) session('success'));
         $this->assertStringNotContainsString('Abc123!@#', (string) session('success'));
         $this->post(route('accounts.reset-password', $this->staff))->assertSessionHas('error');
         $this->assertSame($oldHash, $this->staff->fresh()->MatKhau);
 
         auth()->logout();
-        $this->post(route('password.update'), [
+        $this->post(route('internal-password.update'), [
             'email' => $this->staff->Email,
             'otp' => $otp,
             'password' => 'UserChosenPassword123',
             'password_confirmation' => 'UserChosenPassword123',
         ])->assertRedirect(route('login'));
         $this->assertTrue(Hash::check('UserChosenPassword123', $this->staff->fresh()->MatKhau));
-        $this->assertNull(Cache::store('file')->get('pwd_reset_'.$this->staff->Email));
+        $this->assertNull(Cache::store('file')->get(app(InternalPasswordOtpService::class)->key($this->staff->Email)));
     }
 
     public function test_admin_reset_failure_does_not_change_password_and_removes_cached_otp(): void
@@ -406,7 +408,7 @@ class AuthFlowTest extends TestCase
         $this->app->instance(ResendOtpMailer::class, $mailer);
         $this->post(route('accounts.reset-password', $this->staff))->assertSessionHas('error');
         $this->assertSame($oldHash, $this->staff->fresh()->MatKhau);
-        $this->assertNull(Cache::store('file')->get('pwd_reset_'.$this->staff->Email));
+        $this->assertNull(Cache::store('file')->get(app(InternalPasswordOtpService::class)->key($this->staff->Email)));
     }
 
     public function test_admin_reset_requires_a_valid_email(): void
@@ -432,6 +434,22 @@ class AuthFlowTest extends TestCase
 
     private function prepareAdminReset(): void
     {
+        config(['cache.internal_otp_store' => 'file']);
+        $this->staff->update(['NhanVienID' => 1]);
+        VaiTro::query()->update(['TenVaiTro' => VaiTro::OWNER]);
+        PermissionCache::forgetAll();
+        Schema::create('ThongBao', function (Blueprint $table): void {
+            $table->increments('ThongBaoID');
+            $table->integer('TaiKhoanID');
+            $table->string('LoaiThongBao');
+            $table->string('TieuDe');
+            $table->text('NoiDung');
+            $table->dateTime('ThoiGianGui');
+            $table->boolean('DaDoc');
+        });
+        Cache::store('file')->forget(app(InternalPasswordOtpService::class)->key($this->staff->Email ?? ''));
+        Cache::store('file')->forget(app(InternalPasswordOtpService::class)->key($this->staff->Email ?? '').':cooldown');
+
         $this->actingAs($this->staff);
         $this->withoutMiddleware([EnsureUserHasPermission::class]);
         $users = \Mockery::mock(UserService::class);
