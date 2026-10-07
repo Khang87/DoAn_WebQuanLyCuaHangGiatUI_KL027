@@ -11,7 +11,7 @@ Sky Laundry là hệ thống quản lý cửa hàng giặt ủi, hỗ trợ quy 
 - Chỉ tạo phiếu `NHAN_DO` khi nhận tại nhà và `GIAO_DO` khi trả tại nhà. Nếu cả hai tại cửa hàng thì không tạo phiếu. Phiếu nhận dùng `NgayHen`/`GioHen`; phiếu trả chưa có lịch thì để `ThoiGianDuKien` NULL, không sao chép thời gian nhận làm thời gian trả.
 - Việc tạo đơn, chi tiết, phiếu, trừ điểm và xác nhận/audit Booking nằm trong cùng transaction. Khóa Booking và trả về đơn hiện hữu khi gửi lại giúp tránh tạo đơn hoặc trừ điểm trùng. Audit ghi cả `HinhThucTraDo` và `DiaChiTra`, bao gồm các lần sửa thông thường.
 - Booking cũ thiếu hình thức trả hiển thị “Chưa bổ sung”; nhân viên phải chọn trước khi chuyển đổi. Đơn cũ đang `Chờ tiếp nhận` tiếp tục dùng bước kiểm tra trên trang đơn hàng; bản sửa không tự chuyển trạng thái các đơn cũ.
-- Admin reset mật khẩu bằng cách gửi email OTP qua `PasswordResetOtpService`, dùng chung với luồng quên mật khẩu. Không đặt mật khẩu cố định hoặc hiển thị mật khẩu/OTP trong flash message. OTP ngẫu nhiên 6 chữ số, lưu dạng hash, hiệu lực 15 phút; giới hạn yêu cầu lại 1 phút. Gửi mail lỗi xóa OTP/throttle; mật khẩu chỉ đổi khi người dùng hoàn tất form khôi phục. Cần cấu hình Resend hoạt động và email hợp lệ; không gửi email thật trong kiểm thử.
+- Admin cấp OTP nội bộ qua `InternalPasswordOtpService`: mã 6 số, TTL **10 phút**, cùng mã qua email Resend và `ThongBao` riêng của người nhận; cache Redis lưu hash. Gửi lại sau 60 giây, tối đa 5 lần sai, dùng một lần. Mật khẩu chỉ đổi khi người nhận hoàn tất `/internal/reset-password`. Luồng tự yêu cầu tại `/forgot-password` và `/reset-password` dùng `PasswordResetOtpService` riêng, TTL 15 phút; hai luồng không dùng chung mã.
 - `TaiKhoan::$fillable` được bổ sung `AvatarURL`. Luồng upload avatar hiện hành được giữ nguyên.
 - `schema.sql` vẫn là snapshot tham chiếu. Các cột legacy `HinhThucGiaoDo`/`DiaChiGiao` được chú thích và không dùng trong Laravel; không xóa khỏi snapshot khi chưa đối chiếu lại catalog Live. Phiên làm việc này không có credential để kiểm tra catalog Supabase và không thực thi SQL/migration/seeder trên Live.
 
@@ -44,10 +44,10 @@ Sky Laundry hỗ trợ số hóa hoạt động hằng ngày của cửa hàng g
 - Hỗ trợ nghiệp vụ đơn hàng, đặt lịch, hóa đơn, thanh toán, giao nhận, khách hàng, dịch vụ, bảng giá, khuyến mãi và báo cáo.
 - Booking hỗ trợ nhiều dòng dịch vụ; mức khối lượng tối thiểu được tính riêng trên từng dòng KG, không cộng gộp toàn Booking.
 - Bộ máy bảng giá tra cứu chính xác theo `(DichVuID, LoaiDoGiatID, DonViTinhID)`, lấy ngày áp dụng mới nhất; thao tác tạo/sửa/khôi phục khóa theo tuple bằng PostgreSQL transaction advisory lock để chống race condition giữa các tiến trình Laravel.
-- Booking được xác nhận sẽ tự chuyển thành đơn hàng và phiếu giao trong transaction. UI không hiện nút tạo đơn cho Booking đang chờ xác nhận; nếu đã có đơn thì hiển thị liên kết tới đơn hiện hữu thay vì tạo trùng.
-- Booking chỉ được tiếp nhận và chuyển thành đơn khi đã chọn nhân viên phụ trách hợp lệ. Sau khi đơn được tạo từ Booking, nhân viên phụ trách bị khóa trên form sửa; backend cũng từ chối request cố thay đổi người phụ trách.
+- Booking đang chờ phải được kiểm kê thực tế trên Web trước khi xác nhận và tạo đơn Đã tiếp nhận. Chi tiết đơn lấy từ dòng thực tế, giữ ChiTietBooking dự kiến làm lịch sử; chỉ tạo phiếu cho từng chiều tại nhà. Nếu đã có đơn, gửi lại trả về đơn hiện hữu.
+- Booking chỉ được tiếp nhận và chuyển thành đơn khi đã chọn nhân viên phụ trách có `TrangThai = Hoạt động`. Sau khi đơn được tạo từ Booking, nhân viên phụ trách bị khóa trên form sửa; backend cũng từ chối request cố thay đổi người phụ trách.
 - Form sửa Booking lọc dịch vụ theo danh mục đã chọn. Danh mục không có dịch vụ sẽ hiển thị thông báo và vô hiệu hóa ô dịch vụ; đơn vị tính tiếp tục chỉ khả dụng khi có bảng giá hiệu lực phù hợp.
-- Điểm tích lũy dùng các hằng số nghiệp vụ trong `OrderService`: cứ đủ 1.000 VNĐ `ThanhTien` của đơn sẽ được cộng 100 điểm khi đơn chuyển sang `Đã giao` (tính theo phần nguyên; ví dụ `ThanhTien` 12.500 VNĐ được 1.200 điểm). Khi đổi điểm, 1 điểm giảm 1 VNĐ, nên 1.000 điểm giảm 1.000 VNĐ. Form tạo/sửa đơn và xác nhận Booking dùng công tắc bật/tắt thay cho nhập số điểm; khi bật, hệ thống tự giới hạn số điểm theo số dư và số tiền còn phải trả. Cộng điểm có audit và chống cộng lặp; giao dịch tạo/sửa đơn hoàn điểm cũ, trừ điểm mới nguyên tử và rollback nếu số dư không đủ.
+- Điểm tích lũy dùng các hằng số nghiệp vụ trong `OrderService`: cứ đủ 1.000 VNĐ `ThanhTien` của đơn sẽ được cộng 100 điểm khi đơn chuyển sang `Đã giao` (tính theo phần nguyên; ví dụ `ThanhTien` 12.500 VNĐ được 1.200 điểm). Khi đổi điểm, 1 điểm giảm 1 VNĐ, nên 1.000 điểm giảm 1.000 VNĐ. Form tạo/sửa đơn và xác nhận Booking dùng công tắc bật/tắt thay cho nhập số điểm; khi bật, hệ thống tự giới hạn số điểm theo số dư và tiền dịch vụ sau khuyến mãi, không giảm phí giao nhận. Cộng điểm có audit và chống cộng lặp; giao dịch tạo/sửa đơn hoàn điểm cũ, trừ điểm mới nguyên tử và rollback nếu số dư không đủ.
 - Form khuyến mãi tự bật/tắt trường “Mức giảm tối đa” theo loại khuyến mãi: giảm cố định sẽ vô hiệu hóa và xóa mức tối đa; giảm theo phần trăm cho phép nhập mức tối đa.
 - Hồ sơ tài khoản hỗ trợ tải avatar trực tiếp lên Supabase Storage bằng signed upload URL; ứng dụng chỉ lưu URL công khai trong hồ sơ tài khoản và kiểm tra đường dẫn avatar thuộc đúng tài khoản đang đăng nhập.
 - Danh sách khách hàng hỗ trợ sắp xếp theo tổng điểm tích lũy, xử lý khách chưa có bản ghi điểm như 0 điểm và sắp xếp ổn định khi bằng điểm.
@@ -85,6 +85,7 @@ Quyền truy cập được kiểm tra theo vai trò và mã quyền. Việc ẩ
 | Dashboard và báo cáo quản lý | Theo quyền Chủ cửa hàng | Theo quyền được cấp | Chỉ truy cập chức năng được cấp | Bị chặn khỏi khu vực quản trị |
 | Đơn hàng, khách hàng, dịch vụ và giao nhận | Theo quyền Chủ cửa hàng | Theo ma trận quyền | Theo ma trận quyền từng thao tác | Bị chặn khỏi giao diện/API quản trị hiện tại |
 | Hóa đơn và thanh toán | Theo quyền Chủ cửa hàng | Theo quyền được cấp và quy tắc khóa bản ghi đã quyết toán | Chỉ khi được cấp quyền phù hợp | Bị chặn khỏi giao diện/API quản trị hiện tại |
+| Hộp thư thông báo cá nhân | Chỉ của mình | Chỉ của mình | Chỉ của mình | Chỉ của mình; không mở quyền vận hành |
 | Nhật ký hệ thống (`NhatKyHeThong`) | Được truy cập | Bị từ chối | Bị từ chối | Bị chặn khỏi khu vực quản trị |
 | Chat theo đơn hàng (`TinNhan`) | Được truy cập | Được truy cập | Được truy cập | Bị chặn khỏi giao diện quản trị |
 | Tài khoản không hoạt động | Không được bypass quyền | Bị từ chối | Bị từ chối | Bị từ chối |
@@ -118,7 +119,7 @@ Các tỷ lệ nằm tại `App\Services\OrderService`:
 | `POINTS_EARNED_PER_AMOUNT` | 100 điểm | Điểm thưởng cho mỗi mốc `POINTS_PER_AMOUNT` khi đơn chuyển sang `Đã giao` |
 | `POINT_VALUE` | 1 VNĐ/điểm | Giá trị giảm giá; ví dụ 1.000 điểm giảm 1.000 VNĐ |
 
-Điểm thưởng được tính theo phần nguyên của `ThanhTien / POINTS_PER_AMOUNT`, nhân `POINTS_EARNED_PER_AMOUNT`. Điểm sử dụng được giới hạn bởi số dư và phần tiền còn lại sau khuyến mãi.
+Điểm thưởng được tính theo phần nguyên của `ThanhTien / POINTS_PER_AMOUNT`, nhân `POINTS_EARNED_PER_AMOUNT`. Điểm sử dụng được giới hạn bởi số dư và phần tiền dịch vụ sau khuyến mãi; phí giao nhận không được giảm bằng điểm.
 
 ## Tài khoản demo hệ thống
 
@@ -139,7 +140,7 @@ Chỉ sử dụng tài khoản được cấp trong môi trường cục bộ ho
 - Hoàn thiện trang Báo cáo theo bộ lọc thời gian: KPI đơn hàng/đặt lịch, doanh thu theo ngày lập hóa đơn đã thanh toán, giá trị đơn trung bình, xu hướng doanh thu và cơ cấu doanh thu dịch vụ; hai biểu đồ dùng ApexCharts được phục vụ từ tài nguyên cục bộ.
 - Thống kê phương thức thanh toán từ giao dịch thành công trên `ThanhToan`, liên kết với hóa đơn đã thanh toán; danh sách đơn gần đây nạp sẵn thông tin khách hàng và chi tiết dịch vụ.
 - Xuất Excel danh sách hóa đơn vẫn được hỗ trợ tại module Hóa đơn; chức năng xuất Excel ở Báo cáo và Chi tiết hóa đơn đã được gỡ bỏ.
-- Giữ thông báo rõ ràng cho chức năng điều kiện đồ giặt chưa được schema hiện tại hỗ trợ, không ghi dữ liệu vào bảng không tồn tại.
+- Bắt buộc ghi tình trạng thực tế trước giặt khi tạo đơn/kiểm kê Booking, lưu theo cấu trúc chi tiết đơn hiện hành; không tạo thêm bảng điều kiện đồ giặt.
 
 ### Các vấn đề đã khắc phục
 
@@ -159,11 +160,23 @@ Chỉ sử dụng tài khoản được cấp trong môi trường cục bộ ho
 
 ### Trạng thái kiểm thử hồi quy
 
-Bản vá kiểm kê đơn tạo trực tiếp ngày **07/10/2026**: **310 PASSED, 0 skipped, 0 failed, 1.648 assertions** (7,59 giây), PHP 8.4 trong container tắt mạng, SQLite `:memory:`. Request/service chặn trạng thái khởi tạo sai và gắn Booking trực tiếp; form bắt buộc tình trạng đồ. Hai test pricing mới bắt được mutation đảo điều kiện ngày hết hạn. Các test Pending lịch sử tiếp tục chạy. Xem [hợp đồng tạo đơn trực tiếp](./docs/supabase/BUSINESS_RULES.md#đơn-tạo-trực-tiếp-trên-web).
+Kết quả đầy đủ gần nhất được ghi nhận ở bản vá hợp đồng đơn hàng ngày **07/10/2026**: **328 tests, 1.715 assertions, 0 failed, 0 skipped**, PHP 8.4.26 / Laravel 13.34.0, SQLite `:memory:` trong container tắt mạng. Đây là baseline đã chạy trước lần cập nhật tài liệu; lần này không chạy lại suite. Chi tiết môi trường, mutation và giới hạn xem [tasks/verification.md](./tasks/verification.md).
 
-Kết quả trước bản vá tạo đơn trực tiếp ngày **07/10/2026**: **303 PASSED, 0 skipped, 0 failed, 1.555 assertions** (5,85 giây), SQLite `:memory:` trong container PHP 8.4 tắt mạng; email dùng mock. Trong 192 case legacy trước đây, **8 case được khôi phục/chuyển sang fixture hiện hành và 184 case được loại khỏi suite sau phân loại**; không tính case bị loại là passed hoặc khẳng định đã thay thế 1:1. Xem [bảng kiểm kê legacy](./docs/testing/LEGACY_TESTS.md) và [TESTCASES.md](./TESTCASES.md). Laravel Pint, Blade cache và route cache đều thành công.
+Hồi quy DOM bằng Chromium 151 đã xác minh chọn nhiều đơn vị, đơn giá readonly, khôi phục giá bị sửa, đổi số lượng/khối lượng, KG tối thiểu và tuple thiếu giá. Đây là kiểm thử controls cô lập, chưa phải luồng production từ browser đến database. Pint và biên dịch Blade đã đạt trong bản vá. `npm run build` bị chặn tải font Bunny tại môi trường kiểm thử; build với cấu hình tạm bỏ riêng bước tải font đạt 48 modules, không thay đổi Vite config của dự án.
 
-Các kiểm tra nghiệp vụ RPC chạy thành công trên PostgreSQL 17 cục bộ, dùng fixture riêng và rollback dữ liệu thử nghiệm. **13 hàm hiện có đã được cập nhật trên Supabase Live**; kiểm tra catalog trước/sau xác nhận không đổi bảng/cột, trigger, ràng buộc, chữ ký hàm, owner hoặc ACL. Không tạo migration và không ghi fixture lên Live. Xem [hợp đồng nghiệp vụ Web/App](./docs/supabase/BUSINESS_RULES.md) và [đối chiếu schema](./docs/supabase/SCHEMA_AUDIT.md). Không có mã nguồn Flutter trong repo này, nên chưa kiểm thử giao diện Flutter end-to-end; RPC xác nhận booking mới yêu cầu kiểm kê qua Web.
+[TESTCASES.md](./TESTCASES.md) có **290 ca**, toàn bộ dưới dạng bảng Markdown, STT **1–290**: **261 ca luồng hiện tại** và **29 ca legacy**. Trong nhóm hiện tại có **21 ca `TC-OTP-NOTIFY-01`–`21`**: 17 ca đối chiếu từng method của `InternalOtpTest`, 4 ca bổ sung cho biên/triển khai. Số dòng tài liệu không phải số test PHPUnit; ca bổ sung chưa thực thi không được ghi PASSED.
+
+Giữ hồi quy `Chờ tiếp nhận` / `completeReceivingInspection()` vì mã tương thích còn tồn tại và chưa có kiểm kê xác nhận dữ liệu cũ đã hết. Các test schema/quy tắc cũ/placeholder đã phân loại trong [LEGACY_TESTS.md](./docs/testing/LEGACY_TESTS.md) không đồng nghĩa được bỏ kiểm thử đơn cũ còn được hỗ trợ.
+
+Các kết quả RPC PostgreSQL 17, cập nhật 13 hàm Live và kiểm tra avatar production là kết quả lịch sử của các đợt riêng, xem [BUSINESS_RULES.md](./docs/supabase/BUSINESS_RULES.md), [SCHEMA_AUDIT.md](./docs/supabase/SCHEMA_AUDIT.md) và [TESTCASES.md](./TESTCASES.md). Lần cập nhật này không kiểm thử production, Redis/Resend thật hoặc Supabase Live. SQLite không chứng minh race-condition/khóa PostgreSQL; repo không có mã nguồn Flutter để kiểm thử giao diện Flutter end-to-end.
+
+### Hợp đồng hiện hành: giá, phân công và giao nhận
+
+- Giá lấy theo đủ `(DichVuID, LoaiDoGiatID, DonViTinhID)`. Form chỉ cho chọn đơn vị có giá hiệu lực; nhiều đơn vị thì phải chọn rõ ràng. Ô đơn giá readonly, server vẫn tính lại giá khi tạo đơn/kiểm kê Booking. Xem [SPEC-order-pricing.md](./SPEC-order-pricing.md).
+- Phân công mới cần nhân viên `Hoạt động`; giữ nhân viên lịch sử không đổi được phép. Đơn mới cần nhân viên; phiếu giao nhận có thể chưa phân công (`NhanVienID = NULL`). Xem [SPEC-active-assignment.md](./SPEC-active-assignment.md).
+- `DeliveryService` kiểm tra hợp đồng ngay cả khi gọi trực tiếp: khóa parent, chặn mutation đơn hủy/đã thanh toán, không đổi parent/chiều của phiếu và không mở lại trạng thái kết thúc. Mỗi đơn chỉ có một phiếu chưa hủy cho mỗi chiều; phiếu hủy được thay thế.
+- Phiếu trả đang chờ được để `ThoiGianDuKien = NULL` trước giặt. Khi thực hiện trả phải có lịch và đơn đã tới giai đoạn cho phép; phiếu nhận luôn cần lịch. Sửa ghi chú giữ nguyên field không gửi và timestamp cũ. Xem [SPEC-delivery-contract.md](./SPEC-delivery-contract.md).
+- Chuyển Booking đọc trạng thái/khách/marker điểm dưới khóa, đồng thời giữ các field kiểm kê được phép vừa sửa trên form. Tạo đơn, phiếu, điểm và audit nguyên tử; gửi lại không tạo trùng. Xem [SPEC-booking-snapshot.md](./SPEC-booking-snapshot.md).
 
 ### Đồng bộ nghiệp vụ ngày 07/10/2026
 
@@ -173,7 +186,7 @@ Các kiểm tra nghiệp vụ RPC chạy thành công trên PostgreSQL 17 cục 
 - Trạng thái đơn tuân thủ thứ tự xử lý; hủy trước khi giặt phải có lý do, không có khoản thu thành công.
 - Giao nhận phân biệt **Loại giao nhận** (Nhận đồ/Giao đồ) và **Hình thức** (Tại cửa hàng/Tại nhà). Bốn cột phí/khoảng cách Booking đã có trên Live được bổ sung vào snapshot; các cột tương thích vẫn đang được RPC sử dụng được giữ lại.
 
-### Cập nhật tính năng (06/10/2026)
+### Lịch sử cập nhật tính năng (06/10/2026)
 
 - **Tiếp nhận Booking:** Bắt buộc chọn nhân viên phụ trách trước khi tiếp nhận và tạo đơn. Sau khi Booking có đơn hàng liên kết, nhân viên phụ trách không thể sửa; cả giao diện và backend đều bảo vệ trạng thái này.
 - **Dịch vụ theo danh mục:** Form sửa Booking có thêm chọn danh mục; danh sách dịch vụ thay đổi theo danh mục. Nếu danh mục không có dịch vụ, form nêu rõ và khóa lựa chọn dịch vụ. Các lựa chọn đơn vị/khối lượng cũ được làm mới khi đổi danh mục.
@@ -221,14 +234,14 @@ Các kiểm tra nghiệp vụ RPC chạy thành công trên PostgreSQL 17 cục 
 - Tuân thủ **Read-Only DDL**: không chạy migration, DDL hoặc thao tác ghi lên Supabase Live; `schema.sql` chỉ dùng làm snapshot tham chiếu.
 - Test suite dùng SQLite in-memory và không đại diện cho kiểm thử tích hợp hoặc kiểm tra kết nối trực tiếp Supabase.
 
-### Refactor Booking nhiều dòng, bảng giá và audit (02/10/2026)
+### Lịch sử refactor Booking nhiều dòng, bảng giá và audit (02/10/2026)
 
 #### Đã hoàn tất
 
 - **Booking nhiều dòng (`ChiTietBooking`):** Booking lưu nhiều dòng dịch vụ dự kiến thay vì nhúng thông tin một dịch vụ vào bảng `Booking`. Mỗi dòng có dịch vụ, loại đồ, đơn vị tính, giá và thành tiền riêng. Validation ở Request và Service yêu cầu đúng một trong hai giá trị dương: `SoLuong` hoặc `KhoiLuong`, phù hợp với đơn vị tính.
 - **Khối lượng tối thiểu:** Mức KG tối thiểu có thể cấu hình được tính cho từng dòng dịch vụ riêng; đơn giá nhân với `max(KhoiLuong, muc_toi_thieu)` của dòng đó.
 - **Giá chuẩn hóa (`BangGia`):** Đơn giá được tra theo đúng bộ ba `(DichVuID, LoaiDoGiatID, DonViTinhID)`, chỉ lấy bản ghi đang hoạt động và còn hiệu lực, ưu tiên ngày áp dụng mới nhất, sau đó dùng `BangGiaID` để phân định cùng ngày. Khoảng hiệu lực chồng lấn bị từ chối khi tạo, cập nhật hoặc khôi phục giá. Service dùng advisory transaction lock theo tuple PostgreSQL nhằm tránh race-condition giữa các thao tác Laravel đồng thời. Máy chủ tính lại giá và thành tiền, không tin đơn giá do biểu mẫu gửi lên.
-- **Chuyển Booking thành đơn:** Khi Booking được xác nhận, các dòng `ChiTietBooking` được ánh xạ thành các dòng `ChiTietDonHang` trong cùng giao dịch tạo đơn và phiếu giao. Thao tác xác nhận được ghi vào `NhatKyHeThong`, bao gồm dữ liệu Booking và chi tiết trước/sau cùng thông tin tài khoản thao tác khi có.
+- **Chuyển Booking thành đơn:** Ở bản refactor này, dữ liệu dự kiến được ánh xạ sang chi tiết đơn. Luồng hiện hành đã thay thế bằng kiểm kê thực tế (mô tả đầu README); giữ `ChiTietBooking` làm lịch sử. Thao tác xác nhận được ghi vào `NhatKyHeThong`, bao gồm dữ liệu Booking và chi tiết trước/sau cùng thông tin tài khoản thao tác khi có.
 - **Audit:** `NhatKyHeThong` ghi nhận tạo/xác nhận Booking, chuyển trạng thái đơn hàng và thay đổi tài khoản. Sự kiện xác nhận lưu `NhanVienXacNhanID` và `ThoiGianXacNhan`; nội dung audit tài khoản không chứa mật khẩu.
 - **Chống tạo đơn trùng:** Booking đã có đơn sẽ dẫn tới đơn hiện hữu; thao tác chuyển đổi là idempotent. Giao diện Booking hiển thị trạng thái chờ, đơn đã liên kết hoặc cảnh báo nếu Booking xác nhận nhưng chưa có đơn.
 - **Ánh xạ địa chỉ:** `khachhang_diachi` và các cột `diachiid`, `khachhangid` giữ lowercase theo Supabase Live; model không mass-assign khóa identity.
@@ -252,7 +265,7 @@ Các kiểm tra nghiệp vụ RPC chạy thành công trên PostgreSQL 17 cục 
 - Thiết kế tích hợp RPC `transition_laundry_order` với JWT Supabase theo người dùng và thống nhất xử lý trạng thái thanh toán chưa được RPC hỗ trợ.
 - Tiếp tục đối chiếu các ánh xạ của `DonHang`, `ChiTietDonHang` và `HoaDon` với snapshot mới nhất trong `schema.sql` và truy vấn thực tế.
 - Chỉ xây dựng cổng Khách hàng xem đơn khi mọi truy vấn đều giới hạn theo `KhachHangID` của tài khoản đang đăng nhập.
-- Giảm số test legacy đang bị bỏ qua và bổ sung kiểm thử trên schema được hỗ trợ, không kết nối test tới Supabase Live.
+- Bổ sung kiểm thử đồng thời PostgreSQL và các ca tài liệu chưa có coverage tự động; giữ hồi quy đơn legacy cho tới khi mã và dữ liệu tương thích đều đã được loại bỏ.
 
 ## Kiến trúc và nguyên tắc an toàn dữ liệu
 
@@ -358,6 +371,14 @@ Liệt kê các route đã đăng ký; lệnh này không thay đổi cơ sở d
 php artisan route:list
 ```
 
-### Admin-triggered OTP và hộp thư mặc định
+### Admin-triggered OTP và Thông báo mặc định
 
-OTP nội bộ dùng Redis hiện có (10 phút), gửi cùng mã qua Resend và bảng `ThongBao`; không có thay đổi schema Supabase. Sau triển khai chạy `php artisan notifications:grant-default` để gán quyền hộp thư cá nhân cho mọi nhóm hiện có. Nhóm mới từ UI được gán tự động và quyền mặc định được giữ qua mọi màn hình sửa quyền. Xem mã nguồn, routes, cấu hình và hướng dẫn triển khai tại [docs/ADMIN_TRIGGERED_OTP.md](docs/ADMIN_TRIGGERED_OTP.md).
+Admin có `accounts.reset_password` cấp OTP cho tài khoản nội bộ đang hoạt động, có `NhanVienID`, không có `KhachHangID`, email hợp lệ và duy nhất không phân biệt hoa thường. Server lấy người nhận từ account ID. Mã ngẫu nhiên 6 số được gửi đồng bộ qua Resend và thông báo riêng; Redis lưu hash với TTL 600 giây. Không lộ OTP trong flash hoặc queue. Cấp lại có cooldown 60 giây; tối đa 5 lần sai; mã đúng chỉ dùng một lần. Gửi lỗi vô hiệu hóa mã và rollback notification, giữ mật khẩu cũ.
+
+Người nhận đổi mật khẩu tại `/internal/reset-password`; thành công xóa mã/notification, thu hồi remembered-login token và đăng xuất phiên hiện tại nếu đang đăng nhập. Không khẳng định thu hồi mọi phiên trên thiết bị khác. Tài khoản bị khóa, thay email hoặc không còn nội bộ không dùng được mã đã cấp. `/forgot-password` là luồng tự yêu cầu riêng với thời hạn 15 phút.
+
+`NOTIFICATION_VIEW` cho phép mọi nhóm, kể cả khách hàng và nhóm tùy chỉnh, đọc/đánh dấu thông báo của chính mình. Owner cũng không đọc hay sửa OTP người khác; tham số người nhận từ request không mở quyền đọc chéo. Nhóm chỉ có quyền mặc định đăng nhập vào hộp thư thay vì dashboard; quyền tạo/sửa/xóa thông báo vẫn cần cấp riêng.
+
+Triển khai cần `INTERNAL_OTP_CACHE_STORE=redis` và Resend đã cấu hình. Lệnh `php artisan notifications:grant-default` backfill quyền cho nhóm hiện có, chạy lại không tạo liên kết trùng. Nhóm mới được gán mặc định trong transaction; cả ba luồng chỉnh quyền giữ quyền này. Scheduler mỗi phút dọn notification OTP hết hạn; global scope vẫn ẩn mã hết hạn dù scheduler chưa chạy. README chỉ hướng dẫn, không xác nhận backfill/scheduler đã chạy trên production.
+
+Xem [hướng dẫn OTP](./docs/ADMIN_TRIGGERED_OTP.md), [InternalOtpTest.php](./tests/Feature/InternalOtpTest.php) và các ca `TC-OTP-NOTIFY-01`–`21` trong [TESTCASES.md](./TESTCASES.md). Số liệu 275 passed / 192 skipped trong hướng dẫn OTP là lịch sử; baseline suite hiện hành ở mục **Trạng thái kiểm thử hồi quy** phía trên. Kiểm thử tự động dùng cache cô lập và mock Resend, không xác minh email/Redis production.
