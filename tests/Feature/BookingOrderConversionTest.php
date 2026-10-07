@@ -48,7 +48,7 @@ class BookingOrderConversionTest extends TestCase
 
     protected function tearDown(): void
     {
-        foreach (['NhatKyHeThong', 'ChiTietBooking', 'ChiTietDonHang', 'GiaoNhan', 'HoaDon', 'ThanhToan', 'DiemTichLuy', 'DonHang', 'Booking', 'BangGia', 'DonViTinh', 'LoaiDoGiat', 'DanhMucLoaiDoGiat', 'DichVu', 'LoaiDichVu', 'NhanVien', 'TaiKhoan', 'KhachHang'] as $table) {
+        foreach (['KhuyenMai', 'NhatKyHeThong', 'ChiTietBooking', 'ChiTietDonHang', 'GiaoNhan', 'HoaDon', 'ThanhToan', 'DiemTichLuy', 'DonHang', 'Booking', 'BangGia', 'DonViTinh', 'LoaiDoGiat', 'DanhMucLoaiDoGiat', 'DichVu', 'LoaiDichVu', 'NhanVien', 'TaiKhoan', 'KhachHang'] as $table) {
             Schema::dropIfExists($table);
         }
 
@@ -860,6 +860,7 @@ class BookingOrderConversionTest extends TestCase
 
         $order = app(OrderService::class)->create([
             'KhachHangID' => 9,
+            'NhanVienID' => 1,
             'TrangThai' => OrderStatus::Received->value,
             'items' => [[
                 'TinhTrangTruocKhiGiat' => 'Bình thường',
@@ -896,6 +897,7 @@ class BookingOrderConversionTest extends TestCase
         try {
             app(OrderService::class)->create([
                 'KhachHangID' => 9,
+                'NhanVienID' => 1,
                 'TrangThai' => OrderStatus::Received->value,
                 'items' => [[
                     'TinhTrangTruocKhiGiat' => 'Bình thường',
@@ -1217,6 +1219,7 @@ class BookingOrderConversionTest extends TestCase
 
         $order = app(OrderService::class)->create([
             'KhachHangID' => 9,
+            'NhanVienID' => 1,
             'TrangThai' => OrderStatus::Received->value,
             'items' => [[
                 'TinhTrangTruocKhiGiat' => 'Bình thường',
@@ -1509,6 +1512,93 @@ class BookingOrderConversionTest extends TestCase
         $this->assertSame(0, ChiTietDonHang::query()->count());
         $this->assertSame(0, GiaoNhan::query()->count());
         $this->assertSame(0, NhatKyHeThong::query()->count());
+    }
+
+    public function test_create_and_inspection_reject_inactive_employee_without_side_effects(): void
+    {
+        $this->createInspectionCatalog();
+        $booking = $this->createBooking();
+        DB::table('NhanVien')->where('NhanVienID', 1)->update(['TrangThai' => 'Khóa']);
+        foreach ([
+            fn () => app(OrderService::class)->create(['KhachHangID' => 9, 'NhanVienID' => 1,
+                'TrangThai' => OrderStatus::Received->value, 'items' => $this->actualItems()]),
+            fn () => app(OrderService::class)->createFromBooking($booking, $this->actualItems(), 1),
+        ] as $operation) {
+            try {
+                $operation();
+                $this->fail('Inactive employee accepted.');
+            } catch (ValidationException $exception) {
+                $this->assertArrayHasKey('NhanVienID', $exception->errors());
+            }
+        }
+        $this->assertSame(0, DonHang::query()->count());
+        $this->assertSame(0, GiaoNhan::query()->count());
+    }
+
+    public function test_manual_order_request_rejects_locked_employee(): void
+    {
+        $this->createRequestCatalog();
+        DB::table('NhanVien')->where('NhanVienID', 1)->update(['TrangThai' => 'Ngừng hoạt động']);
+        $this->withoutMiddleware([Authenticate::class, EnsureUserHasPermission::class, RejectCustomerRole::class, RestoreRememberedLogin::class]);
+        $this->post(route('orders.store'), [
+            'KhachHangID' => 9, 'NhanVienID' => 1, 'TrangThai' => OrderStatus::Received->value,
+            'items' => [['DichVuID' => 1, 'LoaiDoGiatID' => 2, 'DonViTinhID' => 2, 'SoLuong' => 1, 'TinhTrangTruocKhiGiat' => 'Bình thường']],
+        ])->assertSessionHasErrors('NhanVienID');
+        $this->assertSame(0, DonHang::count());
+    }
+
+    public function test_standalone_conversion_reloads_customer_but_preserves_dirty_inspection_address(): void
+    {
+        $this->createInspectionCatalog();
+        $booking = $this->createBooking();
+        DB::table('KhachHang')->insert(['KhachHangID' => 10]);
+        DB::table('Booking')->where('BookingID', $booking->BookingID)->update(['KhachHangID' => 10]);
+        $booking->fill(['DiaChiNhan' => 'Địa chỉ kiểm tra mới']);
+        $order = app(OrderService::class)->createFromBooking($booking, $this->actualItems(), 1);
+        $this->assertSame(10, $order->KhachHangID);
+        $this->assertSame('Địa chỉ kiểm tra mới', $order->giaoNhans()->where('LoaiGiaoNhan', 'NHAN_DO')->firstOrFail()->DiaChi);
+    }
+
+    public function test_standalone_conversion_rejects_booking_cancelled_since_snapshot(): void
+    {
+        $this->createInspectionCatalog();
+        $booking = $this->createBooking();
+        DB::table('Booking')->where('BookingID', $booking->BookingID)->update(['TrangThai' => BookingStatus::Cancelled->value]);
+        $this->expectException(ValidationException::class);
+        app(OrderService::class)->createFromBooking($booking, $this->actualItems(), 1);
+    }
+
+    public function test_inspection_keeps_unsaved_receive_and_return_edits(): void
+    {
+        $this->createInspectionCatalog();
+        $booking = $this->createBooking();
+        $this->actingAsBookingEmployee();
+        $order = $this->bookingService->inspectBookingAndCreateOrder($booking, 1, $this->actualItems(), bookingData: [
+            'method' => 'Tại cửa hàng', 'return_method' => 'Tại nhà', 'return_address' => 'Địa chỉ trả mới',
+        ]);
+        $this->assertSame(['GIAO_DO'], $order->giaoNhans()->pluck('LoaiGiaoNhan')->all());
+        $this->assertSame('Địa chỉ trả mới', $order->giaoNhans()->first()->DiaChi);
+        $this->assertSame('Tại cửa hàng', $booking->fresh()->HinhThucNhanDo);
+    }
+
+    public function test_order_price_options_preserve_multiple_units_and_form_exposes_unit_selection(): void
+    {
+        $this->createRequestCatalog();
+        DB::table('BangGia')->insert([
+            ['DichVuID' => 1, 'LoaiDoGiatID' => 2, 'DonViTinhID' => 1, 'DonGia' => 40000, 'TrangThai' => 'Hoạt động'],
+            ['DichVuID' => 1, 'LoaiDoGiatID' => 2, 'DonViTinhID' => 2, 'DonGia' => 15000, 'TrangThai' => 'Hoạt động'],
+        ]);
+        Schema::create('KhuyenMai', function (Blueprint $table): void {
+            $table->increments('KhuyenMaiID');
+            $table->string('TrangThai');
+        });
+        $prices = app(PricingService::class)->orderOptions();
+        $this->assertEqualsCanonicalizing([1, 2], $prices->pluck('DonViTinhID')->all());
+        $this->withoutMiddleware([Authenticate::class, EnsureUserHasPermission::class, RejectCustomerRole::class, RestoreRememberedLogin::class]);
+        $response = $this->get(route('orders.create'))->assertOk();
+        $response->assertSee('Đơn vị tính')->assertSee('order-item-pricing.js');
+        $this->assertMatchesRegularExpression('/<select[^>]*item-unit-value[^>]*name="items\[0\]\[DonViTinhID\]"/', $response->getContent());
+        $this->assertMatchesRegularExpression('/<input[^>]*item-price[^>]*readonly/', $response->getContent());
     }
 
     private function createInspectionCatalog(): void

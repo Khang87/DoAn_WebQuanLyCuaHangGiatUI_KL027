@@ -3,8 +3,11 @@
 namespace App\Http\Requests\Admin;
 
 use App\Enums\DeliveryStatus;
-use Carbon\Carbon;
+use App\Models\GiaoNhan;
+use App\Services\DeliveryRules;
+use App\Services\EmployeeAssignment;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\ValidationException;
 use Illuminate\Validation\Validator;
 
 class LuuGiaoNhanRequest extends FormRequest
@@ -23,12 +26,12 @@ class LuuGiaoNhanRequest extends FormRequest
     {
         return [
             'order_id' => ['required', 'exists:DonHang,DonHangID'],
-            'employee_id' => ['nullable', 'integer', 'exists:NhanVien,NhanVienID'],
+            'employee_id' => ['nullable', 'integer', EmployeeAssignment::rule($this->currentDelivery()?->NhanVienID)],
             'method' => ['required', 'in:nhan_do,giao_do'],
             'fulfillment' => ['sometimes', 'in:Tại cửa hàng,Tại nhà'],
             'address' => ['nullable', 'required_if:fulfillment,Tại nhà', 'string', 'max:255'],
-            'pickup_date' => ['required', 'date'],
-            'pickup_time' => ['required', 'date_format:H:i'],
+            'pickup_date' => ['nullable', 'required_if:method,nhan_do', 'required_if:status,picking,delivering,completed', 'required_with:pickup_time', 'date_format:Y-m-d'],
+            'pickup_time' => ['nullable', 'required_if:method,nhan_do', 'required_if:status,picking,delivering,completed', 'required_with:pickup_date', 'date_format:H:i'],
             'status' => ['nullable', 'in:'.implode(',', DeliveryStatus::values())],
             'notes' => ['nullable', 'string', 'max:500'],
         ];
@@ -41,16 +44,24 @@ class LuuGiaoNhanRequest extends FormRequest
                 return;
             }
 
-            $scheduledAt = Carbon::createFromFormat(
-                'Y-m-d H:i',
-                $validator->getData()['pickup_date'].' '.$validator->getData()['pickup_time'],
-                config('app.timezone'),
-            );
-
-            if ($scheduledAt->lessThanOrEqualTo(now())) {
-                $validator->errors()->add('pickup_time', 'Thời gian giao nhận phải sau thời điểm hiện tại.');
+            try {
+                DeliveryRules::validateSchedule($validator->getData(), $this->currentDelivery());
+            } catch (ValidationException $exception) {
+                foreach ($exception->errors() as $field => $messages) {
+                    $validator->errors()->add($field, $messages[0]);
+                }
             }
         });
+    }
+
+    private function currentDelivery(): ?GiaoNhan
+    {
+        if ($this->isMethod('POST')) {
+            return null;
+        }
+        $delivery = $this->route('delivery');
+
+        return $delivery instanceof GiaoNhan ? $delivery : ($delivery ? GiaoNhan::find($delivery) : null);
     }
 
     public function messages(): array
@@ -58,7 +69,7 @@ class LuuGiaoNhanRequest extends FormRequest
         return [
             'order_id.required' => 'Đơn hàng là bắt buộc để tạo giao nhận.',
             'order_id.exists' => 'Đơn hàng không tồn tại.',
-            'employee_id.exists' => 'Nhân viên không tồn tại.',
+            'employee_id.exists' => 'Vui lòng chọn nhân viên đang hoạt động.',
             'method.required' => 'Loại giao nhận là bắt buộc.',
             'method.in' => 'Loại giao nhận không hợp lệ.',
             'address.required_if' => 'Địa chỉ giao nhận là bắt buộc khi thực hiện tại nhà.',
