@@ -2,6 +2,19 @@
 
 Sky Laundry là hệ thống quản lý cửa hàng giặt ủi, hỗ trợ quy trình vận hành cho Chủ cửa hàng, Quản lý, Nhân viên và Khách hàng. Ứng dụng gồm giao diện web Laravel và API JSON phiên bản hóa, sử dụng cơ sở dữ liệu PostgreSQL trên Supabase theo cấu trúc hiện có.
 
+## Cập nhật Booking và reset mật khẩu — 07/10/2026
+
+- Booking sử dụng hai chiều độc lập: `HinhThucNhanDo`/`DiaChiNhan` và `HinhThucTraDo`/`DiaChiTra`. `ReceiveMethod` và `ReturnMethod` đều có hai địa điểm: `Tại cửa hàng`, `Tại nhà`. Không suy ra `NHAN_DO`/`GIAO_DO` từ địa điểm.
+- Danh sách và chi tiết hiển thị cả nhận/trả; form sửa có hai dropdown riêng và yêu cầu địa chỉ cho từng chiều tại nhà. Tìm kiếm bao gồm địa chỉ trả; bộ lọc nhận/trả hoạt động độc lập.
+- Luồng hiện hành: **Booking chờ xác nhận → mở form kiểm tra thực tế → Xác nhận & tạo đơn → Đã tiếp nhận**. GET `/bookings/{booking}/inspection` chỉ mở form. POST `/bookings/{booking}/confirm` yêu cầu nhân viên, thông tin nhận/trả và các dòng thực tế; các dòng bắt buộc có `TinhTrangTruocKhiGiat` tối đa 320 ký tự. Cả hai endpoint sử dụng quyền `bookings.confirm`.
+- Luồng service duy nhất là `BookingService::inspectBookingAndCreateOrder()`. Các dòng dự kiến `ChiTietBooking` được giữ làm lịch sử; `ChiTietDonHang` được tạo từ dữ liệu thực tế. Server tra giá hiệu lực theo đúng dịch vụ/loại đồ/đơn vị, không tin đơn giá hoặc thành tiền gửi từ trình duyệt. KG tối thiểu vẫn áp dụng riêng cho từng dòng.
+- Chỉ tạo phiếu `NHAN_DO` khi nhận tại nhà và `GIAO_DO` khi trả tại nhà. Nếu cả hai tại cửa hàng thì không tạo phiếu. Phiếu nhận dùng `NgayHen`/`GioHen`; phiếu trả chưa có lịch thì để `ThoiGianDuKien` NULL, không sao chép thời gian nhận làm thời gian trả.
+- Việc tạo đơn, chi tiết, phiếu, trừ điểm và xác nhận/audit Booking nằm trong cùng transaction. Khóa Booking và trả về đơn hiện hữu khi gửi lại giúp tránh tạo đơn hoặc trừ điểm trùng. Audit ghi cả `HinhThucTraDo` và `DiaChiTra`, bao gồm các lần sửa thông thường.
+- Booking cũ thiếu hình thức trả hiển thị “Chưa bổ sung”; nhân viên phải chọn trước khi chuyển đổi. Đơn cũ đang `Chờ tiếp nhận` tiếp tục dùng bước kiểm tra trên trang đơn hàng; bản sửa không tự chuyển trạng thái các đơn cũ.
+- Admin reset mật khẩu bằng cách gửi email OTP qua `PasswordResetOtpService`, dùng chung với luồng quên mật khẩu. Không đặt mật khẩu cố định hoặc hiển thị mật khẩu/OTP trong flash message. OTP ngẫu nhiên 6 chữ số, lưu dạng hash, hiệu lực 15 phút; giới hạn yêu cầu lại 1 phút. Gửi mail lỗi xóa OTP/throttle; mật khẩu chỉ đổi khi người dùng hoàn tất form khôi phục. Cần cấu hình Resend hoạt động và email hợp lệ; không gửi email thật trong kiểm thử.
+- `TaiKhoan::$fillable` được bổ sung `AvatarURL`. Luồng upload avatar hiện hành được giữ nguyên.
+- `schema.sql` vẫn là snapshot tham chiếu. Các cột legacy `HinhThucGiaoDo`/`DiaChiGiao` được chú thích và không dùng trong Laravel; không xóa khỏi snapshot khi chưa đối chiếu lại catalog Live. Phiên làm việc này không có credential để kiểm tra catalog Supabase và không thực thi SQL/migration/seeder trên Live.
+
 ## Công nghệ sử dụng
 
 - PHP 8.3 trở lên
@@ -146,7 +159,7 @@ Chỉ sử dụng tài khoản được cấp trong môi trường cục bộ ho
 
 ### Trạng thái kiểm thử hồi quy
 
-Lần chạy đầy đủ được ghi nhận trước đó: **311 test được phát hiện, 119 PASSED, 192 skipped, 624 assertions**. Các test skipped không được tính là kiểm thử thành công. Bộ test dùng SQLite in-memory theo `phpunit.xml`, không phải kiểm thử tích hợp ghi dữ liệu trên Supabase Live. Các xác minh hồi quy mới hơn được ghi trong [TESTCASES.md](./TESTCASES.md); số liệu suite đầy đủ chỉ được cập nhật sau khi chạy lại toàn bộ suite.
+Lần chạy đầy đủ ngày **07/10/2026**: **450 ca được phát hiện, 258 PASSED, 192 skipped, 0 failed, 1.370 assertions** (6,61 giây). Bộ test dùng SQLite `:memory:` trong container PHP 8.4 tắt mạng; email dùng mock. 192 ca legacy bị skip từ trước vì schema cũ, không tính là passed. Nhóm Booking riêng đạt **53 passed, 306 assertions**. Chi tiết ở [TESTCASES.md](./TESTCASES.md). Laravel Pint cho 19 file PHP thay đổi, kiểm tra cú pháp PHP, biên dịch Blade và `git diff --check` đều thành công. Build Vite chuẩn chưa hoàn tất vì không tải được `fonts.bunny.net`; build assets ngoại tuyến với bước tải font tạm thời được bỏ qua đạt, không sửa cấu hình Vite của repo. Đây không phải kiểm thử tích hợp PostgreSQL/Supabase Live hoặc gửi email thật qua Resend.
 
 ### Cập nhật tính năng (06/10/2026)
 

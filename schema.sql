@@ -2,6 +2,11 @@
 -- Updated from PostgreSQL information_schema/pg_catalog via read-only queries on 2026-10-06.
 -- Schema only: no table rows. This local reference was not executed against Supabase.
 --
+-- Application contract reviewed 2026-10-07 (no Live catalog access in this session):
+--   Booking uses independent HinhThucNhanDo/DiaChiNhan and HinhThucTraDo/DiaChiTra.
+--   HinhThucGiaoDo/DiaChiGiao below are legacy columns retained from the snapshot;
+--   Laravel does not use them. Their presence is not a request to create columns.
+--   Booking -> actual inspection -> DonHang (Da tiep nhan), with home-only delivery legs.
 -- Laravel naming/reference notes for this snapshot:
 --   User       -> public."TaiKhoan" ("AvatarURL" stores the public URL; avatar
 --                                  files are stored outside PostgreSQL)

@@ -2,12 +2,14 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Exceptions\PasswordResetOtpException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\LuuTaiKhoanRequest;
 use App\Models\KhachHang;
 use App\Models\NhanVien;
 use App\Models\User;
 use App\Models\VaiTro;
+use App\Services\PasswordResetOtpService;
 use App\Services\UserService;
 use App\Support\FriendlyError;
 use App\Support\PermissionCache;
@@ -305,7 +307,7 @@ class TaiKhoanController extends Controller
         }
     }
 
-    public function resetPassword(int $id)
+    public function resetPassword(int $id, PasswordResetOtpService $otpService)
     {
         $account = $this->userService->find($id);
 
@@ -316,10 +318,15 @@ class TaiKhoanController extends Controller
         $this->authorize('update', [User::class, $account]);
 
         try {
-            $this->userService->update($account, ['password' => 'Abc123!@#']);
+            if (! filter_var($account->Email, FILTER_VALIDATE_EMAIL)) {
+                return redirect()->route('accounts.show', $account)->with('error', 'Tài khoản cần có email hợp lệ để nhận mã đặt lại mật khẩu.');
+            }
+            $otpService->send($account->Email);
 
-            return redirect()->route('accounts.show', $account)->with('success', 'Mật khẩu đã được đặt lại thành công. Mật khẩu mới: Abc123!@#');
-        } catch (\Exception $e) {
+            return redirect()->route('accounts.show', $account)->with('success', 'Đã gửi mã OTP đến email của tài khoản. Người dùng tự đặt mật khẩu tại trang khôi phục; mã có hiệu lực trong 15 phút.');
+        } catch (PasswordResetOtpException $e) {
+            return redirect()->route('accounts.show', $account)->with('error', $e->getMessage());
+        } catch (Throwable $e) {
             return redirect()->route('accounts.show', $account)->with('error', FriendlyError::message($e));
         }
     }

@@ -2,7 +2,29 @@
 
 Lần chạy được ghi nhận bằng `php artisan test --compact` trên cấu hình SQLite in-memory trong `phpunit.xml`.
 
-**Kết quả suite đầy đủ đã ghi nhận trước đó:** 311 test được phát hiện, **119 PASSED**, 192 skipped, 624 assertions. Test chạy trên SQLite in-memory theo `phpunit.xml`; các test skipped không được tính là passed và không có test nào ghi lên Supabase Live. Các bảng dưới đây ghi các kịch bản regression trọng tâm; kết quả kiểm thử mới được bổ sung riêng, không thay thế số liệu suite đầy đủ nếu chưa chạy lại toàn bộ PHPUnit.
+**Suite đầy đủ ngày 07/10/2026:** 450 ca, **258 PASSED**, 192 skipped, **0 failed**, 1.370 assertions. SQLite `:memory:`, container PHP 8.4 tắt mạng, mailer mock. Các bảng lịch sử bên dưới mô tả các đợt trước; nhóm hồi quy ngày 07/10/2026 mô tả hành vi hiện hành. Không ghi dữ liệu thử nghiệm lên Supabase Live.
+
+## Hồi quy ngày 07/10/2026 — nhận/trả độc lập và kiểm tra thực tế
+
+Kết quả mới nhất xem mục Trạng thái kiểm thử hồi quy trong README. Các ca dưới đây chạy bằng SQLite `:memory:` trong container PHP 8.4 tắt mạng. Email dùng mock; không có ghi dữ liệu lên Supabase Live.
+
+| Mã / Nhóm | Kịch bản đã kiểm tra | File |
+|---|---|---|
+| TC-BK-RETURN-01 | Nhận cửa hàng → trả cửa hàng: không tạo phiếu | BookingOrderConversionTest |
+| TC-BK-RETURN-02 | Nhận cửa hàng → trả nhà: chỉ GIAO_DO, đúng địa chỉ trả | BookingOrderConversionTest |
+| TC-BK-RETURN-03 | Nhận nhà → trả cửa hàng: chỉ NHAN_DO, đúng địa chỉ nhận | BookingOrderConversionTest |
+| TC-BK-RETURN-04 | Nhận nhà → trả nhà: hai phiếu độc lập, đúng địa chỉ từng chiều | BookingOrderConversionTest |
+| TC-BK-ACTUAL | Dự kiến 2 món, thực tế 5 món: đơn lưu 5 món và giá server; Booking giữ 2 món | BookingOrderConversionTest |
+| TC-BK-GET | Mở form có trường tình trạng/hình thức trả nhưng chưa tạo đơn, chi tiết hoặc phiếu | BookingOrderConversionTest |
+| TC-BK-VALIDATION | Chặn thiếu/sai hình thức trả, thiếu địa chỉ tại nhà, thiếu/trắng/quá dài tình trạng, số lượng lẻ và hai đơn vị cùng dòng | BookingOrderConversionTest |
+| TC-BK-IDEMPOTENT | Gửi lại chuyển đổi trả cùng đơn, không tăng số đơn hoặc số phiếu | BookingOrderConversionTest |
+| TC-BK-ROLLBACK | Phiếu trả thứ hai lỗi: rollback đơn, chi tiết, phiếu nhận, điểm và audit | BookingOrderConversionTest |
+| TC-BK-AUDIT-SEARCH | Sửa nhận/trả độc lập; audit before/after chứa field trả; tìm kiếm/lọc theo chiều trả | BookingOrderConversionTest |
+| TC-PWD-ADMIN | Admin gửi OTP, mật khẩu cũ còn hiệu lực đến khi người dùng tự đặt mật khẩu mới; không lộ mã | AuthFlowTest |
+| TC-PWD-FAILURE | Gửi mail lỗi không đổi mật khẩu, xóa OTP; tài khoản thiếu email bị từ chối | AuthFlowTest |
+| TC-PWD-PERMISSION | Không có quyền reset bị chặn 403, không gọi mailer | AuthFlowTest |
+
+Có **22 ca mới** (18 ca Booking tính cả data provider, 4 ca reset tài khoản). Các kiểm thử Booking cũ được cập nhật theo form inspection và trạng thái tạo đơn mới; các kiểm thử đơn cũ Chờ tiếp nhận vẫn được giữ. 192 ca legacy đã bị skip từ trước vì schema cũ; không tính chúng là passed.
 
 ## Nhóm 1: Booking & Order Conversion
 

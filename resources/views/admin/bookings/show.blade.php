@@ -29,7 +29,7 @@
                 <x-admin.detail.info-item label="Trạng thái">
                     <x-admin.status-badge :status="$booking->TrangThai" :enum="\App\Enums\BookingStatus::class" :pill="false" />
                 </x-admin.detail.info-item>
-                <x-admin.detail.info-item label="Hình thức">
+                <x-admin.detail.info-item label="Hình thức nhận đồ">
                     <span class="badge bg-primary-subtle text-primary-emphasis border border-primary px-3 py-2 rounded-pill">
                         <i class="bi {{ $booking->method_icon }} me-1"></i>{{ $booking->method_label }}
                     </span>
@@ -39,6 +39,8 @@
                 <x-admin.detail.info-item label="Thời gian xác nhận" :value="$booking->ThoiGianXacNhan?->format('d/m/Y H:i') ?? '—'" />
                 <x-admin.detail.info-item label="Ngày hẹn" :value="$booking->NgayHen?->format('d/m/Y')" />
                 <x-admin.detail.info-item label="Giờ hẹn" :value="$booking->GioHen?->format('H:i')" />
+                <x-admin.detail.info-item label="Hình thức trả đồ" :value="$booking->return_method_label" />
+                <x-admin.detail.info-item label="Địa chỉ trả đồ" :value="$booking->DiaChiTra ?: '—'" />
                 <x-admin.detail.info-item label="Địa chỉ nhận đồ" :value="$booking->DiaChiNhan ?: '—'" />
             </x-admin.detail.info-grid>
 
@@ -107,10 +109,10 @@
                 </x-admin.detail.info-grid>
                 <div class="detail-lock mt-3">
                     <i class="bi bi-info-circle"></i>
-                    <span>Đơn hàng được tạo ở trạng thái chờ tiếp nhận; cần kiểm tra thực tế trước khi bắt đầu giặt.</span>
+                    <span>Đơn hàng mới được tạo sau khi kiểm tra thực tế và có trạng thái Đã tiếp nhận. Đơn cũ đang Chờ tiếp nhận vẫn cần hoàn tất kiểm tra trên trang đơn hàng.</span>
                 </div>
             @else
-                <x-admin.detail.empty message="Chưa có đơn — dùng thao tác Tiếp nhận & tạo đơn để bắt đầu quy trình" icon="bi-hourglass-split" />
+                <x-admin.detail.empty message="Chưa có đơn — mở form kiểm tra thực tế để tiếp nhận Booking" icon="bi-hourglass-split" />
             @endif
         </x-admin.detail.panel>
 
@@ -134,60 +136,11 @@
                         <i class="bi bi-receipt me-1"></i> Xem đơn {{ $order->MaDonHang }}
                     </a>
                 @elseif($booking->statusEnum() === \App\Enums\BookingStatus::Pending)
-                    @if($booking->chiTietBookings->isNotEmpty() && auth()->user()?->can('bookings.confirm'))
-                        <form action="{{ route('bookings.confirm', $booking) }}" method="POST" data-confirm-booking-form>
-                            @csrf
-                            <label class="form-label" for="booking-responsible-employee">
-                                Nhân viên phụ trách <span class="text-danger">*</span>
-                            </label>
-                            <select
-                                class="form-select @error('NhanVienID') is-invalid @enderror mb-2"
-                                id="booking-responsible-employee"
-                                name="NhanVienID"
-                                required
-                            >
-                                <option value="">Chọn nhân viên phụ trách</option>
-                                @foreach($employees as $employee)
-                                    <option value="{{ $employee->NhanVienID }}" @selected(old('NhanVienID', $booking->NhanVienID) == $employee->NhanVienID)>{{ $employee->HoTen }}</option>
-                                @endforeach
-                            </select>
-                            @error('NhanVienID')<div class="invalid-feedback d-block mb-2">{{ $message }}</div>@enderror
-                            <input type="hidden" name="booking_id" value="{{ $booking->BookingID }}">
-                            <input type="hidden" name="use_points" value="0">
-                            <div class="rounded-3 border bg-white p-3 mb-2">
-                                <div class="form-check form-switch mb-1">
-                                    <input
-                                        class="form-check-input"
-                                        type="checkbox"
-                                        role="switch"
-                                        id="booking-use-points"
-                                        name="use_points"
-                                        value="1"
-                                        @checked((bool) old('use_points', false))
-                                    >
-                                    <label class="form-check-label fw-semibold" for="booking-use-points">Dùng điểm tích lũy</label>
-                                </div>
-                                <div class="form-text" id="booking-points-toggle-status" aria-live="polite">Đang tắt — không trừ điểm của khách.</div>
-                                <div class="form-text mt-2">Khách đang có {{ number_format($booking->khachHang?->points ?? 0) }} điểm (tương đương {{ number_format(($booking->khachHang?->points ?? 0) * \App\Services\OrderService::POINT_VALUE) }} VNĐ). Khi bật, hệ thống tự dùng tối đa điểm có thể áp dụng cho đơn.</div>
-                            </div>
-                            @error('DiemSuDung')<div class="text-danger small mb-2">{{ $message }}</div>@enderror
-                            <button type="submit" class="btn btn-outline-primary py-2 w-100">
-                                <i class="bi bi-box-arrow-in-down me-1" aria-hidden="true"></i> Tiếp nhận &amp; tạo đơn
-                            </button>
-                        </form>
-                    @elseif($booking->chiTietBookings->isEmpty() && auth()->user()?->can('bookings.edit'))
-                        <a href="{{ route('bookings.edit', $booking) }}" class="btn btn-outline-primary py-2 w-100">
-                            <i class="bi bi-exclamation-triangle me-1" aria-hidden="true"></i> Thêm dịch vụ trước khi tiếp nhận
+                    @can('bookings.confirm')
+                        <a href="{{ route('bookings.inspection', $booking) }}" class="btn btn-outline-primary py-2 w-100">
+                            <i class="bi bi-clipboard-check me-1"></i>Kiểm tra thực tế &amp; chuyển đổi
                         </a>
-                    @elseif($booking->chiTietBookings->isEmpty())
-                        <div class="alert alert-warning mb-0" role="alert">
-                            Chưa thể tiếp nhận: cần thêm ít nhất một dòng dịch vụ trước khi tạo đơn hàng.
-                        </div>
-                    @else
-                        <span class="btn btn-outline-primary py-2 disabled w-100">
-                            <i class="bi bi-hourglass-split me-1"></i> Chờ tiếp nhận
-                        </span>
-                    @endif
+                    @endcan
                 @elseif($booking->statusEnum() === \App\Enums\BookingStatus::Confirmed)
                     <div class="alert alert-warning mb-0" role="alert">
                         Booking đã được xác nhận nhưng chưa có đơn hàng. Vui lòng kiểm tra nhật ký hệ thống.
@@ -217,36 +170,3 @@
     </div>
 </div>
 @endsection
-
-@push('scripts')
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const pointsToggle = document.getElementById('booking-use-points');
-        const pointsToggleStatus = document.getElementById('booking-points-toggle-status');
-
-        if (pointsToggle && pointsToggleStatus) {
-            const updatePointsToggleStatus = function() {
-                pointsToggleStatus.textContent = pointsToggle.checked
-                    ? 'Đang bật — hệ thống sẽ tự dùng điểm tối đa theo tổng tiền đơn.'
-                    : 'Đang tắt — không trừ điểm của khách.';
-            };
-
-            pointsToggle.addEventListener('change', updatePointsToggleStatus);
-            updatePointsToggleStatus();
-        }
-
-        document.querySelectorAll('[data-confirm-booking-form]').forEach(function(form) {
-            form.addEventListener('submit', function() {
-                const button = form.querySelector('button[type="submit"]');
-                if (!button) {
-                    return;
-                }
-
-                button.disabled = true;
-                button.setAttribute('aria-busy', 'true');
-                button.innerHTML = '<span class="spinner-border spinner-border-sm" aria-hidden="true"></span><span class="visually-hidden">Đang xác nhận</span>';
-            });
-        });
-    });
-</script>
-@endpush

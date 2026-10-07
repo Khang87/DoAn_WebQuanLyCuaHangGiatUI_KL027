@@ -6,7 +6,6 @@ use App\Enums\BookingStatus;
 use App\Enums\OrderStatus;
 use App\Models\BangGia;
 use App\Models\Booking;
-use App\Models\ChiTietBooking;
 use App\Models\DonHang;
 use App\Models\KhachHang;
 use App\Models\NhatKyHeThong;
@@ -32,6 +31,10 @@ class BookingService
             $query->where('HinhThucNhanDo', $filters['method']);
         }
 
+        if (! empty($filters['return_method'])) {
+            $query->where('HinhThucTraDo', $filters['return_method']);
+        }
+
         if (! empty($filters['status'])) {
             $query->where('TrangThai', $filters['status']);
         }
@@ -44,7 +47,8 @@ class BookingService
                     $q->where('BookingID', $numericPart);
                 }
                 $q->orWhere('MaBooking', 'LIKE', "%{$search}%");
-                $q->orWhere('DiaChiNhan', 'LIKE', "%{$search}%");
+                $q->orWhere('DiaChiNhan', 'LIKE', "%{$search}%")
+                    ->orWhere('DiaChiTra', 'LIKE', "%{$search}%");
                 $q->orWhereHas('khachHang', function ($sub) use ($search) {
                     $sub->where('HoTen', 'LIKE', "%{$search}%")
                         ->orWhere('SoDienThoai', 'LIKE', "%{$search}%");
@@ -52,7 +56,7 @@ class BookingService
             });
         }
 
-        $allowedSorts = ['BookingID', 'MaBooking', 'KhachHangID', 'HinhThucNhanDo', 'TrangThai', 'NgayHen', 'NgayTao'];
+        $allowedSorts = ['BookingID', 'MaBooking', 'KhachHangID', 'HinhThucNhanDo', 'HinhThucTraDo', 'TrangThai', 'NgayHen', 'NgayTao'];
         $sortBy = in_array($filters['sort_by'] ?? null, $allowedSorts) ? $filters['sort_by'] : 'NgayTao';
         $sortOrder = ($filters['sort_order'] ?? 'desc') === 'asc' ? 'asc' : 'desc';
 
@@ -155,11 +159,7 @@ class BookingService
             $after = $this->bookingAuditSnapshot($lockedBooking);
             $afterItems = $this->bookingItemsAuditSnapshot($lockedBooking);
 
-            if (
-                $wasPending
-                && $isBeingConfirmed
-                && ($before !== $after || $beforeItems !== $afterItems)
-            ) {
+            if ($before !== $after || $beforeItems !== $afterItems) {
                 $this->recordBookingAudit($lockedBooking, $before, $after, $beforeItems, $afterItems);
             }
 
@@ -187,6 +187,8 @@ class BookingService
             'scheduled_date' => 'NgayHen',
             'scheduled_time' => 'GioHen',
             'address' => 'DiaChiNhan',
+            'return_method' => 'HinhThucTraDo',
+            'return_address' => 'DiaChiTra',
             'notes' => 'GhiChu',
             'status' => 'TrangThai',
         ];
@@ -217,97 +219,29 @@ class BookingService
         });
     }
 
-    /**
-     * Xác nhận đặt lịch và chuyển thành đơn hàng.
-     *
-     * Hàm này là idempotent: nếu đặt lịch đã có đơn (orders.booking_id) thì trả
-     * lại đơn cũ thay vì tạo thêm, nên bấm "Xác nhận" nhiều lần cũng không sinh
-     * đơn trùng. Toàn bộ việc tạo đơn + tạo phiếu giao chạy trong một
-     * transaction nên thất bại giữa chừng sẽ rollback trọn vẹn.
-     */
-    public function confirmAndCreateOrder(Booking $booking): ?DonHang
-    {
-        $existing = $this->findOrderForBooking($booking);
-
-        if ($existing) {
-            return $existing;
-        }
-
-        if (! $booking->isConvertibleToOrder()) {
-            return null;
-        }
-
-        return DB::transaction(function () use ($booking): DonHang {
-            $lockedBooking = Booking::query()
-                ->lockForUpdate()
-                ->findOrFail($booking->BookingID);
+    /** Kiểm tra thực tế và tạo đơn trong một giao dịch, có khóa chống tạo trùng. */
+    public function inspectBookingAndCreateOrder(
+        Booking $booking,
+        int $employeeId,
+        array $items,
+        int $pointsUsed = 0,
+        bool $useAllAvailablePoints = false,
+        array $bookingData = [],
+    ): DonHang {
+        return DB::transaction(function () use ($booking, $employeeId, $items, $pointsUsed, $useAllAvailablePoints, $bookingData): DonHang {
+            $lockedBooking = Booking::query()->lockForUpdate()->findOrFail($booking->BookingID);
             $existing = $this->findOrderForBooking($lockedBooking);
-
-            if ($existing) {
+            if ($existing !== null) {
                 return $existing;
             }
 
             if (! $lockedBooking->isConvertibleToOrder()) {
                 throw ValidationException::withMessages([
-                    'status' => 'Chỉ đặt lịch đã xác nhận mới có thể tạo đơn hàng.',
+                    'booking' => 'Chỉ đặt lịch đang ở trạng thái Chờ xác nhận mới có thể được kiểm tra và tạo đơn.',
                 ]);
             }
 
-            if ($lockedBooking->NhanVienXacNhanID === null || $lockedBooking->ThoiGianXacNhan === null) {
-                $before = $this->bookingAuditSnapshot($lockedBooking);
-                $beforeItems = $this->bookingItemsAuditSnapshot($lockedBooking);
-                $employeeId = auth()->user()?->NhanVienID;
-
-                if (! $employeeId) {
-                    throw ValidationException::withMessages([
-                        'status' => 'Tài khoản hiện tại chưa liên kết hồ sơ nhân viên để ghi nhận xác nhận Booking.',
-                    ]);
-                }
-
-                $lockedBooking->update([
-                    'NhanVienXacNhanID' => $lockedBooking->NhanVienXacNhanID ?? $employeeId,
-                    'ThoiGianXacNhan' => $lockedBooking->ThoiGianXacNhan ?? now(),
-                ]);
-                $lockedBooking->refresh();
-                $this->recordBookingAudit(
-                    $lockedBooking,
-                    $before,
-                    $this->bookingAuditSnapshot($lockedBooking),
-                    $beforeItems,
-                    $this->bookingItemsAuditSnapshot($lockedBooking),
-                );
-            }
-
-            return $this->insertOrderAndDelivery($lockedBooking)->fresh();
-        });
-    }
-
-    public function confirmPendingBooking(
-        Booking $booking,
-        int $employeeId,
-        int $pointsUsed = 0,
-        bool $useAllAvailablePoints = false,
-    ): DonHang {
-        return DB::transaction(function () use ($booking, $employeeId, $pointsUsed, $useAllAvailablePoints): DonHang {
-            $lockedBooking = Booking::query()
-                ->lockForUpdate()
-                ->findOrFail($booking->BookingID);
-
-            if ($useAllAvailablePoints) {
-                $pointsUsed = (int) (
-                    KhachHang::query()->find($lockedBooking->KhachHangID)?->points() ?? 0
-                );
-            }
-
-            if ($lockedBooking->statusEnum() !== BookingStatus::Pending) {
-                throw ValidationException::withMessages([
-                    'booking' => 'Chỉ đặt lịch đang ở trạng thái Chờ xác nhận mới có thể được duyệt.',
-                ]);
-            }
-
-            $snapshots = $this->serviceSnapshotsForOrder($lockedBooking);
             $confirmerId = auth()->user()?->NhanVienID;
-
             if (! $confirmerId) {
                 throw ValidationException::withMessages([
                     'booking' => 'Tài khoản hiện tại chưa liên kết hồ sơ nhân viên để xác nhận Booking.',
@@ -316,36 +250,27 @@ class BookingService
 
             $before = $this->bookingAuditSnapshot($lockedBooking);
             $beforeItems = $this->bookingItemsAuditSnapshot($lockedBooking);
+            unset($bookingData['customer_id'], $bookingData['status'], $bookingData['staff_id']);
+            $lockedBooking->fill($this->mapRequestData($bookingData));
 
-            $lockedBooking->updateQuietly([
+            if ($useAllAvailablePoints) {
+                $pointsUsed = (int) (KhachHang::query()->find($lockedBooking->KhachHangID)?->points() ?? 0);
+            }
+
+            $order = $this->orderService->createFromBooking($lockedBooking, $items, $employeeId, $pointsUsed);
+            $lockedBooking->fill([
                 'NhanVienID' => $employeeId,
                 'TrangThai' => BookingStatus::Confirmed->value,
                 'NhanVienXacNhanID' => $confirmerId,
                 'ThoiGianXacNhan' => now(),
-            ]);
-            $lockedBooking->refresh();
-
-            $after = $this->bookingAuditSnapshot($lockedBooking);
-            $afterItems = $this->bookingItemsAuditSnapshot($lockedBooking);
-            $this->recordBookingAudit($lockedBooking, $before, $after, $beforeItems, $afterItems);
-
-            $order = $this->findOrderForBooking($lockedBooking)
-                ?? $this->orderService->createFromBooking($lockedBooking, $snapshots, $employeeId, $pointsUsed);
+            ])->saveQuietly();
+            $this->recordBookingAudit(
+                $lockedBooking, $before, $this->bookingAuditSnapshot($lockedBooking),
+                $beforeItems, $this->bookingItemsAuditSnapshot($lockedBooking),
+            );
 
             return $order->fresh();
         });
-    }
-
-    /**
-     * Insert bản ghi đơn hàng (kèm phiếu giao) có tham chiếu về lịch hẹn.
-     * Bản ghi đơn luôn chứa mã tham chiếu của lịch đặt: qua quan hệ
-     * `orders.booking_id` và qua mã ghi trong phần ghi chú.
-     */
-    private function insertOrderAndDelivery(Booking $booking, int $pointsUsed = 0): DonHang
-    {
-        $snapshots = $this->serviceSnapshotsForOrder($booking);
-
-        return $this->orderService->createFromBooking($booking, $snapshots, (int) $booking->NhanVienID, $pointsUsed);
     }
 
     /**
@@ -435,65 +360,6 @@ class BookingService
     }
 
     /**
-     * @return array<int, array<string, mixed>>
-     */
-    private function serviceSnapshotsForOrder(Booking $booking): array
-    {
-        $items = $booking->chiTietBookings()
-            ->with('donViTinh')
-            ->orderBy('ChiTietBookingID')
-            ->get();
-
-        if ($items->isEmpty()) {
-            throw ValidationException::withMessages([
-                'items' => 'Đặt lịch chưa có dòng dịch vụ. Hãy bổ sung ít nhất một dòng trước khi xác nhận.',
-            ]);
-        }
-
-        return $items->map(function (ChiTietBooking $item): array {
-            $quantity = $item->SoLuong !== null ? (float) $item->SoLuong : null;
-            $weight = $item->KhoiLuong !== null ? (float) $item->KhoiLuong : null;
-            $unit = $item->donViTinh;
-
-            if (! $unit) {
-                throw ValidationException::withMessages([
-                    'items' => 'Một hoặc nhiều dòng dịch vụ tham chiếu đến đơn vị tính không tồn tại.',
-                ]);
-            }
-
-            $isWeightUnit = $unit->isWeightUnit();
-
-            if (
-                $item->DichVuID === null
-                || $item->LoaiDoGiatID === null
-                || $item->DonViTinhID === null
-                || (($quantity === null) === ($weight === null))
-                || ($quantity !== null && ($quantity < 1 || floor($quantity) !== $quantity))
-                || ($weight !== null && $weight <= 0)
-                || ($isWeightUnit && ($quantity !== null || $weight === null))
-                || (! $isWeightUnit && ($quantity === null || $weight !== null))
-                || (float) $item->DonGia < 0
-                || (float) $item->ThanhTien < 0
-            ) {
-                throw ValidationException::withMessages([
-                    'items' => 'Một hoặc nhiều dòng dịch vụ trong Booking không hợp lệ.',
-                ]);
-            }
-
-            return [
-                'DichVuID' => $item->DichVuID,
-                'LoaiDoGiatID' => $item->LoaiDoGiatID,
-                'DonViTinhID' => $item->DonViTinhID,
-                'SoLuong' => $quantity,
-                'KhoiLuong' => $weight,
-                'DonGia' => (float) $item->DonGia,
-                'ThanhTien' => (float) $item->ThanhTien,
-                'GhiChu' => $item->GhiChu,
-            ];
-        })->all();
-    }
-
-    /**
      * @return array<string, mixed>
      */
     private function bookingAuditSnapshot(Booking $booking): array
@@ -503,6 +369,8 @@ class BookingService
             'KhachHangID',
             'HinhThucNhanDo',
             'DiaChiNhan',
+            'HinhThucTraDo',
+            'DiaChiTra',
             'NgayHen',
             'GioHen',
             'GhiChu',
@@ -549,7 +417,7 @@ class BookingService
     ): void {
         $action = $before === []
             ? 'Tạo Booking'
-            : (($after['TrangThai'] ?? null) === BookingStatus::Confirmed->value
+            : (($before['TrangThai'] ?? null) !== BookingStatus::Confirmed->value && ($after['TrangThai'] ?? null) === BookingStatus::Confirmed->value
                 ? 'Xác nhận Booking'
                 : 'Cập nhật Booking');
 

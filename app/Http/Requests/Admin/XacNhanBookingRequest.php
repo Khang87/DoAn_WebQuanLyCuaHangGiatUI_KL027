@@ -2,60 +2,48 @@
 
 namespace App\Http\Requests\Admin;
 
-use App\Enums\BookingStatus;
 use App\Models\Booking;
-use App\Models\DonHang;
-use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Validator;
 
-class XacNhanBookingRequest extends FormRequest
+class XacNhanBookingRequest extends LuuBookingRequest
 {
-    public function authorize(): bool
-    {
-        return true;
-    }
-
     public function rules(): array
     {
-        return [
-            'NhanVienID' => ['required', 'integer', 'exists:NhanVien,NhanVienID'],
-            'DiemSuDung' => ['nullable', 'integer', 'min:0'],
+        $rules = parent::rules();
+        unset($rules['status']);
+
+        return array_merge($rules, [
+            'staff_id' => ['required', 'integer', 'exists:NhanVien,NhanVienID'],
+            'items' => ['required', 'array', 'min:1'],
+            'items.*.TinhTrangTruocKhiGiat' => ['required', 'string', 'max:320'],
+            'items.*.GhiChu' => ['nullable', 'string', 'max:160'],
             'use_points' => ['nullable', 'boolean'],
-        ];
+        ]);
     }
 
     public function messages(): array
     {
-        return [
-            'NhanVienID.required' => 'Vui lòng chọn nhân viên phụ trách.',
-            'NhanVienID.exists' => 'Nhân viên không tồn tại.',
-        ];
+        return array_merge(parent::messages(), [
+            'items.required' => 'Vui lòng nhập ít nhất một dòng kiểm tra thực tế trước khi tạo đơn.',
+            'items.min' => 'Vui lòng nhập ít nhất một dòng kiểm tra thực tế trước khi tạo đơn.',
+            'items.*.TinhTrangTruocKhiGiat.required' => 'Vui lòng nhập tình trạng trước khi giặt cho từng dòng.',
+        ]);
     }
 
     public function withValidator(Validator $validator): void
     {
+        parent::withValidator($validator);
         $validator->after(function (Validator $validator): void {
             $routeBooking = $this->route('booking');
-            $bookingId = $routeBooking instanceof Booking
-                ? $routeBooking->getKey()
-                : $routeBooking;
-            $booking = is_numeric($bookingId)
-                ? Booking::query()->find((int) $bookingId)
-                : null;
-
-            if ($booking !== null && $booking->statusEnum() !== BookingStatus::Pending) {
-                $existingOrder = DonHang::query()
-                    ->where('BookingID', $booking->BookingID)
-                    ->first();
-                $message = $existingOrder !== null
-                    ? 'Booking này đã có đơn hàng '.$existingOrder->MaDonHang.'; hệ thống không tạo đơn hàng trùng.'
-                    : 'Chỉ đặt lịch đang ở trạng thái Chờ xác nhận mới có thể được duyệt.';
-
-                $validator->errors()->add(
-                    'booking',
-                    $message,
-                );
+            $booking = $routeBooking instanceof Booking ? $routeBooking : Booking::query()->find($routeBooking);
+            if ($booking && ! $booking->isConvertibleToOrder() && ! $booking->donHangs()->exists()) {
+                $validator->errors()->add('booking', 'Chỉ Booking chờ xác nhận mới có thể kiểm tra thực tế và tạo đơn.');
             }
         });
+    }
+
+    protected function getRedirectUrl(): string
+    {
+        return route('bookings.inspection', $this->route('booking'));
     }
 }

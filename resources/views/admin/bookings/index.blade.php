@@ -5,14 +5,14 @@
 
 @section('content')
 <div class="page-toolbar">
-    <p class="text-muted page-toolbar__desc">Tiếp nhận Booking để tạo đơn hàng ở trạng thái chờ kiểm tra thực tế trước khi bắt đầu xử lý.</p>
+    <p class="text-muted page-toolbar__desc">Kiểm tra đồ thực tế từ Booking trước khi xác nhận và tạo đơn Đã tiếp nhận.</p>
 </div>
 
 <form action="{{ url()->current() }}" method="GET" class="row g-3 align-items-center mb-4">
     <div class="col-12 col-md-auto flex-grow-1">
         <div class="input-group input-group-sm shadow-sm rounded-3 overflow-hidden">
             <span class="input-group-text bg-white border-end-0 ps-3"><i class="fas fa-search text-muted"></i></span>
-            <input type="text" name="search" class="form-control form-control-sm border-start-0 ps-2" placeholder="Tìm theo mã lịch, tên khách hàng, SĐT..." value="{{ request('search') }}">
+            <input type="text" name="search" class="form-control form-control-sm border-start-0 ps-2" placeholder="Tìm theo mã lịch, tên khách hàng, SĐT, địa chỉ nhận/trả..." value="{{ request('search') }}">
         </div>
     </div>
     <div class="col-12 col-sm-6 col-md-auto">
@@ -27,9 +27,17 @@
     </div>
     <div class="col-12 col-sm-6 col-md-auto">
         <select name="method" class="form-select form-select-sm filter-select shadow-sm rounded-3" onchange="this.form.submit()">
-            <option value="">Tất cả hình thức</option>
-            @foreach(\App\Enums\BookingMethod::options() as $value => $label)
+            <option value="">Tất cả hình thức nhận</option>
+            @foreach(\App\Enums\ReceiveMethod::options() as $value => $label)
                 <option value="{{ $value }}" @selected(request('method') === $value)>{{ $label }}</option>
+            @endforeach
+        </select>
+    </div>
+    <div class="col-12 col-sm-6 col-md-auto">
+        <select name="return_method" class="form-select form-select-sm filter-select shadow-sm rounded-3" onchange="this.form.submit()">
+            <option value="">Tất cả hình thức trả</option>
+            @foreach(\App\Enums\ReturnMethod::options() as $value => $label)
+                <option value="{{ $value }}" @selected(request('return_method') === $value)>{{ $label }}</option>
             @endforeach
         </select>
     </div>
@@ -39,7 +47,7 @@
     <div class="card-body p-0">
         <div class="table-responsive">
             <table class="table-custom mb-0">
-                <thead><tr><th>STT</th><th>Mã lịch hẹn</th><th>Khách hàng</th><th>Nhân viên</th><th>Hình thức</th><th>Ngày hẹn</th><th>Trạng thái</th><th>Thao tác</th></tr></thead>
+                <thead><tr><th>STT</th><th>Mã lịch hẹn</th><th>Khách hàng</th><th>Nhân viên</th><th>Nhận / Trả đồ</th><th>Ngày hẹn</th><th>Trạng thái</th><th>Thao tác</th></tr></thead>
                 <tbody>
                 @forelse($bookings as $booking)
                     <tr>
@@ -48,7 +56,7 @@
                         <td><div class="fw-semibold">{{ $booking->khachHang?->HoTen ?: '-' }}</div><small class="text-muted">{{ $booking->khachHang?->SoDienThoai ?: 'Chưa có SĐT' }}</small></td>
                         <td>{{ $booking->nhanVien?->HoTen ?: 'Chưa phân công' }}</td>
                         <td>
-                            <i class="bi {{ $booking->method_icon }} me-1"></i>{{ $booking->HinhThucNhanDo }}
+                            <i class="bi {{ $booking->method_icon }} me-1"></i>Nhận: {{ $booking->method_label }}<br><small>Trả: {{ $booking->return_method_label }}</small>
                         </td>
                         <td>{{ $booking->NgayHen?->format('d/m/Y') ?: '-' }} {{ $booking->GioHen?->format('H:i') ?: '' }}</td>
                         <td><x-admin.status-badge :status="$booking->TrangThai" :enum="\App\Enums\BookingStatus::class" /></td>
@@ -61,29 +69,9 @@
                             @endcan
                             @can('bookings.confirm')
                                 @if($booking->statusEnum() === \App\Enums\BookingStatus::Pending)
-                                    @if($booking->chiTietBookings->isNotEmpty())
-                                        <button
-                                            type="button"
-                                            class="btn btn-order-action"
-                                            title="Tiếp nhận Booking và tạo đơn hàng"
-                                            data-bs-toggle="modal"
-                                            data-bs-target="#confirmBookingModal"
-                                            data-confirm-booking-action="{{ route('bookings.confirm', $booking) }}"
-                                            data-booking-id="{{ $booking->BookingID }}"
-                                            data-booking-employee="{{ $booking->NhanVienID }}"
-                                        >
-                                            <i class="bi bi-box-arrow-in-down" aria-hidden="true"></i>
-                                            <span class="visually-hidden">Tiếp nhận và tạo đơn hàng</span>
-                                        </button>
-                                    @elseif(auth()->user()?->can('bookings.edit'))
-                                        <a href="{{ route('bookings.edit', $booking) }}" class="btn btn-order-action text-warning" aria-label="Cần thêm dịch vụ trước khi xác nhận" title="Chưa thể xác nhận: hãy thêm ít nhất một dòng dịch vụ trước.">
-                                            <i class="bi bi-exclamation-triangle" aria-hidden="true"></i>
-                                        </a>
-                                    @else
-                                            <span class="btn btn-order-action text-warning" aria-label="Cần thêm dịch vụ trước khi xác nhận" title="Chưa thể xác nhận: cần nhân viên có quyền sửa Booking thêm ít nhất một dòng dịch vụ.">
-                                                <i class="bi bi-exclamation-triangle" aria-hidden="true"></i>
-                                            </span>
-                                    @endif
+                                    <a href="{{ route('bookings.inspection', $booking) }}" class="btn btn-order-action" title="Kiểm tra thực tế và chuyển đổi Booking">
+                                        <i class="bi bi-clipboard-check" aria-hidden="true"></i><span class="visually-hidden">Kiểm tra thực tế</span>
+                                    </a>
                                 @endif
                             @endcan
                             @can('bookings.edit')
@@ -117,83 +105,11 @@
 </div>
 @endif
 
-<div class="modal fade" id="confirmBookingModal" tabindex="-1" aria-labelledby="confirmBookingModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <form
-                id="confirmBookingForm"
-                action="{{ old('booking_id') ? route('bookings.confirm', old('booking_id')) : '#' }}"
-                method="POST"
-                data-confirm-booking-form
-            >
-                @csrf
-                <input type="hidden" name="booking_id" value="{{ old('booking_id') }}">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="confirmBookingModalLabel">Tiếp nhận &amp; tạo đơn</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button>
-                </div>
-                <div class="modal-body">
-                    <label class="form-label" for="confirm-booking-employee">
-                        Nhân viên phụ trách <span class="text-danger">*</span>
-                    </label>
-                    <select
-                        class="form-select @error('NhanVienID') is-invalid @enderror"
-                        id="confirm-booking-employee"
-                        name="NhanVienID"
-                        required
-                    >
-                        <option value="">Chọn nhân viên phụ trách</option>
-                        @foreach($employees as $employee)
-                            <option value="{{ $employee->NhanVienID }}" @selected(old('NhanVienID') == $employee->NhanVienID)>{{ $employee->HoTen }}</option>
-                        @endforeach
-                    </select>
-                    @error('NhanVienID')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Hủy</button>
-                    <button type="submit" class="btn btn-primary">
-                        <i class="bi bi-box-arrow-in-down me-1" aria-hidden="true"></i>Tiếp nhận &amp; tạo đơn
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
 @endsection
 
 @push('scripts')
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        const confirmBookingModal = document.getElementById('confirmBookingModal');
-        const confirmBookingForm = document.getElementById('confirmBookingForm');
-        const responsibleEmployee = document.getElementById('confirm-booking-employee');
-        const bookingId = confirmBookingForm.querySelector('[name="booking_id"]');
-
-        document.querySelectorAll('[data-confirm-booking-action]').forEach(function(button) {
-            button.addEventListener('click', function() {
-                confirmBookingForm.action = button.dataset.confirmBookingAction;
-                bookingId.value = button.dataset.bookingId;
-                responsibleEmployee.value = button.dataset.bookingEmployee || '';
-            });
-        });
-
-        document.querySelectorAll('[data-confirm-booking-form]').forEach(function(form) {
-            form.addEventListener('submit', function() {
-                const button = form.querySelector('button[type="submit"]');
-                if (!button) {
-                    return;
-                }
-
-                button.disabled = true;
-                button.setAttribute('aria-busy', 'true');
-                button.innerHTML = '<span class="spinner-border spinner-border-sm" aria-hidden="true"></span><span class="visually-hidden">Đang xác nhận</span>';
-            });
-        });
-
-        @if($errors->has('NhanVienID'))
-            bootstrap.Modal.getOrCreateInstance(confirmBookingModal).show();
-        @endif
-
         document.querySelectorAll('[id^="deleteBookingForm_"]').forEach(function(form) {
             form.addEventListener('submit', function(e) {
                 e.preventDefault();

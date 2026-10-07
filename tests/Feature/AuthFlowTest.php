@@ -2,10 +2,12 @@
 
 namespace Tests\Feature;
 
+use App\Http\Middleware\EnsureUserHasPermission;
 use App\Models\User;
 use App\Models\VaiTro;
 use App\Services\RememberedLogin;
 use App\Services\ResendOtpMailer;
+use App\Services\UserService;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -360,5 +362,80 @@ class AuthFlowTest extends TestCase
             'password_confirmation' => 'NewPassword123',
         ])->assertRedirect(route('password.reset'))
             ->assertSessionHas('error', 'Email hoặc mã OTP không đúng hoặc mã đã hết hạn.');
+    }
+
+    public function test_admin_reset_sends_otp_and_keeps_the_password_until_user_confirmation(): void
+    {
+        $this->prepareAdminReset();
+        $oldHash = $this->staff->MatKhau;
+        $otp = null;
+        $mailer = \Mockery::mock(ResendOtpMailer::class);
+        $mailer->shouldReceive('send')->once()->with($this->staff->Email, \Mockery::on(function (string $code) use (&$otp): bool {
+            $otp = $code;
+
+            return preg_match('/^\d{6}$/', $code) === 1;
+        }));
+        $this->app->instance(ResendOtpMailer::class, $mailer);
+
+        $this->post(route('accounts.reset-password', $this->staff))->assertRedirect(route('accounts.show', $this->staff))
+            ->assertSessionHas('success')->assertSessionMissing('simulation_otp');
+        $this->assertSame($oldHash, $this->staff->fresh()->MatKhau);
+        $this->assertSame(hash('sha256', $otp), Cache::store('file')->get('pwd_reset_'.$this->staff->Email));
+        $this->assertStringNotContainsString($otp, (string) session('success'));
+        $this->assertStringNotContainsString('Abc123!@#', (string) session('success'));
+        $this->post(route('accounts.reset-password', $this->staff))->assertSessionHas('error');
+        $this->assertSame($oldHash, $this->staff->fresh()->MatKhau);
+
+        auth()->logout();
+        $this->post(route('password.update'), [
+            'email' => $this->staff->Email,
+            'otp' => $otp,
+            'password' => 'UserChosenPassword123',
+            'password_confirmation' => 'UserChosenPassword123',
+        ])->assertRedirect(route('login'));
+        $this->assertTrue(Hash::check('UserChosenPassword123', $this->staff->fresh()->MatKhau));
+        $this->assertNull(Cache::store('file')->get('pwd_reset_'.$this->staff->Email));
+    }
+
+    public function test_admin_reset_failure_does_not_change_password_and_removes_cached_otp(): void
+    {
+        $this->prepareAdminReset();
+        $oldHash = $this->staff->MatKhau;
+        $mailer = \Mockery::mock(ResendOtpMailer::class);
+        $mailer->shouldReceive('send')->once()->andThrow(new \RuntimeException('Provider unavailable'));
+        $this->app->instance(ResendOtpMailer::class, $mailer);
+        $this->post(route('accounts.reset-password', $this->staff))->assertSessionHas('error');
+        $this->assertSame($oldHash, $this->staff->fresh()->MatKhau);
+        $this->assertNull(Cache::store('file')->get('pwd_reset_'.$this->staff->Email));
+    }
+
+    public function test_admin_reset_requires_a_valid_email(): void
+    {
+        $this->staff->update(['Email' => null]);
+        $this->prepareAdminReset();
+        $oldHash = $this->staff->MatKhau;
+        $mailer = \Mockery::mock(ResendOtpMailer::class);
+        $mailer->shouldNotReceive('send');
+        $this->app->instance(ResendOtpMailer::class, $mailer);
+        $this->post(route('accounts.reset-password', $this->staff))->assertSessionHas('error');
+        $this->assertSame($oldHash, $this->staff->fresh()->MatKhau);
+    }
+
+    public function test_account_reset_without_reset_permission_is_forbidden(): void
+    {
+        $this->actingAs($this->staff);
+        $mailer = \Mockery::mock(ResendOtpMailer::class);
+        $mailer->shouldNotReceive('send');
+        $this->app->instance(ResendOtpMailer::class, $mailer);
+        $this->post(route('accounts.reset-password', $this->staff))->assertForbidden();
+    }
+
+    private function prepareAdminReset(): void
+    {
+        $this->actingAs($this->staff);
+        $this->withoutMiddleware([EnsureUserHasPermission::class]);
+        $users = \Mockery::mock(UserService::class);
+        $users->shouldReceive('find')->with($this->staff->getKey())->andReturn($this->staff);
+        $this->app->instance(UserService::class, $users);
     }
 }
