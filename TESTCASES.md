@@ -2,7 +2,9 @@
 
 Lần chạy được ghi nhận bằng `php artisan test --compact` trên cấu hình SQLite in-memory trong `phpunit.xml`.
 
-**Suite đầy đủ mới nhất ngày 07/10/2026:** **303 PASSED, 0 skipped, 0 failed, 1.555 assertions**. 192 case legacy đã được phân loại: 8 khôi phục/chuyển fixture, 184 loại khỏi suite vì schema/quy tắc cũ hoặc placeholder; không báo chúng là passed. Chi tiết: [LEGACY_TESTS.md](docs/testing/LEGACY_TESTS.md). SQLite `:memory:`, container PHP 8.4 tắt mạng, mailer mock. Các bảng lịch sử bên dưới mô tả các đợt trước; nhóm hồi quy ngày 07/10/2026 mô tả hành vi hiện hành. Không ghi dữ liệu thử nghiệm lên Supabase Live.
+**Bản vá kiểm kê đơn trực tiếp ngày 07/10/2026:** **310 PASSED, 0 skipped, 0 failed, 1.648 assertions**; PHP 8.4, SQLite in-memory, container tắt mạng. Bổ sung 7 test: 4 ca HTTP/form (trạng thái/BookingID, thiếu kiểm kê, render form, lưu tình trạng và chuyển giặt), 1 ca service kiểm tra các input không hợp lệ không làm thay đổi điểm/đơn/audit, 2 ca pricing (giá hết hạn mới hơn và ngày hết hạn tương lai). Mutation `NgayKetThuc >= hôm nay` thành `<= hôm nay` làm hai test pricing mới thất bại; mã nguyên bản pass. Không sửa RPC hoặc Supabase Live trong bản vá này.
+
+**Suite trước bản vá tạo đơn trực tiếp ngày 07/10/2026:** **303 PASSED, 0 skipped, 0 failed, 1.555 assertions**. 192 case legacy đã được phân loại: 8 khôi phục/chuyển fixture, 184 loại khỏi suite vì schema/quy tắc cũ hoặc placeholder; không báo chúng là passed. Chi tiết: [LEGACY_TESTS.md](docs/testing/LEGACY_TESTS.md). SQLite `:memory:`, container PHP 8.4 tắt mạng, mailer mock. Các bảng lịch sử bên dưới mô tả các đợt trước; nhóm hồi quy ngày 07/10/2026 mô tả hành vi hiện hành. Không ghi dữ liệu thử nghiệm lên Supabase Live.
 
 
 ## Đồng bộ nghiệp vụ Web/RPC — kết quả hiện hành

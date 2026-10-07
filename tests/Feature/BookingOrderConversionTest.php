@@ -55,6 +55,79 @@ class BookingOrderConversionTest extends TestCase
         parent::tearDown();
     }
 
+    public function test_manual_order_store_rejects_completed_status_and_booking_link(): void
+    {
+        $this->createRequestCatalog();
+        $this->withoutMiddleware([Authenticate::class, EnsureUserHasPermission::class, RejectCustomerRole::class, RestoreRememberedLogin::class]);
+        $payload = [
+            'KhachHangID' => 9,
+            'NhanVienID' => 1,
+            'TrangThai' => OrderStatus::Paid->value,
+            'items' => [['DichVuID' => 1, 'LoaiDoGiatID' => 2, 'DonViTinhID' => 2, 'SoLuong' => 1, 'TinhTrangTruocKhiGiat' => 'Bình thường']],
+        ];
+        $this->post(route('orders.store'), $payload)->assertSessionHasErrors('TrangThai');
+        $payload['TrangThai'] = OrderStatus::Received->value;
+        $payload['BookingID'] = 99;
+        $this->post(route('orders.store'), $payload)->assertSessionHasErrors('BookingID');
+        $this->assertSame(0, DonHang::query()->count());
+        $this->assertSame(0, ChiTietDonHang::query()->count());
+    }
+
+    public function test_manual_order_store_requires_inspected_items_and_condition(): void
+    {
+        $this->createRequestCatalog();
+        $this->withoutMiddleware([Authenticate::class, EnsureUserHasPermission::class, RejectCustomerRole::class, RestoreRememberedLogin::class]);
+        $payload = ['KhachHangID' => 9, 'NhanVienID' => 1, 'TrangThai' => OrderStatus::Received->value];
+        $this->post(route('orders.store'), $payload)->assertSessionHasErrors('items');
+        $payload['items'] = [['DichVuID' => 1, 'LoaiDoGiatID' => 2, 'DonViTinhID' => 2, 'SoLuong' => 1]];
+        $this->post(route('orders.store'), $payload)->assertSessionHasErrors('items.0.TinhTrangTruocKhiGiat');
+        $payload['items'][0]['TinhTrangTruocKhiGiat'] = '   ';
+        $this->post(route('orders.store'), $payload)->assertSessionHasErrors('items.0.TinhTrangTruocKhiGiat');
+        $this->assertSame(0, DonHang::query()->count());
+        $this->assertSame(0, ChiTietDonHang::query()->count());
+    }
+
+    public function test_manual_order_creation_form_collects_condition_and_fixes_initial_status(): void
+    {
+        $this->createRequestCatalog();
+        Schema::create('KhuyenMai', function (Blueprint $table): void {
+            $table->increments('KhuyenMaiID');
+            $table->string('TrangThai');
+        });
+        try {
+            $this->withoutMiddleware([Authenticate::class, EnsureUserHasPermission::class, RejectCustomerRole::class, RestoreRememberedLogin::class]);
+            $this->get(route('orders.create'))
+                ->assertOk()
+                ->assertSee('name="items[0][TinhTrangTruocKhiGiat]"', false)
+                ->assertSee('name="items[${index}][TinhTrangTruocKhiGiat]"', false)
+                ->assertSee('name="TrangThai" value="Đã tiếp nhận"', false)
+                ->assertDontSee('name="TrangThai" id="status"', false);
+        } finally {
+            Schema::dropIfExists('KhuyenMai');
+        }
+    }
+
+    public function test_manual_order_store_persists_actual_condition_before_washing(): void
+    {
+        $this->createRequestCatalog();
+        DB::table('BangGia')->insert(['DichVuID' => 1, 'LoaiDoGiatID' => 2, 'DonViTinhID' => 2, 'DonGia' => 10000, 'NgayApDung' => '2026-01-01', 'TrangThai' => 'Hoạt động']);
+        $this->actingAsBookingEmployee();
+        $this->withoutMiddleware([Authenticate::class, EnsureUserHasPermission::class, RejectCustomerRole::class, RestoreRememberedLogin::class]);
+        $this->post(route('orders.store'), [
+            'KhachHangID' => 9,
+            'NhanVienID' => 1,
+            'TrangThai' => OrderStatus::Received->value,
+            'items' => [['DichVuID' => 1, 'LoaiDoGiatID' => 2, 'DonViTinhID' => 2, 'SoLuong' => 2, 'TinhTrangTruocKhiGiat' => '  Ố nhẹ ở cổ áo  ']],
+        ])->assertSessionHasNoErrors();
+        $order = DonHang::query()->sole();
+        $this->assertNull($order->BookingID);
+        $this->assertSame(OrderStatus::Received->value, $order->TrangThai);
+        $this->assertSame('Ố nhẹ ở cổ áo', $order->chiTietDonHangs()->sole()->TinhTrangTruocKhiGiat);
+        $this->assertSame(20000.0, $order->ThanhTien);
+        app(OrderService::class)->updateStatus($order, OrderStatus::Washing->value);
+        $this->assertSame(OrderStatus::Washing->value, $order->fresh()->TrangThai);
+    }
+
     public function test_confirming_a_booking_creates_its_order_item_and_scheduled_delivery(): void
     {
         DB::table('DonViTinh')->insert([
@@ -787,8 +860,9 @@ class BookingOrderConversionTest extends TestCase
 
         $order = app(OrderService::class)->create([
             'KhachHangID' => 9,
-            'TrangThai' => 'Chờ tiếp nhận',
+            'TrangThai' => OrderStatus::Received->value,
             'items' => [[
+                'TinhTrangTruocKhiGiat' => 'Bình thường',
                 'DichVuID' => 1,
                 'LoaiDoGiatID' => 2,
                 'DonViTinhID' => 3,
@@ -822,8 +896,9 @@ class BookingOrderConversionTest extends TestCase
         try {
             app(OrderService::class)->create([
                 'KhachHangID' => 9,
-                'TrangThai' => 'Chờ tiếp nhận',
+                'TrangThai' => OrderStatus::Received->value,
                 'items' => [[
+                    'TinhTrangTruocKhiGiat' => 'Bình thường',
                     'DichVuID' => 1,
                     'LoaiDoGiatID' => 2,
                     'DonViTinhID' => 4,
@@ -1142,13 +1217,15 @@ class BookingOrderConversionTest extends TestCase
 
         $order = app(OrderService::class)->create([
             'KhachHangID' => 9,
-            'TrangThai' => OrderStatus::Pending->value,
+            'TrangThai' => OrderStatus::Received->value,
             'items' => [[
+                'TinhTrangTruocKhiGiat' => 'Bình thường',
                 'DichVuID' => 1,
                 'LoaiDoGiatID' => 2,
                 'DonViTinhID' => 1,
                 'KhoiLuong' => 1.239,
             ], [
+                'TinhTrangTruocKhiGiat' => 'Bình thường',
                 'DichVuID' => 1,
                 'LoaiDoGiatID' => 2,
                 'DonViTinhID' => 1,
@@ -1527,10 +1604,16 @@ class BookingOrderConversionTest extends TestCase
 
     private function validateOrderRequest(array $snapshot, string $method = 'POST'): array
     {
+        if ($method === 'POST') {
+            $snapshot['items'] = array_map(
+                fn (array $item): array => array_merge(['TinhTrangTruocKhiGiat' => 'Bình thường'], $item),
+                $snapshot['items'] ?? [['DichVuID' => 1, 'LoaiDoGiatID' => 2, 'DonViTinhID' => 2, 'SoLuong' => 1]],
+            );
+        }
         $request = LuuDonHangRequest::create('/admin/orders/1', $method, array_merge([
             'KhachHangID' => 9,
             'NhanVienID' => 1,
-            'TrangThai' => OrderStatus::Pending->value,
+            'TrangThai' => $method === 'POST' ? OrderStatus::Received->value : OrderStatus::Pending->value,
         ], $snapshot));
         $request->setContainer($this->app);
         $request->setRedirector($this->app['redirect']);

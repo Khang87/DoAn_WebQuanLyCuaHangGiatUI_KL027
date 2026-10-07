@@ -16,6 +16,14 @@ Chốt ngày 07/10/2026 với chủ dự án: **1 điểm = 1đ; chỉ trừ khi
 
 Không có mã nguồn Flutter trong repository Web. Chữ ký và kiểu trả về của các RPC được giữ nguyên. RPC xác nhận chỉ có `p_bookingid`, không có khối lượng thực tế hay tình trạng đồ: dùng nó để tạo đơn từ ước tính sẽ vi phạm kiểm kê. Với booking mới, RPC trả lỗi `22023` kèm hướng dẫn dùng màn hình kiểm kê Web; gọi lại sau khi Web tạo đơn trả ID đơn hiện có. Muốn kiểm kê trực tiếp trên Flutter về sau cần thiết kế API nhận đủ dữ liệu và sửa UI Flutter, không dùng chi tiết dự kiến làm bằng chứng kiểm kê.
 
+## Đơn tạo trực tiếp trên Web
+
+Đơn khách mang đồ trực tiếp được tạo qua `POST /orders` chỉ sau khi nhập ít nhất một dòng kiểm kê thực tế, số lượng/khối lượng hợp lệ và `TinhTrangTruocKhiGiat` không rỗng (tối đa 320 ký tự). Trạng thái khởi tạo luôn là **Đã tiếp nhận**; không cho khởi tạo Chờ tiếp nhận, Đang giặt, Đã giao hoặc Đã thanh toán. Các trạng thái tiếp theo phải đi qua chuyển trạng thái/thanh toán hiện có.
+
+Không nhận `BookingID` trên đường tạo trực tiếp: Booking phải qua `inspectBookingAndCreateOrder()` để cập nhật người xác nhận, điểm, giao nhận và audit trong cùng transaction. Request kiểm tra trước controller; `OrderService::create()` cũng bảo vệ hợp đồng khi gọi trực tiếp. Dữ liệu đơn Pending lịch sử tiếp tục dùng `completeReceivingInspection()`.
+
+Validation dùng Form Request và `prohibited` theo tài liệu Laravel 13: https://laravel.com/docs/13.x/validation#form-request-validation và https://laravel.com/docs/13.x/validation#rule-prohibited. Lỗi nhập liệu theo cơ chế Laravel hiện có (session errors cho form; HTTP 422 cho yêu cầu JSON).
+
 ## Giá và tổng tiền
 
 - Khóa tra giá: `DichVuID + LoaiDoGiatID + DonViTinhID`.

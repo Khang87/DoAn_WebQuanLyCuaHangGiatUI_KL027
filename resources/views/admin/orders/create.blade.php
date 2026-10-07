@@ -66,14 +66,9 @@
                 </div>
                 <div class="col-md-6">
                     <label class="form-label" for="status">Trạng thái <span class="text-danger ms-1">*</span></label>
-                    <x-admin.status-select
-                        name="TrangThai"
-                        id="status"
-                        :options="$statusFlow ?? \App\Enums\OrderStatus::options()"
-                        :selected="\App\Enums\OrderStatus::Received->value"
-                        class="form-select"
-                        required
-                    />
+                    <input type="hidden" name="TrangThai" value="{{ \App\Enums\OrderStatus::Received->value }}">
+                    <input type="text" class="form-control" id="status" value="Đã tiếp nhận" readonly>
+                    <div class="form-text">Kiểm kê đồ thực tế trước khi lưu. Đơn từ Booking cần tạo trên màn hình kiểm kê Booking.</div>
                 </div>
                 <div class="col-12">
                     <div class="d-flex justify-content-between align-items-center mb-2">
@@ -82,7 +77,7 @@
                     </div>
                     <div class="table-responsive">
                         <table class="table table-bordered align-middle mb-2" id="itemsTable">
-                            <thead class="table-light"><tr><th>Danh mục dịch vụ</th><th>Dịch vụ <span class="text-danger">*</span></th><th>Loại đồ giặt <span class="text-danger">*</span></th><th>ĐVT</th><th>Số lượng</th><th>Khối lượng (kg)</th><th>Đơn giá</th><th>Thành tiền</th><th></th></tr></thead>
+                            <thead class="table-light"><tr><th>Danh mục dịch vụ</th><th>Dịch vụ <span class="text-danger">*</span></th><th>Loại đồ giặt <span class="text-danger">*</span></th><th>ĐVT</th><th>Số lượng</th><th>Khối lượng (kg)</th><th>Đơn giá</th><th>Thành tiền</th><th>Tình trạng trước khi giặt <span class="text-danger">*</span></th><th></th></tr></thead>
                             <tbody>
                                 @foreach($items as $index => $item)
                                     @php
@@ -101,6 +96,10 @@
                                         <td><input type="number" step="0.01" class="form-control item-weight" name="items[{{ $index }}][KhoiLuong]" value="{{ $item['KhoiLuong'] ?? $item['weight'] ?? 0 }}" min="0"></td>
                                         <td><input type="number" class="form-control item-price" name="items[{{ $index }}][DonGia]" value="{{ $item['DonGia'] ?? $item['price'] ?? 0 }}" min="0" step="100"></td>
                                         <td><input type="number" class="form-control item-subtotal" value="{{ $item['subtotal'] ?? 0 }}" readonly></td>
+                                        <td>
+                                            <input type="text" class="form-control @error("items.$index.TinhTrangTruocKhiGiat") is-invalid @enderror" name="items[{{ $index }}][TinhTrangTruocKhiGiat]" value="{{ $item['TinhTrangTruocKhiGiat'] ?? '' }}" maxlength="320" required aria-label="Tình trạng trước khi giặt">
+                                            @error("items.$index.TinhTrangTruocKhiGiat")<div class="invalid-feedback">{{ $message }}</div>@enderror
+                                        </td>
                                         <td><button type="button" class="btn btn-sm btn-outline-danger remove-item" title="Xóa mặt hàng"><i class="bi bi-trash"></i></button></td>
                                     </tr>
                                 @endforeach
@@ -441,7 +440,7 @@
     document.getElementById('addItem').addEventListener('click', () => {
         const index = table.tBodies[0].rows.length;
         const row = table.tBodies[0].insertRow();
-        row.innerHTML = `<td><select class="form-select item-service-category" name="items[${index}][service_category_id]"><option value="">Danh mục</option>${Object.entries(serviceCategories).map(([id,name]) => `<option value="${id}">${name}</option>`).join('')}</select></td><td><select class="form-select item-service" name="items[${index}][DichVuID]" required><option value="">Chọn dịch vụ</option>${Object.entries(services).map(([id,service]) => `<option value="${id}" data-category-id="${service.category_id}">${service.name}</option>`).join('')}</select></td><td><select class="form-select item-garment" name="items[${index}][LoaiDoGiatID]" required><option value="">Chọn loại đồ</option></select></td><td><span class="badge text-bg-light item-unit">—</span><input type="hidden" class="item-unit-value" name="items[${index}][DonViTinhID]"></td><td><input type="number" class="form-control item-quantity" name="items[${index}][SoLuong]" value="1" min="1" required></td><td><input type="number" step="0.01" class="form-control item-weight" name="items[${index}][KhoiLuong]" value="0" min="0"></td><td><input type="number" class="form-control item-price" name="items[${index}][DonGia]" value="0" min="0" step="100"></td><td><input type="number" class="form-control item-subtotal" value="0" readonly></td><td><button type="button" class="btn btn-sm btn-outline-danger remove-item" title="Xóa mặt hàng"><i class="bi bi-trash"></i></button></td>`;
+        row.innerHTML = `<td><select class="form-select item-service-category" name="items[${index}][service_category_id]"><option value="">Danh mục</option>${Object.entries(serviceCategories).map(([id,name]) => `<option value="${id}">${name}</option>`).join('')}</select></td><td><select class="form-select item-service" name="items[${index}][DichVuID]" required><option value="">Chọn dịch vụ</option>${Object.entries(services).map(([id,service]) => `<option value="${id}" data-category-id="${service.category_id}">${service.name}</option>`).join('')}</select></td><td><select class="form-select item-garment" name="items[${index}][LoaiDoGiatID]" required><option value="">Chọn loại đồ</option></select></td><td><span class="badge text-bg-light item-unit">—</span><input type="hidden" class="item-unit-value" name="items[${index}][DonViTinhID]"></td><td><input type="number" class="form-control item-quantity" name="items[${index}][SoLuong]" value="1" min="1" required></td><td><input type="number" step="0.01" class="form-control item-weight" name="items[${index}][KhoiLuong]" value="0" min="0"></td><td><input type="number" class="form-control item-price" name="items[${index}][DonGia]" value="0" min="0" step="100"></td><td><input type="number" class="form-control item-subtotal" value="0" readonly></td><td><input type="text" class="form-control" name="items[${index}][TinhTrangTruocKhiGiat]" maxlength="320" required aria-label="Tình trạng trước khi giặt"></td><td><button type="button" class="btn btn-sm btn-outline-danger remove-item" title="Xóa mặt hàng"><i class="bi bi-trash"></i></button></td>`;
         syncGarmentOptions(row);
         updateRowState(row);
         updateTotals();
