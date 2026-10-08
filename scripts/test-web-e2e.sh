@@ -1,0 +1,41 @@
+#!/usr/bin/env bash
+set -euo pipefail
+root=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
+php_bin=${PHP_BIN:-php}
+"$php_bin" "$root/tests/E2E/safety.php"
+export WEB_E2E_RUNTIME WEB_E2E_KEY WEB_E2E_PASSWORD POSTGRES_PASSWORD
+WEB_E2E_RUNTIME=$(mktemp -d /tmp/laundry-e2e-XXXXXXXXXXXX)
+printf 'Owned E2E runtime\n' > "$WEB_E2E_RUNTIME/owner"
+mkdir -p "$WEB_E2E_RUNTIME/framework/"{sessions,views,cache/data} "$WEB_E2E_RUNTIME/logs"
+WEB_E2E_KEY="base64:$(openssl rand -base64 32)"
+WEB_E2E_PASSWORD=$(openssl rand -hex 24)
+POSTGRES_PASSWORD=$(openssl rand -hex 24)
+if [[ ${GITHUB_ACTIONS:-} == true ]]; then
+    printf '::add-mask::%s\n' "$WEB_E2E_PASSWORD" "$POSTGRES_PASSWORD" "$WEB_E2E_KEY"
+fi
+container_id='' server_pid=''
+cleanup() {
+    if [[ -n "$server_pid" ]]; then kill "$server_pid" 2>/dev/null || true; wait "$server_pid" 2>/dev/null || true; fi
+    if [[ -n "$container_id" ]]; then docker rm -f "$container_id" >/dev/null; fi
+    rm -rf -- "$WEB_E2E_RUNTIME"
+}
+trap cleanup EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
+container_id=$(docker run -d -e POSTGRES_PASSWORD -e POSTGRES_DB=laundry_rpc_test -p 127.0.0.1::5432 --mount "type=bind,src=$root,dst=/checkout,readonly" postgres:17)
+ready=false
+for ((attempt=0; attempt<60; attempt++)); do
+    if docker exec "$container_id" pg_isready -h 127.0.0.1 -U postgres -d laundry_rpc_test >/dev/null 2>&1; then ready=true; break; fi
+    sleep 1
+done
+[[ $ready == true ]] || { echo 'PostgreSQL startup timeout' >&2; exit 1; }
+export PG_TEST_HOST=127.0.0.1 PG_TEST_DATABASE=laundry_rpc_test PG_TEST_PASSWORD=$POSTGRES_PASSWORD PG_TEST_PORT
+PG_TEST_PORT=$(docker port "$container_id" 5432/tcp | sed -n 's/^127\.0\.0\.1://p')
+docker exec "$container_id" psql -X -U postgres -d laundry_rpc_test -v ON_ERROR_STOP=1 -f /checkout/tests/Postgres/fixtures.sql > /dev/null
+port=$(node -e 'const s=require("node:net").createServer();s.listen(0,"127.0.0.1",()=>{console.log(s.address().port);s.close()})')
+export WEB_E2E_URL="http://127.0.0.1:$port"
+"$php_bin" "$root/tests/E2E/seed.php"
+"$php_bin" -S "127.0.0.1:$port" -t "$root/public" "$root/tests/E2E/router.php" > "$WEB_E2E_RUNTIME/server.log" 2>&1 &
+server_pid=$!
+node --input-type=module -e 'for(let i=0;i<100;i++){try{const r=await fetch(process.env.WEB_E2E_URL+"/login");if(r.status!==200)throw Error("HTTP startup status "+r.status);process.exit(0)}catch(e){if(i===99)throw e;await new Promise(r=>setTimeout(r,100))}}'
+if [[ ${1:-all} == setup ]]; then echo 'PASS: disposable HTTP login page ready'; else node --test "$root/tests/E2E/web-postgres.test.mjs"; fi
