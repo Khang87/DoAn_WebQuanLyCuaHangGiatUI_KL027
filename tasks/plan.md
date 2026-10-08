@@ -71,7 +71,7 @@ No unresolved business requirements. Technical failures discovered while impleme
 
 ## Approval and scope
 
-Owner approved `SPEC-web-postgres-e2e.md` in conversation on 08/10/2026 after the VER2 review. This plan/checklist awaits review before implementation under spec-driven-development and planning-and-task-breakdown. App baseline: main `648612c`; working branch and draft PR #9 retain the completed review and approved spec. Preserve earlier completed plans.
+Owner approved `SPEC-web-postgres-e2e.md` in conversation on 08/10/2026 after the VER2 review. The owner subsequently approved this plan/checklist and instructed implementation; work follows spec-driven-development and planning-and-task-breakdown. App baseline: main `648612c`; working branch and draft PR #9 retain the completed review and approved spec. Preserve earlier completed plans.
 
 One capability: real browser → existing Laravel HTTP/auth/CSRF/permission → disposable PostgreSQL persisted-state verification. Eight scenarios in the approved spec; no business redesign or production writes.
 

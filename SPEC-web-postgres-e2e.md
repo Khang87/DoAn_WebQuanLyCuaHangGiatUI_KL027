@@ -1,6 +1,6 @@
 # Spec: web-postgres-e2e
 
-Status: **Đặc tả được chủ dự án duyệt trong hội thoại ngày 08/10/2026; chưa implementation.** Kế hoạch/task tiếp theo chờ duyệt. Một capability: kiểm chứng browser → Laravel HTTP → PostgreSQL xuyên suốt. Nối tiếp PR #8, nơi browser E2E được loại khỏi phạm vi; không mở lại các thay đổi nghiệp vụ đã chốt.
+Status: **Đặc tả được chủ dự án duyệt trong hội thoại ngày 08/10/2026; kế hoạch/checklist cũng được duyệt; implementation đã hoàn tất local.** CI exact-head còn chờ xác minh trước merge. Một capability: kiểm chứng browser → Laravel HTTP → PostgreSQL xuyên suốt. Nối tiếp PR #8, nơi browser E2E được loại khỏi phạm vi; không mở lại các thay đổi nghiệp vụ đã chốt.
 
 ## Objective and assumptions
 
@@ -8,7 +8,7 @@ Status: **Đặc tả được chủ dự án duyệt trong hội thoại ngày 
 
 ## Stack and commands
 
-Laravel 13 / PHP 8.4, Node 22+, Chromium, Docker PostgreSQL 17; Composer/npm lockfile hiện có. Ưu tiên CDP/Node built-ins đã dùng trong tests/Frontend; không thêm package. Những lệnh mới dưới đây là contract đề xuất, **chưa tồn tại**:
+Laravel 13 / PHP 8.4, Node 22+, Chromium, Docker PostgreSQL 17; Composer/npm lockfile hiện có. Ưu tiên CDP/Node built-ins đã dùng trong tests/Frontend; không thêm package. Runner mới đã được triển khai theo contract:
 
 ```bash
 # Create fixture, start isolated HTTP app, run browser scenarios, verify DB, clean up.
@@ -27,7 +27,7 @@ Runner chấp nhận `PHP_BIN` và `CHROMIUM_BIN` cho executable local. Chạy s
 
 - `scripts/test-web-e2e.sh`: điều phối container PostgreSQL dùng một lần, fixture, HTTP loopback, browser và cleanup; tái sử dụng safety contract của runner hiện có.
 - `tests/E2E/`: Node browser scenarios, PHP seed/DB assertions và HTTP bootstrap test riêng. Các helper nằm trong test layer, không thêm route đăng nhập bỏ qua vào app.
-- `tests/Postgres/fixtures.sql`: tái sử dụng và chỉ bổ sung schema local tối thiểu khi full HTTP cần quan hệ/quyền còn thiếu; không migration production.
+- `tests/Postgres/fixtures.sql`: tái sử dụng nguyên schema hiện có; E2E bổ sung dữ liệu catalog/role/permission/password local qua seed, không cần schema SQL mới hoặc migration production.
 - `docs/testing/WEB_POSTGRES_E2E.md`: prerequisites, lệnh, phạm vi và cách đọc lỗi.
 - `TESTCASES.md`: thêm tám ca với STT liên tục, giữ cả nhóm current/legacy; README và tasks/verification ghi đúng kết quả.
 
@@ -74,7 +74,7 @@ Never: load `.env` hoặc cache config production; chạy fixture/test mutations
 
 ## Open questions
 
-Không có câu hỏi về quy tắc nghiệp vụ. Chủ dự án đã duyệt phạm vi E2E PostgreSQL cách ly. Phase 2 Plan xác định cần session file dùng chung giữa request, runtime environment e2e (không tự bỏ CSRF như unit-test environment), seed quyền/mật khẩu local và xử lý SweetAlert2 CDN thật. Kế hoạch/checklist nằm ở tasks/plan.md và tasks/todo.md; chưa bắt đầu implementation. Nếu phát hiện cần đổi business contract hoặc thêm dependency thì quay lại đặc tả.
+Không có câu hỏi về quy tắc nghiệp vụ. Chủ dự án đã duyệt phạm vi E2E PostgreSQL cách ly. Phase 2 Plan xác định cần session file dùng chung giữa request, runtime environment e2e (không tự bỏ CSRF như unit-test environment), seed quyền/mật khẩu local và xử lý SweetAlert2 CDN thật. Kế hoạch/checklist đã được duyệt và triển khai theo tasks/plan.md và tasks/todo.md. Bằng chứng kiểm chứng ở tasks/verification.md. Nếu phát hiện cần đổi business contract hoặc thêm dependency thì quay lại đặc tả.
 
 ## Implementation clarification
 
