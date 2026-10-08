@@ -20,6 +20,7 @@ try {
     $permissions = ['orders.view', 'orders.create', 'orders.edit', 'orders.update_status', 'bookings.view', 'bookings.confirm', 'deliveries.view', 'deliveries.create', 'deliveries.edit'];
     if (getenv('WEB_E2E_PROFILE') === '1') {
         $permissions[] = 'dashboard.view';
+        $permissions[] = 'bookings.delete';
     }
     foreach ($permissions as $permission) {
         $id = DB::table('Quyen')->insertGetId(['MaQuyen' => QuyenMapper::resolveMaQuyen($permission), 'TenQuyen' => $permission], 'QuyenID');
