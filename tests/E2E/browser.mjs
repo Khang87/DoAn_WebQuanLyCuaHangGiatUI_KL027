@@ -43,6 +43,7 @@ export async function openBrowser(runtime, origin) {
         socket.onmessage = event => {
             const m = JSON.parse(event.data);
             if (m.id) { pending.get(m.id)?.(m); pending.delete(m.id); return; }
+            if (m.method === 'Runtime.consoleAPICalled' && ['error','warning'].includes(m.params.type)) errors.push('Console '+m.params.type);
             if (m.method === 'Runtime.exceptionThrown') errors.push('Page exception: ' + m.params.exceptionDetails.text);
             if (m.method === 'Network.requestWillBeSent') requests.push(m.params.request);
             if (m.method === 'Network.responseReceived') responses.push({...m.params.response, type: m.params.type});
