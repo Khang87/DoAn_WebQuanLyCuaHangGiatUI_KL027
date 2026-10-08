@@ -55,10 +55,9 @@ class DonHangController extends Controller
             'sort' => $request->input('sort'),
         ]);
 
-        $customers = KhachHang::with('diemTichLuy')->orderBy('HoTen')->get();
         $statusFlow = $this->orderService->getStatusFlow();
 
-        return view('admin.orders.index', compact('orders', 'customers', 'statusFlow'));
+        return view('admin.orders.index', compact('orders', 'statusFlow'));
     }
 
     public function create()

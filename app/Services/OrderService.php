@@ -411,14 +411,7 @@ class OrderService
 
         return $query->with([
             'khachHang',
-            'nhanVien',
             'chiTietDonHangs.dichVu',
-            'chiTietDonHangs.loaiDoGiat',
-            'chiTietDonHangs.donViTinh',
-            'khuyenMai',
-            'hoaDons',
-            'thanhToans',
-            'booking',
         ])
             ->orderBy($sortBy, $sortOrder)
             ->paginate(10)

@@ -2,7 +2,8 @@
 set -euo pipefail
 root=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
 php_bin=${PHP_BIN:-php}
-case ${1:-all} in all|setup) ;; *) echo 'Expected all or setup' >&2; exit 2;; esac
+case ${1:-all} in all|setup|performance) ;; *) echo 'Expected all, setup or performance' >&2; exit 2;; esac
+if [[ ${1:-all} == performance ]]; then export WEB_E2E_PROFILE=1; else unset WEB_E2E_PROFILE WEB_E2E_QUERY_DELAY_MS; fi
 "$php_bin" "$root/tests/E2E/safety.php"
 export WEB_E2E_RUNTIME WEB_E2E_KEY WEB_E2E_PASSWORD POSTGRES_PASSWORD
 WEB_E2E_RUNTIME=$(mktemp -d /tmp/laundry-e2e-XXXXXXXXXXXX)
@@ -52,5 +53,9 @@ if [[ ${1:-all} == setup ]]; then echo 'PASS: disposable HTTP login page ready';
     node --input-type=module -e 'import {readFileSync} from "node:fs";import {createHash} from "node:crypto";const a=JSON.parse(readFileSync(process.argv[1]));if("sha512-"+createHash("sha512").update(readFileSync(process.env.WEB_E2E_RUNTIME+"/swal.tgz")).digest("base64")!==a.integrity)throw Error("Official asset integrity mismatch")' "$root/tests/E2E/assets.json"
     tar -xOf "$WEB_E2E_RUNTIME/swal.tgz" package/dist/sweetalert2.all.min.js > "$WEB_E2E_RUNTIME/swal.js"
     node --input-type=module -e 'import {readFileSync} from "node:fs";import {createHash} from "node:crypto";const a=JSON.parse(readFileSync(process.argv[1]));if(createHash("sha256").update(readFileSync(process.env.WEB_E2E_RUNTIME+"/swal.js")).digest("hex")!==a.scriptSha256)throw Error("Script integrity mismatch")' "$root/tests/E2E/assets.json"
-    node --test "$root/tests/E2E/web-postgres.test.mjs"
+    if [[ ${1:-all} == performance ]]; then
+        node --test "$root/tests/E2E/performance.test.mjs"
+    else
+        node --test "$root/tests/E2E/web-postgres.test.mjs"
+    fi
 fi

@@ -2,7 +2,7 @@ import { spawn } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { setTimeout as delay } from 'node:timers/promises';
 
-export async function openBrowser(runtime, origin) {
+export async function openBrowser(runtime, origin, {assetDelayMs = 0, alertGate = null} = {}) {
     const child = spawn(process.env.CHROMIUM_BIN || 'chromium', ['--headless', '--no-sandbox', '--disable-dev-shm-usage', '--disable-background-networking', '--no-first-run', '--remote-debugging-port=0', `--user-data-dir=${runtime}/browser`, 'about:blank'], {stdio: 'ignore'});
     const errors = [], requests = [], responses = [], excluded = new Set(), pending = new Map();
     let socket, id = 0, startupError;
@@ -51,6 +51,10 @@ export async function openBrowser(runtime, origin) {
             if (m.method === 'Fetch.requestPaused') {
                 const {requestId, request} = m.params;
                 (async () => {
+                    if (request.url === 'https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.all.min.js') {
+                        await delay(assetDelayMs);
+                        if (alertGate) await alertGate();
+                    }
                     if (request.url === 'https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.all.min.js') {
                         await command('Fetch.fulfillRequest', {requestId, responseCode: 200, responseHeaders: [{name: 'Content-Type', value: 'application/javascript'}], body: readFileSync(`${runtime}/swal.js`).toString('base64')});
                     } else if (request.url.startsWith('https://fonts.googleapis.com/css2?') || request.url === 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css') {
