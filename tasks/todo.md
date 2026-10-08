@@ -140,10 +140,12 @@ E2E checkpoint evidence: all three jobs passed on 65a09a6 in run 37734324447; fi
 
 # Page-load performance — approved scope
 
-- [ ] Profiling: guarded test-only mode, real HTTP login, five cache-disabled samples; original dashboard 15 queries and <=13 budget RED.
-- [ ] Dashboard: all operational status buckets and empty fixture retain values; three KPI queries become one; exact fixture <=13 queries GREEN.
-- [ ] Dashboard checkpoint: comparable original/changed measurements and isolated mutation prove the budget and bucket assertions.
-- [ ] Assets: test delayed dependency first paint before/after, preserve script ordering and existing flash/confirmation/dropdown/login controls; revert unmeasured/noisy candidates.
-- [ ] Regression checkpoint: strict PHP, Blade, frontend, PG contracts/concurrency and actual browser E2E pass.
-- [ ] Document measurements, provenance if applicable, retained/reverted attempts and field limitations; review diff and testcase numbering.
+- [x] Profiling: guarded test-only mode, real HTTP login, five cache-disabled samples; original dashboard 15 queries and <=13 budget RED.
+- [x] Dashboard: all operational status buckets and empty fixture retain values; three KPI queries become one; exact fixture <=13 queries GREEN.
+- [x] Dashboard checkpoint: comparable original/changed measurements and isolated mutation prove the budget and bucket assertions.
+- [x] Assets: test delayed dependency first paint before/after, preserve script ordering and existing flash/confirmation/dropdown/login controls; revert unmeasured/noisy candidates.
+- [x] Regression checkpoint: strict PHP, Blade, frontend, PG contracts/concurrency and actual browser E2E pass.
+- [x] Document measurements, provenance if applicable, retained/reverted attempts and field limitations; review diff and testcase numbering.
 - [ ] Push PR, wait for exact-head CI/build/audits and Vercel, merge and sync clean main.
+- [x] Production-directed list slice: remove proven-unused orders index reads, preserve filters/pagination/row values and settled controls; service budget <=5, HTTP fixture <=10 queries.
+- [x] Record production log evidence and limits; do not claim frontend deferral fixes 8–16 second server processing or infer actual regions solely from deployment metadata.
