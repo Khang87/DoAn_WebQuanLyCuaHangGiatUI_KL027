@@ -137,3 +137,13 @@ Spec approved in conversation 08/10/2026; plan/checklist subsequently approved; 
 - [x] Eight scenarios and regression gates verified; coverage claims precise; draft PR ready for final review/merge.
 
 E2E checkpoint evidence: all three jobs passed on 65a09a6 in run 37734324447; final documentation commit must also pass before authorized merge.
+
+# Page-load performance — approved scope
+
+- [ ] Profiling: guarded test-only mode, real HTTP login, five cache-disabled samples; original dashboard 15 queries and <=13 budget RED.
+- [ ] Dashboard: all operational status buckets and empty fixture retain values; three KPI queries become one; exact fixture <=13 queries GREEN.
+- [ ] Dashboard checkpoint: comparable original/changed measurements and isolated mutation prove the budget and bucket assertions.
+- [ ] Assets: test delayed dependency first paint before/after, preserve script ordering and existing flash/confirmation/dropdown/login controls; revert unmeasured/noisy candidates.
+- [ ] Regression checkpoint: strict PHP, Blade, frontend, PG contracts/concurrency and actual browser E2E pass.
+- [ ] Document measurements, provenance if applicable, retained/reverted attempts and field limitations; review diff and testcase numbering.
+- [ ] Push PR, wait for exact-head CI/build/audits and Vercel, merge and sync clean main.
