@@ -170,13 +170,15 @@ bash scripts/test-postgres.sh
 
 Chromium controls regression và test bảo mật `shell-quote` đạt. Override riêng sang `shell-quote=1.11.0` khắc phục GHSA-pqg4-j6r4-53mv; `npm audit --audit-level=high` báo 0 vulnerabilities. `npm run build` nguyên bản và Composer audit bị hạn chế mạng khi chạy local; cả hai đã đạt trên GitHub Actions [run 37644219054](https://github.com/Khang87/DoAn_WebQuanLyCuaHangGiatUI_KL027/actions/runs/37644219054), commit `512ae12`, cùng toàn bộ hai job PHP/PostgreSQL và frontend/build/audit. Không thay build config hay tắt audit.
 
-[TESTCASES.md](./TESTCASES.md) có **316 ca**, hoàn toàn dưới dạng bảng Markdown, STT **1–316**: **287 ca luồng hiện tại**, gồm 26 ca PostgreSQL/runner/CI/security mới, và **29 ca legacy**. Nhóm hiện tại giữ **21 ca `TC-OTP-NOTIFY-01`–`21`**. Số dòng tài liệu không phải số test PHPUnit; ca chỉ có đặc tả vẫn không được ghi PASSED.
+[TESTCASES.md](./TESTCASES.md) có **324 ca**, hoàn toàn dưới dạng bảng Markdown, STT **1–324**: **295 ca luồng hiện tại**, gồm 26 ca PostgreSQL/runner/CI/security và 8 ca E2E mới, và **29 ca legacy**. Nhóm hiện tại giữ **21 ca `TC-OTP-NOTIFY-01`–`21`**. Số dòng tài liệu không phải số test PHPUnit; ca chỉ có đặc tả vẫn không được ghi PASSED.
 
-Workflow [Verification](./.github/workflows/verification.yml) chạy PHP/PostgreSQL và frontend/build/audit trên PR vào `main` hoặc push `main`. Cần quan sát kết quả đúng commit và cấu hình required checks trong ruleset trước khi gọi CI là cơ chế bắt buộc chặn merge; không suy ra điều đó từ Vercel success.
+Workflow [Verification](./.github/workflows/verification.yml) chạy PHP/PostgreSQL, frontend/build/audit và Browser HTTP PostgreSQL E2E trên PR vào `main` hoặc push `main`. Cần quan sát kết quả đúng commit và cấu hình required checks trong ruleset trước khi gọi CI là cơ chế bắt buộc chặn merge; không suy ra điều đó từ Vercel success.
+
+Bộ [Web PostgreSQL E2E](./docs/testing/WEB_POSTGRES_E2E.md) đạt **8 tình huống** trên Chromium local và GitHub Actions [run 37734324447](https://github.com/Khang87/DoAn_WebQuanLyCuaHangGiatUI_KL027/actions/runs/37734324447), commit `65a09a6`: bốn tổ hợp nhận/trả, replay HTTP, pricing trên page thật, voucher/điểm/phí và paid-order guards. Node báo 9 tests gồm parent và 8 subtests. Lệnh: `bash scripts/test-web-e2e.sh`. Asset SweetAlert2 official được pin/hash; CSS font/icon bên ngoài được loại có chủ ý, không có claim kiểm chứng CDN production. Staff xóa đơn bị owner-only ACL chặn riêng; không coi đó là financial-guard coverage hoặc thay đổi quyền override của Chủ cửa hàng.
 
 Giữ hồi quy `Chờ tiếp nhận` / `completeReceivingInspection()` cho đến khi loại bỏ đầy đủ code, consumer và dữ liệu tương thích. Các test schema/quy tắc cũ/placeholder đã phân loại trong [LEGACY_TESTS.md](./docs/testing/LEGACY_TESTS.md) không thay thế kiểm thử đơn cũ còn được hỗ trợ.
 
-Không kiểm thử production, Redis/Resend thật hoặc Supabase Live trong đợt này. PostgreSQL fixture kiểm chứng service/RPC, không chứng minh toàn bộ ACL/RLS Live hoặc browser → HTTP → database E2E. Chưa kiểm chứng các race khác như pricing/payment. Không có mã nguồn Flutter trong repo. Xem [tasks/verification.md](./tasks/verification.md).
+Không kiểm thử production, Redis/Resend thật hoặc Supabase Live trong đợt này. PostgreSQL fixture kiểm chứng service/RPC; bộ E2E mới kiểm chứng browser → HTTP → PostgreSQL cục bộ qua auth/session/CSRF thật, không chứng minh toàn bộ ACL/RLS Live. Chưa kiểm chứng các race khác như pricing/payment. Không có mã nguồn Flutter trong repo. Xem [tasks/verification.md](./tasks/verification.md).
 
 ### Hợp đồng hiện hành: giá, phân công và giao nhận
 

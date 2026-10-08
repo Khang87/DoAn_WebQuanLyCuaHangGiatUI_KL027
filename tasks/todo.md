@@ -72,3 +72,68 @@
 
 ## Checkpoint C
 - [x] Approved scope is complete; all checks pass or remaining failures are explicitly documented without weakened gates. GitHub Actions run 37644219054 passed both jobs on 512ae12, including native build and both audits.
+
+
+# web-postgres-e2e checklist (approved)
+
+Spec approved in conversation 08/10/2026; plan/checklist subsequently approved; execution evidence is in tasks/verification.md. Preserve completed RV/order-contract history.
+
+## E2E1: Safe HTTP runtime
+- [x] Share test target validation without changing existing PostgreSQL/SQLite behavior; unsafe targets refuse before application writes.
+- [x] HTTP uses private stable runtime/key and file sessions; no production .env/config; environment e2e keeps CSRF/auth middleware.
+- [x] Router serves only real app routes/local public assets; no test-auth endpoint.
+- Verify: existing `bash scripts/test-postgres.sh` plus bootstrap safety probes and HTTP missing-CSRF rejection.
+- Files: tests/Postgres/bootstrap.php, tests/Postgres/connection.php, tests/E2E/bootstrap.php, tests/E2E/router.php. Dependencies: none.
+
+## E2E2: Disposable fixture and lifecycle
+- [x] Seed active account with runtime password, actual role/permissions, catalog and named cases; never pgActor for browser login.
+- [x] `bash scripts/test-web-e2e.sh` starts isolated DB/loopback HTTP and checks readiness with deadlines.
+- [x] Success/failure/signal cleanup removes only owned process/container/runtime; no resource leaks.
+- Verify: runner setup/safety probes, deliberate startup failure cleanup and database inspection after seed.
+- Files: scripts/test-web-e2e.sh, tests/E2E/seed.php, tests/E2E/fixture.sql. Dependency: E2E1.
+
+## Checkpoint E2E-A
+- [x] Safe fixture/runtime works; existing PostgreSQL runner still passes; session/CSRF runtime behavior verified.
+
+## E2E3: Browser login and first Order
+- [x] Real Chromium login/session, logged-out/CSRF/permission probes, actual app requests; missing core assets and HTTP/JS errors fail.
+- [x] Constrained real SweetAlert2 asset transport uses official version/hash; decorative exclusions recorded, no fake app response.
+- [x] E2E-01 checks GET read-only and first store/store conversion with condition/server price/estimate/order persisted.
+- Verify: `bash scripts/test-web-e2e.sh` focused E2E-01/login probes; capture response and independent DB assertions.
+- Files: tests/E2E/browser.mjs, tests/E2E/web-postgres.test.mjs, tests/E2E/state.php, tests/E2E/assets.json. Dependency: E2E2.
+
+## E2E4: Delivery combinations and replay
+- [x] E2E-02/03/04 persist exact chặng, distinct addresses, schedule NULL only for pending return and fees.
+- [x] E2E-05 authenticated HTTP replay returns one Order/redemption/detail set/chặng set/audit.
+- [x] Browser validates actual successful redirects and persistence, not just service calls.
+- Verify: `bash scripts/test-web-e2e.sh`; existing PostgreSQL three race tests remain required separately.
+- Files: tests/E2E/web-postgres.test.mjs, tests/E2E/state.php, tests/E2E/seed.php as needed. Dependency: E2E3.
+
+## Checkpoint E2E-B
+- [x] Real login, four combinations and HTTP replay pass; no auth/CSRF bypass; resources cleaned.
+
+## E2E5: Pricing and financial guards
+- [x] E2E-06 selects both units on real pages and persists correct tuple/minimum kg; Inspection has no editable price; create/edit Order prices readonly.
+- [x] E2E-07 voucher/points/service/delivery arithmetic and single redemption match expected persisted amounts.
+- [x] E2E-08 valid-CSRF staff edits of paid Order/GiaoNhan reject via business guard; staff deletion is owner-only ACL denial tested separately; 500/419/insufficient permission do not count as financial-guard evidence; snapshot unchanged.
+- Verify: `bash scripts/test-web-e2e.sh` with all eight scenarios and independent state assertions.
+- Files: tests/E2E/web-postgres.test.mjs, tests/E2E/state.php, tests/E2E/seed.php as needed. Dependency: E2E4.
+
+## E2E6: Mutation and CI
+- [x] Guard mutation on isolated copy fails appropriate E2E case; original checkout/source restored and full suite green.
+- [x] Dedicated bounded E2E job installs locked PHP/Node dependencies and uses pinned trusted actions/Chrome; existing two jobs unchanged.
+- [x] Actual exact-head CI succeeds; no ignored failures or production credentials.
+- Verify: mutation experiment and original rerun; inspect GitHub Actions jobs on final SHA.
+- Files: .github/workflows/verification.yml, tests/E2E/web-postgres.test.mjs if missing case, tasks/verification.md. Dependency: E2E5.
+
+## E2E7: Documentation and final verification
+- [x] Document prerequisites, commands, isolation, asset treatment and fixture-vs-Live limits; record exact SHA/runtime/results.
+- [x] Add eight TESTCASES rows with consecutive STT; retain every existing/legacy row; update README.
+- [x] Original PHP/Chromium/PostgreSQL suites, Blade/build/audits pass; review diff and cleanup; push/merge according to standing authorization after exact-head checks.
+- Verify: `php vendor/bin/phpunit --fail-on-warning --fail-on-risky`, `node --test tests/Frontend/*.test.mjs`, `bash scripts/test-postgres.sh`, `bash scripts/test-web-e2e.sh`, `php artisan view:cache`, `npm run build`, `composer audit --locked --no-interaction`, `npm audit --audit-level=high`, Pint/numbering/`git diff --check`.
+- Files: docs/testing/WEB_POSTGRES_E2E.md, README.md, TESTCASES.md, tasks/verification.md. Dependency: E2E6.
+
+## Checkpoint E2E-C
+- [x] Eight scenarios and regression gates verified; coverage claims precise; draft PR ready for final review/merge.
+
+E2E checkpoint evidence: all three jobs passed on 65a09a6 in run 37734324447; final documentation commit must also pass before authorized merge.

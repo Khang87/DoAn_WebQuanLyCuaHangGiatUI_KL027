@@ -57,13 +57,21 @@ test('unit selection preserves tuples and updates price, quantity, weight and to
     let browser;
     let socket;
     try {
-        browser = spawn(process.env.CHROMIUM_BIN || 'chromium', ['--headless', '--no-sandbox', '--disable-dev-shm-usage', '--disable-gpu', '--disable-background-networking', '--no-first-run', '--remote-debugging-port=0', `--user-data-dir=${join(dir, 'profile')}`, 'about:blank'], { stdio: 'ignore', detached: true });
+        browser = spawn(process.env.CHROMIUM_BIN || 'chromium', ['--headless', '--no-sandbox', '--disable-dev-shm-usage', '--disable-gpu', '--disable-background-networking', '--no-first-run', '--remote-debugging-port=0', `--user-data-dir=${join(dir, 'profile')}`, 'about:blank'], { stdio: ['ignore', 'ignore', 'pipe'], detached: true });
+        let startupError;
+        let startupLog = '';
+        browser.on('error', error => { startupError = error; });
+        browser.stderr.on('data', chunk => { startupLog = (startupLog + chunk).slice(-4000); });
         let port;
-        for (let attempt = 0; attempt < 100; attempt++) {
+        for (let attempt = 0; attempt < 300; attempt++) {
+            if (startupError) throw startupError;
+            if (browser.exitCode !== null || browser.signalCode !== null) {
+                throw Error(`Chromium exited before startup (${browser.exitCode ?? browser.signalCode}): ${startupLog}`);
+            }
             try { port = readFileSync(join(dir, 'profile', 'DevToolsActivePort'), 'utf8').split('\n')[0]; break; }
             catch { await delay(100); }
         }
-        assert.ok(port, 'Chromium debugging endpoint did not start');
+        assert.ok(port, `Chromium debugging endpoint did not start within 30 seconds: ${startupLog}`);
         const targets = await (await fetch(`http://127.0.0.1:${port}/json/list`, { signal: AbortSignal.timeout(5000) })).json();
         socket = new WebSocket(targets.find(target => target.type === 'page').webSocketDebuggerUrl);
         await new Promise((resolve, reject) => { socket.onopen = resolve; socket.onerror = reject; });
