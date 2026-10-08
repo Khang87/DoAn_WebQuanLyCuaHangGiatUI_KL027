@@ -122,16 +122,18 @@ Spec approved in conversation 08/10/2026; plan/checklist subsequently approved; 
 ## E2E6: Mutation and CI
 - [x] Guard mutation on isolated copy fails appropriate E2E case; original checkout/source restored and full suite green.
 - [x] Dedicated bounded E2E job installs locked PHP/Node dependencies and uses pinned trusted actions/Chrome; existing two jobs unchanged.
-- [ ] Actual exact-head CI succeeds; no ignored failures or production credentials.
+- [x] Actual exact-head CI succeeds; no ignored failures or production credentials.
 - Verify: mutation experiment and original rerun; inspect GitHub Actions jobs on final SHA.
 - Files: .github/workflows/verification.yml, tests/E2E/web-postgres.test.mjs if missing case, tasks/verification.md. Dependency: E2E5.
 
 ## E2E7: Documentation and final verification
 - [x] Document prerequisites, commands, isolation, asset treatment and fixture-vs-Live limits; record exact SHA/runtime/results.
 - [x] Add eight TESTCASES rows with consecutive STT; retain every existing/legacy row; update README.
-- [ ] Original PHP/Chromium/PostgreSQL suites, Blade/build/audits pass; review diff and cleanup; push/merge according to standing authorization after exact-head checks.
+- [x] Original PHP/Chromium/PostgreSQL suites, Blade/build/audits pass; review diff and cleanup; push/merge according to standing authorization after exact-head checks.
 - Verify: `php vendor/bin/phpunit --fail-on-warning --fail-on-risky`, `node --test tests/Frontend/*.test.mjs`, `bash scripts/test-postgres.sh`, `bash scripts/test-web-e2e.sh`, `php artisan view:cache`, `npm run build`, `composer audit --locked --no-interaction`, `npm audit --audit-level=high`, Pint/numbering/`git diff --check`.
 - Files: docs/testing/WEB_POSTGRES_E2E.md, README.md, TESTCASES.md, tasks/verification.md. Dependency: E2E6.
 
 ## Checkpoint E2E-C
-- [ ] Eight scenarios and regression gates verified; coverage claims precise; draft PR ready for final review/merge.
+- [x] Eight scenarios and regression gates verified; coverage claims precise; draft PR ready for final review/merge.
+
+E2E checkpoint evidence: all three jobs passed on 65a09a6 in run 37734324447; final documentation commit must also pass before authorized merge.

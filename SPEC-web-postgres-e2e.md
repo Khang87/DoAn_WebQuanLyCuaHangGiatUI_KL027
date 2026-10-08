@@ -1,6 +1,6 @@
 # Spec: web-postgres-e2e
 
-Status: **Đặc tả được chủ dự án duyệt trong hội thoại ngày 08/10/2026; kế hoạch/checklist cũng được duyệt; implementation đã hoàn tất local.** CI exact-head còn chờ xác minh trước merge. Một capability: kiểm chứng browser → Laravel HTTP → PostgreSQL xuyên suốt. Nối tiếp PR #8, nơi browser E2E được loại khỏi phạm vi; không mở lại các thay đổi nghiệp vụ đã chốt.
+Status: **Đặc tả được chủ dự án duyệt trong hội thoại ngày 08/10/2026; kế hoạch/checklist cũng được duyệt; implementation đã hoàn tất local.** CI implementation head 65a09a6 đã đạt đủ ba job (run 37734324447); commit tài liệu cuối cũng phải đạt trước merge. Một capability: kiểm chứng browser → Laravel HTTP → PostgreSQL xuyên suốt. Nối tiếp PR #8, nơi browser E2E được loại khỏi phạm vi; không mở lại các thay đổi nghiệp vụ đã chốt.
 
 ## Objective and assumptions
 
