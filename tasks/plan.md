@@ -65,3 +65,70 @@ Build order: RV1 → RV2 → RV3 → RV4 → RV5 → RV6 → RV7.
 ## Open questions
 
 No unresolved business requirements. Technical failures discovered while implementing are evidence to diagnose. The owner approved the plan and checklist and instructed implementation; local validation is recorded in tasks/verification.md.
+
+
+# Implementation plan: web-postgres-e2e
+
+## Approval and scope
+
+Owner approved `SPEC-web-postgres-e2e.md` in conversation on 08/10/2026 after the VER2 review. This plan/checklist awaits review before implementation under spec-driven-development and planning-and-task-breakdown. App baseline: main `648612c`; working branch and draft PR #9 retain the completed review and approved spec. Preserve earlier completed plans.
+
+One capability: real browser → existing Laravel HTTP/auth/CSRF/permission → disposable PostgreSQL persisted-state verification. Eight scenarios in the approved spec; no business redesign or production writes.
+
+## Findings from read-only planning
+
+- Booking inspection is `BookingController::inspection → edit(..., true) → admin.bookings.edit`, with no editable DonGia input. Do not implement a readonly price fix on the wrong legacy view.
+- Current PostgreSQL bootstrap creates/removes fresh runtime per process and uses array sessions. That is correct for service tests but cannot carry login between HTTP requests. E2E needs one owner-created runtime, stable random APP_KEY and file session storage across requests.
+- Login uses Email/MatKhau, active account, role/permission queries and redirect to an authorized page. Existing pgSeed creates accounts without passwords or permissions. Add only isolated E2E seed/schema fields required by actual requests; keep pgActor out of browser authentication.
+- Laravel runningUnitTests recognizes environment testing; CSRF middleware may use that to bypass checks. Set isolated app environment e2e, never load repository .env/config cache, assert HTTP runtime is not runningUnitTests, and prove a missing-token POST is rejected (419) before accepting login as verified.
+- Bootstrap CSS/JS and app controls are local. Layout and login load SweetAlert2 from jsDelivr; Google Fonts and Font Awesome CSS are external. Their failures cannot be indiscriminately swallowed or replaced by fake Swal handlers.
+- Existing CI splits PHP/PostgreSQL and Node/frontend into separate jobs. E2E needs PHP, Node, Chrome and Docker together; use a dedicated bounded job with pinned existing setup actions and lockfile installs, preserving both current jobs.
+
+## Architecture decisions
+
+1. Factor only the loopback/database/marker validation and explicit test connection settings needed by both test bootstraps into a test-layer helper. Existing service runner semantics/SQLite phpunit.xml stay unchanged. HTTP entry point and router live only in tests/E2E; no production test endpoint or auth bypass.
+2. Runner owns disposable PostgreSQL, private runtime directory, stable key, generated account password, loopback HTTP listener and browser profile. Validate runtime path/target before seeding or requests. Cleanup is scoped to owned IDs/paths and runs on success, failure and signal; child processes and SQL have deadlines.
+3. Serve actual production routes/templates/local assets through Laravel HTTP kernel and PHP local server. Test bootstrap sets file session/cache isolation, array mail and sync queue. Browser navigates login, enters seed credentials and uses real forms/cookies/CSRF; no middleware disabling.
+4. Use Node built-ins/CDP already established by tests/Frontend. Keep browser transport helper focused: bounded command correlation, navigation/network events, input/click/form submission and teardown. DB helper is CLI-only for seed/read assertions; no credentials in page/output.
+5. Before implementation choose an exact official SweetAlert2 version compatible with the current @11 URL, retrieve official bytes and verify SHA-256. Store only version/hash metadata in tests, cache bytes per run outside repository, and fulfill only the exact existing SweetAlert2 URL from those unchanged bytes in CDP. This is asset transport, not a mocked application response or added npm dependency. Do not inject fake business JS. Known decorative font/icon CSS may be deliberately blocked with recorded URLs; this excludes external typography/icon rendering from claims. Other failed requests/console exceptions and missing business assets fail tests. If the official asset cannot be obtained/verified, fail setup; do not silently replace it.
+6. Seed minimal named scenarios after safety checks. Read state via independent guarded PHP/PostgreSQL helper after browser responses. Browser assertions check real form selection/value/error feedback; persisted assertions check money, tuples, status, counts, point balance, estimates and audit.
+7. E2E-05 uses a replay of the real authenticated request captured from the browser; it proves HTTP idempotency, not simultaneous HTTP race. E2E-08 may submit forbidden local requests through the authenticated browser when UI hides controls, using valid CSRF and structurally valid payloads; 500/419/403 due to inadequate test credentials is not accepted as financial-guard evidence.
+8. Paid-order fixture preparation may create/settle local data through seed-only service calls. Operations under test go through browser/HTTP; fixture setup is not reported as browser lifecycle coverage. No live JWT/RLS/schema parity claim.
+
+## Dependency graph and ordered tasks
+
+E2E1 (safe HTTP runtime) → E2E2 (seed/orchestration) → E2E3 (browser login + first conversion) → E2E4 (delivery/replay) → E2E5 (pricing/paid guards) → E2E6 (mutation + CI) → E2E7 (docs/full verification/publication).
+
+| Task | Vertical outcome | Likely files | Dependencies |
+|---|---|---|---|
+| E2E1 | HTTP bootstrap carries sessions while rejecting unsafe targets and preserving CSRF | tests/Postgres/bootstrap.php; new tests/Postgres/connection.php; tests/E2E/bootstrap.php; tests/E2E/router.php | — |
+| E2E2 | Disposable fixture/server can be started, seeded and always cleaned | scripts/test-web-e2e.sh; tests/E2E/seed.php; tests/E2E/fixture.sql | E2E1 |
+| E2E3 | Real login and store/store inspection persist an Order | tests/E2E/browser.mjs; tests/E2E/web-postgres.test.mjs; tests/E2E/state.php; tests/E2E/assets.json | E2E2 |
+| E2E4 | Remaining home/store combinations and authenticated replay pass | tests/E2E/web-postgres.test.mjs; tests/E2E/state.php; tests/E2E/seed.php if needed | E2E3 |
+| E2E5 | Real pricing controls and paid-order rejection preserve financial state | tests/E2E/web-postgres.test.mjs; tests/E2E/state.php; tests/E2E/seed.php if needed | E2E4 |
+| E2E6 | Covered guard mutation fails and dedicated CI runs actual E2E | .github/workflows/verification.yml; tests/E2E/web-postgres.test.mjs if gap; tasks/verification.md | E2E5 |
+| E2E7 | Commands/coverage published with original regressions intact | docs/testing/WEB_POSTGRES_E2E.md; README.md; TESTCASES.md; tasks/verification.md | E2E6 |
+
+Acceptance criteria and checkpoints are in tasks/todo.md. Files are estimates, each task kept within five touched files; split further if bootstrap/fixture needs more work. Work remains sequential in this shared test runtime.
+
+## Risks and mitigations
+
+| Risk | Mitigation |
+|---|---|
+| Session vanishes between HTTP requests | Stable per-run key/runtime, file sessions, verify login survives navigation |
+| Tests succeed with CSRF/permission accidentally disabled | Environment e2e, negative 419/auth/permission probes, no withoutMiddleware/fake actor |
+| Fixture missing fields/relations queried by real pages | Diagnose SQL failure; add local fixture fields only, no production schema changes |
+| CDN is unavailable or introduces nondeterminism | Exact official asset/hash and constrained transport; fail core asset retrieval; record decorative exclusions |
+| Browser redirected to wrong/default page or returns 500 | Check redirect chain, page exceptions and HTTP statuses; seed least sufficient real permissions |
+| HTTP method override/CSRF rejection mistaken for business guard | Use valid known payload/token and permitted actor, verify expected financial rejection and unchanged DB |
+| Passwords/session/DB values in logs | Runtime-only generated credentials and masked CI logs; don't dump cookie/token or full environment |
+| Cleanup breaks other workloads | Own IDs/paths only; bounded termination and failure cleanup checks |
+| Browser UI appears correct but DB wrong | Independent persisted-state assertions after each action |
+| Scope grows into Live/Flutter/legacy retirement | Return to approved spec; retain current contracts and tests |
+
+## Verification checkpoints and publishing
+
+- After E2E2: unsafe targets refuse setup; PostgreSQL and HTTP ready; sessions/CSRF work; failure cleanup verified; existing PostgreSQL runner still passes.
+- After E2E4: login, all four inspection combinations and HTTP replay pass in Chromium with persisted-state checks.
+- After E2E7: all eight cases, mutation detection, PHP/Chromium/PostgreSQL regressions, Blade, native build and audits pass or concrete failures are diagnosed; no weakened checks.
+- Push updates to existing draft PR #9 under standing user authorization. Merge after approved plan/task execution and exact-head CI success, then sync/verify main. Approval of this plan also approves the ordered checklist; no additional business-policy decision is proposed.

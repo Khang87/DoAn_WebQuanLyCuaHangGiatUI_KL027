@@ -1,6 +1,6 @@
 # Spec: web-postgres-e2e
 
-Status: **Draft — chưa được duyệt, chưa implementation.** Ngày 08/10/2026. Một capability: kiểm chứng browser → Laravel HTTP → PostgreSQL xuyên suốt. Nối tiếp PR #8, nơi browser E2E được loại khỏi phạm vi; không mở lại các thay đổi nghiệp vụ đã chốt.
+Status: **Đặc tả được chủ dự án duyệt trong hội thoại ngày 08/10/2026; chưa implementation.** Kế hoạch/task tiếp theo chờ duyệt. Một capability: kiểm chứng browser → Laravel HTTP → PostgreSQL xuyên suốt. Nối tiếp PR #8, nơi browser E2E được loại khỏi phạm vi; không mở lại các thay đổi nghiệp vụ đã chốt.
 
 ## Objective and assumptions
 
@@ -74,4 +74,4 @@ Never: load `.env` hoặc cache config production; chạy fixture/test mutations
 
 ## Open questions
 
-Không có câu hỏi về quy tắc nghiệp vụ. Cần chủ dự án duyệt phạm vi E2E PostgreSQL cách ly này. Khả năng boot full HTTP trên fixture hiện có, assets và seed quyền sẽ được khảo sát trong Phase 2 Plan; nếu phát hiện cần đổi business contract hoặc thêm dependency thì phải quay lại đặc tả.
+Không có câu hỏi về quy tắc nghiệp vụ. Chủ dự án đã duyệt phạm vi E2E PostgreSQL cách ly. Phase 2 Plan xác định cần session file dùng chung giữa request, runtime environment e2e (không tự bỏ CSRF như unit-test environment), seed quyền/mật khẩu local và xử lý SweetAlert2 CDN thật. Kế hoạch/checklist nằm ở tasks/plan.md và tasks/todo.md; chưa bắt đầu implementation. Nếu phát hiện cần đổi business contract hoặc thêm dependency thì quay lại đặc tả.
