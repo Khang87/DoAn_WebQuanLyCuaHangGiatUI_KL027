@@ -113,6 +113,7 @@ test('browser → HTTP → PostgreSQL business flows with real session, CSRF and
         });
         await t.test('E2E-08: staff HTTP writes respect paid-order guards and owner-only deletion', async () => {
             await b.navigate(`/orders/${cases.paid}`);
+            assert.equal(b.responses.filter(r => r.type === 'Document').at(-1).status,200,'Paid Order is readable by permitted staff');
             const before=state('order',cases.paid);
             assert.equal(before.orders[0].TrangThai,'Đã thanh toán');
             assert.equal(before.legs.length,1);
@@ -133,7 +134,8 @@ test('browser → HTTP → PostgreSQL business flows with real session, CSRF and
             }
             assert.deepEqual(state('order',cases.paid),before,'Order money/details/invoice/payments/points/legs/audit unchanged');
         });
-        assert.deepEqual(b.responses.filter(r => r.status >= 500).map(r => r.status), [], 'No HTTP server errors');
+        const unexpected=b.responses.filter(r=>r.status>=400 && !(r.status===403 && ((r.type==='Document' && new URL(r.url).pathname==='/reports') || (r.type==='Fetch' && new URL(r.url).pathname===`/orders/${cases.paid}`))));
+        assert.deepEqual(unexpected.map(r=>({status:r.status,path:new URL(r.url).pathname})), [], 'No unexpected failed HTTP requests or core assets');
         assert.deepEqual(b.errors, []);
         console.log('Decorative external CSS excluded:', [...b.excluded].join(', '));
     } finally {await b.close();}

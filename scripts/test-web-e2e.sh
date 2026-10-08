@@ -2,6 +2,7 @@
 set -euo pipefail
 root=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
 php_bin=${PHP_BIN:-php}
+case ${1:-all} in all|setup) ;; *) echo 'Expected all or setup' >&2; exit 2;; esac
 "$php_bin" "$root/tests/E2E/safety.php"
 export WEB_E2E_RUNTIME WEB_E2E_KEY WEB_E2E_PASSWORD POSTGRES_PASSWORD
 WEB_E2E_RUNTIME=$(mktemp -d /tmp/laundry-e2e-XXXXXXXXXXXX)

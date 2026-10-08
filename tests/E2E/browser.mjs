@@ -6,9 +6,10 @@ import { setTimeout as delay } from 'node:timers/promises';
 export async function openBrowser(runtime, origin) {
     const child = spawn(process.env.CHROMIUM_BIN || 'chromium', ['--headless', '--no-sandbox', '--disable-dev-shm-usage', '--disable-background-networking', '--no-first-run', '--remote-debugging-port=0', `--user-data-dir=${runtime}/browser`, 'about:blank'], {stdio: 'ignore'});
     const errors = [], requests = [], responses = [], excluded = new Set(), pending = new Map();
-    let socket, id = 0;
+    let socket, id = 0, startupError;
+    child.on('error', error => {startupError=error;});
     async function waitFor(check, label) {
-        for (let i = 0; i < 150; i++) { const value = await check(); if (value) return value; await delay(100); }
+        for (let i = 0; i < 150; i++) { if (startupError) throw startupError; const value = await check(); if (value) return value; await delay(100); }
         throw Error(`Browser deadline: ${label}`);
     }
     async function command(method, params = {}) {
@@ -21,7 +22,7 @@ export async function openBrowser(runtime, origin) {
     }
     async function evaluate(expression) {
         const result = await command('Runtime.evaluate', {expression, returnByValue: true, awaitPromise: true});
-        assert.equal(result.exceptionDetails, undefined, 'Page JavaScript must complete');
+        if (result.exceptionDetails) throw Error('Page JavaScript must complete: '+result.exceptionDetails.text);
         return result.result.value;
     }
     async function navigate(path) {
