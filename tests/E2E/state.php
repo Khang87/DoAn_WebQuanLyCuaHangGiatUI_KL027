@@ -22,6 +22,7 @@ try {
         'estimate' => $rows('SELECT * FROM "ChiTietBooking" WHERE "BookingID" = ? ORDER BY "ChiTietBookingID"', [$bookingId]),
         'details' => $rows('SELECT * FROM "ChiTietDonHang" WHERE "DonHangID" = ? ORDER BY "ChiTietDonHangID"', [$orderId]),
         'legs' => $rows('SELECT * FROM "GiaoNhan" WHERE "DonHangID" = ? ORDER BY "LoaiGiaoNhan"', [$orderId]),
+        'invoices' => $rows('SELECT * FROM "HoaDon" WHERE "DonHangID" = ? ORDER BY "HoaDonID"', [$orderId]),
         'payments' => $rows('SELECT * FROM "ThanhToan" WHERE "DonHangID" = ? ORDER BY "ThanhToanID"', [$orderId]),
         'audit' => $rows('SELECT * FROM "NhatKyHeThong" WHERE ("BangDuLieu" = ? AND "BanGhiID" = ?) OR ("BangDuLieu" = ? AND "BanGhiID" = ?) ORDER BY "NhatKyID"', ['Booking', $bookingId, 'DonHang', $orderId]),
         'balance' => (int) $rows('SELECT "DiemHienTai" FROM "DiemTichLuy" WHERE "KhachHangID" = 1')[0]['DiemHienTai'],

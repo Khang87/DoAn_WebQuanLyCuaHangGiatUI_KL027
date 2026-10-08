@@ -52,7 +52,7 @@ Browser test đọc dữ liệu qua helper test trong process local có safety g
 | E2E-05 | Gửi lại thao tác xác nhận cùng Booking qua browser/session thật | Trả/link tới một Order; một lần redemption, một bộ chi tiết/chặng và một audit; đây là replay HTTP, không thay thế ba race service tests đã có |
 | E2E-06 | Cùng Service/Garment có Cái và KG; đổi ĐVT/measurement trên form hiện hành | Lưu đúng ĐVT/giá và minimum kg; không có ô giá cho chỉnh tự do trên Inspection Booking; nếu UI tương lai có preview thì phải readonly; form create/edit Order readonly hiện có được kiểm tra trên page thật |
 | E2E-07 | Dịch vụ 100.000, voucher 10.000, chọn dùng điểm đủ 90.000, phí 30.000 | Điểm trừ đúng một lần, phí không bị giảm, còn phải trả 30.000; UI và dữ liệu lưu nhất quán |
-| E2E-08 | Với đơn Đã thanh toán, thử gửi các thao tác sửa/xóa/tạo hoặc sửa GiaoNhan qua HTTP có quyền | Server từ chối cả khi UI ẩn nút; snapshot tiền/chi tiết/điểm/chặng không đổi; kiểm tra response theo contract hiện tại, không chấp nhận 500 như một từ chối hợp lệ |
+| E2E-08 | Với đơn Đã thanh toán, nhân viên gửi sửa đơn/tạo hoặc sửa GiaoNhan với quyền tương ứng; thử xóa để kiểm tra quyền owner-only | Sửa đơn và GiaoNhan bị guard nghiệp vụ từ chối; xóa bị middleware owner-only từ chối riêng, không gọi đó là financial-guard coverage. Snapshot tiền/chi tiết/điểm/chặng không đổi; không chấp nhận 500/419. Cơ chế hiệu chỉnh của Chủ cửa hàng giữ nguyên, ngoài phạm vi ca này. |
 
 ## Testing strategy
 
@@ -75,3 +75,7 @@ Never: load `.env` hoặc cache config production; chạy fixture/test mutations
 ## Open questions
 
 Không có câu hỏi về quy tắc nghiệp vụ. Chủ dự án đã duyệt phạm vi E2E PostgreSQL cách ly. Phase 2 Plan xác định cần session file dùng chung giữa request, runtime environment e2e (không tự bỏ CSRF như unit-test environment), seed quyền/mật khẩu local và xử lý SweetAlert2 CDN thật. Kế hoạch/checklist nằm ở tasks/plan.md và tasks/todo.md; chưa bắt đầu implementation. Nếu phát hiện cần đổi business contract hoặc thêm dependency thì quay lại đặc tả.
+
+## Implementation clarification
+
+E2E-08 được làm rõ sau khi đọc QuyenMapper::OWNER_ONLY_MAQUYEN (ORDER_DELETE): không tồn tại tác nhân non-owner có quyền xóa đơn; owner có quyền hiệu chỉnh financial riêng. Kế hoạch đã yêu cầu giữ business policy, nên chỉ sửa kỳ vọng kiểm thử cho đúng quyền hiện tại, không nới middleware hoặc chặn override của owner.

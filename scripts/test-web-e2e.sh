@@ -9,7 +9,7 @@ container_id='' server_pid=''
 cleanup() {
     status=$?
     if [[ $status -ne 0 && -f "$WEB_E2E_RUNTIME/server.log" ]]; then
-        node --input-type=module -e 'import {readFileSync} from "node:fs";let s=readFileSync(process.env.WEB_E2E_RUNTIME+"/server.log","utf8").slice(-12000);for(const n of ["WEB_E2E_KEY","WEB_E2E_PASSWORD","PG_TEST_PASSWORD"]){if(process.env[n])s=s.replaceAll(process.env[n],"[masked]")}process.stderr.write(s)'
+        node --input-type=module -e 'import {readFileSync} from "node:fs";let s=readFileSync(process.env.WEB_E2E_RUNTIME+"/server.log","utf8").split("\n").filter(l=>!/(Accepted|Closing|\[200\]: GET)/.test(l)).join("\n").slice(-12000);for(const n of ["WEB_E2E_KEY","WEB_E2E_PASSWORD","PG_TEST_PASSWORD"]){if(process.env[n])s=s.replaceAll(process.env[n],"[masked]")}process.stderr.write(s)'
     fi
     if [[ -n "$server_pid" ]]; then kill "$server_pid" 2>/dev/null || true; wait "$server_pid" 2>/dev/null || true; fi
     if [[ -n "$container_id" ]]; then docker rm -f "$container_id" >/dev/null; fi
