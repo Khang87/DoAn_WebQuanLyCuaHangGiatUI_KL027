@@ -1,6 +1,10 @@
 <?php
 
+use Illuminate\Foundation\Bootstrap\BootProviders;
 use Illuminate\Foundation\Bootstrap\LoadConfiguration;
+use Illuminate\Foundation\Http\Events\RequestHandled;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Event;
 
 [$host, $port, $password, $pdo] = require dirname(__DIR__).'/Postgres/connection.php';
 $runtime = getenv('WEB_E2E_RUNTIME');
@@ -37,5 +41,24 @@ $app->afterBootstrapping(LoadConfiguration::class, static function ($app) use ($
         'cache.default' => 'array', 'queue.default' => 'sync', 'mail.default' => 'array', 'logging.default' => 'stderr',
     ]);
 });
+
+if (getenv('WEB_E2E_PROFILE') === '1') {
+    $delay = getenv('WEB_E2E_QUERY_DELAY_MS') ?: '0';
+    if (! ctype_digit($delay) || (int) $delay > 50) {
+        throw new RuntimeException('Profiling query delay must be between 0 and 50 ms.');
+    }
+    $app->afterBootstrapping(BootProviders::class, static function () use ($delay): void {
+        $queries = 0;
+        DB::listen(static function () use (&$queries, $delay): void {
+            $queries++;
+            if ((int) $delay > 0) {
+                usleep((int) $delay * 1000);
+            }
+        });
+        Event::listen(RequestHandled::class, static function ($event) use (&$queries): void {
+            $event->response->headers->set('X-E2E-Queries', (string) $queries);
+        });
+    });
+}
 
 return $app;

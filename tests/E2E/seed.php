@@ -18,6 +18,9 @@ try {
     DB::table('DanhMucLoaiDoGiat')->insert(['DanhMucID' => 1, 'TenDanhMuc' => 'Local clothing']);
     DB::table('TaiKhoan')->where('TaiKhoanID', 2)->update(['Email' => 'staff@example.test', 'MatKhau' => Hash::make(getenv('WEB_E2E_PASSWORD'))]);
     $permissions = ['orders.view', 'orders.create', 'orders.edit', 'orders.update_status', 'bookings.view', 'bookings.confirm', 'deliveries.view', 'deliveries.create', 'deliveries.edit'];
+    if (getenv('WEB_E2E_PROFILE') === '1') {
+        $permissions[] = 'dashboard.view';
+    }
     foreach ($permissions as $permission) {
         $id = DB::table('Quyen')->insertGetId(['MaQuyen' => QuyenMapper::resolveMaQuyen($permission), 'TenQuyen' => $permission], 'QuyenID');
         DB::table('VaiTro_Quyen')->insert(['VaiTroID' => 1, 'QuyenID' => $id]);

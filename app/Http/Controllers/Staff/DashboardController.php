@@ -37,20 +37,27 @@ class DashboardController extends Controller
             OrderStatus::Delivering,
         ])->mapWithKeys(fn (OrderStatus $status) => [$status->value => $status->label()]);
 
+        $orderCounts = DonHang::query()
+            ->select('TrangThai')
+            ->selectRaw('COUNT(*) AS total')
+            ->whereIn('TrangThai', $quickStatusFlow->keys())
+            ->groupBy('TrangThai')
+            ->pluck('total', 'TrangThai');
+
         // --- KPI: Đơn hàng chờ tiếp nhận / kiểm tra đồ ---
-        $waitingReceiveCount = DonHang::where('TrangThai', OrderStatus::Pending->value)->count();
+        $waitingReceiveCount = (int) $orderCounts->get(OrderStatus::Pending->value, 0);
 
         // --- KPI: Đơn hàng đang giặt / đang xử lý ---
-        $washingCount = DonHang::whereIn('TrangThai', [
+        $washingCount = (int) $orderCounts->only([
             OrderStatus::Received->value,
             OrderStatus::Washing->value,
-        ])->count();
+        ])->sum();
 
         // --- KPI: Đơn hàng đã giặt xong (chờ giao/khách đến lấy) ---
-        $readyCount = DonHang::whereIn('TrangThai', [
+        $readyCount = (int) $orderCounts->only([
             OrderStatus::Washed->value,
             OrderStatus::Delivering->value,
-        ])->count();
+        ])->sum();
 
         // --- KPI: Lượng nhận đồ / giao đồ được phân công hôm nay ---
         $todayDeliveryCounts = GiaoNhan::whereDate('ThoiGianDuKien', $today)
