@@ -11,6 +11,13 @@
             <a href="{{ route('orders.index') }}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left me-1"></i>Quay lại</a>
         </div>
         @php
+            $savedVoucherWarning = $order->khuyenMai?->rejectionReasonForCustomer($order->khachHang, (float) $order->TongTien, (int) $order->DonHangID);
+            $savedPromotionPreview = $order->khuyenMai && !$savedVoucherWarning ? [
+                'type' => $order->khuyenMai->LoaiKhuyenMai,
+                'value' => (float) $order->khuyenMai->GiaTriGiam,
+                'minimum' => (float) $order->khuyenMai->GiaTriDonToiThieu,
+                'maximum' => (float) $order->khuyenMai->MucGiamToiDa,
+            ] : null;
             $garmentOptions = $garments;
             $employeeOptions = $employees;
             $priceOptions = $pricings;
@@ -148,33 +155,17 @@
                     <div class="form-text">Đơn giá lấy từ bảng giá hiện hành và không sửa trực tiếp. Dịch vụ có đơn vị <strong>kg</strong> sẽ tính theo khối lượng, tối thiểu {{ number_format($minimumWeight, 1) }} kg; các đơn vị khác tính theo số lượng.</div>
                 </div>
 
-                {{-- ======== Ưu đãi: Voucher + Điểm tích lũy ======== --}}
+                {{-- ======== Ưu đãi và điểm tích lũy ======== --}}
                 <div class="col-12">
                     <div class="card border-primary">
                         <div class="card-body">
                             <h6 class="mb-3"><i class="fas fa-ticket me-2 text-primary"></i>Ưu đãi áp dụng</h6>
                             <div class="row g-3 align-items-end">
-                                <div class="col-md-4">
-                                    <label class="form-label" for="promotion_id">Mã giảm giá (Voucher)</label>
-                                    <select class="form-select @error('KhuyenMaiID') is-invalid @enderror" id="promotion_id" name="KhuyenMaiID">
-                                        <option value="">Không dùng voucher</option>
-                                        @foreach($promotions as $promotion)
-                                            <option value="{{ $promotion->KhuyenMaiID }}"
-                                                    data-code="{{ $promotion->MaKhuyenMai }}"
-                                                    data-type="{{ $promotion->LoaiKhuyenMai }}"
-                                                    data-value="{{ (float) $promotion->GiaTriGiam }}"
-                                                    data-min="{{ (float) ($promotion->GiaTriDonToiThieu ?? 0) }}"
-                                                    data-max="{{ (float) ($promotion->MucGiamToiDa ?? 0) }}"
-                                                    @selected(old('KhuyenMaiID', $order->KhuyenMaiID) == $promotion->KhuyenMaiID)>
-                                                {{ $promotion->TenKhuyenMai }} ({{ $promotion->MaKhuyenMai }})
-                                            </option>
-                                        @endforeach
-                                    </select>
-                                    @error('KhuyenMaiID')<div class="invalid-feedback">{{ $message }}</div>@enderror
-                                    <input type="text" class="form-control form-control-sm mt-2 @error('promotion_code') is-invalid @enderror" id="promotion_code" name="promotion_code"
-                                           value="{{ old('promotion_code', $order->khuyenMai?->MaKhuyenMai) }}" placeholder="Hoặc nhập mã voucher...">
-                                    @error('promotion_code')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
-                                    <div class="form-text" id="promotionCodeHint"></div>
+                                <div class="col-md-8">
+                                    <label class="form-label" for="saved-promotion">Voucher đã lưu</label>
+                                    <input type="text" class="form-control" id="saved-promotion" readonly value="{{ $order->khuyenMai?->MaKhuyenMai ?: 'Không có voucher' }}">
+                                    <div class="form-text">Voucher được giữ từ Booking hoặc đơn cũ và kiểm tra lại khi lưu; không thể thêm hoặc đổi tại đây. Số tiền hiển thị là dự kiến trước khi lưu.</div>
+                                    @if($savedVoucherWarning)<div class="text-warning small" data-saved-voucher-warning>{{ $savedVoucherWarning }}</div>@endif
                                 </div>
                                 <div class="col-md-4">
                                     <input type="hidden" id="points_used" name="DiemSuDung" value="{{ old('DiemSuDung', $order->DiemSuDung) }}">
@@ -256,9 +247,6 @@
     const serviceCategories = @json($serviceCategories->pluck('TenLoaiDichVu', 'LoaiDichVuID'));
 
     const table = document.getElementById('itemsTable');
-    const promotionSelect = document.getElementById('promotion_id');
-    const promotionCodeInput = document.getElementById('promotion_code');
-    const promotionCodeHint = document.getElementById('promotionCodeHint');
     const pointsInput = document.getElementById('points_used');
     const pointsToggle = document.getElementById('use_points');
     const pointsText = document.getElementById('customerPointsText');
@@ -267,11 +255,7 @@
     const originalCustomerId = @json((string) $order->KhachHangID);
     const previouslyUsedPoints = {{ (int) $order->DiemSuDung }};
 
-    // Danh sách mã voucher hợp lệ để tra cứu khi người dùng gõ tay mã code.
-    const promotionCodes = {};
-    Array.from(promotionSelect.options).forEach(option => {
-        if (option.dataset.code) promotionCodes[option.dataset.code.trim().toLowerCase()] = option.value;
-    });
+    const savedPromotion = @json($savedPromotionPreview);
 
     const out = {
         subtotal: document.getElementById('subtotalAmount'),
@@ -289,13 +273,12 @@
     });
 
     function promotionDiscountFor(subtotal) {
-        const option = promotionSelect.options[promotionSelect.selectedIndex];
-        if (!option || !option.value) return 0;
+        if (!savedPromotion || customerSelect.value !== originalCustomerId) return 0;
 
-        const type = option.dataset.type;
-        const value = Number(option.dataset.value) || 0;
-        const minOrder = Number(option.dataset.min) || 0;
-        const maxDiscount = Number(option.dataset.max) || 0;
+        const type = savedPromotion.type;
+        const value = Number(savedPromotion.value) || 0;
+        const minOrder = Number(savedPromotion.minimum) || 0;
+        const maxDiscount = Number(savedPromotion.maximum) || 0;
 
         if (subtotal < minOrder) return 0;
 
@@ -361,31 +344,6 @@
         updateCustomerPointsHint();
         updateTotals();
     });
-    promotionSelect.addEventListener('change', () => {
-        const option = promotionSelect.options[promotionSelect.selectedIndex];
-        promotionCodeInput.value = (option && option.value) ? option.dataset.code : '';
-        promotionCodeHint.textContent = '';
-        promotionCodeHint.className = 'form-text';
-        updateTotals();
-    });
-    promotionCodeInput.addEventListener('input', () => {
-        const code = promotionCodeInput.value.trim().toLowerCase();
-        if (code === '') {
-            promotionSelect.value = '';
-            promotionCodeHint.textContent = '';
-            promotionCodeHint.className = 'form-text';
-        } else if (promotionCodes[code]) {
-            promotionSelect.value = promotionCodes[code];
-            promotionCodeHint.textContent = '✓ Mã voucher hợp lệ';
-            promotionCodeHint.className = 'form-text text-success';
-        } else {
-            // Mã không tồn tại: bỏ chọn voucher để khớp với kết quả server.
-            promotionSelect.value = '';
-            promotionCodeHint.textContent = '✗ Mã voucher không tồn tại';
-            promotionCodeHint.className = 'form-text text-danger';
-        }
-        updateTotals();
-    });
     customerSelect.addEventListener('change', () => { updateCustomerPointsHint(); updateTotals(); });
 
     let nextItemIndex = Math.max(-1, ...Array.from(table.querySelectorAll('[name^="items["]'), input => Number(input.name.match(/^items\[(\d+)\]/)?.[1] ?? -1))) + 1;
@@ -430,12 +388,6 @@
             updateTotals();
         }
     });
-
-    // Đồng bộ ô nhập mã theo voucher đang chọn sẵn (old input / voucher của đơn).
-    if (!promotionCodeInput.value.trim()) {
-        const selected = promotionSelect.options[promotionSelect.selectedIndex];
-        if (selected && selected.value) promotionCodeInput.value = selected.dataset.code || '';
-    }
 
     table.querySelectorAll('tbody tr').forEach(row => {
         syncGarmentOptions(row);

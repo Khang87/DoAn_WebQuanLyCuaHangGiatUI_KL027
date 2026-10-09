@@ -142,6 +142,55 @@ class RewardPointTest extends TestCase
         }
     }
 
+    public function test_manual_creation_rejects_voucher_injection_without_financial_side_effects(): void
+    {
+        $customer = $this->createCustomer(901, 500);
+        $booking = $this->createBooking($customer);
+        $this->reservedPromotion($booking);
+        foreach ([['KhuyenMaiID' => 1], ['promotion_code' => 'TEST']] as $injection) {
+            try {
+                app(OrderService::class)->create(array_merge([
+                    'KhachHangID' => $customer->KhachHangID, 'NhanVienID' => 1,
+                    'TrangThai' => OrderStatus::Received->value, 'DiemSuDung' => 100,
+                    'items' => [$this->orderItem()],
+                ], $injection));
+                $this->fail('Manual voucher injection must be rejected.');
+            } catch (ValidationException $exception) {
+                $this->assertArrayHasKey(array_key_first($injection), $exception->errors());
+            }
+            $this->assertSame(0, DonHang::count());
+            $this->assertSame(0, DB::table('ChiTietDonHang')->count());
+            $this->assertSame(500, $customer->fresh()->points());
+            $this->assertEquals(0, DB::table('KhuyenMai')->value('SoLuongSuDung'));
+        }
+    }
+
+    public function test_order_update_cannot_add_or_replace_a_saved_voucher(): void
+    {
+        $customer = $this->createCustomer(901, 500);
+        $booking = $this->createBooking($customer);
+        $this->reservedPromotion($booking);
+        $order = $this->createOrder($customer, 10000, 0);
+        foreach ([null, 1] as $savedVoucher) {
+            $order->forceFill(['KhuyenMaiID' => $savedVoucher])->saveQuietly();
+            $before = $order->fresh()->getAttributes();
+            $auditCount = DB::table('NhatKyHeThong')->count();
+            foreach ([['KhuyenMaiID' => 1], ['promotion_code' => 'TEST']] as $injection) {
+                try {
+                    app(OrderService::class)->update($order->fresh(), array_merge([
+                        'DiemSuDung' => 100, 'items' => [$this->orderItem()],
+                    ], $injection));
+                    $this->fail('Order editing must reject submitted vouchers.');
+                } catch (ValidationException $exception) {
+                    $this->assertArrayHasKey(array_key_first($injection), $exception->errors());
+                }
+                $this->assertSame($before, $order->fresh()->getAttributes());
+                $this->assertSame(500, $customer->fresh()->points());
+                $this->assertSame($auditCount, DB::table('NhatKyHeThong')->count());
+            }
+        }
+    }
+
     public function test_order_creation_redeems_points_at_one_vnd_per_point(): void
     {
         $customer = $this->createCustomer(3, 500);
@@ -590,9 +639,12 @@ class RewardPointTest extends TestCase
         $booking = $this->createBooking($customer);
         $this->reservedPromotion($booking);
         $order = $this->createOrder($customer, 10000, 0);
+        $order->forceFill(['KhuyenMaiID' => 1])->saveQuietly();
         $updated = app(OrderService::class)->update($order, [
-            'KhuyenMaiID' => 1, 'DiemSuDung' => 500, 'items' => [$this->orderItem()],
+            'DiemSuDung' => 500, 'items' => [$this->orderItem()],
         ]);
+        $this->assertEquals(1, $updated->KhuyenMaiID);
+        $this->assertSame(9900.0, $updated->TienGiamKhuyenMai);
         $this->assertSame(100, $updated->DiemSuDung);
         $this->assertSame(400, $customer->fresh()->points());
     }

@@ -115,33 +115,14 @@
                     <div class="form-text">Đơn giá lấy từ bảng giá hiện hành và không sửa trực tiếp. Dịch vụ có đơn vị <strong>kg</strong> sẽ tính theo khối lượng, tối thiểu {{ number_format($minimumWeight, 1) }} kg; các đơn vị khác tính theo số lượng.</div>
                 </div>
 
-                {{-- ======== Ưu đãi: Voucher + Điểm tích lũy ======== --}}
+                {{-- ======== Ưu đãi và điểm tích lũy ======== --}}
                 <div class="col-12">
                     <div class="card border-primary">
                         <div class="card-body">
                             <h6 class="mb-3"><i class="fas fa-ticket me-2 text-primary"></i>Ưu đãi áp dụng</h6>
                             <div class="row g-3 align-items-end">
-                                <div class="col-md-4">
-                                    <label class="form-label" for="promotion_id">Mã giảm giá (Voucher)</label>
-                                    <select class="form-select @error('KhuyenMaiID') is-invalid @enderror" id="promotion_id" name="KhuyenMaiID">
-                                        <option value="">Không dùng voucher</option>
-                                        @foreach($promotions as $promotion)
-                                            <option value="{{ $promotion->KhuyenMaiID }}"
-                                                    data-code="{{ $promotion->MaKhuyenMai }}"
-                                                    data-type="{{ $promotion->LoaiKhuyenMai }}"
-                                                    data-value="{{ (float) $promotion->GiaTriGiam }}"
-                                                    data-min="{{ (float) ($promotion->GiaTriDonToiThieu ?? 0) }}"
-                                                    data-max="{{ (float) ($promotion->MucGiamToiDa ?? 0) }}"
-                                                    @selected(old('KhuyenMaiID') == $promotion->KhuyenMaiID)>
-                                                {{ $promotion->TenKhuyenMai }} ({{ $promotion->MaKhuyenMai }})
-                                            </option>
-                                        @endforeach
-                                    </select>
-                                    @error('KhuyenMaiID')<div class="invalid-feedback">{{ $message }}</div>@enderror
-                                    <input type="text" class="form-control form-control-sm mt-2 @error('promotion_code') is-invalid @enderror" id="promotion_code" name="promotion_code"
-                                           value="{{ old('promotion_code') }}" placeholder="Hoặc nhập mã voucher...">
-                                    @error('promotion_code')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
-                                    <div class="form-text" id="promotionCodeHint"></div>
+                                <div class="col-md-8">
+                                    <p class="form-text mb-0">Đơn tạo trực tiếp trên web không áp dụng voucher. Voucher từ lịch đặt được giữ khi chuyển Booking thành đơn sau kiểm kê.</p>
                                 </div>
                                 <div class="col-md-4">
                                     <input type="hidden" id="points_used" name="DiemSuDung" value="{{ old('DiemSuDung', 0) }}">
@@ -172,10 +153,6 @@
                                             <tr>
                                                 <td>Tạm tính:</td>
                                                 <td class="text-end"><span id="subtotalAmount">0</span> VNĐ</td>
-                                            </tr>
-                                            <tr id="promotionDiscountRow" class="d-none">
-                                                <td>Tiền giảm voucher:</td>
-                                                <td class="text-end text-success">-<span id="promotionDiscount">0</span> VNĐ</td>
                                             </tr>
                                             <tr id="pointsDiscountRow" class="d-none">
                                                 <td>Tiền giảm do điểm:</td>
@@ -216,25 +193,14 @@
     const serviceCategories = @json($serviceCategories->pluck('TenLoaiDichVu', 'LoaiDichVuID'));
 
     const table = document.getElementById('itemsTable');
-    const promotionSelect = document.getElementById('promotion_id');
-    const promotionCodeInput = document.getElementById('promotion_code');
-    const promotionCodeHint = document.getElementById('promotionCodeHint');
     const pointsInput = document.getElementById('points_used');
     const pointsToggle = document.getElementById('use_points');
     const pointsText = document.getElementById('customerPointsText');
     const pointsToggleStatus = document.getElementById('pointsToggleStatus');
     const customerSelect = document.getElementById('customer_id');
 
-    // Danh sách mã voucher hợp lệ để tra cứu khi người dùng gõ tay mã code.
-    const promotionCodes = {};
-    Array.from(promotionSelect.options).forEach(option => {
-        if (option.dataset.code) promotionCodes[option.dataset.code.trim().toLowerCase()] = option.value;
-    });
-
     const out = {
         subtotal: document.getElementById('subtotalAmount'),
-        promotion: document.getElementById('promotionDiscount'),
-        promotionRow: document.getElementById('promotionDiscountRow'),
         points: document.getElementById('pointsDiscount'),
         pointsRow: document.getElementById('pointsDiscountRow'),
         grand: document.getElementById('grandTotal')
@@ -245,23 +211,6 @@
     const { syncGarmentOptions, updateRowState, updateRow } = window.OrderItemPricing({
         prices, garments, minimumWeight,
     });
-
-    function promotionDiscountFor(subtotal) {
-        const option = promotionSelect.options[promotionSelect.selectedIndex];
-        if (!option || !option.value) return 0;
-
-        const type = option.dataset.type;
-        const value = Number(option.dataset.value) || 0;
-        const minOrder = Number(option.dataset.min) || 0;
-        const maxDiscount = Number(option.dataset.max) || 0;
-
-        if (subtotal < minOrder) return 0;
-
-        let discount = type === 'Phần trăm' ? subtotal * (value / 100) : value;
-        if (maxDiscount > 0 && discount > maxDiscount) discount = maxDiscount;
-
-        return Math.min(discount, subtotal);
-    }
 
     function updateCustomerPointsHint() {
         const id = customerSelect.value;
@@ -276,8 +225,7 @@
             subtotal += updateRow(row);
         });
 
-        const promoDiscount = promotionDiscountFor(subtotal);
-        const remaining = Math.max(0, subtotal - promoDiscount);
+        const remaining = subtotal;
 
         const available = customerSelect.value ? (customerPoints[customerSelect.value] || 0) : 0;
         const redeemablePoints = Math.floor(remaining / POINT_VALUE);
@@ -291,11 +239,9 @@
         const pointsDiscount = usedPoints * POINT_VALUE;
 
         out.subtotal.textContent = fmt(subtotal);
-        out.promotion.textContent = fmt(promoDiscount);
-        out.promotionRow.classList.toggle('d-none', promoDiscount <= 0);
         out.points.textContent = fmt(pointsDiscount);
         out.pointsRow.classList.toggle('d-none', pointsDiscount <= 0);
-        out.grand.textContent = fmt(Math.max(0, subtotal - promoDiscount - pointsDiscount));
+        out.grand.textContent = fmt(Math.max(0, subtotal - pointsDiscount));
     }
 
     table.addEventListener('input', event => {
@@ -312,31 +258,6 @@
     });
     pointsToggle.addEventListener('change', () => {
         updateCustomerPointsHint();
-        updateTotals();
-    });
-    promotionSelect.addEventListener('change', () => {
-        const option = promotionSelect.options[promotionSelect.selectedIndex];
-        promotionCodeInput.value = (option && option.value) ? option.dataset.code : '';
-        promotionCodeHint.textContent = '';
-        promotionCodeHint.className = 'form-text';
-        updateTotals();
-    });
-    promotionCodeInput.addEventListener('input', () => {
-        const code = promotionCodeInput.value.trim().toLowerCase();
-        if (code === '') {
-            promotionSelect.value = '';
-            promotionCodeHint.textContent = '';
-            promotionCodeHint.className = 'form-text';
-        } else if (promotionCodes[code]) {
-            promotionSelect.value = promotionCodes[code];
-            promotionCodeHint.textContent = '✓ Mã voucher hợp lệ';
-            promotionCodeHint.className = 'form-text text-success';
-        } else {
-            // Mã không tồn tại: bỏ chọn voucher để khớp với kết quả server.
-            promotionSelect.value = '';
-            promotionCodeHint.textContent = '✗ Mã voucher không tồn tại';
-            promotionCodeHint.className = 'form-text text-danger';
-        }
         updateTotals();
     });
     customerSelect.addEventListener('change', () => { updateCustomerPointsHint(); updateTotals(); });
@@ -385,12 +306,6 @@
             updateTotals();
         }
     });
-
-    // Đồng bộ ô nhập mã theo voucher đang chọn sẵn (old input / chỉnh sửa).
-    if (!promotionCodeInput.value.trim()) {
-        const selected = promotionSelect.options[promotionSelect.selectedIndex];
-        if (selected && selected.value) promotionCodeInput.value = selected.dataset.code || '';
-    }
 
     table.querySelectorAll('tbody tr').forEach(row => {
         syncGarmentOptions(row);

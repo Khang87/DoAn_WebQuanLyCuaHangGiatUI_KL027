@@ -471,22 +471,6 @@ class OrderService
     }
 
     /**
-     * Xác định voucher từ form: ưu tiên KhuyenMaiID, nếu rỗng thì tra theo mã.
-     */
-    private function resolvePromotion(array $data): ?KhuyenMai
-    {
-        if (! empty($data['KhuyenMaiID'])) {
-            return KhuyenMai::find($data['KhuyenMaiID']);
-        }
-
-        if (! empty($data['promotion_code'])) {
-            return KhuyenMai::findByCode($data['promotion_code']);
-        }
-
-        return null;
-    }
-
-    /**
      * Loại voucher nếu điều kiện nghiệp vụ không cho phép khách dùng.
      *
      * Chính sách: Đơn vẫn được lưu nhưng KHÔNG áp dụng giảm giá, đồng thời ghi
@@ -519,6 +503,8 @@ class OrderService
         Validator::make($data, [
             'NhanVienID' => ['required', 'integer', EmployeeAssignment::rule()],
             'BookingID' => ['prohibited'],
+            'KhuyenMaiID' => ['prohibited'],
+            'promotion_code' => ['prohibited'],
             'TrangThai' => ['required', 'in:'.OrderStatus::Received->value],
             'items' => ['required', 'array', 'min:1'],
             'items.*.TinhTrangTruocKhiGiat' => ['required', 'string', 'max:320'],
@@ -542,12 +528,6 @@ class OrderService
 
             [$items, $subtotal] = $this->buildItems($data['items'] ?? []);
 
-            $promotion = $this->applyPromotionConditions(
-                $this->resolvePromotion($data),
-                $customer,
-                $subtotal
-            );
-
             $customerPoints = $customer?->points() ?? 0;
             $pointsRequested = array_key_exists('use_points', $data)
                 ? ((bool) $data['use_points'] ? $customerPoints : 0)
@@ -556,7 +536,7 @@ class OrderService
 
             $amounts = $this->calculateAmounts(
                 $subtotal,
-                $promotion,
+                null,
                 $pointsRequested,
                 $customerPoints,
                 (float) ($data['PhiGiaoHang'] ?? 0),
@@ -570,7 +550,7 @@ class OrderService
             }
 
             $order = DonHang::create(array_merge($this->onlyOrderColumns($data), [
-                'KhuyenMaiID' => $promotion?->KhuyenMaiID,
+                'KhuyenMaiID' => null,
                 'NgayCapNhat' => now(),
             ], $amounts));
 
@@ -595,6 +575,11 @@ class OrderService
         if ($order->isLocked() && ! $overrideSettled) {
             throw SettledOrderException::forOrder($order->MaDonHang);
         }
+
+        Validator::make($data, [
+            'KhuyenMaiID' => ['prohibited'],
+            'promotion_code' => ['prohibited'],
+        ])->validate();
 
         unset($data['MaDonHang']);
 
@@ -637,11 +622,7 @@ class OrderService
 
             [$items, $subtotal] = $this->buildItems($data['items'] ?? []);
 
-            // Form gửi KhuyenMaiID (có thể rỗng) và/hoặc promotion_code.
-            $touchesPromotion = array_key_exists('KhuyenMaiID', $data) || array_key_exists('promotion_code', $data);
-            $promotion = $touchesPromotion
-                ? $this->resolvePromotion($data)
-                : $lockedOrder->khuyenMai;
+            $promotion = $lockedOrder->khuyenMai;
 
             // Chính sách điều kiện voucher: bỏ voucher nếu khách không thoả
             // điều kiện, đơn vẫn lưu bình thường.

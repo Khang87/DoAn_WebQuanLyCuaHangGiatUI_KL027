@@ -11,7 +11,6 @@ use App\Models\DanhMucLoaiDoGiat;
 use App\Models\DichVu;
 use App\Models\DonViTinh;
 use App\Models\KhachHang;
-use App\Models\KhuyenMai;
 use App\Models\LoaiDichVu;
 use App\Models\LoaiDoGiat;
 use App\Models\NhanVien;
@@ -65,14 +64,13 @@ class DonHangController extends Controller
         $customers = KhachHang::with('diemTichLuy')->orderBy('HoTen')->get();
         $services = DichVu::where('TrangThai', 'Hoạt động')->orderBy('TenDichVu')->get();
         $garments = LoaiDoGiat::where('TrangThai', 'Hoạt động')->orderBy('TenLoaiDoGiat')->get();
-        $promotions = KhuyenMai::where('TrangThai', 'Hoạt động')->get();
         $employees = NhanVien::where('TrangThai', 'Hoạt động')->orderBy('HoTen')->get(['NhanVienID', 'HoTen']);
         $statusFlow = $this->orderService->getStatusFlow();
         $pricings = $this->pricingService->orderOptions();
         $nextOrderCode = $this->orderService->nextOrderCode();
 
         return view('admin.orders.create', array_merge(
-            compact('customers', 'services', 'garments', 'promotions', 'employees', 'statusFlow', 'pricings', 'nextOrderCode'),
+            compact('customers', 'services', 'garments', 'employees', 'statusFlow', 'pricings', 'nextOrderCode'),
             $this->categoryOptions()
         ));
     }
@@ -81,13 +79,6 @@ class DonHangController extends Controller
     {
         try {
             $order = $this->orderService->create($request->validated());
-
-            $rejection = $this->orderService->promotionRejection();
-
-            if ($rejection) {
-                return redirect()->route('orders.show', $order)
-                    ->with('error', $rejection.' Đơn hàng vẫn được tạo nhưng không áp dụng voucher.');
-            }
 
             return redirect()->route('orders.show', $order)->with('success', 'Đơn hàng đã được tạo thành công.');
         } catch (ValidationException $exception) {
@@ -237,13 +228,12 @@ class DonHangController extends Controller
         $customers = KhachHang::with('diemTichLuy')->orderBy('HoTen')->get();
         $services = DichVu::where('TrangThai', 'Hoạt động')->orderBy('TenDichVu')->get();
         $garments = LoaiDoGiat::where('TrangThai', 'Hoạt động')->orderBy('TenLoaiDoGiat')->get();
-        $promotions = KhuyenMai::where('TrangThai', 'Hoạt động')->get();
         $employees = NhanVien::where(fn ($query) => $query->where('TrangThai', 'Hoạt động')->orWhere('NhanVienID', $order->NhanVienID))->orderBy('HoTen')->get(['NhanVienID', 'HoTen']);
         $statusFlow = $this->orderService->getStatusFlow();
         $pricings = $this->pricingService->orderOptions();
 
         return view('admin.orders.edit', array_merge(
-            compact('order', 'customers', 'services', 'garments', 'promotions', 'employees', 'statusFlow', 'pricings'),
+            compact('order', 'customers', 'services', 'garments', 'employees', 'statusFlow', 'pricings'),
             $this->categoryOptions()
         ));
     }

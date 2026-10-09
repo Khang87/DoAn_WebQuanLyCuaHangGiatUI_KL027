@@ -13,6 +13,19 @@ try {
     $app->make(Kernel::class)->bootstrap();
     require dirname(__DIR__).'/Postgres/support.php';
     $action = $argv[1] ?? '';
+    if ($action === 'inactive-voucher') {
+        $id = (int) ($argv[2] ?? 0);
+        $order = DonHang::findOrFail($id);
+        $voucher = DB::table('KhuyenMai')->insertGetId([
+            'MaKhuyenMai' => 'INACTIVE-EDIT', 'TenKhuyenMai' => 'Inactive saved voucher',
+            'LoaiKhuyenMai' => 'Tiền mặt', 'GiaTriGiam' => 10000,
+            'NgayBatDau' => today()->subDay(), 'NgayKetThuc' => today()->addDay(),
+            'TrangThai' => 'Ngừng hoạt động',
+        ], 'KhuyenMaiID');
+        $order->forceFill(['KhuyenMaiID' => $voucher])->saveQuietly();
+        echo json_encode(['ok' => true]);
+        exit;
+    }
     if ($action === 'order-count') {
         echo json_encode(['count' => DB::table('DonHang')->count()]);
         exit;
