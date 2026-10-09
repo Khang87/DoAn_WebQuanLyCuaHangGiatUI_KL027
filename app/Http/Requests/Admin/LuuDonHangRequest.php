@@ -5,7 +5,6 @@ namespace App\Http\Requests\Admin;
 use App\Enums\OrderStatus;
 use App\Models\DonHang;
 use App\Models\DonViTinh;
-use App\Models\KhuyenMai;
 use App\Services\EmployeeAssignment;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -56,8 +55,8 @@ class LuuDonHangRequest extends FormRequest
             'KhachHangID' => ['required', 'integer', 'exists:KhachHang,KhachHangID'],
             'NhanVienID' => ['required', 'integer', EmployeeAssignment::rule($currentOrder?->NhanVienID)],
             'BookingID' => $isCreating ? ['prohibited'] : ['nullable', 'integer', 'exists:Booking,BookingID'],
-            'KhuyenMaiID' => ['nullable', 'integer', 'exists:KhuyenMai,KhuyenMaiID'],
-            'promotion_code' => ['nullable', 'string', 'max:50'],
+            'KhuyenMaiID' => ['prohibited'],
+            'promotion_code' => ['prohibited'],
             'DiemSuDung' => ['nullable', 'integer', 'min:0'],
             'use_points' => ['nullable', 'boolean'],
             'PhiGiaoHang' => ['nullable', 'numeric', 'min:0'],
@@ -79,19 +78,6 @@ class LuuDonHangRequest extends FormRequest
     public function withValidator(Validator $validator): void
     {
         $validator->after(function (Validator $validator): void {
-            $promotionCode = trim((string) $this->input('promotion_code', ''));
-            if ($promotionCode !== '') {
-                $promotion = KhuyenMai::findByCode($promotionCode);
-                if (! $promotion) {
-                    $validator->errors()->add('promotion_code', 'Mã khuyến mãi không tồn tại.');
-                } elseif (
-                    $this->filled('KhuyenMaiID')
-                    && (int) $this->input('KhuyenMaiID') !== (int) $promotion->KhuyenMaiID
-                ) {
-                    $validator->errors()->add('KhuyenMaiID', 'Mã voucher không khớp với chương trình đã chọn.');
-                }
-            }
-
             foreach ($this->input('items', []) as $index => $item) {
                 if (! is_array($item) || $validator->errors()->has("items.{$index}.DonViTinhID")) {
                     continue;
@@ -131,7 +117,8 @@ class LuuDonHangRequest extends FormRequest
             'KhachHangID.exists' => 'Khách hàng không tồn tại.',
             'NhanVienID.required' => 'Vui lòng chọn nhân viên phụ trách.',
             'NhanVienID.exists' => 'Vui lòng chọn nhân viên đang hoạt động.',
-            'KhuyenMaiID.exists' => 'Chương trình khuyến mãi không tồn tại.',
+            'KhuyenMaiID.prohibited' => 'Voucher chỉ được kế thừa từ Booking, không thể thêm hoặc đổi trên đơn web.',
+            'promotion_code.prohibited' => 'Voucher chỉ được kế thừa từ Booking, không thể thêm hoặc đổi trên đơn web.',
             'TrangThai.required' => 'Trạng thái là bắt buộc.',
             'TrangThai.in' => $this->isMethod('POST')
                 ? 'Đơn mới chỉ được tạo ở trạng thái Đã tiếp nhận sau khi kiểm kê.'

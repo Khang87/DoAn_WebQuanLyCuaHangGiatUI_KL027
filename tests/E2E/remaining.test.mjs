@@ -39,6 +39,44 @@ test('remaining testcase UI variants with HTTP sessions and PostgreSQL', {timeou
                 assert.ok(priceFields.count>0||priceFields.inspection,'Inspection has no editable price field');
             }
         });
+        await t.test('manual web Orders reject voucher injection on create and edit',async()=>{
+            await setup('2');
+            assert.equal(await b.evaluate(`document.querySelector('[name="KhuyenMaiID"],[name="promotion_code"]')===null`),true);
+            const beforeCount=fixture('order-count').count;
+            const beforeBalance=state('order',cases.legacy).balance;
+            const postVoucher=async(field,value)=>b.evaluate(`(async()=>{const form=document.querySelector('form[action$="/orders"]');const data=new FormData(form);data.set(${JSON.stringify(field)},${JSON.stringify(value)});const response=await fetch(form.action,{method:'POST',headers:{Accept:'application/json'},body:data});return {status:response.status,body:await response.json()}})()`);
+            for(const [field,value] of [['KhuyenMaiID','1'],['promotion_code','E2E-VOUCHER']]){
+                const response=await postVoucher(field,value);
+                assert.equal(response.status,422);assert.ok(response.body.errors[field]);
+                assert.equal(fixture('order-count').count,beforeCount);
+                assert.equal(state('order',cases.legacy).balance,beforeBalance);
+            }
+            const saved=await submit();const id=saved.orders[0].DonHangID;
+            assert.equal(saved.orders[0].KhuyenMaiID,null);assert.equal(Number(saved.orders[0].TienGiamKhuyenMai),0);
+            assert.equal(Number(saved.orders[0].ThanhTien),15000);
+            const editId=cases.legacy;
+            await b.navigate(`/orders/${editId}/edit`);
+            assert.equal(await b.evaluate(`document.querySelector('#saved-promotion').readOnly`),true);
+            assert.equal(await b.evaluate(`document.querySelector('[name="KhuyenMaiID"],[name="promotion_code"]')===null`),true);
+            const before=state('order',editId);
+            for(const [field,value] of [['KhuyenMaiID','1'],['promotion_code','E2E-VOUCHER']]){
+                const response=await b.evaluate(`(async()=>{const form=document.querySelector('form[action$="/orders/${editId}"]');const data=new FormData(form);data.set(${JSON.stringify(field)},${JSON.stringify(value)});const response=await fetch(form.action,{method:'POST',headers:{Accept:'application/json'},body:data});return {status:response.status,body:await response.json()}})()`);
+                assert.equal(response.status,422);assert.ok(response.body.errors[field]);assert.deepEqual(state('order',editId),before);
+            }
+        });
+        await t.test('inactive saved voucher remains visible without a false discount preview',async()=>{
+            const id=cases.legacy;
+            execFileSync(php,[fileURLToPath(new URL('./remaining-state.php',import.meta.url)),'inactive-voucher',String(id)],{timeout:30000});
+            await b.navigate(`/orders/${id}/edit`);
+            assert.equal(await b.evaluate(`document.querySelector('#saved-promotion').value`),'INACTIVE-EDIT');
+            assert.ok(await b.evaluate(`document.querySelector('[data-saved-voucher-warning]').textContent.includes('không còn hiệu lực')`));
+            assert.equal(await b.evaluate(`document.querySelector('#promotionDiscount').textContent`),'0');
+            assert.equal(await b.evaluate(`document.querySelector('#grandTotal').textContent`),'15.000');
+            await b.evaluate(`(()=>{const form=document.querySelector('form[action$="/orders/${id}"]');if(!form.checkValidity())throw Error('Invalid edit form');form.requestSubmit()})()`);
+            await b.waitFor(async()=>await b.evaluate('location.pathname')===`/orders/${id}`,'saved without inactive voucher');
+            const actual=state('order',id);assert.equal(actual.orders[0].KhuyenMaiID,null);
+            assert.equal(Number(actual.orders[0].TienGiamKhuyenMai),0);assert.equal(Number(actual.orders[0].ThanhTien),15000);
+        });
         await t.test('14 single Cái 15000 automatically selected',async()=>{
             await setup('2');
             assert.deepEqual(await b.evaluate(`[document.querySelector('.item-unit-value').value,Number(document.querySelector('.item-price').value)]`),['2',15000]);

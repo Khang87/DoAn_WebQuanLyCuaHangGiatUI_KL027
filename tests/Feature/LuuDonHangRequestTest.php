@@ -87,40 +87,18 @@ class LuuDonHangRequestTest extends TestCase
         $this->assertSame('DH0009', app(OrderService::class)->nextOrderCode());
     }
 
-    public function test_unknown_promotion_code_is_reported_as_a_validation_error(): void
+    public function test_manual_order_requests_reject_vouchers_on_create_and_update(): void
     {
-        $request = new LuuDonHangRequest;
-        $request->replace(['promotion_code' => 'UNKNOWN']);
-        $validator = Validator::make([], []);
-
-        $request->withValidator($validator);
-
-        $this->assertTrue($validator->fails());
-        $this->assertSame(
-            'Mã khuyến mãi không tồn tại.',
-            $validator->errors()->first('promotion_code'),
-        );
-    }
-
-    public function test_promotion_code_must_match_the_selected_promotion_id(): void
-    {
-        DB::table('KhuyenMai')->insert([
-            'KhuyenMaiID' => 3,
-            'MaKhuyenMai' => 'SAVE10',
-        ]);
-        $request = new LuuDonHangRequest;
-        $request->replace([
-            'KhuyenMaiID' => 4,
-            'promotion_code' => 'save10',
-        ]);
-        $validator = Validator::make([], []);
-
-        $request->withValidator($validator);
-
-        $this->assertSame(
-            'Mã voucher không khớp với chương trình đã chọn.',
-            $validator->errors()->first('KhuyenMaiID'),
-        );
+        foreach (['POST', 'PUT'] as $method) {
+            $request = LuuDonHangRequest::create('/orders/7', $method);
+            $rules = $request->rules();
+            foreach ([['KhuyenMaiID' => 3], ['promotion_code' => 'SAVE10']] as $input) {
+                $validator = Validator::make($input, array_intersect_key($rules, array_flip(['KhuyenMaiID', 'promotion_code'])));
+                $this->assertTrue($validator->fails());
+                $this->assertTrue($validator->errors()->has(array_key_first($input)));
+            }
+            $this->assertTrue(Validator::make([], array_intersect_key($rules, array_flip(['KhuyenMaiID', 'promotion_code'])))->passes());
+        }
     }
 
     private function orderRequestRules(int $orderId): array
