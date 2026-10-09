@@ -57,5 +57,7 @@ if [[ ${1:-all} == setup ]]; then echo 'PASS: disposable HTTP login page ready';
         node --test "$root/tests/E2E/performance.test.mjs"
     else
         node --test "$root/tests/E2E/web-postgres.test.mjs"
+        node --test "$root/tests/E2E/remaining.test.mjs"
+        node --test "$root/tests/E2E/avatar.test.mjs"
     fi
 fi
