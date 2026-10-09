@@ -170,11 +170,19 @@ bash scripts/test-postgres.sh
 
 Chromium controls regression và test bảo mật `shell-quote` đạt. Override riêng sang `shell-quote=1.11.0` khắc phục GHSA-pqg4-j6r4-53mv; `npm audit --audit-level=high` báo 0 vulnerabilities. `npm run build` nguyên bản và Composer audit bị hạn chế mạng khi chạy local; cả hai đã đạt trên GitHub Actions [run 37644219054](https://github.com/Khang87/DoAn_WebQuanLyCuaHangGiatUI_KL027/actions/runs/37644219054), commit `512ae12`, cùng toàn bộ hai job PHP/PostgreSQL và frontend/build/audit. Không thay build config hay tắt audit.
 
-[TESTCASES.md](./TESTCASES.md) có **335 ca**, hoàn toàn dưới dạng bảng Markdown, STT **1–335**: **306 ca luồng hiện tại**, gồm 26 ca PostgreSQL/runner/CI/security và 9 ca E2E, và **29 ca legacy**. Nhóm hiện tại giữ **21 ca `TC-OTP-NOTIFY-01`–`21`**. Số dòng tài liệu không phải số test PHPUnit; ca chỉ có đặc tả vẫn không được ghi PASSED.
+[TESTCASES.md](./TESTCASES.md) có **335 ca**, hoàn toàn dưới dạng bảng Markdown, STT liên tục **1–335** và mã TC ổn định. Tài liệu tách ba nhóm:
+
+| Nhóm | Số ca | STT | Phạm vi |
+| --- | ---: | --- | --- |
+| **1. Luồng hiện tại** | 282 | 1–282 | Inspection-first; bảng giá ba khóa, đơn giá readonly, giao nhận, nhân viên hoạt động; hồi quy Web/RPC/PostgreSQL, UI, hiệu năng và STT. |
+| **2. Luồng legacy** | 29 | 283–311 | Đơn cũ Chờ tiếp nhận, completeReceivingInspection, chỉnh sửa/điểm và các bảo vệ hồi quy còn được hỗ trợ. |
+| **3. Admin-triggered OTP** | 24 | 312–335 | Vòng đời mã nội bộ, phân quyền cấp mã, thông báo riêng/chống đọc chéo và quyền thông báo mặc định; 21 mã TC-OTP-NOTIFY-01–21 cùng ba ca hồi quy HTTP TC-PWD-ADMIN/FAILURE/PERMISSION. |
+
+Số ca trong tài liệu không phải số test PHPUnit. Ca mới chỉ được đặc tả hoặc chưa được chạy riêng giữ trạng thái tương ứng, không tự ghi PASSED. Nhóm legacy chỉ được bỏ khi mã tương thích, dữ liệu cũ và các tham chiếu liên quan đã được loại bỏ hoàn toàn, có bằng chứng kiểm kê; hiện vẫn giữ.
 
 Đợt tối ưu page-load ngày **08/10/2026** đã chạy lại strict PHPUnit: **332 tests / 1.739 assertions**. [Kết quả và cách đo](./docs/testing/PAGE_LOAD_PERFORMANCE.md): dashboard nhân viên giảm **15 → 13 queries**, danh sách đơn **18 → 10 queries** trên HTTP/PostgreSQL fixture; Bootstrap/SweetAlert2 dùng `defer` để login/menu không chờ download thư viện. Profile CI kiểm tra query budget và popup/dropdown/login thật bằng `bash scripts/test-web-e2e.sh performance`. Phép đo có độ trễ tài nguyên kiểm soát, không phải chứng nhận mọi trang production đã nhanh hoặc field Web Vitals.
 
-Cập nhật STT giao diện ngày **09/10/2026**: bỏ STT ở danh sách/báo cáo khách hàng; các bảng khác đánh liên tục theo kết quả hiện tại, kể cả qua phân trang. Form tạo/sửa/tiếp nhận đơn tự đánh lại số khi thêm/xóa dòng, giữ nguyên ID và tên input. Danh sách dạng thẻ (dịch vụ, nhóm quyền, thông báo) giữ layout và hiển thị nhãn STT. Strict PHPUnit đạt **338 tests / 1.757 assertions**; thêm E2E-09 kiểm chứng các form thật ở 320/768/1024/1440 px và không ghi PostgreSQL. Kết quả CI đúng SHA được lưu tại PR.
+Cập nhật STT giao diện ngày **09/10/2026**: bỏ STT ở danh sách/báo cáo khách hàng; các bảng khác đánh liên tục theo kết quả hiện tại, kể cả qua phân trang. Form tạo/sửa/tiếp nhận đơn tự đánh lại số khi thêm/xóa dòng, giữ nguyên ID và tên input. Danh sách dạng thẻ (dịch vụ, nhóm quyền, thông báo) giữ layout và hiển thị nhãn STT. Strict PHPUnit đạt **338 tests / 1.757 assertions**; thêm E2E-09 kiểm chứng các form thật ở 320/768/1024/1440 px và không ghi PostgreSQL. Cả [CI PR #11](https://github.com/Khang87/DoAn_WebQuanLyCuaHangGiatUI_KL027/actions/runs/37871193647) và [CI main 37933d1](https://github.com/Khang87/DoAn_WebQuanLyCuaHangGiatUI_KL027/actions/runs/37871399331) đã đạt; đây là baseline trước lần phân nhóm tài liệu.
 
 Workflow [Verification](./.github/workflows/verification.yml) chạy PHP/PostgreSQL, frontend/build/audit và Browser HTTP PostgreSQL E2E trên PR vào `main` hoặc push `main`. Cần quan sát kết quả đúng commit và cấu hình required checks trong ruleset trước khi gọi CI là cơ chế bắt buộc chặn merge; không suy ra điều đó từ Vercel success.
 
@@ -395,4 +403,4 @@ Người nhận đổi mật khẩu tại `/internal/reset-password`; thành cô
 
 Triển khai cần `INTERNAL_OTP_CACHE_STORE=redis` và Resend đã cấu hình. Lệnh `php artisan notifications:grant-default` backfill quyền cho nhóm hiện có, chạy lại không tạo liên kết trùng. Nhóm mới được gán mặc định trong transaction; cả ba luồng chỉnh quyền giữ quyền này. Scheduler mỗi phút dọn notification OTP hết hạn; global scope vẫn ẩn mã hết hạn dù scheduler chưa chạy. README chỉ hướng dẫn, không xác nhận backfill/scheduler đã chạy trên production.
 
-Xem [hướng dẫn OTP](./docs/ADMIN_TRIGGERED_OTP.md), [InternalOtpTest.php](./tests/Feature/InternalOtpTest.php) và các ca `TC-OTP-NOTIFY-01`–`21` trong [TESTCASES.md](./TESTCASES.md). Số liệu 275 passed / 192 skipped trong hướng dẫn OTP là lịch sử; baseline suite hiện hành ở mục **Trạng thái kiểm thử hồi quy** phía trên. Kiểm thử tự động dùng cache cô lập và mock Resend, không xác minh email/Redis production.
+Xem [hướng dẫn OTP](./docs/ADMIN_TRIGGERED_OTP.md), [InternalOtpTest.php](./tests/Feature/InternalOtpTest.php) và **Nhóm 3 — Admin-triggered OTP** trong [TESTCASES.md](./TESTCASES.md) (STT **312–335**, gồm `TC-OTP-NOTIFY-01`–`21` và ba ca hồi quy HTTP). Số liệu 275 passed / 192 skipped trong hướng dẫn OTP là lịch sử; baseline suite hiện hành ở mục **Trạng thái kiểm thử hồi quy** phía trên. Kiểm thử tự động dùng cache cô lập và mock Resend, không xác minh email/Redis production.
