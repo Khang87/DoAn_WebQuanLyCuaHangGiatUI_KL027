@@ -17,7 +17,7 @@ try {
     DB::table('LoaiDichVu')->insert(['LoaiDichVuID' => 1, 'TenLoaiDichVu' => 'Local laundry']);
     DB::table('DanhMucLoaiDoGiat')->insert(['DanhMucID' => 1, 'TenDanhMuc' => 'Local clothing']);
     DB::table('TaiKhoan')->where('TaiKhoanID', 2)->update(['Email' => 'staff@example.test', 'MatKhau' => Hash::make(getenv('WEB_E2E_PASSWORD'))]);
-    $permissions = ['orders.view', 'orders.create', 'orders.edit', 'orders.update_status', 'bookings.view', 'bookings.confirm', 'deliveries.view', 'deliveries.create', 'deliveries.edit'];
+    $permissions = ['orders.view', 'orders.create', 'orders.edit', 'orders.update_status', 'bookings.view', 'bookings.confirm', 'deliveries.view', 'deliveries.create', 'deliveries.edit', 'messages.view'];
     if (getenv('WEB_E2E_PROFILE') === '1') {
         $permissions[] = 'dashboard.view';
         $permissions[] = 'bookings.delete';
