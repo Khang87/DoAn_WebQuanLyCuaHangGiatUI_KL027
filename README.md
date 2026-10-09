@@ -2,6 +2,13 @@
 
 Sky Laundry là hệ thống quản lý cửa hàng giặt ủi, hỗ trợ quy trình vận hành cho Chủ cửa hàng, Quản lý, Nhân viên và Khách hàng. Ứng dụng gồm giao diện web Laravel và API JSON phiên bản hóa, sử dụng cơ sở dữ liệu PostgreSQL trên Supabase theo cấu trúc hiện có.
 
+## Tin nhắn trên web
+
+- Cuộc trò chuyện đang mở tự cập nhật qua API Laravel, giữ nguyên phiên đăng nhập và quyền `messages.view`; không cần F5 để nhận tin mobile.
+- Đồng bộ khi mở trang, sau mỗi 15 giây kể từ khi lần đọc trước hoàn tất; chỉ lấy 100 tin mới nhất của đơn đang chọn. Đây là HTTP polling, không phải subscription Supabase Realtime trực tiếp.
+- Tạm dừng khi tab ẩn hoặc offline, thử lại khi kết nối gián đoạn. Giữ bản nháp và vị trí đọc; không gọi chồng request hoặc chèn HTML từ nội dung tin. Hết phiên/mất quyền/đơn bị xóa thì dừng đọc và xóa phần tin đang hiển thị.
+- Không thay đổi nghiệp vụ gửi tin, Supabase Auth, RLS hoặc schema. Kiểm thử bổ sung: `MessageUpdatesTest`, `tests/Frontend/message-updates.test.mjs`, `tests/E2E/messages.test.mjs` (session HTTP thật và PostgreSQL tạm).
+
 ## Cập nhật Booking và reset mật khẩu — 07/10/2026
 
 - Booking sử dụng hai chiều độc lập: `HinhThucNhanDo`/`DiaChiNhan` và `HinhThucTraDo`/`DiaChiTra`. `ReceiveMethod` và `ReturnMethod` đều có hai địa điểm: `Tại cửa hàng`, `Tại nhà`. Không suy ra `NHAN_DO`/`GIAO_DO` từ địa điểm.

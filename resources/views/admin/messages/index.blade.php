@@ -37,15 +37,18 @@
                     <div>
                         <h5 class="mb-1 fw-semibold">Đơn {{ $selectedOrder->MaDonHang }}</h5>
                         <small class="text-muted">{{ $selectedOrder->khachHang?->HoTen ?: 'Khách hàng' }}</small>
+                        <small class="d-block text-muted" data-message-status role="status">Đang đồng bộ tin nhắn…</small>
                     </div>
                     <a href="{{ route('orders.show', $selectedOrder) }}" class="btn btn-sm btn-outline-secondary">
                         <i class="bi bi-box-arrow-up-right me-1"></i>Chi tiết đơn
                     </a>
                 </div>
-                <div class="card-body bg-light" style="min-height: 360px; max-height: 520px; overflow-y: auto;">
+                <div class="card-body bg-light" style="min-height: 360px; max-height: 520px; overflow-y: auto; position: relative;"
+                    data-message-updates="{{ route('admin.messages.updates', $selectedOrder->DonHangID) }}"
+                    data-order-id="{{ $selectedOrder->DonHangID }}" aria-label="Nội dung cuộc trò chuyện">
                     @forelse($messages as $message)
                         @php($isMine = (int) $message->NguoiGuiID === (int) auth()->id())
-                        <div class="d-flex {{ $isMine ? 'justify-content-end' : 'justify-content-start' }} mb-3">
+                        <div class="d-flex {{ $isMine ? 'justify-content-end' : 'justify-content-start' }} mb-3" data-message-id="{{ $message->TinNhanID }}">
                             <div class="rounded-3 px-3 py-2 {{ $isMine ? 'bg-primary text-white' : 'bg-white border' }}" style="max-width: 82%;">
                                 <div class="small {{ $isMine ? 'text-white-50' : 'text-muted' }}">
                                     {{ $isMine ? 'Cửa hàng' : ($message->sender?->TenDangNhap ?: 'Khách hàng') }}
@@ -66,7 +69,7 @@
                     @if(!$selectedOrder->khachHang?->taiKhoan)
                         <div class="alert alert-warning mb-0">Khách hàng chưa có tài khoản nhận tin nhắn.</div>
                     @else
-                        <form method="POST" action="{{ route('admin.messages.store') }}" class="d-flex gap-2">
+                        <form method="POST" action="{{ route('admin.messages.store') }}" class="d-flex gap-2" data-message-form>
                             @csrf
                             <input type="hidden" name="order_id" value="{{ $selectedOrder->DonHangID }}">
                             <textarea name="content" rows="2" maxlength="1000" required class="form-control" placeholder="Nhập tin nhắn cho khách hàng...">{{ old('content') }}</textarea>
@@ -88,3 +91,9 @@
     </div>
 </div>
 @endsection
+
+@push('scripts')
+    @if($selectedOrder)
+        @vite('resources/js/message-updates.js')
+    @endif
+@endpush
