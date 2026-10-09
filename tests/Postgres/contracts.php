@@ -10,6 +10,7 @@ use App\Services\DeliveryService;
 use App\Services\OrderService;
 use App\Services\PaymentService;
 use App\Services\PricingService;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -31,6 +32,11 @@ try {
         $pdo->exec("COMMENT ON TABLE public.test_fixture_identity IS 'laundry verification fixture v1'");
     }
     pgSeed();
+    pgExpect(date_default_timezone_get(), 'Asia/Ho_Chi_Minh', 'PHP uses the configured fixture timezone');
+    pgExpect(DB::selectOne('SELECT current_date::text AS day')->day, today()->toDateString(), 'PHP and PostgreSQL agree on the current business day');
+    $midnightBoundary = '2026-10-09T17:30:00Z';
+    $phpDay = Carbon::parse($midnightBoundary)->setTimezone(date_default_timezone_get())->toDateString();
+    pgExpect([$phpDay, DB::selectOne('SELECT ?::timestamptz::date::text AS day', [$midnightBoundary])->day], ['2026-10-10', '2026-10-10'], 'Both fixture clocks cross Vietnamese midnight before UTC midnight');
     foreach ([[1, 1.5, 7500.0, 2500.0], [1, 4.2, 10500.0, 2500.0], [2, 2, 20000.0, 10000.0]] as [$unit, $measurement, $total, $price]) {
         pgActor(1);
         $key = (string) Str::uuid();

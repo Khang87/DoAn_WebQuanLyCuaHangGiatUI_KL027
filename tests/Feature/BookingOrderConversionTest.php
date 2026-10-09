@@ -54,6 +54,30 @@ class BookingOrderConversionTest extends TestCase
         parent::tearDown();
     }
 
+    public function test_booking_detail_shows_saved_estimate_without_spending_points(): void
+    {
+        $this->createInspectionCatalog();
+        $booking = $this->createBooking();
+        $booking->chiTietBookings()->create(['DichVuID' => 1, 'LoaiDoGiatID' => 2, 'DonViTinhID' => 3, 'SoLuong' => 1, 'DonGia' => 15000, 'ThanhTien' => 15000]);
+        $this->withoutMiddleware([Authenticate::class, EnsureUserHasPermission::class, RejectCustomerRole::class, RestoreRememberedLogin::class]);
+        $this->get(route('bookings.show', $booking))->assertOk()
+            ->assertSee('Ước tính từ lịch đặt')
+            ->assertSee('data-booking-amount="TienGiamKhuyenMai"', false)
+            ->assertSee('data-booking-amount="ThanhTien"', false)
+            ->assertViewHas('bookingAmounts', fn (array $amounts): bool => $amounts['TongTien'] === 15000.0 && $amounts['ThanhTien'] === 15000.0 && $amounts['DiemSuDung'] === 0);
+        $this->assertDatabaseCount('DonHang', 0);
+    }
+
+    public function test_booking_detail_without_items_does_not_invent_a_zero_payment(): void
+    {
+        $booking = $this->createBooking();
+        $this->withoutMiddleware([Authenticate::class, EnsureUserHasPermission::class, RejectCustomerRole::class, RestoreRememberedLogin::class]);
+        $this->get(route('bookings.show', $booking))->assertOk()
+            ->assertSee('Chưa có dịch vụ dự kiến để tính tổng tiền')
+            ->assertDontSee('data-booking-money-summary', false)
+            ->assertViewHas('bookingAmounts', fn ($amounts): bool => $amounts === null);
+    }
+
     public function test_manual_order_store_rejects_completed_status_and_booking_link(): void
     {
         $this->createRequestCatalog();

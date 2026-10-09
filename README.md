@@ -9,6 +9,13 @@ Sky Laundry là hệ thống quản lý cửa hàng giặt ủi, hỗ trợ quy 
 - Tạm dừng khi tab ẩn hoặc offline, thử lại khi kết nối gián đoạn. Giữ bản nháp và vị trí đọc; không gọi chồng request hoặc chèn HTML từ nội dung tin. Hết phiên/mất quyền/đơn bị xóa thì dừng đọc và xóa phần tin đang hiển thị.
 - Không thay đổi nghiệp vụ gửi tin, Supabase Auth, RLS hoặc schema. Kiểm thử bổ sung: `MessageUpdatesTest`, `tests/Frontend/message-updates.test.mjs`, `tests/E2E/messages.test.mjs` (session HTTP thật và PostgreSQL tạm).
 
+## Tiền khuyến mãi Booking và địa chỉ — 10/10/2026
+
+- Chi tiết Booking hiển thị voucher từ mobile, tiền dịch vụ dự kiến, giảm khuyến mãi, giảm điểm đã chọn, hai phí giao nhận và tổng ước tính. Dùng chung calculator với kiểm kê; đọc ước tính không trừ điểm/quota hoặc tạo đơn.
+- Giá trên lịch đặt lấy từ các dòng dự kiến đã lưu; kiểm kê vẫn chốt giá theo đồ thực tế và bảng giá hiện hành. Booking không có dòng dịch vụ hiển thị chưa đủ dữ liệu, không suy ra tổng 0. Voucher không hợp lệ có cảnh báo và không được trừ vào tổng.
+- Form kiểm kê/tạo đơn từ Booking và form giao nhận khóa/xám địa chỉ khi tại cửa hàng, mở/bắt buộc khi tại nhà. Hai chiều độc lập; làm mới form khôi phục đúng trạng thái. Server chuẩn hóa địa chỉ cửa hàng thành NULL kể cả request còn gửi địa chỉ cũ.
+- [Báo cáo kiểm thử](./docs/testing/runs/2026-10-10-booking-money/README.md). Đây là bản sửa riêng cho tiền Booking và địa chỉ; Supabase Realtime và chính sách voucher cho đơn tạo trực tiếp là các task riêng chưa được triển khai trong bản này.
+
 ## Hoàn thiện UI, thông báo và Booking — 09/10/2026
 
 - Chuông thông báo tự đồng bộ riêng tài khoản đang đăng nhập mỗi 15 giây, không cần F5; chi tiết có nút quay lại. Chỉ hiển thị tiêu đề, không đưa nội dung OTP vào thông báo nổi.
@@ -178,7 +185,7 @@ Chỉ sử dụng tài khoản được cấp trong môi trường cục bộ ho
 
 Đợt kiểm chứng ngày **07/10/2026** trên mã ứng dụng nền `0f030d1` và các bổ sung kiểm thử hiện tại: **328 tests, 1.715 assertions**, đạt với PHP 8.4.26 / Laravel 13.34.0, SQLite `:memory:` trong container tắt mạng, không nạp `.env` production. PHPUnit chạy với `--fail-on-warning --fail-on-risky`; biên dịch Blade đạt.
 
-Runner PostgreSQL 17 mới chạy SQL RPC có sẵn, **66 assertions hợp đồng Web/RPC**, **3 race / 21 assertions** và 4 ca từ chối cấu hình trước kết nối. Ba race quan sát hai phiên cùng chờ khóa trước khi kiểm tra kết quả lưu. Mutation đảo guard phiếu trùng bị bộ test phát hiện trên bản sao cách ly. Hướng dẫn: [POSTGRES_VERIFICATION.md](./docs/testing/POSTGRES_VERIFICATION.md).
+Runner PostgreSQL 17 mới chạy SQL RPC có sẵn, **69 assertions hợp đồng Web/RPC**, **3 race / 21 assertions** và 4 ca từ chối cấu hình trước kết nối. Ba race quan sát hai phiên cùng chờ khóa trước khi kiểm tra kết quả lưu. Mutation đảo guard phiếu trùng bị bộ test phát hiện trên bản sao cách ly. Hướng dẫn: [POSTGRES_VERIFICATION.md](./docs/testing/POSTGRES_VERIFICATION.md).
 
 ```bash
 bash scripts/test-postgres.sh
@@ -186,13 +193,13 @@ bash scripts/test-postgres.sh
 
 Chromium controls regression và test bảo mật `shell-quote` đạt. Override riêng sang `shell-quote=1.11.0` khắc phục GHSA-pqg4-j6r4-53mv. Instrument Sans 400/500/600 đã được đóng gói local kèm OFL-1.1 tại `resources/fonts/instrument-sans`, giữ cùng font/weight và loại phụ thuộc tải Bunny Fonts khi build; `npm run build` hiện đạt local. Các audit vẫn được giữ trong CI.
 
-[TESTCASES.md](./TESTCASES.md) có **349 ca**, hoàn toàn dưới dạng bảng Markdown, STT liên tục **1–349** và mã TC ổn định. Mỗi ca có các cột riêng: **ID, tên/mô tả, điều kiện tiên quyết, bước thực hiện, dữ liệu kiểm thử, kết quả mong đợi, kết quả thực tế và trạng thái**. Lượt bổ sung **09/10/2026** đã hoàn tất 44 ca Pending và hai ca Blocked, cập nhật **348 Passed / 0 Pending / 1 Blocked / 0 Failed**. Strict PHPUnit đạt **410 tests / 2.126 assertions**; Chromium/HTTP/PostgreSQL đạt **31 Node tests** (bổ sung kiểm tra chuông thông báo, support chat, submit guard, avatar, Dashboard và estimate; gồm các parent), frontend, PostgreSQL contract/race và profile performance đều đạt. [Báo cáo lượt bổ sung](./docs/testing/runs/2026-10-09-remaining/README.md); [báo cáo hoàn thiện UI/chat/Booking](./docs/testing/runs/2026-10-09-readiness/README.md). **STT 237** còn Blocked: đã có tài khoản được phép nhưng policy của môi trường chặn POST login/upload tới production; connector Vercel chỉ hỗ trợ GET. STT 236 đã kiểm được login/guest profile qua Vercel. `schema.sql` đối chiếu **31 bảng / 253 cột / 152 constraint** bằng catalog Live chỉ đọc; không chạy toàn bộ snapshot trên Live. Riêng bản sửa giới hạn chat đã áp dụng như mô tả phía trên. Đây là kết quả fixture tự động, không phải 349 lượt manual production. Tài liệu tách ba nhóm:
+[TESTCASES.md](./TESTCASES.md) có **356 ca**, hoàn toàn dưới dạng bảng Markdown, STT liên tục **1–356** và mã TC ổn định. Mỗi ca có các cột riêng: **ID, tên/mô tả, điều kiện tiên quyết, bước thực hiện, dữ liệu kiểm thử, kết quả mong đợi, kết quả thực tế và trạng thái**. Lượt bổ sung **09/10/2026** đã hoàn tất 44 ca Pending và hai ca Blocked; đợt **10/10/2026** thêm bảy ca Booking/địa chỉ, cập nhật **355 Passed / 0 Pending / 1 Blocked / 0 Failed**. Strict PHPUnit đạt **416 tests / 2.158 assertions**; Chromium/HTTP/PostgreSQL đạt **31 Node tests** (bổ sung kiểm tra chuông thông báo, support chat, submit guard, avatar, Dashboard và estimate; gồm các parent), frontend, PostgreSQL contract/race và profile performance đều đạt. [Báo cáo lượt bổ sung](./docs/testing/runs/2026-10-09-remaining/README.md); [báo cáo hoàn thiện UI/chat/Booking](./docs/testing/runs/2026-10-09-readiness/README.md). **STT 237** còn Blocked: đã có tài khoản được phép nhưng policy của môi trường chặn POST login/upload tới production; connector Vercel chỉ hỗ trợ GET. STT 236 đã kiểm được login/guest profile qua Vercel. `schema.sql` đối chiếu **31 bảng / 253 cột / 152 constraint** bằng catalog Live chỉ đọc; không chạy toàn bộ snapshot trên Live. Riêng bản sửa giới hạn chat đã áp dụng như mô tả phía trên. Đây là kết quả fixture tự động, không phải 356 lượt manual production. Tài liệu tách ba nhóm:
 
 | Nhóm | Số ca | STT | Phạm vi |
 | --- | ---: | --- | --- |
-| **1. Luồng hiện tại** | 296 | 1–296 | Inspection-first; bảng giá ba khóa, đơn giá readonly, giao nhận, nhân viên hoạt động; hồi quy Web/RPC/PostgreSQL, UI, hiệu năng và STT. |
-| **2. Luồng legacy** | 29 | 297–325 | Đơn cũ Chờ tiếp nhận, completeReceivingInspection, chỉnh sửa/điểm và các bảo vệ hồi quy còn được hỗ trợ. |
-| **3. Admin-triggered OTP** | 24 | 326–349 | Vòng đời mã nội bộ, phân quyền cấp mã, thông báo riêng/chống đọc chéo và quyền thông báo mặc định; 21 mã TC-OTP-NOTIFY-01–21 cùng ba ca hồi quy HTTP TC-PWD-ADMIN/FAILURE/PERMISSION. |
+| **1. Luồng hiện tại** | 303 | 1–303 | Inspection-first; bảng giá ba khóa, đơn giá readonly, giao nhận, nhân viên hoạt động; hồi quy Web/RPC/PostgreSQL, UI, hiệu năng và STT. |
+| **2. Luồng legacy** | 29 | 304–332 | Đơn cũ Chờ tiếp nhận, completeReceivingInspection, chỉnh sửa/điểm và các bảo vệ hồi quy còn được hỗ trợ. |
+| **3. Admin-triggered OTP** | 24 | 333–356 | Vòng đời mã nội bộ, phân quyền cấp mã, thông báo riêng/chống đọc chéo và quyền thông báo mặc định; 21 mã TC-OTP-NOTIFY-01–21 cùng ba ca hồi quy HTTP TC-PWD-ADMIN/FAILURE/PERMISSION. |
 
 Live hiện còn **bốn đơn Chờ tiếp nhận** theo thống kê chỉ đọc ngày 09/10/2026; giữ nhóm legacy. Số ca trong tài liệu không phải số test PHPUnit. Ca mới chỉ được đặc tả hoặc chưa được chạy riêng giữ trạng thái tương ứng, không tự ghi PASSED. Nhóm legacy chỉ được bỏ khi mã tương thích, dữ liệu cũ và các tham chiếu liên quan đã được loại bỏ hoàn toàn, có bằng chứng kiểm kê; hiện vẫn giữ.
 
@@ -419,4 +426,4 @@ Người nhận đổi mật khẩu tại `/internal/reset-password`; thành cô
 
 Triển khai cần `INTERNAL_OTP_CACHE_STORE=redis` và Resend đã cấu hình. Lệnh `php artisan notifications:grant-default` backfill quyền cho nhóm hiện có, chạy lại không tạo liên kết trùng. Nhóm mới được gán mặc định trong transaction; cả ba luồng chỉnh quyền giữ quyền này. Scheduler mỗi phút dọn notification OTP hết hạn; global scope vẫn ẩn mã hết hạn dù scheduler chưa chạy. README chỉ hướng dẫn, không xác nhận backfill/scheduler đã chạy trên production.
 
-Xem [hướng dẫn OTP](./docs/ADMIN_TRIGGERED_OTP.md), [InternalOtpTest.php](./tests/Feature/InternalOtpTest.php) và **Nhóm 3 — Admin-triggered OTP** trong [TESTCASES.md](./TESTCASES.md) (STT **326–349**, gồm `TC-OTP-NOTIFY-01`–`21` và ba ca hồi quy HTTP). Số liệu 275 passed / 192 skipped trong hướng dẫn OTP là lịch sử; baseline suite hiện hành ở mục **Trạng thái kiểm thử hồi quy** phía trên. Kiểm thử tự động dùng cache cô lập và mock Resend, không xác minh email/Redis production.
+Xem [hướng dẫn OTP](./docs/ADMIN_TRIGGERED_OTP.md), [InternalOtpTest.php](./tests/Feature/InternalOtpTest.php) và **Nhóm 3 — Admin-triggered OTP** trong [TESTCASES.md](./TESTCASES.md) (STT **333–356**, gồm `TC-OTP-NOTIFY-01`–`21` và ba ca hồi quy HTTP). Số liệu 275 passed / 192 skipped trong hướng dẫn OTP là lịch sử; baseline suite hiện hành ở mục **Trạng thái kiểm thử hồi quy** phía trên. Kiểm thử tự động dùng cache cô lập và mock Resend, không xác minh email/Redis production.

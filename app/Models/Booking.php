@@ -49,6 +49,10 @@ class Booking extends Model
         'DiemSuDung' => 'integer',
         'TienGiamDoDiem' => 'float',
         'DiemDaTru' => 'boolean',
+        'KhuyenMaiID' => 'integer',
+        'KhuyenMaiDaTru' => 'boolean',
+        'PickupDeliveryFee' => 'float',
+        'DeliveryFee' => 'float',
     ];
 
     public function khachHang()
@@ -59,6 +63,11 @@ class Booking extends Model
     public function chiTietBookings(): HasMany
     {
         return $this->hasMany(ChiTietBooking::class, 'BookingID', 'BookingID');
+    }
+
+    public function khuyenMai(): BelongsTo
+    {
+        return $this->belongsTo(KhuyenMai::class, 'KhuyenMaiID', 'KhuyenMaiID');
     }
 
     public function donHangs()

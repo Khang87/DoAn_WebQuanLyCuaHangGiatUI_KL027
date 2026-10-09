@@ -12,10 +12,14 @@
         date.required = required || Boolean(time.value);
         time.required = required || Boolean(date.value);
         address.required = fulfillment.value === 'Tại nhà';
+        address.disabled = !address.required;
+        address.classList.toggle('bg-light', address.disabled);
+        address.classList.toggle('text-muted', address.disabled);
         document.getElementById('schedule-help').textContent = required
             ? 'Chặng nhận đồ hoặc chặng đang thực hiện cần đủ ngày và giờ.'
             : 'Phiếu trả đang chờ có thể chưa đặt lịch. Khi đặt lịch, hãy nhập đủ ngày và giờ.';
     }
     [method, status, date, time, fulfillment].forEach(control => control.addEventListener('change', update));
+    fulfillment.form.addEventListener('reset', () => setTimeout(update, 0));
     update();
 })();

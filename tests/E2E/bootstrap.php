@@ -36,11 +36,13 @@ $app->afterBootstrapping(LoadConfiguration::class, static function ($app) use ($
             'driver' => 'pgsql', 'host' => $host, 'port' => $port,
             'database' => 'laundry_rpc_test', 'username' => 'postgres', 'password' => $password,
             'charset' => 'utf8', 'prefix' => '', 'search_path' => 'public', 'sslmode' => 'disable',
+            'timezone' => 'Asia/Ho_Chi_Minh',
         ]],
         'session.driver' => 'file', 'session.files' => $runtime.'/framework/sessions',
         'session.secure' => false, 'session.cookie' => 'e2e_'.basename($runtime),
         'cache.default' => 'array', 'queue.default' => 'sync', 'mail.default' => 'array', 'logging.default' => 'stderr',
     ]);
+    date_default_timezone_set($app['config']->get('app.timezone'));
 });
 
 if (getenv('WEB_E2E_PROFILE') === '1') {

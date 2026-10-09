@@ -106,17 +106,33 @@ class OrderService
     public function estimateBooking(Booking $booking, array $items, bool $usePoints): array
     {
         [, $subtotal] = $this->buildItems($items);
+
+        return $this->calculateBookingEstimate($booking, $subtotal, $usePoints ? null : 0);
+    }
+
+    /** Stored mobile estimate; actual inspection reprices items separately. */
+    public function estimateSavedBooking(Booking $booking): array
+    {
+        return $this->calculateBookingEstimate($booking, (float) $booking->chiTietBookings->sum('ThanhTien'), (int) $booking->DiemSuDung);
+    }
+
+    /** A null points request means use all available points in the inspection preview. */
+    private function calculateBookingEstimate(Booking $booking, float $subtotal, ?int $requestedPoints): array
+    {
         $customer = KhachHang::find($booking->KhachHangID);
         $availablePoints = ($customer?->points() ?? 0)
             + ($booking->DiemDaTru ? (int) $booking->DiemSuDung : 0);
-        $promotion = $booking->KhuyenMaiID ? KhuyenMai::find($booking->KhuyenMaiID) : null;
+        $promotion = $booking->khuyenMai;
         $warning = $promotion?->rejectionReasonForCustomer($customer, $subtotal);
+        if ($booking->KhuyenMaiID && ! $promotion) {
+            $warning = 'Không tìm thấy khuyến mãi của lịch đặt. Vui lòng kiểm tra trước khi xác nhận.';
+        }
         if ($warning !== null) {
             $promotion = null;
         }
 
         return [
-            ...$this->calculateAmounts($subtotal, $promotion, $usePoints ? $availablePoints : 0, $availablePoints,
+            ...$this->calculateAmounts($subtotal, $promotion, $requestedPoints ?? $availablePoints, $availablePoints,
                 (float) $booking->PickupDeliveryFee + (float) $booking->DeliveryFee),
             'promotion_warning' => $warning,
         ];

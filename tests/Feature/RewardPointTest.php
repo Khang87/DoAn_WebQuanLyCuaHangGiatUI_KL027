@@ -422,6 +422,70 @@ class RewardPointTest extends TestCase
         $booking->forceFill(['KhuyenMaiID' => 1, 'KhuyenMaiDaTru' => true])->saveQuietly();
     }
 
+    public function test_saved_booking_summary_applies_mobile_voucher_requested_points_and_both_delivery_fees_without_writes(): void
+    {
+        $customer = $this->createCustomer(1, 500);
+        $booking = $this->createBooking($customer);
+        $this->reservedPromotion($booking);
+        $booking->forceFill(['DiemSuDung' => 40, 'PickupDeliveryFee' => 1000, 'DeliveryFee' => 2000])->saveQuietly();
+        $before = $booking->fresh()->getAttributes();
+        // Stored mobile estimate stays distinct from the current inspection price.
+        DB::table('BangGia')->update(['DonGia' => 20000]);
+
+        $amounts = app(OrderService::class)->estimateSavedBooking($booking);
+
+        $this->assertSame(10000.0, $amounts['TongTien']);
+        $this->assertSame(9900.0, $amounts['TienGiamKhuyenMai']);
+        $this->assertSame(40, $amounts['DiemSuDung']);
+        $this->assertSame(40.0, $amounts['TienGiamDoDiem']);
+        $this->assertSame(3060.0, $amounts['ThanhTien']);
+        $this->assertSame(3000.0, $amounts['PhiGiaoHang']);
+        $this->assertNull($amounts['promotion_warning']);
+        $this->assertSame($before, $booking->fresh()->getAttributes());
+        $this->assertSame(500, $customer->fresh()->points());
+        $this->assertEquals(0, DB::table('KhuyenMai')->value('SoLuongSuDung'));
+        $this->assertDatabaseCount('DonHang', 0);
+
+        $inspected = app(OrderService::class)->estimateBooking($booking, [$this->orderItem()], false);
+        $this->assertSame(20000.0, $inspected['TongTien']);
+        $this->assertSame(13100.0, $inspected['ThanhTien']);
+    }
+
+    public function test_saved_booking_summary_does_not_automatically_spend_the_customers_points(): void
+    {
+        $customer = $this->createCustomer(1, 500);
+        $booking = $this->createBooking($customer);
+        $amounts = app(OrderService::class)->estimateSavedBooking($booking);
+        $this->assertSame(0, $amounts['DiemSuDung']);
+        $this->assertSame(10000.0, $amounts['ThanhTien']);
+    }
+
+    public function test_saved_booking_summary_reports_expired_mobile_voucher_instead_of_a_false_discount(): void
+    {
+        $customer = $this->createCustomer(1, 500);
+        $booking = $this->createBooking($customer);
+        $this->reservedPromotion($booking, true);
+        $amounts = app(OrderService::class)->estimateSavedBooking($booking);
+        $this->assertSame(0.0, $amounts['TienGiamKhuyenMai']);
+        $this->assertSame(10000.0, $amounts['ThanhTien']);
+        $this->assertNotEmpty($amounts['promotion_warning']);
+        $this->assertTrue((bool) $booking->fresh()->KhuyenMaiDaTru);
+    }
+
+    public function test_inspection_store_fulfillment_clears_crafted_addresses_without_creating_delivery_legs(): void
+    {
+        $customer = $this->createCustomer(1, 500);
+        $booking = $this->createBooking($customer);
+        $this->actingAsBookingEmployee();
+        $order = app(BookingService::class)->inspectBookingAndCreateOrder($booking, 1, [$this->orderItem()], bookingData: [
+            'method' => 'Tại cửa hàng', 'address' => 'Stale pickup address',
+            'return_method' => 'Tại cửa hàng', 'return_address' => 'Stale return address',
+        ]);
+        $this->assertNull($booking->fresh()->DiaChiNhan);
+        $this->assertNull($booking->fresh()->DiaChiTra);
+        $this->assertSame(0, $order->giaoNhans()->count());
+    }
+
     public function test_booking_estimate_uses_server_price_and_preserves_promotion_points_and_delivery_balances(): void
     {
         $customer = $this->createCustomer(1, 500);
