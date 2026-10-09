@@ -1,0 +1,22 @@
+--- a/tests/Feature/PricingServiceTest.php
++++ b/tests/Feature/PricingServiceTest.php
+@@ -65,8 +65,8 @@
+ 
+     public function test_batch_lookup_preserves_unit_and_tuple_boundaries_in_one_query(): void
+     {
+-        $this->price(1);
+-        $this->price(2, ['DonViTinhID' => 2]);
++        $this->price(1, ['DonGia' => 15000]);
++        $this->price(2, ['DonViTinhID' => 2, 'DonGia' => 40000]);
+         $this->price(3, ['LoaiDoGiatID' => 2]);
+         DB::enableQueryLog();
+         DB::flushQueryLog();
+@@ -79,6 +79,8 @@
+         $this->assertCount(2, $prices);
+         $this->assertSame(1, $prices['1:1:1']->BangGiaID);
+         $this->assertSame(2, $prices['1:1:2']->BangGiaID);
++        $this->assertSame(15000.0, (float) $prices['1:1:1']->DonGia);
++        $this->assertSame(40000.0, (float) $prices['1:1:2']->DonGia);
+     }
+ 
+     public function test_expired_price_with_newer_start_does_not_override_valid_price(): void
