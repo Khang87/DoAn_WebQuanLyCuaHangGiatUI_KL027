@@ -1,0 +1,22 @@
+PASS: unsafe HTTP target refused
+PASS: isolated browser fixture seeded
+▶ browser → HTTP → PostgreSQL business flows with real session, CSRF and permissions
+  ✔ E2E-01: store inspection creates one actual Order and preserves estimates (1087.882565ms)
+  ✔ E2E-02: pickup creates only matching home legs (1058.463185ms)
+  ✔ E2E-03: return creates only matching home legs (1013.311304ms)
+  ✔ E2E-04: both creates only matching home legs (1192.013998ms)
+  ✔ E2E-05: authenticated HTTP replay preserves one Order, redemption and audit (1504.7388ms)
+  ✔ E2E-06: actual pages preserve both units, minimum kg and readonly prices (1842.293889ms)
+  ✔ E2E-09: display row numbers remain continuous without rewriting submitted indexes (1822.570932ms)
+  ✔ E2E-07: voucher then points leave both delivery fees payable (1124.914003ms)
+Decorative external CSS excluded: https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap, https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css
+  ✔ E2E-08: staff HTTP writes respect paid-order guards and owner-only deletion (872.405969ms)
+✔ browser → HTTP → PostgreSQL business flows with real session, CSRF and permissions (14263.023708ms)
+ℹ tests 10
+ℹ suites 0
+ℹ pass 10
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 17462.416007

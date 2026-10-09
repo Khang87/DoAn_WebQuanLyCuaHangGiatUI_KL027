@@ -1,0 +1,287 @@
+--- a/tests/Feature/BookingOrderConversionTest.php
++++ b/tests/Feature/BookingOrderConversionTest.php
+@@ -1907,4 +1907,82 @@
+             $table->string('TrangThai');
+         });
+     }
++
++    public static function documentedLegacyCases(): array
++    {
++        $ids = ['TC-LEG-05','TC-LEG-06','TC-LEG-07','TC-LEG-08','TC-LEG-09','TC-LEG-11','TC-LEG-12','TC-LEG-13','TC-LEG-14','TC-LEG-15','TC-LEG-16','TC-LEG-18','TC-LEG-19'];
++        return array_combine($ids, array_map(fn ($id) => [$id], $ids));
++    }
++
++    #[DataProvider('documentedLegacyCases')]
++    public function test_documented_legacy_execution(string $case): void
++    {
++        $this->createRequestCatalog();
++        $this->actingAsBookingEmployee();
++        DB::table('BangGia')->insert(['DichVuID'=>1,'LoaiDoGiatID'=>2,'DonViTinhID'=>2,'DonGia'=>15000,'NgayApDung'=>'2026-01-01','TrangThai'=>'Hoạt động']);
++        $order = DonHang::create(['MaDonHang'=>'DH-L','KhachHangID'=>9,'NhanVienID'=>1,'TrangThai'=>OrderStatus::Pending->value,'TongTien'=>24000,'ThanhTien'=>24000]);
++        $item = ChiTietDonHang::create(['DonHangID'=>$order->getKey(),'DichVuID'=>1,'LoaiDoGiatID'=>2,'DonViTinhID'=>2,'SoLuong'=>2,'DonGia'=>12000,'ThanhTien'=>24000]);
++        $row = ['ChiTietDonHangID'=>$item->getKey(),'DichVuID'=>1,'LoaiDoGiatID'=>2,'DonViTinhID'=>2,'SoLuong'=>2,'TinhTrangTruocKhiGiat'=>'Áo bẩn'];
++        $service = app(OrderService::class);
++        if ($case === 'TC-LEG-05') $order->update(['TrangThai'=>OrderStatus::Received->value]);
++        if ($case === 'TC-LEG-06') $service->completeReceivingInspection($order, [$row]);
++        if ($case === 'TC-LEG-08') {
++            $other = DonHang::create(['MaDonHang'=>'DH-B','KhachHangID'=>9,'TrangThai'=>OrderStatus::Pending->value]);
++            $foreign = ChiTietDonHang::create(['DonHangID'=>$other->getKey(),'DichVuID'=>1,'LoaiDoGiatID'=>2,'DonViTinhID'=>2,'SoLuong'=>1,'DonGia'=>12000,'ThanhTien'=>12000]);
++            $row['ChiTietDonHangID']=$foreign->getKey();
++        }
++        if ($case === 'TC-LEG-16') {
++            DB::table('LoaiDoGiat')->where('LoaiDoGiatID',2)->update(['TenLoaiDoGiat'=>str_repeat('L',100)]);
++            $row['TinhTrangTruocKhiGiat']=str_repeat('a',320);$row['GhiChu']=str_repeat('b',160);
++        }
++        $snapshot = fn () => array_map(fn ($table) => DB::table($table)->get()->toJson(), ['DonHang','ChiTietDonHang','DiemTichLuy','NhatKyHeThong']);
++        if (in_array($case,['TC-LEG-05','TC-LEG-06','TC-LEG-07','TC-LEG-08','TC-LEG-09','TC-LEG-16'])) {
++            $before=$snapshot();
++            try {
++                $service->completeReceivingInspection($order, $case==='TC-LEG-07'?[]:($case==='TC-LEG-09'?[$row,$row]:[$row]));
++                $this->fail('Legacy invalid input must be rejected: '.$case);
++            } catch (ValidationException $e) { $this->assertNotEmpty($e->errors()); }
++            $this->assertSame($before,$snapshot());return;
++        }
++        if ($case==='TC-LEG-13') {
++            foreach([-1,'abc','100000000000000000000'] as $price) {
++                $request=\App\Http\Requests\Admin\HoanTatTiepNhanRequest::create('/orders/1/complete-receiving','POST',['items'=>[$row+['DonGia'=>$price]]]);
++                $request->setContainer($this->app);$request->setRedirector($this->app['redirect']);
++                $before=$snapshot();
++                try {$request->validateResolved();$this->fail('Invalid price accepted');}
++                catch(ValidationException $e){$this->assertArrayHasKey('items.0.DonGia',$e->errors());}
++                $this->assertSame($before,$snapshot());
++            }return;
++        }
++        if ($case==='TC-LEG-12') {
++            $row['DonGia']=12000;
++            $request=\App\Http\Requests\Admin\HoanTatTiepNhanRequest::create('/orders/1/complete-receiving','POST',['items'=>[$row]]);
++            $request->setContainer($this->app);$request->setRedirector($this->app['redirect']);$request->validateResolved();
++            $row=$request->validated()['items'][0];
++        }
++        if ($case==='TC-LEG-14') {
++            DB::table('DichVu')->insert(['DichVuID'=>2]);$row['DichVuID']=2;
++            $before=$snapshot();
++            try {$service->completeReceivingInspection($order,[$row]);$this->fail('Missing new tuple accepted');}
++            catch(ValidationException $e){$this->assertNotEmpty($e->errors());}
++            $this->assertSame($before,$snapshot());
++            DB::table('BangGia')->insert(['DichVuID'=>2,'LoaiDoGiatID'=>2,'DonViTinhID'=>2,'DonGia'=>16000,'NgayApDung'=>'2026-01-01','TrangThai'=>'Hoạt động']);
++        }
++        if ($case==='TC-LEG-15') {unset($row['TinhTrangTruocKhiGiat']);$row['GhiChu']='Áo bẩn';}
++        if ($case==='TC-LEG-18') {
++            foreach (['ChiTietDonHang'=>'UPDATE','NhatKyHeThong'=>'INSERT'] as $table=>$operation) {
++                DB::statement("CREATE TRIGGER fail_legacy BEFORE $operation ON $table BEGIN SELECT RAISE(ABORT, 'isolated fixture failure'); END");
++                $before=$snapshot();
++                try {$service->completeReceivingInspection($order,[$row]);$this->fail('Injected DB failure was not observed');}
++                catch (\Illuminate\Database\QueryException $e) {$this->assertStringContainsString('isolated fixture failure',$e->getMessage());}
++                $this->assertSame($before,$snapshot());DB::statement('DROP TRIGGER fail_legacy');
++            }return;
++        }
++        $result=$service->completeReceivingInspection($order,[$row]);
++        $this->assertSame(OrderStatus::Received->value,$result->TrangThai);
++        $this->assertSame($case==='TC-LEG-14'?16000.0:12000.0,(float)$item->fresh()->DonGia);
++        $this->assertSame('Áo bẩn',$item->fresh()->TinhTrangTruocKhiGiat);
++        $this->assertNull($result->BookingID);
++        $this->assertSame(OrderStatus::Washing->value,$service->updateStatus($result,OrderStatus::Washing->value)->TrangThai);
++    }
+ }
+--- a/tests/Feature/InternalOtpTest.php
++++ b/tests/Feature/InternalOtpTest.php
+@@ -299,4 +299,69 @@
+         $this->get(route('notifications.index'))->assertOk();
+         $this->get(route('orders.index'))->assertForbidden();
+     }
++
++    public function test_documented_otp_namespaces_and_form_boundaries(): void
++    {
++        $this->issue();
++        $internal=$this->otp;
++        config(['cache.auth_store'=>'array']);
++        $selfKey='pwd_reset_'.$this->staff->Email;
++        $selfOtp=$internal==='123456'?'123457':'123456';
++        Cache::store('array')->put($selfKey,hash('sha256',$selfOtp),now()->addMinutes(15));
++        auth()->logout();
++        // Capture the internal cache key separately; the self-service service must not share it.
++        $this->assertNotSame(app(InternalPasswordOtpService::class)->key($this->staff->Email),$selfKey);
++        $old=$this->staff->fresh()->MatKhau;
++        $this->post(route('password.update'),['email'=>$this->staff->Email,'otp'=>$internal,'password'=>'NewPassword123!','password_confirmation'=>'NewPassword123!'])->assertSessionHas('error');
++        $this->assertSame($old,$this->staff->fresh()->MatKhau);
++        $this->post(route('internal-password.update'),['email'=>$this->staff->Email,'otp'=>$selfOtp,'password'=>'NewPassword123!','password_confirmation'=>'NewPassword123!'])->assertSessionHas('error');
++        $this->assertSame($old,$this->staff->fresh()->MatKhau);
++        $this->post(route('internal-password.update'),['email'=>$this->staff->Email,'otp'=>$internal,'password'=>'1234567','password_confirmation'=>'1234567'])->assertSessionHasErrors('password');
++        $this->post(route('internal-password.update'),['email'=>$this->staff->Email,'otp'=>$internal,'password'=>'NewPassword123!','password_confirmation'=>'DifferentPassword123!'])->assertSessionHasErrors('password');
++        $this->assertSame($old,$this->staff->fresh()->MatKhau);
++    }
++
++    public function test_documented_otp_database_failures_consume_codes_safely(): void
++    {
++        DB::statement("CREATE TRIGGER fail_notification BEFORE INSERT ON ThongBao BEGIN SELECT RAISE(ABORT, 'isolated notification failure'); END");
++        $old=$this->staff->MatKhau;
++        $this->actingAs($this->owner)->post(route('accounts.reset-password',$this->staff))->assertSessionHas('error');
++        $this->assertNull(Cache::store('array')->get(app(InternalPasswordOtpService::class)->key($this->staff->Email)));
++        $this->assertDatabaseCount('ThongBao',0);$this->assertSame($old,$this->staff->fresh()->MatKhau);
++        DB::statement('DROP TRIGGER fail_notification');$this->issue();
++        DB::statement("CREATE TRIGGER fail_password BEFORE UPDATE OF MatKhau ON TaiKhoan BEGIN SELECT RAISE(ABORT, 'isolated password failure'); END");
++        $this->reset()->assertSessionHas('error');
++        $this->assertSame($old,$this->staff->fresh()->MatKhau);
++        $this->assertNull(Cache::store('array')->get(app(InternalPasswordOtpService::class)->key($this->staff->Email)));
++        DB::statement('DROP TRIGGER fail_password');$this->reset()->assertSessionHas('error');
++    }
++
++    public function test_documented_otp_hidden_then_scheduler_physically_prunes(): void
++    {
++        $this->issue();$this->travel(10)->minutes();
++        $this->assertSame(0,ThongBao::count());$this->assertSame(1,ThongBao::withoutGlobalScopes()->count());
++        $schedule=app(\Illuminate\Console\Scheduling\Schedule::class);
++        $events=array_filter($schedule->events(),fn($event)=>$event->description==='prune-internal-otp-notifications');
++        $this->assertCount(1,$events);
++        foreach($events as $event){$this->assertSame('* * * * *',$event->expression);$event->run($this->app);}
++        $this->assertSame(0,ThongBao::withoutGlobalScopes()->count());
++    }
++
++    public function test_documented_internal_otp_throttle(): void
++    {
++        $old=$this->staff->MatKhau;
++        for($i=0;$i<10;$i++){$this->post(route('internal-password.update'),['email'=>$this->staff->Email,'otp'=>'000000','password'=>'NewPassword123!','password_confirmation'=>'NewPassword123!'])->assertStatus(302);}
++        $this->post(route('internal-password.update'),['email'=>$this->staff->Email,'otp'=>'000000','password'=>'NewPassword123!','password_confirmation'=>'NewPassword123!'])->assertStatus(429);
++        $this->assertSame($old,$this->staff->fresh()->MatKhau);
++    }
++    public function test_documented_wrong_attempts_keep_absolute_expiry_and_resend_boundary(): void
++    {
++        $this->issue();$key=app(InternalPasswordOtpService::class)->key($this->staff->Email);
++        $original=Cache::store('array')->get($key);$wrong=$this->otp==='100000'?'100001':'100000';
++        for($i=0;$i<4;$i++){$this->travel(1)->seconds();$this->reset($wrong)->assertSessionHas('error');$this->assertSame($original['expires_at'],Cache::store('array')->get($key)['expires_at']);}
++        $this->reset($wrong)->assertSessionHas('error');$this->assertNull(Cache::store('array')->get($key));$this->assertSame(0,ThongBao::count());
++        $this->travel(55)->seconds();$this->actingAs($this->owner)->post(route('accounts.reset-password',$this->staff))->assertSessionHas('error');
++        $this->travel(1)->seconds();$this->issue();$this->assertSame(1,ThongBao::count());
++        $this->assertTrue(Hash::check($this->otp,Cache::store('array')->get($key)['hash']));
++    }
+ }
+--- a/tests/Feature/DeliveryContractTest.php
++++ b/tests/Feature/DeliveryContractTest.php
+@@ -202,4 +202,81 @@
+         $delivery = $service->update($delivery, ['pickup_date' => null, 'pickup_time' => null]);
+         $this->assertNull($delivery->ThoiGianDuKien);
+     }
++
++    public static function documentedDeliveryCases(): array
++    {
++        $ids=['TC-CUR-DELIVERY-02','TC-CUR-DELIVERY-04','TC-CUR-DELIVERY-12','TC-CUR-DELIVERY-14','TC-CUR-DELIVERY-15','TC-CUR-DELIVERY-16','TC-CUR-DELIVERY-17','TC-CUR-DELIVERY-21','TC-CUR-DELIVERY-23','TC-CUR-DELIVERY-24','TC-CUR-DELIVERY-25','TC-CUR-DELIVERY-30','TC-CUR-DELIVERY-32','TC-CUR-DELIVERY-33','TC-CUR-DELIVERY-34','TC-CUR-DELIVERY-35','TC-CUR-STAFF-06','TC-CUR-STAFF-11'];
++        return array_combine($ids,array_map(fn($id)=>[$id],$ids));
++    }
++
++    #[DataProvider('documentedDeliveryCases')]
++    public function test_documented_delivery_execution(string $case): void
++    {
++        $this->travelTo(\Carbon\Carbon::parse('2026-10-07 09:00:00'));
++        $s=app(DeliveryService::class);$future=['pickup_date'=>'2026-10-08','pickup_time'=>'09:00'];
++        $fails=function(callable $operation):void{
++            $before=DB::table('GiaoNhan')->get()->toJson();
++            try{$operation();$this->fail('Invalid delivery mutation accepted');}
++            catch(ValidationException $e){$this->assertNotEmpty($e->errors());}
++            $this->assertSame($before,DB::table('GiaoNhan')->get()->toJson());
++        };
++        if($case==='TC-CUR-DELIVERY-02'){
++            foreach(['pending','delivering','completed'] as $status){
++                DB::table('GiaoNhan')->delete();DB::table('DonHang')->where('DonHangID',1)->update(['TrangThai'=>OrderStatus::Washed->value]);
++                $s->create($this->data($future+['status'=>$status]));$fails(fn()=>$s->create($this->data($future)));
++            }return;
++        }
++        if($case==='TC-CUR-DELIVERY-04'){
++            $d=$s->create($this->data(['status'=>'cancelled']));$s->update($d,['notes'=>'Ghi chú mới']);
++            $this->assertSame('Đã hủy',$d->fresh()->TrangThai);$fails(fn()=>$s->update($d,$future+['status'=>'delivering']));return;
++        }
++        if($case==='TC-CUR-DELIVERY-12'){$d=$s->create($this->data(['status'=>'cancelled']));$this->assertNull($d->ThoiGianDuKien);return;}
++        if($case==='TC-CUR-DELIVERY-14'){
++            foreach([['pickup_date'=>'2026-10-08'],['pickup_time'=>'09:00']] as $p)$fails(fn()=>$s->create($this->data($p)));return;
++        }
++        if($case==='TC-CUR-DELIVERY-15'){
++            foreach([['pickup_date'=>'31-02-2026','pickup_time'=>'09:00'],['pickup_date'=>'2026-10-08','pickup_time'=>'24:00'],['pickup_date'=>'2026-10-08','pickup_time'=>'-01:00']] as $p)$fails(fn()=>$s->create($this->data($p)));return;
++        }
++        if($case==='TC-CUR-DELIVERY-16'){
++            foreach(['08:59','09:00'] as $time)$fails(fn()=>$s->create($this->data(['pickup_date'=>'2026-10-07','pickup_time'=>$time])));return;
++        }
++        if($case==='TC-CUR-DELIVERY-17'){
++            $d=$s->create($this->data($future));$this->travel(2)->days();$s->update($d,['notes'=>'Ghi chú mới']);
++            $this->assertSame('2026-10-08 09:00',$d->fresh()->ThoiGianDuKien->format('Y-m-d H:i'));return;
++        }
++        if($case==='TC-CUR-DELIVERY-21'){
++            DB::table('DonHang')->where('DonHangID',1)->update(['TrangThai'=>OrderStatus::Washed->value]);
++            foreach(['delivering','completed'] as $status){DB::table('GiaoNhan')->delete();$d=$s->create($this->data($future+['status'=>$status]));$fails(fn()=>$s->update($d,['pickup_date'=>null,'pickup_time'=>null]));}return;
++        }
++        if($case==='TC-CUR-DELIVERY-23'){
++            DB::table('DonHang')->where('DonHangID',1)->update(['TrangThai'=>OrderStatus::Washed->value]);$fails(fn()=>$s->create($this->data(['status'=>'delivering'])));return;
++        }
++        if($case==='TC-CUR-DELIVERY-24'){
++            foreach([OrderStatus::Washed,OrderStatus::Delivering,OrderStatus::Delivered] as $state){
++                DB::table('GiaoNhan')->delete();DB::table('DonHang')->where('DonHangID',1)->update(['TrangThai'=>$state->value]);
++                $d=$s->create($this->data($future+['status'=>'delivering']));$s->update($d,['status'=>'completed']);
++                $this->assertSame(\App\Enums\DeliveryStatus::Completed->dbValue(),$d->fresh()->TrangThai);$this->assertSame($state->value,DB::table('DonHang')->where('DonHangID',1)->value('TrangThai'));
++            }return;
++        }
++        if($case==='TC-CUR-DELIVERY-25'){
++            foreach([OrderStatus::Pending,OrderStatus::Received] as $state){DB::table('GiaoNhan')->delete();DB::table('DonHang')->where('DonHangID',1)->update(['TrangThai'=>$state->value]);$d=$s->create($this->data($future+['method'=>'nhan_do','status'=>'picking']));$this->assertSame('NHAN_DO',$d->LoaiGiaoNhan);$this->assertSame('Đang thực hiện',$d->TrangThai);}return;
++        }
++        if($case==='TC-CUR-DELIVERY-30'){
++            $fails(fn()=>$s->create($this->data($future+['status'=>'picking'])));
++            $fails(fn()=>$s->create($this->data($future+['method'=>'nhan_do','status'=>'delivering'])));return;
++        }
++        if($case==='TC-CUR-DELIVERY-32'){$fails(fn()=>$s->create($this->data(['address'=>''])));return;}
++        if($case==='TC-CUR-DELIVERY-33'){$d=$s->create($this->data());$s->update($d,['fulfillment'=>'Tại cửa hàng']);$this->assertNull($d->fresh()->DiaChi);return;}
++        if($case==='TC-CUR-DELIVERY-34'){
++            $before=DB::table('DonHang')->where('DonHangID',1)->value('TrangThai');$d=$s->create($this->data());$s->update($d,['notes'=>'Mới']);$s->delete($d);
++            $this->assertSame($before,DB::table('DonHang')->where('DonHangID',1)->value('TrangThai'));$this->assertSame(0,GiaoNhan::count());return;
++        }
++        if($case==='TC-CUR-DELIVERY-35'){
++            $s->create($this->data());$this->withoutMiddleware()->postJson(route('deliveries.store'),$this->data())->assertUnprocessable()->assertJsonValidationErrors('method');
++            $this->withSession([])->post(route('deliveries.store'),$this->data(),['Accept'=>'text/html'])->assertSessionHasErrors('method');$this->assertSame(1,GiaoNhan::count());return;
++        }
++        if($case==='TC-CUR-STAFF-06'){$d=$s->create($this->data(['employee_id'=>null]));$this->assertNull($d->NhanVienID);return;}
++        if($case==='TC-CUR-STAFF-11'){$d=$s->create($this->data());$s->update($d,['employee_id'=>null]);$this->assertNull($d->fresh()->NhanVienID);return;}
++        $this->fail('Unhandled case');
++    }
+ }
+--- a/tests/Feature/PricingServiceTest.php
++++ b/tests/Feature/PricingServiceTest.php
+@@ -111,4 +111,24 @@
+         $this->assertCount(0, DB::getQueryLog());
+         DB::disableQueryLog();
+     }
++
++    public static function documentedPricingCases(): array
++    {
++        return ['TC-CUR-PRICE-02'=>[2,1,1], 'TC-CUR-PRICE-03'=>[1,2,1], 'TC-CUR-PRICE-04'=>[1,1,2], 'TC-CUR-PRICE-10'=>[1,1,1], 'TC-CUR-PRICE-11'=>[1,1,1]];
++    }
++
++    #[\PHPUnit\Framework\Attributes\DataProvider('documentedPricingCases')]
++    public function test_documented_pricing_execution(int $service, int $garment, int $unit): void
++    {
++        $this->price(1, ['NgayApDung'=>null,'NgayKetThuc'=>null]);
++        $pricing=app(PricingService::class);
++        if($service!==1 || $garment!==1 || $unit!==1){
++            $this->assertNull($pricing->getLatestPricing($service,$garment,$unit));
++            $this->assertSame([], $pricing->getLatestPricingForTuples([['DichVuID'=>$service,'LoaiDoGiatID'=>$garment,'DonViTinhID'=>$unit]]));
++        }else{
++            $this->assertSame(1,$pricing->getLatestPricing($service,$garment,$unit)->BangGiaID);
++            DB::table('BangGia')->where('BangGiaID',1)->update(['NgayApDung'=>'2026-10-01']);
++            $this->assertSame(1,$pricing->getLatestPricing($service,$garment,$unit)->BangGiaID);
++        }
++    }
+ }
+--- /dev/null
++++ b/tests/Unit/TestcaseRegistryExecutionTest.php
+@@ -0,0 +1,16 @@
++<?php
++
++namespace Tests\Unit;
++
++use App\Support\PermissionRegistry;
++use App\Support\QuyenMapper;
++use PHPUnit\Framework\TestCase;
++
++class TestcaseRegistryExecutionTest extends TestCase
++{
++    public function test_documented_settings_permission_is_absent(): void
++    {
++        $this->assertNotContains('settings.view', PermissionRegistry::codes());
++        $this->assertNull(QuyenMapper::resolveMaQuyen('settings.view'));
++    }
++}

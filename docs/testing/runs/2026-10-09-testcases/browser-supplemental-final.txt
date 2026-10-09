@@ -1,0 +1,25 @@
+PASS: unsafe HTTP target refused
+PASS: isolated browser fixture seeded
+▶ browser → HTTP → PostgreSQL business flows with real session, CSRF and permissions
+  ✔ E2E-01: store inspection creates one actual Order and preserves estimates (1659.804008ms)
+  ✔ E2E-02: pickup creates only matching home legs (1158.670734ms)
+  ✔ E2E-03: return creates only matching home legs (1104.348143ms)
+  ✔ E2E-04: both creates only matching home legs (1333.746847ms)
+  ✔ E2E-05: authenticated HTTP replay preserves one Order, redemption and audit (1583.789301ms)
+  ✔ E2E-06: actual pages preserve both units, minimum kg and readonly prices (2087.188536ms)
+  ✔ E2E-09: display row numbers remain continuous without rewriting submitted indexes (2137.376236ms)
+  ✔ E2E-07: voucher then points leave both delivery fees payable (1688.482425ms)
+  ✔ E2E-08: staff HTTP writes respect paid-order guards and owner-only deletion (1448.410925ms)
+  ✔ TC-SET-01: account menu has no removed settings link (400.17451ms)
+  ✔ TC-SET-02: authenticated HTTP settings route is absent (68.441173ms)
+Decorative external CSS excluded: https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap, https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css
+  ✔ TC-SET-03: authenticated profile HTML has no settings link (171.602671ms)
+✔ browser → HTTP → PostgreSQL business flows with real session, CSRF and permissions (18513.710904ms)
+ℹ tests 13
+ℹ suites 0
+ℹ pass 13
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 21585.661751
