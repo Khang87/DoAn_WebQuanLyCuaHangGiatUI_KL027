@@ -75,6 +75,29 @@
     </div>
 
     <div class="col-lg-5 d-flex flex-column">
+        <x-admin.detail.panel title="Ước tính từ lịch đặt" icon="bi-calculator" :iconClass="'bg-info-subtle text-info'">
+            @if($booking->KhuyenMaiID)
+                <div class="mb-3">Voucher: <strong>{{ $booking->khuyenMai?->MaKhuyenMai ?: 'Không tìm thấy mã' }}</strong>
+                    @if($booking->khuyenMai)<span class="text-muted"> · {{ $booking->khuyenMai->TenKhuyenMai }}</span>@endif
+                </div>
+            @else
+                <div class="text-muted mb-3">Không dùng voucher.</div>
+            @endif
+            @if($bookingAmounts !== null)
+                <dl class="mb-0" data-booking-money-summary>
+                    @foreach(['TongTien' => 'Tiền dịch vụ dự kiến', 'TienGiamKhuyenMai' => 'Giảm khuyến mãi', 'TienGiamDoDiem' => 'Giảm điểm tích lũy', 'PhiGiaoHang' => 'Phí nhận và giao đồ', 'ThanhTien' => 'Tổng thanh toán ước tính'] as $field => $label)
+                        <div class="d-flex justify-content-between gap-3 py-2 {{ $field === 'ThanhTien' ? 'border-top fw-bold' : '' }}">
+                            <dt class="fw-normal">{{ $label }}</dt>
+                            <dd class="mb-0 text-end" data-booking-amount="{{ $field }}"><x-admin.detail.money :value="$bookingAmounts[$field]" :negative="in_array($field, ['TienGiamKhuyenMai', 'TienGiamDoDiem'])" /></dd>
+                        </div>
+                    @endforeach
+                </dl>
+                @if($bookingAmounts['promotion_warning'])<div class="alert alert-warning mt-3 mb-0" role="status">{{ $bookingAmounts['promotion_warning'] }}</div>@endif
+                <p class="text-muted small mt-3 mb-0">Ước tính theo dịch vụ đã đặt và số điểm đã chọn. Tiền chốt được tính lại khi kiểm kê đồ thực tế; xem đơn hàng liên kết để biết số tiền đã xác nhận.</p>
+            @else
+                <p class="text-muted mb-0">Chưa có dịch vụ dự kiến để tính tổng tiền. Tổng thanh toán sẽ được tính khi kiểm kê đồ thực tế.</p>
+            @endif
+        </x-admin.detail.panel>
         <x-admin.detail.panel title="Khách hàng" icon="bi-person" :iconClass="'bg-secondary-subtle text-secondary'">
             <x-admin.detail.info-grid :columns="1">
                 <x-admin.detail.info-item label="Họ và tên" :value="$booking->khachHang?->HoTen" />

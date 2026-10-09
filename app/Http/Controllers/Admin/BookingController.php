@@ -50,7 +50,7 @@ class BookingController extends Controller
 
     // create() and store() methods disabled - "Tạo đặt lịch" feature disabled
 
-    public function show(int $id)
+    public function show(int $id, OrderService $orders)
     {
         $booking = $this->bookingService->find($id);
 
@@ -59,8 +59,9 @@ class BookingController extends Controller
         }
 
         $employees = NhanVien::query()->orderBy('HoTen')->get(['NhanVienID', 'HoTen']);
+        $bookingAmounts = $booking->chiTietBookings->isNotEmpty() ? $orders->estimateSavedBooking($booking) : null;
 
-        return view('admin.bookings.show', compact('booking', 'employees'));
+        return view('admin.bookings.show', compact('booking', 'employees', 'bookingAmounts'));
     }
 
     public function estimate(Request $request, int $booking, OrderService $orders): JsonResponse

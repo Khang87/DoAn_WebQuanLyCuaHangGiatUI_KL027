@@ -74,7 +74,7 @@
                     @endif
                 </div>
                 <div class="col-md-6"><label class="form-label">Hình thức nhận đồ <span class="text-danger ms-1">*</span></label><select class="form-select @error('method') is-invalid @enderror" name="method" id="booking-method" required>@foreach(\App\Enums\ReceiveMethod::options() as $value => $label)<option value="{{ $value }}" @selected(old('method', $booking->HinhThucNhanDo) === $value)>{{ $label }}</option>@endforeach</select>@error('method')<div class="invalid-feedback">{{ $message }}</div>@enderror</div>
-                <div class="col-md-6"><label class="form-label">Địa chỉ nhận đồ</label><input type="text" class="form-control @error('address') is-invalid @enderror" name="address" value="{{ old('address', $booking->DiaChiNhan) }}" maxlength="255" @required(old('method', $booking->HinhThucNhanDo) === \App\Enums\ReceiveMethod::Home->value)>@error('address')<div class="invalid-feedback">{{ $message }}</div>@enderror</div>
+                <div class="col-md-6"><label class="form-label">Địa chỉ nhận đồ</label><input type="text" class="form-control @error('address') is-invalid @enderror" name="address" value="{{ old('address', $booking->DiaChiNhan) }}" maxlength="255" @required(old('method', $booking->HinhThucNhanDo) === \App\Enums\ReceiveMethod::Home->value) @disabled(old('method', $booking->HinhThucNhanDo) !== \App\Enums\ReceiveMethod::Home->value)>@error('address')<div class="invalid-feedback">{{ $message }}</div>@enderror</div>
                 <div class="col-md-6">
                     <label class="form-label" for="booking-return-method">Hình thức trả đồ <span class="text-danger">*</span></label>
                     <select class="form-select @error('return_method') is-invalid @enderror" name="return_method" id="booking-return-method" required>
@@ -87,7 +87,7 @@
                 </div>
                 <div class="col-md-6">
                     <label class="form-label" for="booking-return-address">Địa chỉ trả đồ</label>
-                    <input type="text" id="booking-return-address" class="form-control @error('return_address') is-invalid @enderror" name="return_address" value="{{ old('return_address', $booking->DiaChiTra) }}" maxlength="255" @required(old('return_method', $booking->HinhThucTraDo) === \App\Enums\ReturnMethod::Home->value)>
+                    <input type="text" id="booking-return-address" class="form-control @error('return_address') is-invalid @enderror" name="return_address" value="{{ old('return_address', $booking->DiaChiTra) }}" maxlength="255" @required(old('return_method', $booking->HinhThucTraDo) === \App\Enums\ReturnMethod::Home->value) @disabled(old('return_method', $booking->HinhThucTraDo) !== \App\Enums\ReturnMethod::Home->value)>
                     @error('return_address')<div class="invalid-feedback">{{ $message }}</div>@enderror
                 </div>
                 <div class="col-md-6"><label class="form-label">Ngày hẹn <span class="text-danger ms-1">*</span></label><input type="date" class="form-control @error('scheduled_date') is-invalid @enderror" name="scheduled_date" value="{{ old('scheduled_date', $booking->NgayHen?->format('Y-m-d')) }}" required>@error('scheduled_date')<div class="invalid-feedback">{{ $message }}</div>@enderror</div>
@@ -185,7 +185,7 @@
         const status = document.getElementById('booking-status');
         const staff = document.getElementById('booking-staff-id');
         const staffRequiredIndicator = document.querySelector('[data-staff-required-indicator]');
-        const form = document.querySelector('form');
+        const form = document.getElementById('booking-edit-form');
         const itemsContainer = document.getElementById('booking-items');
         const addItemButton = document.getElementById('add-booking-item');
         const pricingUnitOptions = @json($pricingUnitOptions);
@@ -195,6 +195,11 @@
         function updateAddressRequirement() {
             address.required = method.value === @json(\App\Enums\ReceiveMethod::Home->value);
             returnAddress.required = returnMethod.value === @json(\App\Enums\ReturnMethod::Home->value);
+            for (const field of [address, returnAddress]) {
+                field.disabled = !field.required;
+                field.classList.toggle('bg-light', field.disabled);
+                field.classList.toggle('text-muted', field.disabled);
+            }
         }
 
         function updateStaffRequirement() {
@@ -347,6 +352,7 @@
             document.querySelector('[data-booking-row-status]').textContent = 'Đã thêm dòng mới. Hãy chọn dịch vụ và loại đồ.';
             template.querySelector('.booking-service-category').focus();
         });
+        form.addEventListener('reset', () => setTimeout(updateAddressRequirement, 0));
         updateAddressRequirement();
         updateStaffRequirement();
         itemsContainer.querySelectorAll('.booking-item').forEach(function (item) {

@@ -80,6 +80,7 @@ class BookingService
                 'nhanVien',
                 'nhanVienXacNhan',
                 'donHangs',
+                'khuyenMai',
             ])
             ->find($id);
     }
@@ -203,6 +204,12 @@ class BookingService
         foreach ($map as $key => $column) {
             if (array_key_exists($key, $data)) {
                 $mapped[$column] = $data[$key];
+            }
+        }
+
+        foreach (['HinhThucNhanDo' => 'DiaChiNhan', 'HinhThucTraDo' => 'DiaChiTra'] as $method => $address) {
+            if (($mapped[$method] ?? null) === 'Tại cửa hàng') {
+                $mapped[$address] = null;
             }
         }
 
