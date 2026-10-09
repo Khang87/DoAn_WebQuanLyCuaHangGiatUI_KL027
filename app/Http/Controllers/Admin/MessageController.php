@@ -3,8 +3,10 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\DonHang;
 use App\Models\User;
 use App\Services\MessageService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -60,5 +62,23 @@ class MessageController extends Controller
         return redirect()
             ->route('admin.messages.index', ['order_id' => $order->DonHangID])
             ->with('success', 'Tin nhắn đã được gửi cho khách hàng.');
+    }
+
+    public function updates(Request $request, int $order): JsonResponse
+    {
+        $conversation = DonHang::query()->findOrFail($order);
+
+        return response()->json([
+            'order_id' => (int) $conversation->getKey(),
+            'messages' => $this->messageService->getMessages($conversation)
+                ->map(fn ($message): array => [
+                    'id' => (int) $message->getKey(),
+                    'content' => (string) $message->NoiDung,
+                    'sender_name' => (int) $message->NguoiGuiID === (int) $request->user()->getKey()
+                        ? 'Cửa hàng' : ($message->sender?->TenDangNhap ?: 'Khách hàng'),
+                    'is_mine' => (int) $message->NguoiGuiID === (int) $request->user()->getKey(),
+                    'sent_at' => $message->ThoiGianGui?->format('d-m-Y H:i'),
+                ])->values(),
+        ])->header('Cache-Control', 'private, no-store');
     }
 }
