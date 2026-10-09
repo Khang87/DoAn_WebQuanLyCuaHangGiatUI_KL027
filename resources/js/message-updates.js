@@ -4,7 +4,8 @@ const conversation = document.querySelector('[data-message-updates]');
 if (conversation) {
     const status = document.querySelector('[data-message-status]');
     const form = document.querySelector('[data-message-form]');
-    const orderId = Number(conversation.dataset.orderId);
+    const orderId = conversation.dataset.orderId ? Number(conversation.dataset.orderId) : null;
+    const customerId = conversation.dataset.customerAccountId ? Number(conversation.dataset.customerAccountId) : null;
     const interval = 15000;
     let timer, controller, signature, pending = false, stopped = false, disposed = false, retry = interval;
 
@@ -76,13 +77,14 @@ if (conversation) {
             if ([401, 403, 404].includes(response.status)) {
                 stopped = true;
                 conversation.replaceChildren();
+                if (form) form.dataset.accessLost = 'true';
                 form?.querySelectorAll('textarea, button').forEach(input => { input.disabled = true; });
                 showStatus(response.status === 401 ? 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.' : 'Cuộc trò chuyện không còn khả dụng.');
                 return;
             }
             if (!response.ok) throw new Error('Message sync failed');
             const data = await response.json();
-            if (data.order_id !== orderId || !Array.isArray(data.messages) || data.messages.length > 100
+            if (data.order_id !== orderId || (customerId !== null && data.customer_account_id !== customerId) || !Array.isArray(data.messages) || data.messages.length > 100
                 || data.messages.some(message => !Number.isSafeInteger(message.id) || message.id < 1
                     || typeof message.content !== 'string' || typeof message.sender_name !== 'string'
                     || typeof message.is_mine !== 'boolean' || (message.sent_at !== null && typeof message.sent_at !== 'string'))) {

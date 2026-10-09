@@ -4,7 +4,7 @@ import { setTimeout as delay } from 'node:timers/promises';
 
 export async function openBrowser(runtime, origin, {assetDelayMs = 0, alertGate = null, avatarStorage = null} = {}) {
     const child = spawn(process.env.CHROMIUM_BIN || 'chromium', ['--headless', '--no-sandbox', '--disable-dev-shm-usage', '--disable-background-networking', '--no-first-run', '--remote-debugging-port=0', `--user-data-dir=${runtime}/browser`, 'about:blank'], {stdio: 'ignore'});
-    const errors = [], requests = [], responses = [], excluded = new Set(), pending = new Map();
+    const errors = [], requests = [], responses = [], excluded = new Set(), canceled = new Set(), loaded = new Set(), pending = new Map();
     let socket, id = 0, startupError;
     child.on('error', error => {startupError=error;});
     async function waitFor(check, label) {
@@ -26,8 +26,9 @@ export async function openBrowser(runtime, origin, {assetDelayMs = 0, alertGate 
     }
     async function navigate(path) {
         const start = responses.length;
-        await command('Page.navigate', {url: origin + path});
-        await waitFor(async () => responses.slice(start).some(r => r.type === 'Document') && await evaluate('document.readyState === "complete"'), path);
+        const navigation = await command('Page.navigate', {url: origin + path});
+        if (navigation.errorText) throw Error(navigation.errorText);
+        await waitFor(async () => loaded.has(navigation.loaderId) && responses.slice(start).some(r => r.type === 'Document') && await evaluate('document.readyState === "complete"'), path);
         return evaluate('location.pathname');
     }
     async function close() {
@@ -43,13 +44,15 @@ export async function openBrowser(runtime, origin, {assetDelayMs = 0, alertGate 
         socket.onmessage = event => {
             const m = JSON.parse(event.data);
             if (m.id) { pending.get(m.id)?.(m); pending.delete(m.id); return; }
+            if (m.method === 'Page.lifecycleEvent' && m.params.name === 'load') loaded.add(m.params.loaderId);
             if (m.method === 'Runtime.consoleAPICalled' && ['error','warning'].includes(m.params.type)) errors.push('Console '+m.params.type);
             if (m.method === 'Runtime.exceptionThrown') errors.push('Page exception: ' + m.params.exceptionDetails.text);
             if (m.method === 'Network.requestWillBeSent') requests.push(m.params.request);
             if (m.method === 'Network.responseReceived') responses.push({...m.params.response, type: m.params.type});
+            if (m.method === 'Network.loadingFailed' && m.params.canceled) canceled.add(m.params.requestId);
             if (m.method === 'Network.loadingFailed' && !m.params.canceled) errors.push('Request failed: ' + m.params.errorText);
             if (m.method === 'Fetch.requestPaused') {
-                const {requestId, request} = m.params;
+                const {requestId, request, networkId} = m.params;
                 (async () => {
                     if (request.url === 'https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.all.min.js') {
                         await delay(assetDelayMs);
@@ -69,10 +72,18 @@ export async function openBrowser(runtime, origin, {assetDelayMs = 0, alertGate 
                         errors.push('Unexpected external asset: ' + request.url);
                         await command('Fetch.failRequest', {requestId, errorReason: 'BlockedByClient'});
                     }
-                })().catch(e => errors.push(e.message));
+                })().catch(async e => {
+                    // Navigation can cancel a paused asset before fulfillment. Do not hide live request failures.
+                    // CDP may deliver the cancellation event after the failed command response.
+                    if (e.message === 'Invalid InterceptionId.' && networkId) {
+                        for (let attempt = 0; attempt < 10 && !canceled.has(networkId); attempt++) await delay(50);
+                        if (canceled.has(networkId)) return;
+                    }
+                    errors.push(`${e.message} (${request.url})`);
+                });
             }
         };
-        await command('Page.enable'); await command('Runtime.enable'); await command('Network.enable');
+        await command('Page.enable'); await command('Page.setLifecycleEventsEnabled', {enabled:true}); await command('Runtime.enable'); await command('Network.enable');
         await command('Fetch.enable', {patterns: [{urlPattern: '*'}]});
         return {command, evaluate, navigate, waitFor, close, errors, requests, responses, excluded};
     } catch (error) { await close(); throw error; }

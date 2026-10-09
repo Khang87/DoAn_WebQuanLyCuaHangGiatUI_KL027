@@ -13,6 +13,8 @@ abstract class TestCase extends BaseTestCase
     {
         parent::setUp();
 
+        // Asset execution is verified separately by the real-browser production-build suite.
+        $this->withoutVite();
         $this->seedRbacIfNeeded();
     }
 

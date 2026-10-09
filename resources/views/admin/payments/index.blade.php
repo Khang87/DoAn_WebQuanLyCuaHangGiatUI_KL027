@@ -79,7 +79,7 @@
                         <td><span class="text-dark">{{ $payment->donHang?->MaDonHang ?: $payment->DonHangID }}</span></td>
                         <td>
                             <div class="d-flex align-items-center">
-                                <img src="{{ asset('assets/images/user_1.jpg') }}" alt="Ảnh khách hàng" class="rounded-circle me-2 avatar-cover" style="width: 40px; height: 40px;">
+                                <img src="{{ $payment->donHang?->khachHang?->taiKhoan?->AvatarURL ?: asset('assets/images/user_1.jpg') }}" alt="Ảnh khách hàng" class="rounded-circle me-2 avatar-cover" style="width: 40px; height: 40px;">
                                 <div>
                                     <div class="fw-semibold">{{ $payment->donHang?->khachHang?->HoTen ?: '-' }}</div>
                                     <small class="text-muted">{{ $payment->donHang?->khachHang?->SoDienThoai ?: 'Chưa có SĐT' }}</small>

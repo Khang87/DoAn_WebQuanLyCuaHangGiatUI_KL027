@@ -7,6 +7,7 @@ use App\Models\DonHang;
 use App\Models\TaiKhoan;
 use App\Services\NotificationService;
 use App\Support\FriendlyError;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 
@@ -37,6 +38,23 @@ class ThongBaoController extends Controller
         $orders = collect();
 
         return view('admin.notifications.index', compact('notifications', 'users', 'orders'));
+    }
+
+    public function updates(Request $request): JsonResponse
+    {
+        $query = $request->user()->notifications();
+
+        return response()->json([
+            'unread_count' => (clone $query)->where('DaDoc', false)->count(),
+            'notifications' => $query->orderByDesc('ThoiGianGui')->orderByDesc('ThongBaoID')->limit(5)->get()
+                ->map(fn ($notification): array => [
+                    'id' => (int) $notification->getKey(),
+                    'title' => (string) $notification->TieuDe,
+                    'is_read' => (bool) $notification->DaDoc,
+                    'url' => route('notifications.show', $notification->getKey()),
+                    'time' => $notification->ThoiGianGui?->format('d/m/Y H:i'),
+                ])->values(),
+        ])->header('Cache-Control', 'private, no-store');
     }
 
     public function create()

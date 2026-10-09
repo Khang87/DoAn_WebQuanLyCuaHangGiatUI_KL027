@@ -27,6 +27,7 @@
 <div class="card">
     <div class="card-body">
         <div class="d-flex justify-content-between align-items-center mb-4"><h5 class="mb-0">{{ $inspectionMode ? 'Kiểm tra thực tế trước khi tạo đơn' : 'Chỉnh sửa đặt lịch' }}</h5><a href="{{ route('bookings.index') }}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left me-1"></i>Quay lại</a></div>
+        <div data-booking-row-status class="form-text mb-2" role="status"></div>
         <form id="booking-edit-form" action="{{ route($inspectionMode ? 'bookings.confirm' : 'bookings.update', $booking) }}" method="POST">
             @csrf @if(! $inspectionMode) @method('PUT') @endif
             <div class="row g-4">
@@ -162,6 +163,14 @@
                 @endif
                 <div class="col-12"><label class="form-label">Ghi chú</label><textarea class="form-control @error('notes') is-invalid @enderror" name="notes" rows="3" maxlength="500">{{ old('notes', $booking->GhiChu) }}</textarea>@error('notes')<div class="invalid-feedback">{{ $message }}</div>@enderror</div>
             </div>
+            @if($inspectionMode)
+                <div class="alert alert-info mt-3" data-booking-estimate="{{ route('bookings.estimate', $booking) }}">
+                    <strong>Tổng tiền ước tính: <span data-estimate-total>Đang tính…</span></strong>
+                    <div data-estimate-details class="small"></div>
+                    <div data-estimate-warning class="small text-danger" role="status"></div>
+                    <small>Ước tính từ bảng giá hiện tại. Giá, khuyến mãi và điểm được kiểm tra lại khi tạo đơn.</small>
+                </div>
+            @endif
             <div class="d-flex justify-content-end gap-2 mt-4"><button type="reset" class="btn btn-outline-secondary">Làm mới</button><button type="submit" class="btn btn-primary">{{ $inspectionMode ? 'Xác nhận & tạo đơn' : 'Cập nhật' }}</button></div>
         </form>
     </div>
@@ -250,6 +259,15 @@
             }
 
             unit.disabled = matchingUnits.length === 0;
+            let warning = item.querySelector('.booking-price-warning');
+            if (!warning) {
+                warning = document.createElement('div');
+                warning.className = 'form-text text-danger booking-price-warning';
+                warning.setAttribute('role', 'status');
+                unit.parentElement.append(warning);
+            }
+            warning.textContent = serviceId && garmentId && matchingUnits.length === 0
+                ? 'Chưa thiết lập bảng giá hiệu lực cho dịch vụ và loại đồ này. Chọn tổ hợp khác hoặc bổ sung bảng giá trước khi lưu.' : '';
         }
 
         function updateQuantityFields(item) {
@@ -326,6 +344,8 @@
             syncUnitOptions(template, false);
             updateQuantityFields(template);
             nextItemIndex++;
+            document.querySelector('[data-booking-row-status]').textContent = 'Đã thêm dòng mới. Hãy chọn dịch vụ và loại đồ.';
+            template.querySelector('.booking-service-category').focus();
         });
         updateAddressRequirement();
         updateStaffRequirement();
@@ -344,3 +364,7 @@
     });
 </script>
 @endsection
+
+@push('scripts')
+    @if($inspectionMode) @vite('resources/js/booking-estimate.js') @endif
+@endpush

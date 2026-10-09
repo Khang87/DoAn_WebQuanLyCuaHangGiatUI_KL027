@@ -36,7 +36,7 @@ class MessageService
     public function getMessages(DonHang $order): Collection
     {
         return TinNhan::query()
-            ->with('sender')
+            ->with(['sender.khachHang', 'sender.nhanVien'])
             ->where('DonHangID', $order->DonHangID)
             ->orderByDesc('ThoiGianGui')
             ->orderByDesc('TinNhanID')
@@ -47,6 +47,49 @@ class MessageService
                 ['TinNhanID', 'asc'],
             ])
             ->values();
+    }
+
+    public function supportCustomers(): LengthAwarePaginator
+    {
+        return User::query()->with('khachHang')->whereNotNull('KhachHangID')
+            ->whereNull('NhanVienID')->where('TrangThai', 'Hoạt động')
+            ->orderByDesc('TaiKhoanID')->paginate(20, ['*'], 'support_page')->withQueryString();
+    }
+
+    public function supportCustomer(int $id): User
+    {
+        return User::query()->with('khachHang')->whereNotNull('KhachHangID')
+            ->whereNull('NhanVienID')->where('TrangThai', 'Hoạt động')->findOrFail($id);
+    }
+
+    public function supportMessages(User $customer): Collection
+    {
+        return TinNhan::query()->with(['sender.khachHang', 'sender.nhanVien'])
+            ->whereNull('DonHangID')->where(fn ($query) => $query
+            ->where(fn ($incoming) => $incoming->where('NguoiGuiID', $customer->getKey())
+                ->whereHas('recipient', fn ($staff) => $staff->whereNotNull('NhanVienID')))
+            ->orWhere(fn ($outgoing) => $outgoing->where('NguoiNhanID', $customer->getKey())
+                ->whereHas('sender', fn ($staff) => $staff->whereNotNull('NhanVienID'))))
+            ->orderByDesc('ThoiGianGui')->orderByDesc('TinNhanID')->limit(100)->get()
+            ->sortBy([['ThoiGianGui', 'asc'], ['TinNhanID', 'asc']])->values();
+    }
+
+    public function displayName(TinNhan $message, User $viewer): string
+    {
+        if ((int) $message->NguoiGuiID === (int) $viewer->getKey()) {
+            return 'Cửa hàng';
+        }
+        $name = $message->sender?->name;
+
+        return ! $name || str_starts_with($name, 'auth-') ? 'Khách hàng' : $name;
+    }
+
+    public function sendSupport(User $customer, User $sender, string $content): TinNhan
+    {
+        return TinNhan::query()->create([
+            'NguoiGuiID' => $sender->getKey(), 'NguoiNhanID' => $customer->getKey(),
+            'DonHangID' => null, 'NoiDung' => trim($content), 'ThoiGianGui' => now(), 'TrangThai' => 'Đã gửi',
+        ]);
     }
 
     public function sendFromStore(DonHang $order, User $sender, string $content): TinNhan

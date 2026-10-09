@@ -10,7 +10,7 @@ function harness() {
     const element=()=>({dataset:{},style:{},children:[],append(child){this.children.push(child);},replaceChildren(fragment){this.children=fragment?.children||[];},scrollTop:0,scrollHeight:10,clientHeight:10});
     const conversation=element();conversation.dataset={orderId:'7',messageUpdates:'/updates'};
     const status={textContent:''}, input={value:'draft',disabled:false};
-    const document={hidden:false,querySelector:s=>s==='[data-message-updates]'?conversation:s==='[data-message-status]'?status:{querySelectorAll:()=>[input]},createElement:element,createDocumentFragment:element,addEventListener:(name,fn)=>{documentEvents[name]=fn;}};
+    const document={hidden:false,querySelector:s=>s==='[data-message-updates]'?conversation:s==='[data-message-status]'?status:{dataset:{},querySelectorAll:()=>[input]},createElement:element,createDocumentFragment:element,addEventListener:(name,fn)=>{documentEvents[name]=fn;}};
     const navigator={onLine:true};
     const context={document,navigator,window:{addEventListener:(name,fn)=>{events[name]=fn;}},AbortController,fetch:(url,options)=>new Promise((resolve,reject)=>{calls.push({resolve,reject,options});options.signal.addEventListener('abort',()=>reject(Error('aborted')));}),setTimeout:(fn,ms)=>{timers.set(++clock,{fn,ms});return clock;},clearTimeout:id=>timers.delete(id)};
     vm.runInNewContext(source,context);

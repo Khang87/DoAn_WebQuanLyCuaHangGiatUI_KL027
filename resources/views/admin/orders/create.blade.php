@@ -28,6 +28,7 @@
             ])->toJson();
 
         @endphp
+        <div id="order-row-status" class="form-text mb-2" role="status"></div>
         <form action="{{ route('orders.store') }}" method="POST" id="orderForm">
             @csrf
             <div class="row g-4">
@@ -349,6 +350,8 @@
         syncGarmentOptions(row);
         updateRowState(row);
         updateTotals();
+        document.getElementById('order-row-status').textContent = `Đã thêm dòng ${table.tBodies[0].rows.length}. Hãy chọn dịch vụ và loại đồ.`;
+        row.querySelector('.item-service-category').focus();
     });
 
     // Filter services by their related service category.

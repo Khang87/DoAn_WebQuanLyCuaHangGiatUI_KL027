@@ -28,6 +28,17 @@
             const validSelection = eligible.some(price => String(price.unit_id) === selected);
             select.value = validSelection ? selected : (eligible.length === 1 ? String(eligible[0].unit_id) : '');
             const match = eligible.find(price => String(price.unit_id) === select.value);
+            const serviceSelected = row.querySelector('.item-service').value !== '';
+            let warning = row.querySelector('[data-price-warning]');
+            if (!warning) {
+                warning = document.createElement('div');
+                warning.dataset.priceWarning = '';
+                warning.className = 'form-text text-danger';
+                warning.setAttribute('role', 'status');
+                select.parentElement.append(warning);
+            }
+            warning.textContent = serviceSelected && ((!prices.some(price => String(price.service_id) === row.querySelector('.item-service').value)) || (row.querySelector('.item-garment').value !== '' && eligible.length === 0))
+                ? 'Chưa có bảng giá hiệu lực cho dịch vụ/loại đồ này. Chọn tổ hợp khác hoặc thiết lập bảng giá trước khi tạo đơn.' : '';
             select.setCustomValidity(match ? '' : 'Hãy chọn đơn vị có bảng giá đang hiệu lực.');
 
             const isKg = ['kg', 'kgs', 'kilogram'].includes(String(match?.unit || '').trim().toLowerCase());

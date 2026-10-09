@@ -13,8 +13,10 @@ use App\Models\LoaiDichVu;
 use App\Models\LoaiDoGiat;
 use App\Models\NhanVien;
 use App\Services\BookingService;
+use App\Services\OrderService;
 use App\Support\FriendlyError;
 use Illuminate\Database\QueryException;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
@@ -59,6 +61,24 @@ class BookingController extends Controller
         $employees = NhanVien::query()->orderBy('HoTen')->get(['NhanVienID', 'HoTen']);
 
         return view('admin.bookings.show', compact('booking', 'employees'));
+    }
+
+    public function estimate(Request $request, int $booking, OrderService $orders): JsonResponse
+    {
+        $record = $this->bookingService->find($booking);
+        abort_if(! $record, 404);
+        $validated = $request->validate([
+            'items' => ['required', 'array', 'min:1', 'max:100'],
+            'items.*.DichVuID' => ['required', 'integer', 'min:1'],
+            'items.*.LoaiDoGiatID' => ['required', 'integer', 'min:1'],
+            'items.*.DonViTinhID' => ['required', 'integer', 'min:1'],
+            'items.*.SoLuong' => ['nullable', 'numeric', 'min:0'],
+            'items.*.KhoiLuong' => ['nullable', 'numeric', 'min:0'],
+            'use_points' => ['required', 'boolean'],
+        ]);
+
+        return response()->json($orders->estimateBooking($record, $validated['items'], (bool) $validated['use_points']))
+            ->header('Cache-Control', 'private, no-store');
     }
 
     public function inspection(int $id)

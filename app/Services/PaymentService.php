@@ -77,12 +77,12 @@ class PaymentService
         $sort = $filters['sort'] ?? 'latest';
         [$sortBy, $sortOrder] = $sortMap[$sort] ?? ['ThoiGian', 'desc'];
 
-        return $query->with(['donHang.khachHang', 'donHang.hoaDons', 'donHang.thanhToans'])->orderBy($sortBy, $sortOrder)->paginate(10)->withQueryString();
+        return $query->with(['donHang.khachHang.taiKhoan', 'donHang.hoaDons', 'donHang.thanhToans'])->orderBy($sortBy, $sortOrder)->paginate(10)->withQueryString();
     }
 
     public function find(int $id): ?ThanhToan
     {
-        return ThanhToan::with('donHang.khachHang', 'donHang.hoaDons')->find($id);
+        return ThanhToan::with('donHang.khachHang.taiKhoan', 'donHang.hoaDons')->find($id);
     }
 
     public function create(array $data): ThanhToan
