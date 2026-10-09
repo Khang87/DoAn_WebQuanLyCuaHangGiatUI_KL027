@@ -105,6 +105,9 @@ jobs:
           mkdir -p storage/framework/cache/data storage/framework/views storage/framework/sessions storage/logs bootstrap/cache
           composer install --no-interaction --prefer-dist --no-progress
       - name: Real browser, HTTP middleware and PostgreSQL persistence
-        run: bash scripts/test-web-e2e.sh
+        run: |
+          npm ci --ignore-scripts
+          npm run build
+          bash scripts/test-web-e2e.sh
       - name: Dashboard query budget and deferred dependency controls
         run: bash scripts/test-web-e2e.sh performance

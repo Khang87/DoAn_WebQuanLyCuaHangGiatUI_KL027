@@ -1,6 +1,6 @@
 import { defineConfig } from 'vite';
 import laravel from 'laravel-vite-plugin';
-import { bunny } from 'laravel-vite-plugin/fonts';
+import { local } from 'laravel-vite-plugin/fonts';
 import tailwindcss from '@tailwindcss/vite';
 
 export default defineConfig({
@@ -9,8 +9,11 @@ export default defineConfig({
             input: ['resources/css/app.css', 'resources/js/app.js', 'resources/js/profile-avatar.js'],
             refresh: true,
             fonts: [
-                bunny('Instrument Sans', {
-                    weights: [400, 500, 600],
+                local('Instrument Sans', {
+                    variants: [400, 500, 600].map(weight => ({
+                        src: `resources/fonts/instrument-sans/instrument-sans-latin-${weight}-normal.woff2`,
+                        weight,
+                    })),
                     optimizedFallbacks: false,
                 }),
             ],
