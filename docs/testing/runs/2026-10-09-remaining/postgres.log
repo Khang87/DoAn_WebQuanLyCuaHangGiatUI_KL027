@@ -1,0 +1,6 @@
+PASS: 4 PostgreSQL target refusals
+psql:/checkout/tests/Postgres/business_rules.sql:80: NOTICE:  RPC business-rule regression checks passed
+PASS: existing RPC PostgreSQL assertions
+PASS: guarded Laravel PostgreSQL bootstrap
+PASS: Web/RPC contract assertions (66)
+PASS: 3 PostgreSQL races; 21 assertions

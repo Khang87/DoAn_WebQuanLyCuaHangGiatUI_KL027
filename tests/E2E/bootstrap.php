@@ -5,6 +5,7 @@ use Illuminate\Foundation\Bootstrap\LoadConfiguration;
 use Illuminate\Foundation\Http\Events\RequestHandled;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Http;
 
 [$host, $port, $password, $pdo] = require dirname(__DIR__).'/Postgres/connection.php';
 $runtime = getenv('WEB_E2E_RUNTIME');
@@ -60,5 +61,34 @@ if (getenv('WEB_E2E_PROFILE') === '1') {
         });
     });
 }
+
+// Test-only provider double; reachable only after the owned loopback/PG guards above.
+$app->afterBootstrapping(BootProviders::class, static function ($app) use ($runtime): void {
+    if (! is_file($runtime.'/avatar-mock-enabled')) {
+        return;
+    }
+    $app['config']->set([
+        'services.supabase.project_url' => 'https://avatar-fixture.supabase.co',
+        'services.supabase.anon_key' => 'isolated-anon-key',
+        'services.supabase.service_role_key' => 'isolated-service-key',
+        'services.supabase.avatar_bucket' => 'avatars',
+    ]);
+    Http::preventStrayRequests();
+    Http::fake(static function ($request) use ($runtime) {
+        $url = $request->url();
+        if ($request->method() === 'POST' && $url === 'https://avatar-fixture.supabase.co/storage/v1/object/upload/sign/avatars/avatars/2') {
+            return Http::response(['token' => 'isolated-upload-token'], 200);
+        }
+        if ($request->method() === 'HEAD' && $url === 'https://avatar-fixture.supabase.co/storage/v1/object/public/avatars/avatars/2') {
+            $path = $runtime.'/avatar-object.png';
+            if (! is_file($path) || getimagesize($path) === false) {
+                return Http::response('', 404);
+            }
+
+            return Http::response('', 200, ['Content-Type' => 'image/png', 'Content-Length' => (string) filesize($path)]);
+        }
+        throw new RuntimeException('Unexpected isolated avatar provider request.');
+    });
+});
 
 return $app;

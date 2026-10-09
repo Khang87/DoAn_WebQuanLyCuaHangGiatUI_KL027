@@ -1,0 +1,10 @@
+✔ unit selection preserves tuples and updates price, quantity, weight and totals (1082.554103ms)
+✔ shell-quote rejects line terminators after a comment (GHSA-pqg4-j6r4-53mv) (23.623935ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 2
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 6341.764967

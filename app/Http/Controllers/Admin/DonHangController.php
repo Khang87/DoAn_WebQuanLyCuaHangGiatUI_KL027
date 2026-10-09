@@ -90,6 +90,8 @@ class DonHangController extends Controller
             }
 
             return redirect()->route('orders.show', $order)->with('success', 'Đơn hàng đã được tạo thành công.');
+        } catch (ValidationException $exception) {
+            return redirect()->route('orders.create')->withErrors($exception->errors())->withInput();
         } catch (\Exception $e) {
             return redirect()->route('orders.create')->with('error', FriendlyError::message($e))->withInput();
         }

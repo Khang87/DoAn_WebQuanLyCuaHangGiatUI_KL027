@@ -76,6 +76,75 @@ class DeliveryContractTest extends TestCase
         $this->assertNull($delivery->ThoiGianDuKien);
         $this->assertSame('Chờ thực hiện', $delivery->TrangThai);
         $this->assertSame('Chưa chốt lịch', $delivery->GhiChu);
+        $before = $delivery->getAttributes();
+        $delivery = $service->update($delivery, ['notes' => 'Updated notes only']);
+        unset($before['GhiChu']);
+        $after = $delivery->getAttributes();
+        unset($after['GhiChu']);
+        $this->assertSame($before, $after, '77: omitted fields must be preserved');
+    }
+
+    public function test_54_stale_model_rejects_changed_parent_for_update_and_delete(): void
+    {
+        $service = app(DeliveryService::class);
+        $delivery = $service->create($this->data());
+        DB::table('DonHang')->insert(['DonHangID' => 2]);
+        DB::table('GiaoNhan')->where('GiaoNhanID', $delivery->getKey())->update(['DonHangID' => 2]);
+        $this->reject(fn () => $service->update($delivery, ['notes' => 'Stale edit']), 'order_id');
+        $this->reject(fn () => $service->delete($delivery), 'delivery');
+        $this->assertSame(2, $delivery->fresh()->DonHangID);
+        $this->assertNull($delivery->fresh()->GhiChu);
+    }
+
+    public static function malformedServicePayloads(): array
+    {
+        return [
+            [['method' => 'other'], 'method'], [['status' => 'unknown'], 'status'],
+            [['address' => ''], 'address'], [['address' => str_repeat('a', 256)], 'address'],
+            [['pickup_date' => 'bad', 'pickup_time' => '10:00'], 'pickup_date'],
+            [['pickup_date' => '2026-10-08', 'pickup_time' => '25:90'], 'pickup_time'],
+            [['employee_id' => 999], 'employee_id'], [['employee_id' => 'abc'], 'employee_id'],
+            [['employee_id' => 2], 'employee_id'], [['fulfillment' => 'other'], 'fulfillment'],
+        ];
+    }
+
+    #[DataProvider('malformedServicePayloads')]
+    public function test_55_direct_service_rejects_malformed_payload(array $changes, string $field): void
+    {
+        $this->reject(fn () => app(DeliveryService::class)->create($this->data($changes)), $field);
+        $this->assertSame(0, GiaoNhan::count());
+    }
+
+    public function test_84_86_87_delivery_assignment_request_and_service_matrix(): void
+    {
+        foreach (['Hoạt động', 'Ngừng hoạt động', 'Khóa'] as $status) {
+            DB::table('NhanVien')->where('NhanVienID', 1)->update(['TrangThai' => $status]);
+            $response = $this->withoutMiddleware()->post(route('deliveries.store'), $this->data());
+            if ($status === 'Hoạt động') {
+                $response->assertSessionHasNoErrors();
+                $this->assertSame(1, GiaoNhan::count());
+                GiaoNhan::query()->delete();
+            } else {
+                $response->assertSessionHasErrors('employee_id');
+                $this->reject(fn () => app(DeliveryService::class)->create($this->data()), 'employee_id');
+            }
+            $this->assertSame(0, GiaoNhan::count());
+        }
+        foreach ([999, 'abc'] as $id) {
+            $this->withoutMiddleware()->post(route('deliveries.store'), $this->data(['employee_id' => $id]))->assertSessionHasErrors('employee_id');
+        }
+    }
+
+    public function test_88_delivery_can_remain_unassigned(): void
+    {
+        foreach ([null, ''] as $employeeId) {
+            $this->withoutMiddleware()->post(route('deliveries.store'), $this->data(['employee_id' => $employeeId]))->assertSessionHasNoErrors();
+            $this->assertNull(GiaoNhan::first()->NhanVienID);
+            GiaoNhan::query()->delete();
+            $delivery = app(DeliveryService::class)->create($this->data(['employee_id' => $employeeId]));
+            $this->assertNull($delivery->NhanVienID);
+            GiaoNhan::query()->delete();
+        }
     }
 
     public function test_request_accepts_unscheduled_return_and_rejects_incomplete_date_pair(): void

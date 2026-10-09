@@ -2,7 +2,7 @@ import { spawn } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { setTimeout as delay } from 'node:timers/promises';
 
-export async function openBrowser(runtime, origin, {assetDelayMs = 0, alertGate = null} = {}) {
+export async function openBrowser(runtime, origin, {assetDelayMs = 0, alertGate = null, avatarStorage = null} = {}) {
     const child = spawn(process.env.CHROMIUM_BIN || 'chromium', ['--headless', '--no-sandbox', '--disable-dev-shm-usage', '--disable-background-networking', '--no-first-run', '--remote-debugging-port=0', `--user-data-dir=${runtime}/browser`, 'about:blank'], {stdio: 'ignore'});
     const errors = [], requests = [], responses = [], excluded = new Set(), pending = new Map();
     let socket, id = 0, startupError;
@@ -60,6 +60,9 @@ export async function openBrowser(runtime, origin, {assetDelayMs = 0, alertGate 
                     } else if (request.url.startsWith('https://fonts.googleapis.com/css2?') || request.url === 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css') {
                         excluded.add(request.url);
                         await command('Fetch.fulfillRequest', {requestId, responseCode: 200, responseHeaders: [{name: 'Content-Type', value: 'text/css'}], body: ''});
+                    } else if (avatarStorage && new URL(request.url).origin === 'https://avatar-fixture.supabase.co') {
+                        const response=await avatarStorage(request);
+                        await command('Fetch.fulfillRequest',{requestId,...response});
                     } else if (new URL(request.url).origin === origin) {
                         await command('Fetch.continueRequest', {requestId});
                     } else {
