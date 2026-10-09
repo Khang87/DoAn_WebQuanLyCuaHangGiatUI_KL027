@@ -55,7 +55,7 @@
             <table class="table-custom mb-0">
                 <thead>
                     <tr>
-                        <th>STT</th>
+                        <th scope="col">STT</th>
                         <th>Mã bảng giá</th>
                         <th>Dịch vụ</th>
                         <th>Loại đồ giặt</th>
@@ -69,7 +69,7 @@
                 <tbody>
                     @forelse($pricings as $pricing)
                     <tr>
-                        <td>{{ $loop->iteration }}</td>
+                        <td>{{ $pricings->firstItem() + $loop->index }}</td>
                         <td>{{ $pricing->MaBangGia ?? 'PG' . str_pad($pricing->BangGiaID, 4, '0', STR_PAD_LEFT) }}</td>
                         <td><strong>{{ $pricing->dichVu?->TenDichVu ?: $pricing->loaiDoGiat?->TenLoaiDoGiat ?: '—' }}</strong></td>
                         <td>{{ $pricing->loaiDoGiat?->TenLoaiDoGiat ?: '—' }}</td>

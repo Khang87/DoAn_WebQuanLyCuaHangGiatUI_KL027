@@ -69,6 +69,7 @@
                         </span>
                         <div class="flex-grow-1 min-w-0">
                             <div class="d-flex align-items-center flex-wrap gap-2">
+                                <span class="small text-muted">STT {{ $loop->iteration }}</span>
                                 <h3 class="h6 fw-bold mb-0 text-break">
                                     <a href="{{ route('roles.edit', $role->getKey()) }}" class="link-dark text-decoration-none">
                                         {{ $role->TenVaiTro }}

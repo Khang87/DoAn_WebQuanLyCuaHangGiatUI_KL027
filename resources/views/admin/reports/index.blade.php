@@ -372,6 +372,7 @@
                     <table class="table table-hover align-middle mb-0 reports-table">
                         <thead class="table-light">
                             <tr>
+                                <th scope="col">STT</th>
                                 <th class="fw-bold text-dark">Dịch vụ</th>
                                 <th class="fw-bold text-dark text-center" style="width: 80px;">SL bán</th>
                                 <th class="fw-bold text-dark text-end" style="width: 150px;">Doanh thu</th>
@@ -380,6 +381,7 @@
                         <tbody>
                             @forelse($topServices as $service)
                             <tr>
+                                <td>{{ $loop->iteration }}</td>
                                 <td>
                                     <span class="fw-semibold">{{ $service->name }}</span>
                                     <small class="text-muted d-block">({{ $service->unit ?: 'ĐVT' }})</small>
@@ -389,7 +391,7 @@
                             </tr>
                             @empty
                             <tr>
-                                <td colspan="3" class="text-center text-muted py-4">Chưa có dữ liệu</td>
+                                <td colspan="4" class="text-center text-muted py-4">Chưa có dữ liệu</td>
                             </tr>
                             @endforelse
                         </tbody>
@@ -410,6 +412,7 @@
                     <table class="table table-hover align-middle mb-0 reports-table">
                         <thead class="table-light">
                             <tr>
+                                <th scope="col">STT</th>
                                 <th class="fw-bold text-dark">Phương thức</th>
                                 <th class="fw-bold text-dark text-center" style="width: 80px;">GD</th>
                                 <th class="fw-bold text-dark text-end" style="width: 150px;">Tổng tiền</th>
@@ -418,6 +421,7 @@
                         <tbody>
                             @forelse($paymentMethods as $method)
                             <tr>
+                                <td>{{ $loop->iteration }}</td>
                                 <td>
                                     <span class="badge {{ $paymentMethodColors[$method->method] ?? 'bg-light text-dark border' }} px-3 py-2 rounded-pill">
                                         {{ $paymentMethodLabels[$method->method] ?? $method->method }}
@@ -428,7 +432,7 @@
                             </tr>
                             @empty
                             <tr>
-                                <td colspan="3" class="text-center text-muted py-4">Chưa có dữ liệu</td>
+                                <td colspan="4" class="text-center text-muted py-4">Chưa có dữ liệu</td>
                             </tr>
                             @endforelse
                         </tbody>
@@ -451,6 +455,7 @@
                     <table class="table table-hover align-middle table-nowrap mb-0">
                         <thead class="bg-light-subtle text-secondary fs-7 text-uppercase fw-semibold">
                             <tr>
+                                <th scope="col">STT</th>
                                 <th scope="col" style="width: 110px;" class="ps-3">Mã đơn</th>
                                 <th scope="col" style="width: 160px;">Khách hàng</th>
                                 <th scope="col">Dịch vụ</th>
@@ -464,6 +469,7 @@
                             @forelse($recentOrders as $order)
                             @php($createdAt = $order->created_at?->copy()->setTimezone('Asia/Ho_Chi_Minh'))
                             <tr>
+                                <td>{{ $loop->iteration }}</td>
                                 <td class="ps-3 fw-bold text-primary">{{ $order->code }}</td>
                                 <td class="fw-medium text-dark">{{ $order->customer?->name ?: '-' }}</td>
                                 <td class="text-secondary text-truncate" style="max-width: 250px;">{{ $order->items->pluck('service.name')->filter()->join(', ') ?: ($order->service?->name ?: '-') }}</td>
@@ -483,7 +489,7 @@
                             </tr>
                             @empty
                             <tr>
-                                <td colspan="7" class="text-center text-muted py-4">Chưa có đơn hàng nào</td>
+                                <td colspan="8" class="text-center text-muted py-4">Chưa có đơn hàng nào</td>
                             </tr>
                             @endforelse
                         </tbody>

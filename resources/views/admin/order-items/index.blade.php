@@ -28,12 +28,12 @@
         <div class="table-responsive">
             <table class="table table-hover mb-0">
                 <thead>
-                    <tr><th>STT</th><th>Mã mặt hàng</th><th>Đơn hàng</th><th>Mặt hàng</th><th>Loại</th><th>Đơn giá</th><th>SL</th><th>Thành tiền</th><th>Ghi chú</th><th>Thao tác</th></tr>
+                    <tr><th scope="col">STT</th><th>Mã mặt hàng</th><th>Đơn hàng</th><th>Mặt hàng</th><th>Loại</th><th>Đơn giá</th><th>SL</th><th>Thành tiền</th><th>Ghi chú</th><th>Thao tác</th></tr>
                 </thead>
                 <tbody>
                     @forelse($items as $item)
                     <tr>
-                        <td>{{ $loop->iteration }}</td>
+                        <td>{{ $items->firstItem() + $loop->index }}</td>
                         <td>{{ $item->code ?? 'CT' . str_pad($item->id, 4, '0', STR_PAD_LEFT) }}</td>
                         <td><span class="text-dark">{{ $item->order?->code }}</span></td>
                         <td><strong>{{ $item->item_name }}</strong></td>

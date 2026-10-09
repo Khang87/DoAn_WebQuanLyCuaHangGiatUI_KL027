@@ -70,7 +70,8 @@
                         <i class="bi bi-water fs-4"></i>
                     </div>
                     <div>
-                         <h5 class="card-title mb-1">{{ $service->TenDichVu }}</h5>
+                        <span class="small text-muted">STT {{ $services->firstItem() + $loop->index }}</span>
+                        <h5 class="card-title mb-1">{{ $service->TenDichVu }}</h5>
                         <div class="d-flex gap-1 flex-wrap mt-1">
                             @if($service->loaiDichVu)
                                 <span class="badge bg-secondary-subtle text-secondary-emphasis border border-secondary px-2 py-1 rounded-pill text-xs">{{ $service->loaiDichVu->TenLoaiDichVu }}</span>

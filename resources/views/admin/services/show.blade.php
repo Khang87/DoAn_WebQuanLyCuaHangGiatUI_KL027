@@ -21,6 +21,7 @@
                     <table class="table table-hover align-middle mb-0">
                         <thead>
                             <tr>
+                                <th scope="col">STT</th>
                                 <th>Loại đồ giặt</th>
                                 <th>Đơn vị tính</th>
                                 <th>Đơn giá</th>
@@ -31,6 +32,7 @@
                         <tbody>
                             @foreach($service->bangGias as $pricing)
                                 <tr>
+                                    <td>{{ $loop->iteration }}</td>
                                     <td>{{ $pricing->loaiDoGiat?->TenLoaiDoGiat ?: '—' }}</td>
                                     <td>{{ $pricing->donViTinh?->KyHieu ?: $pricing->donViTinh?->TenDonViTinh ?: '—' }}</td>
                                     <td>{{ number_format((float) $pricing->DonGia, 0, ',', '.') }} VNĐ</td>

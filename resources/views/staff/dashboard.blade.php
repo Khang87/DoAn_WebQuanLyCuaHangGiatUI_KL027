@@ -95,6 +95,7 @@
                     <table class="table table-hover mb-0">
                         <thead>
                             <tr>
+                                <th scope="col">STT</th>
                                 <th>Mã đơn</th>
                                 <th>Khách hàng</th>
                                 <th>SĐT</th>
@@ -106,6 +107,7 @@
                         <tbody>
                             @forelse($processingOrders as $order)
                             <tr>
+                                <td>{{ $loop->iteration }}</td>
                                 <td><strong>{{ $order->MaDonHang }}</strong></td>
                                 <td>{{ $order->khachHang?->HoTen ?: '-' }}</td>
                                 <td>{{ $order->khachHang?->SoDienThoai ?: '-' }}</td>
@@ -127,7 +129,7 @@
                                 </td>
                             </tr>
                             @empty
-                            <tr><td colspan="6" class="text-center text-muted py-4">Không có đơn hàng cần xử lý</td></tr>
+                            <tr><td colspan="7" class="text-center text-muted py-4">Không có đơn hàng cần xử lý</td></tr>
                             @endforelse
                         </tbody>
                     </table>
@@ -151,6 +153,7 @@
                     <table class="table table-hover mb-0">
                         <thead>
                             <tr>
+                                <th scope="col">STT</th>
                                 <th>Khách hàng</th>
                                 <th>SĐT</th>
                                 <th>Địa chỉ</th>
@@ -162,6 +165,7 @@
                         <tbody>
                             @forelse($todaySchedule as $delivery)
                             <tr>
+                                <td>{{ $loop->iteration }}</td>
                                 <td>{{ $delivery->donHang?->khachHang?->HoTen ?: '-' }}</td>
                                 <td>{{ $delivery->donHang?->khachHang?->SoDienThoai ?: '-' }}</td>
                                 <td>{{ $delivery->DiaChi ?: 'Chưa có địa chỉ' }}</td>
@@ -191,7 +195,7 @@
                                 </td>
                             </tr>
                             @empty
-                            <tr><td colspan="6" class="text-center text-muted py-4">Không có lịch hôm nay</td></tr>
+                            <tr><td colspan="7" class="text-center text-muted py-4">Không có lịch hôm nay</td></tr>
                             @endforelse
                         </tbody>
                     </table>
@@ -212,6 +216,7 @@
                     <table class="table table-hover mb-0">
                         <thead>
                             <tr>
+                                <th scope="col">STT</th>
                                 <th>Khách hàng</th>
                                 <th>SĐT</th>
                                 <th>Ngày / Giờ</th>
@@ -222,6 +227,7 @@
                         <tbody>
                             @forelse($upcomingBookings as $booking)
                             <tr>
+                                <td>{{ $loop->iteration }}</td>
                                 <td>{{ $booking->khachHang?->HoTen ?: '-' }}</td>
                                 <td>{{ $booking->khachHang?->SoDienThoai ?: '-' }}</td>
                                 <td>
@@ -234,7 +240,7 @@
                                 </td>
                             </tr>
                             @empty
-                            <tr><td colspan="5" class="text-center text-muted py-4">Không có lịch hẹn sắp tới</td></tr>
+                            <tr><td colspan="6" class="text-center text-muted py-4">Không có lịch hẹn sắp tới</td></tr>
                             @endforelse
                         </tbody>
                     </table>

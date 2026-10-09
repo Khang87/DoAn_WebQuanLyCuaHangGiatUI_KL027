@@ -80,7 +80,7 @@
             <table class="table table-hover align-middle table-custom mb-0">
                 <thead>
                     <tr>
-                        <th>STT</th>
+                        <th scope="col">STT</th>
                         <th>Mã đánh giá</th>
                         <th>Ngày đánh giá</th>
                         <th>Mã đơn hàng</th>
@@ -94,7 +94,7 @@
                 <tbody>
                     @forelse($reviews as $review)
                     <tr>
-                        <td>{{ $loop->iteration }}</td>
+                        <td>{{ $reviews->firstItem() + $loop->index }}</td>
                         <td>{{ $review->code ?? 'DG' . str_pad((string) $review->DanhGiaID, 4, '0', STR_PAD_LEFT) }}</td>
                         <td>{{ $review->NgayDanhGia?->format('d/m/Y H:i') ?? '—' }}</td>
                         <td><span class="fw-semibold text-dark">{{ $review->donHang?->MaDonHang ?: '—' }}</span></td>

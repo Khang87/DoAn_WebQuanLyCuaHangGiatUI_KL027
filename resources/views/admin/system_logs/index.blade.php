@@ -149,6 +149,7 @@
             <table class="table table-hover align-middle mb-0">
                 <thead class="table-light">
                     <tr>
+                        <th scope="col">STT</th>
                         <th>Thời gian</th>
                         <th>Tài khoản</th>
                         <th>Hành động</th>
@@ -160,6 +161,7 @@
                 <tbody>
                     @forelse($logs as $log)
                         <tr>
+                            <td>{{ $logs->firstItem() + $loop->index }}</td>
                             <td class="text-nowrap px-3 py-2">
                                 @if($log->ThoiGian)
                                     <div class="fw-normal font-monospace">{{ $log->ThoiGian->format('d/m/Y') }}</div>
@@ -211,7 +213,7 @@
                             </td>
                         </tr>
                     @empty
-                        <tr><td colspan="6" class="text-center text-muted py-5">Chưa có nhật ký phù hợp với bộ lọc.</td></tr>
+                        <tr><td colspan="7" class="text-center text-muted py-5">Chưa có nhật ký phù hợp với bộ lọc.</td></tr>
                     @endforelse
                 </tbody>
             </table>

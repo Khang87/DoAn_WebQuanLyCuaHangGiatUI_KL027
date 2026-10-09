@@ -66,7 +66,7 @@
             <table class="table-custom mb-0">
                 <thead>
                     <tr>
-                        <th class="fw-bold text-dark">STT</th>
+                        <th scope="col" class="fw-bold text-dark">STT</th>
                         <th class="fw-bold text-dark">Tên / Email</th>
                         <th class="fw-bold text-dark">Phương thức đăng nhập</th>
                         <th class="fw-bold text-dark">Vai trò hiện tại</th>

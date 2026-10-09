@@ -16,6 +16,7 @@
         <table class="table table-hover align-middle mb-0">
             <thead>
                 <tr>
+                    <th scope="col">STT</th>
                     <th>Nhóm chức năng</th>
                     <th>Mã quyền</th>
                     <th>Tên quyền</th>
@@ -28,6 +29,7 @@
                 @forelse($permissions as $permission)
                     @php($module = \Illuminate\Support\Str::headline(strtolower(explode('_', $permission->MaQuyen)[0])))
                     <tr>
+                        <td>{{ $loop->iteration }}</td>
                         <td>{{ $module }}</td>
                         <td><code>{{ $permission->MaQuyen }}</code></td>
                         <td>{{ $permission->TenQuyen }}</td>
@@ -36,7 +38,7 @@
                         <td><span class="badge {{ $permission->TrangThai === 'Hoạt động' ? 'bg-success-subtle text-success border' : 'bg-secondary-subtle text-secondary border' }}">{{ $permission->TrangThai }}</span></td>
                     </tr>
                 @empty
-                    <tr><td colspan="6" class="text-center text-muted py-4">Chưa có quyền hạn.</td></tr>
+                    <tr><td colspan="7" class="text-center text-muted py-4">Chưa có quyền hạn.</td></tr>
                 @endforelse
             </tbody>
         </table>

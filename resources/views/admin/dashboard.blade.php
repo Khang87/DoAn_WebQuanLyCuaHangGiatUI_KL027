@@ -243,6 +243,7 @@
                     <table class="table-custom mb-0">
                         <thead>
                             <tr>
+                                <th scope="col">STT</th>
                                 <th>Mã đơn</th>
                                 <th>Khách hàng</th>
                                 <th>Nhân viên</th>
@@ -254,6 +255,7 @@
                         <tbody>
                             @forelse($recentOrders as $order)
                             <tr>
+                                <td>{{ $loop->iteration }}</td>
                                 <td><strong>{{ $order->MaDonHang }}</strong></td>
                                 <td>{{ $order->khachHang?->HoTen ?: '-' }}</td>
                                 <td>{{ $order->nhanVien?->HoTen ?: '-' }}</td>
@@ -262,7 +264,7 @@
                                 <td><a href="{{ route('orders.show', $order) }}" class="btn btn-order-action view" title="Xem"><i class="bi bi-eye"></i></a></td>
                             </tr>
                             @empty
-                            <tr><td colspan="6" class="text-center text-muted py-4">Chưa có đơn hàng</td></tr>
+                            <tr><td colspan="7" class="text-center text-muted py-4">Chưa có đơn hàng</td></tr>
                             @endforelse
                         </tbody>
                     </table>

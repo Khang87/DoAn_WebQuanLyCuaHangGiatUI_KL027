@@ -217,6 +217,7 @@
                         <table class="table table-hover detail-table align-middle mb-0" id="receivingItemsTable">
                             <thead>
                                 <tr>
+                                    <th scope="col">STT</th>
                                     <th>Dịch vụ</th>
                                     <th>Danh mục</th>
                                     <th>Loại đồ giặt</th>
@@ -244,6 +245,7 @@
                                             : '';
                                     @endphp
                                     <tr data-inspection-row>
+                                        <td data-row-number>{{ $loop->iteration }}</td>
                                         <td>
                                             <input type="hidden" name="items[{{ $index }}][ChiTietDonHangID]" value="{{ $inspectionItem['ChiTietDonHangID'] ?? '' }}">
                                             <select class="form-select form-select-sm" name="items[{{ $index }}][DichVuID]" data-inspection-service required>
@@ -330,6 +332,7 @@
                 </form>
                 <template id="receivingItemTemplate">
                     <tr data-inspection-row>
+                        <td data-row-number></td>
                         <td><input type="hidden" name="items[__INDEX__][ChiTietDonHangID]" value=""><select class="form-select form-select-sm" name="items[__INDEX__][DichVuID]" data-inspection-service required><option value="">Chọn dịch vụ</option>@foreach($services as $service)<option value="{{ $service->DichVuID }}">{{ $service->TenDichVu }}</option>@endforeach</select></td>
                         <td><select class="form-select form-select-sm" data-inspection-category><option value="">Chọn danh mục</option>@foreach($garmentCategories as $category)<option value="{{ $category->DanhMucID }}">{{ $category->TenDanhMuc }}</option>@endforeach</select></td>
                         <td><select class="form-select form-select-sm" name="items[__INDEX__][LoaiDoGiatID]" data-inspection-garment required><option value="">Chọn loại đồ</option>@foreach($garments as $garment)<option value="{{ $garment->LoaiDoGiatID }}" data-category-id="{{ $garment->DanhMucID }}">{{ $garment->TenLoaiDoGiat }}</option>@endforeach</select></td>
@@ -355,6 +358,7 @@
                         <table class="table table-hover detail-table">
                             <thead>
                                 <tr>
+                                    <th scope="col">STT</th>
                                     <th>Dịch vụ</th>
                                     <th>Loại đồ giặt</th>
                                     <th class="text-end">Đơn giá</th>
@@ -366,6 +370,7 @@
                             <tbody>
                                 @foreach($order->chiTietDonHangs as $item)
                                     <tr>
+                                        <td>{{ $loop->iteration }}</td>
                                         <td class="fw-semibold">{{ $item->dichVu?->TenDichVu ?: '—' }}</td>
                                         <td>{{ $item->loaiDoGiat?->TenLoaiDoGiat ?: '—' }}</td>
                                         <td class="text-end"><x-admin.detail.money :value="$item->DonGia" /></td>
@@ -676,6 +681,12 @@
             }
         }
 
+        function renumberInspectionRows() {
+            inspectionTable.querySelectorAll('[data-inspection-row]').forEach(function(row, index) {
+                row.querySelector('[data-row-number]').textContent = index + 1;
+            });
+        }
+
         function bindInspectionRow(row) {
             row.querySelector('[data-inspection-category]')?.addEventListener('change', function() {
                 row.querySelector('[data-inspection-garment]').value = '';
@@ -692,6 +703,7 @@
             });
             row.querySelector('[data-remove-inspection-row]')?.addEventListener('click', function() {
                 row.remove();
+                renumberInspectionRows();
             });
             syncInspectionRow(row);
         }
@@ -709,6 +721,7 @@
             const row = template.content.firstElementChild;
             inspectionTable.appendChild(row);
             bindInspectionRow(row);
+            renumberInspectionRows();
         });
 
         document.querySelectorAll('[data-payment-link]').forEach(function(link) {

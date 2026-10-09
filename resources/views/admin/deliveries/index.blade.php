@@ -42,7 +42,7 @@
             <table class="table table-hover align-middle table-custom">
                 <thead class="table-light">
                     <tr>
-                        <th>STT</th>
+                        <th scope="col">STT</th>
                         <th>Mã giao nhận</th>
                         <th>Mã đơn hàng</th>
                         <th>Khách hàng</th>
@@ -57,7 +57,7 @@
                 <tbody>
                     @forelse($deliveries as $delivery)
                     <tr>
-                        <td>{{ $loop->iteration }}</td>
+                        <td>{{ $deliveries->firstItem() + $loop->index }}</td>
                         <td><strong>{{ $delivery->MaGiaoNhan ?: ('GH' . str_pad($delivery->GiaoNhanID, 3, '0', STR_PAD_LEFT)) }}</strong></td>
                         <td><span class="text-dark">{{ $delivery->donHang?->MaDonHang ?: '—' }}</span></td>
                         <td>{{ $delivery->donHang?->khachHang?->HoTen ?: $delivery->nhanVien?->HoTen ?: '—' }}</td>

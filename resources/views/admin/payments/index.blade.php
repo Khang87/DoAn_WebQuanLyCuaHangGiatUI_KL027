@@ -60,6 +60,7 @@
             <table class="table-custom mb-0">
                 <thead>
                     <tr>
+                        <th scope="col">STT</th>
                         <th class="fw-semibold text-dark">Mã thanh toán</th>
                         <th class="fw-semibold text-dark">Mã đơn hàng</th>
                         <th class="fw-semibold text-dark">Khách hàng</th>
@@ -73,6 +74,7 @@
                 <tbody>
                     @forelse($payments as $payment)
                     <tr>
+                        <td>{{ $payments->firstItem() + $loop->index }}</td>
                         <td><strong>TT{{ $payment->ThanhToanID }}</strong></td>
                         <td><span class="text-dark">{{ $payment->donHang?->MaDonHang ?: $payment->DonHangID }}</span></td>
                         <td>
@@ -125,7 +127,7 @@
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="8" class="text-center text-muted py-4">Chưa có dữ liệu nào</td>
+                        <td colspan="9" class="text-center text-muted py-4">Chưa có dữ liệu nào</td>
                     </tr>
                     @endempty
                 </tbody>

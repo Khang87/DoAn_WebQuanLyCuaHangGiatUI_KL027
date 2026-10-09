@@ -41,7 +41,7 @@
             <table class="table-custom mb-0">
                 <thead>
                     <tr>
-                        <th class="fw-bold text-dark">STT</th>
+                        <th scope="col" class="fw-bold text-dark">STT</th>
                         <th class="fw-bold text-dark">Tên loại đồ giặt</th>
                         <th class="fw-bold text-dark">Mô tả</th>
                         <th class="fw-bold text-dark">Trạng thái</th>
@@ -51,7 +51,7 @@
                 <tbody>
                     @forelse($categories as $category)
                     <tr>
-                        <td class="text-dark">{{ $loop->iteration }}</td>
+                        <td class="text-dark">{{ $categories->firstItem() + $loop->index }}</td>
                         <td class="text-dark">{{ $category->TenLoaiDoGiat }}</td>
                         <td class="text-dark">{{ $category->MoTa ?: '—' }}</td>
                         <td>
