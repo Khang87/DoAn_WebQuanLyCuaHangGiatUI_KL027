@@ -102,6 +102,26 @@ class OrderService
         ];
     }
 
+    /** Read-only inspection preview; conversion still rechecks prices under a lock. */
+    public function estimateBooking(Booking $booking, array $items, bool $usePoints): array
+    {
+        [, $subtotal] = $this->buildItems($items);
+        $customer = KhachHang::find($booking->KhachHangID);
+        $availablePoints = ($customer?->points() ?? 0)
+            + ($booking->DiemDaTru ? (int) $booking->DiemSuDung : 0);
+        $promotion = $booking->KhuyenMaiID ? KhuyenMai::find($booking->KhuyenMaiID) : null;
+        $warning = $promotion?->rejectionReasonForCustomer($customer, $subtotal);
+        if ($warning !== null) {
+            $promotion = null;
+        }
+
+        return [
+            ...$this->calculateAmounts($subtotal, $promotion, $usePoints ? $availablePoints : 0, $availablePoints,
+                (float) $booking->PickupDeliveryFee + (float) $booking->DeliveryFee),
+            'promotion_warning' => $warning,
+        ];
+    }
+
     /**
      * Create an order and delivery record from a validated booking snapshot.
      *

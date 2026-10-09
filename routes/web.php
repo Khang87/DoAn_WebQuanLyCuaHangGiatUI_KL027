@@ -103,6 +103,8 @@ Route::middleware(['auth', 'reject.customer'])->group(function () {
         ->whereNumber('order')
         ->middleware('permission:messages.view')
         ->name('admin.messages.updates');
+    Route::get('/admin/messages/support/{customer}/updates', [MessageController::class, 'supportUpdates'])
+        ->whereNumber('customer')->middleware('permission:messages.view')->name('admin.messages.support-updates');
     Route::post('/admin/messages', [MessageController::class, 'store'])
         ->middleware('permission:messages.create')
         ->name('admin.messages.store');
@@ -171,6 +173,8 @@ Route::middleware(['auth', 'reject.customer'])->group(function () {
     Route::get('bookings/{booking}/inspection', [BookingController::class, 'inspection'])
         ->middleware('permission:bookings.confirm')
         ->name('bookings.inspection');
+    Route::post('bookings/{booking}/estimate', [BookingController::class, 'estimate'])
+        ->whereNumber('booking')->middleware('permission:bookings.confirm')->name('bookings.estimate');
     Route::post('bookings/{booking}/confirm', [BookingController::class, 'confirm'])
         ->middleware('permission:bookings.confirm')
         ->name('bookings.confirm');
@@ -311,6 +315,7 @@ Route::get('/', function () {
 // Personal inbox is available to every role, including customers.
 Route::middleware(['auth', 'permission:notifications.view'])->group(function () {
     Route::get('notifications', [ThongBaoController::class, 'index'])->name('notifications.index');
+    Route::get('notifications/updates', [ThongBaoController::class, 'updates'])->name('notifications.updates');
     Route::get('notifications/{notification}', [ThongBaoController::class, 'show'])->whereNumber('notification')->name('notifications.show');
     Route::patch('notifications/{notification}/mark-read', [ThongBaoController::class, 'markAsRead'])->name('notifications.mark-read');
     Route::post('notifications/mark-all-read', [ThongBaoController::class, 'markAllAsRead'])->name('notifications.mark-all-read');
