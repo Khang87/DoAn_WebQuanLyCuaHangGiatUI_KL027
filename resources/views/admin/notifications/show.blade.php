@@ -68,6 +68,7 @@
                 <x-admin.detail.info-item label="Thời điểm đọc" :value="$notification->DaDoc ? $notification->ThoiGianGui?->format('d/m/Y H:i') : '—'" />
             </x-admin.detail.info-grid>
         </x-admin.detail.panel>
+        <a href="{{ route('notifications.index') }}" class="btn btn-outline-secondary mt-3"><i class="bi bi-arrow-left me-1"></i>Quay lại danh sách thông báo</a>
     </div>
 </div>
 @endsection

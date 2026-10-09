@@ -6,7 +6,7 @@ import {fileURLToPath} from 'node:url';
 import {setTimeout as delay} from 'node:timers/promises';
 import {openBrowser} from './browser.mjs';
 
-test('open conversation receives mobile PostgreSQL messages through real Laravel session', {timeout: 90000}, async () => {
+test('open conversation receives mobile PostgreSQL messages through real Laravel session', {timeout: 120000}, async () => {
     const cases=JSON.parse(readFileSync(process.env.WEB_E2E_RUNTIME+'/cases.json'));
     const runtime=process.env.WEB_E2E_RUNTIME+'/messages';mkdirSync(runtime,{mode:0o700});copyFileSync(process.env.WEB_E2E_RUNTIME+'/swal.js',runtime+'/swal.js');
     const b=await openBrowser(runtime,process.env.WEB_E2E_URL);
@@ -27,6 +27,45 @@ test('open conversation receives mobile PostgreSQL messages through real Laravel
         await b.evaluate(`window.dispatchEvent(new Event('online'))`);
         await b.waitFor(()=>b.responses.filter(r=>r.url.includes('/updates')).length>=3,'resync');
         assert.equal(await b.evaluate(`document.querySelectorAll('[data-message-id]').length`),1);
+        // Global inbox refreshes without replacing the document or exposing message HTML.
+        const notification=JSON.parse(execFileSync(process.env.PHP_BIN||'php',[fileURLToPath(new URL('./messages-state.php',import.meta.url)),'notification'],{timeout:30000}));
+        await delay(16000);
+        await b.waitFor(()=>b.evaluate(`document.querySelector('[data-notification-list]').textContent.includes('New mobile notification')`),'notification poll');
+        assert.equal(await b.evaluate(`document.querySelector('[data-notification-list]').querySelectorAll('img').length`),0);
+        assert.equal(b.responses.filter(r=>r.type==='Document').length,documents);
+        await b.navigate('/notifications/'+notification.id);
+        assert.equal(await b.evaluate(`document.querySelector('a[href$="/notifications"].btn')?.textContent.includes('Quay lại')`),true);
+        await b.navigate('/admin/messages?customer_id=1');
+        await b.waitFor(()=>b.evaluate(`document.querySelector('[data-message-status]').textContent==='Tự động cập nhật tin nhắn'`),'support sync');
+        assert.ok(await b.evaluate(`document.querySelector('h5.mb-1').textContent.includes('Local customer')`));
+        const posts=b.requests.filter(r=>r.method==='POST'&&r.url.endsWith('/admin/messages')).length;
+        await b.evaluate(`(()=>{const f=document.querySelector('[data-message-form]');f.querySelector('textarea').value='Unique support reply';f.requestSubmit();f.requestSubmit();})()`);
+        await b.waitFor(()=>b.evaluate(`document.querySelector('[data-message-updates]')?.textContent.includes('Unique support reply')`),'sent support reply');
+        assert.equal(b.requests.filter(r=>r.method==='POST'&&r.url.endsWith('/admin/messages')).length,posts+1);
+        const counts=JSON.parse(execFileSync(process.env.PHP_BIN||'php',[fileURLToPath(new URL('./messages-state.php',import.meta.url)),'support-count'],{timeout:30000}));
+        assert.equal(counts.count,1);
+        await b.navigate('/bookings/'+cases.store+'/inspection');
+        await b.waitFor(()=>b.evaluate(`document.querySelector('[data-estimate-total]')?.textContent.includes('VNĐ')`),'booking financial estimate');
+        assert.ok(await b.evaluate(`document.querySelector('[data-estimate-details]').textContent.includes('Phí giao nhận')`));
+        const fixture=action=>execFileSync(process.env.PHP_BIN||'php',[fileURLToPath(new URL('./messages-state.php',import.meta.url)),action],{timeout:30000});
+        fixture('dashboard-access');await b.navigate('/admin/dashboard');
+        const values=await b.evaluate(`[...document.querySelectorAll('.stat-value')].map(e=>e.textContent.trim())`);
+        assert.equal(values.length,6);assert.equal(values[3],'2');assert.equal(values[4],'2');assert.match(values[5],/^0[.,]0/);
+        fixture('dashboard-change');await b.navigate('/admin/dashboard');
+        const changed=await b.evaluate(`[...document.querySelectorAll('.stat-value')].map(e=>e.textContent.trim())`);
+        assert.equal(changed[4],'3');assert.match(changed[5],/^4[.,]0/);assert.deepEqual(changed.slice(0,4),values.slice(0,4));
+        await b.navigate('/payments');
+        assert.equal(await b.evaluate(`document.querySelector('table img.avatar-cover')?.src.endsWith('/assets/images/user_2.jpg')`),true);
+        await b.navigate('/orders/create');
+        await b.evaluate(`document.querySelector('#addItem').click()`);
+        assert.ok(await b.evaluate(`document.querySelector('#order-row-status').textContent.includes('dòng 2')`));
+        assert.equal(await b.evaluate(`document.activeElement===document.querySelector('#itemsTable tbody tr:last-child .item-service-category')`),true);
+        await b.evaluate(`(()=>{const row=document.querySelector('#itemsTable tbody tr');for(const [selector,value] of [['.item-service-category','1'],['.item-service','2']]){const field=row.querySelector(selector);field.value=value;field.dispatchEvent(new Event('change',{bubbles:true}));}})()`);
+        assert.ok(await b.evaluate(`document.querySelector('[data-price-warning]').textContent.includes('Chưa có bảng giá')`));
+        await b.evaluate(`(()=>{const row=document.querySelector('#itemsTable tbody tr');for(const [selector,value] of [['.item-service','1'],['.item-garment','1'],['.item-unit-value','2']]){const field=row.querySelector(selector);field.value=value;field.dispatchEvent(new Event('change',{bubbles:true}));}})()`);
+        assert.equal(await b.evaluate(`document.querySelector('.item-quantity').disabled`),false);
+        assert.equal(await b.evaluate(`document.querySelector('[data-price-warning]').textContent`),'');
+        fixture('dashboard-cleanup');
         assert.deepEqual(b.errors,[]);
     } finally {await b.close();}
 });
