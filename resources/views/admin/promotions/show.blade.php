@@ -79,6 +79,7 @@
                     <table class="table table-hover detail-table">
                         <thead>
                             <tr>
+                                <th scope="col">STT</th>
                                 <th>Mã đơn hàng</th>
                                 <th>Khách hàng</th>
                                 <th>Trạng thái</th>
@@ -93,6 +94,7 @@
                         <tbody>
                             @foreach($orders as $order)
                                 <tr>
+                                    <td>{{ $orders->firstItem() + $loop->index }}</td>
                                     <td class="fw-semibold">{{ $order->MaDonHang }}</td>
                                     <td>{{ $order->khachHang?->HoTen ?? '—' }}</td>
                                     <td>

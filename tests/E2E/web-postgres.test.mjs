@@ -104,6 +104,49 @@ test('browser → HTTP → PostgreSQL business flows with real session, CSRF and
             assert.equal(Number(saved.details[0].DonGia), 2500);
             assert.equal(Number(saved.orders[0].TongTien), 7500);
         });
+        await t.test('E2E-09: display row numbers remain continuous without rewriting submitted indexes', async () => {
+            const before = state('order', cases.legacy);
+            for (const [path, table, add, remove] of [
+                ['/orders/create', '#itemsTable', '#addItem', '.remove-item'],
+                [`/orders/${cases.legacy}/edit`, '#itemsTable', '#addItem', '.remove-item'],
+                [`/orders/${cases.legacy}`, '#receivingItemsTable', '#addInspectionItem', '[data-remove-inspection-row]'],
+            ]) {
+                await b.navigate(path);
+                const result = await b.evaluate(`(() => {
+                    const table=document.querySelector(${JSON.stringify(table)});
+                    const rows=()=>[...table.querySelectorAll('tbody tr')];
+                    const snapshot=()=>rows().map(row=>({
+                        number:Number(row.querySelector('[data-row-number]').textContent),
+                        names:[...row.querySelectorAll('[name]')].map(input=>input.name)
+                    }));
+                    const original=snapshot();
+                    const add=document.querySelector(${JSON.stringify(add)});
+                    add.click();add.click();
+                    const added=snapshot();
+                    rows()[0].querySelector(${JSON.stringify(remove)}).click();
+                    const afterFirst=snapshot();
+                    rows().at(-1).querySelector(${JSON.stringify(remove)}).click();
+                    return {original,added,afterFirst,afterLast:snapshot()};
+                })()`);
+                for (const rows of Object.values(result)) {
+                    assert.deepEqual(rows.map(row=>row.number), rows.map((_,i)=>i+1), path+' has no gaps');
+                }
+                assert.deepEqual(result.afterFirst.map(row=>row.names), result.added.slice(1).map(row=>row.names), 'Removing first row preserves remaining input names');
+                assert.deepEqual(result.afterLast.map(row=>row.names), result.afterFirst.slice(0,-1).map(row=>row.names), 'Removing last row preserves input names');
+                const indexes=result.added.map(row=>row.names[0].match(/^items\[(\d+)\]/)[1]);
+                for (const width of [320,768,1024,1440]) {
+                    await b.command('Emulation.setDeviceMetricsOverride',{width,height:900,deviceScaleFactor:1,mobile:false});
+                    assert.equal(await b.evaluate(`(() => {
+                        const table=document.querySelector(${JSON.stringify(table)});
+                        const wrapper=table.closest('.table-responsive');
+                        return wrapper.clientWidth<=innerWidth && [...table.querySelectorAll('tbody tr')].every((row,i)=>Number(row.querySelector('[data-row-number]').textContent)===i+1);
+                    })()`),true,path+' preserves table numbering at '+width+'px');
+                }
+                await b.command('Emulation.clearDeviceMetricsOverride');
+                assert.equal(new Set(indexes).size,indexes.length,'New item input indexes remain unique');
+            }
+            assert.deepEqual(state('order',cases.legacy),before,'Display-only edits never write PostgreSQL');
+        });
         await t.test('E2E-07: voucher then points leave both delivery fees payable', async () => {
             const {before, saved} = await inspect('voucher', {measurement:'10',points:true});
             const o=saved.orders[0];

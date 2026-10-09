@@ -149,3 +149,12 @@ E2E checkpoint evidence: all three jobs passed on 65a09a6 in run 37734324447; fi
 - [ ] Push PR, wait for exact-head CI/build/audits and Vercel, merge and sync clean main.
 - [x] Production-directed list slice: remove proven-unused orders index reads, preserve filters/pagination/row values and settled controls; service budget <=5, HTTP fixture <=10 queries.
 - [x] Record production log evidence and limits; do not claim frontend deferral fixes 8–16 second server processing or infer actual regions solely from deployment metadata.
+
+## Continuous display row numbers — 2026-10-09
+
+- [x] Read relevant UI/review skills and inspect existing tables, cards and pagination.
+- [x] Record exact customer exception, pagination and form-index constraints in tasks/plan.md.
+- [x] Apply display-only numbering and correct empty-state colspans.
+- [x] Verify first/middle/last page, sparse collection keys and customer exception with rendered HTML.
+- [x] Verify dynamic form numbering, existing business E2E and query budgets.
+- [ ] Run required CI, push/merge, confirm post-merge CI and production SHA; retain verification evidence in PR.

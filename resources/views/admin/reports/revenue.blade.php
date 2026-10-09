@@ -38,6 +38,7 @@
             <table class="table-custom mb-0">
                 <thead>
                     <tr>
+                        <th scope="col">STT</th>
                         <th>Tháng</th>
                         <th class="text-end">Doanh thu</th>
                     </tr>
@@ -45,6 +46,7 @@
                 <tbody>
                     @foreach($revenueData as $item)
                     <tr>
+                        <td>{{ $loop->iteration }}</td>
                         <td>{{ \Carbon\Carbon::parse($item['period'])->format('m/Y') }}</td>
                         <td class="text-end fw-semibold text-primary">{{ number_format($item['total']) }} VNĐ</td>
                     </tr>

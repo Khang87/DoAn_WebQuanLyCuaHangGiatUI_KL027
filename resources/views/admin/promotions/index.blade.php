@@ -55,6 +55,7 @@
             <table class="table-custom mb-0">
                 <thead>
                     <tr>
+                        <th scope="col">STT</th>
                         <th class="fw-bold text-dark">ID</th>
                         <th class="fw-bold text-dark">Tên chương trình</th>
                         <th class="fw-bold text-dark">Mã khuyến mãi</th>
@@ -70,6 +71,7 @@
                         $isExpired = $promotion->NgayKetThuc && $promotion->NgayKetThuc->lt(today());
                     @endphp
                     <tr>
+                        <td>{{ $promotions->firstItem() + $loop->index }}</td>
                         <td><strong>{{ $promotion->KhuyenMaiID }}</strong></td>
                         <td><strong>{{ $promotion->TenKhuyenMai ?: '-' }}</strong></td>
                         <td>{{ $promotion->MaKhuyenMai ?: '-' }}</td>
@@ -107,7 +109,7 @@
                      </tr>
                      @empty
                     <tr>
-                        <td colspan="7" class="text-center text-muted py-4">Chưa có dữ liệu nào</td>
+                        <td colspan="8" class="text-center text-muted py-4">Chưa có dữ liệu nào</td>
                     </tr>
                     @endempty
                 </tbody>

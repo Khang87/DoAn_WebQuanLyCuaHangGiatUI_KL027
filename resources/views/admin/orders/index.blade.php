@@ -51,6 +51,7 @@
             <table class="table-custom mb-0">
                 <thead>
                     <tr>
+                        <th scope="col">STT</th>
                         <th class="fw-bold text-dark">Mã đơn hàng</th>
                         <th class="fw-bold text-dark">Khách hàng</th>
                         <th class="fw-bold text-dark">Số điện thoại</th>
@@ -66,6 +67,7 @@
                 <tbody>
                     @forelse($orders as $order)
                     <tr>
+                        <td>{{ $orders->firstItem() + $loop->index }}</td>
                         <td class="text-dark">{{ $order->MaDonHang }}</td>
                         <td>
                             <div class="d-flex align-items-center">
@@ -134,7 +136,7 @@
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="10" class="text-center text-muted py-4">Chưa có đơn hàng nào</td>
+                        <td colspan="11" class="text-center text-muted py-4">Chưa có đơn hàng nào</td>
                     </tr>
                     @endforelse
                 </tbody>

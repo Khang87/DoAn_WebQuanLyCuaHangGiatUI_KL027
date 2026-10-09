@@ -27,6 +27,7 @@
                     <table class="table table-hover detail-table">
                         <thead>
                             <tr>
+                                <th scope="col">STT</th>
                                 <th>Mã loại đồ</th>
                                 <th>Tên loại đồ</th>
                                 <th>Mô tả</th>
@@ -36,6 +37,7 @@
                         <tbody>
                             @foreach($garments as $garment)
                                 <tr>
+                                    <td>{{ $garments->firstItem() + $loop->index }}</td>
                                     <td>{{ 'LD'.str_pad((string) $garment->LoaiDoGiatID, 4, '0', STR_PAD_LEFT) }}</td>
                                     <td class="fw-semibold">{{ $garment->TenLoaiDoGiat }}</td>
                                     <td>{{ $garment->MoTa ?: '—' }}</td>

@@ -28,6 +28,7 @@
                     <table class="table table-hover detail-table">
                         <thead>
                             <tr>
+                                <th scope="col">STT</th>
                                 <th>Tên dịch vụ</th>
                                 <th>Loại</th>
                                 <th class="text-end">Thời gian dự kiến</th>
@@ -37,6 +38,7 @@
                         <tbody>
                             @foreach($services as $service)
                                 <tr>
+                                    <td>{{ $services->firstItem() + $loop->index }}</td>
                                     <td>
                                         <span class="fw-semibold">
                                             {{ $service->TenDichVu }}

@@ -15,12 +15,13 @@
         <div class="table-responsive">
             <table class="table-custom mb-0">
                 <thead>
-                    <tr><th>Trạng thái</th><th class="text-end">Số lượng</th><th class="text-end">Tỷ lệ</th></tr>
+                    <tr><th scope="col">STT</th><th>Trạng thái</th><th class="text-end">Số lượng</th><th class="text-end">Tỷ lệ</th></tr>
                 </thead>
                 <tbody>
 
                     @foreach($orderStatusCounts as $status => $count)
                     <tr>
+                        <td>{{ $loop->iteration }}</td>
                         <td>
                             <x-admin.status-badge :status="$status" :enum="\App\Enums\OrderStatus::class" />
                         </td>
@@ -45,11 +46,12 @@
         <div class="table-responsive">
             <table class="table-custom mb-0">
                 <thead>
-                    <tr><th>Dịch vụ</th><th class="text-end">Số đơn</th></tr>
+                    <tr><th scope="col">STT</th><th>Dịch vụ</th><th class="text-end">Số đơn</th></tr>
                 </thead>
                 <tbody>
                     @foreach($serviceCounts as $serviceId => $count)
                     <tr>
+                        <td>{{ $loop->iteration }}</td>
                         <td>{{ $services->firstWhere('id', $serviceId)?->name ?? 'Không rõ' }}</td>
                         <td class="text-end fw-semibold">{{ number_format($count) }}</td>
                     </tr>

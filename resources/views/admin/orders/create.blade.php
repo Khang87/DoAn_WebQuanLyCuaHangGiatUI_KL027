@@ -73,7 +73,7 @@
                     </div>
                     <div class="table-responsive">
                         <table class="table table-bordered align-middle mb-2" id="itemsTable">
-                            <thead class="table-light"><tr><th>Danh mục dịch vụ</th><th>Dịch vụ <span class="text-danger">*</span></th><th>Loại đồ giặt <span class="text-danger">*</span></th><th>ĐVT</th><th>Số lượng</th><th>Khối lượng (kg)</th><th>Đơn giá</th><th>Thành tiền</th><th>Tình trạng trước khi giặt <span class="text-danger">*</span></th><th></th></tr></thead>
+                            <thead class="table-light"><tr><th scope="col">STT</th><th>Danh mục dịch vụ</th><th>Dịch vụ <span class="text-danger">*</span></th><th>Loại đồ giặt <span class="text-danger">*</span></th><th>ĐVT</th><th>Số lượng</th><th>Khối lượng (kg)</th><th>Đơn giá</th><th>Thành tiền</th><th>Tình trạng trước khi giặt <span class="text-danger">*</span></th><th></th></tr></thead>
                             <tbody>
                                 @foreach($items as $index => $item)
                                     @php
@@ -84,6 +84,7 @@
                                             ->all();
                                     @endphp
                                     <tr>
+                                        <td data-row-number>{{ $loop->iteration }}</td>
                                         <td><select class="form-select item-service-category" name="items[{{ $index }}][service_category_id]"><option value="">Danh mục</option>@foreach($serviceCategories as $category)<option value="{{ $category->LoaiDichVuID }}" @selected(($item['service_category_id'] ?? '') == $category->LoaiDichVuID)>{{ $category->TenLoaiDichVu }}</option>@endforeach</select></td>
                                         <td><select class="form-select item-service" name="items[{{ $index }}][DichVuID]" required><option value="">Chọn dịch vụ</option>@foreach($services as $service)<option value="{{ $service->DichVuID }}" data-category-id="{{ $service->LoaiDichVuID }}" @selected(($item['DichVuID'] ?? $item['service_id'] ?? '') == $service->DichVuID)>{{ $service->TenDichVu }}</option>@endforeach</select></td>
                                         <td><select class="form-select item-garment" name="items[{{ $index }}][LoaiDoGiatID]" required><option value="">Chọn loại đồ</option>@foreach($garmentOptions->whereIn('LoaiDoGiatID', $availableGarmentIds) as $garment)<option value="{{ $garment->LoaiDoGiatID }}" @selected(($item['LoaiDoGiatID'] ?? $item['garment_id'] ?? '') == $garment->LoaiDoGiatID)>{{ $garment->TenLoaiDoGiat }}</option>@endforeach</select></td>
@@ -269,7 +270,10 @@
 
     function updateTotals() {
         let subtotal = 0;
-        table.querySelectorAll('tbody tr').forEach(row => { subtotal += updateRow(row); });
+        table.querySelectorAll('tbody tr').forEach((row, index) => {
+            row.querySelector('[data-row-number]').textContent = index + 1;
+            subtotal += updateRow(row);
+        });
 
         const promoDiscount = promotionDiscountFor(subtotal);
         const remaining = Math.max(0, subtotal - promoDiscount);
@@ -341,7 +345,7 @@
     document.getElementById('addItem').addEventListener('click', () => {
         const index = nextItemIndex++;
         const row = table.tBodies[0].insertRow();
-        row.innerHTML = `<td><select class="form-select item-service-category" name="items[${index}][service_category_id]"><option value="">Danh mục</option>${Object.entries(serviceCategories).map(([id,name]) => `<option value="${id}">${name}</option>`).join('')}</select></td><td><select class="form-select item-service" name="items[${index}][DichVuID]" required><option value="">Chọn dịch vụ</option>${Object.entries(services).map(([id,service]) => `<option value="${id}" data-category-id="${service.category_id}">${service.name}</option>`).join('')}</select></td><td><select class="form-select item-garment" name="items[${index}][LoaiDoGiatID]" required><option value="">Chọn loại đồ</option></select></td><td><select class="form-select item-unit-value" name="items[${index}][DonViTinhID]" required aria-label="Đơn vị tính"><option value="">Chọn ĐVT</option></select></td><td><input type="number" class="form-control item-quantity" name="items[${index}][SoLuong]" value="1" min="1" required></td><td><input type="number" step="0.01" class="form-control item-weight" name="items[${index}][KhoiLuong]" value="0" min="0"></td><td><input type="number" class="form-control item-price" name="items[${index}][DonGia]" value="0" min="0" step="0.01" readonly aria-label="Đơn giá theo bảng giá"></td><td><input type="number" class="form-control item-subtotal" value="0" readonly></td><td><input type="text" class="form-control" name="items[${index}][TinhTrangTruocKhiGiat]" maxlength="320" required aria-label="Tình trạng trước khi giặt"></td><td><button type="button" class="btn btn-sm btn-outline-danger remove-item" title="Xóa mặt hàng"><i class="bi bi-trash"></i></button></td>`;
+        row.innerHTML = `<td data-row-number></td><td><select class="form-select item-service-category" name="items[${index}][service_category_id]"><option value="">Danh mục</option>${Object.entries(serviceCategories).map(([id,name]) => `<option value="${id}">${name}</option>`).join('')}</select></td><td><select class="form-select item-service" name="items[${index}][DichVuID]" required><option value="">Chọn dịch vụ</option>${Object.entries(services).map(([id,service]) => `<option value="${id}" data-category-id="${service.category_id}">${service.name}</option>`).join('')}</select></td><td><select class="form-select item-garment" name="items[${index}][LoaiDoGiatID]" required><option value="">Chọn loại đồ</option></select></td><td><select class="form-select item-unit-value" name="items[${index}][DonViTinhID]" required aria-label="Đơn vị tính"><option value="">Chọn ĐVT</option></select></td><td><input type="number" class="form-control item-quantity" name="items[${index}][SoLuong]" value="1" min="1" required></td><td><input type="number" step="0.01" class="form-control item-weight" name="items[${index}][KhoiLuong]" value="0" min="0"></td><td><input type="number" class="form-control item-price" name="items[${index}][DonGia]" value="0" min="0" step="0.01" readonly aria-label="Đơn giá theo bảng giá"></td><td><input type="number" class="form-control item-subtotal" value="0" readonly></td><td><input type="text" class="form-control" name="items[${index}][TinhTrangTruocKhiGiat]" maxlength="320" required aria-label="Tình trạng trước khi giặt"></td><td><button type="button" class="btn btn-sm btn-outline-danger remove-item" title="Xóa mặt hàng"><i class="bi bi-trash"></i></button></td>`;
         syncGarmentOptions(row);
         updateRowState(row);
         updateTotals();

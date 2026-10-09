@@ -15,12 +15,11 @@
         <div class="table-responsive">
             <table class="table-custom mb-0">
                 <thead>
-                    <tr><th>#</th><th>Ho ten</th><th>Email</th><th>SDT</th><th>Diem</th><th>So don</th><th>Tong chi tieu</th></tr>
+                    <tr><th>Ho ten</th><th>Email</th><th>SDT</th><th>Diem</th><th>So don</th><th>Tong chi tieu</th></tr>
                 </thead>
                 <tbody>
-                    @forelse($topCustomers as $index => $item)
+                    @forelse($topCustomers as $item)
                     <tr>
-                        <td>{{ $index + 1 }}</td>
                         <td>
                             <strong>{{ $item->customer?->name }}</strong>
                         </td>
@@ -31,7 +30,7 @@
                         <td><strong class="text-primary">{{ number_format($item->total_spent) }} VND</strong></td>
                     </tr>
                     @empty
-                    <tr><td colspan="7" class="text-center text-muted py-4">Chua du lieu khach hang</td></tr>
+                    <tr><td colspan="6" class="text-center text-muted py-4">Chua du lieu khach hang</td></tr>
                     @endforelse
                 </tbody>
             </table>

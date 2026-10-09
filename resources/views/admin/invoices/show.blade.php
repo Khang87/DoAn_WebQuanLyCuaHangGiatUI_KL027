@@ -48,7 +48,7 @@
                     <table class="table table-hover detail-table">
                         <thead>
                             <tr>
-                                <th>STT</th>
+                                <th scope="col">STT</th>
                                 <th>Tên dịch vụ / Loại đồ</th>
                                 <th class="text-end">Đơn vị tính</th>
                                 <th class="text-end">Số lượng / Khối lượng</th>
@@ -57,9 +57,9 @@
                             </tr>
                         </thead>
                         <tbody>
-                            @foreach(($order?->chiTietDonHangs ?? []) as $index => $item)
+                            @foreach(($order?->chiTietDonHangs ?? []) as $item)
                                 <tr>
-                                    <td>{{ $index + 1 }}</td>
+                                    <td>{{ $loop->iteration }}</td>
                                     <td class="fw-semibold">{{ $item->dichVu?->TenDichVu ?: ($item->loaiDoGiat?->TenLoaiDoGiat ?: '—') }}</td>
                                     <td class="text-end">{{ $item->donViTinh?->KyHieu ?? $item->donViTinh?->TenDonViTinh ?? '—' }}</td>
                                     <td class="text-end">{{ format_quantity_weight($item->SoLuong, $item->KhoiLuong) ?: '—' }}</td>

@@ -46,6 +46,7 @@
             <table class="table-custom mb-0">
                 <thead>
                     <tr>
+                        <th scope="col">STT</th>
                         <th>Mã hóa đơn</th>
                         <th>Khách hàng</th>
                         <th>Mã đơn hàng</th>
@@ -61,6 +62,7 @@
                 <tbody>
                     @forelse($invoices as $invoice)
                     <tr>
+                        <td>{{ $invoices->firstItem() + $loop->index }}</td>
                         <td><strong>{{ $invoice->MaHoaDon }}</strong></td>
                         <td>{{ $invoice->donHang?->khachHang?->HoTen ?: '-' }}</td>
                         <td>
@@ -117,7 +119,7 @@
                         </td>
                     </tr>
                     @empty
-                    <tr><td colspan="10" class="text-center text-muted py-4">Chưa có hóa đơn nào</td></tr>
+                    <tr><td colspan="11" class="text-center text-muted py-4">Chưa có hóa đơn nào</td></tr>
                     @endforelse
                 </tbody>
             </table>

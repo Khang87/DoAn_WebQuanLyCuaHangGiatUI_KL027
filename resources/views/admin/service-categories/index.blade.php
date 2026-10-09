@@ -50,7 +50,7 @@
             <table class="table-custom mb-0">
                 <thead>
                     <tr>
-                        <th class="fw-bold text-dark">STT</th>
+                        <th scope="col" class="fw-bold text-dark">STT</th>
                         <th class="fw-bold text-dark">Mã danh mục</th>
                         <th class="fw-bold text-dark">Tên danh mục</th>
                         <th class="fw-bold text-dark">Mô tả</th>

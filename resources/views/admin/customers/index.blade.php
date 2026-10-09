@@ -42,7 +42,6 @@
             <table class="table-custom mb-0">
                 <thead>
                     <tr>
-                        <th class="fw-bold text-dark">STT</th>
                         <th class="fw-bold text-dark">ID khách hàng</th>
                         <th class="fw-bold text-dark">Khách hàng</th>
                         <th class="fw-bold text-dark">Email</th>
@@ -56,7 +55,6 @@
                 <tbody>
                     @forelse($customers as $customer)
                     <tr>
-                        <td class="text-dark">{{ $loop->iteration }}</td>
                         <td class="text-dark">{{ $customer->KhachHangID }}</td>
                         <td>
                             <div class="fw-semibold text-dark">{{ $customer->HoTen }}</div>
@@ -80,7 +78,7 @@
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="9" class="text-center text-muted py-4">Chưa có khách hàng nào</td>
+                        <td colspan="8" class="text-center text-muted py-4">Chưa có khách hàng nào</td>
                     </tr>
                     @endforelse
                 </tbody>

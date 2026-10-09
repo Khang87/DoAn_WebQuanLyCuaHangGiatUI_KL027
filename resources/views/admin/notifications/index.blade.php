@@ -49,6 +49,7 @@
                class="list-group-item notification-row px-0 d-flex gap-3 {{ $notification->DaDoc ? 'is-read' : 'is-unread' }} notification-link">
                 <i class="bi bi-bell-fill fs-4 {{ $notification->DaDoc ? 'notification-icon-read' : 'notification-icon-unread' }}"></i>
                 <div class="flex-grow-1">
+                    <small class="text-muted d-block">STT {{ $notifications->firstItem() + $loop->index }}</small>
                     <div class="notification-title">{{ $notification->TieuDe }}</div>
                     <small class="notification-body d-block">{{ Str::limit($notification->NoiDung, 80) }}</small>
                 </div>

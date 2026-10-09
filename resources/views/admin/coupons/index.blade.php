@@ -50,11 +50,12 @@
         <div class="table-responsive">
             <table class="table table-hover mb-0">
                 <thead>
-                    <tr><th>ID</th><th>Mã coupon</th><th>Chương trình</th><th>Loại giảm</th><th>Giá trị</th><th>HSD</th><th>SL dùng</th><th>Trạng thái</th><th>Thao tác</th></tr>
+                    <tr><th scope="col">STT</th><th>ID</th><th>Mã coupon</th><th>Chương trình</th><th>Loại giảm</th><th>Giá trị</th><th>HSD</th><th>SL dùng</th><th>Trạng thái</th><th>Thao tác</th></tr>
                 </thead>
                 <tbody>
                     @forelse($coupons as $coupon)
                     <tr>
+                        <td>{{ $coupons->firstItem() + $loop->index }}</td>
                         <td>{{ $coupon->KhuyenMaiID }}</td>
                         <td><strong>{{ $coupon->code }}</strong></td>
                         <td>{{ $coupon->TenKhuyenMai }}</td>
@@ -83,7 +84,7 @@
                         </td>
                     </tr>
                     @empty
-                    <tr><td colspan="9" class="text-center text-muted py-4">Chưa có mã giảm giá</td></tr>
+                    <tr><td colspan="10" class="text-center text-muted py-4">Chưa có mã giảm giá</td></tr>
             @endforelse
             </tbody>
         </table>

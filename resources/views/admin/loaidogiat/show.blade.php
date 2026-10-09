@@ -24,7 +24,7 @@
                     <table class="table-custom mb-0">
                         <thead>
                             <tr>
-                                <th>STT</th>
+                                <th scope="col">STT</th>
                                 <th>Dịch vụ</th>
                                 <th>Đơn vị tính</th>
                                 <th>Đơn giá</th>
