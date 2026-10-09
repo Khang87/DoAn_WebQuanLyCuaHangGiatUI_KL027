@@ -285,10 +285,10 @@ class RemainingInspectionCasesTest extends TestCase
         $order = DonHang::create(['MaDonHang' => 'LIFECYCLE', 'KhachHangID' => 9, 'NhanVienID' => 1, 'TrangThai' => OrderStatus::Received->value]);
         $before = $this->snapshot();
         if ($interface === 'web') {
-            $this->patch(route('orders.update-status',$order),['TrangThai' => $status])->assertSessionHasErrors('TrangThai');
+            $this->patch(route('orders.update-status', $order), ['TrangThai' => $status])->assertSessionHasErrors('TrangThai');
         } else {
-            $this->patchJson(route('api.v1.orders.status',$order),['status' => $status])->assertUnprocessable();
+            $this->patchJson(route('api.v1.orders.status', $order), ['status' => $status])->assertUnprocessable();
         }
-        $this->assertSame($before,$this->snapshot());
+        $this->assertSame($before, $this->snapshot());
     }
 }
