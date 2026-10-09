@@ -1,5 +1,6 @@
 -- Supabase PostgreSQL live schema snapshot.
--- Table columns verified via read-only pg_catalog queries on 2026-10-07.
+-- Public base-table columns and constraints verified read-only on 2026-10-09.
+-- Scope: 31 public base tables; views, indexes, policies and grants are not a full restore dump.
 -- Schema only: no table rows. This local reference was not executed against Supabase.
 --
 -- Application contract verified against Live QLGiatUi on 2026-10-07:
@@ -349,7 +350,9 @@ CREATE TABLE IF NOT EXISTS "public"."ThongBao" (
     "TieuDe" character varying(200) NOT NULL,
     "NoiDung" character varying(1000) NOT NULL,
     "ThoiGianGui" timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    "DaDoc" boolean DEFAULT false NOT NULL
+    "DaDoc" boolean DEFAULT false NOT NULL,
+    "TinNhanID" integer,
+    "BookingID" integer
 );
 
 CREATE TABLE IF NOT EXISTS "public"."TinNhan" (
@@ -392,6 +395,24 @@ CREATE TABLE IF NOT EXISTS "public"."sessions" (
     "user_agent" text,
     "payload" text NOT NULL,
     "last_activity" integer NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS "public"."delivery_fee_quote_attempts" (
+    "id" uuid DEFAULT gen_random_uuid() NOT NULL,
+    "auth_user_id" uuid NOT NULL,
+    "created_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS "public"."delivery_fee_quotes" (
+    "id" uuid DEFAULT gen_random_uuid() NOT NULL,
+    "auth_user_id" uuid NOT NULL,
+    "pickup_address_hash" text,
+    "delivery_address_hash" text,
+    "pickup_distance_meters" integer DEFAULT 0 NOT NULL,
+    "delivery_distance_meters" integer DEFAULT 0 NOT NULL,
+    "expires_at" timestamp with time zone NOT NULL,
+    "consumed_booking_id" integer,
+    "created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 
 ALTER TABLE ONLY "public"."BangGia" ADD CONSTRAINT "BangGia_DichVuID_fkey" FOREIGN KEY ("DichVuID") REFERENCES "DichVu"("DichVuID");
@@ -538,6 +559,14 @@ ALTER TABLE ONLY "public"."khachhang_diachi" ADD CONSTRAINT "khachhang_diachi_kh
 ALTER TABLE ONLY "public"."khachhang_diachi" ADD CONSTRAINT "khachhang_diachi_pkey" PRIMARY KEY (diachiid);
 ALTER TABLE ONLY "public"."khachhang_diachi" ADD CONSTRAINT "khachhang_diachi_sodienthoai_check" CHECK (sodienthoai IS NULL OR length(btrim(sodienthoai::text)) >= 8);
 ALTER TABLE ONLY "public"."sessions" ADD CONSTRAINT "sessions_pkey" PRIMARY KEY (id);
+ALTER TABLE ONLY "public"."Booking" ADD CONSTRAINT "Booking_delivery_distance_nonnegative" CHECK ((("PickupDistanceMeters" >= 0) AND ("DeliveryDistanceMeters" >= 0)));
+ALTER TABLE ONLY "public"."Booking" ADD CONSTRAINT "Booking_delivery_fee_nonnegative" CHECK ((("PickupDeliveryFee" >= (0)::numeric) AND ("DeliveryFee" >= (0)::numeric)));
+ALTER TABLE ONLY "public"."ThongBao" ADD CONSTRAINT "ThongBao_BookingID_fkey" FOREIGN KEY ("BookingID") REFERENCES "Booking"("BookingID") ON DELETE SET NULL;
+ALTER TABLE ONLY "public"."ThongBao" ADD CONSTRAINT "ThongBao_TinNhanID_fkey" FOREIGN KEY ("TinNhanID") REFERENCES "TinNhan"("TinNhanID") ON DELETE SET NULL;
+ALTER TABLE ONLY "public"."delivery_fee_quote_attempts" ADD CONSTRAINT "delivery_fee_quote_attempts_pkey" PRIMARY KEY (id);
+ALTER TABLE ONLY "public"."delivery_fee_quotes" ADD CONSTRAINT "delivery_fee_quotes_consumed_booking_id_fkey" FOREIGN KEY (consumed_booking_id) REFERENCES "Booking"("BookingID") ON DELETE SET NULL;
+ALTER TABLE ONLY "public"."delivery_fee_quotes" ADD CONSTRAINT "delivery_fee_quotes_nonnegative_distances" CHECK (((pickup_distance_meters >= 0) AND (delivery_distance_meters >= 0)));
+ALTER TABLE ONLY "public"."delivery_fee_quotes" ADD CONSTRAINT "delivery_fee_quotes_pkey" PRIMARY KEY (id);
 
 CREATE INDEX "IX_Booking_KhachHangID" ON public."Booking" USING btree ("KhachHangID");
 CREATE UNIQUE INDEX booking_idempotency_key_unique_idx ON public."Booking" USING btree ("IdempotencyKey") WHERE ("IdempotencyKey" IS NOT NULL);
