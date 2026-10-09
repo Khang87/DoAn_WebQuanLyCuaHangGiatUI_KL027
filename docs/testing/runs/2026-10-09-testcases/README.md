@@ -58,3 +58,15 @@ PHP_BIN=php bash scripts/test-web-e2e.sh
 ```
 
 Lượt này PHP chạy trong image `laundry-verification-php:8.4` vì host không có PHP; PHPUnit container tắt mạng, source read-only, `.env` bị loại, APP_KEY thử nghiệm sinh riêng. Wrapper cho PostgreSQL/HTTP chỉ dùng network container/loopback do runner test tạo. `WEB_E2E_ASSET_ARCHIVE` trỏ bản archive SweetAlert2 official đã kiểm hash. Các lệnh tương đương ở trên dùng PHP đã cài trực tiếp. Log chỉ chứa fixture test, không có OTP/email/thông tin đăng nhập production.
+
+## Chuẩn hóa kết quả quan sát trong TESTCASES.md
+
+Sau main `a4d8d3e`, bảng test case được sửa cách diễn đạt: bước cuối chỉ đối chiếu, không chứa thao tác ghi nhận; Actual Result nêu giá trị trả về, lỗi, trạng thái hoặc dữ liệu quan sát được. Không chạy lại toàn bộ 335 ca để sửa văn phong và không đổi trạng thái. Manifest trên là bản ghi của lượt thực thi trước, không phải bản sao nội dung trình bày mới.
+
+Riêng TC-CUR-PRICE-01 chạy lại phép tra batch với hai giá ví dụ 15.000/40.000 VNĐ để xác nhận đúng số liệu: **1 test / 6 assertions đạt**, hai đơn giá trả đúng và bộ đếm đúng **1 truy vấn**. Chỉ đổi fixture test trong checkout thử, không sửa app. [JUnit](wording-pricing.xml), [kết quả](wording-pricing.txt), [patch fixture](wording-pricing.patch). Có thể áp dụng patch vào checkout test riêng rồi chạy:
+
+```bash
+php vendor/bin/phpunit --fail-on-warning --fail-on-risky --filter test_batch_lookup_preserves_unit_and_tuple_boundaries_in_one_query
+```
+
+Với test khác, số liệu cụ thể được đối chiếu từ assertions/log của lượt đã chạy. Các ca chỉ kiểm trực tiếp model, middleware hoặc dịch vụ không được mô tả thành thao tác UI/HTTP chưa thực hiện; Pending/Blocked vẫn ghi phần thiếu hoặc blocker.

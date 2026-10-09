@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites>
+  <testsuite name="/app/phpunit.xml" tests="1" assertions="6" errors="0" failures="0" skipped="0" time="0.136375">
+    <testsuite name="Feature" tests="1" assertions="6" errors="0" failures="0" skipped="0" time="0.136375">
+      <testsuite name="Tests\Feature\PricingServiceTest" file="/app/tests/Feature/PricingServiceTest.php" tests="1" assertions="6" errors="0" failures="0" skipped="0" time="0.136375">
+        <testcase name="test_batch_lookup_preserves_unit_and_tuple_boundaries_in_one_query" file="/app/tests/Feature/PricingServiceTest.php" line="66" class="Tests\Feature\PricingServiceTest" classname="Tests.Feature.PricingServiceTest" assertions="6" time="0.136375"/>
+      </testsuite>
+    </testsuite>
+  </testsuite>
+</testsuites>
