@@ -1,0 +1,24 @@
+--- a/tests/E2E/web-postgres.test.mjs
++++ b/tests/E2E/web-postgres.test.mjs
+@@ -177,7 +177,20 @@
+             }
+             assert.deepEqual(state('order',cases.paid),before,'Order money/details/invoice/payments/points/legs/audit unchanged');
+         });
+-        const unexpected=b.responses.filter(r=>r.status>=400 && !(r.status===403 && ((r.type==='Document' && new URL(r.url).pathname==='/reports') || (r.type==='Fetch' && new URL(r.url).pathname===`/orders/${cases.paid}`))));
++        await t.test('TC-SET-01: account menu has no removed settings link', async () => {
++            await b.navigate('/orders');
++            await b.waitFor(async()=>await b.evaluate('typeof bootstrap !== "undefined"'),'Bootstrap menu ready');
++            const menu=await b.evaluate(`(()=>{const button=document.querySelector('.user-profile-toggle');button.click();const menu=button.parentElement.querySelector('.dropdown-menu');return {open:menu.classList.contains('show'),links:Array.from(menu.querySelectorAll('a')).map(a=>({text:a.textContent,path:new URL(a.href).pathname}))}})()`);
++            assert.equal(menu.open,true);assert.ok(menu.links.some(a=>a.path==='/profile'));assert.ok(menu.links.every(a=>a.path!=='/settings'&&!a.text.includes('Cài đặt')));
++        });
++        await t.test('TC-SET-02: authenticated HTTP settings route is absent',async()=>{
++            const response=await b.evaluate(`fetch('/settings').then(async r=>({status:r.status,text:await r.text()}))`);assert.equal(response.status,404);
++        });
++        await t.test('TC-SET-03: authenticated profile HTML has no settings link',async()=>{
++            const response=await b.evaluate(`fetch('/profile').then(async r=>({status:r.status,text:await r.text()}))`);assert.equal(response.status,200);
++            assert.ok(!/href=["'][^"']*\/settings(?:["'?#/])/.test(response.text));
++        });
++        const unexpected=b.responses.filter(r=>r.status>=400 && !(r.status===404 && new URL(r.url).pathname==='/settings') && !(r.status===403 && ((r.type==='Document' && new URL(r.url).pathname==='/reports') || (r.type==='Fetch' && new URL(r.url).pathname===`/orders/${cases.paid}`))));
+         assert.deepEqual(unexpected.map(r=>({status:r.status,path:new URL(r.url).pathname})), [], 'No unexpected failed HTTP requests or core assets');
+         assert.deepEqual(b.errors, []);
+         console.log('Decorative external CSS excluded:', [...b.excluded].join(', '));

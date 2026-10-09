@@ -1,0 +1,3952 @@
+{
+  "source_sha": "b46c41824c5de4f46536084871677227f26a5e3c",
+  "executed_date": "2026-10-09",
+  "timezone": "Asia/Ho_Chi_Minh",
+  "environment": "isolated local fixtures; PHP 8.4.26; SQLite memory/PostgreSQL 17; Chromium 151; mail/cache mocks",
+  "counts": {
+    "Passed": 288,
+    "Pending": 44,
+    "Blocked": 3
+  },
+  "cases": [
+    {
+      "stt": 1,
+      "id": "TC-CUR-PRICE-01",
+      "status": "Passed",
+      "actual": "Batch tuple phân biệt đơn vị, chỉ một truy vấn.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\PricingServiceTest::test_batch_lookup_preserves_unit_and_tuple_boundaries_in_one_query"
+        }
+      ]
+    },
+    {
+      "stt": 2,
+      "id": "TC-CUR-PRICE-02",
+      "status": "Passed",
+      "actual": "Tuple không khớp service/loại đồ/đơn vị trả null và batch rỗng; giá NULL start/end hợp lệ được chọn trong fixture riêng.",
+      "evidence": [
+        {
+          "kind": "supplemental",
+          "test": "Tests\\Feature\\PricingServiceTest::test_documented_pricing_execution with data set \"TC-CUR-PRICE-02\""
+        }
+      ]
+    },
+    {
+      "stt": 3,
+      "id": "TC-CUR-PRICE-03",
+      "status": "Passed",
+      "actual": "Tuple không khớp service/loại đồ/đơn vị trả null và batch rỗng; giá NULL start/end hợp lệ được chọn trong fixture riêng.",
+      "evidence": [
+        {
+          "kind": "supplemental",
+          "test": "Tests\\Feature\\PricingServiceTest::test_documented_pricing_execution with data set \"TC-CUR-PRICE-03\""
+        }
+      ]
+    },
+    {
+      "stt": 4,
+      "id": "TC-CUR-PRICE-04",
+      "status": "Passed",
+      "actual": "Tuple không khớp service/loại đồ/đơn vị trả null và batch rỗng; giá NULL start/end hợp lệ được chọn trong fixture riêng.",
+      "evidence": [
+        {
+          "kind": "supplemental",
+          "test": "Tests\\Feature\\PricingServiceTest::test_documented_pricing_execution with data set \"TC-CUR-PRICE-04\""
+        }
+      ]
+    },
+    {
+      "stt": 5,
+      "id": "TC-CUR-PRICE-05",
+      "status": "Passed",
+      "actual": "Giá inactive bị loại khỏi lookup.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\PricingServiceTest::test_effective_dates_are_inclusive_and_future_expired_inactive_prices_are_excluded"
+        }
+      ]
+    },
+    {
+      "stt": 6,
+      "id": "TC-CUR-PRICE-06",
+      "status": "Passed",
+      "actual": "Giá tại ngày bắt đầu được chọn.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\PricingServiceTest::test_effective_dates_are_inclusive_and_future_expired_inactive_prices_are_excluded"
+        }
+      ]
+    },
+    {
+      "stt": 7,
+      "id": "TC-CUR-PRICE-07",
+      "status": "Passed",
+      "actual": "Giá tại ngày kết thúc được chọn.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\PricingServiceTest::test_effective_dates_are_inclusive_and_future_expired_inactive_prices_are_excluded"
+        }
+      ]
+    },
+    {
+      "stt": 8,
+      "id": "TC-CUR-PRICE-08",
+      "status": "Passed",
+      "actual": "Giá mới đã hết hạn không che giá active cũ.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\PricingServiceTest::test_expired_price_with_newer_start_does_not_override_valid_price"
+        }
+      ]
+    },
+    {
+      "stt": 9,
+      "id": "TC-CUR-PRICE-09",
+      "status": "Passed",
+      "actual": "Giá ngày mai bị loại.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\PricingServiceTest::test_effective_dates_are_inclusive_and_future_expired_inactive_prices_are_excluded"
+        }
+      ]
+    },
+    {
+      "stt": 10,
+      "id": "TC-CUR-PRICE-10",
+      "status": "Passed",
+      "actual": "Tuple không khớp service/loại đồ/đơn vị trả null và batch rỗng; giá NULL start/end hợp lệ được chọn trong fixture riêng.",
+      "evidence": [
+        {
+          "kind": "supplemental",
+          "test": "Tests\\Feature\\PricingServiceTest::test_documented_pricing_execution with data set \"TC-CUR-PRICE-10\""
+        }
+      ]
+    },
+    {
+      "stt": 11,
+      "id": "TC-CUR-PRICE-11",
+      "status": "Passed",
+      "actual": "Tuple không khớp service/loại đồ/đơn vị trả null và batch rỗng; giá NULL start/end hợp lệ được chọn trong fixture riêng.",
+      "evidence": [
+        {
+          "kind": "supplemental",
+          "test": "Tests\\Feature\\PricingServiceTest::test_documented_pricing_execution with data set \"TC-CUR-PRICE-11\""
+        }
+      ]
+    },
+    {
+      "stt": 12,
+      "id": "TC-CUR-PRICE-12",
+      "status": "Passed",
+      "actual": "Lookup chọn ngày bắt đầu mới nhất, cùng ngày chọn ID cao hơn.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\PricingServiceTest::test_newest_start_then_highest_id_wins_and_null_start_is_only_a_fallback"
+        }
+      ]
+    },
+    {
+      "stt": 13,
+      "id": "TC-CUR-UI-01",
+      "status": "Pending",
+      "actual": "Bao phủ một phần/chưa thực thi đủ: Đã kiểm readonly/create/edit ở E2E-06 và frontend; chưa đủ mọi form trong ca.",
+      "evidence": []
+    },
+    {
+      "stt": 14,
+      "id": "TC-CUR-UI-02",
+      "status": "Pending",
+      "actual": "Bao phủ một phần/chưa thực thi đủ: Frontend auto chọn Đôi=9.000; chưa chạy riêng Cái=15.000 của ca.",
+      "evidence": []
+    },
+    {
+      "stt": 15,
+      "id": "TC-CUR-UI-03",
+      "status": "Pending",
+      "actual": "Bao phủ một phần/chưa thực thi đủ: Frontend kiểm chọn đơn vị không ngầm định; chưa toàn đường HTTP.",
+      "evidence": []
+    },
+    {
+      "stt": 16,
+      "id": "TC-CUR-UI-04",
+      "status": "Pending",
+      "actual": "Bao phủ một phần/chưa thực thi đủ: Chưa chạy đổi service với đơn vị cũ vẫn hợp lệ trong browser.",
+      "evidence": []
+    },
+    {
+      "stt": 17,
+      "id": "TC-CUR-UI-05",
+      "status": "Pending",
+      "actual": "Bao phủ một phần/chưa thực thi đủ: Frontend đổi sang đơn vị khác đã chạy; chưa assertion nguyên bộ giữ/xóa field theo ca.",
+      "evidence": []
+    },
+    {
+      "stt": 18,
+      "id": "TC-CUR-UI-06",
+      "status": "Pending",
+      "actual": "Bao phủ một phần/chưa thực thi đủ: Frontend clear giá thiếu tuple đã chạy; chưa cảnh báo/submit end-to-end.",
+      "evidence": []
+    },
+    {
+      "stt": 19,
+      "id": "TC-CUR-UI-07",
+      "status": "Pending",
+      "actual": "Bao phủ một phần/chưa thực thi đủ: Service thiếu giá từ chối đã chạy; chưa raw POST đầy đủ đường tạo/inspection.",
+      "evidence": []
+    },
+    {
+      "stt": 20,
+      "id": "TC-CUR-PRICE-13",
+      "status": "Pending",
+      "actual": "Bao phủ một phần/chưa thực thi đủ: Giá client bị bỏ qua ở create/inspection đã test; chưa cả hai raw HTTP ca riêng.",
+      "evidence": []
+    },
+    {
+      "stt": 21,
+      "id": "TC-CUR-UI-08",
+      "status": "Pending",
+      "actual": "Bao phủ một phần/chưa thực thi đủ: Preview 30.000 đã test; chưa đối chiếu persisted cùng fixture bằng browser.",
+      "evidence": []
+    },
+    {
+      "stt": 22,
+      "id": "TC-CUR-UI-09",
+      "status": "Pending",
+      "actual": "Bao phủ một phần/chưa thực thi đủ: Preview 120.000 đã test; persisted E2E dùng giá fixture khác.",
+      "evidence": []
+    },
+    {
+      "stt": 23,
+      "id": "TC-CUR-UI-10",
+      "status": "Pending",
+      "actual": "Bao phủ một phần/chưa thực thi đủ: Preview 160.000 đã test; chưa persisted đúng 4kg/40.000.",
+      "evidence": []
+    },
+    {
+      "stt": 24,
+      "id": "TC-CUR-UI-11",
+      "status": "Pending",
+      "actual": "Bao phủ một phần/chưa thực thi đủ: Frontend switch lượng đã pass; chưa gửi form sau cả chuỗi đổi đơn vị.",
+      "evidence": []
+    },
+    {
+      "stt": 25,
+      "id": "TC-CUR-UI-12",
+      "status": "Pending",
+      "actual": "Bao phủ một phần/chưa thực thi đủ: E2E-09 thêm/xóa đã chạy; chưa POST ba dòng đúng chuỗi ca.",
+      "evidence": []
+    },
+    {
+      "stt": 26,
+      "id": "TC-CUR-INSPECT-01",
+      "status": "Passed",
+      "actual": "Đơn mới Đã tiếp nhận, lưu tình trạng trước giặt và audit.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\BookingOrderConversionTest::test_manual_order_store_persists_actual_condition_before_washing"
+        }
+      ]
+    },
+    {
+      "stt": 27,
+      "id": "TC-CUR-INSPECT-02",
+      "status": "Passed",
+      "actual": "Các trạng thái đầu vào ngoài Đã tiếp nhận bị từ chối.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\BookingOrderConversionTest::test_manual_order_store_rejects_completed_status_and_booking_link"
+        }
+      ]
+    },
+    {
+      "stt": 28,
+      "id": "TC-CUR-INSPECT-03",
+      "status": "Passed",
+      "actual": "Đường tạo đơn kèm BookingID bị chặn.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\BookingOrderConversionTest::test_manual_order_store_rejects_completed_status_and_booking_link"
+        }
+      ]
+    },
+    {
+      "stt": 29,
+      "id": "TC-CUR-INSPECT-04",
+      "status": "Pending",
+      "actual": "Items trống bị từ chối trước ghi đơn. Chỉ bao phủ một phần: Chưa kiểm riêng items=[] ở cả hai HTTP luồng.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\BookingOrderConversionTest::test_manual_order_store_requires_inspected_items_and_condition"
+        }
+      ]
+    },
+    {
+      "stt": 30,
+      "id": "TC-CUR-INSPECT-05",
+      "status": "Pending",
+      "actual": "Các dataset thiếu/trắng tình trạng bị từ chối và rollback. Chỉ bao phủ một phần: Chưa đủ cả missing/rỗng/trắng tại cả request.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\BookingOrderConversionTest::test_invalid_inspection_rolls_back_every_created_record with data set \"missing legacy return method\""
+        },
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\BookingOrderConversionTest::test_invalid_inspection_rolls_back_every_created_record with data set \"invalid return method\""
+        },
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\BookingOrderConversionTest::test_invalid_inspection_rolls_back_every_created_record with data set \"missing home return address\""
+        },
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\BookingOrderConversionTest::test_invalid_inspection_rolls_back_every_created_record with data set \"missing home receive address\""
+        },
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\BookingOrderConversionTest::test_invalid_inspection_rolls_back_every_created_record with data set \"missing condition\""
+        },
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\BookingOrderConversionTest::test_invalid_inspection_rolls_back_every_created_record with data set \"blank condition\""
+        },
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\BookingOrderConversionTest::test_invalid_inspection_rolls_back_every_created_record with data set \"overlong condition\""
+        },
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\BookingOrderConversionTest::test_invalid_inspection_rolls_back_every_created_record with data set \"fractional pieces\""
+        },
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\BookingOrderConversionTest::test_invalid_inspection_rolls_back_every_created_record with data set \"both measurements\""
+        }
+      ]
+    },
+    {
+      "stt": 31,
+      "id": "TC-CUR-INSPECT-06",
+      "status": "Pending",
+      "actual": "Bao phủ một phần/chưa thực thi đủ: Có dataset 321 ký tự bị chặn; chưa kiểm đúng biên 320 được chấp nhận.",
+      "evidence": []
+    },
+    {
+      "stt": 32,
+      "id": "TC-CUR-INSPECT-07",
+      "status": "Pending",
+      "actual": "Không nhận số lượng 0; số lượng lẻ còn được kiểm bằng dataset fractional pieces. Chỉ bao phủ một phần: Chưa đủ SoLuong=-1 và các đường tạo/inspection.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\BookingOrderConversionTest::test_booking_request_rejects_non_positive_weight_and_piece_quantity"
+        }
+      ]
+    },
+    {
+      "stt": 33,
+      "id": "TC-CUR-INSPECT-08",
+      "status": "Pending",
+      "actual": "Lượng KG không dương bị từ chối; cả hai lượng còn có dataset kiểm kê invalid. Chỉ bao phủ một phần: Chưa đủ mọi biến thể lượng tại mọi đường gọi.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\BookingOrderConversionTest::test_booking_request_rejects_non_positive_weight_and_piece_quantity"
+        }
+      ]
+    },
+    {
+      "stt": 34,
+      "id": "TC-CUR-INSPECT-09",
+      "status": "Passed",
+      "actual": "Lượng >2 chữ số được làm tròn trước tính phí/lưu.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\BookingOrderConversionTest::test_order_service_rounds_excess_weight_precision_before_calculating_and_persisting"
+        }
+      ]
+    },
+    {
+      "stt": 35,
+      "id": "TC-CUR-INSPECT-10",
+      "status": "Passed",
+      "actual": "GET inspection không tạo Order.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\BookingOrderConversionTest::test_opening_inspection_shows_required_condition_and_does_not_create_an_order"
+        }
+      ]
+    },
+    {
+      "stt": 36,
+      "id": "TC-CUR-INSPECT-11",
+      "status": "Passed",
+      "actual": "Booking giữ 2, Order nhận 5 × 15.000.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\BookingOrderConversionTest::test_order_uses_actual_inspection_data_and_server_price_without_replacing_booking_estimates"
+        }
+      ]
+    },
+    {
+      "stt": 37,
+      "id": "TC-CUR-INSPECT-12",
+      "status": "Passed",
+      "actual": "Store/store không tạo phiếu.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\BookingOrderConversionTest::test_inspection_creates_only_the_home_delivery_legs with data set \"TC-BK-RETURN-01\""
+        }
+      ]
+    },
+    {
+      "stt": 38,
+      "id": "TC-CUR-INSPECT-13",
+      "status": "Passed",
+      "actual": "Store/home chỉ tạo GIAO_DO đúng địa chỉ trả.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\BookingOrderConversionTest::test_inspection_creates_only_the_home_delivery_legs with data set \"TC-BK-RETURN-02\""
+        }
+      ]
+    },
+    {
+      "stt": 39,
+      "id": "TC-CUR-INSPECT-14",
+      "status": "Passed",
+      "actual": "Home/store chỉ tạo NHAN_DO đúng địa chỉ nhận.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\BookingOrderConversionTest::test_inspection_creates_only_the_home_delivery_legs with data set \"TC-BK-RETURN-03\""
+        }
+      ]
+    },
+    {
+      "stt": 40,
+      "id": "TC-CUR-INSPECT-15",
+      "status": "Passed",
+      "actual": "Home/home tạo hai phiếu độc lập.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\BookingOrderConversionTest::test_inspection_creates_only_the_home_delivery_legs with data set \"TC-BK-RETURN-04\""
+        }
+      ]
+    },
+    {
+      "stt": 41,
+      "id": "TC-CUR-SNAPSHOT-01",
+      "status": "Passed",
+      "actual": "Service reload Booking đã hủy và từ chối chuyển đổi.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\BookingOrderConversionTest::test_standalone_conversion_rejects_booking_cancelled_since_snapshot"
+        }
+      ]
+    },
+    {
+      "stt": 42,
+      "id": "TC-CUR-SNAPSHOT-02",
+      "status": "Passed",
+      "actual": "Service dùng khách hiện hành trong DB.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\BookingOrderConversionTest::test_standalone_conversion_reloads_customer_but_preserves_dirty_inspection_address"
+        }
+      ]
+    },
+    {
+      "stt": 43,
+      "id": "TC-CUR-SNAPSHOT-03",
+      "status": "Passed",
+      "actual": "Dữ liệu form chưa lưu nhận/trả vẫn được dùng trong transaction kiểm kê.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\BookingOrderConversionTest::test_inspection_keeps_unsaved_receive_and_return_edits"
+        }
+      ]
+    },
+    {
+      "stt": 44,
+      "id": "TC-CUR-SNAPSHOT-04",
+      "status": "Passed",
+      "actual": "Replay dùng cùng Order, không tạo lại.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\BookingOrderConversionTest::test_confirm_route_changes_pending_booking_and_creates_one_order"
+        }
+      ]
+    },
+    {
+      "stt": 45,
+      "id": "TC-CUR-SNAPSHOT-05",
+      "status": "Passed",
+      "actual": "Lỗi phiếu trả rollback cả tập dữ liệu.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\BookingOrderConversionTest::test_failure_of_the_second_delivery_rolls_back_order_booking_points_and_audit"
+        }
+      ]
+    },
+    {
+      "stt": 46,
+      "id": "TC-CUR-SNAPSHOT-06",
+      "status": "Pending",
+      "actual": "Bao phủ một phần/chưa thực thi đủ: Có Booking đã hủy được chặn; chưa đủ tất cả trạng thái/xác nhận không hợp lệ.",
+      "evidence": []
+    },
+    {
+      "stt": 47,
+      "id": "TC-CUR-DELIVERY-01",
+      "status": "Passed",
+      "actual": "Cùng đơn nhận một phiếu mỗi chiều.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\DeliveryContractTest::test_two_different_legs_allowed_duplicate_rejected_and_cancelled_leg_can_be_replaced"
+        }
+      ]
+    },
+    {
+      "stt": 48,
+      "id": "TC-CUR-DELIVERY-02",
+      "status": "Passed",
+      "actual": "Harness bổ sung đã thực thi dataset TC-CUR-DELIVERY-02; assertion nghiệp vụ và snapshot rollback/giá/lịch/trạng thái tương ứng đều đạt.",
+      "evidence": [
+        {
+          "kind": "supplemental",
+          "test": "Tests\\Feature\\DeliveryContractTest::test_documented_delivery_execution with data set \"TC-CUR-DELIVERY-02\""
+        }
+      ]
+    },
+    {
+      "stt": 49,
+      "id": "TC-CUR-DELIVERY-03",
+      "status": "Passed",
+      "actual": "Phiếu cancelled có thể được thay thế.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\DeliveryContractTest::test_two_different_legs_allowed_duplicate_rejected_and_cancelled_leg_can_be_replaced"
+        }
+      ]
+    },
+    {
+      "stt": 50,
+      "id": "TC-CUR-DELIVERY-04",
+      "status": "Passed",
+      "actual": "Harness bổ sung đã thực thi dataset TC-CUR-DELIVERY-04; assertion nghiệp vụ và snapshot rollback/giá/lịch/trạng thái tương ứng đều đạt.",
+      "evidence": [
+        {
+          "kind": "supplemental",
+          "test": "Tests\\Feature\\DeliveryContractTest::test_documented_delivery_execution with data set \"TC-CUR-DELIVERY-04\""
+        }
+      ]
+    },
+    {
+      "stt": 51,
+      "id": "TC-CUR-DELIVERY-05",
+      "status": "Passed",
+      "actual": "Cancelled parent chặn create/update/delete.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\DeliveryContractTest::test_all_mutations_reject_cancelled_or_paid_parent with data set #0"
+        },
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\DeliveryContractTest::test_all_mutations_reject_cancelled_or_paid_parent with data set #1"
+        }
+      ]
+    },
+    {
+      "stt": 52,
+      "id": "TC-CUR-DELIVERY-06",
+      "status": "Passed",
+      "actual": "Paid parent chặn create/update/delete.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\DeliveryContractTest::test_all_mutations_reject_cancelled_or_paid_parent with data set #0"
+        },
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\DeliveryContractTest::test_all_mutations_reject_cancelled_or_paid_parent with data set #1"
+        }
+      ]
+    },
+    {
+      "stt": 53,
+      "id": "TC-CUR-DELIVERY-07",
+      "status": "Passed",
+      "actual": "Không đổi parent/type của phiếu đã có.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\DeliveryContractTest::test_existing_slip_cannot_change_order_or_leg"
+        }
+      ]
+    },
+    {
+      "stt": 54,
+      "id": "TC-CUR-DELIVERY-08",
+      "status": "Pending",
+      "actual": "Bao phủ một phần/chưa thực thi đủ: Có khóa parent trong PostgreSQL nhưng chưa stale-parent model mutation riêng.",
+      "evidence": []
+    },
+    {
+      "stt": 55,
+      "id": "TC-CUR-DELIVERY-09",
+      "status": "Pending",
+      "actual": "Bao phủ một phần/chưa thực thi đủ: Service bypass đã thực thi cho invalid status/lịch/address ở supplements; chưa toàn matrix payload malformed.",
+      "evidence": []
+    },
+    {
+      "stt": 56,
+      "id": "TC-CUR-DELIVERY-10",
+      "status": "Passed",
+      "actual": "Return pending được tạo khi parent Received.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\DeliveryContractTest::test_pending_return_can_be_unscheduled_and_notes_edit_preserves_schedule_and_status"
+        }
+      ]
+    },
+    {
+      "stt": 57,
+      "id": "TC-CUR-DELIVERY-11",
+      "status": "Passed",
+      "actual": "Lịch trả NULL được tạo và giữ khi PATCH notes.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\DeliveryContractTest::test_pending_return_can_be_unscheduled_and_notes_edit_preserves_schedule_and_status"
+        }
+      ]
+    },
+    {
+      "stt": 58,
+      "id": "TC-CUR-DELIVERY-12",
+      "status": "Passed",
+      "actual": "Harness bổ sung đã thực thi dataset TC-CUR-DELIVERY-12; assertion nghiệp vụ và snapshot rollback/giá/lịch/trạng thái tương ứng đều đạt.",
+      "evidence": [
+        {
+          "kind": "supplemental",
+          "test": "Tests\\Feature\\DeliveryContractTest::test_documented_delivery_execution with data set \"TC-CUR-DELIVERY-12\""
+        }
+      ]
+    },
+    {
+      "stt": 59,
+      "id": "TC-CUR-DELIVERY-13",
+      "status": "Passed",
+      "actual": "Pickup không lịch bị chặn.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\DeliveryContractTest::test_pickup_requires_schedule_and_cannot_execute_after_washing_starts"
+        }
+      ]
+    },
+    {
+      "stt": 60,
+      "id": "TC-CUR-DELIVERY-14",
+      "status": "Passed",
+      "actual": "Harness bổ sung đã thực thi dataset TC-CUR-DELIVERY-14; assertion nghiệp vụ và snapshot rollback/giá/lịch/trạng thái tương ứng đều đạt.",
+      "evidence": [
+        {
+          "kind": "supplemental",
+          "test": "Tests\\Feature\\DeliveryContractTest::test_documented_delivery_execution with data set \"TC-CUR-DELIVERY-14\""
+        }
+      ]
+    },
+    {
+      "stt": 61,
+      "id": "TC-CUR-DELIVERY-15",
+      "status": "Passed",
+      "actual": "Harness bổ sung đã thực thi dataset TC-CUR-DELIVERY-15; assertion nghiệp vụ và snapshot rollback/giá/lịch/trạng thái tương ứng đều đạt.",
+      "evidence": [
+        {
+          "kind": "supplemental",
+          "test": "Tests\\Feature\\DeliveryContractTest::test_documented_delivery_execution with data set \"TC-CUR-DELIVERY-15\""
+        }
+      ]
+    },
+    {
+      "stt": 62,
+      "id": "TC-CUR-DELIVERY-16",
+      "status": "Passed",
+      "actual": "Harness bổ sung đã thực thi dataset TC-CUR-DELIVERY-16; assertion nghiệp vụ và snapshot rollback/giá/lịch/trạng thái tương ứng đều đạt.",
+      "evidence": [
+        {
+          "kind": "supplemental",
+          "test": "Tests\\Feature\\DeliveryContractTest::test_documented_delivery_execution with data set \"TC-CUR-DELIVERY-16\""
+        }
+      ]
+    },
+    {
+      "stt": 63,
+      "id": "TC-CUR-DELIVERY-17",
+      "status": "Passed",
+      "actual": "Harness bổ sung đã thực thi dataset TC-CUR-DELIVERY-17; assertion nghiệp vụ và snapshot rollback/giá/lịch/trạng thái tương ứng đều đạt.",
+      "evidence": [
+        {
+          "kind": "supplemental",
+          "test": "Tests\\Feature\\DeliveryContractTest::test_documented_delivery_execution with data set \"TC-CUR-DELIVERY-17\""
+        }
+      ]
+    },
+    {
+      "stt": 64,
+      "id": "TC-CUR-DELIVERY-18",
+      "status": "Passed",
+      "actual": "Gửi lại ngày/phút giữ timestamp có giây.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\DeliveryContractTest::test_unchanged_past_schedule_is_preserved_but_new_past_schedule_rejected"
+        }
+      ]
+    },
+    {
+      "stt": 65,
+      "id": "TC-CUR-DELIVERY-19",
+      "status": "Passed",
+      "actual": "Lịch mới khác nhưng ở quá khứ bị chặn.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\DeliveryContractTest::test_unchanged_past_schedule_is_preserved_but_new_past_schedule_rejected"
+        }
+      ]
+    },
+    {
+      "stt": 66,
+      "id": "TC-CUR-DELIVERY-20",
+      "status": "Passed",
+      "actual": "Xóa lịch pending return lưu NULL.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\DeliveryContractTest::test_unchanged_past_schedule_is_preserved_but_new_past_schedule_rejected"
+        }
+      ]
+    },
+    {
+      "stt": 67,
+      "id": "TC-CUR-DELIVERY-21",
+      "status": "Passed",
+      "actual": "Harness bổ sung đã thực thi dataset TC-CUR-DELIVERY-21; assertion nghiệp vụ và snapshot rollback/giá/lịch/trạng thái tương ứng đều đạt.",
+      "evidence": [
+        {
+          "kind": "supplemental",
+          "test": "Tests\\Feature\\DeliveryContractTest::test_documented_delivery_execution with data set \"TC-CUR-DELIVERY-21\""
+        }
+      ]
+    },
+    {
+      "stt": 68,
+      "id": "TC-CUR-DELIVERY-22",
+      "status": "Passed",
+      "actual": "Parent chưa giặt không được thực hiện giao.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\DeliveryContractTest::test_return_execution_waits_for_washing_and_requires_schedule"
+        }
+      ]
+    },
+    {
+      "stt": 69,
+      "id": "TC-CUR-DELIVERY-23",
+      "status": "Passed",
+      "actual": "Harness bổ sung đã thực thi dataset TC-CUR-DELIVERY-23; assertion nghiệp vụ và snapshot rollback/giá/lịch/trạng thái tương ứng đều đạt.",
+      "evidence": [
+        {
+          "kind": "supplemental",
+          "test": "Tests\\Feature\\DeliveryContractTest::test_documented_delivery_execution with data set \"TC-CUR-DELIVERY-23\""
+        }
+      ]
+    },
+    {
+      "stt": 70,
+      "id": "TC-CUR-DELIVERY-24",
+      "status": "Passed",
+      "actual": "Harness bổ sung đã thực thi dataset TC-CUR-DELIVERY-24; assertion nghiệp vụ và snapshot rollback/giá/lịch/trạng thái tương ứng đều đạt.",
+      "evidence": [
+        {
+          "kind": "supplemental",
+          "test": "Tests\\Feature\\DeliveryContractTest::test_documented_delivery_execution with data set \"TC-CUR-DELIVERY-24\""
+        }
+      ]
+    },
+    {
+      "stt": 71,
+      "id": "TC-CUR-DELIVERY-25",
+      "status": "Passed",
+      "actual": "Harness bổ sung đã thực thi dataset TC-CUR-DELIVERY-25; assertion nghiệp vụ và snapshot rollback/giá/lịch/trạng thái tương ứng đều đạt.",
+      "evidence": [
+        {
+          "kind": "supplemental",
+          "test": "Tests\\Feature\\DeliveryContractTest::test_documented_delivery_execution with data set \"TC-CUR-DELIVERY-25\""
+        }
+      ]
+    },
+    {
+      "stt": 72,
+      "id": "TC-CUR-DELIVERY-26",
+      "status": "Passed",
+      "actual": "Pickup sau khi bắt đầu giặt bị từ chối.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\DeliveryContractTest::test_pickup_requires_schedule_and_cannot_execute_after_washing_starts"
+        }
+      ]
+    },
+    {
+      "stt": 73,
+      "id": "TC-CUR-DELIVERY-27",
+      "status": "Passed",
+      "actual": "Phiếu đang thực hiện không lùi pending.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\DeliveryContractTest::test_pickup_execution_preserves_type_when_editing_notes_and_cannot_go_back"
+        }
+      ]
+    },
+    {
+      "stt": 74,
+      "id": "TC-CUR-DELIVERY-28",
+      "status": "Passed",
+      "actual": "Phiếu completed không mở lại/xóa/tạo trùng.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\DeliveryContractTest::test_return_execution_waits_for_washing_and_requires_schedule"
+        }
+      ]
+    },
+    {
+      "stt": 75,
+      "id": "TC-CUR-DELIVERY-29",
+      "status": "Passed",
+      "actual": "PATCH notes không đổi NHAN_DO/status.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\DeliveryContractTest::test_pickup_execution_preserves_type_when_editing_notes_and_cannot_go_back"
+        }
+      ]
+    },
+    {
+      "stt": 76,
+      "id": "TC-CUR-DELIVERY-30",
+      "status": "Passed",
+      "actual": "Harness bổ sung đã thực thi dataset TC-CUR-DELIVERY-30; assertion nghiệp vụ và snapshot rollback/giá/lịch/trạng thái tương ứng đều đạt.",
+      "evidence": [
+        {
+          "kind": "supplemental",
+          "test": "Tests\\Feature\\DeliveryContractTest::test_documented_delivery_execution with data set \"TC-CUR-DELIVERY-30\""
+        }
+      ]
+    },
+    {
+      "stt": 77,
+      "id": "TC-CUR-DELIVERY-31",
+      "status": "Pending",
+      "actual": "PATCH notes giữ status/schedule; field khác không đầy đủ assertion. Chỉ bao phủ một phần: Chưa assert tất cả employee/fulfillment bị bỏ khỏi PATCH.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\DeliveryContractTest::test_pending_return_can_be_unscheduled_and_notes_edit_preserves_schedule_and_status"
+        }
+      ]
+    },
+    {
+      "stt": 78,
+      "id": "TC-CUR-DELIVERY-32",
+      "status": "Passed",
+      "actual": "Harness bổ sung đã thực thi dataset TC-CUR-DELIVERY-32; assertion nghiệp vụ và snapshot rollback/giá/lịch/trạng thái tương ứng đều đạt.",
+      "evidence": [
+        {
+          "kind": "supplemental",
+          "test": "Tests\\Feature\\DeliveryContractTest::test_documented_delivery_execution with data set \"TC-CUR-DELIVERY-32\""
+        }
+      ]
+    },
+    {
+      "stt": 79,
+      "id": "TC-CUR-DELIVERY-33",
+      "status": "Passed",
+      "actual": "Harness bổ sung đã thực thi dataset TC-CUR-DELIVERY-33; assertion nghiệp vụ và snapshot rollback/giá/lịch/trạng thái tương ứng đều đạt.",
+      "evidence": [
+        {
+          "kind": "supplemental",
+          "test": "Tests\\Feature\\DeliveryContractTest::test_documented_delivery_execution with data set \"TC-CUR-DELIVERY-33\""
+        }
+      ]
+    },
+    {
+      "stt": 80,
+      "id": "TC-CUR-DELIVERY-34",
+      "status": "Passed",
+      "actual": "Harness bổ sung đã thực thi dataset TC-CUR-DELIVERY-34; assertion nghiệp vụ và snapshot rollback/giá/lịch/trạng thái tương ứng đều đạt.",
+      "evidence": [
+        {
+          "kind": "supplemental",
+          "test": "Tests\\Feature\\DeliveryContractTest::test_documented_delivery_execution with data set \"TC-CUR-DELIVERY-34\""
+        }
+      ]
+    },
+    {
+      "stt": 81,
+      "id": "TC-CUR-DELIVERY-35",
+      "status": "Passed",
+      "actual": "Harness bổ sung đã thực thi dataset TC-CUR-DELIVERY-35; assertion nghiệp vụ và snapshot rollback/giá/lịch/trạng thái tương ứng đều đạt.",
+      "evidence": [
+        {
+          "kind": "supplemental",
+          "test": "Tests\\Feature\\DeliveryContractTest::test_documented_delivery_execution with data set \"TC-CUR-DELIVERY-35\""
+        }
+      ]
+    },
+    {
+      "stt": 82,
+      "id": "TC-CUR-DELIVERY-36",
+      "status": "Pending",
+      "actual": "Bao phủ một phần/chưa thực thi đủ: HTTP NULL schedule đã pass; chưa thao tác required toggle và hiển thị field error trên UI phiếu thật.",
+      "evidence": []
+    },
+    {
+      "stt": 83,
+      "id": "TC-CUR-DELIVERY-37",
+      "status": "Passed",
+      "actual": "Race tạo hai phiếu cùng chiều: chỉ một thành công; PostgreSQL khóa thật, không có duplicate.",
+      "evidence": [
+        {
+          "kind": "postgres"
+        }
+      ]
+    },
+    {
+      "stt": 84,
+      "id": "TC-CUR-STAFF-01",
+      "status": "Pending",
+      "actual": "Bao phủ một phần/chưa thực thi đủ: Active employee được dùng ở Order/Booking/Delivery; chưa case độc lập assert cả request/service của từng luồng.",
+      "evidence": []
+    },
+    {
+      "stt": 85,
+      "id": "TC-CUR-STAFF-02",
+      "status": "Pending",
+      "actual": "Request phân công Khóa bị từ chối; service delivery cũng kiểm employee inactive. Chỉ bao phủ một phần: Chưa đủ cả Request/Service gán Khóa trên mọi loại record.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\BookingOrderConversionTest::test_manual_order_request_rejects_locked_employee"
+        }
+      ]
+    },
+    {
+      "stt": 86,
+      "id": "TC-CUR-STAFF-03",
+      "status": "Pending",
+      "actual": "Create/inspection inactive bị chặn, không tác dụng phụ. Chỉ bao phủ một phần: Chưa đủ cả Request/Service trên phiếu và order.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\BookingOrderConversionTest::test_create_and_inspection_reject_inactive_employee_without_side_effects"
+        }
+      ]
+    },
+    {
+      "stt": 87,
+      "id": "TC-CUR-STAFF-04",
+      "status": "Pending",
+      "actual": "Bao phủ một phần/chưa thực thi đủ: Chưa chạy đầy đủ ID không tồn tại và sai kiểu trên mọi layer.",
+      "evidence": []
+    },
+    {
+      "stt": 88,
+      "id": "TC-CUR-STAFF-05",
+      "status": "Pending",
+      "actual": "Thiếu nhân viên không tạo Order. Chỉ bao phủ một phần: Chưa đủ NULL ở cả tạo trực tiếp và inspection.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\BookingOrderConversionTest::test_confirm_route_requires_a_responsible_employee_before_creating_an_order"
+        },
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\BookingOrderConversionTest::test_booking_edit_requires_a_responsible_employee_when_converting_to_an_order"
+        }
+      ]
+    },
+    {
+      "stt": 89,
+      "id": "TC-CUR-STAFF-06",
+      "status": "Passed",
+      "actual": "Harness bổ sung đã thực thi dataset TC-CUR-STAFF-06; assertion nghiệp vụ và snapshot rollback/giá/lịch/trạng thái tương ứng đều đạt.",
+      "evidence": [
+        {
+          "kind": "supplemental",
+          "test": "Tests\\Feature\\DeliveryContractTest::test_documented_delivery_execution with data set \"TC-CUR-STAFF-06\""
+        }
+      ]
+    },
+    {
+      "stt": 90,
+      "id": "TC-CUR-STAFF-07",
+      "status": "Pending",
+      "actual": "Bao phủ một phần/chưa thực thi đủ: Giữ historical employee trên phiếu đã pass; chưa legacy Order request cùng ca.",
+      "evidence": []
+    },
+    {
+      "stt": 91,
+      "id": "TC-CUR-STAFF-08",
+      "status": "Pending",
+      "actual": "Gán nhân viên inactive khác bị chặn. Chỉ bao phủ một phần: Chưa chạy riêng đổi phân công legacy Order.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\DeliveryContractTest::test_active_assignment_and_unchanged_historical_employee"
+        }
+      ]
+    },
+    {
+      "stt": 92,
+      "id": "TC-CUR-STAFF-09",
+      "status": "Pending",
+      "actual": "Bao phủ một phần/chưa thực thi đủ: Chưa kiểm dropdown lịch sử và loại NV inactive mới trên UI.",
+      "evidence": []
+    },
+    {
+      "stt": 93,
+      "id": "TC-CUR-STAFF-10",
+      "status": "Pending",
+      "actual": "Server dùng trạng thái employee tại thời điểm request/service, không tin form. Chỉ bao phủ một phần: Chưa có GET → đổi trạng thái NV → POST có session thật.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\BookingOrderConversionTest::test_create_and_inspection_reject_inactive_employee_without_side_effects"
+        }
+      ]
+    },
+    {
+      "stt": 94,
+      "id": "TC-CUR-STAFF-11",
+      "status": "Passed",
+      "actual": "Harness bổ sung đã thực thi dataset TC-CUR-STAFF-11; assertion nghiệp vụ và snapshot rollback/giá/lịch/trạng thái tương ứng đều đạt.",
+      "evidence": [
+        {
+          "kind": "supplemental",
+          "test": "Tests\\Feature\\DeliveryContractTest::test_documented_delivery_execution with data set \"TC-CUR-STAFF-11\""
+        }
+      ]
+    },
+    {
+      "stt": 95,
+      "id": "TC-CUR-FINANCE-01",
+      "status": "Passed",
+      "actual": "Voucher trước điểm; phí thêm sau giảm, không được điểm bao phủ.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\RewardPointTest::test_reserved_promotion_is_applied_before_points_and_delivery_fees_are_added_after_discounts"
+        }
+      ]
+    },
+    {
+      "stt": 96,
+      "id": "TC-CUR-FINANCE-02",
+      "status": "Passed",
+      "actual": "Giữ chỗ legacy được xử lý không trừ lặp tại inspection.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\RewardPointTest::test_legacy_booking_reservation_is_not_redeemed_twice_at_inspection"
+        }
+      ]
+    },
+    {
+      "stt": 97,
+      "id": "TC-CUR-FINANCE-03",
+      "status": "Passed",
+      "actual": "Kiểm kê trừ điểm thực tế, không giữ chỗ hai lần.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\RewardPointTest::test_booking_conversion_redeems_selected_points_and_reduces_order_total"
+        }
+      ]
+    },
+    {
+      "stt": 98,
+      "id": "TC-CUR-FINANCE-04",
+      "status": "Pending",
+      "actual": "Không bỏ bước giặt, kể cả owner override. Chỉ bao phủ một phần: Chưa chạy riêng Received → Washed và Delivered ở mọi interface.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\RewardPointTest::test_owner_override_does_not_allow_skipping_washing"
+        }
+      ]
+    },
+    {
+      "stt": 99,
+      "id": "TC-CUR-FINANCE-05",
+      "status": "Passed",
+      "actual": "Thu trước hợp lệ lưu payment, không bỏ vòng đời đơn.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\PaymentOrderRedirectTest::test_payment_for_received_order_is_saved_without_skipping_order_lifecycle"
+        }
+      ]
+    },
+    {
+      "stt": 100,
+      "id": "TC-CUR-FINANCE-06",
+      "status": "Passed",
+      "actual": "Đơn hủy không thu; overpayment được kiểm bởi cùng suite.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\PaymentOrderRedirectTest::test_service_cannot_collect_money_for_a_canceled_order"
+        }
+      ]
+    },
+    {
+      "stt": 101,
+      "id": "TC-CUR-FINANCE-07",
+      "status": "Passed",
+      "actual": "Đủ tiền và đã giao thì chuyển settled.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\RewardPointTest::test_fully_paid_order_becomes_settled_when_delivery_is_completed"
+        }
+      ]
+    },
+    {
+      "stt": 102,
+      "id": "TC-CUR-FINANCE-08",
+      "status": "Passed",
+      "actual": "Hủy/DELETE không hoàn lặp điểm.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\RewardPointTest::test_canceled_order_refunds_points_once_and_deleting_it_does_not_refund_again"
+        }
+      ]
+    },
+    {
+      "stt": 103,
+      "id": "TC-CUR-RPC-01",
+      "status": "Passed",
+      "actual": "RPC chưa kiểm kê bị từ chối SQLSTATE 22023; assertion snapshot không tạo Order đạt.",
+      "evidence": [
+        {
+          "kind": "postgres"
+        }
+      ]
+    },
+    {
+      "stt": 104,
+      "id": "TC-CUR-RPC-02",
+      "status": "Passed",
+      "actual": "RPC replay dùng Order có sẵn, không tạo/trừ điểm/audit lần hai.",
+      "evidence": [
+        {
+          "kind": "postgres"
+        }
+      ]
+    },
+    {
+      "stt": 105,
+      "id": "TC-BO-01",
+      "status": "Passed",
+      "actual": "Validation khi thiếu snapshot; Booking/Order không bị xác nhận dở dang.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\BookingOrderConversionTest::test_booking_confirmation_rolls_back_when_no_service_snapshot_is_provided"
+        }
+      ]
+    },
+    {
+      "stt": 106,
+      "id": "TC-BO-02",
+      "status": "Passed",
+      "actual": "Booking có Order bị chặn hủy/xóa riêng.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\BookingOrderConversionTest::test_booking_with_an_order_cannot_be_cancelled_or_deleted_independently"
+        }
+      ]
+    },
+    {
+      "stt": 107,
+      "id": "TC-BO-03",
+      "status": "Passed",
+      "actual": "Request KG chỉ số lượng và cả hai lượng đều bị từ chối.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\BookingOrderConversionTest::test_booking_request_rejects_quantity_for_weight_unit_and_both_amount_fields"
+        }
+      ]
+    },
+    {
+      "stt": 108,
+      "id": "TC-BO-04",
+      "status": "Passed",
+      "actual": "Request KG nhận khối lượng dương.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\BookingOrderConversionTest::test_booking_request_accepts_weight_for_a_weight_unit"
+        }
+      ]
+    },
+    {
+      "stt": 109,
+      "id": "TC-BO-05",
+      "status": "Passed",
+      "actual": "Trường lượng phải khớp đơn vị đã chọn.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\BookingOrderConversionTest::test_booking_request_requires_the_amount_matching_the_selected_unit"
+        }
+      ]
+    },
+    {
+      "stt": 110,
+      "id": "TC-BO-06",
+      "status": "Passed",
+      "actual": "Service từ chối lượng kiểm kê sai đơn vị.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\BookingOrderConversionTest::test_order_conversion_rejects_snapshot_amount_that_conflicts_with_its_unit"
+        }
+      ]
+    },
+    {
+      "stt": 111,
+      "id": "TC-AUD-01",
+      "status": "Passed",
+      "actual": "Order, chi tiết và phiếu nhận được tạo; actor/time xác nhận được ghi.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\BookingOrderConversionTest::test_confirming_a_booking_creates_its_order_item_and_scheduled_delivery"
+        }
+      ]
+    },
+    {
+      "stt": 112,
+      "id": "TC-AUD-02",
+      "status": "Passed",
+      "actual": "Audit Booking có actor, mã bản ghi và dữ liệu trạng thái.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\BookingOrderConversionTest::test_booking_creation_is_written_to_the_system_audit_log"
+        }
+      ]
+    },
+    {
+      "stt": 113,
+      "id": "TC-AUD-03",
+      "status": "Passed",
+      "actual": "Audit ghi trạng thái trước/sau và actor.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\BookingOrderConversionTest::test_order_amount_changes_are_written_to_the_system_audit_log"
+        }
+      ]
+    },
+    {
+      "stt": 114,
+      "id": "TC-AUD-04",
+      "status": "Passed",
+      "actual": "Tạo/sửa/đổi mật khẩu đều được audit; snapshot không chứa mật khẩu.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\UserAccountAuditTest::test_account_creation_and_changes_are_audited_without_recording_passwords"
+        }
+      ]
+    },
+    {
+      "stt": 115,
+      "id": "TC-PRICE-01",
+      "status": "Passed",
+      "actual": "Từng dòng KG tính min riêng và giữ khối lượng thực.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\BookingOrderConversionTest::test_weight_booking_applies_the_configured_minimum_to_each_line_and_keeps_actual_weights"
+        }
+      ]
+    },
+    {
+      "stt": 116,
+      "id": "TC-PRICE-02",
+      "status": "Passed",
+      "actual": "Giá client bị bỏ qua; chi tiết dùng giá server đúng tuple.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\BookingOrderConversionTest::test_order_creation_uses_the_exact_price_tuple_instead_of_the_submitted_price"
+        }
+      ]
+    },
+    {
+      "stt": 117,
+      "id": "TC-PRICE-03",
+      "status": "Passed",
+      "actual": "Tuple thiếu giá bị từ chối, không lưu đơn dở dang.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\BookingOrderConversionTest::test_order_creation_rejects_a_missing_exact_price_tuple"
+        }
+      ]
+    },
+    {
+      "stt": 118,
+      "id": "TC-PRICE-04",
+      "status": "Passed",
+      "actual": "Khoảng giao nhau bị từ chối; khoảng kế tiếp và update chính giá hợp lệ.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\BookingOrderConversionTest::test_pricing_service_rejects_overlapping_periods_for_the_same_three_key_tuple"
+        }
+      ]
+    },
+    {
+      "stt": 119,
+      "id": "TC-PRICE-05",
+      "status": "Passed",
+      "actual": "KG không nhân thêm số lượng; áp min 3kg.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Unit\\TinhTienGiatUiServiceTest::test_kg_items_use_minimum_weight_without_multiplying_quantity"
+        }
+      ]
+    },
+    {
+      "stt": 120,
+      "id": "TC-PRICE-06",
+      "status": "Passed",
+      "actual": "kg/KG không phân biệt hoa thường và dùng lượng trên min.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Unit\\TinhTienGiatUiServiceTest::test_kg_units_are_matched_case_insensitively_and_use_actual_weight_above_minimum"
+        }
+      ]
+    },
+    {
+      "stt": 121,
+      "id": "TC-PRICE-07",
+      "status": "Passed",
+      "actual": "Cái tính theo số lượng, không theo khối lượng.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Unit\\TinhTienGiatUiServiceTest::test_non_weight_units_use_quantity_instead_of_weight"
+        }
+      ]
+    },
+    {
+      "stt": 122,
+      "id": "TC-PRICE-08",
+      "status": "Passed",
+      "actual": "Helper Mét 1,5 × 12.500 trả 18.750; không thay validation request.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Unit\\TinhTienGiatUiServiceTest::test_non_weight_units_preserve_fractional_quantity_from_numeric_schema_column"
+        }
+      ]
+    },
+    {
+      "stt": 123,
+      "id": "TC-PRICE-09",
+      "status": "Passed",
+      "actual": "Min riêng=5, lượng=4, giá=1.000,5 trả 5.003 sau làm tròn.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Unit\\TinhTienGiatUiServiceTest::test_explicit_minimum_weight_overrides_the_configured_default"
+        }
+      ]
+    },
+    {
+      "stt": 124,
+      "id": "TC-PRICE-10",
+      "status": "Passed",
+      "actual": "Hai dòng KG/Cái trả tổng 28.000.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Unit\\TinhTienGiatUiServiceTest::test_invoice_total_sums_the_rounded_line_amounts"
+        }
+      ]
+    },
+    {
+      "stt": 125,
+      "id": "TC-DB-01",
+      "status": "Passed",
+      "actual": "Mapping lowercase và identity tự sinh đúng; identity không mass-assign.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Unit\\KhachHangDiaChiModelTest::test_identity_key_is_database_managed_and_lowercase_schema_is_explicit"
+        }
+      ]
+    },
+    {
+      "stt": 126,
+      "id": "TC-DB-02",
+      "status": "Passed",
+      "actual": "Model dùng KhuyenMai/KhuyenMaiID và không timestamps tự động.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Unit\\KhuyenMaiSchemaCompatibilityTest::test_model_matches_the_live_promotion_table_and_key"
+        }
+      ]
+    },
+    {
+      "stt": 127,
+      "id": "TC-DB-03",
+      "status": "Passed",
+      "actual": "SoLuongSuDung không được dùng làm giới hạn đổi mã.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Unit\\KhuyenMaiSchemaCompatibilityTest::test_used_count_does_not_act_as_a_redemption_limit"
+        }
+      ]
+    },
+    {
+      "stt": 128,
+      "id": "TC-DB-04",
+      "status": "Passed",
+      "actual": "Mapping PascalCase và các quan hệ FK khớp schema.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\LoaiDoGiatTest::test_model_matches_pascal_case_schema_and_declares_foreign_key_relations"
+        }
+      ]
+    },
+    {
+      "stt": 129,
+      "id": "TC-DB-05",
+      "status": "Passed",
+      "actual": "Giá trị option trạng thái khớp constraint snapshot.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Unit\\OrderStatusSchemaTest::test_dropdown_values_match_the_live_donhang_status_constraint"
+        }
+      ]
+    },
+    {
+      "stt": 130,
+      "id": "TC-DB-06",
+      "status": "Passed",
+      "actual": "Audit dùng NhatKyHeThong, không dùng bảng lịch sử legacy.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Unit\\OrderStatusSchemaTest::test_system_audit_log_replaces_the_removed_legacy_status_table"
+        }
+      ]
+    },
+    {
+      "stt": 131,
+      "id": "TC-REG-01",
+      "status": "Passed",
+      "actual": "Boundary quyền theo hành động đã trả kết quả chặn/cho phép đúng assertion trong test.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\AuthorizationBoundaryTest::test_customer_cannot_access_admin_routes"
+        }
+      ]
+    },
+    {
+      "stt": 132,
+      "id": "TC-REG-02",
+      "status": "Passed",
+      "actual": "Boundary quyền theo hành động đã trả kết quả chặn/cho phép đúng assertion trong test.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\AuthorizationBoundaryTest::test_customer_cannot_access_order_api"
+        }
+      ]
+    },
+    {
+      "stt": 133,
+      "id": "TC-REG-03",
+      "status": "Passed",
+      "actual": "Boundary quyền theo hành động đã trả kết quả chặn/cho phép đúng assertion trong test.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\AuthorizationBoundaryTest::test_staff_with_view_permission_cannot_create_customers"
+        }
+      ]
+    },
+    {
+      "stt": 134,
+      "id": "TC-REG-04",
+      "status": "Passed",
+      "actual": "Boundary quyền theo hành động đã trả kết quả chặn/cho phép đúng assertion trong test.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\AuthorizationBoundaryTest::test_api_order_list_requires_view_permission"
+        }
+      ]
+    },
+    {
+      "stt": 135,
+      "id": "TC-REG-05",
+      "status": "Passed",
+      "actual": "Boundary quyền theo hành động đã trả kết quả chặn/cho phép đúng assertion trong test.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\AuthorizationBoundaryTest::test_staff_without_order_delete_permission_is_denied"
+        }
+      ]
+    },
+    {
+      "stt": 136,
+      "id": "TC-REG-06",
+      "status": "Passed",
+      "actual": "Boundary quyền theo hành động đã trả kết quả chặn/cho phép đúng assertion trong test.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\AuthorizationBoundaryTest::test_resource_routes_use_action_specific_permissions"
+        }
+      ]
+    },
+    {
+      "stt": 137,
+      "id": "TC-REG-07",
+      "status": "Passed",
+      "actual": "Khách không có bản ghi điểm được sort như 0.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\CustomerSortTest::test_points_sort_orders_customers_with_missing_points_as_zero"
+        }
+      ]
+    },
+    {
+      "stt": 138,
+      "id": "TC-REG-08",
+      "status": "Passed",
+      "actual": "Điểm bằng nhau vẫn có tie-break ổn định.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\CustomerSortTest::test_points_ascending_sort_is_stable_for_equal_point_totals"
+        }
+      ]
+    },
+    {
+      "stt": 139,
+      "id": "TC-REG-09",
+      "status": "Passed",
+      "actual": "CRUD danh mục loại đồ thành công khi chưa tham chiếu.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\LoaiDoGiatTest::test_category_can_be_created_listed_updated_and_deleted"
+        }
+      ]
+    },
+    {
+      "stt": 140,
+      "id": "TC-REG-10",
+      "status": "Passed",
+      "actual": "Loại đồ đã tham chiếu bị suspend thay vì xóa.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\LoaiDoGiatTest::test_categories_referenced_by_prices_orders_or_booking_details_are_disabled_not_deleted"
+        }
+      ]
+    },
+    {
+      "stt": 141,
+      "id": "TC-REG-11",
+      "status": "Passed",
+      "actual": "Tạo/sửa tên trùng bị validation chặn.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\LoaiDoGiatTest::test_category_names_must_be_unique"
+        }
+      ]
+    },
+    {
+      "stt": 142,
+      "id": "TC-REG-12",
+      "status": "Passed",
+      "actual": "Nhân viên có quyền tạo/đổi trạng thái được phép.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\LoaiDoGiatTest::test_employee_with_category_permissions_can_create_and_change_status"
+        }
+      ]
+    },
+    {
+      "stt": 143,
+      "id": "TC-REG-13",
+      "status": "Passed",
+      "actual": "Owner có quyền tạo danh mục được phép.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\LoaiDoGiatTest::test_owner_with_category_permissions_can_create_categories"
+        }
+      ]
+    },
+    {
+      "stt": 144,
+      "id": "TC-REG-14",
+      "status": "Passed",
+      "actual": "Nhân viên thiếu quyền bị chặn quản lý.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\LoaiDoGiatTest::test_employee_without_required_permission_cannot_manage_categories"
+        }
+      ]
+    },
+    {
+      "stt": 145,
+      "id": "TC-REG-15",
+      "status": "Passed",
+      "actual": "Tên vai trò Quản lý không tự cấp quyền danh mục.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\LoaiDoGiatTest::test_manager_role_is_not_granted_category_access_by_role_alone"
+        }
+      ]
+    },
+    {
+      "stt": 146,
+      "id": "TC-REG-16",
+      "status": "Passed",
+      "actual": "Resource có permission theo từng hành động và không có role middleware; đã sửa kỳ vọng cũ trong tài liệu.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\LoaiDoGiatTest::test_category_resource_uses_action_specific_permissions_without_role_middleware"
+        }
+      ]
+    },
+    {
+      "stt": 147,
+      "id": "TC-REG-17",
+      "status": "Passed",
+      "actual": "Hai URL legacy redirect về module loaidogiat canonical.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\LoaiDoGiatTest::test_legacy_category_pages_redirect_to_the_single_canonical_module"
+        }
+      ]
+    },
+    {
+      "stt": 148,
+      "id": "TC-REG-20",
+      "status": "Passed",
+      "actual": "TaiKhoan/NhanVien đồng bộ sau sửa profile.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\ProfileUpdateTest::test_staff_profile_updates_account_and_employee_details"
+        }
+      ]
+    },
+    {
+      "stt": 149,
+      "id": "TC-REG-21",
+      "status": "Passed",
+      "actual": "TaiKhoan/KhachHang đồng bộ sau sửa profile.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\ProfileUpdateTest::test_customer_profile_updates_account_and_customer_details"
+        }
+      ]
+    },
+    {
+      "stt": 150,
+      "id": "TC-REG-22",
+      "status": "Passed",
+      "actual": "Email đã thuộc tài khoản khác bị validation chặn.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\ProfileUpdateTest::test_profile_rejects_an_email_used_by_another_account"
+        }
+      ]
+    },
+    {
+      "stt": 151,
+      "id": "TC-REG-23",
+      "status": "Passed",
+      "actual": "Kết quả resolve/covers/owner-only/catalog khớp các assertSame/assertTrue/assertFalse của phương thức được ghi trong bằng chứng.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Unit\\QuyenMapperTest::test_it_maps_a_code_to_the_matching_ma_quyen"
+        }
+      ]
+    },
+    {
+      "stt": 152,
+      "id": "TC-REG-24",
+      "status": "Passed",
+      "actual": "Kết quả resolve/covers/owner-only/catalog khớp các assertSame/assertTrue/assertFalse của phương thức được ghi trong bằng chứng.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Unit\\QuyenMapperTest::test_it_falls_back_to_the_manage_code_when_the_exact_one_is_absent"
+        }
+      ]
+    },
+    {
+      "stt": 153,
+      "id": "TC-REG-25",
+      "status": "Passed",
+      "actual": "Kết quả resolve/covers/owner-only/catalog khớp các assertSame/assertTrue/assertFalse của phương thức được ghi trong bằng chứng.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Unit\\QuyenMapperTest::test_it_maps_modules_that_only_have_one_ma_quyen"
+        }
+      ]
+    },
+    {
+      "stt": 154,
+      "id": "TC-REG-26",
+      "status": "Passed",
+      "actual": "Kết quả resolve/covers/owner-only/catalog khớp các assertSame/assertTrue/assertFalse của phương thức được ghi trong bằng chứng.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Unit\\QuyenMapperTest::test_payments_view_and_edit_share_payment_create_but_delete_stays_unresolvable"
+        }
+      ]
+    },
+    {
+      "stt": 155,
+      "id": "TC-REG-27",
+      "status": "Passed",
+      "actual": "Kết quả resolve/covers/owner-only/catalog khớp các assertSame/assertTrue/assertFalse của phương thức được ghi trong bằng chứng.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Unit\\QuyenMapperTest::test_codes_without_any_ma_quyen_are_not_resolvable"
+        }
+      ]
+    },
+    {
+      "stt": 156,
+      "id": "TC-REG-28",
+      "status": "Passed",
+      "actual": "Kết quả resolve/covers/owner-only/catalog khớp các assertSame/assertTrue/assertFalse của phương thức được ghi trong bằng chứng.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Unit\\QuyenMapperTest::test_covers_is_the_inverse_of_resolve_ma_quyen"
+        }
+      ]
+    },
+    {
+      "stt": 157,
+      "id": "TC-REG-29",
+      "status": "Passed",
+      "actual": "Kết quả resolve/covers/owner-only/catalog khớp các assertSame/assertTrue/assertFalse của phương thức được ghi trong bằng chứng.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Unit\\QuyenMapperTest::test_a_manage_code_covers_every_action_of_its_module"
+        }
+      ]
+    },
+    {
+      "stt": 158,
+      "id": "TC-REG-30",
+      "status": "Passed",
+      "actual": "Kết quả resolve/covers/owner-only/catalog khớp các assertSame/assertTrue/assertFalse của phương thức được ghi trong bằng chứng.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Unit\\QuyenMapperTest::test_full_access_grants_everything"
+        }
+      ]
+    },
+    {
+      "stt": 159,
+      "id": "TC-REG-31",
+      "status": "Passed",
+      "actual": "Kết quả resolve/covers/owner-only/catalog khớp các assertSame/assertTrue/assertFalse của phương thức được ghi trong bằng chứng.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Unit\\QuyenMapperTest::test_financial_and_rbac_codes_are_owner_only"
+        }
+      ]
+    },
+    {
+      "stt": 160,
+      "id": "TC-REG-32",
+      "status": "Passed",
+      "actual": "Kết quả resolve/covers/owner-only/catalog khớp các assertSame/assertTrue/assertFalse của phương thức được ghi trong bằng chứng.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Unit\\QuyenMapperTest::test_owner_only_database_permissions_are_detected"
+        }
+      ]
+    },
+    {
+      "stt": 161,
+      "id": "TC-REG-33",
+      "status": "Passed",
+      "actual": "Kết quả resolve/covers/owner-only/catalog khớp các assertSame/assertTrue/assertFalse của phương thức được ghi trong bằng chứng.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Unit\\QuyenMapperTest::test_every_code_maps_to_a_known_ma_quyen"
+        }
+      ]
+    },
+    {
+      "stt": 162,
+      "id": "TC-REG-34",
+      "status": "Passed",
+      "actual": "Kết quả resolve/covers/owner-only/catalog khớp các assertSame/assertTrue/assertFalse của phương thức được ghi trong bằng chứng.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Unit\\QuyenMapperTest::test_known_ma_quyen_that_no_code_uses"
+        }
+      ]
+    },
+    {
+      "stt": 163,
+      "id": "TC-REG-35",
+      "status": "Passed",
+      "actual": "Doanh thu/KPI/filter/quan hệ và query count khớp assertion của ReportsServiceTest trong fixture cô lập.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\ReportsServiceTest::test_kpis_use_paid_invoice_revenue_and_count_new_bookings"
+        }
+      ]
+    },
+    {
+      "stt": 164,
+      "id": "TC-REG-36",
+      "status": "Passed",
+      "actual": "Doanh thu/KPI/filter/quan hệ và query count khớp assertion của ReportsServiceTest trong fixture cô lập.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\ReportsServiceTest::test_charts_use_paid_invoice_dates_and_calculate_service_shares"
+        }
+      ]
+    },
+    {
+      "stt": 165,
+      "id": "TC-REG-37",
+      "status": "Passed",
+      "actual": "Doanh thu/KPI/filter/quan hệ và query count khớp assertion của ReportsServiceTest trong fixture cô lập.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\ReportsServiceTest::test_custom_date_filters_use_vietnamese_calendar_days_against_utc_timestamps"
+        }
+      ]
+    },
+    {
+      "stt": 166,
+      "id": "TC-REG-38",
+      "status": "Passed",
+      "actual": "Doanh thu/KPI/filter/quan hệ và query count khớp assertion của ReportsServiceTest trong fixture cô lập.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\ReportsServiceTest::test_all_time_filter_includes_existing_data_and_groups_chart_by_month"
+        }
+      ]
+    },
+    {
+      "stt": 167,
+      "id": "TC-REG-50",
+      "status": "Passed",
+      "actual": "Doanh thu/KPI/filter/quan hệ và query count khớp assertion của ReportsServiceTest trong fixture cô lập.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\ReportsServiceTest::test_kpis_use_paid_invoice_revenue_and_count_new_bookings"
+        }
+      ]
+    },
+    {
+      "stt": 168,
+      "id": "TC-REG-51",
+      "status": "Passed",
+      "actual": "Doanh thu/KPI/filter/quan hệ và query count khớp assertion của ReportsServiceTest trong fixture cô lập.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\ReportsServiceTest::test_charts_return_empty_composition_and_zero_revenue_for_empty_periods"
+        }
+      ]
+    },
+    {
+      "stt": 169,
+      "id": "TC-REG-52",
+      "status": "Passed",
+      "actual": "Doanh thu/KPI/filter/quan hệ và query count khớp assertion của ReportsServiceTest trong fixture cô lập.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\ReportsServiceTest::test_top_services_are_ranked_by_paid_revenue_with_quantity_and_unit"
+        }
+      ]
+    },
+    {
+      "stt": 170,
+      "id": "TC-REG-53",
+      "status": "Passed",
+      "actual": "Doanh thu/KPI/filter/quan hệ và query count khớp assertion của ReportsServiceTest trong fixture cô lập.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\ReportsServiceTest::test_payment_method_totals_include_only_successful_payments_for_paid_invoices"
+        }
+      ]
+    },
+    {
+      "stt": 171,
+      "id": "TC-REG-54",
+      "status": "Passed",
+      "actual": "Doanh thu/KPI/filter/quan hệ và query count khớp assertion của ReportsServiceTest trong fixture cô lập.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\ReportsServiceTest::test_recent_orders_eager_load_customer_and_service_details"
+        }
+      ]
+    },
+    {
+      "stt": 172,
+      "id": "TC-REG-55",
+      "status": "Passed",
+      "actual": "Doanh thu/KPI/filter/quan hệ và query count khớp assertion của ReportsServiceTest trong fixture cô lập.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\ReportsServiceTest::test_invalid_range_shape_is_rejected_with_a_validation_error"
+        }
+      ]
+    },
+    {
+      "stt": 173,
+      "id": "TC-REG-47",
+      "status": "Passed",
+      "actual": "Tài khoản inactive không có quyền hay owner bypass.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Unit\\UserAuthorizationStatusTest::test_inactive_account_cannot_use_permission_or_owner_bypass"
+        }
+      ]
+    },
+    {
+      "stt": 174,
+      "id": "TC-REG-48",
+      "status": "Passed",
+      "actual": "Avatar URL trả đúng ảnh đã lưu.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Unit\\UserAvatarUrlTest::test_avatar_url_uses_the_same_stored_profile_image"
+        }
+      ]
+    },
+    {
+      "stt": 175,
+      "id": "TC-REG-49",
+      "status": "Passed",
+      "actual": "Avatar thiếu ảnh trả fallback xác định.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Unit\\UserAvatarUrlTest::test_avatar_url_uses_deterministic_fallback_when_no_profile_image_exists"
+        }
+      ]
+    },
+    {
+      "stt": 176,
+      "id": "TC-PRICE-11",
+      "status": "Passed",
+      "actual": "Tra giá lấy ứng viên mới nhất còn hiệu lực và bao gồm biên ngày.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\BookingOrderConversionTest::test_latest_pricing_uses_the_newest_effective_date_and_includes_date_boundaries"
+        }
+      ]
+    },
+    {
+      "stt": 177,
+      "id": "TC-DB-07",
+      "status": "Passed",
+      "actual": "Quan hệ 1-N dùng bảng địa chỉ và FK lowercase đúng.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Unit\\KhachHangDiaChiModelTest::test_customer_has_many_addresses_through_the_lowercase_foreign_key"
+        }
+      ]
+    },
+    {
+      "stt": 178,
+      "id": "TC-PRICE-12",
+      "status": "Passed",
+      "actual": "Ngày hiển thị dd-mm-yyyy được chuẩn hóa hợp lệ.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\PricingDateInputTest::test_pricing_dates_are_normalized_from_day_month_year_before_validation"
+        }
+      ]
+    },
+    {
+      "stt": 179,
+      "id": "TC-PRICE-13",
+      "status": "Passed",
+      "actual": "31-02-2026 bị giữ là input sai và validation từ chối.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\PricingDateInputTest::test_invalid_day_month_year_input_is_not_normalized_into_a_valid_date"
+        }
+      ]
+    },
+    {
+      "stt": 180,
+      "id": "TC-BK-07",
+      "status": "Passed",
+      "actual": "Lỗi ghi chi tiết làm rollback Booking, đơn và audit.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\BookingOrderConversionTest::test_booking_confirmation_rolls_back_when_order_item_creation_fails_mid_transaction"
+        }
+      ]
+    },
+    {
+      "stt": 181,
+      "id": "TC-BK-08",
+      "status": "Passed",
+      "actual": "Khối lượng âm/0 và số lượng 0 đều không qua validation.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\BookingOrderConversionTest::test_booking_request_rejects_non_positive_weight_and_piece_quantity"
+        }
+      ]
+    },
+    {
+      "stt": 182,
+      "id": "TC-BK-09",
+      "status": "Passed",
+      "actual": "Khối lượng Booking được lưu 2 chữ số thập phân.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\BookingOrderConversionTest::test_booking_service_rounds_excess_weight_precision_before_persisting"
+        }
+      ]
+    },
+    {
+      "stt": 183,
+      "id": "TC-BK-10",
+      "status": "Passed",
+      "actual": "Khối lượng thực được làm tròn trước tính phí và lưu; min không thay lượng thực.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\BookingOrderConversionTest::test_order_service_rounds_excess_weight_precision_before_calculating_and_persisting"
+        }
+      ]
+    },
+    {
+      "stt": 184,
+      "id": "TC-BK-11",
+      "status": "Passed",
+      "actual": "Request chuẩn hóa độ chính xác trước validation.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\BookingOrderConversionTest::test_order_request_rounds_excess_weight_precision_before_validation"
+        }
+      ]
+    },
+    {
+      "stt": 185,
+      "id": "TC-UI-01",
+      "status": "Passed",
+      "actual": "Số lượng nguyên, lượng 2 chữ số; dạng kết hợp 2 món · 16.00 kg.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Unit\\MeasurementFormattingTest::test_quantity_and_weight_display_use_the_expected_precision"
+        }
+      ]
+    },
+    {
+      "stt": 186,
+      "id": "TC-BK-12",
+      "status": "Passed",
+      "actual": "POST kiểm kê tạo một Order Đã tiếp nhận và đúng chặng tại nhà.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\BookingOrderConversionTest::test_confirm_route_changes_pending_booking_and_creates_one_order"
+        }
+      ]
+    },
+    {
+      "stt": 187,
+      "id": "TC-BK-13",
+      "status": "Passed",
+      "actual": "Booking hủy bị từ chối, không tạo Order.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\BookingOrderConversionTest::test_confirm_route_rejects_cancelled_booking_without_creating_an_order"
+        }
+      ]
+    },
+    {
+      "stt": 188,
+      "id": "TC-BK-14",
+      "status": "Passed",
+      "actual": "Booking thiếu dòng được redirect về sửa, giữ nguyên trạng thái/Order count.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\BookingOrderConversionTest::test_confirm_route_explains_that_service_lines_are_required_and_does_not_confirm_empty_booking"
+        }
+      ]
+    },
+    {
+      "stt": 189,
+      "id": "TC-SLOG-01",
+      "status": "Passed",
+      "actual": "Filter chỉ lấy log actor đã chọn.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\SystemLogTest::test_account_dropdown_filter_returns_only_logs_for_selected_account"
+        }
+      ]
+    },
+    {
+      "stt": 190,
+      "id": "TC-SLOG-02",
+      "status": "Passed",
+      "actual": "Log actor NULL hiển thị Hệ thống.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\SystemLogTest::test_null_account_log_is_shown_as_system"
+        }
+      ]
+    },
+    {
+      "stt": 191,
+      "id": "TC-SLOG-03",
+      "status": "Passed",
+      "actual": "Dropdown chỉ lấy thuộc tính cần thiết và render option đúng.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\SystemLogTest::test_view_receives_accounts_with_only_the_required_dropdown_attributes"
+        }
+      ]
+    },
+    {
+      "stt": 192,
+      "id": "TC-SLOG-04",
+      "status": "Passed",
+      "actual": "Nhân viên GET log nhận 403.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\SystemLogTest::test_staff_is_forbidden_from_accessing_system_logs"
+        }
+      ]
+    },
+    {
+      "stt": 193,
+      "id": "TC-POINT-01",
+      "status": "Passed",
+      "actual": "Số dư, khoản giảm và marker tài chính khớp assertions của RewardPointTest; fixture là dữ liệu tự động tại phương thức nguồn.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\RewardPointTest::test_delivered_order_awards_points_using_the_configured_rate_only_once"
+        }
+      ]
+    },
+    {
+      "stt": 194,
+      "id": "TC-POINT-02",
+      "status": "Passed",
+      "actual": "Số dư, khoản giảm và marker tài chính khớp assertions của RewardPointTest; fixture là dữ liệu tự động tại phương thức nguồn.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\RewardPointTest::test_booking_conversion_redeems_selected_points_and_reduces_order_total"
+        }
+      ]
+    },
+    {
+      "stt": 195,
+      "id": "TC-POINT-03",
+      "status": "Passed",
+      "actual": "Số dư, khoản giảm và marker tài chính khớp assertions của RewardPointTest; fixture là dữ liệu tự động tại phương thức nguồn.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\RewardPointTest::test_order_creation_redeems_points_at_one_vnd_per_point"
+        }
+      ]
+    },
+    {
+      "stt": 196,
+      "id": "TC-POINT-05",
+      "status": "Passed",
+      "actual": "Số dư, khoản giảm và marker tài chính khớp assertions của RewardPointTest; fixture là dữ liệu tự động tại phương thức nguồn.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\RewardPointTest::test_points_discount_never_exceeds_the_value_of_points_redeemed"
+        }
+      ]
+    },
+    {
+      "stt": 197,
+      "id": "TC-POINT-06",
+      "status": "Passed",
+      "actual": "Số dư, khoản giảm và marker tài chính khớp assertions của RewardPointTest; fixture là dữ liệu tự động tại phương thức nguồn.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\RewardPointTest::test_order_creation_rolls_back_when_requested_points_exceed_the_balance"
+        }
+      ]
+    },
+    {
+      "stt": 198,
+      "id": "TC-COMM-01",
+      "status": "Passed",
+      "actual": "Kết quả chat/log/ACL khớp assertions của phương thức AdminCommunicationTest đã chạy.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\AdminCommunicationTest::test_store_message_uses_linked_customer_account_and_keeps_chat_out_of_audit_log"
+        }
+      ]
+    },
+    {
+      "stt": 199,
+      "id": "TC-COMM-02",
+      "status": "Passed",
+      "actual": "Kết quả chat/log/ACL khớp assertions của phương thức AdminCommunicationTest đã chạy.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\AdminCommunicationTest::test_message_is_rejected_when_customer_has_no_linked_account"
+        }
+      ]
+    },
+    {
+      "stt": 200,
+      "id": "TC-COMM-03",
+      "status": "Passed",
+      "actual": "Kết quả chat/log/ACL khớp assertions của phương thức AdminCommunicationTest đã chạy.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\AdminCommunicationTest::test_system_log_screen_applies_table_action_account_and_date_filters"
+        }
+      ]
+    },
+    {
+      "stt": 201,
+      "id": "TC-COMM-04",
+      "status": "Passed",
+      "actual": "Kết quả chat/log/ACL khớp assertions của phương thức AdminCommunicationTest đã chạy.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\AdminCommunicationTest::test_owner_can_view_system_logs_and_sees_the_menu_link"
+        }
+      ]
+    },
+    {
+      "stt": 202,
+      "id": "TC-COMM-05",
+      "status": "Passed",
+      "actual": "Kết quả chat/log/ACL khớp assertions của phương thức AdminCommunicationTest đã chạy.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\AdminCommunicationTest::test_manager_and_staff_cannot_open_system_logs_or_see_the_menu_link"
+        }
+      ]
+    },
+    {
+      "stt": 203,
+      "id": "TC-COMM-06",
+      "status": "Passed",
+      "actual": "Route dùng permission:system_logs.view, không có role:manager|admin hay role:admin; đã sửa kỳ vọng middleware cũ.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\AdminCommunicationTest::test_system_log_route_is_protected_by_dynamic_permission_middleware"
+        }
+      ]
+    },
+    {
+      "stt": 204,
+      "id": "TC-AUD-05",
+      "status": "Passed",
+      "actual": "Snapshot audit không chứa field/mật khẩu bí mật.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\UserAccountAuditTest::test_account_creation_and_changes_are_audited_without_recording_passwords"
+        }
+      ]
+    },
+    {
+      "stt": 205,
+      "id": "TC-BOOKING-STAFF-01",
+      "status": "Passed",
+      "actual": "Nhân viên inactive bị chặn ở tạo đơn và inspection; không có tác dụng phụ.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\BookingOrderConversionTest::test_create_and_inspection_reject_inactive_employee_without_side_effects"
+        }
+      ]
+    },
+    {
+      "stt": 206,
+      "id": "TC-BOOKING-STAFF-02",
+      "status": "Passed",
+      "actual": "Không thay nhân viên sau khi Booking có Order.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\BookingOrderConversionTest::test_booking_employee_cannot_be_changed_after_an_order_is_created"
+        }
+      ]
+    },
+    {
+      "stt": 207,
+      "id": "TC-POINT-08",
+      "status": "Passed",
+      "actual": "Số dư, khoản giảm và marker tài chính khớp assertions của RewardPointTest; fixture là dữ liệu tự động tại phương thức nguồn.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\RewardPointTest::test_order_creation_redeems_all_available_points_when_enabled"
+        }
+      ]
+    },
+    {
+      "stt": 208,
+      "id": "TC-POINT-09",
+      "status": "Passed",
+      "actual": "Số dư, khoản giảm và marker tài chính khớp assertions của RewardPointTest; fixture là dữ liệu tự động tại phương thức nguồn.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\RewardPointTest::test_order_creation_does_not_redeem_points_when_switch_is_off"
+        }
+      ]
+    },
+    {
+      "stt": 209,
+      "id": "TC-POINT-10",
+      "status": "Passed",
+      "actual": "Số dư, khoản giảm và marker tài chính khớp assertions của RewardPointTest; fixture là dữ liệu tự động tại phương thức nguồn.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\RewardPointTest::test_booking_conversion_can_redeem_all_available_points_when_enabled"
+        }
+      ]
+    },
+    {
+      "stt": 210,
+      "id": "TC-BOOKING-UI-01",
+      "status": "Pending",
+      "actual": "Bao phủ một phần/chưa thực thi đủ: Chưa thao tác dropdown danh mục A/B/C trên trang Booking thực tế.",
+      "evidence": []
+    },
+    {
+      "stt": 211,
+      "id": "TC-BOOKING-UI-02",
+      "status": "Pending",
+      "actual": "Bao phủ một phần/chưa thực thi đủ: Backend chặn thay staff đã pass; chưa đủ assertion disabled/background của ô UI.",
+      "evidence": []
+    },
+    {
+      "stt": 212,
+      "id": "TC-PROMO-UI-01",
+      "status": "Pending",
+      "actual": "Bao phủ một phần/chưa thực thi đủ: Chưa thao tác chuyển loại khuyến mãi và kiểm disabled/background trên UI.",
+      "evidence": []
+    },
+    {
+      "stt": 213,
+      "id": "TC-PROFILE-AVATAR-01",
+      "status": "Pending",
+      "actual": "Bao phủ một phần/chưa thực thi đủ: ProfileUpdateTest chỉ mock Storage/signed URL/object verification, không thực hiện upload thật qua browser.",
+      "evidence": []
+    },
+    {
+      "stt": 214,
+      "id": "TC-CUSTOMER-SORT-01",
+      "status": "Passed",
+      "actual": "Sort điểm missing=0 và thứ tự ổn định khi bằng điểm; cả hai phương thức CustomerSortTest đã chạy.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\CustomerSortTest::test_points_ascending_sort_is_stable_for_equal_point_totals"
+        },
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\CustomerSortTest::test_points_sort_orders_customers_with_missing_points_as_zero"
+        }
+      ]
+    },
+    {
+      "stt": 215,
+      "id": "TC-SCHEMA-RO-01",
+      "status": "Blocked",
+      "actual": "Chưa có metadata catalog Live được phép chỉ đọc; chỉ kiểm snapshot cục bộ, không chứng nhận đối chiếu Live.",
+      "evidence": []
+    },
+    {
+      "stt": 216,
+      "id": "TC-BK-RETURN-01",
+      "status": "Passed",
+      "actual": "Chỉ tạo các chặng tại nhà theo receive/return của dataset; đúng chiều và địa chỉ.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\BookingOrderConversionTest::test_inspection_creates_only_the_home_delivery_legs with data set \"TC-BK-RETURN-01\""
+        }
+      ]
+    },
+    {
+      "stt": 217,
+      "id": "TC-BK-RETURN-02",
+      "status": "Passed",
+      "actual": "Chỉ tạo các chặng tại nhà theo receive/return của dataset; đúng chiều và địa chỉ.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\BookingOrderConversionTest::test_inspection_creates_only_the_home_delivery_legs with data set \"TC-BK-RETURN-02\""
+        }
+      ]
+    },
+    {
+      "stt": 218,
+      "id": "TC-BK-RETURN-03",
+      "status": "Passed",
+      "actual": "Chỉ tạo các chặng tại nhà theo receive/return của dataset; đúng chiều và địa chỉ.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\BookingOrderConversionTest::test_inspection_creates_only_the_home_delivery_legs with data set \"TC-BK-RETURN-03\""
+        }
+      ]
+    },
+    {
+      "stt": 219,
+      "id": "TC-BK-RETURN-04",
+      "status": "Passed",
+      "actual": "Chỉ tạo các chặng tại nhà theo receive/return của dataset; đúng chiều và địa chỉ.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\BookingOrderConversionTest::test_inspection_creates_only_the_home_delivery_legs with data set \"TC-BK-RETURN-04\""
+        }
+      ]
+    },
+    {
+      "stt": 220,
+      "id": "TC-BK-ACTUAL",
+      "status": "Passed",
+      "actual": "Booking giữ 2 món; Order lưu 5 món × 15.000 = 75.000; bỏ giá client=1.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\BookingOrderConversionTest::test_order_uses_actual_inspection_data_and_server_price_without_replacing_booking_estimates"
+        }
+      ]
+    },
+    {
+      "stt": 221,
+      "id": "TC-BK-GET",
+      "status": "Passed",
+      "actual": "GET form có tình trạng/hình thức trả và không tạo Order.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\BookingOrderConversionTest::test_opening_inspection_shows_required_condition_and_does_not_create_an_order"
+        }
+      ]
+    },
+    {
+      "stt": 222,
+      "id": "TC-BK-VALIDATION",
+      "status": "Passed",
+      "actual": "Chín dataset invalid trả đúng field error, không ghi dở dang.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\BookingOrderConversionTest::test_invalid_inspection_rolls_back_every_created_record with data set \"missing legacy return method\""
+        },
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\BookingOrderConversionTest::test_invalid_inspection_rolls_back_every_created_record with data set \"invalid return method\""
+        },
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\BookingOrderConversionTest::test_invalid_inspection_rolls_back_every_created_record with data set \"missing home return address\""
+        },
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\BookingOrderConversionTest::test_invalid_inspection_rolls_back_every_created_record with data set \"missing home receive address\""
+        },
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\BookingOrderConversionTest::test_invalid_inspection_rolls_back_every_created_record with data set \"missing condition\""
+        },
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\BookingOrderConversionTest::test_invalid_inspection_rolls_back_every_created_record with data set \"blank condition\""
+        },
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\BookingOrderConversionTest::test_invalid_inspection_rolls_back_every_created_record with data set \"overlong condition\""
+        },
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\BookingOrderConversionTest::test_invalid_inspection_rolls_back_every_created_record with data set \"fractional pieces\""
+        },
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\BookingOrderConversionTest::test_invalid_inspection_rolls_back_every_created_record with data set \"both measurements\""
+        }
+      ]
+    },
+    {
+      "stt": 223,
+      "id": "TC-BK-IDEMPOTENT",
+      "status": "Passed",
+      "actual": "POST xác nhận lặp redirect cùng Order, Order count vẫn 1.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\BookingOrderConversionTest::test_confirm_route_changes_pending_booking_and_creates_one_order"
+        }
+      ]
+    },
+    {
+      "stt": 224,
+      "id": "TC-BK-ROLLBACK",
+      "status": "Passed",
+      "actual": "Lỗi phiếu thứ hai rollback Order, Booking, điểm và audit.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\BookingOrderConversionTest::test_failure_of_the_second_delivery_rolls_back_order_booking_points_and_audit"
+        }
+      ]
+    },
+    {
+      "stt": 225,
+      "id": "TC-BK-AUDIT-SEARCH",
+      "status": "Passed",
+      "actual": "Sửa chiều trả được audit/tìm kiếm; chiều nhận không bị đổi.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\BookingOrderConversionTest::test_return_changes_are_audited_and_searchable_without_changing_receive_fields"
+        }
+      ]
+    },
+    {
+      "stt": 226,
+      "id": "TC-PERF-01",
+      "status": "Passed",
+      "actual": "Doanh thu/KPI/filter/quan hệ và query count khớp assertion của ReportsServiceTest trong fixture cô lập.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\ReportsServiceTest::test_kpis_and_revenue_chart_use_bounded_aggregate_query_counts"
+        }
+      ]
+    },
+    {
+      "stt": 227,
+      "id": "TC-PERF-02",
+      "status": "Passed",
+      "actual": "Các filter chạy một aggregate và trả đúng bucket.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\DashboardRevenueChartTest::test_revenue_chart_aggregates_each_filter_in_a_single_query"
+        }
+      ]
+    },
+    {
+      "stt": 228,
+      "id": "TC-PERF-03",
+      "status": "Passed",
+      "actual": "Doanh thu/KPI/filter/quan hệ và query count khớp assertion của ReportsServiceTest trong fixture cô lập.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\ReportsServiceTest::test_recent_orders_eager_load_customer_and_service_details"
+        }
+      ]
+    },
+    {
+      "stt": 229,
+      "id": "TC-PAY-01",
+      "status": "Passed",
+      "actual": "Khoản thu vượt phần còn lại bị chặn; suite cùng lớp còn kiểm mã trùng và vòng đời.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\PaymentOrderRedirectTest::test_payment_amount_cannot_exceed_the_remaining_order_balance"
+        },
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\PaymentOrderRedirectTest::test_transaction_code_must_be_unique_when_provided"
+        },
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\PaymentOrderRedirectTest::test_server_generates_a_unique_cash_transaction_code_when_code_is_blank"
+        }
+      ]
+    },
+    {
+      "stt": 230,
+      "id": "TC-COMM-07",
+      "status": "Passed",
+      "actual": "Thông báo lưu tiêu đề và thời gian server; group recipients/mark-all-read kiểm tra bằng các phương thức cùng lớp.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\AdminCommunicationTest::test_store_notification_saves_title_and_uses_server_send_time"
+        },
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\AdminCommunicationTest::test_store_notification_can_send_to_customer_and_staff_groups"
+        },
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\AdminCommunicationTest::test_mark_all_read_updates_every_notification_for_current_account_only"
+        },
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\AdminCommunicationTest::test_mark_all_read_route_is_available_to_notification_viewers"
+        }
+      ]
+    },
+    {
+      "stt": 231,
+      "id": "TC-COMM-08",
+      "status": "Passed",
+      "actual": "Tạo khuyến mãi không tự fan-out thông báo DB.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\PromotionNotificationTest::test_creating_active_promotion_does_not_fan_out_database_notifications"
+        }
+      ]
+    },
+    {
+      "stt": 232,
+      "id": "TC-SET-01",
+      "status": "Passed",
+      "actual": "TC-SET-01 đạt: menu tài khoản mở thật, có link profile và không có link Settings.",
+      "evidence": [
+        {
+          "kind": "browser-supplemental"
+        }
+      ]
+    },
+    {
+      "stt": 233,
+      "id": "TC-SET-02",
+      "status": "Passed",
+      "actual": "TC-SET-02 đạt: GET /settings bằng session đăng nhập trả 404.",
+      "evidence": [
+        {
+          "kind": "browser-supplemental"
+        }
+      ]
+    },
+    {
+      "stt": 234,
+      "id": "TC-SET-03",
+      "status": "Passed",
+      "actual": "TC-SET-03 đạt sau nạp Vite build đầy đủ: GET /profile với session thật trả 200, HTML không có link Settings.",
+      "evidence": [
+        {
+          "kind": "browser-supplemental"
+        }
+      ]
+    },
+    {
+      "stt": 235,
+      "id": "TC-SET-04",
+      "status": "Passed",
+      "actual": "Registry không có settings.view và mapper resolve trả null.",
+      "evidence": [
+        {
+          "kind": "supplemental",
+          "test": "Tests\\Unit\\TestcaseRegistryExecutionTest::test_documented_settings_permission_is_absent"
+        }
+      ]
+    },
+    {
+      "stt": 236,
+      "id": "TC-PROD-AVATAR-01",
+      "status": "Blocked",
+      "actual": "Đã thử GET login công khai nhưng proxy trả CONNECT 403; chưa kiểm login/profile trên deployment hiện hành.",
+      "evidence": []
+    },
+    {
+      "stt": 237,
+      "id": "TC-PROD-AVATAR-02",
+      "status": "Blocked",
+      "actual": "Chưa có session/tài khoản/object Storage production riêng được phép cho lượt này; không upload hay sửa avatar người dùng thật.",
+      "evidence": []
+    },
+    {
+      "stt": 238,
+      "id": "TC-PG-SAFE-HOST",
+      "status": "Passed",
+      "actual": "Guard cấu hình/marker sai từ chối trước bootstrap/kết nối theo safety probe.",
+      "evidence": [
+        {
+          "kind": "postgres"
+        }
+      ]
+    },
+    {
+      "stt": 239,
+      "id": "TC-PG-SAFE-DB",
+      "status": "Passed",
+      "actual": "Guard cấu hình/marker sai từ chối trước bootstrap/kết nối theo safety probe.",
+      "evidence": [
+        {
+          "kind": "postgres"
+        }
+      ]
+    },
+    {
+      "stt": 240,
+      "id": "TC-PG-SAFE-PORT",
+      "status": "Passed",
+      "actual": "Guard cấu hình/marker sai từ chối trước bootstrap/kết nối theo safety probe.",
+      "evidence": [
+        {
+          "kind": "postgres"
+        }
+      ]
+    },
+    {
+      "stt": 241,
+      "id": "TC-PG-SAFE-PASSWORD",
+      "status": "Passed",
+      "actual": "Guard cấu hình/marker sai từ chối trước bootstrap/kết nối theo safety probe.",
+      "evidence": [
+        {
+          "kind": "postgres"
+        }
+      ]
+    },
+    {
+      "stt": 242,
+      "id": "TC-PG-SAFE-FIXTURE",
+      "status": "Passed",
+      "actual": "Guard cấu hình/marker sai từ chối trước bootstrap/kết nối theo safety probe.",
+      "evidence": [
+        {
+          "kind": "postgres"
+        }
+      ]
+    },
+    {
+      "stt": 243,
+      "id": "TC-PG-PRICE-KG-MIN",
+      "status": "Passed",
+      "actual": "Assertion Web/RPC tương ứng đạt trên PostgreSQL 17 fixture; xem contracts.php và log 66 assertions.",
+      "evidence": [
+        {
+          "kind": "postgres"
+        }
+      ]
+    },
+    {
+      "stt": 244,
+      "id": "TC-PG-PRICE-KG-ACTUAL",
+      "status": "Passed",
+      "actual": "Assertion Web/RPC tương ứng đạt trên PostgreSQL 17 fixture; xem contracts.php và log 66 assertions.",
+      "evidence": [
+        {
+          "kind": "postgres"
+        }
+      ]
+    },
+    {
+      "stt": 245,
+      "id": "TC-PG-PRICE-PIECE",
+      "status": "Passed",
+      "actual": "Assertion Web/RPC tương ứng đạt trên PostgreSQL 17 fixture; xem contracts.php và log 66 assertions.",
+      "evidence": [
+        {
+          "kind": "postgres"
+        }
+      ]
+    },
+    {
+      "stt": 246,
+      "id": "TC-PG-INSPECTION",
+      "status": "Passed",
+      "actual": "Assertion Web/RPC tương ứng đạt trên PostgreSQL 17 fixture; xem contracts.php và log 66 assertions.",
+      "evidence": [
+        {
+          "kind": "postgres"
+        }
+      ]
+    },
+    {
+      "stt": 247,
+      "id": "TC-PG-POINT-INTENT",
+      "status": "Passed",
+      "actual": "Assertion Web/RPC tương ứng đạt trên PostgreSQL 17 fixture; xem contracts.php và log 66 assertions.",
+      "evidence": [
+        {
+          "kind": "postgres"
+        }
+      ]
+    },
+    {
+      "stt": 248,
+      "id": "TC-PG-OWNER-REPLAY",
+      "status": "Passed",
+      "actual": "Assertion Web/RPC tương ứng đạt trên PostgreSQL 17 fixture; xem contracts.php và log 66 assertions.",
+      "evidence": [
+        {
+          "kind": "postgres"
+        }
+      ]
+    },
+    {
+      "stt": 249,
+      "id": "TC-PG-STAFF-ACTIVE",
+      "status": "Passed",
+      "actual": "Assertion Web/RPC tương ứng đạt trên PostgreSQL 17 fixture; xem contracts.php và log 66 assertions.",
+      "evidence": [
+        {
+          "kind": "postgres"
+        }
+      ]
+    },
+    {
+      "stt": 250,
+      "id": "TC-PG-LEGS-SS",
+      "status": "Passed",
+      "actual": "Assertion Web/RPC tương ứng đạt trên PostgreSQL 17 fixture; xem contracts.php và log 66 assertions.",
+      "evidence": [
+        {
+          "kind": "postgres"
+        }
+      ]
+    },
+    {
+      "stt": 251,
+      "id": "TC-PG-LEGS-HS",
+      "status": "Passed",
+      "actual": "Assertion Web/RPC tương ứng đạt trên PostgreSQL 17 fixture; xem contracts.php và log 66 assertions.",
+      "evidence": [
+        {
+          "kind": "postgres"
+        }
+      ]
+    },
+    {
+      "stt": 252,
+      "id": "TC-PG-LEGS-SH",
+      "status": "Passed",
+      "actual": "Assertion Web/RPC tương ứng đạt trên PostgreSQL 17 fixture; xem contracts.php và log 66 assertions.",
+      "evidence": [
+        {
+          "kind": "postgres"
+        }
+      ]
+    },
+    {
+      "stt": 253,
+      "id": "TC-PG-LEGS-HH",
+      "status": "Passed",
+      "actual": "Assertion Web/RPC tương ứng đạt trên PostgreSQL 17 fixture; xem contracts.php và log 66 assertions.",
+      "evidence": [
+        {
+          "kind": "postgres"
+        }
+      ]
+    },
+    {
+      "stt": 254,
+      "id": "TC-PG-FINANCE",
+      "status": "Passed",
+      "actual": "Assertion Web/RPC tương ứng đạt trên PostgreSQL 17 fixture; xem contracts.php và log 66 assertions.",
+      "evidence": [
+        {
+          "kind": "postgres"
+        }
+      ]
+    },
+    {
+      "stt": 255,
+      "id": "TC-PG-ACTOR-PAYMENT",
+      "status": "Passed",
+      "actual": "Assertion Web/RPC tương ứng đạt trên PostgreSQL 17 fixture; xem contracts.php và log 66 assertions.",
+      "evidence": [
+        {
+          "kind": "postgres"
+        }
+      ]
+    },
+    {
+      "stt": 256,
+      "id": "TC-PG-LIFECYCLE",
+      "status": "Passed",
+      "actual": "Assertion Web/RPC tương ứng đạt trên PostgreSQL 17 fixture; xem contracts.php và log 66 assertions.",
+      "evidence": [
+        {
+          "kind": "postgres"
+        }
+      ]
+    },
+    {
+      "stt": 257,
+      "id": "TC-PG-REFUND",
+      "status": "Passed",
+      "actual": "Assertion Web/RPC tương ứng đạt trên PostgreSQL 17 fixture; xem contracts.php và log 66 assertions.",
+      "evidence": [
+        {
+          "kind": "postgres"
+        }
+      ]
+    },
+    {
+      "stt": 258,
+      "id": "TC-PG-PARENT-GUARDS",
+      "status": "Passed",
+      "actual": "Assertion Web/RPC tương ứng đạt trên PostgreSQL 17 fixture; xem contracts.php và log 66 assertions.",
+      "evidence": [
+        {
+          "kind": "postgres"
+        }
+      ]
+    },
+    {
+      "stt": 259,
+      "id": "TC-PG-RACE-BOOKING",
+      "status": "Passed",
+      "actual": "Race hai process độc lập đạt; tổng ba race có 21 assertions, khóa/barrier PostgreSQL thật.",
+      "evidence": [
+        {
+          "kind": "postgres"
+        }
+      ]
+    },
+    {
+      "stt": 260,
+      "id": "TC-PG-RACE-DELIVERY",
+      "status": "Passed",
+      "actual": "Race hai process độc lập đạt; tổng ba race có 21 assertions, khóa/barrier PostgreSQL thật.",
+      "evidence": [
+        {
+          "kind": "postgres"
+        }
+      ]
+    },
+    {
+      "stt": 261,
+      "id": "TC-PG-RACE-POINTS",
+      "status": "Passed",
+      "actual": "Race hai process độc lập đạt; tổng ba race có 21 assertions, khóa/barrier PostgreSQL thật.",
+      "evidence": [
+        {
+          "kind": "postgres"
+        }
+      ]
+    },
+    {
+      "stt": 262,
+      "id": "TC-PG-QUOTE-SECURITY",
+      "status": "Passed",
+      "actual": "Shell-quote security regression đạt cho token newline và round-trip thông thường.",
+      "evidence": [
+        {
+          "kind": "frontend"
+        }
+      ]
+    },
+    {
+      "stt": 263,
+      "id": "TC-PG-CI-GATES",
+      "status": "Pending",
+      "actual": "Chưa có bằng chứng thực thi đủ toàn bộ bước/biến thể của ca này trong lượt chạy; không suy diễn từ suite xanh.",
+      "evidence": []
+    },
+    {
+      "stt": 264,
+      "id": "TC-E2E-01",
+      "status": "Passed",
+      "actual": "Business E2E-01 đạt trên Chromium → HTTP → PostgreSQL với session/CSRF/quyền thật; dữ liệu persisted được assert.",
+      "evidence": [
+        {
+          "kind": "browser"
+        }
+      ]
+    },
+    {
+      "stt": 265,
+      "id": "TC-E2E-02",
+      "status": "Passed",
+      "actual": "Business E2E-02 đạt trên Chromium → HTTP → PostgreSQL với session/CSRF/quyền thật; dữ liệu persisted được assert.",
+      "evidence": [
+        {
+          "kind": "browser"
+        }
+      ]
+    },
+    {
+      "stt": 266,
+      "id": "TC-E2E-03",
+      "status": "Passed",
+      "actual": "Business E2E-03 đạt trên Chromium → HTTP → PostgreSQL với session/CSRF/quyền thật; dữ liệu persisted được assert.",
+      "evidence": [
+        {
+          "kind": "browser"
+        }
+      ]
+    },
+    {
+      "stt": 267,
+      "id": "TC-E2E-04",
+      "status": "Passed",
+      "actual": "Business E2E-04 đạt trên Chromium → HTTP → PostgreSQL với session/CSRF/quyền thật; dữ liệu persisted được assert.",
+      "evidence": [
+        {
+          "kind": "browser"
+        }
+      ]
+    },
+    {
+      "stt": 268,
+      "id": "TC-E2E-05",
+      "status": "Passed",
+      "actual": "Business E2E-05 đạt trên Chromium → HTTP → PostgreSQL với session/CSRF/quyền thật; dữ liệu persisted được assert.",
+      "evidence": [
+        {
+          "kind": "browser"
+        }
+      ]
+    },
+    {
+      "stt": 269,
+      "id": "TC-E2E-06",
+      "status": "Passed",
+      "actual": "Business E2E-06 đạt trên Chromium → HTTP → PostgreSQL với session/CSRF/quyền thật; dữ liệu persisted được assert.",
+      "evidence": [
+        {
+          "kind": "browser"
+        }
+      ]
+    },
+    {
+      "stt": 270,
+      "id": "TC-E2E-07",
+      "status": "Passed",
+      "actual": "Business E2E-07 đạt trên Chromium → HTTP → PostgreSQL với session/CSRF/quyền thật; dữ liệu persisted được assert.",
+      "evidence": [
+        {
+          "kind": "browser"
+        }
+      ]
+    },
+    {
+      "stt": 271,
+      "id": "TC-E2E-08",
+      "status": "Passed",
+      "actual": "Business E2E-08 đạt trên Chromium → HTTP → PostgreSQL với session/CSRF/quyền thật; dữ liệu persisted được assert.",
+      "evidence": [
+        {
+          "kind": "browser"
+        }
+      ]
+    },
+    {
+      "stt": 272,
+      "id": "TC-PAGELOAD-01",
+      "status": "Passed",
+      "actual": "KPI loại đúng trạng thái; một aggregate; profile HTTP staff=13 queries.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\StaffDashboardPerformanceTest::test_operational_kpis_use_one_aggregate_and_exclude_settled_cancelled_orders"
+        }
+      ]
+    },
+    {
+      "stt": 273,
+      "id": "TC-PAGELOAD-02",
+      "status": "Passed",
+      "actual": "Dashboard rỗng trả integer 0, một aggregate.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\StaffDashboardPerformanceTest::test_empty_dashboard_kpis_are_integer_zero_with_one_aggregate"
+        }
+      ]
+    },
+    {
+      "stt": 274,
+      "id": "TC-PAGELOAD-03",
+      "status": "Passed",
+      "actual": "Paid list giữ KH/DV/lượng/tiền/lock; service ≤5; profile HTTP orders=10 queries.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\OrderListPerformanceTest::test_populated_list_keeps_display_values_and_settled_lock_with_five_queries"
+        }
+      ]
+    },
+    {
+      "stt": 275,
+      "id": "TC-PAGELOAD-04",
+      "status": "Passed",
+      "actual": "Filter/sort đúng; 12 bản ghi, per-page 10, hai trang.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\OrderListPerformanceTest::test_search_status_date_sort_and_pagination_still_select_correct_orders"
+        }
+      ]
+    },
+    {
+      "stt": 276,
+      "id": "TC-PAGELOAD-05",
+      "status": "Passed",
+      "actual": "Profile browser thật đạt password toggle trước Swal, menu/dropdown, cancel không POST/DB change và logout/login sai; Swal delay=500ms.",
+      "evidence": [
+        {
+          "kind": "performance"
+        }
+      ]
+    },
+    {
+      "stt": 277,
+      "id": "TC-PAGELOAD-06",
+      "status": "Passed",
+      "actual": "Profile browser thật đạt password toggle trước Swal, menu/dropdown, cancel không POST/DB change và logout/login sai; Swal delay=500ms.",
+      "evidence": [
+        {
+          "kind": "performance"
+        }
+      ]
+    },
+    {
+      "stt": 278,
+      "id": "TC-STT-01",
+      "status": "Passed",
+      "actual": "Trang 1/2/3 STT=1–5/6–10/11–12, không dùng ID.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\TableRowNumberingTest::test_paginated_rows_continue_across_pages_without_using_record_ids with data set #0"
+        },
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\TableRowNumberingTest::test_paginated_rows_continue_across_pages_without_using_record_ids with data set #1"
+        },
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\TableRowNumberingTest::test_paginated_rows_continue_across_pages_without_using_record_ids with data set #2"
+        }
+      ]
+    },
+    {
+      "stt": 279,
+      "id": "TC-STT-02",
+      "status": "Passed",
+      "actual": "Collection khóa 4/19 vẫn STT=1/2.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\TableRowNumberingTest::test_collection_rows_are_contiguous_even_when_keys_have_gaps"
+        }
+      ]
+    },
+    {
+      "stt": 280,
+      "id": "TC-STT-03",
+      "status": "Passed",
+      "actual": "Khách hàng không có STT; ID/link/báo cáo giữ nguyên.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\TableRowNumberingTest::test_customer_ids_remain_the_first_column_without_row_numbers"
+        }
+      ]
+    },
+    {
+      "stt": 281,
+      "id": "TC-STT-04",
+      "status": "Passed",
+      "actual": "Empty-state và colspan đúng, không sinh STT giả.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\TableRowNumberingTest::test_empty_tables_span_all_visible_columns_without_a_fake_row_number"
+        }
+      ]
+    },
+    {
+      "stt": 282,
+      "id": "TC-E2E-09",
+      "status": "Passed",
+      "actual": "E2E-09 đạt thêm/xóa/renumber ở form create/edit/legacy trên 320/768/1024/1440px; input index và snapshot PostgreSQL giữ nguyên.",
+      "evidence": [
+        {
+          "kind": "browser"
+        }
+      ]
+    },
+    {
+      "stt": 283,
+      "id": "TC-LEG-01",
+      "status": "Passed",
+      "actual": "HTTP complete-receiving còn chạy với legacy không BookingID; E2E-09 mở form legacy thật.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\BookingOrderConversionTest::test_receiving_completion_route_persists_the_inspection"
+        }
+      ]
+    },
+    {
+      "stt": 284,
+      "id": "TC-LEG-02",
+      "status": "Passed",
+      "actual": "POST legacy lưu condition, trạng thái Received, audit transaction; kiểm tra sau chuyển Washing.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\BookingOrderConversionTest::test_receiving_completion_route_persists_the_inspection"
+        }
+      ]
+    },
+    {
+      "stt": 285,
+      "id": "TC-LEG-03",
+      "status": "Passed",
+      "actual": "Update/status không thể bỏ kiểm kê; đơn vẫn Pending.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\BookingOrderConversionTest::test_pending_order_cannot_skip_receiving_inspection_to_change_status"
+        }
+      ]
+    },
+    {
+      "stt": 286,
+      "id": "TC-LEG-04",
+      "status": "Passed",
+      "actual": "Update/status không thể bỏ kiểm kê; đơn vẫn Pending.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\BookingOrderConversionTest::test_pending_order_cannot_skip_receiving_inspection_to_change_status"
+        }
+      ]
+    },
+    {
+      "stt": 287,
+      "id": "TC-LEG-05",
+      "status": "Passed",
+      "actual": "Harness bổ sung đã thực thi dataset TC-LEG-05; assertion nghiệp vụ và snapshot rollback/giá/lịch/trạng thái tương ứng đều đạt.",
+      "evidence": [
+        {
+          "kind": "supplemental",
+          "test": "Tests\\Feature\\BookingOrderConversionTest::test_documented_legacy_execution with data set \"TC-LEG-05\""
+        }
+      ]
+    },
+    {
+      "stt": 288,
+      "id": "TC-LEG-06",
+      "status": "Passed",
+      "actual": "Harness bổ sung đã thực thi dataset TC-LEG-06; assertion nghiệp vụ và snapshot rollback/giá/lịch/trạng thái tương ứng đều đạt.",
+      "evidence": [
+        {
+          "kind": "supplemental",
+          "test": "Tests\\Feature\\BookingOrderConversionTest::test_documented_legacy_execution with data set \"TC-LEG-06\""
+        }
+      ]
+    },
+    {
+      "stt": 289,
+      "id": "TC-LEG-07",
+      "status": "Passed",
+      "actual": "Harness bổ sung đã thực thi dataset TC-LEG-07; assertion nghiệp vụ và snapshot rollback/giá/lịch/trạng thái tương ứng đều đạt.",
+      "evidence": [
+        {
+          "kind": "supplemental",
+          "test": "Tests\\Feature\\BookingOrderConversionTest::test_documented_legacy_execution with data set \"TC-LEG-07\""
+        }
+      ]
+    },
+    {
+      "stt": 290,
+      "id": "TC-LEG-08",
+      "status": "Passed",
+      "actual": "Harness bổ sung đã thực thi dataset TC-LEG-08; assertion nghiệp vụ và snapshot rollback/giá/lịch/trạng thái tương ứng đều đạt.",
+      "evidence": [
+        {
+          "kind": "supplemental",
+          "test": "Tests\\Feature\\BookingOrderConversionTest::test_documented_legacy_execution with data set \"TC-LEG-08\""
+        }
+      ]
+    },
+    {
+      "stt": 291,
+      "id": "TC-LEG-09",
+      "status": "Passed",
+      "actual": "Harness bổ sung đã thực thi dataset TC-LEG-09; assertion nghiệp vụ và snapshot rollback/giá/lịch/trạng thái tương ứng đều đạt.",
+      "evidence": [
+        {
+          "kind": "supplemental",
+          "test": "Tests\\Feature\\BookingOrderConversionTest::test_documented_legacy_execution with data set \"TC-LEG-09\""
+        }
+      ]
+    },
+    {
+      "stt": 292,
+      "id": "TC-LEG-10",
+      "status": "Passed",
+      "actual": "Giữ ID dòng retained, xóa dòng omitted, tạo dòng mới; tổng=68.000 trong fixture nguồn.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\BookingOrderConversionTest::test_receiving_inspection_saves_condition_recalculates_amount_and_allows_washing"
+        }
+      ]
+    },
+    {
+      "stt": 293,
+      "id": "TC-LEG-11",
+      "status": "Passed",
+      "actual": "Harness bổ sung đã thực thi dataset TC-LEG-11; assertion nghiệp vụ và snapshot rollback/giá/lịch/trạng thái tương ứng đều đạt.",
+      "evidence": [
+        {
+          "kind": "supplemental",
+          "test": "Tests\\Feature\\BookingOrderConversionTest::test_documented_legacy_execution with data set \"TC-LEG-11\""
+        }
+      ]
+    },
+    {
+      "stt": 294,
+      "id": "TC-LEG-12",
+      "status": "Passed",
+      "actual": "Harness bổ sung đã thực thi dataset TC-LEG-12; assertion nghiệp vụ và snapshot rollback/giá/lịch/trạng thái tương ứng đều đạt.",
+      "evidence": [
+        {
+          "kind": "supplemental",
+          "test": "Tests\\Feature\\BookingOrderConversionTest::test_documented_legacy_execution with data set \"TC-LEG-12\""
+        }
+      ]
+    },
+    {
+      "stt": 295,
+      "id": "TC-LEG-13",
+      "status": "Passed",
+      "actual": "Harness bổ sung đã thực thi dataset TC-LEG-13; assertion nghiệp vụ và snapshot rollback/giá/lịch/trạng thái tương ứng đều đạt.",
+      "evidence": [
+        {
+          "kind": "supplemental",
+          "test": "Tests\\Feature\\BookingOrderConversionTest::test_documented_legacy_execution with data set \"TC-LEG-13\""
+        }
+      ]
+    },
+    {
+      "stt": 296,
+      "id": "TC-LEG-14",
+      "status": "Passed",
+      "actual": "Harness bổ sung đã thực thi dataset TC-LEG-14; assertion nghiệp vụ và snapshot rollback/giá/lịch/trạng thái tương ứng đều đạt.",
+      "evidence": [
+        {
+          "kind": "supplemental",
+          "test": "Tests\\Feature\\BookingOrderConversionTest::test_documented_legacy_execution with data set \"TC-LEG-14\""
+        }
+      ]
+    },
+    {
+      "stt": 297,
+      "id": "TC-LEG-15",
+      "status": "Passed",
+      "actual": "Harness bổ sung đã thực thi dataset TC-LEG-15; assertion nghiệp vụ và snapshot rollback/giá/lịch/trạng thái tương ứng đều đạt.",
+      "evidence": [
+        {
+          "kind": "supplemental",
+          "test": "Tests\\Feature\\BookingOrderConversionTest::test_documented_legacy_execution with data set \"TC-LEG-15\""
+        }
+      ]
+    },
+    {
+      "stt": 298,
+      "id": "TC-LEG-16",
+      "status": "Passed",
+      "actual": "Harness bổ sung đã thực thi dataset TC-LEG-16; assertion nghiệp vụ và snapshot rollback/giá/lịch/trạng thái tương ứng đều đạt.",
+      "evidence": [
+        {
+          "kind": "supplemental",
+          "test": "Tests\\Feature\\BookingOrderConversionTest::test_documented_legacy_execution with data set \"TC-LEG-16\""
+        }
+      ]
+    },
+    {
+      "stt": 299,
+      "id": "TC-LEG-17",
+      "status": "Pending",
+      "actual": "Bao phủ một phần/chưa thực thi đủ: Chưa chạy fixture legacy 100k→50k, 90k điểm và kiểm số dư cuối 60k như dữ liệu ca.",
+      "evidence": []
+    },
+    {
+      "stt": 300,
+      "id": "TC-LEG-18",
+      "status": "Pending",
+      "actual": "Đã inject lỗi update chi tiết và insert audit: snapshot rollback đúng. Chưa inject riêng lỗi ghi điểm; chưa đủ toàn ca.",
+      "evidence": [
+        {
+          "kind": "supplemental",
+          "test": "Tests\\Feature\\BookingOrderConversionTest::test_documented_legacy_execution with data set \"TC-LEG-18\""
+        }
+      ]
+    },
+    {
+      "stt": 301,
+      "id": "TC-LEG-19",
+      "status": "Passed",
+      "actual": "Harness bổ sung đã thực thi dataset TC-LEG-19; assertion nghiệp vụ và snapshot rollback/giá/lịch/trạng thái tương ứng đều đạt.",
+      "evidence": [
+        {
+          "kind": "supplemental",
+          "test": "Tests\\Feature\\BookingOrderConversionTest::test_documented_legacy_execution with data set \"TC-LEG-19\""
+        }
+      ]
+    },
+    {
+      "stt": 302,
+      "id": "TC-LEG-20",
+      "status": "Pending",
+      "actual": "Bao phủ một phần/chưa thực thi đủ: Giữ inactive ở Delivery đã pass; chưa kiểm legacy Order giữ NV cũ và đổi NV mới trong cùng ca.",
+      "evidence": []
+    },
+    {
+      "stt": 303,
+      "id": "TC-LEG-21",
+      "status": "Pending",
+      "actual": "Bao phủ một phần/chưa thực thi đủ: Hoàn điểm một lần khi hủy đã test; chưa đầy đủ kiểm kê sau hủy của riêng Pending Order.",
+      "evidence": []
+    },
+    {
+      "stt": 304,
+      "id": "TC-LEG-22",
+      "status": "Passed",
+      "actual": "Sau kiểm kê Received, chuyển Washing được chấp nhận.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\BookingOrderConversionTest::test_receiving_inspection_saves_condition_recalculates_amount_and_allows_washing"
+        }
+      ]
+    },
+    {
+      "stt": 305,
+      "id": "TC-LEG-23",
+      "status": "Pending",
+      "actual": "Bao phủ một phần/chưa thực thi đủ: Chưa POST complete-receiving với session actor thiếu quyền; test legacy HTTP hiện bypass một phần middleware.",
+      "evidence": []
+    },
+    {
+      "stt": 306,
+      "id": "TC-LEG-24",
+      "status": "Pending",
+      "actual": "Bao phủ một phần/chưa thực thi đủ: Chưa kiểm kê DB dữ liệu cũ ngoài fixture; không đủ chứng cứ để xóa legacy.",
+      "evidence": []
+    },
+    {
+      "stt": 307,
+      "id": "TC-REG-18",
+      "status": "Passed",
+      "actual": "Validation uniqueness cho đúng current order và từ chối mã của order khác.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\LuuDonHangRequestTest::test_update_allows_the_existing_order_code_for_the_current_order"
+        }
+      ]
+    },
+    {
+      "stt": 308,
+      "id": "TC-REG-19",
+      "status": "Passed",
+      "actual": "Validation uniqueness cho đúng current order và từ chối mã của order khác.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\LuuDonHangRequestTest::test_update_rejects_an_order_code_used_by_a_different_order"
+        }
+      ]
+    },
+    {
+      "stt": 309,
+      "id": "TC-POINT-04",
+      "status": "Passed",
+      "actual": "Số dư, khoản giảm và marker tài chính khớp assertions của RewardPointTest; fixture là dữ liệu tự động tại phương thức nguồn.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\RewardPointTest::test_updating_order_to_another_customer_refunds_the_old_customer_and_redeems_from_the_new_one"
+        }
+      ]
+    },
+    {
+      "stt": 310,
+      "id": "TC-POINT-07",
+      "status": "Passed",
+      "actual": "Số dư, khoản giảm và marker tài chính khớp assertions của RewardPointTest; fixture là dữ liệu tự động tại phương thức nguồn.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\RewardPointTest::test_failed_order_update_rolls_back_old_customer_point_refund"
+        }
+      ]
+    },
+    {
+      "stt": 311,
+      "id": "TC-LEG-POINT-DELTA",
+      "status": "Passed",
+      "actual": "Số dư, khoản giảm và marker tài chính khớp assertions của RewardPointTest; fixture là dữ liệu tự động tại phương thức nguồn.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\RewardPointTest::test_repeated_order_edits_only_adjust_the_difference_in_redeemed_points"
+        }
+      ]
+    },
+    {
+      "stt": 312,
+      "id": "TC-OTP-NOTIFY-01",
+      "status": "Passed",
+      "actual": "Kết quả mail mock/cache/notification/HTTP/password/quyền khớp assertion của phương thức InternalOtpTest được ghi trong bằng chứng; không gửi email production.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\InternalOtpTest::test_admin_sends_same_otp_by_mail_and_private_database_notification"
+        }
+      ]
+    },
+    {
+      "stt": 313,
+      "id": "TC-OTP-NOTIFY-02",
+      "status": "Passed",
+      "actual": "Kết quả mail mock/cache/notification/HTTP/password/quyền khớp assertion của phương thức InternalOtpTest được ghi trong bằng chứng; không gửi email production.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\InternalOtpTest::test_success_consumes_otp_and_removes_notification_and_rejects_replay"
+        }
+      ]
+    },
+    {
+      "stt": 314,
+      "id": "TC-OTP-NOTIFY-03",
+      "status": "Passed",
+      "actual": "Kết quả mail mock/cache/notification/HTTP/password/quyền khớp assertion của phương thức InternalOtpTest được ghi trong bằng chứng; không gửi email production.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\InternalOtpTest::test_expiration_and_notification_visibility_are_ten_minutes"
+        }
+      ]
+    },
+    {
+      "stt": 315,
+      "id": "TC-OTP-NOTIFY-04",
+      "status": "Passed",
+      "actual": "Bốn lần sai giữ expires_at; lần thứ năm xóa mã và notification.",
+      "evidence": [
+        {
+          "kind": "supplemental",
+          "test": "Tests\\Feature\\InternalOtpTest::test_documented_wrong_attempts_keep_absolute_expiry_and_resend_boundary"
+        }
+      ]
+    },
+    {
+      "stt": 316,
+      "id": "TC-OTP-NOTIFY-05",
+      "status": "Passed",
+      "actual": "Cấp lại tại 59s bị chặn; tại 60s được cấp một notification/mã mới.",
+      "evidence": [
+        {
+          "kind": "supplemental",
+          "test": "Tests\\Feature\\InternalOtpTest::test_documented_wrong_attempts_keep_absolute_expiry_and_resend_boundary"
+        }
+      ]
+    },
+    {
+      "stt": 317,
+      "id": "TC-OTP-NOTIFY-06",
+      "status": "Passed",
+      "actual": "Kết quả mail mock/cache/notification/HTTP/password/quyền khớp assertion của phương thức InternalOtpTest được ghi trong bằng chứng; không gửi email production.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\InternalOtpTest::test_delivery_failure_rolls_back_notification_and_invalidates_code"
+        }
+      ]
+    },
+    {
+      "stt": 318,
+      "id": "TC-OTP-NOTIFY-07",
+      "status": "Passed",
+      "actual": "Kết quả mail mock/cache/notification/HTTP/password/quyền khớp assertion của phương thức InternalOtpTest được ghi trong bằng chứng; không gửi email production.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\InternalOtpTest::test_only_authorized_admin_can_trigger_and_customer_cannot_be_targeted"
+        }
+      ]
+    },
+    {
+      "stt": 319,
+      "id": "TC-OTP-NOTIFY-08",
+      "status": "Passed",
+      "actual": "Kết quả mail mock/cache/notification/HTTP/password/quyền khớp assertion của phương thức InternalOtpTest được ghi trong bằng chứng; không gửi email production.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\InternalOtpTest::test_changed_email_or_locked_account_cannot_use_issued_otp"
+        }
+      ]
+    },
+    {
+      "stt": 320,
+      "id": "TC-OTP-NOTIFY-09",
+      "status": "Passed",
+      "actual": "Kết quả mail mock/cache/notification/HTTP/password/quyền khớp assertion của phương thức InternalOtpTest được ghi trong bằng chứng; không gửi email production.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\InternalOtpTest::test_admin_cannot_view_mark_read_or_edit_another_accounts_otp"
+        }
+      ]
+    },
+    {
+      "stt": 321,
+      "id": "TC-OTP-NOTIFY-10",
+      "status": "Passed",
+      "actual": "Kết quả mail mock/cache/notification/HTTP/password/quyền khớp assertion của phương thức InternalOtpTest được ghi trong bằng chứng; không gửi email production.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\InternalOtpTest::test_inbox_ignores_requested_recipient_and_marks_only_own_notifications"
+        }
+      ]
+    },
+    {
+      "stt": 322,
+      "id": "TC-OTP-NOTIFY-11",
+      "status": "Passed",
+      "actual": "Kết quả mail mock/cache/notification/HTTP/password/quyền khớp assertion của phương thức InternalOtpTest được ghi trong bằng chứng; không gửi email production.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\InternalOtpTest::test_default_permission_is_idempotent_and_survives_all_permission_editors"
+        }
+      ]
+    },
+    {
+      "stt": 323,
+      "id": "TC-OTP-NOTIFY-12",
+      "status": "Passed",
+      "actual": "Kết quả mail mock/cache/notification/HTTP/password/quyền khớp assertion của phương thức InternalOtpTest được ghi trong bằng chứng; không gửi email production.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\InternalOtpTest::test_customer_group_can_access_personal_inbox"
+        }
+      ]
+    },
+    {
+      "stt": 324,
+      "id": "TC-OTP-NOTIFY-13",
+      "status": "Passed",
+      "actual": "Kết quả mail mock/cache/notification/HTTP/password/quyền khớp assertion của phương thức InternalOtpTest được ghi trong bằng chứng; không gửi email production.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\InternalOtpTest::test_staff_broadcast_includes_internal_accounts_with_custom_roles"
+        }
+      ]
+    },
+    {
+      "stt": 325,
+      "id": "TC-OTP-NOTIFY-14",
+      "status": "Passed",
+      "actual": "Kết quả mail mock/cache/notification/HTTP/password/quyền khớp assertion của phương thức InternalOtpTest được ghi trong bằng chứng; không gửi email production.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\InternalOtpTest::test_shared_email_and_inactive_targets_are_rejected_before_delivery"
+        }
+      ]
+    },
+    {
+      "stt": 326,
+      "id": "TC-OTP-NOTIFY-15",
+      "status": "Passed",
+      "actual": "Kết quả mail mock/cache/notification/HTTP/password/quyền khớp assertion của phương thức InternalOtpTest được ghi trong bằng chứng; không gửi email production.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\InternalOtpTest::test_reset_logs_out_the_recipient_when_already_signed_in"
+        }
+      ]
+    },
+    {
+      "stt": 327,
+      "id": "TC-OTP-NOTIFY-16",
+      "status": "Passed",
+      "actual": "Kết quả mail mock/cache/notification/HTTP/password/quyền khớp assertion của phương thức InternalOtpTest được ghi trong bằng chứng; không gửi email production.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\InternalOtpTest::test_new_roles_with_only_default_permission_can_log_in_to_inbox"
+        }
+      ]
+    },
+    {
+      "stt": 328,
+      "id": "TC-OTP-NOTIFY-17",
+      "status": "Passed",
+      "actual": "Kết quả mail mock/cache/notification/HTTP/password/quyền khớp assertion của phương thức InternalOtpTest được ghi trong bằng chứng; không gửi email production.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\InternalOtpTest::test_new_roles_with_only_default_permission_can_log_in_to_inbox"
+        },
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\InternalOtpTest::test_customers_with_default_permission_can_log_in_to_inbox_only"
+        }
+      ]
+    },
+    {
+      "stt": 329,
+      "id": "TC-OTP-NOTIFY-18",
+      "status": "Passed",
+      "actual": "Cả hai endpoint đều từ chối mã chéo; mật khẩu giữ nguyên.",
+      "evidence": [
+        {
+          "kind": "supplemental",
+          "test": "Tests\\Feature\\InternalOtpTest::test_documented_otp_namespaces_and_form_boundaries"
+        }
+      ]
+    },
+    {
+      "stt": 330,
+      "id": "TC-OTP-NOTIFY-19",
+      "status": "Passed",
+      "actual": "Request thứ 11 trong phút trả 429; mật khẩu ngắn/confirmation sai bị validation, mật khẩu giữ nguyên.",
+      "evidence": [
+        {
+          "kind": "supplemental",
+          "test": "Tests\\Feature\\InternalOtpTest::test_documented_internal_otp_throttle"
+        },
+        {
+          "kind": "supplemental",
+          "test": "Tests\\Feature\\InternalOtpTest::test_documented_otp_namespaces_and_form_boundaries"
+        }
+      ]
+    },
+    {
+      "stt": 331,
+      "id": "TC-OTP-NOTIFY-20",
+      "status": "Passed",
+      "actual": "Sau 600s scope trả 0 nhưng DB còn 1; callback scheduler mỗi phút dọn DB còn 0.",
+      "evidence": [
+        {
+          "kind": "supplemental",
+          "test": "Tests\\Feature\\InternalOtpTest::test_documented_otp_hidden_then_scheduler_physically_prunes"
+        }
+      ]
+    },
+    {
+      "stt": 332,
+      "id": "TC-OTP-NOTIFY-21",
+      "status": "Passed",
+      "actual": "Lỗi notification không giữ OTP; lỗi password DB rollback mật khẩu, mã đã consume không replay được.",
+      "evidence": [
+        {
+          "kind": "supplemental",
+          "test": "Tests\\Feature\\InternalOtpTest::test_documented_otp_database_failures_consume_codes_safely"
+        }
+      ]
+    },
+    {
+      "stt": 333,
+      "id": "TC-PWD-ADMIN",
+      "status": "Passed",
+      "actual": "Admin cấp mã không đổi mật khẩu cũ, flash không lộ OTP.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\AuthFlowTest::test_admin_reset_sends_otp_and_keeps_the_password_until_user_confirmation"
+        }
+      ]
+    },
+    {
+      "stt": 334,
+      "id": "TC-PWD-FAILURE",
+      "status": "Passed",
+      "actual": "Resend lỗi xóa OTP và giữ mật khẩu; thiếu email bị chặn bởi test riêng.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\AuthFlowTest::test_admin_reset_failure_does_not_change_password_and_removes_cached_otp"
+        },
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\AuthFlowTest::test_password_reset_request_does_not_disclose_unknown_emails"
+        },
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\AuthFlowTest::test_password_reset_email_failure_does_not_leave_a_valid_otp"
+        },
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\AuthFlowTest::test_resend_failure_log_redacts_emails_otp_and_api_credentials"
+        },
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\AuthFlowTest::test_resend_sandbox_rejects_an_email_that_is_not_the_configured_recipient"
+        },
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\AuthFlowTest::test_admin_reset_requires_a_valid_email"
+        }
+      ]
+    },
+    {
+      "stt": 335,
+      "id": "TC-PWD-PERMISSION",
+      "status": "Passed",
+      "actual": "HTTP 403 khi thiếu quyền reset; mock mailer không được gọi.",
+      "evidence": [
+        {
+          "kind": "phpunit",
+          "test": "Tests\\Feature\\AuthFlowTest::test_account_reset_without_reset_permission_is_forbidden"
+        }
+      ]
+    }
+  ]
+}

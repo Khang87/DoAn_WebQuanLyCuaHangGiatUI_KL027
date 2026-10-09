@@ -1,0 +1,4 @@
+Initial supplemental profile probe: expected HTTP 200; observed HTTP 500.
+[2026-10-09 03:16:07] e2e.ERROR: Vite manifest not found at: /repo/public/build/manifest.json (View: /repo/resources/views/admin/accounts/profile.blade.php)
+Cause: scratch checkout omitted public/build. No application change.
+Final run with complete Vite build: HTTP 200, all 13 Node tests passed (browser-supplemental-final.txt).
