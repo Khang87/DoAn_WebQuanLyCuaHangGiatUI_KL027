@@ -21,3 +21,5 @@ Laravel models/services/controllers under app; Blade detail component and bookin
 2. Read-only summary service and detail presentation.
 3. Address UI and server normalization.
 4. Regression/CI, README and TESTCASES updates, independent review, push/merge.
+
+CI follow-up: guarded Postgres/browser fixture PHP and DB sessions must use the same configured Vietnam timezone. Assert both current date and a fixed after-midnight-Vietnam/before-midnight-UTC boundary; no changes to production timezone.

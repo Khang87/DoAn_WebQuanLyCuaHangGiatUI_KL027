@@ -35,10 +35,13 @@ $app->afterBootstrapping(LoadConfiguration::class, static function ($app) use ($
             'driver' => 'pgsql', 'host' => $host, 'port' => (int) $port,
             'database' => 'laundry_rpc_test', 'username' => 'postgres', 'password' => $password,
             'charset' => 'utf8', 'prefix' => '', 'search_path' => 'public', 'sslmode' => 'disable',
+            'timezone' => 'Asia/Ho_Chi_Minh',
         ]],
         'cache.default' => 'array', 'session.driver' => 'array',
         'queue.default' => 'sync', 'mail.default' => 'array', 'logging.default' => 'stderr',
     ]);
+    // LoadConfiguration has already set PHP's timezone before this test override.
+    date_default_timezone_set($app['config']->get('app.timezone'));
 });
 $app->make(Kernel::class)->bootstrap();
 DB::statement("SET statement_timeout = '15s'");

@@ -185,7 +185,7 @@ Chỉ sử dụng tài khoản được cấp trong môi trường cục bộ ho
 
 Đợt kiểm chứng ngày **07/10/2026** trên mã ứng dụng nền `0f030d1` và các bổ sung kiểm thử hiện tại: **328 tests, 1.715 assertions**, đạt với PHP 8.4.26 / Laravel 13.34.0, SQLite `:memory:` trong container tắt mạng, không nạp `.env` production. PHPUnit chạy với `--fail-on-warning --fail-on-risky`; biên dịch Blade đạt.
 
-Runner PostgreSQL 17 mới chạy SQL RPC có sẵn, **66 assertions hợp đồng Web/RPC**, **3 race / 21 assertions** và 4 ca từ chối cấu hình trước kết nối. Ba race quan sát hai phiên cùng chờ khóa trước khi kiểm tra kết quả lưu. Mutation đảo guard phiếu trùng bị bộ test phát hiện trên bản sao cách ly. Hướng dẫn: [POSTGRES_VERIFICATION.md](./docs/testing/POSTGRES_VERIFICATION.md).
+Runner PostgreSQL 17 mới chạy SQL RPC có sẵn, **69 assertions hợp đồng Web/RPC**, **3 race / 21 assertions** và 4 ca từ chối cấu hình trước kết nối. Ba race quan sát hai phiên cùng chờ khóa trước khi kiểm tra kết quả lưu. Mutation đảo guard phiếu trùng bị bộ test phát hiện trên bản sao cách ly. Hướng dẫn: [POSTGRES_VERIFICATION.md](./docs/testing/POSTGRES_VERIFICATION.md).
 
 ```bash
 bash scripts/test-postgres.sh
