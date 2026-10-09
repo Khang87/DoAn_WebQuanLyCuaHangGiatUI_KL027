@@ -1,0 +1,59 @@
+PASS: unsafe HTTP target refused
+PASS: isolated browser fixture seeded
+▶ browser → HTTP → PostgreSQL business flows with real session, CSRF and permissions
+  ✔ E2E-01: store inspection creates one actual Order and preserves estimates (1030.546747ms)
+  ✔ E2E-02: pickup creates only matching home legs (779.856955ms)
+  ✔ E2E-03: return creates only matching home legs (777.799408ms)
+  ✔ E2E-04: both creates only matching home legs (970.977876ms)
+  ✔ E2E-05: authenticated HTTP replay preserves one Order, redemption and audit (1062.959393ms)
+  ✔ E2E-06: actual pages preserve both units, minimum kg and readonly prices (1330.492878ms)
+  ✔ E2E-09: display row numbers remain continuous without rewriting submitted indexes (1343.695427ms)
+  ✔ E2E-07: voucher then points leave both delivery fees payable (783.211791ms)
+Decorative external CSS excluded: https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap, https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css
+  ✔ E2E-08: staff HTTP writes respect paid-order guards and owner-only deletion (806.309954ms)
+✔ browser → HTTP → PostgreSQL business flows with real session, CSRF and permissions (11724.298609ms)
+ℹ tests 10
+ℹ suites 0
+ℹ pass 10
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 14754.278623
+▶ remaining testcase UI variants with HTTP sessions and PostgreSQL
+  ✔ 13 readonly create edit and booking inspection (981.631564ms)
+  ✔ 14 single Cái 15000 automatically selected (240.768742ms)
+  ✔ 15 ambiguous units block submit then explicit selection saves (856.208733ms)
+  ✔ 16 retain valid unit when service changes (352.309989ms)
+  ✔ 17 clear stale unit and select only KG for new service (239.293363ms)
+  ✔ 18 missing tuple clears stale price and blocks submission (240.473177ms)
+  ✔ 21 exact preview and persisted quantity/weight (653.045698ms)
+  ✔ 22 exact preview and persisted quantity/weight (678.221267ms)
+  ✔ 23 exact preview and persisted quantity/weight (666.572322ms)
+  ✔ 24 switch Cái KG Cái and persist only current measurement (849.602501ms)
+  ✔ 25 remove middle of three rows add row and save every remaining row once (652.934061ms)
+  ✔ 92 employee dropdown includes held inactive and active excludes locked other (561.373297ms)
+  ✔ 93 employee deactivated after GET rejected by real session POST (1631.306277ms)
+  ✔ 210 Booking category A B empty C filters options and locks empty service (296.730426ms)
+  ✔ 211 linked Booking employee field disabled gray and raw change rejected (619.658574ms)
+  ✔ 212 promotion fixed discount disables gray max then percentage enables (220.530266ms)
+  ✔ 82 pending return schedule optional execution requires date and time including server validation (564.32678ms)
+  ✔ 305 actor without complete receiving permission gets 403 unchanged (1030.609042ms)
+✔ remaining testcase UI variants with HTTP sessions and PostgreSQL (13706.236964ms)
+ℹ tests 19
+ℹ suites 0
+ℹ pass 19
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 16742.437181
+✔ 213 browser signed avatar upload object verification persistence reload and foreign path denial with isolated Storage double (2925.8825ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 1
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 5973.567679
