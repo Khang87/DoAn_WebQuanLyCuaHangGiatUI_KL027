@@ -170,7 +170,7 @@ bash scripts/test-postgres.sh
 
 Chromium controls regression và test bảo mật `shell-quote` đạt. Override riêng sang `shell-quote=1.11.0` khắc phục GHSA-pqg4-j6r4-53mv; `npm audit --audit-level=high` báo 0 vulnerabilities. `npm run build` nguyên bản và Composer audit bị hạn chế mạng khi chạy local; cả hai đã đạt trên GitHub Actions [run 37644219054](https://github.com/Khang87/DoAn_WebQuanLyCuaHangGiatUI_KL027/actions/runs/37644219054), commit `512ae12`, cùng toàn bộ hai job PHP/PostgreSQL và frontend/build/audit. Không thay build config hay tắt audit.
 
-[TESTCASES.md](./TESTCASES.md) có **335 ca**, hoàn toàn dưới dạng bảng Markdown, STT liên tục **1–335** và mã TC ổn định. Tài liệu tách ba nhóm:
+[TESTCASES.md](./TESTCASES.md) có **335 ca**, hoàn toàn dưới dạng bảng Markdown, STT liên tục **1–335** và mã TC ổn định. Mỗi ca có các cột riêng: **ID, tên/mô tả, điều kiện tiên quyết, bước thực hiện, dữ liệu kiểm thử, kết quả mong đợi, kết quả thực tế và trạng thái**, cùng nguồn đối chiếu. Đây là mẫu cho đợt thực thi mới: **Actual Result = Chưa chạy, Status = Pending**; kết quả suite/CI trước được giữ riêng, không tự chứng nhận từng dòng Passed. Khi chạy, ghi kết quả quan sát, môi trường/SHA và bằng chứng rồi cập nhật Passed/Failed/Blocked. Tài liệu tách ba nhóm:
 
 | Nhóm | Số ca | STT | Phạm vi |
 | --- | ---: | --- | --- |
