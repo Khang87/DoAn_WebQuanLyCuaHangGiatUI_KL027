@@ -56,8 +56,7 @@ class MessageController extends Controller
             $customer = $this->messageService->supportCustomer((int) $validated['customer_id']);
             $this->messageService->sendSupport($customer, $request->user(), $validated['content']);
 
-            return redirect()->route('admin.messages.index', ['customer_id' => $customer->getKey()])
-                ->with('success', 'Tin nhắn hỗ trợ đã được gửi.');
+            return redirect()->route('admin.messages.index', ['customer_id' => $customer->getKey()]);
         }
 
         $order = $this->messageService->findOrder((int) $validated['order_id']);
@@ -75,8 +74,7 @@ class MessageController extends Controller
         $this->messageService->sendFromStore($order, $sender, $validated['content']);
 
         return redirect()
-            ->route('admin.messages.index', ['order_id' => $order->DonHangID])
-            ->with('success', 'Tin nhắn đã được gửi cho khách hàng.');
+            ->route('admin.messages.index', ['order_id' => $order->DonHangID]);
     }
 
     public function realtime(Request $request, MessageRealtimeService $realtime): JsonResponse
