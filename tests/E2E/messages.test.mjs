@@ -75,7 +75,7 @@ test('open conversation receives mobile PostgreSQL messages through real Laravel
         const changed=await b.evaluate(`[...document.querySelectorAll('.stat-value')].map(e=>e.textContent.trim())`);
         assert.equal(changed[4],'3');assert.match(changed[5],/^4[.,]0/);assert.deepEqual(changed.slice(0,4),values.slice(0,4));
         await b.navigate('/payments');
-        assert.equal(await b.evaluate(`document.querySelector('table img.avatar-cover')?.src.endsWith('/assets/images/user_2.jpg')`),true);
+        assert.equal(await b.evaluate(`document.querySelector('table img.avatar-cover')?.getAttribute('src')`),process.env.WEB_E2E_URL+'/assets/images/user_2.jpg');
         await b.navigate('/orders/create');
         await b.evaluate(`document.querySelector('#addItem').click()`);
         assert.ok(await b.evaluate(`document.querySelector('#order-row-status').textContent.includes('dòng 2')`));
@@ -87,7 +87,7 @@ test('open conversation receives mobile PostgreSQL messages through real Laravel
         assert.equal(await b.evaluate(`document.querySelector('[data-price-warning]').textContent`),'');
         fixture('dashboard-cleanup');
         assert.deepEqual(b.errors,[]);
-    } finally {await b.close();}
+    } finally {execFileSync(process.env.PHP_BIN||'php',[fileURLToPath(new URL('./messages-state.php',import.meta.url)),'dashboard-cleanup'],{timeout:30000});await b.close();}
 });
 
 test('Realtime invalidation refreshes the Laravel conversation immediately without reload', {timeout: 60000}, async () => {
