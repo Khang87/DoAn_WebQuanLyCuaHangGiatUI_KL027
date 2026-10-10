@@ -87,7 +87,6 @@ class PaymentService
 
     public function create(array $data): ThanhToan
     {
-        // Đơn đã quyết toán thì không được ghi thêm khoản thu.
         $invoice = ! empty($data['invoice_id']) ? HoaDon::find($data['invoice_id']) : null;
         $targetOrderId = $data['order_id'] ?? $data['DonHangID'] ?? $invoice?->DonHangID;
 
@@ -95,10 +94,6 @@ class PaymentService
             throw ValidationException::withMessages([
                 'invoice_id' => 'Hóa đơn không thuộc đơn hàng đã chọn.',
             ]);
-        }
-
-        if (! empty($targetOrderId) && DonHang::find($targetOrderId)?->isLocked()) {
-            throw SettledOrderException::forOrder($targetOrderId);
         }
 
         if (trim((string) ($data['transaction_code'] ?? '')) === '') {
@@ -118,27 +113,42 @@ class PaymentService
 
         return DB::transaction(function () use ($data, $targetOrderId) {
             $lockedOrder = DonHang::query()->lockForUpdate()->findOrFail($targetOrderId);
-            if ($lockedOrder->isLocked()) {
+            if ($lockedOrder->statusEnum()->isSettled()) {
                 throw SettledOrderException::forOrder($targetOrderId);
             }
+
+            $invoice = $this->lockInvoice($lockedOrder, $data['invoice_id'] ?? null);
+            if ($invoice?->isPaid()) {
+                throw ValidationException::withMessages([
+                    'invoice_id' => 'Hóa đơn đã được thanh toán.',
+                ]);
+            }
+            if ($invoice !== null && InvoiceStatus::parse($invoice->TrangThai) === InvoiceStatus::Cancelled) {
+                throw ValidationException::withMessages([
+                    'invoice_id' => 'Không thể thu tiền cho hóa đơn đã hủy.',
+                ]);
+            }
+
             $data['order_id'] = $targetOrderId;
             $attributes = $this->mapInput($data);
-            $this->validateAmount($lockedOrder, $attributes);
+            $this->validateAmount($lockedOrder, $invoice, $attributes);
+
+            if ($this->hasSuccessfulPayment($lockedOrder)) {
+                throw ValidationException::withMessages([
+                    'amount' => 'Đơn hàng đã có giao dịch thu thành công; không thể thu thêm lần nữa.',
+                ]);
+            }
+
             $payment = ThanhToan::create($attributes);
 
-            $invoice = $payment->donHang?->hoaDons?->first();
             $order = $payment->donHang;
 
-            if ($invoice) {
-                // Update invoice status based on total payments
+            if ($invoice !== null) {
                 $this->updateInvoiceStatus($invoice);
             }
 
-            if ($order) {
-                $totalPaid = $this->paidTotalFor($order);
-                $grandTotal = $order->hoaDons?->first()?->ThanhTien ?? $order->ThanhTien;
-
-                $this->synchronizeOrderPaymentStatus($order, $totalPaid, (float) $grandTotal);
+            if ($order && PaymentStatus::parse($payment->TrangThai)->isPaid()) {
+                $this->orderService->awardPointsForSettledDeliveredOrder($order);
             }
 
             return $payment->fresh();
@@ -167,6 +177,9 @@ class PaymentService
                 }
             }
 
+            $invoice = $this->lockInvoice($lockedOrder, $data['invoice_id'] ?? null);
+
+            $this->guardImmutableCollectedPayment($payment);
             if (! $override) {
                 $this->guardSettledPayment($payment);
             }
@@ -175,22 +188,33 @@ class PaymentService
             if (! array_key_exists('TrangThai', $data) && ! array_key_exists('status', $data)) {
                 unset($attributes['TrangThai']);
             }
-            if (! $override) {
-                $this->validateAmount($lockedOrder, array_merge($payment->getAttributes(), $attributes), (int) $payment->getKey());
+
+            $paymentAttributes = array_merge($payment->getAttributes(), $attributes);
+            $this->validateAmount($lockedOrder, $invoice, $paymentAttributes);
+            $newStatus = PaymentStatus::parse($paymentAttributes['TrangThai'] ?? $payment->TrangThai);
+            if (
+                $invoice !== null
+                && InvoiceStatus::parse($invoice->TrangThai) === InvoiceStatus::Cancelled
+                && $newStatus->isPaid()
+            ) {
+                throw ValidationException::withMessages([
+                    'invoice_id' => 'Không thể thu tiền cho hóa đơn đã hủy.',
+                ]);
             }
+            if ($newStatus->isPaid() && $this->hasAnotherSuccessfulPayment($lockedOrder, (int) $payment->getKey())) {
+                throw ValidationException::withMessages([
+                    'amount' => 'Đơn hàng đã có giao dịch thu thành công; không thể ghi nhận thêm lần nữa.',
+                ]);
+            }
+
             $payment->update($attributes);
 
-            $invoice = $payment->donHang?->hoaDons?->first();
             if ($invoice) {
                 $this->updateInvoiceStatus($invoice);
             }
 
-            $order = $payment->donHang;
-            if ($order) {
-                $totalPaid = $this->paidTotalFor($order);
-                $grandTotal = $order->hoaDons?->first()?->ThanhTien ?? $order->ThanhTien;
-
-                $this->synchronizeOrderPaymentStatus($order, $totalPaid, (float) $grandTotal, $override);
+            if ($newStatus->isPaid()) {
+                $this->orderService->awardPointsForSettledDeliveredOrder($lockedOrder);
             }
 
             return $payment->fresh();
@@ -225,6 +249,15 @@ class PaymentService
         return array_filter($mapped, static fn (mixed $value): bool => $value !== null);
     }
 
+    private function guardImmutableCollectedPayment(ThanhToan $payment): void
+    {
+        if ($payment->isFinanciallyFinal()) {
+            throw SettledOrderException::forPayment(
+                $payment->MaGiaoDich ?: ('#'.$payment->ThanhToanID)
+            );
+        }
+    }
+
     /**
      * Khoản thu đã ghi nhận tiền thật, hoặc đã gắn với hóa đơn/đơn đã quyết
      * toán, thì không được sửa/xoá vì sẽ làm lệch số tiền đã thu.
@@ -237,11 +270,10 @@ class PaymentService
             throw SettledOrderException::forInvoice($invoice->MaHoaDon);
         }
 
-        if ($payment->isSettled()) {
-            throw new SettledOrderException(sprintf(
-                'Khoản thu %s đã ghi nhận tiền nên chỉ có thể xem, không thể chỉnh sửa hoặc xóa.',
+        if ($payment->isFinanciallyFinal()) {
+            throw SettledOrderException::forPayment(
                 $payment->MaGiaoDich ?: ('#'.$payment->ThanhToanID)
-            ));
+            );
         }
 
         if ($payment->donHang?->isLocked()) {
@@ -253,51 +285,65 @@ class PaymentService
      * Tổng tiền đã ghi nhận của đơn. Bản ghi đã xoá mềm không phải tiền trong quỹ
      * nên bị loại (quan hệ Order::payments() nạp cả bản ghi đã xoá để hiển thị).
      */
-    private function paidTotalFor(DonHang $order): float
+    private function lockInvoice(DonHang $order, int|string|null $invoiceId): ?HoaDon
     {
-        return (float) $order->thanhToans()
-            ->where('TrangThai', PaymentStatus::Paid->value)
-            ->sum('SoTien');
+        $invoice = $invoiceId !== null
+            ? HoaDon::query()->lockForUpdate()->findOrFail($invoiceId)
+            : $order->hoaDons()->orderBy('HoaDonID')->lockForUpdate()->first();
+
+        if ($invoice !== null && (int) $invoice->DonHangID !== (int) $order->DonHangID) {
+            throw ValidationException::withMessages([
+                'invoice_id' => 'Hóa đơn không thuộc đơn hàng đã chọn.',
+            ]);
+        }
+
+        return $invoice;
     }
 
-    private function validateAmount(DonHang $order, array $attributes, ?int $excludePaymentId = null): void
+    private function validateAmount(DonHang $order, ?HoaDon $invoice, array $attributes): void
     {
         if ($order->statusEnum() === OrderStatus::Cancelled) {
             throw ValidationException::withMessages(['order_id' => 'Không thể thu tiền cho đơn đã hủy.']);
         }
+
         $amount = (float) ($attributes['SoTien'] ?? 0);
-        $grandTotal = (float) ($order->hoaDons()->first()?->ThanhTien ?? $order->ThanhTien);
-        $paid = (float) $order->thanhToans()->where('TrangThai', PaymentStatus::Paid->value)
-            ->when($excludePaymentId !== null, fn ($q) => $q->where('ThanhToanID', '!=', $excludePaymentId))->sum('SoTien');
-        if ($amount <= 0 || $amount > max(0, $grandTotal - $paid)) {
-            throw ValidationException::withMessages(['amount' => 'Số tiền phải lớn hơn 0 và không vượt quá số tiền còn phải thu.']);
+        $grandTotal = (float) ($invoice?->ThanhTien ?? $order->ThanhTien);
+        if ($amount <= 0 || round($amount, 2) !== round($grandTotal, 2)) {
+            throw ValidationException::withMessages([
+                'amount' => 'Số tiền thanh toán phải bằng toàn bộ số tiền phải trả ('.number_format($grandTotal).' đ).',
+            ]);
         }
     }
 
-    private function synchronizeOrderPaymentStatus(
-        DonHang $order,
-        float $totalPaid,
-        float $grandTotal,
-        bool $override = false,
-    ): void {
-        if ($totalPaid >= $grandTotal && $order->statusEnum() === OrderStatus::Delivered) {
-            $this->orderService->updateStatus($order, OrderStatus::Paid->value, $override);
+    private function hasSuccessfulPayment(DonHang $order): bool
+    {
+        return $order->thanhToans()
+            ->where('TrangThai', PaymentStatus::Paid->value)
+            ->exists();
+    }
 
-            return;
-        }
-
-        if ($totalPaid < $grandTotal && $order->statusEnum() === OrderStatus::Paid) {
-            $this->orderService->updateStatus($order, OrderStatus::Delivered->value, $override);
-        }
+    private function hasAnotherSuccessfulPayment(DonHang $order, int $paymentId): bool
+    {
+        return $order->thanhToans()
+            ->where('TrangThai', PaymentStatus::Paid->value)
+            ->where('ThanhToanID', '!=', $paymentId)
+            ->exists();
     }
 
     private function updateInvoiceStatus(HoaDon $invoice): void
     {
-        $donHang = $invoice->donHang;
-        $totalPaid = $donHang ? $donHang->thanhToans()->where('TrangThai', PaymentStatus::Paid->value)->sum('SoTien') : 0;
-        $grandTotal = $invoice->ThanhTien;
+        if (InvoiceStatus::parse($invoice->TrangThai) === InvoiceStatus::Cancelled) {
+            return;
+        }
 
-        if ($totalPaid >= $grandTotal) {
+        $donHang = $invoice->donHang;
+        $payments = $donHang?->thanhToans()
+            ->where('TrangThai', PaymentStatus::Paid->value);
+        $paymentCount = $payments?->count() ?? 0;
+        $totalPaid = (float) ($payments?->sum('SoTien') ?? 0);
+        $isFullyPaid = $paymentCount === 1 && round($totalPaid, 2) === round((float) $invoice->ThanhTien, 2);
+
+        if ($isFullyPaid) {
             $invoice->update(['TrangThai' => InvoiceStatus::Paid->value]);
         } else {
             $invoice->update(['TrangThai' => InvoiceStatus::Unpaid->value]);
@@ -306,26 +352,23 @@ class PaymentService
 
     public function delete(ThanhToan $payment, bool $override = false): bool
     {
-        if (! $override) {
-            $this->guardSettledPayment($payment);
-        }
+        return DB::transaction(function () use ($payment, $override): bool {
+            $order = DonHang::query()->lockForUpdate()->findOrFail($payment->DonHangID);
+            $lockedPayment = ThanhToan::query()->lockForUpdate()->findOrFail($payment->getKey());
 
-        $invoice = $payment->donHang?->hoaDons?->first();
-        $order = $payment->donHang;
+            $this->guardImmutableCollectedPayment($lockedPayment);
+            if (! $override) {
+                $this->guardSettledPayment($lockedPayment);
+            }
 
-        $result = $payment->delete();
+            $invoice = $order->hoaDons()->orderBy('HoaDonID')->lockForUpdate()->first();
+            $result = $lockedPayment->delete();
 
-        if ($invoice) {
-            $this->updateInvoiceStatus($invoice);
-        }
+            if ($invoice !== null) {
+                $this->updateInvoiceStatus($invoice);
+            }
 
-        if ($order) {
-            $totalPaid = $this->paidTotalFor($order);
-            $grandTotal = $order->hoaDons?->first()?->ThanhTien ?? $order->ThanhTien;
-
-            $this->synchronizeOrderPaymentStatus($order, $totalPaid, (float) $grandTotal, $override);
-        }
-
-        return $result;
+            return $result;
+        });
     }
 }

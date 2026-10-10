@@ -3,14 +3,20 @@
 namespace App\Services;
 
 use App\Enums\InvoiceStatus;
+use App\Enums\PaymentStatus;
 use App\Exceptions\SettledOrderException;
 use App\Models\DonHang;
 use App\Models\HoaDon;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class InvoiceService
 {
+    public function __construct(
+        private CollectedRevenueService $collectedRevenueService,
+    ) {}
+
     public function getAll(array $filters = []): LengthAwarePaginator
     {
         $query = HoaDon::query();
@@ -81,7 +87,12 @@ class InvoiceService
             $data['MaHoaDon'] = $data['MaHoaDon'] ?? $data['code'] ?? null;
             $data['NgayLap'] = $data['NgayLap'] ?? $data['invoice_date'] ?? now();
             $data['TrangThai'] = InvoiceStatus::parse($data['TrangThai'] ?? $data['status'] ?? InvoiceStatus::Unpaid->value)->value;
-            $data['GhiChu'] = $data['GhiChu'] ?? $data['notes'] ?? $invoice->GhiChu;
+            if ($data['TrangThai'] === InvoiceStatus::Paid->value) {
+                throw ValidationException::withMessages([
+                    'status' => 'Hóa đơn chỉ được đánh dấu đã thanh toán khi có giao dịch thu thành công.',
+                ]);
+            }
+            $data['GhiChu'] = $data['GhiChu'] ?? $data['notes'] ?? null;
 
             $data = $this->normalizeAmounts($data);
 
@@ -115,18 +126,33 @@ class InvoiceService
         });
     }
 
-    public function update(HoaDon $invoice, array $data, bool $overrideSettled = false): HoaDon
+    public function update(HoaDon $invoice, array $data): HoaDon
     {
-        $data['TrangThai'] = InvoiceStatus::parse($data['TrangThai'] ?? $data['status'] ?? $invoice->TrangThai)->value;
-        $data['NgayLap'] = $data['NgayLap'] ?? $data['invoice_date'] ?? $invoice->NgayLap;
-        $data['GhiChu'] = $data['GhiChu'] ?? $data['notes'] ?? null;
-        $this->guardSettledInvoice($invoice, $data, $overrideSettled);
+        return DB::transaction(function () use ($invoice, $data): HoaDon {
+            if ($invoice->DonHangID !== null) {
+                DonHang::query()->lockForUpdate()->find($invoice->DonHangID);
+            }
+            $invoice = HoaDon::query()->lockForUpdate()->findOrFail($invoice->getKey());
 
-        $data = $this->normalizeAmounts($data, $invoice);
+            $data['TrangThai'] = InvoiceStatus::parse($data['TrangThai'] ?? $data['status'] ?? $invoice->TrangThai)->value;
+            $data['NgayLap'] = $data['NgayLap'] ?? $data['invoice_date'] ?? $invoice->NgayLap;
+            $data['GhiChu'] = $data['GhiChu'] ?? $data['notes'] ?? null;
+            $this->guardSettledInvoice($invoice, $data);
 
-        $invoice->update($data);
+            $data = $this->normalizeAmounts($data, $invoice);
+            if (
+                $data['TrangThai'] === InvoiceStatus::Paid->value
+                && ! $this->hasSingleFullSuccessfulPayment($invoice, (float) $data['ThanhTien'])
+            ) {
+                throw ValidationException::withMessages([
+                    'status' => 'Hóa đơn chỉ được đánh dấu đã thanh toán khi có một giao dịch thu đủ số tiền.',
+                ]);
+            }
 
-        return $invoice->fresh();
+            $invoice->update($data);
+
+            return $invoice->fresh();
+        });
     }
 
     /**
@@ -135,9 +161,9 @@ class InvoiceService
      *
      * @param  array<string, mixed>  $data
      */
-    private function guardSettledInvoice(HoaDon $invoice, array $data, bool $overrideSettled = false): void
+    private function guardSettledInvoice(HoaDon $invoice, array $data): void
     {
-        if ($overrideSettled || ! $invoice->isPaid()) {
+        if (! $invoice->isPaid() && ! $this->hasFinalPayment($invoice)) {
             return;
         }
 
@@ -171,20 +197,58 @@ class InvoiceService
         }
     }
 
-    public function updateStatus(HoaDon $invoice, string $status, bool $overrideSettled = false): HoaDon
+    public function updateStatus(HoaDon $invoice, string $status): HoaDon
     {
         if (! in_array($status, InvoiceStatus::values(), true)) {
             throw new \InvalidArgumentException('Trạng thái không hợp lệ');
         }
 
-        // ĐÃ THANH TOÁN THÌ KHÔNG ĐƯỢC ĐÁNH DẤU LẠI LÀ CHƯA/CHƯA ĐỦ THANH TOÁN.
-        if (! $overrideSettled && $invoice->isPaid() && InvoiceStatus::parse($status) !== InvoiceStatus::Paid) {
-            throw SettledOrderException::forInvoice($invoice->MaHoaDon);
+        return DB::transaction(function () use ($invoice, $status): HoaDon {
+            if ($invoice->DonHangID !== null) {
+                DonHang::query()->lockForUpdate()->find($invoice->DonHangID);
+            }
+            $invoice = HoaDon::query()->lockForUpdate()->findOrFail($invoice->getKey());
+
+            $target = InvoiceStatus::parse($status);
+            if ($target === InvoiceStatus::Paid && ! $this->hasSingleFullSuccessfulPayment($invoice, (float) $invoice->ThanhTien)) {
+                throw ValidationException::withMessages([
+                    'status' => 'Không thể đánh dấu hóa đơn đã thanh toán khi chưa có một giao dịch thu đủ số tiền.',
+                ]);
+            }
+
+            if (($invoice->isPaid() || $this->hasFinalPayment($invoice)) && $target !== InvoiceStatus::Paid) {
+                throw SettledOrderException::forInvoice($invoice->MaHoaDon);
+            }
+
+            $invoice->update(['TrangThai' => $status]);
+
+            return $invoice->fresh();
+        });
+    }
+
+    private function hasSingleFullSuccessfulPayment(HoaDon $invoice, float $expectedAmount): bool
+    {
+        if ($invoice->DonHangID === null) {
+            return false;
         }
 
-        $invoice->update(['TrangThai' => $status]);
+        $order = $invoice->donHang;
+        if ($order === null) {
+            return false;
+        }
 
-        return $invoice->fresh();
+        $payments = $order->thanhToans()
+            ->where('TrangThai', PaymentStatus::Paid->value);
+
+        return $payments->count() === 1
+            && round((float) $payments->sum('SoTien'), 2) === round($expectedAmount, 2);
+    }
+
+    private function hasFinalPayment(HoaDon $invoice): bool
+    {
+        return $invoice->donHang?->thanhToans()
+            ->whereIn('TrangThai', [PaymentStatus::Paid->value, PaymentStatus::Refunded->value])
+            ->exists() ?? false;
     }
 
     /**
@@ -226,9 +290,9 @@ class InvoiceService
         return $data;
     }
 
-    public function delete(HoaDon $invoice, bool $overrideSettled = false): bool
+    public function delete(HoaDon $invoice): bool
     {
-        if (! $overrideSettled && $invoice->isPaid()) {
+        if ($invoice->isPaid() || $this->hasFinalPayment($invoice)) {
             throw SettledOrderException::forInvoice($invoice->MaHoaDon);
         }
 
@@ -237,6 +301,6 @@ class InvoiceService
 
     public function getTotalRevenue(): float
     {
-        return (float) HoaDon::whereIn('TrangThai', InvoiceStatus::paidValues())->sum('ThanhTien');
+        return (float) $this->collectedRevenueService->query()->sum('SoTien');
     }
 }

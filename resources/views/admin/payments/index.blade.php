@@ -97,7 +97,7 @@
                         <td>{{ $payment->ThoiGian?->format('d/m/Y H:i') }}</td>
                         <td>
                             <div class="d-flex gap-2">
-                                @php($canManageSettled = ! $payment->isLocked() || auth()->user()?->isOwner())
+                                @php($canManageSettled = ! $payment->isFinanciallyFinal() && (! $payment->isLocked() || auth()->user()?->isOwner()))
                                 @can('payments.view')
                                     <a href="{{ route('payments.show', $payment) }}" class="btn btn-order-action view" title="Xem"><i class="bi bi-eye"></i></a>
                                 @endcan
@@ -113,15 +113,6 @@
                                             <button type="submit" class="btn btn-order-action delete" title="Xóa"><i class="bi bi-trash"></i></button>
                                         </form>
                                     @endcan
-                                @elseif($payment->isLocked())
-                                    <span class="badge bg-success-subtle text-success-emphasis border border-success px-3 py-2 rounded-pill" title="Đã thanh toán nên không thể sửa hoặc xóa">
-                                        <i class="bi bi-lock me-1"></i>Đã thanh toán
-                                    </span>
-                                @endif
-                                @if($payment->isLocked() && auth()->user()?->isOwner())
-                                    <span class="badge bg-success-subtle text-success-emphasis border border-success px-3 py-2 rounded-pill" title="Chủ cửa hàng được phép điều chỉnh khoản thu đã thanh toán">
-                                        <i class="bi bi-shield-check me-1"></i>Đã thanh toán
-                                    </span>
                                 @endif
                             </div>
                         </td>

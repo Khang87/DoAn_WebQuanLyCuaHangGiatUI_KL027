@@ -8,7 +8,8 @@
     $paymentCode = 'TT' . str_pad((string) $payment->ThanhToanID, 4, '0', STR_PAD_LEFT);
     $isLocked = $payment->isLocked();
     $isOwner = auth()->user()?->isOwner() ?? false;
-    $canManageSettled = ! $isLocked || $isOwner;
+    $isFinanciallyFinal = $payment->isFinanciallyFinal();
+    $canManageSettled = ! $isFinanciallyFinal && (! $isLocked || $isOwner);
     $order = $payment->donHang;
     $invoice = $order?->hoaDons?->first();
 @endphp
@@ -19,16 +20,12 @@
 >
     <x-slot:badge>
         <x-admin.status-badge :status="$payment->TrangThai" :enum="\App\Enums\PaymentStatus::class" />
-        @if($isLocked)
-            <span class="badge {{ $isOwner ? 'bg-success-subtle text-success-emphasis border-success' : 'bg-secondary-subtle text-secondary-emphasis border-secondary' }} border px-3 py-2 rounded-pill">
-                <i class="bi {{ $isOwner ? 'bi-shield-check' : 'bi-lock-fill' }} me-1"></i>
-                {{ $isOwner ? 'Đã thanh toán · Có thể điều chỉnh' : 'Đã quyết toán' }}
-            </span>
-        @endif
     </x-slot:badge>
 </x-admin.detail.page-header>
 
-@if($isLocked && ! $isOwner)
+@if($isFinanciallyFinal)
+    <x-admin.detail.locked text="Giao dịch đã ghi nhận tiền hoặc hoàn tiền nên được giữ nguyên để bảo toàn lịch sử tài chính." />
+@elseif($isLocked && ! $isOwner)
     <x-admin.detail.locked text="Thanh toán đã quyết toán nên bị khóa sửa/xóa. Liên hệ Chủ cửa hàng nếu cần điều chỉnh." />
 @endif
 
@@ -45,9 +42,6 @@
                     <span class="badge bg-primary-subtle text-primary-emphasis border border-primary px-3 py-2 rounded-pill">
                         <i class="bi {{ $payment->getMethodIcon() }} me-1"></i>{{ $payment->getMethodLabel() }}
                     </span>
-                </x-admin.detail.info-item>
-                <x-admin.detail.info-item label="Trạng thái">
-                    <x-admin.status-badge :status="$payment->TrangThai" :enum="\App\Enums\PaymentStatus::class" :pill="false" />
                 </x-admin.detail.info-item>
                 <x-admin.detail.info-item label="Mã giao dịch" :value="$payment->MaGiaoDich" />
                 <x-admin.detail.info-item label="Ngày thanh toán"

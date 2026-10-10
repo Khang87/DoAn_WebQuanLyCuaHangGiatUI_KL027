@@ -3,13 +3,10 @@
 namespace App\Services;
 
 use App\Enums\BookingStatus;
-use App\Enums\InvoiceStatus;
 use App\Enums\OrderStatus;
 use App\Models\Booking;
 use App\Models\ChiTietDonHang;
 use App\Models\DonHang;
-use App\Models\HoaDon;
-use App\Models\ThanhToan;
 use Carbon\Carbon;
 use Carbon\CarbonPeriod;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
@@ -19,12 +16,16 @@ use Illuminate\Support\Facades\DB;
 /**
  * Số liệu cho trang Báo cáo, đọc trên schema tiếng Việt của PostgreSQL.
  *
- * Doanh thu lấy từ hóa đơn đã thanh toán; số lượng và phân loại đơn lấy từ
- * DonHang. Tên bảng/cột trong truy vấn tuân thủ schema PascalCase.
+ * Doanh thu lấy từ một giao dịch thu đủ, đã thành công; số lượng và phân loại
+ * đơn lấy từ DonHang. Tên bảng/cột tuân thủ schema PascalCase.
  */
 class ReportsService
 {
     private const REPORT_TIMEZONE = 'Asia/Ho_Chi_Minh';
+
+    public function __construct(
+        private CollectedRevenueService $collectedRevenueService,
+    ) {}
 
     /**
      * Trạng thái đang xử lý.
@@ -38,13 +39,6 @@ class ReportsService
         OrderStatus::Washed->value,
         OrderStatus::Delivering->value,
     ];
-
-    /**
-     * Trạng thái thanh toán được tính vào doanh thu theo phương thức.
-     *
-     * Bảng `ThanhToan.TrangThai` lưu tiếng Việt, khác với `PaymentStatus`.
-     */
-    private const PAID_PAYMENT_STATUS = 'Thành công';
 
     /**
      * Lấy khoảng thời gian lọc.
@@ -116,20 +110,20 @@ class ReportsService
         $to = $dates['to'];
 
         $base = DonHang::query();
-        $paidInvoices = HoaDon::query()->where('TrangThai', InvoiceStatus::Paid->value);
+        $paidPayments = $this->collectedRevenueService->query();
 
         if ($from !== null && $to !== null) {
             $base->whereBetween('NgayTao', [$from, $to]);
-            $paidInvoices->whereBetween('NgayLap', [$from, $to]);
+            $paidPayments->whereBetween('ThoiGian', [$from, $to]);
         }
 
-        $totalRevenue = (float) (clone $paidInvoices)->sum('ThanhTien');
+        $totalRevenue = (float) (clone $paidPayments)->sum('SoTien');
 
         $orderCounts = (clone $base)
             ->selectRaw('COUNT(*) AS total_orders')
             ->selectRaw(
-                'SUM(CASE WHEN "TrangThai" IN (?, ?) THEN 1 ELSE 0 END) AS completed_orders',
-                [OrderStatus::Delivered->value, OrderStatus::Paid->value],
+                'SUM(CASE WHEN "TrangThai" = ? THEN 1 ELSE 0 END) AS completed_orders',
+                [OrderStatus::Delivered->value],
             )
             ->selectRaw(
                 'SUM(CASE WHEN "TrangThai" IN ('.implode(', ', array_fill(0, count(self::PROCESSING_STATUSES), '?')).') THEN 1 ELSE 0 END) AS processing_orders',
@@ -182,27 +176,27 @@ class ReportsService
             ? 'month'
             : ($localFrom->diffInDays($localTo) <= 31 ? 'day' : 'week');
 
-        $query = HoaDon::query()->where('TrangThai', InvoiceStatus::Paid->value);
+        $query = $this->collectedRevenueService->query();
 
         if ($from !== null && $to !== null) {
-            $query->whereBetween('NgayLap', [$from, $to]);
+            $query->whereBetween('ThoiGian', [$from, $to]);
         }
 
-        $localTimestamp = $this->localTimestampExpression('"NgayLap"');
+        $localTimestamp = $this->localTimestampExpression('"ThoiGian"');
 
         if ($groupBy === 'day') {
             $localDateExpression = $this->localDateExpression($localTimestamp);
-            $query->selectRaw($localDateExpression.' as date, SUM("ThanhTien") as revenue, COUNT(*) as order_count')
+            $query->selectRaw($localDateExpression.' as date, SUM("SoTien") as revenue, COUNT(DISTINCT "DonHangID") as order_count')
                 ->groupBy('date')
                 ->orderBy('date');
         } elseif ($groupBy === 'week') {
             $localWeekExpression = $this->localWeekExpression($localTimestamp);
-            $query->selectRaw($localWeekExpression.' as week, SUM("ThanhTien") as revenue, COUNT(*) as order_count')
+            $query->selectRaw($localWeekExpression.' as week, SUM("SoTien") as revenue, COUNT(DISTINCT "DonHangID") as order_count')
                 ->groupBy('week')
                 ->orderBy('week');
         } else {
             $localMonthExpression = $this->localMonthExpression($localTimestamp);
-            $query->selectRaw($localMonthExpression.' as month, SUM("ThanhTien") as revenue, COUNT(*) as order_count')
+            $query->selectRaw($localMonthExpression.' as month, SUM("SoTien") as revenue, COUNT(DISTINCT "DonHangID") as order_count')
                 ->groupBy('month')
                 ->orderBy('month');
         }
@@ -261,15 +255,17 @@ class ReportsService
 
         $data = ChiTietDonHang::query()
             ->join('DonHang', 'DonHang.DonHangID', '=', 'ChiTietDonHang.DonHangID')
-            ->join('HoaDon', 'HoaDon.DonHangID', '=', 'DonHang.DonHangID')
             ->join('DichVu', 'DichVu.DichVuID', '=', 'ChiTietDonHang.DichVuID')
             ->leftJoin('LoaiDichVu', 'LoaiDichVu.LoaiDichVuID', '=', 'DichVu.LoaiDichVuID')
             ->leftJoin('LoaiDoGiat', 'LoaiDoGiat.LoaiDoGiatID', '=', 'ChiTietDonHang.LoaiDoGiatID')
-            ->where('HoaDon.TrangThai', InvoiceStatus::Paid->value)
+            ->whereIn('DonHang.DonHangID', $this->collectedRevenueService->query()->select('DonHangID'))
             ->selectRaw('COALESCE("LoaiDichVu"."TenLoaiDichVu", "DichVu"."TenDichVu", "LoaiDoGiat"."TenLoaiDoGiat", \'Khác\') as category, SUM("ChiTietDonHang"."ThanhTien") as revenue, COUNT(*) as count')
             ->groupBy('category')
             ->orderByDesc('revenue')
-            ->when($from !== null && $to !== null, fn ($query) => $query->whereBetween('HoaDon.NgayLap', [$from, $to]))
+            ->when($from !== null && $to !== null, fn ($query) => $query->whereIn(
+                'DonHang.DonHangID',
+                $this->collectedRevenueService->query()->whereBetween('ThoiGian', [$from, $to])->select('DonHangID'),
+            ))
             ->get();
 
         $totalRevenue = (float) $data->sum('revenue');
@@ -300,15 +296,17 @@ class ReportsService
         // Vì vậy lấy ra tên cột trung tính rồi đổi tên ở tầng PHP cho chắc chắn.
         return ChiTietDonHang::query()
             ->join('DonHang', 'DonHang.DonHangID', '=', 'ChiTietDonHang.DonHangID')
-            ->join('HoaDon', 'HoaDon.DonHangID', '=', 'DonHang.DonHangID')
             ->join('DichVu', 'DichVu.DichVuID', '=', 'ChiTietDonHang.DichVuID')
             ->leftJoin('DonViTinh', 'DonViTinh.DonViTinhID', '=', 'ChiTietDonHang.DonViTinhID')
-            ->where('HoaDon.TrangThai', InvoiceStatus::Paid->value)
+            ->whereIn('DonHang.DonHangID', $this->collectedRevenueService->query()->select('DonHangID'))
             ->selectRaw('"DichVu"."TenDichVu" as service_name, CASE WHEN COUNT(DISTINCT "DonViTinh"."KyHieu") > 1 THEN \'Nhiều ĐVT\' ELSE MAX("DonViTinh"."KyHieu") END as unit_symbol, SUM(COALESCE("ChiTietDonHang"."SoLuong", "ChiTietDonHang"."KhoiLuong", 0)) as total_qty, SUM("ChiTietDonHang"."ThanhTien") as total_revenue')
             ->groupBy('DichVu.DichVuID', 'DichVu.TenDichVu')
             ->orderByDesc('total_revenue')
             ->limit($limit)
-            ->when($from !== null && $to !== null, fn ($query) => $query->whereBetween('HoaDon.NgayLap', [$from, $to]))
+            ->when($from !== null && $to !== null, fn ($query) => $query->whereIn(
+                'DonHang.DonHangID',
+                $this->collectedRevenueService->query()->whereBetween('ThoiGian', [$from, $to])->select('DonHangID'),
+            ))
             ->get()
             // Trả về object thuần với đúng key view dùng: name, unit, total_qty,
             // total_revenue.
@@ -329,10 +327,7 @@ class ReportsService
         $from = $dates['from'];
         $to = $dates['to'];
 
-        $query = ThanhToan::query()
-            ->join('HoaDon', 'HoaDon.DonHangID', '=', 'ThanhToan.DonHangID')
-            ->where('ThanhToan.TrangThai', self::PAID_PAYMENT_STATUS)
-            ->where('HoaDon.TrangThai', InvoiceStatus::Paid->value)
+        $query = $this->collectedRevenueService->query()
             ->selectRaw('COALESCE(NULLIF(TRIM("ThanhToan"."PhuongThuc"), \'\'), \'Khác\') as method, SUM("ThanhToan"."SoTien") as total_amount, COUNT("ThanhToan"."ThanhToanID") as transaction_count')
             ->groupBy('method');
 

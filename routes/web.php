@@ -135,7 +135,7 @@ Route::middleware(['auth', 'reject.customer'])->group(function () {
     // tất cả route (ví dụ: chỉ có orders.view vẫn truy cập được orders.create).
     // Route "/orders/create" phải được đăng ký TRƯỚC "/orders/{order}" để
     // Laravel không nhầm "/orders/create" là tham số {order} = "create".
-    
+
     Route::middleware('permission:orders.create')->group(function () {
         Route::get('/orders/create', [DonHangController::class, 'create'])
             ->name('orders.create');
@@ -149,7 +149,6 @@ Route::middleware(['auth', 'reject.customer'])->group(function () {
         Route::post('/orders', [DonHangController::class, 'store'])
             ->name('orders.store');
     });
-
 
     Route::middleware('permission:orders.view')->group(function () {
         Route::get('/orders', [DonHangController::class, 'index'])->name('orders.index');

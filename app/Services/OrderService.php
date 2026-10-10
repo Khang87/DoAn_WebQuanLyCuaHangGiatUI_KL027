@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Enums\DeliveryStatus;
+use App\Enums\InvoiceStatus;
 use App\Enums\OrderStatus;
 use App\Enums\PaymentStatus;
 use App\Enums\ReceiveMethod;
@@ -19,7 +20,10 @@ use App\Models\KhuyenMai;
 use App\Models\LoaiDoGiat;
 use App\Models\NhatKyHeThong;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Request;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -470,7 +474,12 @@ class OrderService
         $sort = $filters['sort'] ?? 'latest';
         [$sortBy, $sortOrder] = $sortMap[$sort] ?? ['NgayTao', 'desc'];
 
-        return $query->with([
+        return $query->withExists([
+            'hoaDons as has_paid_invoice' => fn ($invoiceQuery) => $invoiceQuery
+                ->where('TrangThai', InvoiceStatus::Paid->value),
+            'thanhToans as has_successful_payment' => fn ($paymentQuery) => $paymentQuery
+                ->where('TrangThai', PaymentStatus::Paid->value),
+        ])->with([
             'khachHang',
             'chiTietDonHangs.dichVu',
         ])
@@ -999,6 +1008,36 @@ class OrderService
             if ($order->isLocked() && ! $overrideSettled) {
                 throw SettledOrderException::forOrder($order->MaDonHang);
             }
+            $hasFinalPayment = $order->thanhToans()
+                ->whereIn('TrangThai', [PaymentStatus::Paid->value, PaymentStatus::Refunded->value])
+                ->exists();
+            $hasPaidInvoice = $order->hoaDons()
+                ->where('TrangThai', InvoiceStatus::Paid->value)
+                ->exists();
+            if ($order->statusEnum()->isSettled() || $hasFinalPayment || $hasPaidInvoice) {
+                throw SettledOrderException::forOrder($order->MaDonHang);
+            }
+
+            $hasBusinessHistory = $order->booking()->exists()
+                || $order->chiTietDonHangs()->exists()
+                || $order->giaoNhans()->exists()
+                || $order->hoaDons()->exists()
+                || $order->thanhToans()->exists()
+                || $order->thongBaos()->exists()
+                || $order->tinNhans()->exists()
+                || $order->danhGia()->exists()
+                || Schema::hasTable('NhatKyHeThong')
+                    && NhatKyHeThong::query()
+                        ->where('BangDuLieu', 'DonHang')
+                        ->where('BanGhiID', $order->getKey())
+                        ->exists();
+
+            if ($hasBusinessHistory) {
+                throw ValidationException::withMessages([
+                    'order' => 'Không thể xóa vật lý đơn đã có dữ liệu nghiệp vụ.',
+                ]);
+            }
+
             // Hoàn lại điểm tích lũy đã trừ cho khách.
             if ($order->KhachHangID && (int) $order->DiemSuDung > 0 && $order->TrangThai !== OrderStatus::Cancelled->value) {
                 KhachHang::find($order->KhachHangID)?->addPoints((int) $order->DiemSuDung);
@@ -1008,24 +1047,13 @@ class OrderService
         });
     }
 
-    /**
-     * Đổi trạng thái đơn. Đơn đã quyết toán thì không được đi lại trạng thái
-     * vì sẽ làm sai lịch sử tiền đã thu.
-     */
+    /** Đổi tiến độ xử lý đơn; thanh toán không khóa các bước nghiệp vụ này. */
     public function updateStatus(DonHang $order, string $status, bool $overrideSettled = false, ?string $reason = null): DonHang
     {
-        if ($order->isLocked() && ! $overrideSettled) {
-            throw SettledOrderException::forOrder($order->MaDonHang);
-        }
-
         return DB::transaction(function () use ($order, $status, $overrideSettled, $reason): DonHang {
             $lockedOrder = DonHang::query()
                 ->lockForUpdate()
                 ->findOrFail($order->getKey());
-
-            if ($lockedOrder->isLocked() && ! $overrideSettled) {
-                throw SettledOrderException::forOrder($lockedOrder->MaDonHang);
-            }
 
             if (! in_array($status, OrderStatus::values(), true)) {
                 throw ValidationException::withMessages([
@@ -1066,6 +1094,12 @@ class OrderService
         if ($target === null) {
             throw ValidationException::withMessages(['TrangThai' => 'Trạng thái đơn hàng không hợp lệ.']);
         }
+        if ($target === OrderStatus::Paid) {
+            throw ValidationException::withMessages([
+                'TrangThai' => 'Trạng thái thanh toán được quản lý qua hóa đơn và không phải trạng thái xử lý đơn hàng.',
+            ]);
+        }
+
         $current = $lockedOrder->statusEnum();
         if (! $current->canTransitionTo($target) && ! ($overrideSettled && $current === OrderStatus::Paid && $target === OrderStatus::Delivered)) {
             throw ValidationException::withMessages([
@@ -1076,13 +1110,6 @@ class OrderService
         }
         if ($target === OrderStatus::Cancelled && $current !== $target && trim((string) $reason) === '') {
             throw ValidationException::withMessages(['cancellation_reason' => 'Vui lòng nhập lý do hủy đơn hàng.']);
-        }
-        if ($target === OrderStatus::Paid) {
-            $total = (float) ($lockedOrder->hoaDons()->first()?->ThanhTien ?? $lockedOrder->ThanhTien);
-            $paid = (float) $lockedOrder->thanhToans()->where('TrangThai', PaymentStatus::Paid->value)->sum('SoTien');
-            if (! in_array($current, [OrderStatus::Delivered, OrderStatus::Paid], true) || $paid < $total) {
-                throw ValidationException::withMessages(['TrangThai' => 'Chỉ quyết toán đơn đã giao và đã thu đủ tiền.']);
-            }
         }
         if ($current === OrderStatus::Paid && $target === OrderStatus::Delivered) {
             $total = (float) ($lockedOrder->hoaDons()->first()?->ThanhTien ?? $lockedOrder->ThanhTien);
@@ -1114,6 +1141,65 @@ class OrderService
     public function getStatusFlow(): array
     {
         return OrderStatus::options();
+    }
+
+    public function awardPointsForSettledDeliveredOrder(DonHang $order): void
+    {
+        DB::transaction(function () use ($order): void {
+            $lockedOrder = DonHang::query()->lockForUpdate()->findOrFail($order->getKey());
+            if ($lockedOrder->statusEnum() !== OrderStatus::Delivered) {
+                return;
+            }
+
+            $action = 'Cộng điểm tích lũy đơn hàng';
+            $alreadyAwarded = NhatKyHeThong::query()
+                ->where('BangDuLieu', 'DonHang')
+                ->where('BanGhiID', $lockedOrder->getKey())
+                ->where('HanhDong', $action)
+                ->exists();
+
+            if ($alreadyAwarded) {
+                return;
+            }
+
+            $grandTotal = (float) ($lockedOrder->hoaDons()->first()?->ThanhTien ?? $lockedOrder->ThanhTien);
+            $successfulPaymentCount = $lockedOrder->thanhToans()
+                ->where('TrangThai', PaymentStatus::Paid->value)
+                ->count();
+            $totalPaid = (float) $lockedOrder->thanhToans()
+                ->where('TrangThai', PaymentStatus::Paid->value)
+                ->sum('SoTien');
+
+            if ($grandTotal <= 0 || $successfulPaymentCount !== 1 || round($totalPaid, 2) !== round($grandTotal, 2)) {
+                return;
+            }
+
+            $customer = $lockedOrder->khachHang()->firstOrFail();
+            $pointsBefore = $customer->points();
+            $pointsAwarded = (int) floor(
+                (float) $lockedOrder->ThanhTien / self::POINTS_PER_AMOUNT
+            ) * self::POINTS_EARNED_PER_AMOUNT;
+
+            if ($pointsAwarded > 0) {
+                $customer->addPoints($pointsAwarded);
+            }
+
+            NhatKyHeThong::query()->create([
+                'TaiKhoanID' => Auth::id(),
+                'HanhDong' => $action,
+                'BangDuLieu' => 'DonHang',
+                'BanGhiID' => $lockedOrder->getKey(),
+                'DuLieuCu' => ['DiemHienTai' => $pointsBefore],
+                'DuLieuMoi' => [
+                    'DiemHienTai' => $pointsBefore + $pointsAwarded,
+                    'DiemCong' => $pointsAwarded,
+                    'ThanhTien' => (float) $lockedOrder->ThanhTien,
+                ],
+                'ThoiGian' => now(),
+                'IPAddress' => Request::ip(),
+                'UserAgent' => Request::userAgent(),
+            ]);
+        });
     }
 
     /**

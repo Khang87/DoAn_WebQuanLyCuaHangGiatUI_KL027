@@ -19,10 +19,10 @@ use App\Services\OrderService;
 use App\Services\PricingService;
 use App\Support\FriendlyError;
 use Illuminate\Http\Request;
-use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
+use Symfony\Component\HttpFoundation\Response;
 use Throwable;
 
 class DonHangController extends Controller
@@ -342,20 +342,7 @@ class DonHangController extends Controller
             abort(404);
         }
 
-        // Kiểm tra đơn đã thanh toán - nhân viên/quản lý không được đổi trạng thái
-        if ($denied = $this->denyIfPaidAndNotOwner($request, $order, 'đổi trạng thái')) {
-            return $denied;
-        }
-
         $override = $this->canOverrideSettled();
-
-        if ($order->isLocked() && ! $override) {
-            return $this->denySettled(
-                $request,
-                'Đơn hàng '.$order->MaDonHang.' đã quyết toán nên không thể đổi trạng thái.',
-                route('orders.show', $order)
-            );
-        }
 
         try {
             $validated = $request->validate(['cancellation_reason' => ['nullable', 'string', 'max:500']]);

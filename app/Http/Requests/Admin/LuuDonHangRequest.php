@@ -18,7 +18,7 @@ class LuuDonHangRequest extends FormRequest
         if (is_string($orderCode)) {
             $this->merge(['MaDonHang' => trim($orderCode) ?: null]);
         }
-        
+
         // Tương thích với request tạo đơn cũ chưa có phương thức nhận/trả đồ.
         // Nếu người dùng có gửi phương thức, rules() vẫn sẽ kiểm tra giá trị đó.
         $this->merge([
@@ -66,7 +66,7 @@ class LuuDonHangRequest extends FormRequest
             'promotion_code' => ['prohibited'],
             'DiemSuDung' => ['nullable', 'integer', 'min:0'],
             'use_points' => ['nullable', 'boolean'],
-            
+
             // Phương thức nhận/trả đồ của đơn tạo trực tiếp trên website.
             'HinhThucNhanDo' => [
                 'required',
@@ -90,7 +90,12 @@ class LuuDonHangRequest extends FormRequest
             ],
             // Không dùng PhiGiaoHang do trình duyệt gửi lên làm nguồn tính tiền.
 
-            'TrangThai' => ['required', Rule::in($isCreating ? [OrderStatus::Received->value] : OrderStatus::values())],
+            'TrangThai' => [
+                'required',
+                Rule::in($isCreating
+                    ? [OrderStatus::Received->value]
+                    : array_values(array_diff(OrderStatus::values(), [OrderStatus::Paid->value]))),
+            ],
             'cancellation_reason' => ['nullable', 'required_if:TrangThai,Đã hủy', 'string', 'max:500'],
             'GhiChu' => ['nullable', 'string', 'max:500'],
             'items' => $isCreating ? ['required', 'array', 'min:1'] : ['nullable', 'array'],
@@ -166,7 +171,7 @@ class LuuDonHangRequest extends FormRequest
             'items.*.SoLuong.min' => 'Số lượng phải từ 1 món trở lên.',
             'items.*.KhoiLuong.gt' => 'Khối lượng phải lớn hơn 0.',
             'items.*.KhoiLuong.min' => 'Khối lượng không được nhỏ hơn 0.',
-            
+
             'HinhThucNhanDo.required' => 'Vui lòng chọn phương thức nhận đồ.',
             'HinhThucTraDo.required' => 'Vui lòng chọn phương thức trả đồ.',
             'DiaChiNhan.required_if' => 'Vui lòng nhập địa chỉ lấy đồ tại nhà.',

@@ -9,8 +9,11 @@ namespace App\Enums;
  * khớp với ràng buộc CHECK `CK_DonHang_TrangThai`:
  *
  *   Chờ tiếp nhận -> Đã tiếp nhận -> Đang giặt -> Hoàn thành giặt
- *                  -> Đang giao -> Đã giao -> Đã thanh toán
+ *                  -> Đang giao -> Đã giao
  *   Đã hủy
+ *
+ * `Đã thanh toán` remains as a legacy database value, but is not an order
+ * processing milestone.
  */
 enum OrderStatus: string
 {
@@ -74,7 +77,6 @@ enum OrderStatus: string
             self::Received,
             self::Washed,
             self::Delivered,
-            self::Paid,
         ], true);
     }
 
@@ -101,7 +103,7 @@ enum OrderStatus: string
             self::Washing => $target === self::Washed,
             self::Washed => in_array($target, [self::Delivering, self::Delivered], true),
             self::Delivering => $target === self::Delivered,
-            self::Delivered => $target === self::Paid,
+            self::Delivered => false,
             default => false,
         };
     }

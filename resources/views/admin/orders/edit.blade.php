@@ -24,7 +24,10 @@
             $isPendingOrder = $order->statusEnum() === \App\Enums\OrderStatus::Pending;
             $statusOptions = array_filter(
                 $statusFlow ?? \App\Enums\OrderStatus::options(),
-                fn ($status) => $status !== \App\Enums\OrderStatus::Pending->value,
+                fn ($status) => ! in_array($status, [
+                    \App\Enums\OrderStatus::Pending->value,
+                    \App\Enums\OrderStatus::Paid->value,
+                ], true),
             );
             $minimumWeight = (float) config('giatui.khoi_luong_toi_thieu', 3.0);
             $items = old('items');

@@ -138,14 +138,6 @@ class DashboardController extends Controller
             ], 400);
         }
 
-        // Đơn đã quyết toán (hoàn thành hoặc đã thanh toán) là chỉ đọc.
-        if ($order->isLocked()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Đơn hàng '.$order->MaDonHang.' đã quyết toán nên không thể đổi trạng thái.',
-            ], 409);
-        }
-
         $order = $this->orderService->updateStatus($order, (string) $newStatus);
 
         return response()->json([

@@ -139,9 +139,8 @@
     <x-slot:badge>
         <x-admin.status-badge :status="$order->status" :enum="\App\Enums\OrderStatus::class" />
         @if($isPaid)
-            <span class="badge {{ $isOwner ? 'bg-success-subtle text-success-emphasis border-success' : 'bg-secondary-subtle text-secondary-emphasis border-secondary' }} border px-3 py-2 rounded-pill">
-                <i class="bi {{ $isOwner ? 'bi-shield-check' : 'bi-lock-fill' }} me-1"></i>
-                {{ $isOwner ? 'Đã quyết toán · Chủ cửa hàng được phép điều chỉnh' : 'Đã quyết toán' }}
+            <span class="badge bg-success-subtle text-success-emphasis border border-success px-3 py-2 rounded-pill">
+                <i class="bi bi-check-circle me-1"></i>Đã thanh toán
             </span>
         @endif
         @if($isReceiving)

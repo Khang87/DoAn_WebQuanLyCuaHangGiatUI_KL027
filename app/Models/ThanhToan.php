@@ -37,9 +37,14 @@ class ThanhToan extends Model
         return PaymentStatus::parse($this->TrangThai)->isPaid();
     }
 
+    public function isFinanciallyFinal(): bool
+    {
+        return PaymentStatus::parse($this->TrangThai)->isFinanciallyFinal();
+    }
+
     public function isLocked(): bool
     {
-        return $this->isSettled() || $this->donHang?->isLocked() === true;
+        return $this->isFinanciallyFinal() || $this->donHang?->isLocked() === true;
     }
 
     public function getMethodLabel(): string

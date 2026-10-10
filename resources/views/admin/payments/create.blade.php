@@ -38,7 +38,7 @@
                     Dịch vụ:
                     {{ $preselectedOrder->chiTietDonHangs->map(fn ($item) => $item->dichVu?->TenDichVu)->filter()->unique()->join(', ') ?: '—' }}
                 </div>
-                <div>Số tiền còn phải thu: {{ number_format((float) $preselectedAmount) }} đ</div>
+                <div>Số tiền phải thanh toán toàn bộ: {{ number_format((float) $preselectedAmount) }} đ</div>
             </div>
         @endif
 
@@ -79,15 +79,16 @@
                 @endif
                 <div class="col-md-6">
                     @if($preselectedOrder)
-                        <label class="form-label">Số tiền thanh toán</label>
+                        <label class="form-label">Số tiền thanh toán toàn bộ</label>
                         <input type="number" class="form-control" value="{{ $preselectedAmount }}" min="0" step="1000" disabled aria-describedby="payment-amount-help">
                         <input type="hidden" name="amount" value="{{ $preselectedAmount }}">
                     @else
-                        <label class="form-label">Số tiền thanh toán <span class="text-danger ms-1">*</span></label>
+                        <label class="form-label">Số tiền thanh toán toàn bộ <span class="text-danger ms-1">*</span></label>
                         <input type="number" class="form-control" name="amount" value="{{ old('amount') }}" placeholder="250000" min="0" step="1000" required>
+                        <div class="form-text">Nhập đúng toàn bộ số tiền phải trả của hóa đơn; không hỗ trợ thanh toán một phần.</div>
                     @endif
                     @if($preselectedOrder)
-                        <div class="form-text" id="payment-amount-help">Số tiền còn phải thu của đơn hàng.</div>
+                        <div class="form-text" id="payment-amount-help">Phải thanh toán đủ toàn bộ số tiền hiển thị.</div>
                     @endif
                 </div>
                 <div class="col-md-6">

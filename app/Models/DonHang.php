@@ -2,7 +2,9 @@
 
 namespace App\Models;
 
+use App\Enums\InvoiceStatus;
 use App\Enums\OrderStatus;
+use App\Enums\PaymentStatus;
 use Illuminate\Database\Eloquent\Model;
 
 class DonHang extends Model
@@ -213,7 +215,21 @@ class DonHang extends Model
      */
     public function isPaid(): bool
     {
-        return $this->statusEnum()->isSettled();
+        if ($this->statusEnum()->isSettled()) {
+            return true;
+        }
+
+        if (array_key_exists('has_paid_invoice', $this->attributes)) {
+            return (bool) $this->attributes['has_paid_invoice'];
+        }
+
+        if ($this->relationLoaded('hoaDons')) {
+            return $this->hoaDons->contains(
+                fn (HoaDon $invoice): bool => $invoice->TrangThai === InvoiceStatus::Paid->value
+            );
+        }
+
+        return $this->hoaDons()->where('TrangThai', InvoiceStatus::Paid->value)->exists();
     }
 
     /**
@@ -221,7 +237,21 @@ class DonHang extends Model
      */
     public function isLocked(): bool
     {
-        return $this->isPaid();
+        if ($this->isPaid()) {
+            return true;
+        }
+
+        if (array_key_exists('has_successful_payment', $this->attributes)) {
+            return (bool) $this->attributes['has_successful_payment'];
+        }
+
+        if ($this->relationLoaded('thanhToans')) {
+            return $this->thanhToans->contains(
+                fn (ThanhToan $payment): bool => $payment->TrangThai === PaymentStatus::Paid->value
+            );
+        }
+
+        return $this->thanhToans()->where('TrangThai', PaymentStatus::Paid->value)->exists();
     }
 
     public function getStatusLabelAttribute(): string

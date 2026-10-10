@@ -12,12 +12,14 @@ use App\Models\DonHang;
 use App\Models\KhachHang;
 use App\Models\User;
 use App\Services\BookingService;
+use App\Services\DeliveryFeeService;
 use App\Services\OrderService;
 use App\Services\PaymentService;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
+use Mockery;
 use Tests\TestCase;
 
 class RewardPointTest extends TestCase
@@ -31,6 +33,28 @@ class RewardPointTest extends TestCase
 
         $this->createSchema();
         $this->createCatalog();
+        $deliveryFeeService = Mockery::mock(DeliveryFeeService::class)->makePartial();
+        $deliveryFeeService->shouldReceive('quote')->andReturnUsing(
+            function (
+                string $receiveMethod,
+                ?string $pickupAddress,
+                string $returnMethod,
+                ?string $returnAddress,
+                ?string $requestId = null,
+            ): array {
+                $pickupFee = $receiveMethod === 'Tại nhà' ? 2000 : 0;
+                $returnFee = $returnMethod === 'Tại nhà' ? 2000 : 0;
+
+                return [
+                    'pickup_distance_meters' => $pickupFee > 0 ? 3400 : 0,
+                    'pickup_fee' => $pickupFee,
+                    'return_distance_meters' => $returnFee > 0 ? 3400 : 0,
+                    'return_fee' => $returnFee,
+                    'total_fee' => $pickupFee + $returnFee,
+                ];
+            }
+        );
+        $this->app->instance(DeliveryFeeService::class, $deliveryFeeService);
     }
 
     protected function tearDown(): void
@@ -59,7 +83,7 @@ class RewardPointTest extends TestCase
         parent::tearDown();
     }
 
-    public function test_paid_order_awards_points_using_the_configured_rate_only_once(): void
+    public function test_full_payment_does_not_change_order_progress_and_awards_points_once_after_delivery(): void
     {
         $customer = $this->createCustomer(1, 2);
         $order = $this->createOrder($customer, 100000, 0);
@@ -68,36 +92,27 @@ class RewardPointTest extends TestCase
 
         $service->updateStatus($order, OrderStatus::Washing->value);
         $service->updateStatus($order->fresh(), OrderStatus::Washed->value);
-        $service->updateStatus($order->fresh(), OrderStatus::Delivering->value);
-        $order = $service->updateStatus($order, OrderStatus::Delivered->value);
-
-        $this->assertSame(2, $customer->fresh()->points());
-        $this->assertSame(0, DB::table('NhatKyHeThong')
-            ->where('BangDuLieu', 'DonHang')
-            ->where('BanGhiID', $order->DonHangID)
-            ->where('HanhDong', 'Cộng điểm tích lũy đơn hàng')
-            ->count());
+        $order = $service->updateStatus($order->fresh(), OrderStatus::Delivering->value);
 
         app(PaymentService::class)->create([
             'order_id' => $order->DonHangID,
-            'amount' => 40000,
+            'amount' => 100000,
             'method' => 'cash',
             'status' => PaymentStatus::Paid->value,
         ]);
+        $this->assertSame(OrderStatus::Delivering->value, $order->fresh()->TrangThai);
         $this->assertSame(2, $customer->fresh()->points());
 
-        app(PaymentService::class)->create([
-            'order_id' => $order->DonHangID,
-            'amount' => 60000,
-            'method' => 'cash',
-            'status' => PaymentStatus::Paid->value,
-        ]);
+        $order = $service->updateStatus($order->fresh(), OrderStatus::Delivered->value);
         $this->assertSame(10002, $customer->fresh()->points());
         $this->assertSame(1, DB::table('NhatKyHeThong')
             ->where('BangDuLieu', 'DonHang')
             ->where('BanGhiID', $order->DonHangID)
             ->where('HanhDong', 'Cộng điểm tích lũy đơn hàng')
             ->count());
+
+        $service->awardPointsForSettledDeliveredOrder($order);
+        $this->assertSame(10002, $customer->fresh()->points());
     }
 
     public function test_booking_conversion_redeems_selected_points_and_reduces_order_total(): void
@@ -110,7 +125,7 @@ class RewardPointTest extends TestCase
 
         $this->assertSame(100, $order->DiemSuDung);
         $this->assertSame(100.0, $order->TienGiamDoDiem);
-        $this->assertSame(9900.0, $order->ThanhTien);
+        $this->assertSame(11900.0, $order->ThanhTien);
         $this->assertSame(400, $customer->fresh()->points());
     }
 
@@ -124,7 +139,7 @@ class RewardPointTest extends TestCase
 
         $this->assertSame(500, $order->DiemSuDung);
         $this->assertSame(500.0, $order->TienGiamDoDiem);
-        $this->assertSame(9500.0, $order->ThanhTien);
+        $this->assertSame(11500.0, $order->ThanhTien);
         $this->assertSame(0, $customer->fresh()->points());
     }
 
@@ -319,7 +334,7 @@ class RewardPointTest extends TestCase
         $this->assertSame(5, $customer->fresh()->points());
     }
 
-    public function test_fully_paid_order_becomes_settled_when_delivery_is_completed(): void
+    public function test_fully_paid_order_remains_in_the_delivered_process_state(): void
     {
         $customer = $this->createCustomer(6, 0);
         $order = $this->createOrder($customer, 10000, 0);
@@ -341,7 +356,7 @@ class RewardPointTest extends TestCase
             $order = $service->updateStatus($order, $status->value);
         }
 
-        $this->assertSame(OrderStatus::Paid->value, $order->fresh()->TrangThai);
+        $this->assertSame(OrderStatus::Delivered->value, $order->fresh()->TrangThai);
         $this->assertSame(1000, $customer->fresh()->points());
     }
 

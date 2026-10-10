@@ -21,11 +21,6 @@
 >
     <x-slot:badge>
         <x-admin.status-badge :status="$invoice->TrangThai" :enum="\App\Enums\InvoiceStatus::class" />
-        @if($isPaid)
-            <span class="badge bg-secondary-subtle text-secondary-emphasis border border-secondary px-3 py-2 rounded-pill">
-                <i class="bi bi-lock-fill me-1"></i>Đã quyết toán
-            </span>
-        @endif
     </x-slot:badge>
 </x-admin.detail.page-header>
 
@@ -142,7 +137,7 @@
 
                 @if($totalPaid > 0)
                     <div class="d-flex justify-content-between align-items-center py-2 mt-2">
-                        <span class="detail-summary__label">Đã thanh toán</span>
+                        <span class="detail-summary__label">Tổng đã thu</span>
                         <x-admin.detail.money :value="$totalPaid" class="text-success fw-semibold" />
                     </div>
                     <div class="d-flex justify-content-between align-items-center py-2">
@@ -152,23 +147,6 @@
                 @endif
             </x-admin.detail.panel>
 
-            @unless($isPaid)
-                <x-admin.detail.confirm-form
-                    :action="route('invoices.update-status', $invoice)"
-                    method="POST"
-                    title="Đánh dấu đã thanh toán?"
-                    text="Hóa đơn sẽ được chốt và không thể sửa nữa."
-                    label="Đánh dấu đã thanh toán"
-                    icon="bi-check-lg"
-                    variant="btn-outline-success"
-                    color="#16a34a"
-                    :block="true"
-                >
-                    <x-slot:hidden>
-                        <input type="hidden" name="status" value="{{ \App\Enums\InvoiceStatus::Paid->value }}">
-                    </x-slot:hidden>
-                </x-admin.detail.confirm-form>
-            @endunless
         </div>
 
         <x-admin.detail.panel title="Thông tin hóa đơn" icon="bi-file-earmark-text" :iconClass="'bg-secondary-subtle text-secondary'">
@@ -183,9 +161,6 @@
                     @else
                         <span class="detail-empty-value">—</span>
                     @endif
-                </x-admin.detail.info-item>
-                <x-admin.detail.info-item label="Trạng thái">
-                    <x-admin.status-badge :status="$invoice->TrangThai" :enum="\App\Enums\InvoiceStatus::class" :pill="false" />
                 </x-admin.detail.info-item>
             </x-admin.detail.info-grid>
 
@@ -224,18 +199,20 @@
                     <i class="fas fa-print me-1"></i> In hóa đơn
                 </button>
 
-                @can('invoices.delete')
-                    <x-admin.detail.confirm-form
-                        :action="route('invoices.destroy', $invoice->HoaDonID)"
-                        title="Xóa hóa đơn?"
-                        text="Hóa đơn thuộc đơn đã quyết toán chỉ có thể xóa theo quyền quản lý."
-                        label="Xóa hóa đơn"
-                        icon="bi-trash"
-                        variant="btn-outline-danger"
-                        size="py-2"
-                        block
-                    />
-                @endcan
+                @if(! $isPaid)
+                    @can('invoices.delete')
+                        <x-admin.detail.confirm-form
+                            :action="route('invoices.destroy', $invoice->HoaDonID)"
+                            title="Xóa hóa đơn?"
+                            text="Hóa đơn thuộc đơn đã quyết toán chỉ có thể xóa theo quyền quản lý."
+                            label="Xóa hóa đơn"
+                            icon="bi-trash"
+                            variant="btn-outline-danger"
+                            size="py-2"
+                            block
+                        />
+                    @endcan
+                @endif
 
                 <a href="{{ route('invoices.index') }}" class="btn btn-outline-secondary w-100 py-2 text-dark">
                     <i class="fas fa-arrow-left me-1"></i> Quay lại danh sách

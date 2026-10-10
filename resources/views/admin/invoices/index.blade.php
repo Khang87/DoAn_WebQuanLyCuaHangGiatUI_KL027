@@ -101,19 +101,6 @@
                                     @can('invoices.edit')
                                         <a href="{{ route('invoices.edit', $invoice) }}" class="btn btn-order-action edit" title="Sửa hóa đơn đã thanh toán (Chủ cửa hàng)"><i class="bi bi-pencil"></i></a>
                                     @endcan
-                                    @can('invoices.delete')
-                                        <form action="{{ route('invoices.destroy', $invoice) }}" method="POST" class="d-inline" id="deleteInvoiceForm_{{ $invoice->HoaDonID }}">
-                                            @csrf @method('DELETE')
-                                            <button type="submit" class="btn btn-order-action delete" title="Xóa hóa đơn đã thanh toán (Chủ cửa hàng)"><i class="bi bi-trash"></i></button>
-                                        </form>
-                                    @endcan
-                                    <span class="badge bg-success-subtle text-success-emphasis border border-success px-3 py-2 rounded-pill" title="Đã thanh toán - Chủ cửa hàng được phép điều chỉnh">
-                                        <i class="bi bi-shield-check me-1"></i>Đã thanh toán
-                                    </span>
-                                @else
-                                    <span class="badge bg-success-subtle text-success-emphasis border border-success px-3 py-2 rounded-pill" title="Đã thanh toán nên không thể sửa hoặc xóa">
-                                        <i class="bi bi-lock me-1"></i>Đã thanh toán
-                                    </span>
                                 @endif
                             </div>
                         </td>

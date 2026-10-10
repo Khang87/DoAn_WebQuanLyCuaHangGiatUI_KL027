@@ -118,14 +118,6 @@
                                         <a href="{{ route('orders.edit', $order) }}" class="btn btn-order-action edit" title="Sửa"><i class="bi bi-pencil"></i></a>
                                     @endcan
                                 @endif
-                                @if($canManageSettled)
-                                    @can('orders.delete')
-                                        <form action="{{ route('orders.destroy', $order->DonHangID) }}" method="POST" class="d-inline" id="deleteOrderForm_{{ $order->DonHangID }}">
-                                            @csrf @method('DELETE')
-                                            <button type="submit" class="btn btn-order-action delete" title="Xóa"><i class="bi bi-trash"></i></button>
-                                        </form>
-                                    @endcan
-                                @endif
                                 @if($order->isLocked() && ! auth()->user()?->isOwner())
                                     <span class="badge bg-secondary-subtle text-secondary-emphasis border border-secondary px-3 py-2 rounded-pill d-flex align-items-center" title="Đã quyết toán">
                                         <i class="bi bi-lock me-1"></i>Đã quyết toán

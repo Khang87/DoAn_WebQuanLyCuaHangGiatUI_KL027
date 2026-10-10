@@ -5,7 +5,6 @@ namespace App\Observers;
 use App\Enums\DeliveryStatus;
 use App\Enums\InvoiceStatus;
 use App\Enums\OrderStatus;
-use App\Enums\PaymentStatus;
 use App\Models\DonHang;
 use App\Models\NhatKyHeThong;
 use App\Services\OrderService;
@@ -33,11 +32,7 @@ class OrderObserver
         );
 
         if ($order->TrangThai === OrderStatus::Delivered->value) {
-            $this->markPaidIfFullySettled($order);
-        }
-
-        if ($order->TrangThai === OrderStatus::Paid->value) {
-            $this->awardPaidOrderPoints($order);
+            app(OrderService::class)->awardPointsForSettledDeliveredOrder($order);
         }
 
         if ($order->TrangThai === OrderStatus::Cancelled->value) {
@@ -83,71 +78,5 @@ class OrderObserver
             'IPAddress' => Request::ip(),
             'UserAgent' => Request::userAgent(),
         ]);
-    }
-
-    private function awardPaidOrderPoints(DonHang $order): void
-    {
-        DB::transaction(function () use ($order): void {
-            $lockedOrder = DonHang::query()->lockForUpdate()->findOrFail($order->getKey());
-            $action = 'Cộng điểm tích lũy đơn hàng';
-
-            $alreadyAwarded = NhatKyHeThong::query()
-                ->where('BangDuLieu', 'DonHang')
-                ->where('BanGhiID', $lockedOrder->getKey())
-                ->where('HanhDong', $action)
-                ->exists();
-
-            if ($alreadyAwarded || $lockedOrder->TrangThai !== OrderStatus::Paid->value) {
-                return;
-            }
-
-            $grandTotal = (float) ($lockedOrder->hoaDons()->first()?->ThanhTien ?? $lockedOrder->ThanhTien);
-            $totalPaid = (float) $lockedOrder->thanhToans()
-                ->where('TrangThai', PaymentStatus::Paid->value)
-                ->sum('SoTien');
-
-            if ($grandTotal <= 0 || $totalPaid < $grandTotal) {
-                return;
-            }
-
-            $customer = $lockedOrder->khachHang()->firstOrFail();
-            $pointsBefore = $customer->points();
-            $pointsAwarded = (int) floor(
-                (float) $lockedOrder->ThanhTien / OrderService::POINTS_PER_AMOUNT
-            ) * OrderService::POINTS_EARNED_PER_AMOUNT;
-
-            if ($pointsAwarded > 0) {
-                $customer->addPoints($pointsAwarded);
-            }
-
-            NhatKyHeThong::query()->create([
-                'TaiKhoanID' => Auth::id(),
-                'HanhDong' => $action,
-                'BangDuLieu' => 'DonHang',
-                'BanGhiID' => $lockedOrder->getKey(),
-                'DuLieuCu' => ['DiemHienTai' => $pointsBefore],
-                'DuLieuMoi' => [
-                    'DiemHienTai' => $pointsBefore + $pointsAwarded,
-                    'DiemCong' => $pointsAwarded,
-                    'ThanhTien' => (float) $lockedOrder->ThanhTien,
-                ],
-                'ThoiGian' => now(),
-                'IPAddress' => Request::ip(),
-                'UserAgent' => Request::userAgent(),
-            ]);
-        });
-    }
-
-    private function markPaidIfFullySettled(DonHang $order): void
-    {
-        $lockedOrder = DonHang::query()->with('hoaDons')->findOrFail($order->getKey());
-        $grandTotal = (float) ($lockedOrder->hoaDons->first()?->ThanhTien ?? $lockedOrder->ThanhTien);
-        $totalPaid = (float) $lockedOrder->thanhToans()
-            ->where('TrangThai', PaymentStatus::Paid->value)
-            ->sum('SoTien');
-
-        if ($grandTotal > 0 && $totalPaid >= $grandTotal) {
-            app(OrderService::class)->updateStatus($lockedOrder, OrderStatus::Paid->value);
-        }
     }
 }

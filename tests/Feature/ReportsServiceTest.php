@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Enums\BookingStatus;
 use App\Enums\InvoiceStatus;
 use App\Enums\OrderStatus;
+use App\Enums\PaymentStatus;
 use App\Models\User;
 use App\Services\ReportsService;
 use Illuminate\Database\Schema\Blueprint;
@@ -58,7 +59,7 @@ class ReportsServiceTest extends TestCase
         parent::tearDown();
     }
 
-    public function test_kpis_use_paid_invoice_revenue_and_count_new_bookings(): void
+    public function test_kpis_use_successful_collected_payment_revenue_and_count_new_bookings(): void
     {
         $metrics = app(ReportsService::class)->getKpiMetrics([
             'range' => 'custom',
@@ -67,16 +68,13 @@ class ReportsServiceTest extends TestCase
         ]);
 
         $this->assertSame(4, $metrics['total_orders']);
-        $this->assertSame(1, $metrics['completed_orders']);
+        $this->assertSame(0, $metrics['completed_orders']);
         $this->assertSame(2, $metrics['processing_orders']);
         $this->assertSame(1, $metrics['cancelled_orders']);
-        $this->assertSame(
-            $metrics['total_orders'],
-            $metrics['completed_orders'] + $metrics['processing_orders'] + $metrics['cancelled_orders'],
-        );
+        $this->assertSame(3, $metrics['completed_orders'] + $metrics['processing_orders'] + $metrics['cancelled_orders']);
         $this->assertSame(1, $metrics['new_bookings']);
-        $this->assertEquals(125000, $metrics['total_revenue']);
-        $this->assertEquals(125000, $metrics['avg_order_value']);
+        $this->assertEquals(255000, $metrics['total_revenue']);
+        $this->assertEquals(0, $metrics['avg_order_value']);
     }
 
     public function test_kpis_and_revenue_chart_use_bounded_aggregate_query_counts(): void
@@ -97,10 +95,10 @@ class ReportsServiceTest extends TestCase
         $chart = $service->getRevenueChartData($filters);
         $this->assertCount(1, DB::connection()->getQueryLog());
         $this->assertSame(['10/01'], $chart['labels']);
-        $this->assertEquals([125000], $chart['revenue']);
+        $this->assertEquals([255000], $chart['revenue']);
     }
 
-    public function test_charts_use_paid_invoice_dates_and_calculate_service_shares(): void
+    public function test_charts_use_successful_payment_dates_and_calculate_service_shares(): void
     {
         $service = app(ReportsService::class);
         $filters = [
@@ -113,7 +111,7 @@ class ReportsServiceTest extends TestCase
         $composition = $service->getServiceComposition($filters);
 
         $this->assertSame(['10/01'], $chart['labels']);
-        $this->assertEquals([125000], $chart['revenue']);
+        $this->assertEquals([255000], $chart['revenue']);
         $this->assertSame(['Giặt sấy', 'Giặt hấp'], $composition['labels']);
         $this->assertEquals([100000, 25000], $composition['revenue']);
         $this->assertEquals([80, 20], $composition['percentages']);
@@ -135,9 +133,17 @@ class ReportsServiceTest extends TestCase
         DB::table('HoaDon')->insert([
             'HoaDonID' => 3,
             'DonHangID' => 2,
-            'ThanhTien' => 5000,
+            'ThanhTien' => 50000,
             'NgayLap' => '2026-01-09 18:00:00',
             'TrangThai' => InvoiceStatus::Paid->value,
+        ]);
+        DB::table('ThanhToan')->insert([
+            'ThanhToanID' => 8,
+            'DonHangID' => 2,
+            'SoTien' => 50000,
+            'PhuongThuc' => 'Tiền mặt',
+            'ThoiGian' => '2026-01-09 18:00:00',
+            'TrangThai' => PaymentStatus::Paid->value,
         ]);
 
         $metrics = $service->getKpiMetrics([
@@ -151,9 +157,9 @@ class ReportsServiceTest extends TestCase
             'date_to' => '2026-01-10',
         ]);
 
-        $this->assertEquals(130000, $metrics['total_revenue']);
+        $this->assertEquals(305000, $metrics['total_revenue']);
         $this->assertSame(['10/01'], $chart['labels']);
-        $this->assertEquals([130000], $chart['revenue']);
+        $this->assertEquals([305000], $chart['revenue']);
     }
 
     public function test_all_time_filter_includes_existing_data_and_groups_chart_by_month(): void
@@ -163,10 +169,10 @@ class ReportsServiceTest extends TestCase
         $chart = $service->getRevenueChartData(['range' => 'all_time']);
 
         $this->assertNull($service->getDateRange(['range' => 'all_time'])['from']);
-        $this->assertEquals(125000, $metrics['total_revenue']);
+        $this->assertEquals(255000, $metrics['total_revenue']);
         $this->assertSame(['01/2026'], $chart['labels']);
-        $this->assertEquals([125000], $chart['revenue']);
-        $this->assertEquals(125000, $service->getKpiMetrics([])['total_revenue']);
+        $this->assertEquals([255000], $chart['revenue']);
+        $this->assertEquals(255000, $service->getKpiMetrics([])['total_revenue']);
     }
 
     public function test_charts_return_empty_composition_and_zero_revenue_for_empty_periods(): void
@@ -203,7 +209,7 @@ class ReportsServiceTest extends TestCase
         $this->assertEquals(100000, $services[0]->total_revenue);
     }
 
-    public function test_payment_method_totals_include_only_successful_payments_for_paid_invoices(): void
+    public function test_payment_method_totals_include_only_successful_collected_payments(): void
     {
         $payments = app(ReportsService::class)->getRevenueByPaymentMethod([
             'range' => 'custom',
@@ -213,8 +219,8 @@ class ReportsServiceTest extends TestCase
 
         $this->assertCount(2, $payments);
         $this->assertSame('Tiền mặt', $payments[0]->method);
-        $this->assertEquals(100000, $payments[0]->total_amount);
-        $this->assertSame(1, $payments[0]->transaction_count);
+        $this->assertEquals(230000, $payments[0]->total_amount);
+        $this->assertSame(4, $payments[0]->transaction_count);
         $this->assertSame('Chuyển khoản', $payments[1]->method);
         $this->assertEquals(25000, $payments[1]->total_amount);
     }
@@ -360,9 +366,13 @@ class ReportsServiceTest extends TestCase
         ]);
 
         DB::table('ThanhToan')->insert([
-            ['ThanhToanID' => 1, 'DonHangID' => 1, 'SoTien' => 100000, 'PhuongThuc' => 'Tiền mặt', 'ThoiGian' => '2026-01-10 12:05:00', 'TrangThai' => 'Thành công'],
-            ['ThanhToanID' => 2, 'DonHangID' => 1, 'SoTien' => 25000, 'PhuongThuc' => 'Chuyển khoản', 'ThoiGian' => '2026-01-10 12:06:00', 'TrangThai' => 'Thành công'],
-            ['ThanhToanID' => 3, 'DonHangID' => 3, 'SoTien' => 30000, 'PhuongThuc' => 'Tiền mặt', 'ThoiGian' => '2026-01-10 12:07:00', 'TrangThai' => 'Thành công'],
+            ['ThanhToanID' => 1, 'DonHangID' => 1, 'SoTien' => 100000, 'PhuongThuc' => 'Tiền mặt', 'ThoiGian' => '2026-01-10 12:05:00', 'TrangThai' => PaymentStatus::Paid->value],
+            ['ThanhToanID' => 2, 'DonHangID' => 1, 'SoTien' => 25000, 'PhuongThuc' => 'Chuyển khoản', 'ThoiGian' => '2026-01-10 12:06:00', 'TrangThai' => PaymentStatus::Paid->value],
+            ['ThanhToanID' => 3, 'DonHangID' => 3, 'SoTien' => 30000, 'PhuongThuc' => 'Tiền mặt', 'ThoiGian' => '2026-01-10 12:07:00', 'TrangThai' => PaymentStatus::Paid->value],
+            ['ThanhToanID' => 4, 'DonHangID' => 2, 'SoTien' => 50000, 'PhuongThuc' => 'Tiền mặt', 'ThoiGian' => '2026-01-09 18:00:00', 'TrangThai' => PaymentStatus::Paid->value],
+            ['ThanhToanID' => 5, 'DonHangID' => 2, 'SoTien' => 50000, 'PhuongThuc' => 'Tiền mặt', 'ThoiGian' => '2026-01-10 12:08:00', 'TrangThai' => PaymentStatus::Pending->value],
+            ['ThanhToanID' => 6, 'DonHangID' => 2, 'SoTien' => 50000, 'PhuongThuc' => 'Tiền mặt', 'ThoiGian' => '2026-01-10 12:09:00', 'TrangThai' => PaymentStatus::Failed->value],
+            ['ThanhToanID' => 7, 'DonHangID' => 2, 'SoTien' => 50000, 'PhuongThuc' => 'Tiền mặt', 'ThoiGian' => '2026-01-10 12:10:00', 'TrangThai' => PaymentStatus::Refunded->value],
         ]);
 
         DB::table('Booking')->insert([

@@ -148,13 +148,22 @@ class InvoiceHistoryObserverTest extends TestCase
 
         $html = view('admin.invoices.show', [
             'invoice' => $detailedInvoice,
-            'totalPaid' => 0,
-            'balance' => 100,
+            'totalPaid' => 100,
+            'balance' => 0,
         ])->render();
 
         $this->assertStringContainsString('Lịch sử thay đổi', $html);
         $this->assertStringContainsString('Trạng thái', $html);
         $this->assertStringContainsString('invoice-auditor', $html);
+        $this->assertStringContainsString('Tổng đã thu', $html);
+        preg_match_all(
+            '/<span\b[^>]*class="[^"]*\bbadge\b[^"]*"[^>]*>\s*(?:<i\b[^>]*><\/i>\s*)?'
+                .preg_quote('Đã thanh toán', '/').'\s*<\/span>/s',
+            $html,
+            $badges,
+        );
+
+        $this->assertCount(1, $badges[0]);
     }
 
     private function createInvoice(): HoaDon
