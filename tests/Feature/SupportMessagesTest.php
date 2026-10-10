@@ -109,7 +109,7 @@ class SupportMessagesTest extends TestCase
     public function test_staff_can_send_support_message_without_an_order(): void
     {
         $this->actingAs(User::findOrFail(1))->post('/admin/messages', ['customer_id' => 2, 'content' => '  Cửa hàng xin chào  '])
-            ->assertRedirect();
+            ->assertRedirect()->assertSessionMissing('success');
         $this->assertDatabaseHas('TinNhan', [
             'NguoiGuiID' => 1, 'NguoiNhanID' => 2, 'DonHangID' => null, 'NoiDung' => 'Cửa hàng xin chào',
         ]);

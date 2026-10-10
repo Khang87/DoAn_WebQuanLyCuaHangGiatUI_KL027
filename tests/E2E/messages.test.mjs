@@ -9,18 +9,19 @@ import {openBrowser} from './browser.mjs';
 test('open conversation receives mobile PostgreSQL messages through real Laravel session', {timeout: 120000}, async () => {
     const cases=JSON.parse(readFileSync(process.env.WEB_E2E_RUNTIME+'/cases.json'));
     const runtime=process.env.WEB_E2E_RUNTIME+'/messages';mkdirSync(runtime,{mode:0o700});copyFileSync(process.env.WEB_E2E_RUNTIME+'/swal.js',runtime+'/swal.js');
-    const b=await openBrowser(runtime,process.env.WEB_E2E_URL);
+    // This fixture intentionally disables Realtime to exercise polling fallback.
+    const b=await openBrowser(runtime,process.env.WEB_E2E_URL,{allowedConsoleWarnings:['Message Realtime connection failed; polling fallback remains active.']});
     try {
         await b.navigate('/login');
         await b.evaluate(`document.querySelector('[name=email]').value='staff@example.test';document.querySelector('[name=password]').value=${JSON.stringify(process.env.WEB_E2E_PASSWORD)};document.querySelector('form').requestSubmit()`);
         await b.waitFor(async()=>await b.evaluate('location.pathname')==='/orders','staff session');
         await b.navigate('/admin/messages?order_id='+cases.paid);
-        await b.waitFor(()=>b.evaluate(`document.querySelector('[data-message-status]')?.textContent==='Tự động cập nhật tin nhắn'`),'initial sync');
+        await b.waitFor(()=>b.evaluate(`document.querySelector('[data-message-status]')?.textContent==='Realtime chưa kết nối; cập nhật dự phòng mỗi 3 giây'`),'initial sync');
         await b.evaluate(`window.messagePageMarker=true;document.querySelector('[data-message-form] textarea').value='Unsaved draft'`);
         const documents=b.responses.filter(r=>r.type==='Document').length;
         execFileSync(process.env.PHP_BIN||'php',[fileURLToPath(new URL('./messages-state.php',import.meta.url)),'insert'],{timeout:30000});
-        // Wait for the normal 15-second polling cycle, without synthetic events or reload.
-        await delay(16000);
+        // Wait for the normal 3-second polling cycle, without synthetic events or reload.
+        await delay(4000);
         await b.waitFor(()=>b.evaluate(`document.querySelector('[data-message-updates]').textContent.includes('Mobile message')`),'new mobile message');
         assert.deepEqual(await b.evaluate(`({marker:window.messagePageMarker,draft:document.querySelector('[data-message-form] textarea').value,rows:document.querySelectorAll('[data-message-id]').length,foreign:document.querySelector('[data-message-updates]').textContent.includes('Foreign conversation'),xss:Boolean(window.messageXss),images:document.querySelector('[data-message-updates]').querySelectorAll('img').length})`),{marker:true,draft:'Unsaved draft',rows:1,foreign:false,xss:false,images:0});
         assert.equal(b.responses.filter(r=>r.type==='Document').length,documents);
@@ -36,7 +37,7 @@ test('open conversation receives mobile PostgreSQL messages through real Laravel
         await b.navigate('/notifications/'+notification.id);
         assert.equal(await b.evaluate(`document.querySelector('a[href$="/notifications"].btn')?.textContent.includes('Quay lại')`),true);
         await b.navigate('/admin/messages?customer_id=1');
-        await b.waitFor(()=>b.evaluate(`document.querySelector('[data-message-status]').textContent==='Tự động cập nhật tin nhắn'`),'support sync');
+        await b.waitFor(()=>b.evaluate(`document.querySelector('[data-message-status]').textContent==='Realtime chưa kết nối; cập nhật dự phòng mỗi 3 giây'`),'support sync');
         assert.ok(await b.evaluate(`document.querySelector('h5.mb-1').textContent.includes('Local customer')`));
         const posts=b.requests.filter(r=>r.method==='POST'&&r.url.endsWith('/admin/messages')).length;
         await b.evaluate(`(()=>{const f=document.querySelector('[data-message-form]');f.querySelector('textarea').value='Unique support reply';f.requestSubmit();f.requestSubmit();})()`);
@@ -44,6 +45,7 @@ test('open conversation receives mobile PostgreSQL messages through real Laravel
         assert.equal(b.requests.filter(r=>r.method==='POST'&&r.url.endsWith('/admin/messages')).length,posts+1);
         const counts=JSON.parse(execFileSync(process.env.PHP_BIN||'php',[fileURLToPath(new URL('./messages-state.php',import.meta.url)),'support-count'],{timeout:30000}));
         assert.equal(counts.count,1);
+        assert.equal(await b.evaluate(`Boolean(document.querySelector('.swal2-container'))`),false,'Sending a message does not display a success popup');
         await b.navigate('/bookings/'+cases.voucher);
         const savedAmounts=await b.evaluate(`Object.fromEntries([...document.querySelectorAll('[data-booking-amount]')].map(e=>[e.dataset.bookingAmount,Number(e.textContent.replace(/[^0-9]/g,''))]))`);
         assert.deepEqual(savedAmounts,{TongTien:10000,TienGiamKhuyenMai:10000,TienGiamDoDiem:0,PhiGiaoHang:30000,ThanhTien:30000});
@@ -74,7 +76,7 @@ test('open conversation receives mobile PostgreSQL messages through real Laravel
         const changed=await b.evaluate(`[...document.querySelectorAll('.stat-value')].map(e=>e.textContent.trim())`);
         assert.equal(changed[4],'3');assert.match(changed[5],/^4[.,]0/);assert.deepEqual(changed.slice(0,4),values.slice(0,4));
         await b.navigate('/payments');
-        assert.equal(await b.evaluate(`document.querySelector('table img.avatar-cover')?.src.endsWith('/assets/images/user_2.jpg')`),true);
+        assert.equal(await b.evaluate(`document.querySelector('table img.avatar-cover')?.getAttribute('src')`),process.env.WEB_E2E_URL+'/assets/images/user_2.jpg');
         await b.navigate('/orders/create');
         await b.evaluate(`document.querySelector('#addItem').click()`);
         assert.ok(await b.evaluate(`document.querySelector('#order-row-status').textContent.includes('dòng 2')`));
@@ -86,7 +88,7 @@ test('open conversation receives mobile PostgreSQL messages through real Laravel
         assert.equal(await b.evaluate(`document.querySelector('[data-price-warning]').textContent`),'');
         fixture('dashboard-cleanup');
         assert.deepEqual(b.errors,[]);
-    } finally {await b.close();}
+    } finally {execFileSync(process.env.PHP_BIN||'php',[fileURLToPath(new URL('./messages-state.php',import.meta.url)),'dashboard-cleanup'],{timeout:30000});await b.close();}
 });
 
 test('Realtime invalidation refreshes the Laravel conversation immediately without reload', {timeout: 60000}, async () => {
