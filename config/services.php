@@ -44,5 +44,23 @@ return [
         'service_role_key' => env('SUPABASE_SERVICE_ROLE_KEY'),
         'avatar_bucket' => (string) env('SUPABASE_AVATAR_BUCKET', 'avatars'),
     ],
+    
+    'google_routes' => [
+        'api_key' => env('GOOGLE_MAPS_ROUTES_API_KEY'),
+        'store_address' => env(
+            'GOOGLE_MAPS_STORE_ADDRESS',
+            '140 Lê Trọng Tấn, Tây Thạnh, Hồ Chí Minh 700000, Việt Nam'
+        ),
+    ],
+    'osm' => [
+        'store_address' => env(
+            'OSM_STORE_ADDRESS',
+            '140 Lê Trọng Tấn, Tây Thạnh, Hồ Chí Minh, Việt Nam'
+        ),
 
+        'user_agent' => env(
+            'OSM_USER_AGENT',
+            'LaundryManagementApp/1.0'
+        ),
+    ],
 ];

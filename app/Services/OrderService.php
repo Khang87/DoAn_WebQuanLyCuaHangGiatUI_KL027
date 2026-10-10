@@ -29,6 +29,7 @@ class OrderService
     public function __construct(
         private TinhTienGiatUiService $tinhTienGiatUiService,
         private PricingService $pricingService,
+        private DeliveryFeeService $deliveryFeeService,
     ) {}
 
     /**
@@ -193,6 +194,17 @@ class OrderService
             }
             [$snapshots, $total] = $this->buildItems($items);
 
+            $deliveryQuote = $this->deliveryFeeService->quote(
+                (string) $booking->HinhThucNhanDo,
+                $booking->DiaChiNhan,
+                (string) $booking->HinhThucTraDo,
+                $booking->DiaChiTra,
+            );
+            $booking->forceFill([
+                'PickupDeliveryFee' => $deliveryQuote['pickup_fee'],
+                'DeliveryFee' => $deliveryQuote['return_fee'],
+            ])->saveQuietly();
+
             $bookingCode = $booking->MaBooking ?: Booking::nextCode();
             $customer = KhachHang::query()->find($booking->KhachHangID);
             // Older App bookings may already have reserved points. Return that
@@ -211,7 +223,7 @@ class OrderService
                 }
                 $booking->forceFill(['KhuyenMaiID' => null, 'KhuyenMaiDaTru' => false])->saveQuietly();
             }
-            $deliveryFee = (float) $booking->getAttribute('PickupDeliveryFee') + (float) $booking->getAttribute('DeliveryFee');
+            $deliveryFee = (float) $deliveryQuote['total_fee'];
             $amounts = $this->calculateAmounts($total, $promotion, $pointsUsed, $customerPoints, $deliveryFee);
             $amounts['KhuyenMaiID'] = $promotion?->KhuyenMaiID;
 
@@ -250,8 +262,20 @@ class OrderService
             }
 
             foreach ([
-                ['method' => $booking->receiveMethodEnum(), 'home' => ReceiveMethod::Home, 'type' => 'NHAN_DO', 'address' => $booking->DiaChiNhan],
-                ['method' => $booking->returnMethodEnum(), 'home' => ReturnMethod::Home, 'type' => 'GIAO_DO', 'address' => $booking->DiaChiTra],
+                [
+                    'method' => $booking->receiveMethodEnum(),
+                    'home' => ReceiveMethod::Home,
+                    'type' => 'NHAN_DO',
+                    'address' => $booking->DiaChiNhan,
+                    'fee' => $deliveryQuote['pickup_fee'],
+                ],
+                [
+                    'method' => $booking->returnMethodEnum(),
+                    'home' => ReturnMethod::Home,
+                    'type' => 'GIAO_DO',
+                    'address' => $booking->DiaChiTra,
+                    'fee' => $deliveryQuote['return_fee'],
+                ],
             ] as $leg) {
                 if ($leg['method'] !== $leg['home']) {
                     continue;
@@ -262,6 +286,7 @@ class OrderService
                     'HinhThuc' => $leg['method']->value,
                     'LoaiGiaoNhan' => $leg['type'],
                     'DiaChi' => $leg['address'],
+                    'PhiGiaoNhan' => $leg['fee'],
                     // NgayHen/GioHen is the receiving appointment, never the return schedule.
                     'ThoiGianDuKien' => $leg['type'] === 'NHAN_DO'
                         ? $booking->NgayHen->format('Y-m-d').' '.$booking->GioHen->format('H:i:s')
@@ -498,7 +523,9 @@ class OrderService
     public function create(array $data): DonHang
     {
         $this->promotionRejection = null;
-
+        // Tương thích với các nơi gọi create() chưa truyền phương thức nhận/trả đồ.
+        $data['HinhThucNhanDo'] ??= 'Tại cửa hàng';
+        $data['HinhThucTraDo'] ??= 'Tại cửa hàng';
         // Direct callers must obey the same inspection boundary as the Web form.
         Validator::make($data, [
             'NhanVienID' => ['required', 'integer', EmployeeAssignment::rule()],
@@ -508,6 +535,28 @@ class OrderService
             'TrangThai' => ['required', 'in:'.OrderStatus::Received->value],
             'items' => ['required', 'array', 'min:1'],
             'items.*.TinhTrangTruocKhiGiat' => ['required', 'string', 'max:320'],
+
+            'HinhThucNhanDo' => [
+                'required',
+                'in:Tại cửa hàng,Tại nhà',
+            ],
+            'DiaChiNhan' => [
+                'nullable',
+                'required_if:HinhThucNhanDo,Tại nhà',
+                'string',
+                'max:255',
+            ],
+            'HinhThucTraDo' => [
+                'required',
+                'in:Tại cửa hàng,Tại nhà',
+            ],
+            'DiaChiTra' => [
+                'nullable',
+                'required_if:HinhThucTraDo,Tại nhà',
+                'string',
+                'max:255',
+            ],
+
         ], [
             'BookingID.prohibited' => 'Hãy tạo đơn từ màn hình kiểm kê Booking.',
             'TrangThai.in' => 'Đơn mới chỉ được tạo ở trạng thái Đã tiếp nhận sau khi kiểm kê.',
@@ -515,9 +564,18 @@ class OrderService
         foreach ($data['items'] as &$item) {
             $item['TinhTrangTruocKhiGiat'] = trim($item['TinhTrangTruocKhiGiat']);
         }
+
         unset($item);
 
-        return DB::transaction(function () use ($data) {
+        $deliveryQuote = $this->deliveryFeeService->quote(
+            $data['HinhThucNhanDo'],
+            $data['DiaChiNhan'] ?? null,
+            $data['HinhThucTraDo'],
+            $data['DiaChiTra'] ?? null,
+        );
+
+        return DB::transaction(function () use ($data, $deliveryQuote) {
+
             EmployeeAssignment::assertAssignable((int) $data['NhanVienID'], 'NhanVienID');
 
             $data['MaDonHang'] = 'TMP'.Str::ulid();
@@ -539,7 +597,7 @@ class OrderService
                 null,
                 $pointsRequested,
                 $customerPoints,
-                (float) ($data['PhiGiaoHang'] ?? 0),
+                (float) $deliveryQuote['total_fee'],
             );
 
             // Trừ điểm tích lũy của khách hàng ngay trong cùng transaction.
@@ -564,6 +622,44 @@ class OrderService
                 }
 
                 ChiTietDonHang::create(array_merge(['DonHangID' => $order->DonHangID], $item));
+            }
+
+            // Tạo phiếu giao nhận tự động cho từng chặng tại nhà.
+            // Chặng tại cửa hàng không cần phiếu vận chuyển.
+            $deliveryLegs = [
+                [
+                    'method' => $data['HinhThucNhanDo'],
+                    'home' => 'Tại nhà',
+                    'type' => 'NHAN_DO',
+                    'address' => $data['DiaChiNhan'] ?? null,
+                    'fee' => $deliveryQuote['pickup_fee'],
+                ],
+                [
+                    'method' => $data['HinhThucTraDo'],
+                    'home' => 'Tại nhà',
+                    'type' => 'GIAO_DO',
+                    'address' => $data['DiaChiTra'] ?? null,
+                    'fee' => $deliveryQuote['return_fee'],
+                ],
+            ];
+
+            foreach ($deliveryLegs as $leg) {
+                if ($leg['method'] !== $leg['home']) {
+                    continue;
+                }
+
+                GiaoNhan::create([
+                    'DonHangID' => $order->DonHangID,
+                    // Để trống để quản lý giao nhận phân công người thực hiện.
+                    'NhanVienID' => null,
+                    'LoaiGiaoNhan' => $leg['type'],
+                    'HinhThuc' => 'Tại nhà',
+                    'DiaChi' => $leg['address'],
+                    'ThoiGianDuKien' => null,
+                    'PhiGiaoNhan' => $leg['fee'],
+                    'TrangThai' => DeliveryStatus::Pending->dbValue(),
+                    'GhiChu' => 'Tự động tạo từ đơn hàng '.$order->MaDonHang,
+                ]);
             }
 
             return $order->fresh(['chiTietDonHangs', 'khachHang', 'khuyenMai']);

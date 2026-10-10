@@ -18,6 +18,13 @@ class LuuDonHangRequest extends FormRequest
         if (is_string($orderCode)) {
             $this->merge(['MaDonHang' => trim($orderCode) ?: null]);
         }
+        
+        // Tương thích với request tạo đơn cũ chưa có phương thức nhận/trả đồ.
+        // Nếu người dùng có gửi phương thức, rules() vẫn sẽ kiểm tra giá trị đó.
+        $this->merge([
+            'HinhThucNhanDo' => $this->input('HinhThucNhanDo', 'Tại cửa hàng'),
+            'HinhThucTraDo' => $this->input('HinhThucTraDo', 'Tại cửa hàng'),
+        ]);
 
         $items = $this->input('items');
 
@@ -59,7 +66,30 @@ class LuuDonHangRequest extends FormRequest
             'promotion_code' => ['prohibited'],
             'DiemSuDung' => ['nullable', 'integer', 'min:0'],
             'use_points' => ['nullable', 'boolean'],
-            'PhiGiaoHang' => ['nullable', 'numeric', 'min:0'],
+            
+            // Phương thức nhận/trả đồ của đơn tạo trực tiếp trên website.
+            'HinhThucNhanDo' => [
+                'required',
+                Rule::in(['Tại cửa hàng', 'Tại nhà']),
+            ],
+            'DiaChiNhan' => [
+                'nullable',
+                'required_if:HinhThucNhanDo,Tại nhà',
+                'string',
+                'max:255',
+            ],
+            'HinhThucTraDo' => [
+                'required',
+                Rule::in(['Tại cửa hàng', 'Tại nhà']),
+            ],
+            'DiaChiTra' => [
+                'nullable',
+                'required_if:HinhThucTraDo,Tại nhà',
+                'string',
+                'max:255',
+            ],
+            // Không dùng PhiGiaoHang do trình duyệt gửi lên làm nguồn tính tiền.
+
             'TrangThai' => ['required', Rule::in($isCreating ? [OrderStatus::Received->value] : OrderStatus::values())],
             'cancellation_reason' => ['nullable', 'required_if:TrangThai,Đã hủy', 'string', 'max:500'],
             'GhiChu' => ['nullable', 'string', 'max:500'],
@@ -136,6 +166,12 @@ class LuuDonHangRequest extends FormRequest
             'items.*.SoLuong.min' => 'Số lượng phải từ 1 món trở lên.',
             'items.*.KhoiLuong.gt' => 'Khối lượng phải lớn hơn 0.',
             'items.*.KhoiLuong.min' => 'Khối lượng không được nhỏ hơn 0.',
+            
+            'HinhThucNhanDo.required' => 'Vui lòng chọn phương thức nhận đồ.',
+            'HinhThucTraDo.required' => 'Vui lòng chọn phương thức trả đồ.',
+            'DiaChiNhan.required_if' => 'Vui lòng nhập địa chỉ lấy đồ tại nhà.',
+            'DiaChiTra.required_if' => 'Vui lòng nhập địa chỉ giao đồ sạch.',
+
         ];
     }
 }

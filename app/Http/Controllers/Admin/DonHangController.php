@@ -14,12 +14,16 @@ use App\Models\KhachHang;
 use App\Models\LoaiDichVu;
 use App\Models\LoaiDoGiat;
 use App\Models\NhanVien;
+use App\Services\DeliveryFeeService;
 use App\Services\OrderService;
 use App\Services\PricingService;
 use App\Support\FriendlyError;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
+use Throwable;
 
 class DonHangController extends Controller
 {
@@ -160,7 +164,7 @@ class DonHangController extends Controller
             return redirect()->route('orders.show', $order)
                 ->withErrors($exception->errors())
                 ->withInput();
-        } catch (\Throwable $exception) {
+        } catch (Throwable $exception) {
             return redirect()->route('orders.show', $order)
                 ->with('error', FriendlyError::message($exception))
                 ->withInput();
@@ -362,6 +366,81 @@ class DonHangController extends Controller
             return back()->withErrors($exception->errors());
         } catch (\Exception $e) {
             return back()->with('error', FriendlyError::message($e));
+        }
+    }
+
+    public function quoteDeliveryFee(
+        Request $request,
+        DeliveryFeeService $deliveryFeeService
+    ) {
+        $requestId = (string) Str::uuid();
+        $startedAt = hrtime(true);
+        $outcome = 'success';
+        $errorType = null;
+        $deliveryLeg = 'unknown';
+
+        try {
+            $data = $request->validate([
+                'HinhThucNhanDo' => [
+                    'required',
+                    'in:Tại cửa hàng,Tại nhà',
+                ],
+                'DiaChiNhan' => [
+                    'nullable',
+                    'required_if:HinhThucNhanDo,Tại nhà',
+                    'string',
+                    'max:255',
+                ],
+                'HinhThucTraDo' => [
+                    'required',
+                    'in:Tại cửa hàng,Tại nhà',
+                ],
+                'DiaChiTra' => [
+                    'nullable',
+                    'required_if:HinhThucTraDo,Tại nhà',
+                    'string',
+                    'max:255',
+                ],
+            ]);
+
+            $legs = [];
+            if ($data['HinhThucNhanDo'] === 'Tại nhà') {
+                $legs[] = 'pickup';
+            }
+            if ($data['HinhThucTraDo'] === 'Tại nhà') {
+                $legs[] = 'return';
+            }
+            $deliveryLeg = $legs === [] ? 'none' : implode('+', $legs);
+
+            $quote = $deliveryFeeService->quote(
+                $data['HinhThucNhanDo'],
+                $data['DiaChiNhan'] ?? null,
+                $data['HinhThucTraDo'],
+                $data['DiaChiTra'] ?? null,
+                $requestId,
+            );
+
+            return response()->json([
+                'success' => true,
+                'pickup_distance_meters' => $quote['pickup_distance_meters'],
+                'pickup_fee' => $quote['pickup_fee'],
+                'return_distance_meters' => $quote['return_distance_meters'],
+                'return_fee' => $quote['return_fee'],
+                'total_fee' => $quote['total_fee'],
+            ])->header('X-Request-ID', $requestId);
+        } catch (Throwable $exception) {
+            $outcome = 'error';
+            $errorType = $exception::class;
+
+            throw $exception;
+        } finally {
+            Log::log($outcome === 'success' ? 'info' : 'warning', 'delivery_fee.endpoint', [
+                'request_id' => $requestId,
+                'delivery_leg' => $deliveryLeg,
+                'duration_ms' => round((hrtime(true) - $startedAt) / 1_000_000, 3),
+                'outcome' => $outcome,
+                'error_type' => $errorType,
+            ]);
         }
     }
 }
