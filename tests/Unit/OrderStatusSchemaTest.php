@@ -29,7 +29,7 @@ class OrderStatusSchemaTest extends TestCase
         $schema = file_get_contents(dirname(__DIR__, 2).'/schema.sql');
 
         $this->assertNotFalse($schema);
-        $this->assertStringContainsString('CREATE TABLE IF NOT EXISTS "public"."NhatKyHeThong"', $schema);
+        $this->assertMatchesRegularExpression('/CREATE TABLE(?: IF NOT EXISTS)?\s+"public"\."NhatKyHeThong"/', $schema);
         $this->assertStringContainsString('"DuLieuCu" jsonb', $schema);
         $this->assertStringContainsString('"DuLieuMoi" jsonb', $schema);
         $this->assertSame(

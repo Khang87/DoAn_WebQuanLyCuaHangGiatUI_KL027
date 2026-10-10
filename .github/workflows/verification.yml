@@ -54,6 +54,8 @@ jobs:
           php artisan view:cache
       - name: PostgreSQL RPC, Web contracts and concurrency
         run: bash scripts/test-postgres.sh
+      - name: Supabase schema restore and catalog parity
+        run: bash scripts/test-schema.sh
       - name: PHP dependency security audit
         run: composer audit --locked --no-interaction
 

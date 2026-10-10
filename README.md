@@ -32,7 +32,7 @@ Sky Laundry là hệ thống quản lý cửa hàng giặt ủi, hỗ trợ quy 
 - Tên chat lấy họ tên liên kết; nút gửi khóa ngay tới khi điều hướng để chặn double submit. Đây là chống gửi trùng tại UI, không phải cam kết idempotency cho mọi client/API.
 - Avatar danh sách thanh toán lấy từ tài khoản của khách liên kết; cảnh báo rõ thiếu bảng giá và thông báo khi thêm dòng. Dashboard 6 ô đã lấy dữ liệu từ DB, được kiểm chứng bằng thay đổi fixture.
 - Kiểm kê Booking hiển thị ước tính server, dùng đúng calculator và bảng giá 3 khóa; khuyến mãi/điểm không giảm phí giao nhận. Preview không ghi điểm/quota/đơn và giá được kiểm tra lại khi xác nhận.
-- `schema.sql` đối chiếu 31 bảng, giữ identity/index/legacy và bổ sung 5 chat RPC hiện có. Bản sửa riêng `send_chat_message` giới hạn 1.000 ký tự đã áp dụng bằng migration `align_chat_message_limit_with_storage`, giữ nguyên chữ ký/quyền và chặn overflow 1.001. Không chạy toàn bộ snapshot lên production.
+- `schema.sql` đã đồng bộ đầy đủ đối tượng ứng dụng public/private từ catalog, giữ identity/index/legacy và các chat RPC hiện có. Bản sửa riêng `send_chat_message` giới hạn 1.000 ký tự đã áp dụng bằng migration `align_chat_message_limit_with_storage`, giữ nguyên chữ ký/quyền và chặn overflow 1.001. Không chạy toàn bộ snapshot lên production.
 
 ## Cập nhật Booking và reset mật khẩu — 07/10/2026
 
@@ -45,7 +45,7 @@ Sky Laundry là hệ thống quản lý cửa hàng giặt ủi, hỗ trợ quy 
 - Booking cũ thiếu hình thức trả hiển thị “Chưa bổ sung”; nhân viên phải chọn trước khi chuyển đổi. Đơn cũ đang `Chờ tiếp nhận` tiếp tục dùng bước kiểm tra trên trang đơn hàng; bản sửa không tự chuyển trạng thái các đơn cũ.
 - Admin cấp OTP nội bộ qua `InternalPasswordOtpService`: mã 6 số, TTL **10 phút**, cùng mã qua email Resend và `ThongBao` riêng của người nhận; cache Redis lưu hash. Gửi lại sau 60 giây, tối đa 5 lần sai, dùng một lần. Mật khẩu chỉ đổi khi người nhận hoàn tất `/internal/reset-password`. Luồng tự yêu cầu tại `/forgot-password` và `/reset-password` dùng `PasswordResetOtpService` riêng, TTL 15 phút; hai luồng không dùng chung mã.
 - `TaiKhoan::$fillable` được bổ sung `AvatarURL`. Luồng upload avatar hiện hành được giữ nguyên.
-- `schema.sql` vẫn là snapshot tham chiếu. Các cột legacy `HinhThucGiaoDo`/`DiaChiGiao` được chú thích và không dùng trong Laravel; không xóa khỏi snapshot khi chưa đối chiếu lại catalog Live. Phiên làm việc này không có credential để kiểm tra catalog Supabase và không thực thi SQL/migration/seeder trên Live.
+- `schema.sql` giữ các cột legacy `HinhThucGiaoDo`/`DiaChiGiao` đang được RPC mobile sử dụng. Catalog Live đã được đối chiếu chỉ đọc; không thực thi toàn bộ snapshot hoặc seeder trên Live.
 
 ## Công nghệ sử dụng
 
@@ -92,7 +92,9 @@ Sky Laundry hỗ trợ số hóa hoạt động hằng ngày của cửa hàng g
 
 ## Cấu trúc Supabase Live
 
-`schema.sql` là snapshot cấu trúc chỉ đọc của PostgreSQL Supabase, dùng làm nguồn tham chiếu khi ánh xạ Eloquent. Không chạy migration/DDL hoặc seeder trên Supabase Live.
+`schema.sql` được sinh từ catalog Supabase đọc trực tiếp ngày **10/10/2026**: **32 bảng public/private (31 public), 18 views, 26 sequences, 155 constraints, 76 indexes, 54 routines, 12 triggers**, RLS policies, grants/default privileges và publication Realtime. Catalog cũng ghi cấu trúc các bảng Auth/Storage/Realtime do Supabase quản lý; các bảng nền tảng này là điều kiện có sẵn khi restore trên Supabase, không phải migrations Laravel. Ba policies avatar Storage được giữ trong snapshot.
+
+Đã khôi phục trên PostgreSQL 17 tạm và đối chiếu lại catalog ứng dụng. Chạy `python3 scripts/schema/render.py --check` và `bash scripts/test-schema.sh` để kiểm tra; CI chạy bước restore/parity tự động. Không chạy toàn bộ snapshot lên database production đã có dữ liệu. Xem [báo cáo schema và module](./docs/testing/SUPABASE_SCHEMA_SYNC.md). Web thanh toán đọc avatar mobile `KhachHang.AvatarUrl`, rồi avatar tài khoản; `ThongBao` có casts/quan hệ tới `TinNhan` và `Booking`. Các cột server quản lý không tự động đưa vào `$fillable` hoặc form.
 
 Phần lớn bảng nghiệp vụ dùng tên PascalCase, ví dụ `Booking`, `BangGia`, `DonHang`; không tự động đổi casing vì PostgreSQL giữ nguyên tên identifier đã được quote. Bảng sổ địa chỉ là ngoại lệ lowercase theo schema live:
 
