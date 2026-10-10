@@ -80,7 +80,7 @@
                         <td>
                             @php($customerAccount = $payment->donHang?->khachHang?->taiKhoan)
                             <div class="d-flex align-items-center">
-                                <img src="{{ $customerAccount?->AvatarURL ?: asset('assets/images/user_1.jpg') }}" alt="Ảnh khách hàng" class="rounded-circle me-2 avatar-cover" style="width: 40px; height: 40px;" onerror="this.onerror=null; this.src='{{ asset('assets/images/user_'.((($customerAccount?->getKey() ?? 0) % 8) + 1).'.jpg') }}';">
+                                <img src="{{ $payment->donHang?->khachHang?->avatar_url ?? asset('assets/images/user_1.jpg') }}" alt="Ảnh khách hàng" class="rounded-circle me-2 avatar-cover" style="width: 40px; height: 40px;" onerror="this.onerror=null; this.src='{{ asset('assets/images/user_'.((($customerAccount?->getKey() ?? 0) % 8) + 1).'.jpg') }}';">
                                 <div>
                                     <div class="fw-semibold">{{ $payment->donHang?->khachHang?->HoTen ?: '-' }}</div>
                                     <small class="text-muted">{{ $payment->donHang?->khachHang?->SoDienThoai ?: 'Chưa có SĐT' }}</small>

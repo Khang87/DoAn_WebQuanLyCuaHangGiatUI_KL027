@@ -39,6 +39,8 @@ class ThongBao extends Model
     protected $casts = [
         'TaiKhoanID' => 'integer',
         'DonHangID' => 'integer',
+        'TinNhanID' => 'integer',
+        'BookingID' => 'integer',
         'ThoiGianGui' => 'datetime',
         'DaDoc' => 'boolean',
     ];
@@ -77,5 +79,15 @@ class ThongBao extends Model
     public function donHang()
     {
         return $this->belongsTo(DonHang::class, 'DonHangID');
+    }
+
+    public function tinNhan()
+    {
+        return $this->belongsTo(TinNhan::class, 'TinNhanID');
+    }
+
+    public function booking()
+    {
+        return $this->belongsTo(Booking::class, 'BookingID');
     }
 }
