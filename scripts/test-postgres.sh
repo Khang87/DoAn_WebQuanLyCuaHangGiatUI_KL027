@@ -30,7 +30,7 @@ if [[ $ready != true ]]; then echo 'PostgreSQL did not become ready within 60 se
 export PG_TEST_HOST=127.0.0.1 PG_TEST_DATABASE=laundry_rpc_test PG_TEST_PASSWORD=$POSTGRES_PASSWORD
 PG_TEST_PORT=$(docker port "$container_id" 5432/tcp | sed -n 's/^127\.0\.0\.1://p')
 export PG_TEST_PORT
-for sql in fixtures.sql business_rules.sql chat_contract.sql; do
+for sql in fixtures.sql business_rules.sql chat_contract.sql message-realtime.sql; do
     docker exec "$container_id" psql -X -U postgres -d laundry_rpc_test -v ON_ERROR_STOP=1 \
         -c "SET plpgsql.check_asserts = on; SET statement_timeout = '30s';" \
         -f "/checkout/tests/Postgres/$sql" > /dev/null

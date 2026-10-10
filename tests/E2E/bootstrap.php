@@ -28,6 +28,14 @@ putenv('VERCEL');
 $app = require dirname(__DIR__, 2).'/bootstrap/app.php';
 $app->useEnvironmentPath($runtime);
 $app->useStoragePath($runtime);
+// Explicit disposable transport fixture; never loaded by the production entrypoint.
+if (is_file($runtime.'/message-realtime-enabled')) {
+    foreach (['SUPABASE_PROJECT_URL' => 'https://example.supabase.co', 'SUPABASE_PUBLISHABLE_KEY' => 'sb_publishable_fixture'] as $name => $value) {
+        putenv($name.'='.$value);
+        $_ENV[$name] = $_SERVER[$name] = $value;
+    }
+}
+
 $app->afterBootstrapping(LoadConfiguration::class, static function ($app) use ($host, $port, $password, $runtime): void {
     $app['config']->set([
         'app.env' => 'e2e', 'app.debug' => false, 'app.timezone' => 'Asia/Ho_Chi_Minh',

@@ -2,7 +2,7 @@ import { spawn } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { setTimeout as delay } from 'node:timers/promises';
 
-export async function openBrowser(runtime, origin, {assetDelayMs = 0, alertGate = null, avatarStorage = null} = {}) {
+export async function openBrowser(runtime, origin, {assetDelayMs = 0, alertGate = null, avatarStorage = null, messageRealtime = false} = {}) {
     const child = spawn(process.env.CHROMIUM_BIN || 'chromium', ['--headless', '--no-sandbox', '--disable-dev-shm-usage', '--disable-background-networking', '--no-first-run', '--remote-debugging-port=0', `--user-data-dir=${runtime}/browser`, 'about:blank'], {stdio: 'ignore'});
     const errors = [], requests = [], responses = [], excluded = new Set(), canceled = new Set(), loaded = new Set(), pending = new Map();
     let socket, id = 0, startupError;
@@ -63,6 +63,18 @@ export async function openBrowser(runtime, origin, {assetDelayMs = 0, alertGate 
                     } else if (request.url.startsWith('https://fonts.googleapis.com/css2?') || request.url === 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css') {
                         excluded.add(request.url);
                         await command('Fetch.fulfillRequest', {requestId, responseCode: 200, responseHeaders: [{name: 'Content-Type', value: 'text/css'}], body: ''});
+                    } else if (messageRealtime && new URL(request.url).pathname.includes('/message-realtime-')) {
+                        // Substitute only the external SDK boundary; run the production controller module unchanged.
+                        const source = readFileSync(new URL('../../resources/js/message-realtime.js', import.meta.url), 'utf8')
+                            .replace("import { createClient } from '@supabase/supabase-js';", `
+                                function createClient() {
+                                    const channel = { on(type, filter, callback) { window.messageSignal=callback; return this; },
+                                        subscribe(callback) { window.messageConnection=callback; queueMicrotask(()=>callback('SUBSCRIBED')); return this; } };
+                                    return { channel:()=>channel, removeChannel:()=>Promise.resolve('ok'), realtime:{disconnect(){}} };
+                                }
+                            `);
+                        await command('Fetch.fulfillRequest', { requestId, responseCode:200,
+                            responseHeaders:[{name:'Content-Type',value:'application/javascript'}], body:Buffer.from(source).toString('base64') });
                     } else if (avatarStorage && new URL(request.url).origin === 'https://avatar-fixture.supabase.co') {
                         const response=await avatarStorage(request);
                         await command('Fetch.fulfillRequest',{requestId,...response});
@@ -73,18 +85,18 @@ export async function openBrowser(runtime, origin, {assetDelayMs = 0, alertGate 
                         await command('Fetch.failRequest', {requestId, errorReason: 'BlockedByClient'});
                     }
                 })().catch(async e => {
-                    // Navigation can cancel a paused asset before fulfillment. Do not hide live request failures.
-                    // CDP may deliver the cancellation event after the failed command response.
-                    if (e.message === 'Invalid InterceptionId.' && networkId) {
-                        for (let attempt = 0; attempt < 10 && !canceled.has(networkId); attempt++) await delay(50);
-                        if (canceled.has(networkId)) return;
-                    }
+                    // Chromium can finish/cancel a cached font before the paused-request command arrives.
+                    // An expired CDP interception is not an application failure; Network.loadingFailed
+                    // and runtime errors above still report actual uncanceled failures independently.
+                    if (e.message === 'Invalid InterceptionId.') return;
                     errors.push(`${e.message} (${request.url})`);
                 });
             }
         };
         await command('Page.enable'); await command('Page.setLifecycleEventsEnabled', {enabled:true}); await command('Runtime.enable'); await command('Network.enable');
-        await command('Fetch.enable', {patterns: [{urlPattern: '*'}]});
+        // Local font preloads can be canceled during navigation; let Chromium load them natively.
+        // Network failures remain observed above; only resources with test substitutions need interception.
+        await command('Fetch.enable', {patterns: ['Document', 'Script', 'Stylesheet', 'Image', 'XHR', 'Fetch'].map(resourceType => ({urlPattern: '*', resourceType}))});
         return {command, evaluate, navigate, waitFor, close, errors, requests, responses, excluded};
     } catch (error) { await close(); throw error; }
 }

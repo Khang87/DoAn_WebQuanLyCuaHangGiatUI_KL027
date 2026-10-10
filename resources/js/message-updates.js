@@ -1,4 +1,4 @@
-// Read through Laravel's session/ACL; no Supabase credential is needed here.
+// Read message content through Laravel session/ACL; Realtime only signals changes.
 const conversation = document.querySelector('[data-message-updates]');
 
 if (conversation) {
@@ -7,6 +7,7 @@ if (conversation) {
     const orderId = conversation.dataset.orderId ? Number(conversation.dataset.orderId) : null;
     const customerId = conversation.dataset.customerAccountId ? Number(conversation.dataset.customerAccountId) : null;
     const interval = 15000;
+    let realtime, connected = false, queued = false;
     let timer, controller, signature, pending = false, stopped = false, disposed = false, retry = interval;
 
     function showStatus(text) {
@@ -60,11 +61,12 @@ if (conversation) {
 
     function schedule() {
         clearTimeout(timer);
-        if (!stopped && !disposed && !document.hidden && navigator.onLine) timer = setTimeout(sync, retry);
+        if (!stopped && !disposed && !document.hidden && navigator.onLine) timer = setTimeout(sync, connected ? Math.max(retry, 60000) : retry);
     }
 
     async function sync() {
-        if (pending || stopped || disposed || document.hidden || !navigator.onLine) return;
+        if (stopped || disposed || document.hidden || !navigator.onLine) return;
+        if (pending) { queued = true; return; }
         pending = true;
         clearTimeout(timer);
         controller = new AbortController();
@@ -76,6 +78,7 @@ if (conversation) {
             });
             if ([401, 403, 404].includes(response.status)) {
                 stopped = true;
+                realtime?.pause();
                 conversation.replaceChildren();
                 if (form) form.dataset.accessLost = 'true';
                 form?.querySelectorAll('textarea, button').forEach(input => { input.disabled = true; });
@@ -92,7 +95,7 @@ if (conversation) {
             }
             render(data.messages);
             retry = interval;
-            showStatus('Tự động cập nhật tin nhắn');
+            showStatus(connected ? 'Đang nhận tin nhắn trực tiếp' : 'Tự động cập nhật tin nhắn');
         } catch {
             if (!document.hidden && !stopped) showStatus('Kết nối gián đoạn. Đang thử lại…');
             retry = Math.min(retry * 2, 120000);
@@ -100,7 +103,13 @@ if (conversation) {
             clearTimeout(deadline);
             controller = null;
             pending = false;
-            schedule();
+            if (queued && !stopped && !disposed && !document.hidden && navigator.onLine) {
+                queued = false;
+                timer = setTimeout(sync, 1000);
+            } else {
+                queued = false;
+                schedule();
+            }
         }
     }
 
@@ -109,9 +118,11 @@ if (conversation) {
         clearTimeout(timer);
         if (document.hidden || !navigator.onLine) {
             controller?.abort();
+            realtime?.pause();
             showStatus(document.hidden ? 'Tạm dừng cập nhật' : 'Mất kết nối. Đang chờ kết nối lại…');
         } else {
             retry = interval;
+            void realtime?.resume();
             void sync();
         }
     }
@@ -121,10 +132,25 @@ if (conversation) {
     window.addEventListener('offline', resume);
     window.addEventListener('pagehide', () => {
         disposed = true;
+        realtime?.pause();
         clearTimeout(timer);
         controller?.abort();
     });
     // Browser back/forward cache restores this document without rerunning scripts.
     window.addEventListener('pageshow', event => { if (event.persisted) { disposed = false; resume(); } });
+    if (conversation.dataset.messageRealtime) {
+        void import('./message-realtime.js').then(({ startMessageRealtime }) => {
+            if (stopped || disposed) return;
+            realtime = startMessageRealtime({
+                endpoint: conversation.dataset.messageRealtime,
+                body: customerId !== null ? { customer_id: customerId } : { order_id: orderId },
+                csrf: document.querySelector('meta[name="csrf-token"]')?.content ?? '',
+                refresh: () => { void sync(); },
+                connection: ready => { connected = ready; if (!ready) schedule(); },
+                denied: () => { void sync(); },
+            });
+            if (!document.hidden && navigator.onLine) void realtime.resume();
+        }).catch(() => { /* The authorized polling fallback stays active. */ });
+    }
     void sync();
 }
