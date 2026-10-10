@@ -2,7 +2,7 @@ import { spawn } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { setTimeout as delay } from 'node:timers/promises';
 
-export async function openBrowser(runtime, origin, {assetDelayMs = 0, alertGate = null, avatarStorage = null, messageRealtime = false} = {}) {
+export async function openBrowser(runtime, origin, {assetDelayMs = 0, alertGate = null, avatarStorage = null, messageRealtime = false, allowedConsoleWarnings = []} = {}) {
     const child = spawn(process.env.CHROMIUM_BIN || 'chromium', ['--headless', '--no-sandbox', '--disable-dev-shm-usage', '--disable-background-networking', '--no-first-run', '--remote-debugging-port=0', `--user-data-dir=${runtime}/browser`, 'about:blank'], {stdio: 'ignore'});
     const errors = [], requests = [], responses = [], excluded = new Set(), canceled = new Set(), loaded = new Set(), pending = new Map();
     let socket, id = 0, startupError;
@@ -45,7 +45,10 @@ export async function openBrowser(runtime, origin, {assetDelayMs = 0, alertGate 
             const m = JSON.parse(event.data);
             if (m.id) { pending.get(m.id)?.(m); pending.delete(m.id); return; }
             if (m.method === 'Page.lifecycleEvent' && m.params.name === 'load') loaded.add(m.params.loaderId);
-            if (m.method === 'Runtime.consoleAPICalled' && ['error','warning'].includes(m.params.type)) errors.push('Console '+m.params.type);
+            if (m.method === 'Runtime.consoleAPICalled' && ['error','warning'].includes(m.params.type)) {
+                const expectedWarning = m.params.type === 'warning' && allowedConsoleWarnings.includes(m.params.args?.[0]?.value);
+                if (!expectedWarning) errors.push('Console '+m.params.type);
+            }
             if (m.method === 'Runtime.exceptionThrown') errors.push('Page exception: ' + m.params.exceptionDetails.text);
             if (m.method === 'Network.requestWillBeSent') requests.push(m.params.request);
             if (m.method === 'Network.responseReceived') responses.push({...m.params.response, type: m.params.type});

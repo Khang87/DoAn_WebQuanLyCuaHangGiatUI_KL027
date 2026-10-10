@@ -9,7 +9,8 @@ import {openBrowser} from './browser.mjs';
 test('open conversation receives mobile PostgreSQL messages through real Laravel session', {timeout: 120000}, async () => {
     const cases=JSON.parse(readFileSync(process.env.WEB_E2E_RUNTIME+'/cases.json'));
     const runtime=process.env.WEB_E2E_RUNTIME+'/messages';mkdirSync(runtime,{mode:0o700});copyFileSync(process.env.WEB_E2E_RUNTIME+'/swal.js',runtime+'/swal.js');
-    const b=await openBrowser(runtime,process.env.WEB_E2E_URL);
+    // This fixture intentionally disables Realtime to exercise polling fallback.
+    const b=await openBrowser(runtime,process.env.WEB_E2E_URL,{allowedConsoleWarnings:['Message Realtime connection failed; polling fallback remains active.']});
     try {
         await b.navigate('/login');
         await b.evaluate(`document.querySelector('[name=email]').value='staff@example.test';document.querySelector('[name=password]').value=${JSON.stringify(process.env.WEB_E2E_PASSWORD)};document.querySelector('form').requestSubmit()`);
