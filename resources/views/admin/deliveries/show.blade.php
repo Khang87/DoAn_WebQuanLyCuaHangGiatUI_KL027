@@ -13,7 +13,7 @@
     :subtitle="($delivery->LoaiGiaoNhan === 'NHAN_DO' ? 'Nhận đồ' : 'Giao đồ') . ' · ' . ($delivery->ThoiGianDuKien?->format('d/m/Y') ?: 'Chưa hẹn ngày')"
 >
     <x-slot:badge>
-        <x-admin.status-badge :status="$delivery->TrangThai" :enum="\App\Enums\DeliveryStatus::class" />
+        <x-admin.status-badge :status="\App\Enums\DeliveryStatus::parseForLeg($delivery->TrangThai, $delivery->LoaiGiaoNhan)" :enum="\App\Enums\DeliveryStatus::class" />
     </x-slot:badge>
 </x-admin.detail.page-header>
 
@@ -39,7 +39,7 @@
                     @endif
                 </x-admin.detail.info-item>
                 <x-admin.detail.info-item label="Trạng thái">
-                    <x-admin.status-badge :status="$delivery->TrangThai" :enum="\App\Enums\DeliveryStatus::class" :pill="false" />
+                    <x-admin.status-badge :status="\App\Enums\DeliveryStatus::parseForLeg($delivery->TrangThai, $delivery->LoaiGiaoNhan)" :enum="\App\Enums\DeliveryStatus::class" :pill="false" />
                 </x-admin.detail.info-item>
                 <x-admin.detail.info-item label="Ngày giao nhận" :value="$delivery->ThoiGianDuKien?->format('d/m/Y')" />
                 <x-admin.detail.info-item label="Giờ giao nhận" :value="$delivery->ThoiGianDuKien?->format('H:i')" />

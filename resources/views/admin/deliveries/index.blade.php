@@ -75,7 +75,7 @@
                             <br><small class="text-muted">{{ $delivery->ThoiGianDuKien?->format('H:i') ?: '—' }}</small>
                         </td>
                         <td>
-                            <x-admin.status-badge :status="$delivery->TrangThai" :enum="\App\Enums\DeliveryStatus::class" />
+                            <x-admin.status-badge :status="\App\Enums\DeliveryStatus::parseForLeg($delivery->TrangThai, $delivery->LoaiGiaoNhan)" :enum="\App\Enums\DeliveryStatus::class" />
                         </td>
                         <td class="text-center">
                             <div class="d-flex gap-2 justify-content-center">

@@ -254,6 +254,7 @@ class BookingOrderConversionTest extends TestCase
             'serviceOptions' => collect(),
             'serviceCategories' => collect(),
             'garments' => collect(),
+            'garmentOptions' => collect(),
             'units' => collect(),
             'pricingUnitOptions' => collect(),
             'errors' => new ViewErrorBag,
@@ -264,6 +265,40 @@ class BookingOrderConversionTest extends TestCase
         $this->assertStringContainsString('value="customer@example.test" disabled', $content);
         $this->assertStringContainsString('bg-light text-muted', $content);
         $this->assertStringNotContainsString('name="HoTen"', $content);
+    }
+
+    public function test_booking_edit_only_lists_garments_with_effective_prices_for_the_selected_service(): void
+    {
+        $this->createInspectionCatalog();
+        DB::table('LoaiDichVu')->insert(['LoaiDichVuID' => 1, 'TenLoaiDichVu' => 'Giặt']);
+        DB::table('DichVu')->where('DichVuID', 1)->update(['LoaiDichVuID' => 1]);
+        DB::table('LoaiDoGiat')->insert([
+            'LoaiDoGiatID' => 3,
+            'TenLoaiDoGiat' => 'Áo khoác',
+        ]);
+        $booking = $this->createBooking();
+        $booking->chiTietBookings()->create([
+            'DichVuID' => 1,
+            'LoaiDoGiatID' => 2,
+            'DonViTinhID' => 3,
+            'SoLuong' => 1,
+            'DonGia' => 15000,
+            'ThanhTien' => 15000,
+        ]);
+        $this->withoutMiddleware([
+            Authenticate::class,
+            EnsureUserHasPermission::class,
+            RejectCustomerRole::class,
+            RestoreRememberedLogin::class,
+        ]);
+
+        $response = $this->get(route('bookings.edit', $booking));
+
+        $response->assertOk();
+        preg_match('/<select class="form-select booking-garment"[^>]*>(.*?)<\\/select>/s', $response->getContent(), $matches);
+        $this->assertNotEmpty($matches);
+        $this->assertStringContainsString('value="2"', $matches[1]);
+        $this->assertStringNotContainsString('value="3"', $matches[1]);
     }
 
     public function test_confirm_route_changes_pending_booking_and_creates_one_order(): void

@@ -68,6 +68,7 @@ class AdminCommunicationTest extends TestCase
             $table->increments('ThongBaoID');
             $table->unsignedInteger('TaiKhoanID');
             $table->unsignedInteger('DonHangID')->nullable();
+            $table->unsignedInteger('TinNhanID')->nullable();
             $table->string('LoaiThongBao')->nullable();
             $table->string('TieuDe');
             $table->string('NoiDung');
@@ -427,6 +428,87 @@ class AdminCommunicationTest extends TestCase
         $this->get(route('admin.messages.index'))
             ->assertOk()
             ->assertDontSee('navbar-action-badge');
+    }
+
+    public function test_customer_message_notification_links_to_the_matching_chat_thread(): void
+    {
+        $staff = $this->createAccount('notification-staff');
+        $this->assignRole($staff, 'Owner');
+        $roleId = DB::table('TaiKhoan_VaiTro')
+            ->where('TaiKhoanID', $staff->TaiKhoanID)
+            ->value('VaiTroID');
+        $notificationPermissionId = DB::table('Quyen')->insertGetId([
+            'MaQuyen' => 'NOTIFICATIONS_VIEW',
+            'TrangThai' => 'Hoạt động',
+        ], 'QuyenID');
+        DB::table('VaiTro_Quyen')->insert([
+            'VaiTroID' => $roleId,
+            'QuyenID' => $notificationPermissionId,
+        ]);
+
+        $customer = $this->createAccount('chat-customer', 18);
+        $supportMessage = TinNhan::query()->create([
+            'NguoiGuiID' => $customer->TaiKhoanID,
+            'NguoiNhanID' => $staff->TaiKhoanID,
+            'NoiDung' => 'Tôi muốn hỏi về dịch vụ.',
+        ]);
+        $supportNotification = ThongBao::query()->create([
+            'TaiKhoanID' => $staff->TaiKhoanID,
+            'TieuDe' => 'Tin nhắn hỗ trợ mới',
+            'NoiDung' => 'Khách hàng đã gửi tin nhắn.',
+        ]);
+        DB::table('ThongBao')
+            ->where('ThongBaoID', $supportNotification->ThongBaoID)
+            ->update(['TinNhanID' => $supportMessage->TinNhanID]);
+
+        $this->actingAs($staff)
+            ->get(route('notifications.show', $supportNotification->ThongBaoID))
+            ->assertOk()
+            ->assertSee('Nhắn tin khách hàng')
+            ->assertSee(route('admin.messages.index', ['customer_id' => $customer->TaiKhoanID]), false);
+
+        $order = DonHang::query()->create([
+            'MaDonHang' => 'DH002',
+            'KhachHangID' => 18,
+            'TrangThai' => 'Chờ tiếp nhận',
+        ]);
+        $orderMessage = TinNhan::query()->create([
+            'NguoiGuiID' => $customer->TaiKhoanID,
+            'NguoiNhanID' => $staff->TaiKhoanID,
+            'DonHangID' => $order->DonHangID,
+            'NoiDung' => 'Tôi sẽ mang đồ đến.',
+        ]);
+        $orderNotification = ThongBao::query()->create([
+            'TaiKhoanID' => $staff->TaiKhoanID,
+            'TieuDe' => 'Tin nhắn về đơn hàng',
+            'NoiDung' => 'Khách hàng đã gửi tin nhắn về đơn hàng.',
+        ]);
+        DB::table('ThongBao')
+            ->where('ThongBaoID', $orderNotification->ThongBaoID)
+            ->update(['TinNhanID' => $orderMessage->TinNhanID]);
+
+        $this->get(route('notifications.show', $orderNotification->ThongBaoID))
+            ->assertOk()
+            ->assertSee('Nhắn tin khách hàng')
+            ->assertSee(route('admin.messages.index', ['order_id' => $order->DonHangID]), false);
+
+        $staffMessage = TinNhan::query()->create([
+            'NguoiGuiID' => $staff->TaiKhoanID,
+            'NguoiNhanID' => $customer->TaiKhoanID,
+            'NoiDung' => 'Cửa hàng đã phản hồi.',
+        ]);
+        $staffNotification = ThongBao::query()->create([
+            'TaiKhoanID' => $staff->TaiKhoanID,
+            'TieuDe' => 'Phản hồi cửa hàng',
+            'NoiDung' => 'Nhân viên đã gửi tin nhắn.',
+        ]);
+        DB::table('ThongBao')
+            ->where('ThongBaoID', $staffNotification->ThongBaoID)
+            ->update(['TinNhanID' => $staffMessage->TinNhanID]);
+
+        $this->get(route('notifications.show', $staffNotification->ThongBaoID))
+            ->assertOk()
+            ->assertDontSee('Nhắn tin khách hàng');
     }
 
     public function test_system_log_route_is_protected_by_dynamic_permission_middleware(): void

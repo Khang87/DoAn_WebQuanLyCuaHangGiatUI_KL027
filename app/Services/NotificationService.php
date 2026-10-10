@@ -61,7 +61,10 @@ class NotificationService
 
     public function findForDetails(int $id, ?int $recipientId = null): ?ThongBao
     {
-        return ThongBao::query()->when($recipientId !== null, fn ($q) => $q->where('TaiKhoanID', $recipientId))->with(['taiKhoan', 'donHang'])->find($id);
+        return ThongBao::query()
+            ->when($recipientId !== null, fn ($q) => $q->where('TaiKhoanID', $recipientId))
+            ->with(['taiKhoan', 'donHang', 'tinNhan.sender'])
+            ->find($id);
     }
 
     public function create(array $data): ThongBao

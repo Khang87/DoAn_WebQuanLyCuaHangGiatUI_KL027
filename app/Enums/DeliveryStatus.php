@@ -105,6 +105,15 @@ enum DeliveryStatus: string
         };
     }
 
+    public static function parseForLeg(mixed $value, string $deliveryType, self $default = self::Pending): self
+    {
+        if (! $value instanceof self && mb_strtolower(trim((string) $value)) === 'đang thực hiện') {
+            return strtoupper($deliveryType) === 'NHAN_DO' ? self::Picking : self::Delivering;
+        }
+
+        return self::parse($value, $default);
+    }
+
     public static function labelFor(mixed $value, self $default = self::Pending): string
     {
         return self::parse($value, $default)->label();

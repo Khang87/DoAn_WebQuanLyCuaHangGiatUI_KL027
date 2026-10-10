@@ -87,8 +87,7 @@ class DeliveryRules
             'method' => strtolower($delivery->LoaiGiaoNhan),
             'fulfillment' => $delivery->HinhThuc,
             'address' => $delivery->DiaChi,
-            'status' => $delivery->TrangThai === 'Đang thực hiện' && $delivery->LoaiGiaoNhan === 'NHAN_DO'
-                ? 'picking' : DeliveryStatus::parse($delivery->TrangThai)->value,
+            'status' => DeliveryStatus::parseForLeg($delivery->TrangThai, $delivery->LoaiGiaoNhan)->value,
             'pickup_date' => $delivery->ThoiGianDuKien?->format('Y-m-d'),
             'pickup_time' => $delivery->ThoiGianDuKien?->format('H:i'),
             'notes' => $delivery->GhiChu,

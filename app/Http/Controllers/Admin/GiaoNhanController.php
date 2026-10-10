@@ -144,8 +144,11 @@ class GiaoNhanController extends Controller
     private function orderOptions(?int $currentOrderId = null): Collection
     {
         return DonHang::query()
-            ->select(['DonHangID', 'MaDonHang', 'KhachHangID', 'NgayTao'])
-            ->with('khachHang:KhachHangID,HoTen')
+            ->select(['DonHangID', 'MaDonHang', 'KhachHangID', 'BookingID', 'NgayTao'])
+            ->with([
+                'khachHang:KhachHangID,HoTen',
+                'booking:BookingID,HinhThucNhanDo,DiaChiNhan,HinhThucTraDo,DiaChiTra,NgayHen,GioHen',
+            ])
             ->whereNotIn('TrangThai', [OrderStatus::Cancelled->value, OrderStatus::Paid->value])
             ->where(function ($query) use ($currentOrderId): void {
                 foreach (['NHAN_DO', 'GIAO_DO'] as $type) {

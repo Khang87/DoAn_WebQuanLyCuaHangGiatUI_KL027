@@ -136,7 +136,17 @@
                                     </select>
                                     <div class="form-text booking-service-empty d-none" aria-live="polite"></div>
                                 </div>
-                                <div class="col-md-3"><label class="form-label">Loại đồ giặt</label><select class="form-select booking-garment" name="items[{{ $index }}][LoaiDoGiatID]"><option value="">Chọn loại đồ</option>@foreach($garments as $garment)<option value="{{ $garment->LoaiDoGiatID }}" @selected((string) ($item['LoaiDoGiatID'] ?? '') === (string) $garment->LoaiDoGiatID)>{{ $garment->TenLoaiDoGiat }}</option>@endforeach</select></div>
+                                <div class="col-md-3">
+                                    <label class="form-label">Loại đồ giặt</label>
+                                    <select class="form-select booking-garment" name="items[{{ $index }}][LoaiDoGiatID]">
+                                        <option value="">{{ ($item['DichVuID'] ?? '') ? 'Chọn loại đồ' : 'Chọn dịch vụ trước' }}</option>
+                                        @foreach($garments as $garment)
+                                            @if($pricingUnitOptions->contains(fn (array $option): bool => (string) $option['serviceId'] === (string) ($item['DichVuID'] ?? '') && (string) $option['garmentId'] === (string) $garment->LoaiDoGiatID))
+                                                <option value="{{ $garment->LoaiDoGiatID }}" @selected((string) ($item['LoaiDoGiatID'] ?? '') === (string) $garment->LoaiDoGiatID)>{{ $garment->TenLoaiDoGiat }}</option>
+                                            @endif
+                                        @endforeach
+                                    </select>
+                                </div>
                                 <div class="col-md-3"><label class="form-label">Đơn vị tính</label><select class="form-select booking-unit" name="items[{{ $index }}][DonViTinhID]"><option value="">Chọn đơn vị</option>@foreach($units as $unit)<option value="{{ $unit->DonViTinhID }}" data-unit="{{ $unit->KyHieu ?: $unit->TenDonViTinh }}" @selected((string) ($item['DonViTinhID'] ?? '') === (string) $unit->DonViTinhID)>{{ $unit->TenDonViTinh }}{{ $unit->KyHieu ? ' ('.$unit->KyHieu.')' : '' }}</option>@endforeach</select></div>
                                 <div class="col-md-6"><label class="form-label">Số lượng</label><input type="number" step="1" min="1" class="form-control booking-quantity" name="items[{{ $index }}][SoLuong]" value="{{ $quantityValue }}"></div>
                                 <div class="col-md-6"><label class="form-label">Khối lượng (kg)</label><input type="number" step="0.01" min="0.01" class="form-control booking-weight" name="items[{{ $index }}][KhoiLuong]" value="{{ $item['KhoiLuong'] ?? '' }}"></div>
@@ -190,6 +200,7 @@
         const addItemButton = document.getElementById('add-booking-item');
         const pricingUnitOptions = @json($pricingUnitOptions);
         const services = @json($serviceOptions);
+        const garments = @json($garmentOptions);
         let nextItemIndex = {{ count($bookingItems) }};
 
         function updateAddressRequirement() {
@@ -235,6 +246,31 @@
 
             if (matchingServices.some(option => String(option.id) === selectedServiceId)) {
                 service.value = selectedServiceId;
+            }
+        }
+
+        function syncGarmentOptions(item, preserveSelection = true) {
+            const serviceId = item.querySelector('.booking-service').value;
+            const garment = item.querySelector('.booking-garment');
+            const selectedGarmentId = preserveSelection ? garment.value : '';
+            const matchingGarments = garments.filter(option => pricingUnitOptions.some(pricing =>
+                String(pricing.serviceId) === serviceId
+                && String(pricing.garmentId) === String(option.id)
+            ));
+
+            garment.replaceChildren(new Option(
+                serviceId
+                    ? (matchingGarments.length > 0 ? 'Chọn loại đồ' : 'Không có loại đồ có bảng giá hiệu lực')
+                    : 'Chọn dịch vụ trước',
+                '',
+            ));
+            matchingGarments.forEach(option => {
+                garment.add(new Option(option.name, option.id));
+            });
+            garment.disabled = serviceId === '' || matchingGarments.length === 0;
+
+            if (matchingGarments.some(option => String(option.id) === selectedGarmentId)) {
+                garment.value = selectedGarmentId;
             }
         }
 
@@ -300,6 +336,8 @@
                 updateAddressRequirement();
                 updateStaffRequirement();
                 itemsContainer.querySelectorAll('.booking-item').forEach(function (item) {
+                    syncServiceOptions(item);
+                    syncGarmentOptions(item);
                     syncUnitOptions(item);
                     updateQuantityFields(item);
                 });
@@ -310,11 +348,16 @@
             if (event.target.matches('.booking-service-category')) {
                 syncServiceOptions(item, false);
                 item.querySelector('.booking-garment').value = '';
+                syncGarmentOptions(item, false);
                 syncUnitOptions(item, false);
                 item.querySelector('.booking-quantity').value = '';
                 item.querySelector('.booking-weight').value = '';
                 updateQuantityFields(item);
-            } else if (event.target.matches('.booking-service, .booking-garment')) {
+            } else if (event.target.matches('.booking-service')) {
+                syncGarmentOptions(item);
+                syncUnitOptions(item, false);
+                updateQuantityFields(item);
+            } else if (event.target.matches('.booking-garment')) {
                 syncUnitOptions(item, false);
                 updateQuantityFields(item);
             } else if (event.target.matches('.booking-unit')) {
@@ -331,6 +374,7 @@
                         field.value = '';
                     });
                     syncServiceOptions(rows[0], false);
+                    syncGarmentOptions(rows[0], false);
                     syncUnitOptions(rows[0], false);
                     updateQuantityFields(rows[0]);
                 }
@@ -346,6 +390,7 @@
             template.querySelector('.booking-unit').disabled = true;
             itemsContainer.appendChild(template);
             syncServiceOptions(template, false);
+            syncGarmentOptions(template, false);
             syncUnitOptions(template, false);
             updateQuantityFields(template);
             nextItemIndex++;
@@ -364,6 +409,7 @@
                 category.value = String(selectedService.categoryId);
             }
             syncServiceOptions(item);
+            syncGarmentOptions(item);
             syncUnitOptions(item);
             updateQuantityFields(item);
         });

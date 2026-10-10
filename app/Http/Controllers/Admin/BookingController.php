@@ -123,6 +123,10 @@ class BookingController extends Controller
             ->where(fn ($query) => $query->where('TrangThai', 'Hoạt động')->orWhereIn('LoaiDoGiatID', $garmentIds))
             ->orderBy('TenLoaiDoGiat')
             ->get();
+        $garmentOptions = $garments->map(fn (LoaiDoGiat $garment): array => [
+            'id' => $garment->LoaiDoGiatID,
+            'name' => $garment->TenLoaiDoGiat,
+        ])->values();
         $units = DonViTinh::query()
             ->where(fn ($query) => $query->where('TrangThai', 'Hoạt động')->orWhereIn('DonViTinhID', $unitIds))
             ->orderBy('TenDonViTinh')
@@ -165,6 +169,7 @@ class BookingController extends Controller
             'serviceOptions',
             'serviceCategories',
             'garments',
+            'garmentOptions',
             'units',
             'pricingUnitOptions',
         ));

@@ -20,6 +20,9 @@
         'system' => 'bi-gear',
     ];
     $type = $notification->LoaiThongBao ?: 'system';
+    $messageSender = $notification->tinNhan?->sender;
+    $isCustomerMessage = $messageSender?->KhachHangID !== null
+        && $messageSender?->NhanVienID === null;
 @endphp
 
 <x-admin.detail.page-header
@@ -69,6 +72,18 @@
                 <h5 class="card-title mb-0 fw-bold">Thao tác</h5>
             </div>
             <div class="card-body d-flex flex-column gap-2">
+                @can('messages.view')
+                    @if($isCustomerMessage)
+                        <a
+                            href="{{ $notification->tinNhan->DonHangID
+                                ? route('admin.messages.index', ['order_id' => $notification->tinNhan->DonHangID])
+                                : route('admin.messages.index', ['customer_id' => $messageSender->TaiKhoanID]) }}"
+                            class="btn btn-outline-primary w-100 py-2"
+                        >
+                            <i class="bi bi-chat-dots me-1" aria-hidden="true"></i> Nhắn tin khách hàng
+                        </a>
+                    @endif
+                @endcan
                 <a href="{{ route('notifications.index') }}" class="btn btn-outline-secondary w-100 py-2 text-dark">
                     <i class="fas fa-arrow-left me-1" aria-hidden="true"></i> Quay lại danh sách
                 </a>

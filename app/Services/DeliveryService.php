@@ -30,7 +30,13 @@ class DeliveryService
         }
 
         if (! empty($filters['status'])) {
-            $query->where('TrangThai', DeliveryStatus::parse($filters['status'])->dbValue());
+            $status = DeliveryStatus::parse($filters['status']);
+            $query->where('TrangThai', $status->dbValue());
+            if ($status === DeliveryStatus::Picking) {
+                $query->where('LoaiGiaoNhan', 'NHAN_DO');
+            } elseif ($status === DeliveryStatus::Delivering) {
+                $query->where('LoaiGiaoNhan', 'GIAO_DO');
+            }
         }
 
         if (! empty($filters['search'])) {

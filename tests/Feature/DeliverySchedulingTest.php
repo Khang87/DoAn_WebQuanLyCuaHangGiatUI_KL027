@@ -2,7 +2,10 @@
 
 namespace Tests\Feature;
 
+use App\Enums\DeliveryStatus;
 use App\Http\Requests\Admin\LuuGiaoNhanRequest;
+use App\Models\Booking;
+use App\Models\DonHang;
 use App\Models\GiaoNhan;
 use App\Services\DeliveryService;
 use Carbon\Carbon;
@@ -123,6 +126,48 @@ class DeliverySchedulingTest extends TestCase
         $this->assertMatchesRegularExpression('/value="giao_do"\s+selected/', $html);
         $this->assertMatchesRegularExpression('/value="Tại cửa hàng"\s+selected/', $html);
         $this->assertStringContainsString('name="fulfillment"', $html);
+    }
+
+    public function test_active_delivery_badge_status_is_resolved_from_its_leg(): void
+    {
+        $this->assertSame(DeliveryStatus::Picking, DeliveryStatus::parseForLeg('Đang thực hiện', 'NHAN_DO'));
+        $this->assertSame(DeliveryStatus::Delivering, DeliveryStatus::parseForLeg('Đang thực hiện', 'GIAO_DO'));
+
+        $html = view('components.admin.status-badge', [
+            'status' => DeliveryStatus::parseForLeg('Đang thực hiện', 'NHAN_DO'),
+            'enum' => DeliveryStatus::class,
+        ])->render();
+
+        $this->assertStringContainsString('Đang nhận đồ', $html);
+        $this->assertStringNotContainsString('Đang giao đồ', $html);
+    }
+
+    public function test_manual_delivery_form_carries_booking_details_for_prefill(): void
+    {
+        $booking = new Booking([
+            'BookingID' => 7,
+            'HinhThucNhanDo' => 'Tại nhà',
+            'DiaChiNhan' => '12 Nguyễn Huệ',
+            'HinhThucTraDo' => 'Tại cửa hàng',
+            'DiaChiTra' => null,
+            'NgayHen' => '2026-10-08',
+            'GioHen' => '10:30:00',
+        ]);
+        $order = new DonHang(['DonHangID' => 1, 'MaDonHang' => 'DH-001']);
+        $order->setRelation('booking', $booking);
+
+        $html = view('admin.deliveries.create', [
+            'orders' => collect([$order]),
+            'employees' => collect(),
+            'errors' => new ViewErrorBag,
+        ])->render();
+
+        $this->assertStringContainsString('data-booking-prefill', $html);
+        $this->assertStringContainsString('data-booking-id="7"', $html);
+        $this->assertStringContainsString('data-receive-address="12 Nguyễn Huệ"', $html);
+        $this->assertStringContainsString('data-return-method="Tại cửa hàng"', $html);
+        $this->assertStringContainsString('data-pickup-date="2026-10-08"', $html);
+        $this->assertStringContainsString('data-pickup-time="10:30"', $html);
     }
 
     private function deliveryValidator(string $date, string $time): \Illuminate\Validation\Validator
