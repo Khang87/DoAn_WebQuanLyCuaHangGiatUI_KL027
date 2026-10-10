@@ -99,7 +99,7 @@ Route::middleware(['auth', 'reject.customer'])->group(function () {
     Route::get('/admin/messages', [MessageController::class, 'index'])
         ->middleware('permission:messages.view')
         ->name('admin.messages.index');
-    Route::get('/admin/messages/{order}/updates', [MessageController::class, 'updates'])
+    Route::get('/admin/messages/{order}/updates', [MessageController::class, 'orderUpdates'])
         ->whereNumber('order')
         ->middleware('permission:messages.view')
         ->name('admin.messages.updates');

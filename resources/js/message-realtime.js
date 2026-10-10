@@ -68,9 +68,10 @@ export function startMessageRealtime({ endpoint, body, csrf, refresh, connection
                     }
                 });
             renewal = later(() => { if (valid()) void resume(); }, remaining - 20000);
-        } catch {
+        } catch (error) {
             if (valid()) {
                 connection(false);
+                console.warn('Message Realtime connection failed; polling fallback remains active.', error);
                 reconnect = later(() => { if (valid()) void resume(); }, 60000);
             }
         } finally {
