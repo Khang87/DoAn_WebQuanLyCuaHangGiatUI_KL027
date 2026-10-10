@@ -49,6 +49,13 @@ class KhachHang extends Model
         return $this->hasOne(TaiKhoan::class, 'KhachHangID');
     }
 
+    /** Mobile profile RPCs store the customer avatar separately from the account. */
+    public function getAvatarUrlAttribute(): string
+    {
+        return ($this->attributes['AvatarUrl'] ?? null)
+            ?: ($this->taiKhoan?->AvatarURL ?: asset('assets/images/user_1.jpg'));
+    }
+
     /**
      * Sổ địa chỉ giao hàng (bảng `khachhang_diachi`).
      */
