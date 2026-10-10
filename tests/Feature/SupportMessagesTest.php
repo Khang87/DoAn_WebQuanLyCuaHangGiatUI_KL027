@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\User;
+use App\Support\PermissionCache;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -45,7 +46,12 @@ class SupportMessagesTest extends TestCase
                 $t->integer($key);
             });
         }
-        Schema::create('DonHang', fn (Blueprint $t) => $t->increments('DonHangID'));
+        Schema::create('DonHang', function (Blueprint $t): void {
+            $t->increments('DonHangID');
+            $t->dateTime('NgayTao')->nullable();
+            $t->string('MaDonHang')->nullable();
+            $t->integer('KhachHangID')->nullable();
+        });
         Schema::create('TinNhan', function (Blueprint $t): void {
             $t->increments('TinNhanID');
             $t->integer('DonHangID')->nullable();
@@ -90,6 +96,61 @@ class SupportMessagesTest extends TestCase
             'NguoiGuiID' => $sender, 'NguoiNhanID' => $recipient, 'DonHangID' => $order,
             'NoiDung' => 'Hỏi thông tin trước khi đặt', 'ThoiGianGui' => '2026-10-09 12:00:00',
         ], 'TinNhanID');
+    }
+
+    public function test_order_inbox_promotes_old_order_and_read_receipt_is_scoped_and_persistent(): void
+    {
+        DB::table('DonHang')->where('DonHangID', 1)->update(['NgayTao' => '2026-10-01 00:00:00', 'MaDonHang' => 'DH1']);
+        DB::table('DonHang')->insert(['DonHangID' => 2, 'NgayTao' => '2026-10-08 00:00:00', 'MaDonHang' => 'DH2']);
+        $this->actingAs(User::findOrFail(1));
+        $this->getJson('/admin/messages/inbox')->assertOk()->assertJsonPath('orders.0.id', 2);
+        $incoming = $this->message(2, 1, 1);
+        $other = $this->message(2, 1, 2);
+        DB::table('TinNhan')->where('TinNhanID', $other)->update(['ThoiGianGui' => '2026-10-08 12:00:00']);
+        $outgoing = $this->message(1, 2, 1);
+        $support = $this->message(2, 1);
+        $this->getJson('/admin/messages/inbox')->assertJsonPath('orders.0.id', 1)->assertJsonPath('orders.0.unread', true);
+        $this->assertDatabaseHas('TinNhan', ['TinNhanID' => $incoming, 'TrangThai' => 'Đã gửi']);
+        $receipt = ['order_id' => 1, 'message_ids' => [$incoming, $other, $outgoing, $support]];
+        $this->postJson('/admin/messages/read', $receipt)->assertOk()->assertJsonPath('updated', 1);
+        foreach ([$other, $outgoing, $support] as $id) {
+            $this->assertDatabaseHas('TinNhan', ['TinNhanID' => $id, 'TrangThai' => 'Đã gửi']);
+        }
+        $this->postJson('/admin/messages/read', $receipt)->assertJsonPath('updated', 0);
+        $this->getJson('/admin/messages/inbox')->assertJsonPath('orders.0.unread', false)->assertJsonPath('orders.1.unread', true);
+        $this->message(2, 1, 1);
+        $this->getJson('/admin/messages/inbox')->assertJsonPath('orders.0.unread', true);
+    }
+
+    public function test_opening_recent_window_clears_older_unread_history_without_touching_later_arrivals(): void
+    {
+        $old = $this->message(2, 1, 1);
+        for ($i = 0; $i < 100; $i++) {
+            $boundary = $this->message(1, 2, 1);
+        }
+        $later = $this->message(2, 1, 1);
+        $this->actingAs(User::findOrFail(1))->postJson('/admin/messages/read', [
+            'order_id' => 1, 'message_ids' => [$boundary],
+        ])->assertOk()->assertJsonPath('updated', 1);
+        $this->assertDatabaseHas('TinNhan', ['TinNhanID' => $old, 'TrangThai' => 'Đã đọc']);
+        $this->assertDatabaseHas('TinNhan', ['TinNhanID' => $later, 'TrangThai' => 'Đã gửi']);
+    }
+
+    public function test_read_receipts_require_staff_permission_and_do_not_mark_new_undisplayed_messages(): void
+    {
+        $seen = $this->message(2, 1, 1);
+        $new = $this->message(2, 1, 1);
+        $body = ['order_id' => 1, 'message_ids' => [$seen]];
+        $this->postJson('/admin/messages/read', $body)->assertUnauthorized();
+        $this->actingAs(User::findOrFail(2))->postJson('/admin/messages/read', $body)->assertForbidden();
+        $this->actingAs(User::findOrFail(1))->postJson('/admin/messages/read', $body)->assertOk();
+        $this->assertDatabaseHas('TinNhan', ['TinNhanID' => $new, 'TrangThai' => 'Đã gửi']);
+        $this->postJson('/admin/messages/read', ['order_id' => 999, 'message_ids' => [$new]])->assertNotFound();
+        $this->postJson('/admin/messages/read', ['order_id' => 1, 'customer_id' => 2, 'message_ids' => [$new]])->assertUnprocessable();
+        DB::table('VaiTro_Quyen')->delete();
+        PermissionCache::forgetAll();
+        $this->postJson('/admin/messages/read', $body)->assertForbidden();
+        $this->getJson('/admin/messages/inbox')->assertForbidden();
     }
 
     public function test_support_updates_exclude_other_customers_and_order_bound_messages(): void
