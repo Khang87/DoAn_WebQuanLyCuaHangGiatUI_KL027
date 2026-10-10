@@ -20,12 +20,17 @@ function harness() {
     return {conversation,status,input,document,navigator,events,documentEvents,calls,timers,settle,respond,runTimer};
 }
 const message={id:1,content:'<img onerror=alert(1)>',sender_name:'Customer',is_mine:false,sent_at:null};
+const timestampedMessage={...message,sent_at:'2026-10-09T03:27:00+00:00'};
 test('snapshot renders text, preserves draft and avoids duplicate messages',async()=>{
     const h=harness();await h.respond(200,[message]);
     assert.equal(h.conversation.children[0].children[0].children[1].textContent,message.content);
     assert.equal(h.input.value,'draft');
     assert.equal(h.runTimer(),3000);await h.respond(200,[message]);
     assert.equal(h.conversation.children.length,1);
+});
+test('message timestamps render in Vietnam time regardless of browser timezone',async()=>{
+    const h=harness();await h.respond(200,[timestampedMessage]);
+    assert.equal(h.conversation.children[0].children[0].children[2].textContent,'09-10-2026 10:27');
 });
 test('requests never overlap and pause while hidden, then resume',async()=>{
     const h=harness();h.events.online();assert.equal(h.calls.length,1);

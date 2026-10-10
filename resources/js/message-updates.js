@@ -14,6 +14,25 @@ if (conversation) {
         status.textContent = text;
     }
 
+    function formatSentAt(timestamp) {
+        if (timestamp === null) return '';
+        const date = new Date(timestamp);
+        if (Number.isNaN(date.getTime())) throw new Error('Invalid message timestamp');
+        const parts = new Intl.DateTimeFormat('en-GB', {
+            timeZone: 'Asia/Ho_Chi_Minh',
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            hourCycle: 'h23',
+        }).formatToParts(date).reduce((values, part) => {
+            values[part.type] = part.value;
+            return values;
+        }, {});
+        return `${parts.day}-${parts.month}-${parts.year} ${parts.hour}:${parts.minute}`;
+    }
+
     function render(messages) {
         const nextSignature = JSON.stringify(messages);
         if (signature === nextSignature) return;
@@ -33,7 +52,7 @@ if (conversation) {
             for (const [text, className] of [
                 [message.sender_name, `small ${message.is_mine ? 'text-white-50' : 'text-muted'}`],
                 [message.content, 'text-break'],
-                [message.sent_at ?? '', `small text-end ${message.is_mine ? 'text-white-50' : 'text-muted'}`],
+                [formatSentAt(message.sent_at), `small text-end ${message.is_mine ? 'text-white-50' : 'text-muted'}`],
             ]) {
                 const element = document.createElement('div');
                 element.className = className;

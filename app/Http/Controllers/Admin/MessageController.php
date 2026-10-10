@@ -121,7 +121,7 @@ class MessageController extends Controller
                 'id' => (int) $message->getKey(), 'content' => (string) $message->NoiDung,
                 'sender_name' => $this->messageService->displayName($message, $viewer),
                 'is_mine' => (int) $message->NguoiGuiID === (int) $viewer->getKey(),
-                'sent_at' => $message->ThoiGianGui?->format('d-m-Y H:i'),
+                'sent_at' => $this->messageService->sentAt($message)?->toIso8601String(),
             ])->values(),
         ])->header('Cache-Control', 'private, no-store');
     }
@@ -144,7 +144,7 @@ class MessageController extends Controller
                     'content' => (string) $message->NoiDung,
                     'sender_name' => $this->messageService->displayName($message, $viewer),
                     'is_mine' => (int) $message->NguoiGuiID === (int) $viewer->getKey(),
-                    'sent_at' => $message->ThoiGianGui?->format('d-m-Y H:i'),
+                    'sent_at' => $this->messageService->sentAt($message)?->toIso8601String(),
                 ])->values(),
         ])->header('Cache-Control', 'private, no-store');
     }

@@ -63,7 +63,7 @@
                                 </div>
                                 <div class="text-break">{{ $message->NoiDung }}</div>
                                 <div class="small text-end {{ $isMine ? 'text-white-50' : 'text-muted' }}">
-                                    {{ $message->ThoiGianGui?->format('d-m-Y H:i') }}
+                                    {{ app(\App\Services\MessageService::class)->sentAt($message)?->format('d-m-Y H:i') }}
                                 </div>
                             </div>
                         </div>

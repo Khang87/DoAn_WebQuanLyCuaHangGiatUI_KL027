@@ -137,7 +137,7 @@ class AdminCommunicationTest extends TestCase
             'NguoiNhanID' => $staff->TaiKhoanID,
             'DonHangID' => $order->DonHangID,
             'NoiDung' => 'Tôi sẽ ghé lấy đồ.',
-            'ThoiGianGui' => now()->subMinute(),
+            'ThoiGianGui' => now('UTC')->subMinute(),
             'TrangThai' => 'Đã gửi',
         ]);
         $this->assertSame(2, TinNhan::query()->count());
