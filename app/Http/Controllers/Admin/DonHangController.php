@@ -59,9 +59,11 @@ class DonHangController extends Controller
         return view('admin.orders.index', compact('orders', 'statusFlow'));
     }
 
-    public function create()
+    public function create(Request $request)
     {
         $customers = KhachHang::with('diemTichLuy')->orderBy('HoTen')->get();
+        $selectedCustomerId = $request->old('KhachHangID', $request->query('customer_id'));
+        $selectedCustomer = $customers->firstWhere('KhachHangID', $selectedCustomerId);
         $services = DichVu::where('TrangThai', 'Hoạt động')->orderBy('TenDichVu')->get();
         $garments = LoaiDoGiat::where('TrangThai', 'Hoạt động')->orderBy('TenLoaiDoGiat')->get();
         $employees = NhanVien::where('TrangThai', 'Hoạt động')->orderBy('HoTen')->get(['NhanVienID', 'HoTen']);
@@ -70,7 +72,7 @@ class DonHangController extends Controller
         $nextOrderCode = $this->orderService->nextOrderCode();
 
         return view('admin.orders.create', array_merge(
-            compact('customers', 'services', 'garments', 'employees', 'statusFlow', 'pricings', 'nextOrderCode'),
+            compact('customers', 'selectedCustomer', 'services', 'garments', 'employees', 'statusFlow', 'pricings', 'nextOrderCode'),
             $this->categoryOptions()
         ));
     }
@@ -82,9 +84,13 @@ class DonHangController extends Controller
 
             return redirect()->route('orders.show', $order)->with('success', 'Đơn hàng đã được tạo thành công.');
         } catch (ValidationException $exception) {
-            return redirect()->route('orders.create')->withErrors($exception->errors())->withInput();
+            return redirect()->route('orders.create', array_filter([
+                'customer_id' => $request->query('customer_id'),
+            ]))->withErrors($exception->errors())->withInput();
         } catch (\Exception $e) {
-            return redirect()->route('orders.create')->with('error', FriendlyError::message($e))->withInput();
+            return redirect()->route('orders.create', array_filter([
+                'customer_id' => $request->query('customer_id'),
+            ]))->with('error', FriendlyError::message($e))->withInput();
         }
     }
 

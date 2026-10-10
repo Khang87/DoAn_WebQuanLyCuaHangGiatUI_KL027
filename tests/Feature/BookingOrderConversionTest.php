@@ -130,6 +130,30 @@ class BookingOrderConversionTest extends TestCase
         }
     }
 
+    public function test_order_creation_from_customer_detail_prefills_and_locks_customer(): void
+    {
+        $this->createRequestCatalog();
+        DB::table('KhachHang')->where('KhachHangID', 9)->update([
+            'HoTen' => 'Nguyễn An',
+            'SoDienThoai' => '0900000000',
+        ]);
+        Schema::create('KhuyenMai', function (Blueprint $table): void {
+            $table->increments('KhuyenMaiID');
+            $table->string('TrangThai');
+        });
+        try {
+            $this->withoutMiddleware([Authenticate::class, EnsureUserHasPermission::class, RejectCustomerRole::class, RestoreRememberedLogin::class]);
+            $response = $this->get(route('orders.create', ['customer_id' => 9]))->assertOk();
+            $response->assertSee('value="Nguyễn An"', false)
+                ->assertSee('data-name="Nguyễn An"', false);
+            $this->assertMatchesRegularExpression('/<input type="search"[^>]*id="customer_search"[^>]*disabled/', $response->getContent());
+            $this->assertMatchesRegularExpression('/<option value="9" data-name="Nguyễn An" data-phone="0900000000" selected/', $response->getContent());
+            $this->assertMatchesRegularExpression('/<form action="[^"]*customer_id=9" method="POST"/', $response->getContent());
+        } finally {
+            Schema::dropIfExists('KhuyenMai');
+        }
+    }
+
     public function test_manual_order_store_persists_actual_condition_before_washing(): void
     {
         $this->createRequestCatalog();

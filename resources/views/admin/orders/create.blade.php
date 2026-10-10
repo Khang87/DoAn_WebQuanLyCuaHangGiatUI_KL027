@@ -29,7 +29,7 @@
 
         @endphp
         <div id="order-row-status" class="form-text mb-2" role="status"></div>
-        <form action="{{ route('orders.store') }}" method="POST" id="orderForm">
+        <form action="{{ route('orders.store', $selectedCustomer ? ['customer_id' => $selectedCustomer->KhachHangID] : []) }}" method="POST" id="orderForm">
             @csrf
             <div class="row g-4">
                 <div class="col-md-6">
@@ -40,14 +40,14 @@
                 <div class="col-md-6">
                     <label class="form-label" for="customer_search">Khách hàng <span class="text-danger ms-1">*</span></label>
                     <div class="position-relative">
-                        <input type="search" class="form-control @error('KhachHangID') is-invalid @enderror" id="customer_search" placeholder="Nhập tên khách hàng..." autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="customer_suggestions" required>
+                        <input type="search" class="form-control @error('KhachHangID') is-invalid @enderror {{ $selectedCustomer ? 'bg-light text-muted' : '' }}" id="customer_search" value="{{ $selectedCustomer?->HoTen }}" placeholder="Nhập tên khách hàng..." autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="customer_suggestions" @disabled($selectedCustomer) required>
                         <div class="list-group position-absolute top-100 start-0 w-100 shadow d-none" id="customer_suggestions" role="listbox"></div>
                     </div>
                     @error('KhachHangID')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
                     <select class="d-none" id="customer_id" name="KhachHangID" tabindex="-1" aria-hidden="true">
                         <option value="">Chọn khách hàng</option>
                         @foreach($customers as $customer)
-                            <option value="{{ $customer->KhachHangID }}" data-name="{{ $customer->HoTen }}" data-phone="{{ $customer->SoDienThoai }}" @selected(old('KhachHangID') == $customer->KhachHangID)>{{ $customer->HoTen }} (ID {{ $customer->KhachHangID }})</option>
+                            <option value="{{ $customer->KhachHangID }}" data-name="{{ $customer->HoTen }}" data-phone="{{ $customer->SoDienThoai }}" @selected(($selectedCustomer?->KhachHangID ?? old('KhachHangID')) == $customer->KhachHangID)>{{ $customer->HoTen }} (ID {{ $customer->KhachHangID }})</option>
                         @endforeach
                     </select>
                 </div>

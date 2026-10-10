@@ -33,8 +33,11 @@ class OrderObserver
         );
 
         if ($order->TrangThai === OrderStatus::Delivered->value) {
-            $this->awardCompletionPoints($order);
             $this->markPaidIfFullySettled($order);
+        }
+
+        if ($order->TrangThai === OrderStatus::Paid->value) {
+            $this->awardPaidOrderPoints($order);
         }
 
         if ($order->TrangThai === OrderStatus::Cancelled->value) {
@@ -82,7 +85,7 @@ class OrderObserver
         ]);
     }
 
-    private function awardCompletionPoints(DonHang $order): void
+    private function awardPaidOrderPoints(DonHang $order): void
     {
         DB::transaction(function () use ($order): void {
             $lockedOrder = DonHang::query()->lockForUpdate()->findOrFail($order->getKey());
@@ -94,7 +97,16 @@ class OrderObserver
                 ->where('HanhDong', $action)
                 ->exists();
 
-            if ($alreadyAwarded || $lockedOrder->TrangThai !== OrderStatus::Delivered->value) {
+            if ($alreadyAwarded || $lockedOrder->TrangThai !== OrderStatus::Paid->value) {
+                return;
+            }
+
+            $grandTotal = (float) ($lockedOrder->hoaDons()->first()?->ThanhTien ?? $lockedOrder->ThanhTien);
+            $totalPaid = (float) $lockedOrder->thanhToans()
+                ->where('TrangThai', PaymentStatus::Paid->value)
+                ->sum('SoTien');
+
+            if ($grandTotal <= 0 || $totalPaid < $grandTotal) {
                 return;
             }
 

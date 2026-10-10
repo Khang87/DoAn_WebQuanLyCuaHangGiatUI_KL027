@@ -13,6 +13,7 @@ use App\Models\KhachHang;
 use App\Models\User;
 use App\Services\BookingService;
 use App\Services\OrderService;
+use App\Services\PaymentService;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -58,7 +59,7 @@ class RewardPointTest extends TestCase
         parent::tearDown();
     }
 
-    public function test_delivered_order_awards_points_using_the_configured_rate_only_once(): void
+    public function test_paid_order_awards_points_using_the_configured_rate_only_once(): void
     {
         $customer = $this->createCustomer(1, 2);
         $order = $this->createOrder($customer, 100000, 0);
@@ -68,9 +69,29 @@ class RewardPointTest extends TestCase
         $service->updateStatus($order, OrderStatus::Washing->value);
         $service->updateStatus($order->fresh(), OrderStatus::Washed->value);
         $service->updateStatus($order->fresh(), OrderStatus::Delivering->value);
-        $service->updateStatus($order, OrderStatus::Delivered->value);
-        $service->updateStatus($order->fresh(), OrderStatus::Delivered->value);
+        $order = $service->updateStatus($order, OrderStatus::Delivered->value);
 
+        $this->assertSame(2, $customer->fresh()->points());
+        $this->assertSame(0, DB::table('NhatKyHeThong')
+            ->where('BangDuLieu', 'DonHang')
+            ->where('BanGhiID', $order->DonHangID)
+            ->where('HanhDong', 'Cộng điểm tích lũy đơn hàng')
+            ->count());
+
+        app(PaymentService::class)->create([
+            'order_id' => $order->DonHangID,
+            'amount' => 40000,
+            'method' => 'cash',
+            'status' => PaymentStatus::Paid->value,
+        ]);
+        $this->assertSame(2, $customer->fresh()->points());
+
+        app(PaymentService::class)->create([
+            'order_id' => $order->DonHangID,
+            'amount' => 60000,
+            'method' => 'cash',
+            'status' => PaymentStatus::Paid->value,
+        ]);
         $this->assertSame(10002, $customer->fresh()->points());
         $this->assertSame(1, DB::table('NhatKyHeThong')
             ->where('BangDuLieu', 'DonHang')
@@ -321,6 +342,7 @@ class RewardPointTest extends TestCase
         }
 
         $this->assertSame(OrderStatus::Paid->value, $order->fresh()->TrangThai);
+        $this->assertSame(1000, $customer->fresh()->points());
     }
 
     public function test_points_discount_never_exceeds_the_value_of_points_redeemed(): void
@@ -882,7 +904,11 @@ class RewardPointTest extends TestCase
             $table->increments('ThanhToanID');
             $table->unsignedInteger('DonHangID');
             $table->decimal('SoTien', 18, 2)->default(0);
+            $table->string('PhuongThuc')->nullable();
+            $table->string('MaGiaoDich')->nullable();
+            $table->dateTime('ThoiGian')->nullable();
             $table->string('TrangThai');
+            $table->text('GhiChu')->nullable();
         });
 
         Schema::create('ChiTietDonHang', function (Blueprint $table): void {

@@ -103,7 +103,8 @@ try {
     DB::selectOne("SELECT public.transition_laundry_order(?, 'Hoàn thành giặt', NULL)", [$prepaid->getKey()]);
     app(OrderService::class)->updateStatus($prepaid->fresh(), 'Đã giao');
     DB::selectOne("SELECT public.transition_laundry_order(?, 'Đã giao', NULL)", [$prepaid->getKey()]);
-    pgExpect(NhatKyHeThong::where('BangDuLieu', 'DonHang')->where('BanGhiID', $prepaid->getKey())->where('HanhDong', 'Cộng điểm tích lũy đơn hàng')->count(), 1, 'Web/RPC share one completion award marker');
+    $pointsBeforeSettlement = (int) DB::table('DiemTichLuy')->where('KhachHangID', $prepaid->KhachHangID)->value('DiemHienTai');
+    pgExpect(NhatKyHeThong::where('BangDuLieu', 'DonHang')->where('BanGhiID', $prepaid->getKey())->where('HanhDong', 'Cộng điểm tích lũy đơn hàng')->count(), 0, 'Delivery without full payment does not award points');
     pgActor(3);
     pgReject(fn () => DB::selectOne("SELECT public.request_order_payment(?, 'Tiền mặt', ?::uuid)", [$prepaid->getKey(), (string) Str::uuid()]), 'Other customer cannot pay this order', sqlState: 'P0001');
     pgActor(1);
@@ -113,6 +114,8 @@ try {
     DB::selectOne('SELECT public.confirm_order_payment(?, true, NULL)', [$payment['thanhtoanid']]);
     DB::selectOne('SELECT public.confirm_order_payment(?, true, NULL)', [$payment['thanhtoanid']]);
     pgExpect($prepaid->fresh()->TrangThai, 'Đã thanh toán', 'Delivered and fully collected order settles');
+    pgExpect(NhatKyHeThong::where('BangDuLieu', 'DonHang')->where('BanGhiID', $prepaid->getKey())->where('HanhDong', 'Cộng điểm tích lũy đơn hàng')->count(), 1, 'Web/RPC share one settlement award marker');
+    pgExpect((int) DB::table('DiemTichLuy')->where('KhachHangID', $prepaid->KhachHangID)->value('DiemHienTai'), $pointsBeforeSettlement + (int) floor((float) $prepaid->ThanhTien / 1000) * 100, 'Points are awarded once after full successful settlement');
     pgExpect((float) $prepaid->thanhToans()->where('TrangThai', 'Thành công')->sum('SoTien'), 10000.0, 'Confirmation replay cannot collect twice');
     try {
         app(DeliveryService::class)->create(['order_id' => $prepaid->getKey(), 'method' => 'giao_do', 'address' => 'Local return']);
