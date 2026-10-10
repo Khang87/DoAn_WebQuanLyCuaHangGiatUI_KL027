@@ -117,28 +117,22 @@
 
                 {{-- ======== Ưu đãi và điểm tích lũy ======== --}}
                 <div class="col-12">
-                    <div class="card border-primary">
-                        <div class="card-body">
-                            <h6 class="mb-3"><i class="fas fa-ticket me-2 text-primary"></i>Ưu đãi áp dụng</h6>
-                            <div class="row g-3 align-items-end">
-                                <div class="col-md-8">
-                                    <p class="form-text mb-0">Đơn tạo trực tiếp trên web không áp dụng voucher. Voucher từ lịch đặt được giữ khi chuyển Booking thành đơn sau kiểm kê.</p>
-                                </div>
-                                <div class="col-md-4">
-                                    <input type="hidden" id="points_used" name="DiemSuDung" value="{{ old('DiemSuDung', 0) }}">
-                                    <input type="hidden" name="use_points" value="0">
-                                    <div class="rounded-3 border bg-white p-2">
-                                        <div class="form-check form-switch mb-0">
-                                            <input class="form-check-input" type="checkbox" role="switch" id="use_points" name="use_points" value="1" @checked((bool) old('use_points', false))>
-                                            <label class="form-check-label fw-semibold" for="use_points">Dùng điểm tích lũy</label>
-                                        </div>
-                                        <div class="form-text mt-1" id="pointsToggleStatus" aria-live="polite">Đang tắt — không trừ điểm của khách.</div>
-                                        <div class="form-text" id="customerPointsText">Chọn khách hàng để xem số điểm hiện có.</div>
-                                    </div>
-                                    @error('DiemSuDung')<div class="text-danger small">{{ $message }}</div>@enderror
-                                </div>
+                    <div class="border rounded-3 bg-light px-3 py-2">
+                        <input type="hidden" id="points_used" name="DiemSuDung" value="{{ old('DiemSuDung', 0) }}">
+                        <input type="hidden" name="use_points" value="0">
+                        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+                            <h6 class="mb-0"><i class="fas fa-ticket me-2 text-primary" aria-hidden="true"></i>Ưu đãi áp dụng</h6>
+                            <div class="form-check form-switch mb-0">
+                                <input class="form-check-input" type="checkbox" role="switch" id="use_points" name="use_points" value="1" aria-describedby="customerPointsText pointsToggleStatus" @checked((bool) old('use_points', false))>
+                                <label class="form-check-label fw-semibold" for="use_points">Dùng điểm tích lũy</label>
                             </div>
                         </div>
+                        <div class="d-flex flex-wrap justify-content-between gap-1 small text-muted mt-2">
+                            <span id="customerPointsText">Chọn khách hàng để xem số điểm hiện có.</span>
+                            <span id="pointsToggleStatus" aria-live="polite">Đang tắt — không trừ điểm của khách.</span>
+                        </div>
+                        @error('DiemSuDung')<div class="text-danger small mt-1">{{ $message }}</div>@enderror
+                        <p class="small text-muted mb-0 mt-1">Đơn tạo trên web không dùng voucher. Đơn chuyển từ Booking giữ voucher của lịch đặt.</p>
                     </div>
                 </div>
 
