@@ -6,12 +6,31 @@ if (conversation) {
     const form = document.querySelector('[data-message-form]');
     const orderId = conversation.dataset.orderId ? Number(conversation.dataset.orderId) : null;
     const customerId = conversation.dataset.customerAccountId ? Number(conversation.dataset.customerAccountId) : null;
-    const interval = 15000;
+    const interval = 3000;
     let realtime, connected = false, queued = false;
     let timer, controller, signature, pending = false, stopped = false, disposed = false, retry = interval;
 
     function showStatus(text) {
         status.textContent = text;
+    }
+
+    function formatSentAt(timestamp) {
+        if (timestamp === null) return '';
+        const date = new Date(timestamp);
+        if (Number.isNaN(date.getTime())) throw new Error('Invalid message timestamp');
+        const parts = new Intl.DateTimeFormat('en-GB', {
+            timeZone: 'Asia/Ho_Chi_Minh',
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            hourCycle: 'h23',
+        }).formatToParts(date).reduce((values, part) => {
+            values[part.type] = part.value;
+            return values;
+        }, {});
+        return `${parts.day}-${parts.month}-${parts.year} ${parts.hour}:${parts.minute}`;
     }
 
     function render(messages) {
@@ -33,7 +52,7 @@ if (conversation) {
             for (const [text, className] of [
                 [message.sender_name, `small ${message.is_mine ? 'text-white-50' : 'text-muted'}`],
                 [message.content, 'text-break'],
-                [message.sent_at ?? '', `small text-end ${message.is_mine ? 'text-white-50' : 'text-muted'}`],
+                [formatSentAt(message.sent_at), `small text-end ${message.is_mine ? 'text-white-50' : 'text-muted'}`],
             ]) {
                 const element = document.createElement('div');
                 element.className = className;
@@ -95,7 +114,7 @@ if (conversation) {
             }
             render(data.messages);
             retry = interval;
-            showStatus(connected ? 'Đang nhận tin nhắn trực tiếp' : 'Tự động cập nhật tin nhắn');
+            showStatus(connected ? 'Đang nhận tin nhắn trực tiếp' : 'Realtime chưa kết nối; cập nhật dự phòng mỗi 3 giây');
         } catch {
             if (!document.hidden && !stopped) showStatus('Kết nối gián đoạn. Đang thử lại…');
             retry = Math.min(retry * 2, 120000);
@@ -146,11 +165,19 @@ if (conversation) {
                 body: customerId !== null ? { customer_id: customerId } : { order_id: orderId },
                 csrf: document.querySelector('meta[name="csrf-token"]')?.content ?? '',
                 refresh: () => { void sync(); },
-                connection: ready => { connected = ready; if (!ready) schedule(); },
+                connection: ready => {
+                    connected = ready;
+                    if (!ready) {
+                        showStatus('Realtime chưa kết nối; cập nhật dự phòng mỗi 3 giây');
+                        schedule();
+                    }
+                },
                 denied: () => { void sync(); },
             });
             if (!document.hidden && navigator.onLine) void realtime.resume();
-        }).catch(() => { /* The authorized polling fallback stays active. */ });
+        }).catch(() => {
+            console.error('Message Realtime module could not load; polling fallback remains active.');
+        });
     }
     void sync();
 }

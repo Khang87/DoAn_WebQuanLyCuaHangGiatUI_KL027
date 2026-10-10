@@ -6,6 +6,17 @@ export function startMessageRealtime({ endpoint, body, csrf, refresh, connection
     later = setTimeout, cancel = clearTimeout }) {
     let client, channel, renewal, reconnect, signalTimer, abort;
     let active = false, generation = 0, lastRead = 0;
+    let reconnectDelay = 3000;
+
+    function scheduleReconnect(valid) {
+        if (!valid()) return;
+        cancel(reconnect);
+        reconnect = later(() => {
+            reconnect = null;
+            if (valid()) void resume();
+        }, reconnectDelay);
+        reconnectDelay = Math.min(reconnectDelay * 2, 60000);
+    }
 
     function invalidate() {
         if (!active || signalTimer) return;
@@ -55,23 +66,29 @@ export function startMessageRealtime({ endpoint, body, csrf, refresh, connection
             }
             client = clientFactory(config.url, config.key, {
                 auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+                realtime: { heartbeatIntervalMs: 15000 },
             });
             channel = client.channel(config.topic, { config: { private: false } })
                 .on('broadcast', { event: 'changed' }, () => { if (valid()) invalidate(); })
                 .subscribe(state => {
                     if (!valid()) return;
                     connection(state === 'SUBSCRIBED');
-                    if (state === 'SUBSCRIBED') invalidate(); // Catch the read/subscribe race and reconnect gaps.
-                    if (['CHANNEL_ERROR', 'TIMED_OUT', 'CLOSED'].includes(state)) {
+                    if (state === 'SUBSCRIBED') {
                         cancel(reconnect);
-                        reconnect = later(() => { if (valid()) void resume(); }, 15000);
+                        reconnect = null;
+                        reconnectDelay = 3000;
+                        invalidate(); // Catch the read/subscribe race and reconnect gaps.
+                    }
+                    if (['CHANNEL_ERROR', 'TIMED_OUT', 'CLOSED'].includes(state)) {
+                        scheduleReconnect(valid);
                     }
                 });
             renewal = later(() => { if (valid()) void resume(); }, remaining - 20000);
-        } catch {
+        } catch (error) {
             if (valid()) {
                 connection(false);
-                reconnect = later(() => { if (valid()) void resume(); }, 60000);
+                console.warn('Message Realtime connection failed; polling fallback remains active.', error);
+                scheduleReconnect(valid);
             }
         } finally {
             cancel(deadline);

@@ -61,6 +61,20 @@
 
     {{-- ============ CỘT PHỤ (4/12) ============ --}}
     <div class="col-lg-5 d-flex flex-column">
+        <div class="card shadow-sm border-0 order-first">
+            <div class="card-header bg-transparent border-bottom d-flex align-items-center gap-2 py-3">
+                <div class="bg-light rounded p-2 d-inline-flex align-items-center justify-content-center">
+                    <i class="fas fa-sliders-h text-secondary"></i>
+                </div>
+                <h5 class="card-title mb-0 fw-bold">Thao tác</h5>
+            </div>
+            <div class="card-body d-flex flex-column gap-2">
+                <a href="{{ route('notifications.index') }}" class="btn btn-outline-secondary w-100 py-2 text-dark">
+                    <i class="fas fa-arrow-left me-1" aria-hidden="true"></i> Quay lại danh sách
+                </a>
+            </div>
+        </div>
+
         <x-admin.detail.panel title="Thông tin gửi" icon="bi-clock-history" :iconClass="'bg-secondary-subtle text-secondary'">
             <x-admin.detail.info-grid :columns="1">
                 <x-admin.detail.info-item label="Người nhận" :value="$notification->taiKhoan?->HoTen ?? $notification->taiKhoan?->TenDangNhap ?? 'Tất cả nhân viên'" />
@@ -68,7 +82,6 @@
                 <x-admin.detail.info-item label="Thời điểm đọc" :value="$notification->DaDoc ? $notification->ThoiGianGui?->format('d/m/Y H:i') : '—'" />
             </x-admin.detail.info-grid>
         </x-admin.detail.panel>
-        <a href="{{ route('notifications.index') }}" class="btn btn-outline-secondary mt-3"><i class="bi bi-arrow-left me-1"></i>Quay lại danh sách thông báo</a>
     </div>
 </div>
 @endsection

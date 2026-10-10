@@ -20,25 +20,30 @@ function harness() {
     return {conversation,status,input,document,navigator,events,documentEvents,calls,timers,settle,respond,runTimer};
 }
 const message={id:1,content:'<img onerror=alert(1)>',sender_name:'Customer',is_mine:false,sent_at:null};
+const timestampedMessage={...message,sent_at:'2026-10-09T03:27:00+00:00'};
 test('snapshot renders text, preserves draft and avoids duplicate messages',async()=>{
     const h=harness();await h.respond(200,[message]);
     assert.equal(h.conversation.children[0].children[0].children[1].textContent,message.content);
     assert.equal(h.input.value,'draft');
-    assert.equal(h.runTimer(),15000);await h.respond(200,[message]);
+    assert.equal(h.runTimer(),3000);await h.respond(200,[message]);
     assert.equal(h.conversation.children.length,1);
+});
+test('message timestamps render in Vietnam time regardless of browser timezone',async()=>{
+    const h=harness();await h.respond(200,[timestampedMessage]);
+    assert.equal(h.conversation.children[0].children[0].children[2].textContent,'09-10-2026 10:27');
 });
 test('requests never overlap and pause while hidden, then resume',async()=>{
     const h=harness();h.events.online();assert.equal(h.calls.length,1);
     h.document.hidden=true;h.documentEvents.visibilitychange();await h.settle();
     assert.equal(h.timers.size,0);
     h.document.hidden=false;h.documentEvents.visibilitychange();assert.equal(h.calls.length,2);
-    await h.respond();assert.equal(h.runTimer(),15000);
+    await h.respond();assert.equal(h.runTimer(),3000);
 });
 test('network failure backs off then successful recovery restores interval',async()=>{
     const h=harness();h.calls[0].reject(Error('offline'));await h.settle();
-    // Retry delay is 30 seconds, as is the deadline (already cleared).
-    const [id,timer]=[...h.timers][0];assert.equal(timer.ms,30000);h.timers.delete(id);timer.fn();
-    await h.respond();assert.equal(h.runTimer(),15000);
+    // Retry backs off to six seconds after the first failed request.
+    const [id,timer]=[...h.timers][0];assert.equal(timer.ms,6000);h.timers.delete(id);timer.fn();
+    await h.respond();assert.equal(h.runTimer(),3000);
 });
 for(const code of [401,403,404])test(`${code} clears protected content and stops requests`,async()=>{
     const h=harness();await h.respond(200,[message]);h.runTimer();await h.respond(code);

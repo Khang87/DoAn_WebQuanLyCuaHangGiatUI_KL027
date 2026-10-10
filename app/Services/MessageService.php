@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\DonHang;
 use App\Models\TinNhan;
 use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 use Illuminate\Validation\ValidationException;
@@ -84,11 +85,22 @@ class MessageService
         return ! $name || str_starts_with($name, 'auth-') ? 'Khách hàng' : $name;
     }
 
+    public function sentAt(TinNhan $message): ?Carbon
+    {
+        $timestamp = $message->getRawOriginal('ThoiGianGui');
+
+        if (! is_string($timestamp) || $timestamp === '') {
+            return null;
+        }
+
+        return Carbon::parse($timestamp, 'UTC')->setTimezone(config('app.timezone'));
+    }
+
     public function sendSupport(User $customer, User $sender, string $content): TinNhan
     {
         return TinNhan::query()->create([
             'NguoiGuiID' => $sender->getKey(), 'NguoiNhanID' => $customer->getKey(),
-            'DonHangID' => null, 'NoiDung' => trim($content), 'ThoiGianGui' => now(), 'TrangThai' => 'Đã gửi',
+            'DonHangID' => null, 'NoiDung' => trim($content), 'ThoiGianGui' => now('UTC'), 'TrangThai' => 'Đã gửi',
         ]);
     }
 
@@ -107,7 +119,7 @@ class MessageService
             'NguoiNhanID' => $recipientId,
             'DonHangID' => $order->DonHangID,
             'NoiDung' => trim($content),
-            'ThoiGianGui' => now(),
+            'ThoiGianGui' => now('UTC'),
             'TrangThai' => 'Đã gửi',
         ]);
     }

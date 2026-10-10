@@ -50,7 +50,7 @@ test('expiry rotates topics and obsolete channel callbacks cannot refresh', asyn
 
 test('channel failures retry and pause cancels retry, renewal and pending invalidation', async () => {
     const h = setup(); await h.controller.resume(); h.channels[0].state('CHANNEL_ERROR');
-    await h.run(15000); assert.equal(h.requests, 2); assert.equal(h.channels[0].removed, true);
+    await h.run(3000); assert.equal(h.requests, 2); assert.equal(h.channels[0].removed, true);
     h.channels[1].state('SUBSCRIBED'); h.controller.pause(); assert.equal(h.timers.size, 0);
     h.channels[1].signal(); assert.equal(h.timers.size, 0);
 });
@@ -62,7 +62,9 @@ for (const status of [401, 403, 404, 419]) test(`configuration ${status} stops s
 
 test('unavailable configuration leaves polling usable and retries later', async () => {
     const h = setup(503); await h.controller.resume(); assert.equal(h.connected, false);
-    await h.run(60000); assert.equal(h.requests, 2); h.controller.pause(); assert.equal(h.timers.size, 0);
+    await h.run(3000); assert.equal(h.requests, 2);
+    assert.ok([...h.timers.values()].some(t => t.ms === 6000));
+    h.controller.pause(); assert.equal(h.timers.size, 0);
 });
 
 

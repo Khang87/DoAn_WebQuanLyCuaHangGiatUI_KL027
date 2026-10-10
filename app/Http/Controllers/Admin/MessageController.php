@@ -92,7 +92,9 @@ class MessageController extends Controller
         }
         try {
             $configuration = $realtime->configuration($scope);
-        } catch (\Throwable) {
+        } catch (\Throwable $exception) {
+            report($exception);
+
             return response()->json(['message' => 'Realtime temporarily unavailable'], 503)
                 ->header('Cache-Control', 'private, no-store');
         }
@@ -102,6 +104,12 @@ class MessageController extends Controller
 
     public function supportUpdates(Request $request, int $customer): JsonResponse
     {
+        $viewer = $request->user();
+
+        if (! $viewer instanceof User) {
+            abort(403);
+        }
+
         $account = $this->messageService->supportCustomer($customer);
 
         return response()->json([
@@ -109,15 +117,21 @@ class MessageController extends Controller
             'customer_account_id' => (int) $account->getKey(),
             'messages' => $this->messageService->supportMessages($account)->map(fn ($message): array => [
                 'id' => (int) $message->getKey(), 'content' => (string) $message->NoiDung,
-                'sender_name' => $this->messageService->displayName($message, $request->user()),
-                'is_mine' => (int) $message->NguoiGuiID === (int) $request->user()->getKey(),
-                'sent_at' => $message->ThoiGianGui?->format('d-m-Y H:i'),
+                'sender_name' => $this->messageService->displayName($message, $viewer),
+                'is_mine' => (int) $message->NguoiGuiID === (int) $viewer->getKey(),
+                'sent_at' => $this->messageService->sentAt($message)?->toIso8601String(),
             ])->values(),
         ])->header('Cache-Control', 'private, no-store');
     }
 
-    public function updates(Request $request, int $order): JsonResponse
+    public function orderUpdates(Request $request, int $order): JsonResponse
     {
+        $viewer = $request->user();
+
+        if (! $viewer instanceof User) {
+            abort(403);
+        }
+
         $conversation = DonHang::query()->findOrFail($order);
 
         return response()->json([
@@ -126,9 +140,9 @@ class MessageController extends Controller
                 ->map(fn ($message): array => [
                     'id' => (int) $message->getKey(),
                     'content' => (string) $message->NoiDung,
-                    'sender_name' => $this->messageService->displayName($message, $request->user()),
-                    'is_mine' => (int) $message->NguoiGuiID === (int) $request->user()->getKey(),
-                    'sent_at' => $message->ThoiGianGui?->format('d-m-Y H:i'),
+                    'sender_name' => $this->messageService->displayName($message, $viewer),
+                    'is_mine' => (int) $message->NguoiGuiID === (int) $viewer->getKey(),
+                    'sent_at' => $this->messageService->sentAt($message)?->toIso8601String(),
                 ])->values(),
         ])->header('Cache-Control', 'private, no-store');
     }

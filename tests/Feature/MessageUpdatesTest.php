@@ -78,7 +78,7 @@ class MessageUpdatesTest extends TestCase
             ->assertOk()->assertHeader('Cache-Control', 'no-store, private')
             ->assertExactJson(['order_id' => 1, 'messages' => [[
                 'id' => $id, 'content' => '<img src=x onerror=alert(1)>',
-                'sender_name' => 'Mobile', 'is_mine' => false, 'sent_at' => '09-10-2026 12:00',
+                'sender_name' => 'Mobile', 'is_mine' => false, 'sent_at' => '2026-10-09T19:00:00+07:00',
             ]]]);
     }
 
