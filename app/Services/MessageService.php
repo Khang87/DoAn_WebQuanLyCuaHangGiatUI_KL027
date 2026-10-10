@@ -7,6 +7,7 @@ use App\Models\TinNhan;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Validation\ValidationException;
 
@@ -14,12 +15,49 @@ class MessageService
 {
     public function getOrders(): LengthAwarePaginator
     {
-        return DonHang::query()
-            ->with(['khachHang.taiKhoan'])
-            ->orderByDesc('NgayTao')
-            ->orderByDesc('DonHangID')
-            ->paginate(20)
-            ->withQueryString();
+        $activity = TinNhan::query()->select('DonHangID')->selectRaw('MAX("ThoiGianGui") AS last_message_at, MAX("TinNhanID") AS last_message_id')
+            ->whereNotNull('DonHangID')->groupBy('DonHangID');
+        $unread = $this->unreadIncoming()->select('DonHangID')->selectRaw('COUNT(*) AS unread_count')
+            ->whereNotNull('DonHangID')->groupBy('DonHangID');
+
+        return DonHang::query()->with(['khachHang.taiKhoan'])->select('DonHang.*')
+            ->leftJoinSub($activity, 'activity', 'activity.DonHangID', '=', 'DonHang.DonHangID')
+            ->leftJoinSub($unread, 'unread', 'unread.DonHangID', '=', 'DonHang.DonHangID')
+            ->addSelect('activity.last_message_at', 'unread.unread_count')
+            ->orderByRaw('CASE WHEN activity.last_message_at IS NULL THEN 1 ELSE 0 END')
+            ->orderByDesc('activity.last_message_at')->orderByDesc('activity.last_message_id')->orderByDesc('DonHang.NgayTao')->orderByDesc('DonHang.DonHangID')
+            ->paginate(20)->withQueryString();
+    }
+
+    private function unreadIncoming(): Builder
+    {
+        return TinNhan::query()->whereIn('TrangThai', ['Đã gửi', 'Đã nhận'])
+            ->whereHas('sender', fn ($query) => $query->whereNotNull('KhachHangID')->whereNull('NhanVienID'))
+            ->whereHas('recipient', fn ($query) => $query->whereNotNull('NhanVienID'));
+    }
+
+    public function markRead(?int $orderId, ?int $customerId, array $messageIds): int
+    {
+        $boundary = TinNhan::query()->whereIn('TinNhanID', $messageIds);
+        if ($orderId !== null) {
+            $boundary->where('DonHangID', $orderId);
+        } else {
+            $boundary->whereNull('DonHangID')->where(fn ($query) => $query
+                ->where('NguoiGuiID', $customerId)->orWhere('NguoiNhanID', $customerId));
+        }
+        $lastSeenId = $boundary->max('TinNhanID');
+        if ($lastSeenId === null) {
+            return 0;
+        }
+        // Thread read status includes older IDs; subsequent messages with higher IDs remain unread.
+        $query = $this->unreadIncoming()->where('TinNhanID', '<=', $lastSeenId);
+        if ($orderId !== null) {
+            $query->where('DonHangID', $orderId);
+        } else {
+            $query->whereNull('DonHangID')->where('NguoiGuiID', $customerId);
+        }
+
+        return $query->update(['TrangThai' => 'Đã đọc']);
     }
 
     public function findOrder(int $orderId): ?DonHang

@@ -28,12 +28,21 @@ test('open conversation receives mobile PostgreSQL messages through real Laravel
         await b.evaluate(`window.dispatchEvent(new Event('online'))`);
         await b.waitFor(()=>b.responses.filter(r=>r.url.includes('/updates')).length>=3,'resync');
         assert.equal(await b.evaluate(`document.querySelectorAll('[data-message-id]').length`),1);
+        await b.waitFor(()=>b.evaluate(`document.querySelector('[data-inbox-order]')?.dataset.inboxOrder==='${cases.legacy}' && !!document.querySelector('[data-inbox-order="${cases.legacy}"] [data-unread-dot]') && !document.querySelector('[data-inbox-order="${cases.paid}"] [data-unread-dot]')`),'unread foreign order rises to top');
+        const readStates=JSON.parse(execFileSync(process.env.PHP_BIN||'php',[fileURLToPath(new URL('./messages-state.php',import.meta.url)),'read-status'],{timeout:30000}));
+        assert.equal(readStates.find(row=>row.DonHangID===cases.paid).TrangThai,'Đã đọc');
+        assert.equal(readStates.find(row=>row.DonHangID===cases.legacy).TrangThai,'Đã gửi');
+        await b.navigate('/admin/messages?order_id='+cases.legacy);
+        await b.waitFor(()=>b.evaluate(`document.querySelector('[data-message-updates]').textContent.includes('Foreign conversation') && !document.querySelector('[data-inbox-order="${cases.legacy}"] [data-unread-dot]')`),'opening foreign order clears its dot');
+        await b.navigate('/admin/messages?order_id='+cases.paid);
+        await b.waitFor(()=>b.evaluate(`document.querySelector('[data-message-updates]').textContent.includes('Mobile message')`),'return to original conversation');
+        const currentDocuments=b.responses.filter(r=>r.type==='Document').length;
         // Global inbox refreshes without replacing the document or exposing message HTML.
         const notification=JSON.parse(execFileSync(process.env.PHP_BIN||'php',[fileURLToPath(new URL('./messages-state.php',import.meta.url)),'notification'],{timeout:30000}));
         await delay(16000);
         await b.waitFor(()=>b.evaluate(`document.querySelector('[data-notification-list]').textContent.includes('New mobile notification')`),'notification poll');
         assert.equal(await b.evaluate(`document.querySelector('[data-notification-list]').querySelectorAll('img').length`),0);
-        assert.equal(b.responses.filter(r=>r.type==='Document').length,documents);
+        assert.equal(b.responses.filter(r=>r.type==='Document').length,currentDocuments);
         await b.navigate('/notifications/'+notification.id);
         assert.equal(await b.evaluate(`document.querySelector('a[href$="/notifications"].btn')?.textContent.includes('Quay lại')`),true);
         await b.navigate('/admin/messages?customer_id=1');

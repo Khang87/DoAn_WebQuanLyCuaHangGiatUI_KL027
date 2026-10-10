@@ -10,6 +10,8 @@ if (conversation) {
     let realtime, connected = false, queued = false;
     let timer, controller, signature, pending = false, stopped = false, disposed = false, retry = interval;
 
+    const acknowledged = new Set();
+
     function showStatus(text) {
         status.textContent = text;
     }
@@ -112,7 +114,20 @@ if (conversation) {
                     || typeof message.is_mine !== 'boolean' || (message.sent_at !== null && typeof message.sent_at !== 'string'))) {
                 throw new Error('Invalid conversation response');
             }
+            if (document.hidden || disposed) return;
             render(data.messages);
+            const ids = data.messages.filter(message => !acknowledged.has(message.id)).map(message => message.id);
+            if (conversation.dataset.messageRead && ids.length) {
+                const receipt = await fetch(conversation.dataset.messageRead, {
+                    method: 'POST', credentials: 'same-origin', signal: controller.signal,
+                    headers: { Accept: 'application/json', 'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content ?? '' },
+                    body: JSON.stringify({ ...(customerId !== null ? { customer_id: customerId } : { order_id: orderId }), message_ids: ids }),
+                });
+                if (!receipt.ok) throw new Error('Read acknowledgement failed');
+                ids.forEach(id => acknowledged.add(id));
+            }
+            window.dispatchEvent(new Event('message-inbox-changed'));
             retry = interval;
             showStatus(connected ? 'Đang nhận tin nhắn trực tiếp' : 'Realtime chưa kết nối; cập nhật dự phòng mỗi 3 giây');
         } catch {

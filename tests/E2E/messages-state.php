@@ -15,6 +15,10 @@ if ($action === 'realtime-insert') {
     echo json_encode(DB::table('realtime.test_signals')->get());
     exit;
 }
+if ($action === 'read-status') {
+    echo json_encode(DB::table('TinNhan')->whereIn('DonHangID', [$cases['paid'], $cases['legacy']])->where('NguoiGuiID', 1)->get(['DonHangID', 'TrangThai']));
+    exit;
+}
 if ($action === 'notification') {
     $id = DB::table('ThongBao')->insertGetId(['TaiKhoanID' => 2, 'LoaiThongBao' => 'new_message', 'TieuDe' => '<img src=x onerror=alert(1)> New mobile notification', 'NoiDung' => 'Fixture only', 'ThoiGianGui' => now(), 'DaDoc' => false], 'ThongBaoID');
     echo json_encode(['id' => $id]);
@@ -53,6 +57,6 @@ if ($action !== 'insert') {
     throw new RuntimeException('Expected isolated message fixture insertion');
 }
 foreach (['paid' => '<img src=x onerror="window.messageXss=true"> Mobile message', 'legacy' => 'Foreign conversation message'] as $key => $content) {
-    DB::table('TinNhan')->insert(['NguoiGuiID' => 1, 'NguoiNhanID' => 2, 'DonHangID' => $cases[$key], 'NoiDung' => $content, 'ThoiGianGui' => now(), 'TrangThai' => 'Đã gửi']);
+    DB::table('TinNhan')->insert(['NguoiGuiID' => 1, 'NguoiNhanID' => 2, 'DonHangID' => $cases[$key], 'NoiDung' => $content, 'ThoiGianGui' => now('UTC')->addSeconds($key === 'legacy' ? 1 : 0), 'TrangThai' => 'Đã gửi']);
 }
 echo "Fixture messages inserted\n";

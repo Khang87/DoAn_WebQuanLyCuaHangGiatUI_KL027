@@ -7,6 +7,7 @@ use App\Models\DonHang;
 use App\Models\User;
 use App\Services\MessageRealtimeService;
 use App\Services\MessageService;
+use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -75,6 +76,38 @@ class MessageController extends Controller
 
         return redirect()
             ->route('admin.messages.index', ['order_id' => $order->DonHangID]);
+    }
+
+    public function inbox(Request $request): JsonResponse
+    {
+        $request->validate(['page' => ['nullable', 'integer', 'min:1']]);
+
+        return response()->json(['orders' => $this->messageService->getOrders()->map(fn ($order) => [
+            'id' => (int) $order->getKey(), 'number' => (string) $order->MaDonHang,
+            'customer' => $order->khachHang?->HoTen ?: 'Khách hàng',
+            'unread' => (int) $order->unread_count > 0,
+            'date' => $order->last_message_at ? Carbon::parse($order->last_message_at, 'UTC')->setTimezone(config('app.timezone'))->format('d-m-Y') : $order->NgayTao?->format('d-m-Y'),
+        ])->values()])->header('Cache-Control', 'private, no-store');
+    }
+
+    public function read(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'order_id' => ['nullable', 'required_without:customer_id', 'integer', 'min:1', 'prohibits:customer_id'],
+            'customer_id' => ['nullable', 'required_without:order_id', 'integer', 'min:1', 'prohibits:order_id'],
+            'message_ids' => ['required', 'array', 'min:1', 'max:100'],
+            'message_ids.*' => ['required', 'integer', 'min:1', 'distinct'],
+        ]);
+        $orderId = isset($validated['order_id']) ? (int) $validated['order_id'] : null;
+        $customerId = isset($validated['customer_id']) ? (int) $validated['customer_id'] : null;
+        if ($orderId !== null) {
+            DonHang::query()->findOrFail($orderId);
+        } else {
+            $this->messageService->supportCustomer($customerId);
+        }
+
+        return response()->json(['updated' => $this->messageService->markRead($orderId, $customerId, $validated['message_ids'])])
+            ->header('Cache-Control', 'private, no-store');
     }
 
     public function realtime(Request $request, MessageRealtimeService $realtime): JsonResponse

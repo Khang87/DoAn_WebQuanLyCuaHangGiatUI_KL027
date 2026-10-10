@@ -4,15 +4,15 @@ import {readFileSync} from 'node:fs';
 import vm from 'node:vm';
 
 const source=readFileSync(new URL('../../resources/js/message-updates.js',import.meta.url),'utf8');
-function harness() {
+function harness(read=false) {
     const timers=new Map(), events={}, documentEvents={}, calls=[];
     let clock=0;
     const element=()=>({dataset:{},style:{},children:[],append(child){this.children.push(child);},replaceChildren(fragment){this.children=fragment?.children||[];},scrollTop:0,scrollHeight:10,clientHeight:10});
-    const conversation=element();conversation.dataset={orderId:'7',messageUpdates:'/updates'};
+    const conversation=element();conversation.dataset={orderId:'7',messageUpdates:'/updates'};if(read)conversation.dataset.messageRead='/read';
     const status={textContent:''}, input={value:'draft',disabled:false};
     const document={hidden:false,querySelector:s=>s==='[data-message-updates]'?conversation:s==='[data-message-status]'?status:{dataset:{},querySelectorAll:()=>[input]},createElement:element,createDocumentFragment:element,addEventListener:(name,fn)=>{documentEvents[name]=fn;}};
     const navigator={onLine:true};
-    const context={document,navigator,window:{addEventListener:(name,fn)=>{events[name]=fn;}},AbortController,fetch:(url,options)=>new Promise((resolve,reject)=>{calls.push({resolve,reject,options});options.signal.addEventListener('abort',()=>reject(Error('aborted')));}),setTimeout:(fn,ms)=>{timers.set(++clock,{fn,ms});return clock;},clearTimeout:id=>timers.delete(id)};
+    const context={Event,document,navigator,window:{dispatchEvent:()=>{},addEventListener:(name,fn)=>{events[name]=fn;}},AbortController,fetch:(url,options)=>new Promise((resolve,reject)=>{calls.push({resolve,reject,options});options.signal.addEventListener('abort',()=>reject(Error('aborted')));}),setTimeout:(fn,ms)=>{timers.set(++clock,{fn,ms});return clock;},clearTimeout:id=>timers.delete(id)};
     vm.runInNewContext(source,context);
     const settle=async()=>{for(let i=0;i<10;i++)await Promise.resolve();};
     const respond=async(statusCode=200,messages=[])=>{calls.at(-1).resolve({status:statusCode,ok:statusCode===200,json:async()=>({order_id:7,messages})});await settle();};
@@ -60,4 +60,14 @@ test('reading older messages preserves scroll position; bottom view follows new 
     await h.respond(200,[message]);assert.equal(h.conversation.scrollTop,200);
     h.conversation.scrollTop=900;h.runTimer();await h.respond(200,[message,{...message,id:2}]);
     assert.equal(h.conversation.scrollTop,1000);
+});
+
+test('read receipts send displayed snapshot IDs and wait for visible page',async()=>{
+    const h=harness(true);await h.respond(200,[message,{...message,id:2,is_mine:true}]);
+    assert.equal(h.calls.length,2);
+    assert.deepEqual(JSON.parse(h.calls[1].options.body),{order_id:7,message_ids:[1,2]});
+    h.calls[1].resolve({ok:true});await h.settle();
+    h.runTimer();await h.respond(200,[message]);assert.equal(h.calls.length,3);
+    h.document.hidden=true;h.documentEvents.visibilitychange();
+    assert.equal(h.timers.size,0);
 });

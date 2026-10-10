@@ -10,13 +10,13 @@
             <div class="card-header bg-white py-3">
                 <h5 class="mb-0 fw-semibold"><i class="bi bi-chat-dots me-2"></i>Đơn hàng</h5>
             </div>
-            <div class="list-group list-group-flush">
+            <div class="list-group list-group-flush" data-message-inbox="{{ route('admin.messages.inbox', ['page' => $orders->currentPage()]) }}" data-selected-order="{{ $selectedOrder?->DonHangID }}" data-message-link="{{ route('admin.messages.index') }}">
                 @forelse($orders as $order)
                     <a href="{{ route('admin.messages.index', ['order_id' => $order->DonHangID]) }}"
-                        class="list-group-item list-group-item-action {{ $selectedOrder?->DonHangID === $order->DonHangID ? 'active' : '' }}">
+                        data-inbox-order="{{ $order->DonHangID }}" class="list-group-item list-group-item-action {{ $selectedOrder?->DonHangID === $order->DonHangID ? 'active' : '' }}">
                         <div class="d-flex justify-content-between gap-2">
-                            <span class="fw-semibold">{{ $order->MaDonHang }}</span>
-                            <small>{{ $order->NgayTao?->format('d-m-Y') }}</small>
+                            <span class="fw-semibold">{{ $order->MaDonHang }} @if($order->unread_count > 0)<span class="d-inline-block rounded-circle bg-danger ms-2" style="width:10px;height:10px" role="img" aria-label="Tin nhắn chưa đọc" data-unread-dot></span>@endif</span>
+                            <small>{{ $order->last_message_at ? \Carbon\Carbon::parse($order->last_message_at, 'UTC')->setTimezone(config('app.timezone'))->format('d-m-Y') : $order->NgayTao?->format('d-m-Y') }}</small>
                         </div>
                         <small>{{ $order->khachHang?->HoTen ?: 'Khách hàng' }}</small>
                     </a>
@@ -51,6 +51,7 @@
                     </a>@endif
                 </div>
                 <div class="card-body bg-light" style="min-height: 360px; max-height: 520px; overflow-y: auto; position: relative;"
+                    data-message-read="{{ route('admin.messages.read') }}"
                     data-message-realtime="{{ route('admin.messages.realtime') }}"
                     data-message-updates="{{ $selectedCustomer ? route('admin.messages.support-updates', $selectedCustomer->getKey()) : route('admin.messages.updates', $selectedOrder->DonHangID) }}"
                     data-order-id="{{ $selectedOrder?->DonHangID }}" data-customer-account-id="{{ $selectedCustomer?->getKey() }}" aria-label="Nội dung cuộc trò chuyện">
@@ -105,6 +106,7 @@
 @endsection
 
 @push('scripts')
+    @vite('resources/js/message-inbox.js')
     @if($selectedOrder || $selectedCustomer)
         @vite(['resources/js/message-updates.js', 'resources/js/message-send-guard.js'])
     @endif

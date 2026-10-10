@@ -2,12 +2,14 @@
 
 Sky Laundry là hệ thống quản lý cửa hàng giặt ủi, hỗ trợ quy trình vận hành cho Chủ cửa hàng, Quản lý, Nhân viên và Khách hàng. Ứng dụng gồm giao diện web Laravel và API JSON phiên bản hóa, sử dụng cơ sở dữ liệu PostgreSQL trên Supabase theo cấu trúc hiện có.
 
+Tin nhắn khách hàng: danh sách đơn tự cập nhật mỗi 3 giây khi trang đang mở; cuộc trò chuyện có tin mới lên đầu. Chấm đỏ biểu thị tin khách gửi chưa đọc. Mở cuộc trò chuyện sẽ ghi nhận đã đọc đến mốc tin đã tải, đồng bộ trạng thái với mobile và giữ nguyên tin có ID lớn hơn mốc đó. Nội dung cuộc trò chuyện tiếp tục dùng Supabase Realtime, với API Laravel dự phòng.
+
 ## Tin nhắn trên web
 
 - Cuộc trò chuyện theo đơn hoặc hỗ trợ trước đặt hàng đang mở đăng ký Supabase Realtime Broadcast. Khi `TinNhan` thay đổi, web nhận tín hiệu và lấy lại 100 tin gần nhất qua API Laravel theo session và quyền `messages.view`; không cần F5.
 - Broadcast chỉ chứa tín hiệu rỗng, không chứa nội dung hay ID khách/đơn. Topic ngẫu nhiên hết hạn tuyệt đối khoảng 10 phút rồi đổi; người biết topic chỉ có thể quan sát tín hiệu trong thời hạn đó. Nội dung luôn được Laravel kiểm tra quyền. Không đưa service-role key ra trình duyệt, không thay đổi Supabase Auth hoặc RLS của `TinNhan`.
 - Khi subscribe/kết nối lại, web đọc bù; tín hiệu dồn được gộp với khoảng cách tối thiểu 1 giây. Tab ẩn/offline tạm ngắt kết nối. Giữ bản nháp và vị trí đọc, không chèn HTML từ tin nhắn. Hết phiên/mất quyền/đơn bị xóa thì dừng và xóa phần tin đang hiển thị.
-- Polling dự phòng 15 giây khi Realtime không khả dụng; lúc kết nối tốt có lượt đọc an toàn 60 giây. Lỗi hoặc timeout Broadcast không làm thất bại thao tác gửi tin.
+- Polling dự phòng 3 giây khi Realtime không khả dụng; lúc kết nối tốt có lượt đọc an toàn 60 giây. Lỗi hoặc timeout Broadcast không làm thất bại thao tác gửi tin.
 - Cấu hình: `SUPABASE_PROJECT_URL` và `SUPABASE_PUBLISHABLE_KEY` (hoặc `SUPABASE_ANON_KEY` hiện có). SQL bổ sung: [web-message-realtime.sql](./database/sql/web-message-realtime.sql); bảng đăng ký kênh nằm trong schema `private`, không cấp quyền đọc cho client. `schema.sql` là snapshot tham chiếu, không chạy nguyên file lên production.
 - Đặc tả: [message-realtime](./docs/specs/message-realtime/README.md). Kiểm thử gồm session/quyền, registry/trigger PostgreSQL, vòng đời subscription và browser với transport giả lập. Kết nối WebSocket trực tiếp tới Supabase production chưa được xác minh trong môi trường hạn chế mạng.
 
