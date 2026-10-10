@@ -1004,3 +1004,5 @@ CREATE TRIGGER test_create_invoice AFTER INSERT ON public."DonHang" FOR EACH ROW
 CREATE TRIGGER test_status_insert AFTER INSERT ON public."DonHang" FOR EACH ROW EXECUTE FUNCTION private.record_legacy_order_status_change();
 CREATE TRIGGER test_status_update AFTER UPDATE OF "TrangThai" ON public."DonHang" FOR EACH ROW EXECUTE FUNCTION private.record_legacy_order_status_change();
 CREATE TRIGGER test_booking_promo BEFORE INSERT OR UPDATE ON public."DonHang" FOR EACH ROW EXECUTE FUNCTION private.apply_booking_promotion_to_order();
+
+\ir message-realtime-fixture.sql

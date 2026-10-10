@@ -51,6 +51,7 @@
                     </a>@endif
                 </div>
                 <div class="card-body bg-light" style="min-height: 360px; max-height: 520px; overflow-y: auto; position: relative;"
+                    data-message-realtime="{{ route('admin.messages.realtime') }}"
                     data-message-updates="{{ $selectedCustomer ? route('admin.messages.support-updates', $selectedCustomer->getKey()) : route('admin.messages.updates', $selectedOrder->DonHangID) }}"
                     data-order-id="{{ $selectedOrder?->DonHangID }}" data-customer-account-id="{{ $selectedCustomer?->getKey() }}" aria-label="Nội dung cuộc trò chuyện">
                     @forelse($messages as $message)

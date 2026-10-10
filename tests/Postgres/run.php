@@ -10,6 +10,7 @@ try {
     echo "PASS: guarded Laravel PostgreSQL bootstrap\n";
     if ($mode !== 'concurrency') {
         require __DIR__.'/contracts.php';
+        require __DIR__.'/message-realtime-contract.php';
     }
     if ($mode !== 'contracts') {
         require __DIR__.'/concurrency.php';

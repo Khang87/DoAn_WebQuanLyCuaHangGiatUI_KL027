@@ -8,6 +8,13 @@ $app = require __DIR__.'/bootstrap.php';
 $app->make(Kernel::class)->bootstrap();
 $cases = json_decode(file_get_contents(getenv('WEB_E2E_RUNTIME').'/cases.json'), true, flags: JSON_THROW_ON_ERROR);
 $action = $argv[1] ?? '';
+if ($action === 'realtime-insert') {
+    DB::table('realtime.test_signals')->truncate();
+    DB::table('TinNhan')->insert(['NguoiGuiID' => 1, 'NguoiNhanID' => 2, 'DonHangID' => $cases['paid'],
+        'NoiDung' => 'Realtime mobile message <img src=x>', 'ThoiGianGui' => now(), 'TrangThai' => 'Đã gửi']);
+    echo json_encode(DB::table('realtime.test_signals')->get());
+    exit;
+}
 if ($action === 'notification') {
     $id = DB::table('ThongBao')->insertGetId(['TaiKhoanID' => 2, 'LoaiThongBao' => 'new_message', 'TieuDe' => '<img src=x onerror=alert(1)> New mobile notification', 'NoiDung' => 'Fixture only', 'ThoiGianGui' => now(), 'DaDoc' => false], 'ThongBaoID');
     echo json_encode(['id' => $id]);

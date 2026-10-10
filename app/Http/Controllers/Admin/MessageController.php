@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\DonHang;
 use App\Models\User;
+use App\Services\MessageRealtimeService;
 use App\Services\MessageService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -76,6 +77,29 @@ class MessageController extends Controller
         return redirect()
             ->route('admin.messages.index', ['order_id' => $order->DonHangID])
             ->with('success', 'Tin nhắn đã được gửi cho khách hàng.');
+    }
+
+    public function realtime(Request $request, MessageRealtimeService $realtime): JsonResponse
+    {
+        $validated = $request->validate([
+            'order_id' => ['nullable', 'required_without:customer_id', 'integer', 'min:1', 'prohibits:customer_id'],
+            'customer_id' => ['nullable', 'required_without:order_id', 'integer', 'min:1', 'prohibits:order_id'],
+        ]);
+        if (isset($validated['order_id'])) {
+            $order = DonHang::query()->findOrFail($validated['order_id']);
+            $scope = 'order:'.$order->getKey();
+        } else {
+            $customer = $this->messageService->supportCustomer((int) $validated['customer_id']);
+            $scope = 'support:'.$customer->getKey();
+        }
+        try {
+            $configuration = $realtime->configuration($scope);
+        } catch (\Throwable) {
+            return response()->json(['message' => 'Realtime temporarily unavailable'], 503)
+                ->header('Cache-Control', 'private, no-store');
+        }
+
+        return response()->json($configuration)->header('Cache-Control', 'private, no-store');
     }
 
     public function supportUpdates(Request $request, int $customer): JsonResponse

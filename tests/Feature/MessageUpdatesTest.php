@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\User;
+use App\Services\MessageRealtimeService;
 use App\Support\PermissionCache;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
@@ -121,5 +122,41 @@ class MessageUpdatesTest extends TestCase
     public function test_unknown_order_returns_not_found(): void
     {
         $this->actingAs($this->staff())->getJson('/admin/messages/999/updates')->assertNotFound();
+    }
+
+    public function test_realtime_configuration_requires_session_and_permission(): void
+    {
+        $this->postJson('/admin/messages/realtime', ['order_id' => 1])->assertUnauthorized();
+        DB::table('VaiTro_Quyen')->delete();
+        $this->actingAs($this->staff())->postJson('/admin/messages/realtime', ['order_id' => 1])->assertForbidden();
+    }
+
+    public function test_realtime_configuration_validates_conversation_before_registration(): void
+    {
+        $this->actingAs($this->staff());
+        $this->postJson('/admin/messages/realtime', [])->assertUnprocessable();
+        $this->postJson('/admin/messages/realtime', ['order_id' => 1, 'customer_id' => 2])->assertUnprocessable();
+        $this->postJson('/admin/messages/realtime', ['order_id' => 999])->assertNotFound();
+    }
+
+    public function test_realtime_configuration_returns_only_public_connection_and_opaque_topic(): void
+    {
+        $this->mock(MessageRealtimeService::class, function ($mock): void {
+            $mock->shouldReceive('configuration')->once()->with('order:1')->andReturn([
+                'url' => 'https://example.supabase.co', 'key' => 'sb_publishable_test',
+                'topic' => 'web-message:opaque', 'expires_at' => 2000000000,
+            ]);
+        });
+        $this->actingAs($this->staff())->postJson('/admin/messages/realtime', ['order_id' => 1])
+            ->assertOk()->assertHeader('Cache-Control', 'no-store, private')
+            ->assertExactJson(['url' => 'https://example.supabase.co', 'key' => 'sb_publishable_test',
+                'topic' => 'web-message:opaque', 'expires_at' => 2000000000]);
+    }
+
+    public function test_missing_realtime_configuration_does_not_break_message_reads(): void
+    {
+        config(['services.supabase.project_url' => null]);
+        $this->actingAs($this->staff())->postJson('/admin/messages/realtime', ['order_id' => 1])->assertStatus(503);
+        $this->getJson('/admin/messages/1/updates')->assertOk();
     }
 }

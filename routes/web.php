@@ -105,6 +105,8 @@ Route::middleware(['auth', 'reject.customer'])->group(function () {
         ->name('admin.messages.updates');
     Route::get('/admin/messages/support/{customer}/updates', [MessageController::class, 'supportUpdates'])
         ->whereNumber('customer')->middleware('permission:messages.view')->name('admin.messages.support-updates');
+    Route::post('/admin/messages/realtime', [MessageController::class, 'realtime'])
+        ->middleware(['permission:messages.view', 'throttle:30,1'])->name('admin.messages.realtime');
     Route::post('/admin/messages', [MessageController::class, 'store'])
         ->middleware('permission:messages.create')
         ->name('admin.messages.store');

@@ -88,3 +88,29 @@ test('open conversation receives mobile PostgreSQL messages through real Laravel
         assert.deepEqual(b.errors,[]);
     } finally {await b.close();}
 });
+
+test('Realtime invalidation refreshes the Laravel conversation immediately without reload', {timeout: 60000}, async () => {
+    const base=process.env.WEB_E2E_RUNTIME;
+    const {writeFileSync,unlinkSync}=await import('node:fs');
+    writeFileSync(base+'/message-realtime-enabled','fixture');
+    const cases=JSON.parse(readFileSync(base+'/cases.json'));
+    const runtime=base+'/message-realtime';mkdirSync(runtime,{mode:0o700});copyFileSync(base+'/swal.js',runtime+'/swal.js');
+    const b=await openBrowser(runtime,process.env.WEB_E2E_URL,{messageRealtime:true});
+    try {
+        await b.navigate('/login');
+        await b.evaluate(`document.querySelector('[name=email]').value='staff@example.test';document.querySelector('[name=password]').value=${JSON.stringify(process.env.WEB_E2E_PASSWORD)};document.querySelector('form').requestSubmit()`);
+        await b.waitFor(()=>b.evaluate(`location.pathname==='/orders'`),'staff login');
+        await b.navigate('/admin/messages?order_id='+cases.paid);
+        await b.waitFor(()=>b.evaluate(`document.querySelector('[data-message-status]')?.textContent==='Đang nhận tin nhắn trực tiếp'`),'subscribed');
+        const documents=b.responses.filter(r=>r.type==='Document').length;
+        await b.evaluate(`document.querySelector('[data-message-form] textarea').value='Realtime draft';window.realtimePageMarker=true`);
+        const signals=JSON.parse(execFileSync(process.env.PHP_BIN||'php',[fileURLToPath(new URL('./messages-state.php',import.meta.url)),'realtime-insert'],{timeout:30000}));
+        assert.equal(signals.length,1);assert.equal(signals[0].event,'changed');assert.deepEqual(JSON.parse(signals[0].payload),{});
+        const before=Date.now();await b.evaluate(`window.messageSignal({payload:{}})`);
+        await b.waitFor(()=>b.evaluate(`document.querySelector('[data-message-updates]').textContent.includes('Realtime mobile message')`),'Realtime message');
+        assert.ok(Date.now()-before<5000,'signal reads before the 15-second polling fallback');
+        assert.deepEqual(await b.evaluate(`[window.realtimePageMarker,document.querySelector('[data-message-form] textarea').value,document.querySelector('[data-message-updates]').querySelectorAll('img').length]`),[true,'Realtime draft',0]);
+        assert.equal(b.responses.filter(r=>r.type==='Document').length,documents);
+        assert.deepEqual(b.errors,[]);
+    } finally {await b.close();unlinkSync(base+'/message-realtime-enabled');}
+});
