@@ -44,7 +44,17 @@ return [
         'service_role_key' => env('SUPABASE_SERVICE_ROLE_KEY'),
         'avatar_bucket' => (string) env('SUPABASE_AVATAR_BUCKET', 'avatars'),
     ],
-    
+
+    'vietqr' => [
+        'bank_name' => env('VIETQR_BANK_NAME'),
+        'account_number' => env('VIETQR_ACCOUNT_NUMBER'),
+        'account_name' => env('VIETQR_ACCOUNT_NAME'),
+        'quicklink_url' => env(
+            'VIETQR_QUICKLINK_URL',
+            'https://api.vietqr.io/image/970416-34753417-TOdQsRx.jpg?accountName=NGUYEN%20TRUONG%20KHANG&amount=0'
+        ),
+    ],
+
     'google_routes' => [
         'api_key' => env('GOOGLE_MAPS_ROUTES_API_KEY'),
         'store_address' => env(
