@@ -17,6 +17,7 @@ use App\Http\Controllers\Admin\KhuyenMaiController;
 use App\Http\Controllers\Admin\LoaiDichVuController;
 use App\Http\Controllers\Admin\LoaiDoGiatController;
 use App\Http\Controllers\Admin\MessageController;
+use App\Http\Controllers\Admin\PaymentHistoryController;
 use App\Http\Controllers\Admin\QuyenController;
 use App\Http\Controllers\Admin\ReportsController;
 use App\Http\Controllers\Admin\SystemLogController;
@@ -198,6 +199,11 @@ Route::middleware(['auth', 'reject.customer'])->group(function () {
     Route::post('bookings/{booking}/confirm', [BookingController::class, 'confirm'])
         ->middleware('permission:bookings.confirm')
         ->name('bookings.confirm');
+
+    Route::get('payment-history', [PaymentHistoryController::class, 'index'])
+        ->middleware('permission:payments.view')->name('payment-history.index');
+    Route::get('payment-history/{payment}', [PaymentHistoryController::class, 'show'])
+        ->whereNumber('payment')->middleware('permission:payments.view')->name('payment-history.show');
 
     Route::resource('payments', ThanhToanController::class)
         ->middlewareFor(['index', 'show'], 'permission:payments.view')

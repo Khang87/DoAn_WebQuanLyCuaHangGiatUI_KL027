@@ -163,6 +163,14 @@
                         </a>
                     </li>
                     @endcan
+                    @can('payments.view')
+                    <li class="sidebar-menu-item">
+                        <a href="{{ route('payment-history.index') }}" class="sidebar-menu-link {{ request()->routeIs('payment-history.*') ? 'active' : '' }}">
+                            <i class="bi bi-clock-history"></i>
+                            <span>Lịch sử thanh toán</span>
+                        </a>
+                    </li>
+                    @endcan
                     @can('invoices.view')
                     <li class="sidebar-menu-item">
                         <a href="{{ route('invoices.index') }}" class="sidebar-menu-link {{ request()->routeIs('invoices.*') ? 'active' : '' }}">

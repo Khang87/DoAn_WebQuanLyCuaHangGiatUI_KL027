@@ -4,6 +4,10 @@ Sky Laundry là hệ thống quản lý cửa hàng giặt ủi, hỗ trợ quy 
 
 Tin nhắn khách hàng: danh sách đơn tự cập nhật mỗi 3 giây khi trang đang mở; cuộc trò chuyện có tin mới lên đầu. Chấm đỏ biểu thị tin khách gửi chưa đọc. Mở cuộc trò chuyện sẽ ghi nhận đã đọc đến mốc tin đã tải, đồng bộ trạng thái với mobile và giữ nguyên tin có ID lớn hơn mốc đó. Nội dung cuộc trò chuyện tiếp tục dùng Supabase Realtime, với API Laravel dự phòng.
 
+## Lịch sử thanh toán
+
+Mục **Lịch sử thanh toán** trên sidebar tra cứu các giao dịch `ThanhToan` theo mã đơn, khách hàng, phương thức, trạng thái và khoảng ngày; có phân trang, STT liên tục và chi tiết chỉ xem. Dùng quyền `payments.view`. Module Thanh toán tiếp tục xử lý thu tiền; lịch sử thay đổi hóa đơn vẫn nằm trong Hóa đơn. Không tạo thêm bảng lịch sử hoặc thay đổi dữ liệu tài chính. [Đặc tả](./docs/specs/payment-history.md).
+
 ## Tin nhắn trên web
 
 - Cuộc trò chuyện theo đơn hoặc hỗ trợ trước đặt hàng đang mở đăng ký Supabase Realtime Broadcast. Khi `TinNhan` thay đổi, web nhận tín hiệu và lấy lại 100 tin gần nhất qua API Laravel theo session và quyền `messages.view`; không cần F5.
