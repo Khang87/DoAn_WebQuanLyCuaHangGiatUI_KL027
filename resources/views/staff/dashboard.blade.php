@@ -118,10 +118,18 @@
                                             data-current-status="{{ $order->TrangThai }}">
                                         <option value="" selected disabled>Chuyển trạng thái...</option>
                                         @foreach($quickStatusFlow as $value => $label)
-                                            @if($value !== $order->TrangThai)
+                                            @if($value !== $order->TrangThai
+                                                && ! ($order->TrangThai === \App\Enums\OrderStatus::Washed->value
+                                                    && $value === \App\Enums\OrderStatus::Delivering->value
+                                                    && ! $order->requiresHomeDelivery()))
                                                 <option value="{{ $value }}">{{ $label }}</option>
                                             @endif
                                         @endforeach
+                                        @if($order->TrangThai === \App\Enums\OrderStatus::Washed->value && ! $order->requiresHomeDelivery())
+                                            <option value="{{ \App\Enums\OrderStatus::Delivered->value }}">
+                                                {{ \App\Enums\OrderStatus::Delivered->label() }} (khách nhận tại cửa hàng)
+                                            </option>
+                                        @endif
                                     </select>
                                 </td>
                                 <td>

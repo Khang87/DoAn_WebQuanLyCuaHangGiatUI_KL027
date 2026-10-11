@@ -72,7 +72,12 @@ class DashboardController extends Controller
         $deliveryCount = (int) $todayDeliveryCounts->get('GIAO_DO', 0);
 
         // --- Danh sách: Đơn hàng cần xử lý ---
-        $processingOrders = DonHang::with(['khachHang', 'nhanVien'])
+        $processingOrders = DonHang::with([
+            'khachHang',
+            'nhanVien',
+            'booking:BookingID,HinhThucTraDo',
+            'giaoNhans:DonHangID,LoaiGiaoNhan',
+        ])
             ->whereIn('TrangThai', [
                 OrderStatus::Pending->value,
                 OrderStatus::Received->value,
@@ -128,10 +133,14 @@ class DashboardController extends Controller
             OrderStatus::Received->value,
             OrderStatus::Washing->value,
             OrderStatus::Washed->value,
-            OrderStatus::Delivering->value,
         ];
+        if ($order->statusEnum() === OrderStatus::Washed) {
+            $allowed[] = $order->requiresHomeDelivery()
+                ? OrderStatus::Delivering->value
+                : OrderStatus::Delivered->value;
+        }
 
-        if (! in_array($newStatus, $allowed)) {
+        if (! in_array($newStatus, $allowed, true)) {
             return response()->json([
                 'success' => false,
                 'message' => 'Trạng thái không hợp lệ.',

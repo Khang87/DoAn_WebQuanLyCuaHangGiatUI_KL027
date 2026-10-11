@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enums\InvoiceStatus;
 use App\Enums\OrderStatus;
 use App\Enums\PaymentStatus;
+use App\Enums\ReturnMethod;
 use Illuminate\Database\Eloquent\Model;
 
 class DonHang extends Model
@@ -72,6 +73,21 @@ class DonHang extends Model
     public function giaoNhans()
     {
         return $this->hasMany(GiaoNhan::class, 'DonHangID');
+    }
+
+    public function requiresHomeDelivery(): bool
+    {
+        $bookingRequiresHomeDelivery = $this->relationLoaded('booking')
+            ? $this->booking?->HinhThucTraDo === ReturnMethod::Home->value
+            : $this->booking()->where('HinhThucTraDo', ReturnMethod::Home->value)->exists();
+
+        if ($bookingRequiresHomeDelivery) {
+            return true;
+        }
+
+        return $this->relationLoaded('giaoNhans')
+            ? $this->giaoNhans->contains('LoaiGiaoNhan', 'GIAO_DO')
+            : $this->giaoNhans()->where('LoaiGiaoNhan', 'GIAO_DO')->exists();
     }
 
     public function hoaDons()

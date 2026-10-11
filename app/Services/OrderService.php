@@ -1101,6 +1101,24 @@ class OrderService
         }
 
         $current = $lockedOrder->statusEnum();
+        if (
+            $current === OrderStatus::Washed
+            && $target === OrderStatus::Delivering
+            && ! $lockedOrder->requiresHomeDelivery()
+        ) {
+            throw ValidationException::withMessages([
+                'TrangThai' => 'Đơn hàng trả tại cửa hàng không có chặng giao đồ tại nhà.',
+            ]);
+        }
+        if (
+            $current === OrderStatus::Washed
+            && $target === OrderStatus::Delivered
+            && $lockedOrder->requiresHomeDelivery()
+        ) {
+            throw ValidationException::withMessages([
+                'TrangThai' => 'Đơn hàng trả tại nhà phải qua bước đang giao trước khi xác nhận đã giao.',
+            ]);
+        }
         if (! $current->canTransitionTo($target) && ! ($overrideSettled && $current === OrderStatus::Paid && $target === OrderStatus::Delivered)) {
             throw ValidationException::withMessages([
                 'TrangThai' => $current === OrderStatus::Pending
