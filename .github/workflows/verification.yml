@@ -110,7 +110,6 @@ jobs:
         run: |
           npm ci --ignore-scripts
           npm run build
-          bash scripts/test-web-e2e.sh payment-history
           bash scripts/test-web-e2e.sh
       - name: Dashboard query budget and deferred dependency controls
         run: bash scripts/test-web-e2e.sh performance
