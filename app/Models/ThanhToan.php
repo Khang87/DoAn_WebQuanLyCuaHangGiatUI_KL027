@@ -7,8 +7,6 @@ use Illuminate\Database\Eloquent\Model;
 
 class ThanhToan extends Model
 {
-    public const COLLECTION_AUDIT_ACTION = 'Ghi nhận thanh toán';
-
     protected $table = 'ThanhToan';
 
     protected $primaryKey = 'ThanhToanID';
@@ -32,21 +30,6 @@ class ThanhToan extends Model
     public function donHang()
     {
         return $this->belongsTo(DonHang::class, 'DonHangID');
-    }
-
-    public function collectionAudit()
-    {
-        return $this->hasOne(NhatKyHeThong::class, 'BanGhiID', 'ThanhToanID')
-            ->where('BangDuLieu', 'ThanhToan')
-            ->where('HanhDong', self::COLLECTION_AUDIT_ACTION)
-            ->orderBy('NhatKyID');
-    }
-
-    public function collectorName(): string
-    {
-        $account = $this->collectionAudit?->taiKhoan;
-
-        return $account?->nhanVien?->HoTen ?? $account?->khachHang?->HoTen ?? $account?->TenDangNhap ?? 'Chưa ghi nhận';
     }
 
     public function isSettled(): bool

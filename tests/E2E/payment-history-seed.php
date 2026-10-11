@@ -11,7 +11,7 @@ require dirname(__DIR__).'/Postgres/support.php';
 try {
     pgSeed();
     DB::table('TaiKhoan')->where('TaiKhoanID', 2)->update(['Email' => 'staff@example.test', 'MatKhau' => Hash::make(getenv('WEB_E2E_PASSWORD'))]);
-    foreach (['payments.view', 'payments.create', 'orders.view'] as $permission) {
+    foreach (['payments.view', 'orders.view'] as $permission) {
         $id = DB::table('Quyen')->insertGetId(['MaQuyen' => QuyenMapper::resolveMaQuyen($permission), 'TenQuyen' => $permission], 'QuyenID');
         DB::table('VaiTro_Quyen')->insert(['VaiTroID' => 1, 'QuyenID' => $id]);
     }
@@ -25,8 +25,6 @@ try {
             'GhiChu' => '<img src=x onerror="window.historyXss=true">',
         ]);
     }
-    $unpaid = DB::table('DonHang')->insertGetId(['MaDonHang' => 'COLLECTION-ORDER', 'KhachHangID' => 1, 'NhanVienID' => 1, 'TrangThai' => 'Đã tiếp nhận', 'TongTien' => 100000, 'ThanhTien' => 100000], 'DonHangID');
-    DB::table('HoaDon')->updateOrInsert(['DonHangID' => $unpaid], ['MaHoaDon' => 'COLLECTION-INVOICE', 'TongTien' => 100000, 'ThanhTien' => 100000, 'TrangThai' => 'Chưa thanh toán']);
     echo "PASS: isolated payment history fixture seeded\n";
 
 } catch (Throwable $error) {

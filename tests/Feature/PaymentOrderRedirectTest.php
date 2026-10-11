@@ -14,7 +14,6 @@ use App\Models\User;
 use App\Services\InvoiceService;
 use App\Services\OrderService;
 use App\Services\PaymentService;
-use Illuminate\Database\QueryException;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -110,28 +109,6 @@ class PaymentOrderRedirectTest extends TestCase
         parent::tearDown();
     }
 
-    public function test_collection_audit_uses_authenticated_actor_and_rolls_back_with_payment(): void
-    {
-        DB::table('DonHang')->insert(['DonHangID' => 1, 'MaDonHang' => 'AUDIT-ORDER', 'TrangThai' => OrderStatus::Received->value, 'ThanhTien' => 15000]);
-        $user = new User;
-        $user->setAttribute('TaiKhoanID', 9);
-        $this->actingAs($user);
-        $service = app(PaymentService::class);
-        $payment = $service->create(['order_id' => 1, 'amount' => 15000, 'method' => 'cash', 'status' => PaymentStatus::Paid->value, 'collector_id' => 999]);
-        $this->assertSame(9, (int) DB::table('NhatKyHeThong')->where('BangDuLieu', 'ThanhToan')->where('BanGhiID', $payment->getKey())->value('TaiKhoanID'));
-        $this->assertSame(OrderStatus::Received->value, DB::table('DonHang')->value('TrangThai'));
-
-        DB::table('DonHang')->insert(['DonHangID' => 2, 'MaDonHang' => 'AUDIT-FAIL', 'TrangThai' => OrderStatus::Received->value, 'ThanhTien' => 15000]);
-        DB::statement("CREATE TRIGGER reject_payment_audit BEFORE INSERT ON NhatKyHeThong WHEN NEW.BangDuLieu = 'ThanhToan' BEGIN SELECT RAISE(ABORT, 'audit unavailable'); END");
-        try {
-            $service->create(['order_id' => 2, 'amount' => 15000, 'method' => 'cash', 'status' => PaymentStatus::Paid->value]);
-            $this->fail('Payment must roll back when attribution cannot be recorded.');
-        } catch (QueryException $exception) {
-            $this->assertStringContainsString('audit unavailable', $exception->getMessage());
-        }
-        $this->assertSame(0, DB::table('ThanhToan')->where('DonHangID', 2)->count());
-    }
-
     public function test_payment_form_receives_the_full_amount_and_rejects_legacy_partial_payment(): void
     {
         DB::table('KhachHang')->insert([
@@ -153,12 +130,12 @@ class PaymentOrderRedirectTest extends TestCase
             'ThanhTien' => 50000,
         ]);
 
-        $response = $this->withoutMiddleware()->withViewErrors([])->get(route('payments.create', ['order_id' => 37]));
+        $response = $this->withoutMiddleware()->get(route('payments.create', ['order_id' => 37]));
 
         $response->assertOk()
             ->assertSee('DH0037')
             ->assertSee('Khách thử nghiệm')
-            ->assertSee('name="amount" value="50000" min="0.01" step="0.01" required', false)
+            ->assertSee('value="50000" min="0" step="1000" disabled', false)
             ->assertSee('name="order_id" disabled', false)
             ->assertSee('name="order_id" value="37"', false)
             ->assertSee('name="invoice_id" disabled', false)
@@ -184,7 +161,7 @@ class PaymentOrderRedirectTest extends TestCase
             'ThanhTien' => 25000,
         ]);
 
-        $response = $this->withoutMiddleware()->withViewErrors([])->get(route('payments.create', ['order_id' => 38]));
+        $response = $this->withoutMiddleware()->get(route('payments.create', ['order_id' => 38]));
 
         $response->assertOk()
             ->assertSee('DH0038')
@@ -194,7 +171,7 @@ class PaymentOrderRedirectTest extends TestCase
 
     public function test_invalid_order_id_redirects_to_orders_with_an_error_message(): void
     {
-        $response = $this->withoutMiddleware()->withViewErrors([])->get(route('payments.create', ['order_id' => 999]));
+        $response = $this->withoutMiddleware()->get(route('payments.create', ['order_id' => 999]));
 
         $response->assertRedirect(route('orders.index'))
             ->assertSessionHas('error', 'Không tìm thấy đơn hàng cần thanh toán.');
@@ -217,11 +194,11 @@ class PaymentOrderRedirectTest extends TestCase
             ],
         ]);
 
-        $paidResponse = $this->withoutMiddleware()->withViewErrors([])->get(route('payments.create', ['order_id' => 1]));
+        $paidResponse = $this->withoutMiddleware()->get(route('payments.create', ['order_id' => 1]));
         $paidResponse->assertRedirect(route('orders.show', 1))
             ->assertSessionHas('error', 'Đơn hàng này đã được thanh toán.');
 
-        $cancelledResponse = $this->withoutMiddleware()->withViewErrors([])->get(route('payments.create', ['order_id' => 2]));
+        $cancelledResponse = $this->withoutMiddleware()->get(route('payments.create', ['order_id' => 2]));
         $cancelledResponse->assertRedirect(route('orders.index'))
             ->assertSessionHas('error', 'Không thể thanh toán đơn hàng đã hủy.');
     }
@@ -372,7 +349,7 @@ class PaymentOrderRedirectTest extends TestCase
             'ThanhTien' => 25000,
         ]);
 
-        $this->withoutMiddleware()->withViewErrors([])
+        $this->withoutMiddleware()
             ->get(route('payments.create'))
             ->assertOk()
             ->assertDontSee('HD-CANCELLED-57');
