@@ -123,8 +123,10 @@ class BookingOrderConversionTest extends TestCase
                 ->assertOk()
                 ->assertSee('name="items[0][TinhTrangTruocKhiGiat]"', false)
                 ->assertSee('name="items[${index}][TinhTrangTruocKhiGiat]"', false)
-                ->assertSee('name="TrangThai" value="Đã tiếp nhận"', false)
-                ->assertDontSee('name="TrangThai" id="status"', false);
+                ->assertSee('id="status" name="TrangThai" required', false)
+                ->assertSee('value="Đã tiếp nhận" selected', false)
+                ->assertSee('value="Đang giặt"  disabled', false)
+                ->assertDontSee('<input type="hidden" name="TrangThai"', false);
         } finally {
             Schema::dropIfExists('KhuyenMai');
         }
