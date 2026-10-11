@@ -9,6 +9,7 @@ use App\Exceptions\SettledOrderException;
 use App\Models\DonHang;
 use App\Models\HoaDon;
 use App\Models\ThanhToan;
+use Carbon\Carbon;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -31,6 +32,13 @@ class PaymentService
             $query->whereHas('donHang.hoaDons', fn ($invoiceQuery) => $invoiceQuery->where('HoaDonID', $filters['invoice_id']));
         }
 
+        if (! empty($filters['date_from'])) {
+            $query->where('ThoiGian', '>=', Carbon::parse($filters['date_from'])->startOfDay());
+        }
+        if (! empty($filters['date_to'])) {
+            $query->where('ThoiGian', '<', Carbon::parse($filters['date_to'])->addDay()->startOfDay());
+        }
+
         if (! empty($filters['method'])) {
             $method = match ($filters['method']) {
                 'cash' => 'Tiền mặt',
@@ -47,9 +55,11 @@ class PaymentService
         if (! empty($filters['search'])) {
             $search = trim($filters['search']);
             $query->where(function ($q) use ($search) {
-                $numericPart = preg_replace('/[^0-9]/', '', $search);
-                if (! empty($numericPart)) {
-                    $q->where('ThanhToanID', $numericPart);
+                if (preg_match('/^(?:TT)?([0-9]+)$/i', $search, $matches)) {
+                    $id = ltrim($matches[1], '0') ?: '0';
+                    if (strlen($id) < 10 || (strlen($id) === 10 && strcmp($id, '2147483647') <= 0)) {
+                        $q->where('ThanhToanID', (int) $id);
+                    }
                 }
                 $q->orWhereHas('donHang', function ($sub) use ($search) {
                     $sub->where('MaDonHang', 'LIKE', "%{$search}%")
@@ -77,7 +87,7 @@ class PaymentService
         $sort = $filters['sort'] ?? 'latest';
         [$sortBy, $sortOrder] = $sortMap[$sort] ?? ['ThoiGian', 'desc'];
 
-        return $query->with(['donHang.khachHang.taiKhoan', 'donHang.hoaDons', 'donHang.thanhToans'])->orderBy($sortBy, $sortOrder)->paginate(10)->withQueryString();
+        return $query->with(['donHang.khachHang.taiKhoan', 'donHang.hoaDons', 'donHang.thanhToans'])->orderBy($sortBy, $sortOrder)->orderBy('ThanhToanID', $sortOrder)->paginate(10)->withQueryString();
     }
 
     public function find(int $id): ?ThanhToan
