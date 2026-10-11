@@ -388,6 +388,7 @@
         <x-admin.detail.panel title="Lịch sử trạng thái" icon="bi-clock-history" :iconClass="'bg-secondary-subtle text-secondary'">
             <div class="detail-timeline order-detail-timeline">
                 @foreach($statusFlow as $key => $label)
+                    @continue($key === \App\Enums\OrderStatus::Paid->value)
                     @continue($key === \App\Enums\OrderStatus::Delivering->value && ! $requiresHomeDelivery)
                     @php
                         $isCurrentStatus = $key === $order->status;
