@@ -19,8 +19,6 @@ test('staff session reads separate payment history with filters, pagination and 
             await b.command('Emulation.setDeviceMetricsOverride',{width,height:900,deviceScaleFactor:1,mobile:false});
             assert.ok(await b.evaluate(`(()=>{const form=document.querySelector('form[action$="/payment-history"]');return form.scrollWidth<=form.clientWidth+1})()`),`filter fits at ${width}`);
         }
-        await b.navigate('/payment-history');
-        await b.evaluate('window.scrollTo(0,0)');
         if(process.env.PAYMENT_HISTORY_SCREENSHOT){const shot=await b.command('Page.captureScreenshot',{format:'png'});writeFileSync(process.env.PAYMENT_HISTORY_SCREENSHOT,Buffer.from(shot.data,'base64'));}
         await b.evaluate(`document.querySelector('[name=date_from]').value='2026-10-11';document.querySelector('[name=date_to]').value='2026-10-10';document.querySelector('form[action$="/payment-history"]').requestSubmit()`);
         await b.waitFor(()=>b.evaluate(`Boolean(document.querySelector('[role=alert]'))`),'date validation alert');
@@ -40,30 +38,6 @@ test('staff session reads separate payment history with filters, pagination and 
         assert.equal(await b.evaluate(`document.querySelector('a[href$="/payments/12/edit"],form[action$="/payments/12"]')===null`),true);
         await b.navigate('/payment-history?search=NO-MATCH');
         assert.equal(await b.evaluate(`document.querySelector('table').textContent.includes('Không có giao dịch phù hợp.')`),true);
-        await b.navigate('/payments');
-        assert.equal(await b.evaluate(`document.querySelectorAll('[data-collection-order]').length`),1);
-        const orderId=await b.evaluate(`document.querySelector('[data-collection-order]').dataset.collectionOrder`);
-        assert.equal(await b.evaluate(`document.querySelector('[data-collection-order]').textContent.includes('COLLECTION-ORDER')`),true);
-        await b.evaluate(`document.querySelector('[data-collection-order] a').click()`);
-        await b.waitFor(()=>b.evaluate(`location.pathname==='/payments/create'`),'collection form');
-        assert.equal(await b.evaluate(`document.querySelector('[name=amount]').disabled`),false);
-        await b.evaluate(`document.querySelector('[name=method]').value='bank_transfer';document.querySelector('[name=method]').dispatchEvent(new Event('change'));document.querySelector('[name=amount]').value='100000'`);
-        await b.evaluate(`document.querySelector('[name=amount]').value='50000';document.querySelector('#paymentForm').requestSubmit()`);
-        await b.waitFor(()=>b.evaluate(`Boolean(document.querySelector('[role=alert] ul'))`),'partial amount rejection');
-        assert.equal(await b.evaluate(`document.querySelector('[role=alert]').textContent.includes('Số tiền thanh toán phải bằng toàn bộ')`),true);
-        assert.equal(await b.evaluate(`document.querySelector('[name=amount]').value`),'50000');
-        await b.evaluate(`document.querySelector('[name=amount]').value='100000'`);
-        const code=await b.evaluate(`document.querySelector('[name=transaction_code]').value`);
-        await b.evaluate(`document.querySelector('#paymentForm').requestSubmit()`);
-        await b.waitFor(()=>b.evaluate(`location.pathname.split('/')[1]==='payments' && /^[0-9]+$/.test(location.pathname.split('/')[2])`),'saved collection');
-        await b.navigate('/orders/'+orderId);
-        assert.equal(await b.evaluate(`document.querySelector('.detail-header').textContent.includes('Đã tiếp nhận')`),true);
-        await b.navigate('/payment-history?collector_id=2&search='+encodeURIComponent(code));
-        assert.equal(await b.evaluate(`document.querySelectorAll('[data-history-payment]').length`),1);
-        assert.equal(await b.evaluate(`document.querySelector('[data-history-payment]').textContent.includes('100,000')`),true);
-        assert.equal(await b.evaluate(`document.querySelector('option[value="2"]')!==null`),true);
-        await b.navigate('/payments');
-        assert.equal(await b.evaluate(`document.querySelectorAll('[data-collection-order]').length`),0);
         assert.equal(b.errors.length,0);
     } finally {await b.close();}
 });

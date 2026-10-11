@@ -13,7 +13,6 @@ use App\Models\ThanhToan;
 use App\Models\ThongBao;
 use App\Models\TinNhan;
 use Illuminate\Pagination\LengthAwarePaginator;
-use Illuminate\Support\ViewErrorBag;
 use Tests\TestCase;
 
 class SchemaModuleCompatibilityTest extends TestCase
@@ -38,8 +37,7 @@ class SchemaModuleCompatibilityTest extends TestCase
     {
         $customer = $this->customer('https://example.test/mobile.jpg?a=1&b="2"', 'https://example.test/account.jpg');
         $customer->setAttribute('HoTen', 'Mobile customer');
-        $order = new DonHang(['DonHangID' => 1, 'MaDonHang' => 'DH-MOBILE', 'TrangThai' => 'Đã tiếp nhận', 'ThanhTien' => 10000]);
-        $order->setRelation('hoaDons', collect());
+        $order = new DonHang(['MaDonHang' => 'DH-MOBILE']);
         $order->setRelation('khachHang', $customer);
         $payment = new ThanhToan;
         $payment->setRawAttributes(['ThanhToanID' => 1, 'DonHangID' => 1, 'SoTien' => 10000,
@@ -47,8 +45,8 @@ class SchemaModuleCompatibilityTest extends TestCase
         $payment->setRelation('donHang', $order);
 
         $html = view('admin.payments.index', [
-            'orders' => new LengthAwarePaginator(collect([$order]), 1, 10),
-            'errors' => new ViewErrorBag,
+            'payments' => new LengthAwarePaginator(collect([$payment]), 1, 10),
+            'methods' => [], 'statuses' => [],
         ])->render();
 
         $this->assertStringContainsString('src="https://example.test/mobile.jpg?a=1&amp;b=&quot;2&quot;"', $html);
@@ -68,13 +66,11 @@ class SchemaModuleCompatibilityTest extends TestCase
                 'TrangThai' => $status->value,
             ]);
             $payment->setRelation('donHang', null);
-            $payment->setRelation('collectionAudit', null);
 
-            $html = view('admin.payment-history.index', [
+            $html = view('admin.payments.index', [
                 'payments' => new LengthAwarePaginator(collect([$payment]), 1, 10),
-                'totals' => (object) ['collected' => 0, 'refunded' => 0],
-                'collectors' => collect(),
-                'errors' => new ViewErrorBag,
+                'methods' => [],
+                'statuses' => [],
             ])->render();
 
             preg_match_all(
