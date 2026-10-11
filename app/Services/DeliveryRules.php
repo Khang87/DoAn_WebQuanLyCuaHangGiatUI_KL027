@@ -28,11 +28,21 @@ class DeliveryRules
             'method' => ['required', 'in:nhan_do,giao_do'],
             'fulfillment' => ['required', 'in:Tại cửa hàng,Tại nhà'],
             'address' => ['nullable', 'required_if:fulfillment,Tại nhà', 'string', 'max:255'],
-            'employee_id' => ['nullable', 'integer', EmployeeAssignment::rule($current?->NhanVienID)],
+            'employee_id' => ['required', 'integer', EmployeeAssignment::rule($current?->NhanVienID)],
             'status' => ['required', 'in:'.implode(',', DeliveryStatus::values())],
             'pickup_date' => ['nullable', 'required_if:method,nhan_do', 'required_if:status,picking,delivering,completed', 'required_with:pickup_time', 'date_format:Y-m-d'],
             'pickup_time' => ['nullable', 'required_if:method,nhan_do', 'required_if:status,picking,delivering,completed', 'required_with:pickup_date', 'date_format:H:i'],
             'notes' => ['nullable', 'string', 'max:500'],
+        ], [
+            'employee_id.required' => 'Vui lòng chọn nhân viên phụ trách.',
+            'employee_id.integer' => 'Nhân viên phụ trách không hợp lệ.',
+            'employee_id.exists' => 'Vui lòng chọn nhân viên đang hoạt động.',
+            'pickup_date.required_if' => 'Vui lòng chọn ngày giao nhận trước khi tiếp tục.',
+            'pickup_date.required_with' => 'Vui lòng chọn ngày giao nhận.',
+            'pickup_date.date_format' => 'Ngày giao nhận không hợp lệ.',
+            'pickup_time.required_if' => 'Vui lòng chọn giờ giao nhận trước khi tiếp tục.',
+            'pickup_time.required_with' => 'Vui lòng chọn giờ giao nhận.',
+            'pickup_time.date_format' => 'Định dạng giờ giao nhận không hợp lệ.',
         ])->validate();
 
         if (! empty($data['employee_id'])) {
@@ -41,8 +51,10 @@ class DeliveryRules
         if ($current && ((int) $data['order_id'] !== $current->DonHangID || strtoupper($data['method']) !== $current->LoaiGiaoNhan)) {
             throw ValidationException::withMessages(['order_id' => 'Không thể đổi đơn hàng hoặc chặng của phiếu đã tạo.']);
         }
-        $target = DeliveryStatus::parse($data['status']);
-        $previous = $current ? DeliveryStatus::parse($current->TrangThai) : DeliveryStatus::Pending;
+        $target = DeliveryStatus::from($data['status']);
+        $previous = $current
+            ? DeliveryStatus::parseForLeg($current->TrangThai, $current->LoaiGiaoNhan)
+            : DeliveryStatus::Pending;
         $isReturnLeg = $data['method'] === 'giao_do';
 
         if ($isReturnLeg) {
@@ -63,17 +75,21 @@ class DeliveryRules
             }
         }
 
-        if ($previous !== $target && ($previous === DeliveryStatus::Completed || $previous === DeliveryStatus::Cancelled || ($previous === DeliveryStatus::Delivering && $target === DeliveryStatus::Pending))) {
+        if ($previous !== $target && (
+            $previous === DeliveryStatus::Completed
+            || $previous === DeliveryStatus::Cancelled
+            || (in_array($previous, [DeliveryStatus::Picking, DeliveryStatus::Delivering], true) && $target === DeliveryStatus::Pending)
+        )) {
             throw ValidationException::withMessages(['status' => 'Không thể mở lại hoặc lùi trạng thái giao nhận.']);
         }
         if (($data['status'] === 'picking' && $data['method'] !== 'nhan_do') || ($data['status'] === 'delivering' && $data['method'] !== 'giao_do')) {
             throw ValidationException::withMessages(['status' => 'Trạng thái không khớp với chặng nhận/giao đồ.']);
         }
-        $executing = in_array($target, [DeliveryStatus::Delivering, DeliveryStatus::Completed], true);
+        $executing = in_array($target, [DeliveryStatus::Picking, DeliveryStatus::Delivering, DeliveryStatus::Completed], true);
         if ($executing && (! $current || $target !== $previous)) {
             $allowed = $data['method'] === 'nhan_do'
                 ? [OrderStatus::Pending, OrderStatus::Received]
-                : [OrderStatus::Washed, OrderStatus::Delivering, OrderStatus::Delivered];
+                : [OrderStatus::Washed, OrderStatus::Delivering, OrderStatus::Delivered, OrderStatus::Paid];
             if (! in_array($order->statusEnum(), $allowed, true)) {
                 throw ValidationException::withMessages(['status' => 'Đơn hàng chưa ở trạng thái cho phép thực hiện chặng giao nhận này.']);
             }

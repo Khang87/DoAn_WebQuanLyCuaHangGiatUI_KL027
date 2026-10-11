@@ -96,29 +96,31 @@ class DeliveryService
         return DB::transaction(function () use ($delivery, $data): GiaoNhan {
             $order = DonHang::query()->lockForUpdate()->findOrFail($delivery->DonHangID);
             $current = GiaoNhan::query()->lockForUpdate()->findOrFail($delivery->getKey());
+
+            return $this->updateLocked($order, $current, $data);
+        });
+    }
+
+    public function advanceProgress(GiaoNhan $delivery): GiaoNhan
+    {
+        return DB::transaction(function () use ($delivery): GiaoNhan {
+            $order = DonHang::query()->lockForUpdate()->findOrFail($delivery->DonHangID);
+            $current = GiaoNhan::query()->lockForUpdate()->findOrFail($delivery->getKey());
             DeliveryRules::assertMutableOrder($order);
             if ($current->DonHangID !== $order->DonHangID) {
                 throw ValidationException::withMessages(['order_id' => 'Phiếu đã thay đổi, vui lòng tải lại.']);
             }
-            $validated = DeliveryRules::validate($data, $order, $current);
-            $this->assertNoConflictingLeg($this->mapAttributes($validated), $current->getKey());
-            $attributes = $this->mapAttributes(array_intersect_key($validated, $data));
-            if ($current->ThoiGianDuKien?->format('Y-m-d H:i') === ($validated['pickup_date'].' '.$validated['pickup_time'])) {
-                unset($attributes['ThoiGianDuKien']);
-            }
-            $previousStatus = DeliveryStatus::parseForLeg($current->TrangThai, $current->LoaiGiaoNhan);
-            $current->update($attributes);
-            $targetStatus = DeliveryStatus::parseForLeg($current->TrangThai, $current->LoaiGiaoNhan);
 
-            if ($current->LoaiGiaoNhan === 'GIAO_DO' && $previousStatus !== $targetStatus) {
-                if ($targetStatus === DeliveryStatus::Delivering) {
-                    $this->orderService->syncStatusFromDelivery($order, $current, OrderStatus::Delivering);
-                } elseif ($targetStatus === DeliveryStatus::Completed) {
-                    $this->orderService->syncStatusFromDelivery($order, $current, OrderStatus::Delivered);
-                }
-            }
+            $currentStatus = DeliveryStatus::parseForLeg($current->TrangThai, $current->LoaiGiaoNhan);
+            $nextStatus = match (true) {
+                $currentStatus === DeliveryStatus::Pending && $current->LoaiGiaoNhan === 'NHAN_DO' => DeliveryStatus::Picking,
+                $currentStatus === DeliveryStatus::Pending && $current->LoaiGiaoNhan === 'GIAO_DO' => DeliveryStatus::Delivering,
+                $currentStatus === DeliveryStatus::Picking && $current->LoaiGiaoNhan === 'NHAN_DO' => DeliveryStatus::Completed,
+                $currentStatus === DeliveryStatus::Delivering && $current->LoaiGiaoNhan === 'GIAO_DO' => DeliveryStatus::Completed,
+                default => throw ValidationException::withMessages(['status' => 'Phiếu giao nhận không còn tiến độ nào cần xác nhận.']),
+            };
 
-            return $current->fresh();
+            return $this->updateLocked($order, $current, ['status' => $nextStatus->value]);
         });
     }
 
@@ -153,6 +155,33 @@ class DeliveryService
             ->when($exceptId !== null, fn ($query) => $query->whereKeyNot($exceptId))->exists()) {
             throw ValidationException::withMessages(['method' => 'Đơn hàng đã có phiếu còn hiệu lực cho chặng này.']);
         }
+    }
+
+    private function updateLocked(DonHang $order, GiaoNhan $current, array $data): GiaoNhan
+    {
+        DeliveryRules::assertMutableOrder($order);
+        if ($current->DonHangID !== $order->DonHangID) {
+            throw ValidationException::withMessages(['order_id' => 'Phiếu đã thay đổi, vui lòng tải lại.']);
+        }
+        $validated = DeliveryRules::validate($data, $order, $current);
+        $this->assertNoConflictingLeg($this->mapAttributes($validated), $current->getKey());
+        $attributes = $this->mapAttributes(array_intersect_key($validated, $data));
+        if ($current->ThoiGianDuKien?->format('Y-m-d H:i') === ($validated['pickup_date'].' '.$validated['pickup_time'])) {
+            unset($attributes['ThoiGianDuKien']);
+        }
+        $previousStatus = DeliveryStatus::parseForLeg($current->TrangThai, $current->LoaiGiaoNhan);
+        $current->update($attributes);
+        $targetStatus = DeliveryStatus::parseForLeg($current->TrangThai, $current->LoaiGiaoNhan);
+
+        if ($current->LoaiGiaoNhan === 'GIAO_DO' && $previousStatus !== $targetStatus) {
+            if ($targetStatus === DeliveryStatus::Delivering) {
+                $this->orderService->syncStatusFromDelivery($order, $current, OrderStatus::Delivering);
+            } elseif ($targetStatus === DeliveryStatus::Completed) {
+                $this->orderService->syncStatusFromDelivery($order, $current, OrderStatus::Delivered);
+            }
+        }
+
+        return $current->fresh();
     }
 
     private function mapAttributes(array $data): array

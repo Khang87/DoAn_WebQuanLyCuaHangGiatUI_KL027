@@ -191,15 +191,14 @@ class DeliveryContractTest extends TestCase
         }
     }
 
-    public function test_88_delivery_can_remain_unassigned(): void
+    public function test_88_delivery_requires_an_assigned_employee(): void
     {
         foreach ([null, ''] as $employeeId) {
-            $this->withoutMiddleware()->post(route('deliveries.store'), $this->data(['employee_id' => $employeeId]))->assertSessionHasNoErrors();
-            $this->assertNull(GiaoNhan::first()->NhanVienID);
-            GiaoNhan::query()->delete();
-            $delivery = app(DeliveryService::class)->create($this->data(['employee_id' => $employeeId]));
-            $this->assertNull($delivery->NhanVienID);
-            GiaoNhan::query()->delete();
+            $response = $this->withoutMiddleware()->post(route('deliveries.store'), $this->data(['employee_id' => $employeeId]));
+            $errors = $response->getSession()->get('errors')->getBag('default')->messages();
+            $this->assertArrayHasKey('employee_id', $errors);
+            $this->reject(fn () => app(DeliveryService::class)->create($this->data(['employee_id' => $employeeId])), 'employee_id');
+            $this->assertSame(0, GiaoNhan::count());
         }
     }
 
@@ -301,7 +300,9 @@ class DeliveryContractTest extends TestCase
 
     public function test_return_leg_cannot_start_without_an_active_assignee(): void
     {
-        $delivery = app(DeliveryService::class)->create($this->data(['employee_id' => null]));
+        $delivery = app(DeliveryService::class)->create($this->data());
+        DB::table('GiaoNhan')->where('GiaoNhanID', $delivery->GiaoNhanID)->update(['NhanVienID' => null]);
+        $delivery = $delivery->fresh();
         $this->reject(fn () => app(DeliveryService::class)->update($delivery, [
             'status' => 'delivering',
             'pickup_date' => '2026-10-08',
@@ -336,6 +337,75 @@ class DeliveryContractTest extends TestCase
         $this->assertSame(OrderStatus::Delivered->value, DB::table('DonHang')->where('DonHangID', 1)->value('TrangThai'));
         $this->assertSame(PaymentStatus::Paid->value, DB::table('ThanhToan')->where('DonHangID', 1)->value('TrangThai'));
         $this->assertSame(1, DB::table('ThanhToan')->where('DonHangID', 1)->count());
+    }
+
+    public function test_progress_action_advances_pickup_to_completion_and_rejects_terminal_slip(): void
+    {
+        DB::table('DonHang')->where('DonHangID', 1)->update(['TrangThai' => OrderStatus::Received->value]);
+        $service = app(DeliveryService::class);
+        $delivery = $service->create($this->data([
+            'method' => 'nhan_do',
+            'pickup_date' => '2026-10-08',
+            'pickup_time' => '10:00',
+        ]));
+
+        $delivery = $service->advanceProgress($delivery);
+        $this->assertSame('Đang thực hiện', $delivery->TrangThai);
+
+        $delivery = $service->advanceProgress($delivery);
+        $this->assertSame('Hoàn thành', $delivery->TrangThai);
+        $this->reject(fn () => $service->advanceProgress($delivery), 'status');
+    }
+
+    public function test_progress_action_route_starts_return_delivery_and_syncs_order(): void
+    {
+        $delivery = app(DeliveryService::class)->create($this->data([
+            'employee_id' => 1,
+            'pickup_date' => '2026-10-08',
+            'pickup_time' => '10:00',
+        ]));
+
+        $this->withoutMiddleware()
+            ->post(route('deliveries.advance-progress', $delivery))
+            ->assertRedirect(route('deliveries.show', $delivery))
+            ->assertSessionHas('success');
+
+        $this->assertSame('Đang thực hiện', $delivery->fresh()->TrangThai);
+        $this->assertSame(OrderStatus::Delivering->value, DB::table('DonHang')->where('DonHangID', 1)->value('TrangThai'));
+    }
+
+    public function test_progress_action_reports_missing_return_schedule_without_changing_status(): void
+    {
+        $delivery = app(DeliveryService::class)->create($this->data(['employee_id' => 1]));
+
+        $this->withoutMiddleware()
+            ->post(route('deliveries.advance-progress', $delivery))
+            ->assertRedirect(route('deliveries.show', $delivery))
+            ->assertSessionHas('error');
+
+        $this->assertSame('Chờ thực hiện', $delivery->fresh()->TrangThai);
+        $this->assertSame(OrderStatus::Washed->value, DB::table('DonHang')->where('DonHangID', 1)->value('TrangThai'));
+    }
+
+    public function test_progress_action_shows_a_clear_message_when_pickup_schedule_is_missing(): void
+    {
+        DB::table('DonHang')->where('DonHangID', 1)->update(['TrangThai' => OrderStatus::Received->value]);
+        DB::table('GiaoNhan')->insert([
+            'DonHangID' => 1,
+            'NhanVienID' => 1,
+            'LoaiGiaoNhan' => 'NHAN_DO',
+            'HinhThuc' => 'Tại nhà',
+            'DiaChi' => '12 Nguyễn Huệ',
+            'TrangThai' => 'Chờ thực hiện',
+        ]);
+        $delivery = GiaoNhan::query()->firstOrFail();
+
+        $this->withoutMiddleware()
+            ->post(route('deliveries.advance-progress', $delivery))
+            ->assertRedirect(route('deliveries.show', $delivery))
+            ->assertSessionHas('error', 'Vui lòng chọn ngày giao nhận trước khi tiếp tục.');
+
+        $this->assertSame('Chờ thực hiện', $delivery->fresh()->TrangThai);
     }
 
     public function test_technical_failure_rolls_back_delivery_and_order_together(): void
@@ -494,5 +564,38 @@ class DeliveryContractTest extends TestCase
         $this->reject(fn () => $service->update($delivery, ['pickup_date' => '2026-10-09', 'pickup_time' => '10:00']), 'pickup_time');
         $delivery = $service->update($delivery, ['pickup_date' => null, 'pickup_time' => null]);
         $this->assertNull($delivery->ThoiGianDuKien);
+    }
+
+    public static function deliveryProgressDisplayCases(): array
+    {
+        return [
+            ['NHAN_DO', 'Đang thực hiện', 'Đang nhận đồ', 'Hiện tại'],
+            ['GIAO_DO', 'Đang thực hiện', 'Đang giao đồ', 'Hiện tại'],
+            ['GIAO_DO', 'Hoàn thành', 'Hoàn thành', 'Đã hoàn tất'],
+        ];
+    }
+
+    #[DataProvider('deliveryProgressDisplayCases')]
+    public function test_delivery_detail_displays_progress_for_the_selected_leg(
+        string $deliveryType,
+        string $status,
+        string $currentStep,
+        string $currentLabel,
+    ): void {
+        $delivery = (new GiaoNhan)->forceFill([
+            'GiaoNhanID' => 1,
+            'MaGiaoNhan' => 'GH0001',
+            'LoaiGiaoNhan' => $deliveryType,
+            'HinhThuc' => 'Tại nhà',
+            'TrangThai' => $status,
+        ]);
+        $delivery->setRelation('donHang', null);
+        $delivery->setRelation('nhanVien', null);
+
+        $html = view('admin.deliveries.show', ['delivery' => $delivery])->render();
+
+        $this->assertStringContainsString('Tiến độ giao nhận', $html);
+        $this->assertStringContainsString($currentStep, $html);
+        $this->assertStringContainsString($currentLabel, $html);
     }
 }

@@ -26,7 +26,7 @@ class LuuGiaoNhanRequest extends FormRequest
     {
         return [
             'order_id' => ['required', 'exists:DonHang,DonHangID'],
-            'employee_id' => ['nullable', 'integer', EmployeeAssignment::rule($this->currentDelivery()?->NhanVienID)],
+            'employee_id' => ['required', 'integer', EmployeeAssignment::rule($this->currentDelivery()?->NhanVienID)],
             'method' => ['required', 'in:nhan_do,giao_do'],
             'fulfillment' => ['sometimes', 'in:Tại cửa hàng,Tại nhà'],
             'address' => ['nullable', 'required_if:fulfillment,Tại nhà', 'string', 'max:255'],
@@ -69,6 +69,8 @@ class LuuGiaoNhanRequest extends FormRequest
         return [
             'order_id.required' => 'Đơn hàng là bắt buộc để tạo giao nhận.',
             'order_id.exists' => 'Đơn hàng không tồn tại.',
+            'employee_id.required' => 'Vui lòng chọn nhân viên phụ trách.',
+            'employee_id.integer' => 'Nhân viên phụ trách không hợp lệ.',
             'employee_id.exists' => 'Vui lòng chọn nhân viên đang hoạt động.',
             'method.required' => 'Loại giao nhận là bắt buộc.',
             'method.in' => 'Loại giao nhận không hợp lệ.',
@@ -76,8 +78,12 @@ class LuuGiaoNhanRequest extends FormRequest
             'fulfillment.in' => 'Hình thức phải là Tại cửa hàng hoặc Tại nhà.',
             'address.max' => 'Địa chỉ không được vượt quá 255 ký tự.',
             'pickup_date.required' => 'Ngày giao nhận là bắt buộc.',
-            'pickup_date.date' => 'Ngày giao nhận không hợp lệ.',
+            'pickup_date.required_if' => 'Vui lòng chọn ngày giao nhận trước khi tiếp tục.',
+            'pickup_date.required_with' => 'Vui lòng chọn ngày giao nhận.',
+            'pickup_date.date_format' => 'Ngày giao nhận không hợp lệ.',
             'pickup_time.required' => 'Giờ giao nhận là bắt buộc.',
+            'pickup_time.required_if' => 'Vui lòng chọn giờ giao nhận trước khi tiếp tục.',
+            'pickup_time.required_with' => 'Vui lòng chọn giờ giao nhận.',
             'pickup_time.date_format' => 'Định dạng giờ phải là HH:MM.',
             'pickup_time.after' => 'Thời gian giao nhận phải sau thời điểm hiện tại.',
             'status.in' => 'Trạng thái không hợp lệ.',

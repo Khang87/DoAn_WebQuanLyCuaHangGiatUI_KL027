@@ -1,0 +1,8 @@
+.github/
+docs/
+tests/
+tasks/
+scripts/
+database/factories/
+database/seeders/
+phpunit.xml

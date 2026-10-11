@@ -13,6 +13,7 @@ use App\Models\NhanVien;
 use App\Services\DeliveryService;
 use App\Support\FriendlyError;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 
@@ -133,6 +134,30 @@ class GiaoNhanController extends Controller
         }
 
         return view('admin.deliveries.show', compact('delivery'));
+    }
+
+    public function advanceProgress(int $id): RedirectResponse
+    {
+        $delivery = $this->deliveryService->find($id);
+
+        if (! $delivery) {
+            abort(404);
+        }
+
+        try {
+            $delivery = $this->deliveryService->advanceProgress($delivery);
+        } catch (ValidationException $exception) {
+            $message = collect($exception->errors())->flatten()->first() ?? $exception->getMessage();
+
+            return redirect()->route('deliveries.show', $delivery)->with('error', $message);
+        } catch (SettledOrderException $exception) {
+            return redirect()->route('deliveries.show', $delivery)->with('error', $exception->getMessage());
+        }
+
+        $status = DeliveryStatus::parseForLeg($delivery->TrangThai, $delivery->LoaiGiaoNhan);
+
+        return redirect()->route('deliveries.show', $delivery)
+            ->with('success', 'Đã xác nhận tiến độ: '.$status->label().'.');
     }
 
     public function edit(int $id)

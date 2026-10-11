@@ -74,6 +74,16 @@ class OrderDeliveryProgressTest extends TestCase
             $table->decimal('SoTien', 12, 2)->default(0);
             $table->string('TrangThai');
         });
+        Schema::create('KhachHang', function (Blueprint $table): void {
+            $table->increments('KhachHangID');
+            $table->string('HoTen')->nullable();
+        });
+        Schema::create('DiemTichLuy', function (Blueprint $table): void {
+            $table->increments('DiemTichLuyID');
+            $table->unsignedInteger('KhachHangID')->unique();
+            $table->integer('DiemHienTai')->default(0);
+            $table->dateTime('NgayCapNhat')->nullable();
+        });
         Schema::create('NhatKyHeThong', function (Blueprint $table): void {
             $table->increments('NhatKyID');
             $table->unsignedInteger('TaiKhoanID')->nullable();
@@ -91,7 +101,7 @@ class OrderDeliveryProgressTest extends TestCase
 
     protected function tearDown(): void
     {
-        foreach (['NhatKyHeThong', 'ThanhToan', 'HoaDon', 'GiaoNhan', 'NhanVien', 'Booking', 'DonHang'] as $table) {
+        foreach (['NhatKyHeThong', 'DiemTichLuy', 'KhachHang', 'ThanhToan', 'HoaDon', 'GiaoNhan', 'NhanVien', 'Booking', 'DonHang'] as $table) {
             Schema::dropIfExists($table);
         }
 
@@ -183,6 +193,45 @@ class OrderDeliveryProgressTest extends TestCase
         $this->assertSame('Đang thực hiện', $updated->TrangThai);
         $this->assertSame(OrderStatus::Delivering->value, DB::table('DonHang')->where('DonHangID', 5)->value('TrangThai'));
         $this->assertSame(PaymentStatus::Paid->value, DB::table('ThanhToan')->where('DonHangID', 5)->value('TrangThai'));
+    }
+
+    public function test_legacy_paid_order_can_progress_home_delivery_without_changing_payment_status(): void
+    {
+        $this->createOrder(8);
+        DB::table('KhachHang')->insert(['KhachHangID' => 1, 'HoTen' => 'Khách test']);
+        DB::table('DonHang')->where('DonHangID', 8)->update([
+            'TrangThai' => OrderStatus::Paid->value,
+            'KhachHangID' => 1,
+        ]);
+        DB::table('NhanVien')->insert(['NhanVienID' => 1, 'TrangThai' => 'Hoạt động']);
+        DB::table('GiaoNhan')->insert([
+            'DonHangID' => 8,
+            'NhanVienID' => 1,
+            'LoaiGiaoNhan' => 'GIAO_DO',
+            'HinhThuc' => 'Tại nhà',
+            'DiaChi' => '12 Nguyễn Huệ',
+            'ThoiGianDuKien' => now()->addDay(),
+            'TrangThai' => 'Chờ thực hiện',
+        ]);
+        DB::table('ThanhToan')->insert([
+            'DonHangID' => 8,
+            'SoTien' => 25000,
+            'TrangThai' => PaymentStatus::Paid->value,
+        ]);
+
+        $service = app(DeliveryService::class);
+        $delivery = GiaoNhan::findOrFail(1);
+
+        $delivery = $service->advanceProgress($delivery);
+        $this->assertSame('Đang thực hiện', $delivery->TrangThai);
+        $this->assertSame(OrderStatus::Delivering->value, DB::table('DonHang')->where('DonHangID', 8)->value('TrangThai'));
+        $this->assertSame(PaymentStatus::Paid->value, DB::table('ThanhToan')->where('DonHangID', 8)->value('TrangThai'));
+
+        $delivery = $service->advanceProgress($delivery);
+        $this->assertSame('Hoàn thành', $delivery->TrangThai);
+        $this->assertSame(OrderStatus::Delivered->value, DB::table('DonHang')->where('DonHangID', 8)->value('TrangThai'));
+        $this->assertSame(PaymentStatus::Paid->value, DB::table('ThanhToan')->where('DonHangID', 8)->value('TrangThai'));
+        $this->assertSame(2500, DB::table('DiemTichLuy')->where('KhachHangID', 1)->value('DiemHienTai'));
     }
 
     public function test_order_detail_header_shows_paid_badge_only_once_for_legacy_paid_order(): void

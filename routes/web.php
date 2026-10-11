@@ -179,6 +179,9 @@ Route::middleware(['auth', 'reject.customer'])->group(function () {
         ->middlewareFor(['create', 'store', 'edit', 'update', 'destroy'], 'permission:orders.edit');
 
     // Delivery Management (Staff & Admin)
+    Route::post('deliveries/{delivery}/advance-progress', [GiaoNhanController::class, 'advanceProgress'])
+        ->middleware('permission:deliveries.edit')
+        ->name('deliveries.advance-progress');
     Route::resource('deliveries', GiaoNhanController::class)
         ->middlewareFor(['index', 'show'], 'permission:deliveries.view')
         ->middlewareFor(['create', 'store'], 'permission:deliveries.create')

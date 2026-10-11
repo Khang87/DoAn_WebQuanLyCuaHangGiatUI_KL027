@@ -6,7 +6,90 @@
 @section('content')
 @php
     $deliveryCode = $delivery->MaGiaoNhan ?: 'GH' . str_pad($delivery->GiaoNhanID, 4, '0', STR_PAD_LEFT);
+    $deliveryStatus = \App\Enums\DeliveryStatus::parseForLeg($delivery->TrangThai, $delivery->LoaiGiaoNhan);
+    $activeDeliveryStatus = $delivery->LoaiGiaoNhan === 'NHAN_DO'
+        ? \App\Enums\DeliveryStatus::Picking
+        : \App\Enums\DeliveryStatus::Delivering;
+    $deliveryProgressSteps = [
+        ['status' => \App\Enums\DeliveryStatus::Pending, 'label' => 'Chờ xác nhận'],
+        ['status' => $activeDeliveryStatus, 'label' => $activeDeliveryStatus->label()],
+        ['status' => \App\Enums\DeliveryStatus::Completed, 'label' => 'Hoàn thành'],
+    ];
+    $completedDeliverySteps = match ($deliveryStatus) {
+        \App\Enums\DeliveryStatus::Picking, \App\Enums\DeliveryStatus::Delivering => 1,
+        \App\Enums\DeliveryStatus::Completed => count($deliveryProgressSteps),
+        default => 0,
+    };
+    $progressAction = match ($deliveryStatus) {
+        \App\Enums\DeliveryStatus::Pending => [
+            'label' => $delivery->LoaiGiaoNhan === 'NHAN_DO' ? 'Bắt đầu nhận đồ' : 'Bắt đầu giao đồ',
+            'icon' => $delivery->LoaiGiaoNhan === 'NHAN_DO' ? 'bi-box-arrow-in-down' : 'bi-truck',
+            'variant' => 'primary',
+        ],
+        \App\Enums\DeliveryStatus::Picking => [
+            'label' => 'Xác nhận đã nhận đồ',
+            'icon' => 'bi-check-circle',
+            'variant' => 'success',
+        ],
+        \App\Enums\DeliveryStatus::Delivering => [
+            'label' => 'Xác nhận đã giao đồ',
+            'icon' => 'bi-check-circle',
+            'variant' => 'success',
+        ],
+        default => null,
+    };
 @endphp
+
+@push('styles')
+    <style>
+        .order-detail-timeline {
+            display: grid;
+            gap: 0.25rem;
+        }
+
+        .order-detail-timeline .detail-timeline__item {
+            min-height: 2.5rem;
+            padding: 0.375rem 0.625rem;
+            border-radius: 0.5rem;
+        }
+
+        .order-detail-timeline .detail-timeline__dot {
+            display: inline-flex;
+            width: 1.25rem;
+            height: 1.25rem;
+            align-items: center;
+            justify-content: center;
+            border: 2px solid #cbd5e1;
+            background: #fff;
+            color: #fff;
+            font-size: 0.75rem;
+        }
+
+        .order-detail-timeline .detail-timeline__item--done {
+            color: #166534;
+        }
+
+        .order-detail-timeline .detail-timeline__item--done .detail-timeline__dot {
+            border-color: #16a34a;
+            background: #16a34a;
+        }
+
+        .order-detail-timeline .detail-timeline__item--current {
+            background: #eff6ff;
+            box-shadow: inset 0 0 0 1px #93c5fd;
+            color: #1e3a8a;
+        }
+
+        .order-detail-timeline .detail-timeline__item--current .detail-timeline__dot {
+            border-color: #2563eb;
+            box-shadow: 0 0 0 3px #dbeafe;
+        }
+
+        .order-detail-timeline .detail-timeline__item--muted {
+            color: #64748b;
+        }
+    </style>
+@endpush
 
 <x-admin.detail.page-header
     title="Phiếu giao nhận {{ $deliveryCode }}"
@@ -59,6 +142,37 @@
                 </div>
             @endif
         </x-admin.detail.panel>
+
+        <x-admin.detail.panel title="Tiến độ giao nhận" icon="bi-clock-history" :iconClass="'bg-secondary-subtle text-secondary'">
+            <div class="detail-timeline order-detail-timeline">
+                @foreach($deliveryProgressSteps as $index => $step)
+                    @php
+                        $isCurrentStep = $deliveryStatus === $step['status'];
+                        $isCompletedStep = $index < $completedDeliverySteps;
+                        $timelineState = $isCompletedStep ? 'done' : ($isCurrentStep ? 'current' : 'muted');
+                    @endphp
+                    <div class="detail-timeline__item detail-timeline__item--{{ $timelineState }}">
+                        <span class="detail-timeline__dot">
+                            @if($isCompletedStep)<i class="bi bi-check-lg" aria-hidden="true"></i>@endif
+                        </span>
+                        <span>{{ $step['label'] }}</span>
+                        @if($isCurrentStep)
+                            <span class="badge {{ $isCompletedStep ? 'bg-success-subtle text-success-emphasis border border-success' : 'bg-primary-subtle text-primary-emphasis border border-primary' }} px-2 py-1 rounded-pill ms-auto">
+                                {{ $isCompletedStep ? 'Đã hoàn tất' : 'Hiện tại' }}
+                            </span>
+                        @endif
+                    </div>
+                @endforeach
+
+                @if($deliveryStatus === \App\Enums\DeliveryStatus::Cancelled)
+                    <div class="detail-timeline__item text-danger fw-semibold">
+                        <span class="detail-timeline__dot bg-danger"></span>
+                        <span>Đã hủy</span>
+                        <span class="badge bg-danger-subtle text-danger-emphasis border border-danger px-2 py-1 rounded-pill ms-auto">Hiện tại</span>
+                    </div>
+                @endif
+            </div>
+        </x-admin.detail.panel>
     </div>
 
     {{-- ============ CỘT PHỤ (5/12) ============ --}}
@@ -71,6 +185,17 @@
                 <h5 class="card-title mb-0 fw-bold">Thao tác</h5>
             </div>
             <div class="card-body d-flex flex-column gap-2">
+                @if($progressAction)
+                    @can('deliveries.edit')
+                        <form action="{{ route('deliveries.advance-progress', $delivery) }}" method="POST">
+                            @csrf
+                            <button type="submit" class="btn btn-{{ $progressAction['variant'] }} w-100 py-2">
+                                <i class="bi {{ $progressAction['icon'] }} me-1" aria-hidden="true"></i>{{ $progressAction['label'] }}
+                            </button>
+                        </form>
+                    @endcan
+                @endif
+
                 <a href="{{ route('deliveries.edit', $delivery) }}" class="btn btn-primary w-100 py-2">
                     <i class="fas fa-pencil-alt me-1"></i> Chỉnh sửa
                 </a>

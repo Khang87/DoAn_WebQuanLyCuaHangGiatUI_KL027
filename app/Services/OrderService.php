@@ -1096,7 +1096,7 @@ class OrderService
 
             if ($target === OrderStatus::Delivering) {
                 if (
-                    ! in_array($lockedOrder->statusEnum(), [OrderStatus::Washed, OrderStatus::Delivering], true)
+                    ! in_array($lockedOrder->statusEnum(), [OrderStatus::Washed, OrderStatus::Delivering, OrderStatus::Paid], true)
                     || $deliveryStatus !== DeliveryStatus::Delivering
                     || ! NhanVien::query()->whereKey($lockedDelivery->NhanVienID)->where('TrangThai', 'Hoạt động')->exists()
                 ) {

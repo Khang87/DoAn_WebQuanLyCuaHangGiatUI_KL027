@@ -15,6 +15,17 @@
     $balanceTextClass = $balance > 0 ? 'text-danger' : 'text-success';
 @endphp
 
+<div class="invoice-print-heading">
+    <h1>HÓA ĐƠN {{ $invoice->MaHoaDon ?: '#'.$invoice->HoaDonID }}</h1>
+    <div>Ngày lập: {{ $invoice->NgayLap?->format('d/m/Y') ?: now()->format('d/m/Y') }}</div>
+    @if($customer?->HoTen)
+        <div>Khách hàng: {{ $customer->HoTen }}</div>
+    @endif
+    @if($customer?->SoDienThoai)
+        <div>Số điện thoại: {{ $customer->SoDienThoai }}</div>
+    @endif
+</div>
+
 <x-admin.detail.page-header
     title="Hóa đơn {{ $invoice->MaHoaDon ?: '#' . $invoice->HoaDonID }}"
     :subtitle="$invoice->NgayLap?->format('d/m/Y')"
@@ -25,10 +36,12 @@
 </x-admin.detail.page-header>
 
 @if($isPaid)
-    <x-admin.detail.locked text="Hóa đơn đã thanh toán nên bị khóa. Liên hệ Chủ cửa hàng nếu cần điều chỉnh." />
+    <div class="no-print">
+        <x-admin.detail.locked text="Hóa đơn đã thanh toán nên bị khóa. Liên hệ Chủ cửa hàng nếu cần điều chỉnh." />
+    </div>
 @endif
 
-<div class="row g-4 align-items-start">
+<div class="row g-4 align-items-start invoice-detail-layout">
     {{-- ============ CỘT CHÍNH (8/12) ============ --}}
     <div class="col-lg-8">
         <x-admin.detail.panel title="Dịch vụ đã thực hiện" icon="bi-list-check" :iconClass="'bg-primary-subtle text-primary'" flush>
@@ -69,7 +82,7 @@
         </x-admin.detail.panel>
 
         @if($balance > 0)
-            <x-admin.detail.panel title="Thanh toán" icon="bi-qr-code-scan" :iconClass="'bg-info-subtle text-info'">
+            <x-admin.detail.panel title="Thanh toán" icon="bi-qr-code-scan" :iconClass="'bg-info-subtle text-info'" class="no-print">
                 <div class="text-center py-3">
                     <div class="bg-white border rounded d-inline-block p-4">
                         <i class="bi bi-qr-code-scan text-muted" style="font-size: 4rem;"></i>
@@ -83,7 +96,7 @@
             </x-admin.detail.panel>
         @endif
 
-        <x-admin.detail.panel title="Lịch sử thay đổi" icon="bi-clock-history" :iconClass="'bg-secondary-subtle text-secondary'">
+        <x-admin.detail.panel title="Lịch sử thay đổi" icon="bi-clock-history" :iconClass="'bg-secondary-subtle text-secondary'" class="no-print">
             @if($invoice->lichSuThayDoiHoaDons->isEmpty())
                 <x-admin.detail.empty message="Chưa có lịch sử thay đổi hóa đơn" icon="bi-clock" />
             @else
@@ -225,17 +238,65 @@
 
 @push('styles')
 <style>
+    .invoice-print-heading {
+        display: none;
+    }
+
+    @page {
+        size: A4 portrait;
+        margin: 14mm;
+    }
+
     @media print {
         .sidebar-wrapper,
         .navbar-custom,
-        .detail-header,
         .detail-panel__icon,
         .no-print,
-        .card.bg-light {
+        .card.bg-light,
+        .detail-header {
             display: none !important;
         }
 
+        body,
+        .main-wrapper {
+            margin: 0 !important;
+            background: #fff !important;
+            color: #000 !important;
+        }
+
+        .main-wrapper {
+            width: 100% !important;
+            min-height: 0 !important;
+        }
+
         .content-wrapper {
+            padding: 0 !important;
+        }
+
+        .invoice-print-heading {
+            display: block !important;
+            margin-bottom: 1rem;
+            padding-bottom: 0.75rem;
+            border-bottom: 1px solid #999;
+            color: #000 !important;
+            font-size: 10pt;
+        }
+
+        .invoice-print-heading h1 {
+            margin: 0 0 0.5rem;
+            font-size: 18pt;
+            font-weight: 700;
+        }
+
+        .invoice-detail-layout {
+            display: block !important;
+            margin: 0 !important;
+        }
+
+        .invoice-detail-layout > [class*="col-"] {
+            width: 100% !important;
+            max-width: 100% !important;
+            flex: 0 0 100% !important;
             padding: 0 !important;
         }
 
@@ -245,7 +306,33 @@
         }
 
         .detail-panel {
+            margin-bottom: 0.75rem !important;
             page-break-inside: avoid;
+            break-inside: avoid;
+        }
+
+        .table-responsive {
+            overflow: visible !important;
+        }
+
+        .detail-table {
+            width: 100% !important;
+            border-collapse: collapse !important;
+            color: #000 !important;
+            font-size: 9pt;
+        }
+
+        .detail-table th,
+        .detail-table td {
+            padding: 0.35rem !important;
+            border: 1px solid #999 !important;
+            background: #fff !important;
+            color: #000 !important;
+        }
+
+        a {
+            color: #000 !important;
+            text-decoration: none !important;
         }
     }
 </style>
