@@ -444,3 +444,9 @@ Người nhận đổi mật khẩu tại `/internal/reset-password`; thành cô
 Triển khai cần `INTERNAL_OTP_CACHE_STORE=redis` và Resend đã cấu hình. Lệnh `php artisan notifications:grant-default` backfill quyền cho nhóm hiện có, chạy lại không tạo liên kết trùng. Nhóm mới được gán mặc định trong transaction; cả ba luồng chỉnh quyền giữ quyền này. Scheduler mỗi phút dọn notification OTP hết hạn; global scope vẫn ẩn mã hết hạn dù scheduler chưa chạy. README chỉ hướng dẫn, không xác nhận backfill/scheduler đã chạy trên production.
 
 Xem [hướng dẫn OTP](./docs/ADMIN_TRIGGERED_OTP.md), [InternalOtpTest.php](./tests/Feature/InternalOtpTest.php) và **Nhóm 3 — Admin-triggered OTP** trong [TESTCASES.md](./TESTCASES.md) (STT **348–371**, gồm `TC-OTP-NOTIFY-01`–`21` và ba ca hồi quy HTTP). Số liệu 275 passed / 192 skipped trong hướng dẫn OTP là lịch sử; baseline suite hiện hành ở mục **Trạng thái kiểm thử hồi quy** phía trên. Kiểm thử tự động dùng cache cô lập và mock Resend, không xác minh email/Redis production.
+
+### Thu tiền và đối soát
+
+- **Thanh toán**: danh sách đơn cần thu tiền, chọn đơn → phương thức/số tiền → ghi nhận giao dịch. Giữ quy tắc thu đủ một lần, không hỗ trợ trả góp. Quyền thu tiền vẫn là `payments.create`; trạng thái xử lý đơn không thay thế trạng thái tài chính.
+- **Lịch sử thanh toán**: danh sách giao dịch chỉ đọc, mã giao dịch thực tế, bộ lọc ngày/phương thức/người thực hiện, và tổng đã thu/hoàn/thu ròng trên toàn bộ kết quả. Giao dịch chờ hoặc thất bại không đóng góp vào tổng tiền.
+- Người thu tiền được ghi từ phiên đăng nhập vào `NhatKyHeThong` cùng transaction thu tiền. Dữ liệu cũ thiếu người thực hiện hiển thị “Chưa ghi nhận”, không suy đoán từ người phụ trách đơn.

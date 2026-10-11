@@ -16,6 +16,7 @@
                 <x-admin.detail.info-item label="Phương thức" :value="$payment->getMethodLabel()" />
                 <x-admin.detail.info-item label="Mã giao dịch" :value="$payment->MaGiaoDich" />
                 <x-admin.detail.info-item label="Thời gian" :value="$payment->ThoiGian?->format('d/m/Y H:i')" />
+                <x-admin.detail.info-item label="Người thực hiện" :value="$payment->collectorName()" />
                 <x-admin.detail.info-item label="Ghi chú" :value="$payment->GhiChu" />
             </x-admin.detail.info-grid>
         </x-admin.detail.panel>
