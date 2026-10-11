@@ -115,7 +115,7 @@
                         <h6 class="fw-bold mb-3"><i class="bi bi-qr-code-scan me-2"></i>Thông tin chuyển khoản VietQR</h6>
                         <x-admin.vietqr-payment
                             :amount="$preselectedAmount ?? old('amount', 0)"
-                            :memo="'Thanh toan hoa don ' . ($preselectedInvoice?->MaHoaDon ?: $preselectedOrder?->MaDonHang ?: '')"
+                            :memo="$preselectedInvoice?->MaHoaDon ?: $preselectedOrder?->MaDonHang ?: ''"
                             id-prefix="payment-vietqr"
                         />
                     </div>
@@ -204,7 +204,7 @@
             }
 
             const invoiceCode = selectedOption?.dataset.invoiceCode || '';
-            const memo = 'Thanh toan hoa don' + (invoiceCode ? ' ' + invoiceCode : '');
+            const memo = invoiceCode;
             if (vietQrMemo) {
                 vietQrMemo.textContent = memo;
             }

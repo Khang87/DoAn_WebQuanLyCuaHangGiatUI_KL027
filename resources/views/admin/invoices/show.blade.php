@@ -85,7 +85,7 @@
             <x-admin.detail.panel title="Thanh toán qua VietQR" icon="bi-qr-code-scan" :iconClass="'bg-info-subtle text-info'">
                 <x-admin.vietqr-payment
                     :amount="$balance"
-                    :memo="'Thanh toan hoa don ' . $invoice->MaHoaDon"
+                    :memo="$invoice->MaHoaDon"
                     id-prefix="invoice-vietqr"
                 />
             </x-admin.detail.panel>
