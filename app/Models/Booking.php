@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Validator;
 
 class Booking extends Model
 {
@@ -32,6 +33,7 @@ class Booking extends Model
     public const CODE_PREFIX = 'DL';
 
     protected $fillable = [
+        'HinhThucGiaoDo', 'DiaChiGiao',
         'MaBooking', 'KhachHangID', 'HinhThucNhanDo', 'DiaChiNhan', 'HinhThucTraDo', 'DiaChiTra',
         'NgayHen', 'GioHen', 'GhiChu', 'TrangThai', 'NgayTao', 'NgayCapNhat',
         'IdempotencyKey', 'BookingID', 'NhanVienID', 'NhanVienXacNhanID',
@@ -51,9 +53,38 @@ class Booking extends Model
         'DiemDaTru' => 'boolean',
         'KhuyenMaiID' => 'integer',
         'KhuyenMaiDaTru' => 'boolean',
+        'PickupDistanceMeters' => 'integer',
+        'DeliveryDistanceMeters' => 'integer',
         'PickupDeliveryFee' => 'float',
         'DeliveryFee' => 'float',
     ];
+
+    public function getHinhThucTraDoAttribute(?string $value): ?string
+    {
+        return $value ?? ($this->attributes['HinhThucGiaoDo'] ?? null);
+    }
+
+    public function getDiaChiTraAttribute(?string $value): ?string
+    {
+        return $value ?? ($this->attributes['DiaChiGiao'] ?? null);
+    }
+
+    /** Fees accepted by mobile and persisted by the booking RPC; never re-geocode them. */
+    public function deliveryFeeSnapshot(): array
+    {
+        $fees = [
+            'pickup_fee' => $this->getRawOriginal('PickupDeliveryFee') ?? 0,
+            'return_fee' => $this->getRawOriginal('DeliveryFee') ?? 0,
+        ];
+        Validator::make($fees, [
+            'pickup_fee' => ['required', 'numeric', 'min:0'],
+            'return_fee' => ['required', 'numeric', 'min:0'],
+        ])->validate();
+        $fees['pickup_fee'] = $this->receiveMethodEnum() === ReceiveMethod::Home ? (float) $fees['pickup_fee'] : 0.0;
+        $fees['return_fee'] = $this->returnMethodEnum() === ReturnMethod::Home ? (float) $fees['return_fee'] : 0.0;
+
+        return [...$fees, 'total_fee' => $fees['pickup_fee'] + $fees['return_fee']];
+    }
 
     public function khachHang()
     {

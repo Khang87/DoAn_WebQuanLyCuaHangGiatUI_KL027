@@ -1006,3 +1006,6 @@ CREATE TRIGGER test_status_update AFTER UPDATE OF "TrangThai" ON public."DonHang
 CREATE TRIGGER test_booking_promo BEFORE INSERT OR UPDATE ON public."DonHang" FOR EACH ROW EXECUTE FUNCTION private.apply_booking_promotion_to_order();
 
 \ir message-realtime-fixture.sql
+
+\ir ../../database/sql/booking-mobile-delivery-fees.sql
+CREATE TRIGGER set_booking_delivery_fee_on_order BEFORE INSERT ON public."DonHang" FOR EACH ROW EXECUTE FUNCTION private.copy_booking_delivery_fee_to_order();

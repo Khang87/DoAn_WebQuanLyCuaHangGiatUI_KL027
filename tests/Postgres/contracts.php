@@ -90,9 +90,9 @@ try {
     pgExpect([$order->TongTien, $order->TienGiamKhuyenMai, $order->DiemSuDung, $order->TienGiamDoDiem, $order->PhiGiaoHang, $order->ThanhTien], [100000.0, 10000.0, 90000, 90000.0, 30000.0, 30000.0], 'Voucher precedes points; both fees remain payable');
     pgExpect((int) DB::table('DiemTichLuy')->where('KhachHangID', 1)->value('DiemHienTai'), 10000, 'Actual redemption capped by remaining services');
 
-    // Staff may record a prepayment; customers must wait until delivery.
+    // Partial Web collection is rejected; customers must wait until delivery.
     $prepaid = app(BookingService::class)->inspectBookingAndCreateOrder(pgBooking(), 1, pgItems());
-    app(PaymentService::class)->create(['order_id' => $prepaid->getKey(), 'amount' => 1000, 'method' => 'cash', 'status' => 'Thành công']);
+    pgReject(fn () => app(PaymentService::class)->create(['order_id' => $prepaid->getKey(), 'amount' => 1000, 'method' => 'cash', 'status' => 'Thành công']), 'Web rejects partial collection', 'amount');
     pgExpect($prepaid->fresh()->TrangThai, 'Đã tiếp nhận', 'Staff prepayment cannot settle an undelivered order');
     pgActor(1);
     pgReject(fn () => DB::selectOne("SELECT public.request_order_payment(?, 'Tiền mặt', ?::uuid)", [$prepaid->getKey(), (string) Str::uuid()]), 'Customer cannot request payment before delivery', sqlState: 'P0001');
@@ -109,7 +109,7 @@ try {
     pgReject(fn () => DB::selectOne("SELECT public.request_order_payment(?, 'Tiền mặt', ?::uuid)", [$prepaid->getKey(), (string) Str::uuid()]), 'Other customer cannot pay this order', sqlState: 'P0001');
     pgActor(1);
     $payment = json_decode(DB::selectOne("SELECT public.request_order_payment(?, 'Tiền mặt', ?::uuid) AS result", [$prepaid->getKey(), (string) Str::uuid()])->result, true);
-    pgExpect((float) DB::table('ThanhToan')->where('ThanhToanID', $payment['thanhtoanid'])->value('SoTien'), 9000.0, 'RPC collects only remaining amount after Web prepayment');
+    pgExpect((float) DB::table('ThanhToan')->where('ThanhToanID', $payment['thanhtoanid'])->value('SoTien'), 10000.0, 'RPC collects the full unpaid amount');
     pgActor(2);
     DB::selectOne('SELECT public.confirm_order_payment(?, true, NULL)', [$payment['thanhtoanid']]);
     DB::selectOne('SELECT public.confirm_order_payment(?, true, NULL)', [$payment['thanhtoanid']]);

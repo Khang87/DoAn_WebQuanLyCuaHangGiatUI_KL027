@@ -31,7 +31,7 @@ trait BookingInspectionFixture
         DB::table('DichVu')->insertOrIgnore(['DichVuID' => 1]);
         DB::table('LoaiDoGiat')->insertOrIgnore(['LoaiDoGiatID' => 2, 'TenLoaiDoGiat' => 'Áo sơ mi']);
 
-        return Booking::query()->create(array_merge([
+        $booking = Booking::query()->create(array_merge([
             'KhachHangID' => 9,
             'NhanVienID' => 1,
             'HinhThucNhanDo' => 'Tại nhà',
@@ -41,6 +41,13 @@ trait BookingInspectionFixture
             'GioHen' => '14:30:00',
             'TrangThai' => BookingStatus::Pending->value,
         ], $overrides));
+        // Trusted mobile snapshot is written by RPC, not Eloquent mass assignment.
+        $booking->forceFill([
+            'PickupDeliveryFee' => $overrides['PickupDeliveryFee'] ?? (($overrides['HinhThucNhanDo'] ?? 'Tại nhà') === 'Tại nhà' ? 10000 : 0),
+            'DeliveryFee' => $overrides['DeliveryFee'] ?? (($overrides['HinhThucTraDo'] ?? 'Tại cửa hàng') === 'Tại nhà' ? 15000 : 0),
+        ])->saveQuietly();
+
+        return $booking;
     }
 
     private function inspectionItems(Booking $booking): array
@@ -199,6 +206,11 @@ trait BookingInspectionFixture
             $table->string('DiaChiNhan')->nullable();
             $table->string('HinhThucTraDo')->nullable();
             $table->string('DiaChiTra')->nullable();
+            $table->string('HinhThucGiaoDo')->nullable();
+            $table->string('DiaChiGiao')->nullable();
+            $table->integer('PickupDistanceMeters')->default(0);
+            $table->integer('DeliveryDistanceMeters')->default(0);
+            $table->string('PhuongThucThanhToan')->nullable();
             $table->decimal('PickupDeliveryFee', 12, 2)->default(0);
             $table->decimal('DeliveryFee', 12, 2)->default(0);
             $table->date('NgayHen');

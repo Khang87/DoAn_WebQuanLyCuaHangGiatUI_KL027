@@ -111,5 +111,6 @@ jobs:
           npm ci --ignore-scripts
           npm run build
           bash scripts/test-web-e2e.sh
+          bash scripts/test-web-e2e.sh booking-mobile
       - name: Dashboard query budget and deferred dependency controls
         run: bash scripts/test-web-e2e.sh performance

@@ -35,11 +35,16 @@ try {
     }
     $promotion = DB::table('KhuyenMai')->insertGetId(['MaKhuyenMai' => 'E2E-VOUCHER', 'TenKhuyenMai' => 'Local voucher', 'LoaiKhuyenMai' => 'Tiền mặt', 'GiaTriGiam' => 10000, 'NgayBatDau' => today(), 'NgayKetThuc' => today()->addDay(), 'TrangThai' => 'Hoạt động'], 'KhuyenMaiID');
     DB::table('Booking')->where('BookingID', $cases['voucher'])->update(['KhuyenMaiID' => $promotion, 'PickupDeliveryFee' => 10000, 'DeliveryFee' => 20000]);
-    $paid = app(BookingService::class)->inspectBookingAndCreateOrder(pgBooking(), 1, pgItems());
-    app(DeliveryService::class)->create(['order_id' => $paid->getKey(), 'method' => 'giao_do', 'address' => 'Local paid return']);
+    $paid = app(BookingService::class)->inspectBookingAndCreateOrder(pgBooking('Tại cửa hàng', 'Tại nhà'), 1, pgItems());
     app(OrderService::class)->updateStatus($paid, 'Đang giặt');
     app(OrderService::class)->updateStatus($paid->fresh(), 'Hoàn thành giặt');
-    app(OrderService::class)->updateStatus($paid->fresh(), 'Đã giao');
+    $returnLeg = $paid->giaoNhans()->where('LoaiGiaoNhan', 'GIAO_DO')->firstOrFail();
+    $scheduled = now()->addHour();
+    $returnLeg = app(DeliveryService::class)->update($returnLeg, [
+        'employee_id' => 1, 'pickup_date' => $scheduled->format('Y-m-d'), 'pickup_time' => $scheduled->format('H:i'),
+    ]);
+    $returnLeg = app(DeliveryService::class)->advanceProgress($returnLeg);
+    app(DeliveryService::class)->advanceProgress($returnLeg);
     app(PaymentService::class)->create(['order_id' => $paid->getKey(), 'amount' => $paid->fresh()->ThanhTien, 'method' => 'cash', 'status' => 'Thành công']);
     $cases['paid'] = $paid->getKey();
     $legacy = DB::table('DonHang')->insertGetId(['MaDonHang' => 'E2E-LEGACY', 'KhachHangID' => 1, 'NhanVienID' => 1, 'TrangThai' => 'Chờ tiếp nhận', 'TongTien' => 10000, 'ThanhTien' => 10000], 'DonHangID');

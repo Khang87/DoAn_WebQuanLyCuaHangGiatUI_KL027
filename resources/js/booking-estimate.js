@@ -18,7 +18,7 @@ if(panel){
                         const key=field.name.match(/\[([^\]]+)\]$/)?.[1];if(key)item[key]=field.value;
                     }return item;
                 });
-                const response=await fetch(panel.dataset.bookingEstimate,{method:'POST',credentials:'same-origin',headers:{Accept:'application/json','Content-Type':'application/json','X-CSRF-TOKEN':document.querySelector('meta[name="csrf-token"]').content},body:JSON.stringify({items,use_points:form.querySelector('[name="use_points"][type="checkbox"]')?.checked??false}),signal:requestController.signal});
+                const response=await fetch(panel.dataset.bookingEstimate,{method:'POST',credentials:'same-origin',headers:{Accept:'application/json','Content-Type':'application/json','X-CSRF-TOKEN':document.querySelector('meta[name="csrf-token"]').content},body:JSON.stringify({items,method:form.querySelector('[name="method"]').value,return_method:form.querySelector('[name="return_method"]').value,use_points:form.querySelector('[name="use_points"][type="checkbox"]')?.checked??false}),signal:requestController.signal});
                 const data=await response.json();if(version!==generation)return;
                 if(!response.ok)throw Error(response.status===422?'Chọn đủ dịch vụ, loại đồ, đơn vị có giá và nhập số lượng/khối lượng hợp lệ.':'Không thể tính ước tính. Vui lòng thử lại.');
                 for(const key of ['TongTien','TienGiamKhuyenMai','TienGiamDoDiem','PhiGiaoHang','ThanhTien'])if(typeof data[key]!=='number'||!Number.isFinite(data[key])||data[key]<0)throw Error('Không thể đọc ước tính.');

@@ -74,7 +74,7 @@ class ThanhToanController extends Controller
         $preselectedAmount = null;
 
         if ($orderId !== null) {
-            $preselectedOrder = DonHang::with(['khachHang', 'chiTietDonHangs.dichVu', 'hoaDons'])
+            $preselectedOrder = DonHang::with(['khachHang', 'chiTietDonHangs.dichVu', 'hoaDons', 'booking'])
                 ->find($orderId);
 
             if (! $preselectedOrder) {
