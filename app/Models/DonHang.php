@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\DeliveryStatus;
 use App\Enums\InvoiceStatus;
 use App\Enums\OrderStatus;
 use App\Enums\PaymentStatus;
@@ -77,17 +78,31 @@ class DonHang extends Model
 
     public function requiresHomeDelivery(): bool
     {
-        $bookingRequiresHomeDelivery = $this->relationLoaded('booking')
-            ? $this->booking?->HinhThucTraDo === ReturnMethod::Home->value
-            : $this->booking()->where('HinhThucTraDo', ReturnMethod::Home->value)->exists();
-
-        if ($bookingRequiresHomeDelivery) {
-            return true;
+        if ($this->relationLoaded('booking')) {
+            if ($this->booking !== null) {
+                return $this->booking->HinhThucTraDo === ReturnMethod::Home->value;
+            }
+        } else {
+            $bookingReturnMethod = $this->booking()->value('HinhThucTraDo');
+            if ($bookingReturnMethod !== null) {
+                return $bookingReturnMethod === ReturnMethod::Home->value;
+            }
         }
 
         return $this->relationLoaded('giaoNhans')
             ? $this->giaoNhans->contains('LoaiGiaoNhan', 'GIAO_DO')
             : $this->giaoNhans()->where('LoaiGiaoNhan', 'GIAO_DO')->exists();
+    }
+
+    public function hasActiveReturnDelivery(): bool
+    {
+        return $this->relationLoaded('giaoNhans')
+            ? $this->giaoNhans->contains(fn (GiaoNhan $delivery): bool => $delivery->LoaiGiaoNhan === 'GIAO_DO'
+                && DeliveryStatus::parseForLeg($delivery->TrangThai, $delivery->LoaiGiaoNhan) !== DeliveryStatus::Cancelled)
+            : $this->giaoNhans()
+                ->where('LoaiGiaoNhan', 'GIAO_DO')
+                ->where('TrangThai', '!=', DeliveryStatus::Cancelled->dbValue())
+                ->exists();
     }
 
     public function hoaDons()

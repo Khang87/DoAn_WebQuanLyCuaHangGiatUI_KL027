@@ -5,7 +5,9 @@ namespace Tests\Feature;
 use App\Enums\OrderStatus;
 use App\Enums\PaymentStatus;
 use App\Models\DonHang;
+use App\Models\GiaoNhan;
 use App\Models\User;
+use App\Services\DeliveryService;
 use App\Services\OrderService;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
@@ -37,12 +39,29 @@ class OrderDeliveryProgressTest extends TestCase
         });
         Schema::create('Booking', function (Blueprint $table): void {
             $table->increments('BookingID');
+            $table->string('HinhThucNhanDo')->nullable();
+            $table->string('DiaChiNhan')->nullable();
             $table->string('HinhThucTraDo')->nullable();
+            $table->string('DiaChiTra')->nullable();
+            $table->date('NgayHen')->nullable();
+            $table->time('GioHen')->nullable();
         });
         Schema::create('GiaoNhan', function (Blueprint $table): void {
             $table->increments('GiaoNhanID');
             $table->unsignedInteger('DonHangID');
+            $table->unsignedInteger('NhanVienID')->nullable();
             $table->string('LoaiGiaoNhan');
+            $table->string('HinhThuc')->nullable();
+            $table->string('DiaChi')->nullable();
+            $table->dateTime('ThoiGianDuKien')->nullable();
+            $table->dateTime('ThoiGianThucTe')->nullable();
+            $table->decimal('PhiGiaoNhan', 12, 2)->default(0);
+            $table->string('TrangThai')->default('Chờ thực hiện');
+            $table->string('GhiChu')->nullable();
+        });
+        Schema::create('NhanVien', function (Blueprint $table): void {
+            $table->increments('NhanVienID');
+            $table->string('TrangThai');
         });
         Schema::create('HoaDon', function (Blueprint $table): void {
             $table->increments('HoaDonID');
@@ -72,21 +91,24 @@ class OrderDeliveryProgressTest extends TestCase
 
     protected function tearDown(): void
     {
-        foreach (['NhatKyHeThong', 'ThanhToan', 'HoaDon', 'GiaoNhan', 'Booking', 'DonHang'] as $table) {
+        foreach (['NhatKyHeThong', 'ThanhToan', 'HoaDon', 'GiaoNhan', 'NhanVien', 'Booking', 'DonHang'] as $table) {
             Schema::dropIfExists($table);
         }
 
         parent::tearDown();
     }
 
-    public function test_home_return_order_can_enter_delivering_after_washing(): void
+    public function test_order_cannot_enter_delivering_through_direct_order_status_service(): void
     {
         $order = $this->createOrder(1);
-        DB::table('GiaoNhan')->insert(['DonHangID' => 1, 'LoaiGiaoNhan' => 'GIAO_DO']);
+        DB::table('GiaoNhan')->insert([
+            'DonHangID' => 1,
+            'LoaiGiaoNhan' => 'GIAO_DO',
+            'TrangThai' => 'Chờ thực hiện',
+        ]);
 
-        $updated = app(OrderService::class)->updateStatus($order, OrderStatus::Delivering->value);
-
-        $this->assertSame(OrderStatus::Delivering->value, $updated->TrangThai);
+        $this->expectException(ValidationException::class);
+        app(OrderService::class)->updateStatus($order, OrderStatus::Delivering->value);
     }
 
     public function test_store_return_order_cannot_enter_delivering_even_through_direct_route(): void
@@ -119,19 +141,47 @@ class OrderDeliveryProgressTest extends TestCase
         app(OrderService::class)->updateStatus($order, OrderStatus::Delivered->value);
     }
 
+    public function test_home_return_cannot_be_marked_delivered_through_staff_status_route(): void
+    {
+        DB::table('Booking')->insert(['BookingID' => 1, 'HinhThucTraDo' => 'Tại nhà']);
+        $this->createOrder(7, 1);
+        $this->actingAs($this->userWithStatusPermission());
+
+        $this->patchJson(route('staff.dashboard.update-order-status', 7), [
+            'status' => OrderStatus::Delivered->value,
+        ])->assertStatus(400);
+
+        $this->assertSame(OrderStatus::Washed->value, DB::table('DonHang')->where('DonHangID', 7)->value('TrangThai'));
+    }
+
     public function test_progressing_paid_home_delivery_order_preserves_payment_status(): void
     {
         $order = $this->createOrder(5);
-        DB::table('GiaoNhan')->insert(['DonHangID' => 5, 'LoaiGiaoNhan' => 'GIAO_DO']);
+        DB::table('NhanVien')->insert(['NhanVienID' => 1, 'TrangThai' => 'Hoạt động']);
+        DB::table('GiaoNhan')->insert([
+            'DonHangID' => 5,
+            'NhanVienID' => 1,
+            'LoaiGiaoNhan' => 'GIAO_DO',
+            'HinhThuc' => 'Tại nhà',
+            'DiaChi' => '12 Nguyễn Huệ',
+            'ThoiGianDuKien' => now()->addDay(),
+            'TrangThai' => 'Chờ thực hiện',
+        ]);
         DB::table('ThanhToan')->insert([
             'DonHangID' => 5,
             'SoTien' => 25000,
             'TrangThai' => PaymentStatus::Paid->value,
         ]);
 
-        $updated = app(OrderService::class)->updateStatus($order, OrderStatus::Delivering->value);
+        $delivery = GiaoNhan::findOrFail(1);
+        $updated = app(DeliveryService::class)->update($delivery, [
+            'status' => 'delivering',
+            'pickup_date' => now()->addDay()->format('Y-m-d'),
+            'pickup_time' => now()->addDay()->format('H:i'),
+        ]);
 
-        $this->assertSame(OrderStatus::Delivering->value, $updated->TrangThai);
+        $this->assertSame('Đang thực hiện', $updated->TrangThai);
+        $this->assertSame(OrderStatus::Delivering->value, DB::table('DonHang')->where('DonHangID', 5)->value('TrangThai'));
         $this->assertSame(PaymentStatus::Paid->value, DB::table('ThanhToan')->where('DonHangID', 5)->value('TrangThai'));
     }
 

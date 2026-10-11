@@ -76,12 +76,13 @@ class DashboardController extends Controller
             'khachHang',
             'nhanVien',
             'booking:BookingID,HinhThucTraDo',
-            'giaoNhans:DonHangID,LoaiGiaoNhan',
+            'giaoNhans:GiaoNhanID,DonHangID,NhanVienID,LoaiGiaoNhan,TrangThai',
         ])
             ->whereIn('TrangThai', [
                 OrderStatus::Pending->value,
                 OrderStatus::Received->value,
                 OrderStatus::Washing->value,
+                OrderStatus::Washed->value,
             ])
             ->orderBy('NgayTao', 'asc')
             ->limit(50)
@@ -135,9 +136,9 @@ class DashboardController extends Controller
             OrderStatus::Washed->value,
         ];
         if ($order->statusEnum() === OrderStatus::Washed) {
-            $allowed[] = $order->requiresHomeDelivery()
-                ? OrderStatus::Delivering->value
-                : OrderStatus::Delivered->value;
+            if (! $order->requiresHomeDelivery()) {
+                $allowed[] = OrderStatus::Delivered->value;
+            }
         }
 
         if (! in_array($newStatus, $allowed, true)) {

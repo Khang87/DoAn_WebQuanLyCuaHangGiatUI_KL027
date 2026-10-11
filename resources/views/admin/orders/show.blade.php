@@ -510,16 +510,26 @@
                 @endif
 
                 @if($nextStatusAction)
-                    @can('orders.update_status')
-                        <form action="{{ route('orders.update-status', $order) }}" method="POST">
-                            @csrf
-                            @method('PATCH')
-                            <input type="hidden" name="TrangThai" value="{{ $nextStatusAction['status']->value }}">
-                            <button type="submit" class="btn btn-{{ $nextStatusAction['variant'] }} w-100 py-2">
+                    @if($nextStatusAction['status'] === \App\Enums\OrderStatus::Delivering)
+                        @if($order->hasActiveReturnDelivery()
+                            ? auth()->user()?->canPermission('deliveries.edit')
+                            : auth()->user()?->canPermission('deliveries.create'))
+                            <a href="{{ route('orders.delivery-assignment', $order) }}" class="btn btn-{{ $nextStatusAction['variant'] }} w-100 py-2">
                                 <i class="bi {{ $nextStatusAction['icon'] }} me-1" aria-hidden="true"></i>{{ $nextStatusAction['label'] }}
-                            </button>
-                        </form>
-                    @endcan
+                            </a>
+                        @endif
+                    @else
+                        @can('orders.update_status')
+                            <form action="{{ route('orders.update-status', $order) }}" method="POST">
+                                @csrf
+                                @method('PATCH')
+                                <input type="hidden" name="TrangThai" value="{{ $nextStatusAction['status']->value }}">
+                                <button type="submit" class="btn btn-{{ $nextStatusAction['variant'] }} w-100 py-2">
+                                    <i class="bi {{ $nextStatusAction['icon'] }} me-1" aria-hidden="true"></i>{{ $nextStatusAction['label'] }}
+                                </button>
+                            </form>
+                        @endcan
+                    @endif
                 @endif
 
                 @if($canEdit && ! $isReceiving)

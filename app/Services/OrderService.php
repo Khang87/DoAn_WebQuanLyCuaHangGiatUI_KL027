@@ -18,6 +18,7 @@ use App\Models\GiaoNhan;
 use App\Models\KhachHang;
 use App\Models\KhuyenMai;
 use App\Models\LoaiDoGiat;
+use App\Models\NhanVien;
 use App\Models\NhatKyHeThong;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Auth;
@@ -286,7 +287,7 @@ class OrderService
                 }
                 GiaoNhan::create([
                     'DonHangID' => $order->DonHangID,
-                    'NhanVienID' => $employeeId,
+                    'NhanVienID' => $leg['type'] === 'GIAO_DO' ? null : $employeeId,
                     'HinhThuc' => $leg['method']->value,
                     'LoaiGiaoNhan' => $leg['type'],
                     'DiaChi' => $leg['address'],
@@ -1074,6 +1075,50 @@ class OrderService
         });
     }
 
+    public function syncStatusFromDelivery(DonHang $order, GiaoNhan $delivery, OrderStatus $target): DonHang
+    {
+        return DB::transaction(function () use ($order, $delivery, $target): DonHang {
+            $lockedOrder = DonHang::query()->lockForUpdate()->findOrFail($order->getKey());
+            $lockedDelivery = GiaoNhan::query()->lockForUpdate()->findOrFail($delivery->getKey());
+
+            if (
+                $lockedDelivery->DonHangID !== $lockedOrder->DonHangID
+                || $lockedDelivery->LoaiGiaoNhan !== 'GIAO_DO'
+                || ! $lockedOrder->requiresHomeDelivery()
+            ) {
+                throw ValidationException::withMessages(['delivery' => 'Phiếu giao đồ không thuộc một đơn trả tại nhà hợp lệ.']);
+            }
+
+            $deliveryStatus = DeliveryStatus::parseForLeg($lockedDelivery->TrangThai, $lockedDelivery->LoaiGiaoNhan);
+            if ($lockedDelivery->NhanVienID === null) {
+                throw ValidationException::withMessages(['employee_id' => 'Phiếu giao đồ cần có nhân viên phụ trách.']);
+            }
+
+            if ($target === OrderStatus::Delivering) {
+                if (
+                    ! in_array($lockedOrder->statusEnum(), [OrderStatus::Washed, OrderStatus::Delivering], true)
+                    || $deliveryStatus !== DeliveryStatus::Delivering
+                    || ! NhanVien::query()->whereKey($lockedDelivery->NhanVienID)->where('TrangThai', 'Hoạt động')->exists()
+                ) {
+                    throw ValidationException::withMessages(['status' => 'Chưa đủ điều kiện để bắt đầu giao đơn hàng.']);
+                }
+            } elseif (
+                $target !== OrderStatus::Delivered
+                || $lockedOrder->statusEnum() !== OrderStatus::Delivering
+                || $deliveryStatus !== DeliveryStatus::Completed
+            ) {
+                throw ValidationException::withMessages(['status' => 'Trạng thái đơn hàng không khớp với kết quả chặng giao đồ.']);
+            }
+
+            $lockedOrder->update([
+                'TrangThai' => $target->value,
+                'NgayCapNhat' => now(),
+            ]);
+
+            return $lockedOrder->fresh();
+        });
+    }
+
     private function recordCancellationReason(DonHang $order, ?string $reason): void
     {
         if ($order->TrangThai !== OrderStatus::Cancelled->value || trim((string) $reason) === '') {
@@ -1104,10 +1149,9 @@ class OrderService
         if (
             $current === OrderStatus::Washed
             && $target === OrderStatus::Delivering
-            && ! $lockedOrder->requiresHomeDelivery()
         ) {
             throw ValidationException::withMessages([
-                'TrangThai' => 'Đơn hàng trả tại cửa hàng không có chặng giao đồ tại nhà.',
+                'TrangThai' => 'Hãy bắt đầu giao hàng thông qua phiếu giao đồ đã được phân công.',
             ]);
         }
         if (
@@ -1117,6 +1161,15 @@ class OrderService
         ) {
             throw ValidationException::withMessages([
                 'TrangThai' => 'Đơn hàng trả tại nhà phải qua bước đang giao trước khi xác nhận đã giao.',
+            ]);
+        }
+        if (
+            $current === OrderStatus::Delivering
+            && $target === OrderStatus::Delivered
+            && $lockedOrder->requiresHomeDelivery()
+        ) {
+            throw ValidationException::withMessages([
+                'TrangThai' => 'Hãy hoàn tất phiếu giao đồ để đồng bộ trạng thái đơn hàng.',
             ]);
         }
         if (! $current->canTransitionTo($target) && ! ($overrideSettled && $current === OrderStatus::Paid && $target === OrderStatus::Delivered)) {

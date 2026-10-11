@@ -166,6 +166,10 @@ Route::middleware(['auth', 'reject.customer'])->group(function () {
         ->middleware('permission:orders.update_status')
         ->name('orders.update-status');
 
+    Route::get('/orders/{order}/delivery-assignment', [GiaoNhanController::class, 'assignForOrder'])
+        ->whereNumber('order')
+        ->name('orders.delivery-assignment');
+
     Route::middleware('permission:orders.delete')->group(function () {
         Route::delete('/orders/{order}', [DonHangController::class, 'destroy'])->name('orders.destroy');
     });

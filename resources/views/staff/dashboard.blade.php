@@ -120,8 +120,9 @@
                                         @foreach($quickStatusFlow as $value => $label)
                                             @if($value !== $order->TrangThai
                                                 && ! ($order->TrangThai === \App\Enums\OrderStatus::Washed->value
-                                                    && $value === \App\Enums\OrderStatus::Delivering->value
-                                                    && ! $order->requiresHomeDelivery()))
+                                                    && ($value === \App\Enums\OrderStatus::Delivering->value
+                                                        || ($order->requiresHomeDelivery()
+                                                            && $value === \App\Enums\OrderStatus::Delivered->value))))
                                                 <option value="{{ $value }}">{{ $label }}</option>
                                             @endif
                                         @endforeach
@@ -133,6 +134,15 @@
                                     </select>
                                 </td>
                                 <td>
+                                    @if($order->TrangThai === \App\Enums\OrderStatus::Washed->value
+                                        && $order->requiresHomeDelivery()
+                                        && ($order->hasActiveReturnDelivery()
+                                            ? auth()->user()?->canPermission('deliveries.edit')
+                                            : auth()->user()?->canPermission('deliveries.create')))
+                                        <a href="{{ route('orders.delivery-assignment', $order) }}" class="btn btn-order-action edit" title="Phân công giao hàng">
+                                            <i class="bi bi-truck"></i>
+                                        </a>
+                                    @endif
                                     <a href="{{ route('orders.show', $order) }}" class="btn btn-order-action view" title="Xem"><i class="bi bi-eye"></i></a>
                                 </td>
                             </tr>

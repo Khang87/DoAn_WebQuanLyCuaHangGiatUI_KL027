@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Enums\DeliveryStatus;
 use App\Enums\OrderStatus;
 use App\Exceptions\SettledOrderException;
 use App\Http\Controllers\Controller;
@@ -46,9 +47,66 @@ class GiaoNhanController extends Controller
         $employees = NhanVien::where('TrangThai', 'Hoạt động')
             ->orderBy('HoTen')
             ->get(['NhanVienID', 'HoTen']);
-        $orders = $this->orderOptions();
+        $selectedOrderId = request()->integer('order_id') ?: null;
+        $selectedMethod = request()->input('method', 'nhan_do');
+        $selectedFulfillment = request()->input('fulfillment', 'Tại nhà');
+        $selectedAddress = request()->input('address');
+        $statusOptions = DeliveryStatus::options();
+        $orders = $this->orderOptions($selectedOrderId);
 
-        return view('admin.deliveries.create', compact('customers', 'employees', 'orders'));
+        return view('admin.deliveries.create', compact(
+            'customers',
+            'employees',
+            'orders',
+            'selectedOrderId',
+            'selectedMethod',
+            'selectedFulfillment',
+            'selectedAddress',
+            'statusOptions',
+        ));
+    }
+
+    public function assignForOrder(Request $request, DonHang $order)
+    {
+        $order->load(['booking', 'giaoNhans']);
+        $returnLegs = $order->giaoNhans
+            ->where('LoaiGiaoNhan', 'GIAO_DO')
+            ->sortByDesc('GiaoNhanID');
+        $activeLeg = $returnLegs->first(
+            fn ($leg): bool => DeliveryStatus::parseForLeg($leg->TrangThai, $leg->LoaiGiaoNhan) !== DeliveryStatus::Cancelled
+        );
+        $latestLeg = $returnLegs->first();
+        $isHomeReturn = $order->requiresHomeDelivery();
+
+        if (! $isHomeReturn || ! in_array($order->statusEnum(), [OrderStatus::Washed, OrderStatus::Delivering], true)) {
+            abort(422, 'Đơn hàng chưa sẵn sàng cho phân công giao đồ tại nhà.');
+        }
+
+        if ($activeLeg) {
+            abort_unless($request->user()?->canPermission('deliveries.edit'), 403);
+
+            return redirect()->route('deliveries.edit', $activeLeg);
+        }
+
+        abort_unless($request->user()?->canPermission('deliveries.create'), 403);
+
+        $customers = KhachHang::query()->orderBy('HoTen')->get(['KhachHangID', 'HoTen']);
+        $employees = NhanVien::where('TrangThai', 'Hoạt động')
+            ->orderBy('HoTen')
+            ->get(['NhanVienID', 'HoTen']);
+        $orders = $this->orderOptions($order->getKey());
+        $selectedAddress = $order->booking?->DiaChiTra ?? $latestLeg?->DiaChi;
+
+        return view('admin.deliveries.create', [
+            'customers' => $customers,
+            'employees' => $employees,
+            'orders' => $orders,
+            'selectedOrderId' => $order->getKey(),
+            'selectedMethod' => 'giao_do',
+            'selectedFulfillment' => 'Tại nhà',
+            'selectedAddress' => $selectedAddress,
+            'statusOptions' => ['pending' => DeliveryStatus::Pending->label()],
+        ]);
     }
 
     public function store(LuuGiaoNhanRequest $request)
@@ -90,8 +148,10 @@ class GiaoNhanController extends Controller
             ->orderBy('HoTen')
             ->get(['NhanVienID', 'HoTen']);
         $orders = $this->orderOptions($delivery->DonHangID);
+        $statusOptions = DeliveryStatus::options();
+        unset($statusOptions[$delivery->LoaiGiaoNhan === 'GIAO_DO' ? DeliveryStatus::Picking->value : DeliveryStatus::Delivering->value]);
 
-        return view('admin.deliveries.edit', compact('delivery', 'customers', 'employees', 'orders'));
+        return view('admin.deliveries.edit', compact('delivery', 'customers', 'employees', 'orders', 'statusOptions'));
     }
 
     public function update(LuuGiaoNhanRequest $request, int $id)

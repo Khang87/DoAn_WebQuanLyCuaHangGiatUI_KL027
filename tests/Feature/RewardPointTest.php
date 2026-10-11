@@ -92,7 +92,6 @@ class RewardPointTest extends TestCase
 
         $service->updateStatus($order, OrderStatus::Washing->value);
         $service->updateStatus($order->fresh(), OrderStatus::Washed->value);
-        $order = $service->updateStatus($order->fresh(), OrderStatus::Delivering->value);
 
         app(PaymentService::class)->create([
             'order_id' => $order->DonHangID,
@@ -100,7 +99,7 @@ class RewardPointTest extends TestCase
             'method' => 'cash',
             'status' => PaymentStatus::Paid->value,
         ]);
-        $this->assertSame(OrderStatus::Delivering->value, $order->fresh()->TrangThai);
+        $this->assertSame(OrderStatus::Washed->value, $order->fresh()->TrangThai);
         $this->assertSame(2, $customer->fresh()->points());
 
         $order = $service->updateStatus($order->fresh(), OrderStatus::Delivered->value);
@@ -352,7 +351,7 @@ class RewardPointTest extends TestCase
         ]);
 
         $service = app(OrderService::class);
-        foreach ([OrderStatus::Washing, OrderStatus::Washed, OrderStatus::Delivering, OrderStatus::Delivered] as $status) {
+        foreach ([OrderStatus::Washing, OrderStatus::Washed, OrderStatus::Delivered] as $status) {
             $order = $service->updateStatus($order, $status->value);
         }
 
