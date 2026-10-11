@@ -18,6 +18,10 @@
     $isReceiving = $order->status === \App\Enums\OrderStatus::Pending->value;
     $currentStatusIsCompleted = \App\Enums\OrderStatus::parse($order->status)->isCompletedMilestone();
     $nextProcessStatus = $order->statusEnum()->nextProcessStatus();
+    $requiresHomeDelivery = $order->requiresHomeDelivery();
+    if ($order->statusEnum() === \App\Enums\OrderStatus::Washed && ! $requiresHomeDelivery) {
+        $nextProcessStatus = \App\Enums\OrderStatus::Delivered;
+    }
     $nextStatusAction = match ($nextProcessStatus) {
         \App\Enums\OrderStatus::Washing => [
             'status' => \App\Enums\OrderStatus::Washing,
@@ -39,7 +43,7 @@
         ],
         \App\Enums\OrderStatus::Delivered => [
             'status' => \App\Enums\OrderStatus::Delivered,
-            'label' => 'Xác nhận đã giao',
+            'label' => $requiresHomeDelivery ? 'Xác nhận đã giao' : 'Xác nhận khách đã nhận tại cửa hàng',
             'icon' => 'bi-box-seam',
             'variant' => 'success',
         ],
@@ -137,18 +141,11 @@
     :subtitle="$order->created_at?->format('d/m/Y H:i')"
 >
     <x-slot:badge>
-        <x-admin.status-badge :status="$order->status" :enum="\App\Enums\OrderStatus::class" />
-        @if($isPaid)
-            <span class="badge {{ $isOwner ? 'bg-success-subtle text-success-emphasis border-success' : 'bg-secondary-subtle text-secondary-emphasis border-secondary' }} border px-3 py-2 rounded-pill">
-                <i class="bi {{ $isOwner ? 'bi-shield-check' : 'bi-lock-fill' }} me-1"></i>
-                {{ $isOwner ? 'Đã quyết toán · Chủ cửa hàng được phép điều chỉnh' : 'Đã quyết toán' }}
-            </span>
-        @endif
-        @if($isReceiving)
-            <span class="badge bg-warning-subtle text-warning-emphasis border border-warning px-3 py-2 rounded-pill">
-                <i class="bi bi-clipboard-check me-1" aria-hidden="true"></i>Chờ kiểm tra và tiếp nhận thực tế
-            </span>
-        @endif
+        <x-admin.order-status-badges
+            :order="$order"
+            :is-paid="$isPaid"
+            :is-receiving="$isReceiving"
+        />
     </x-slot:badge>
 </x-admin.detail.page-header>
 
@@ -391,6 +388,7 @@
         <x-admin.detail.panel title="Lịch sử trạng thái" icon="bi-clock-history" :iconClass="'bg-secondary-subtle text-secondary'">
             <div class="detail-timeline order-detail-timeline">
                 @foreach($statusFlow as $key => $label)
+                    @continue($key === \App\Enums\OrderStatus::Delivering->value && ! $requiresHomeDelivery)
                     @php
                         $isCurrentStatus = $key === $order->status;
                         $isCompletedStatus = ! $isCancelled
@@ -512,16 +510,26 @@
                 @endif
 
                 @if($nextStatusAction)
-                    @can('orders.update_status')
-                        <form action="{{ route('orders.update-status', $order) }}" method="POST">
-                            @csrf
-                            @method('PATCH')
-                            <input type="hidden" name="TrangThai" value="{{ $nextStatusAction['status']->value }}">
-                            <button type="submit" class="btn btn-{{ $nextStatusAction['variant'] }} w-100 py-2">
+                    @if($nextStatusAction['status'] === \App\Enums\OrderStatus::Delivering)
+                        @if($order->hasActiveReturnDelivery()
+                            ? auth()->user()?->canPermission('deliveries.edit')
+                            : auth()->user()?->canPermission('deliveries.create'))
+                            <a href="{{ route('orders.delivery-assignment', $order) }}" class="btn btn-{{ $nextStatusAction['variant'] }} w-100 py-2">
                                 <i class="bi {{ $nextStatusAction['icon'] }} me-1" aria-hidden="true"></i>{{ $nextStatusAction['label'] }}
-                            </button>
-                        </form>
-                    @endcan
+                            </a>
+                        @endif
+                    @else
+                        @can('orders.update_status')
+                            <form action="{{ route('orders.update-status', $order) }}" method="POST">
+                                @csrf
+                                @method('PATCH')
+                                <input type="hidden" name="TrangThai" value="{{ $nextStatusAction['status']->value }}">
+                                <button type="submit" class="btn btn-{{ $nextStatusAction['variant'] }} w-100 py-2">
+                                    <i class="bi {{ $nextStatusAction['icon'] }} me-1" aria-hidden="true"></i>{{ $nextStatusAction['label'] }}
+                                </button>
+                            </form>
+                        @endcan
+                    @endif
                 @endif
 
                 @if($canEdit && ! $isReceiving)

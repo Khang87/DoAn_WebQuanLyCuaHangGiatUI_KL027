@@ -2,25 +2,29 @@
 
 namespace App\Http\Controllers\Admin;
 
-use App\Enums\InvoiceStatus;
 use App\Enums\OrderStatus;
 use App\Enums\PaymentStatus;
+use App\Exceptions\SettledOrderException;
 use App\Http\Controllers\Controller;
 use App\Models\DanhGia;
 use App\Models\DichVu;
 use App\Models\DonHang;
 use App\Models\HoaDon;
 use App\Models\KhachHang;
-use App\Models\ThanhToan;
+use App\Services\CollectedRevenueService;
+use App\Services\PaymentService;
 use App\Services\ReviewService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class DashboardController extends Controller
 {
     public function __construct(
         private ReviewService $reviewService,
+        private PaymentService $paymentService,
+        private CollectedRevenueService $collectedRevenueService,
     ) {}
 
     /**
@@ -29,9 +33,9 @@ class DashboardController extends Controller
      */
     public function index()
     {
-        $today = Carbon::today();
-        $thisMonth = now()->month;
-        $thisYear = now()->year;
+        $today = Carbon::today(config('app.timezone'));
+        $thisMonth = $today->month;
+        $thisYear = $today->year;
         $weekStart = $today->copy()->startOfWeek(Carbon::MONDAY);
         $prevWeekStart = $weekStart->copy()->subWeek();
         $monthStart = $today->copy()->startOfMonth();
@@ -71,23 +75,31 @@ class DashboardController extends Controller
 
         // --- KPI: Tổng số đơn hàng (theo trạng thái) ---
         $orderCounts = DonHang::query()
-            ->selectRaw('"TrangThai", COUNT(*) AS total')
+            ->select('TrangThai')
+            ->selectRaw('COUNT(*) AS total')
             ->groupBy('TrangThai')
-            ->pluck('total', 'TrangThai');
+            ->get();
 
-        $statusCounts = [
-            'completed' => (int) $orderCounts->only(OrderStatus::settledValues())->sum(),
-            'processing' => (int) $orderCounts->only([
+        $statusCounts = ['completed' => 0, 'processing' => 0, 'cancelled' => 0];
+        $totalOrders = 0;
+        foreach ($orderCounts as $orderCount) {
+            $count = (int) $orderCount->total;
+            $totalOrders += $count;
+
+            if ($orderCount->TrangThai === OrderStatus::Delivered->value) {
+                $statusCounts['completed'] += $count;
+            } elseif ($orderCount->TrangThai === OrderStatus::Cancelled->value) {
+                $statusCounts['cancelled'] += $count;
+            } elseif (in_array($orderCount->TrangThai, [
                 OrderStatus::Pending->value,
                 OrderStatus::Received->value,
                 OrderStatus::Washing->value,
                 OrderStatus::Washed->value,
                 OrderStatus::Delivering->value,
-            ])->sum(),
-            'cancelled' => (int) $orderCounts->get(OrderStatus::Cancelled->value, 0),
-        ];
-
-        $totalOrders = (int) $orderCounts->sum();
+            ], true)) {
+                $statusCounts['processing'] += $count;
+            }
+        }
 
         // --- KPI: Khách hàng ---
         $totalCustomers = KhachHang::count();
@@ -126,7 +138,8 @@ class DashboardController extends Controller
         // --- Biểu đồ tròn: Tỷ lệ đơn hàng theo trạng thái ---
         // Nháy kép là bắt buộc: raw SQL không qua wrapper của Eloquent nên
         // PostgreSQL sẽ hạ `TrangThai` xuống `trangthai` và báo thiếu cột.
-        $statusDistribution = DonHang::selectRaw('"TrangThai", COUNT(*) as count')
+        $statusDistribution = DonHang::query()
+            ->selectRaw('"TrangThai", COUNT(*) as count')
             ->groupBy('TrangThai')
             ->pluck('count', 'TrangThai');
 
@@ -141,7 +154,8 @@ class DashboardController extends Controller
             ]);
 
         // --- Bảng: Đơn hàng mới nhất (top 10) ---
-        $recentOrders = DonHang::with(['khachHang', 'nhanVien'])
+        $recentOrders = DonHang::query()
+            ->with(['khachHang', 'nhanVien'])
             ->orderBy('NgayTao', 'desc')
             ->limit(10)
             ->get();
@@ -181,16 +195,16 @@ class DashboardController extends Controller
      */
     private function getDailyRevenueTotals(Carbon $from, Carbon $to): array
     {
-        return DonHang::query()
-            ->selectRaw('DATE("NgayTao") AS revenue_date, SUM("ThanhTien") AS total')
-            ->whereBetween('NgayTao', [$from->copy()->startOfDay(), $to->copy()->endOfDay()])
-            ->where(function ($query): void {
-                $query->whereIn('TrangThai', OrderStatus::settledValues())
-                    ->orWhereHas('hoaDons', function ($invoiceQuery): void {
-                        $invoiceQuery->where('TrangThai', InvoiceStatus::Paid->value);
-                    });
-            })
-            ->groupByRaw('DATE("NgayTao")')
+        $localTimestamp = $this->localTimestampExpression('"ThoiGian"');
+        $localDate = 'DATE('.$localTimestamp.')';
+
+        return $this->collectedRevenueService->query()
+            ->selectRaw($localDate.' AS revenue_date, SUM("SoTien") AS total')
+            ->whereBetween('ThoiGian', [
+                $from->copy()->startOfDay()->utc(),
+                $to->copy()->endOfDay()->utc(),
+            ])
+            ->groupByRaw($localDate)
             ->orderBy('revenue_date')
             ->get()
             ->mapWithKeys(fn ($row): array => [(string) $row->revenue_date => (float) $row->total])
@@ -229,21 +243,34 @@ class DashboardController extends Controller
             return response()->json(['success' => false, 'message' => 'Hóa đơn đã được thanh toán.'], 400);
         }
 
-        DB::transaction(function () use ($invoice) {
-            $invoice->update(['TrangThai' => InvoiceStatus::Paid->value]);
-
-            ThanhToan::create([
-                'DonHangID' => $invoice->DonHangID,
-                'SoTien' => $invoice->ThanhTien,
-                'PhuongThuc' => 'Tiền mặt',
-                'TrangThai' => PaymentStatus::Paid->value,
+        try {
+            $payment = $this->paymentService->create([
+                'invoice_id' => $invoice->HoaDonID,
+                'amount' => $invoice->ThanhTien,
+                'method' => 'cash',
+                'status' => PaymentStatus::Paid->value,
+                'paid_at' => now(),
             ]);
-        });
+        } catch (ValidationException $exception) {
+            return response()->json([
+                'success' => false,
+                'message' => $exception->errors()['amount'][0]
+                    ?? $exception->errors()['invoice_id'][0]
+                    ?? $exception->errors()['order_id'][0]
+                    ?? 'Không thể ghi nhận thanh toán.',
+            ], 422);
+        } catch (SettledOrderException $exception) {
+            return response()->json([
+                'success' => false,
+                'message' => $exception->getMessage(),
+            ], 409);
+        }
 
         return response()->json([
             'success' => true,
             'message' => 'Thu tiền mặt thành công.',
             'invoice_id' => $invoice->HoaDonID,
+            'payment_id' => $payment->ThanhToanID,
         ]);
     }
 
@@ -266,8 +293,8 @@ class DashboardController extends Controller
     public function getRevenueChartData(Request $request)
     {
         $filter = $request->get('filter', '7_days');
-        $today = Carbon::today();
-        $thisYear = now()->year;
+        $today = Carbon::today(config('app.timezone'));
+        $thisYear = $today->year;
         $groupBy = 'day';
         $from = $today->copy()->subDays(6)->startOfDay();
         $to = $today->copy()->endOfDay();
@@ -307,7 +334,7 @@ class DashboardController extends Controller
 
             case 'this_year':
                 $groupBy = 'month';
-                $from = Carbon::create($thisYear, 1, 1)->startOfYear();
+                $from = Carbon::create($thisYear, 1, 1, 0, 0, 0, config('app.timezone'))->startOfYear();
                 $to = $from->copy()->endOfYear();
 
                 for ($month = 1; $month <= 12; $month++) {
@@ -341,31 +368,33 @@ class DashboardController extends Controller
     private function getGroupedRevenueTotals(Carbon $from, Carbon $to, string $groupBy): array
     {
         $driver = DB::connection()->getDriverName();
+        $localTimestamp = $this->localTimestampExpression('"ThoiGian"');
         $groupExpression = match ($groupBy) {
             'hour' => $driver === 'sqlite'
-                ? 'CAST(strftime(\'%H\', "NgayTao") AS INTEGER)'
-                : 'EXTRACT(HOUR FROM "NgayTao")::integer',
+                ? 'CAST(strftime(\'%H\', '.$localTimestamp.') AS INTEGER)'
+                : 'EXTRACT(HOUR FROM '.$localTimestamp.')::integer',
             'month' => $driver === 'sqlite'
-                ? 'CAST(strftime(\'%m\', "NgayTao") AS INTEGER)'
-                : 'EXTRACT(MONTH FROM "NgayTao")::integer',
-            default => 'DATE("NgayTao")',
+                ? 'CAST(strftime(\'%m\', '.$localTimestamp.') AS INTEGER)'
+                : 'EXTRACT(MONTH FROM '.$localTimestamp.')::integer',
+            default => 'DATE('.$localTimestamp.')',
         };
 
-        return DonHang::query()
-            ->selectRaw($groupExpression.' AS period_key, SUM("ThanhTien") AS total')
-            ->whereBetween('NgayTao', [$from, $to])
-            ->where(function ($query): void {
-                $query->whereIn('TrangThai', OrderStatus::settledValues())
-                    ->orWhereHas('hoaDons', function ($invoiceQuery): void {
-                        $invoiceQuery->where('TrangThai', InvoiceStatus::Paid->value);
-                    });
-            })
+        return $this->collectedRevenueService->query()
+            ->selectRaw($groupExpression.' AS period_key, SUM("SoTien") AS total')
+            ->whereBetween('ThoiGian', [$from->copy()->utc(), $to->copy()->utc()])
             ->groupByRaw($groupExpression)
             ->get()
             ->mapWithKeys(fn ($row): array => [
                 $groupBy === 'day' ? (string) $row->period_key : (int) $row->period_key => (float) $row->total,
             ])
             ->all();
+    }
+
+    private function localTimestampExpression(string $column): string
+    {
+        return DB::connection()->getDriverName() === 'sqlite'
+            ? "datetime({$column}, '+7 hours')"
+            : "({$column} + INTERVAL '7 hours')";
     }
 
     /**

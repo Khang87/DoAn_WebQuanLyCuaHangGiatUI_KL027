@@ -24,8 +24,9 @@
                     <input type="text" class="form-control" value="{{ $payment->donHang?->hoaDons?->first()?->MaHoaDon ?: 'Chưa liên kết' }}" disabled>
                 </div>
                 <div class="col-md-6">
-                    <label class="form-label">Số tiền <span class="text-danger ms-1">*</span></label>
-                    <input type="number" class="form-control" name="amount" value="{{ old('amount', (int) round((float) $payment->SoTien)) }}" min="0" step="1000" required>
+                    <label class="form-label">Số tiền thanh toán toàn bộ <span class="text-danger ms-1">*</span></label>
+                    <input type="number" class="form-control" name="amount" value="{{ old('amount', (int) round($fullAmount)) }}" min="0" step="1000" required>
+                    <div class="form-text">Số tiền phải bằng toàn bộ số tiền của hóa đơn; không hỗ trợ thanh toán một phần.</div>
                 </div>
                 <div class="col-md-6">
                     <label class="form-label">Phương thức <span class="text-danger ms-1">*</span></label>

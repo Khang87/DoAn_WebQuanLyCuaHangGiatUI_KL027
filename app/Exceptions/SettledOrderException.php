@@ -27,4 +27,12 @@ class SettledOrderException extends RuntimeException
             $code ? (string) $code : 'này'
         ));
     }
+
+    public static function forPayment(int|string|null $code = null): self
+    {
+        return new self(sprintf(
+            'Khoản thu %s đã ghi nhận tiền hoặc hoàn tiền nên chỉ có thể xem, không thể chỉnh sửa hoặc xóa.',
+            $code ? (string) $code : 'này'
+        ));
+    }
 }

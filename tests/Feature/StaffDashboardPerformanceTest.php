@@ -28,6 +28,7 @@ class StaffDashboardPerformanceTest extends TestCase
         });
         Schema::create('GiaoNhan', function (Blueprint $table): void {
             $table->increments('GiaoNhanID');
+            $table->integer('DonHangID');
             $table->integer('NhanVienID')->nullable();
             $table->dateTime('ThoiGianDuKien')->nullable();
             $table->string('TrangThai');
@@ -52,7 +53,7 @@ class StaffDashboardPerformanceTest extends TestCase
         $this->assertSame(1, $data['waitingReceiveCount']);
         $this->assertSame(5, $data['washingCount']);
         $this->assertSame(9, $data['readyCount']);
-        $this->assertCount(6, $data['processingOrders']);
+        $this->assertCount(10, $data['processingOrders']);
     }
 
     public function test_empty_dashboard_kpis_are_integer_zero_with_one_aggregate(): void

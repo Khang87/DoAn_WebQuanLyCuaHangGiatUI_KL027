@@ -37,12 +37,18 @@
                 </div>
                 <div class="col-md-6">
                     <label class="form-label">Trạng thái</label>
-                    <x-admin.status-select
-                        name="status"
-                        :options="\App\Enums\InvoiceStatus::options()"
-                        :selected="$invoice->TrangThai"
-                        class="form-select @error('status') is-invalid @enderror"
-                    />
+                    @if($invoice->isPaid())
+                        <input type="text" class="form-control" value="{{ $invoice->TrangThai }}" disabled>
+                    @else
+                        @php($invoiceStatusOptions = \App\Enums\InvoiceStatus::options())
+                        @unset($invoiceStatusOptions[\App\Enums\InvoiceStatus::Paid->value])
+                        <x-admin.status-select
+                            name="status"
+                            :options="$invoiceStatusOptions"
+                            :selected="$invoice->TrangThai"
+                            class="form-select @error('status') is-invalid @enderror"
+                        />
+                    @endif
                 </div>
                 <div class="col-12">
                     <label class="form-label">Ghi chú</label>

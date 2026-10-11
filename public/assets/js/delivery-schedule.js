@@ -44,5 +44,6 @@
         method.addEventListener('change', prefillFromBooking);
     }
     fulfillment.form.addEventListener('reset', () => setTimeout(update, 0));
+    prefillFromBooking();
     update();
 })();

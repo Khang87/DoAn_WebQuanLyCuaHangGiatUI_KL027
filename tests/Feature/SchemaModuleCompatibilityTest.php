@@ -2,8 +2,11 @@
 
 namespace Tests\Feature;
 
+use App\Enums\InvoiceStatus;
+use App\Enums\PaymentStatus;
 use App\Models\Booking;
 use App\Models\DonHang;
+use App\Models\HoaDon;
 use App\Models\KhachHang;
 use App\Models\TaiKhoan;
 use App\Models\ThanhToan;
@@ -49,6 +52,86 @@ class SchemaModuleCompatibilityTest extends TestCase
         $this->assertStringContainsString('src="https://example.test/mobile.jpg?a=1&amp;b=&quot;2&quot;"', $html);
         $this->assertStringNotContainsString('src="https://example.test/account.jpg"', $html);
         $this->assertStringContainsString('onerror="this.onerror=null;', $html);
+    }
+
+    public function test_payment_list_renders_each_status_once(): void
+    {
+        foreach (PaymentStatus::cases() as $status) {
+            $payment = new ThanhToan;
+            $payment->setRawAttributes([
+                'ThanhToanID' => 1,
+                'DonHangID' => 1,
+                'SoTien' => 10000,
+                'PhuongThuc' => 'Tiền mặt',
+                'TrangThai' => $status->value,
+            ]);
+            $payment->setRelation('donHang', null);
+
+            $html = view('admin.payments.index', [
+                'payments' => new LengthAwarePaginator(collect([$payment]), 1, 10),
+                'methods' => [],
+                'statuses' => [],
+            ])->render();
+
+            preg_match_all(
+                '/<span\b[^>]*class="[^"]*\bbadge\b[^"]*"[^>]*>\s*(?:<i\b[^>]*><\/i>\s*)?'
+                    .preg_quote($status->label(), '/').'\s*<\/span>/s',
+                $html,
+                $badges,
+            );
+
+            $this->assertCount(1, $badges[0]);
+        }
+    }
+
+    public function test_payment_detail_renders_paid_status_once(): void
+    {
+        $payment = new ThanhToan;
+        $payment->setRawAttributes([
+            'ThanhToanID' => 1,
+            'SoTien' => 10000,
+            'PhuongThuc' => 'Tiền mặt',
+            'TrangThai' => PaymentStatus::Paid->value,
+        ]);
+        $payment->setRelation('donHang', null);
+
+        $html = view('admin.payments.show', ['payment' => $payment])->render();
+
+        preg_match_all(
+            '/<span\b[^>]*class="[^"]*\bbadge\b[^"]*"[^>]*>\s*(?:<i\b[^>]*><\/i>\s*)?'
+                .preg_quote(PaymentStatus::Paid->label(), '/').'\s*<\/span>/s',
+            $html,
+            $badges,
+        );
+
+        $this->assertCount(1, $badges[0]);
+    }
+
+    public function test_invoice_list_renders_each_status_once(): void
+    {
+        foreach (InvoiceStatus::cases() as $status) {
+            $invoice = new HoaDon;
+            $invoice->setRawAttributes([
+                'HoaDonID' => 1,
+                'MaHoaDon' => 'HD0001',
+                'TrangThai' => $status->value,
+            ]);
+            $invoice->setRelation('donHang', null);
+
+            $html = view('admin.invoices.index', [
+                'invoices' => new LengthAwarePaginator(collect([$invoice]), 1, 10),
+                'statuses' => InvoiceStatus::options(),
+            ])->render();
+
+            preg_match_all(
+                '/<span\b[^>]*class="[^"]*\bbadge\b[^"]*"[^>]*>\s*(?:<i\b[^>]*><\/i>\s*)?'
+                    .preg_quote($status->label(), '/').'\s*<\/span>/s',
+                $html,
+                $badges,
+            );
+
+            $this->assertCount(1, $badges[0]);
+        }
     }
 
     public function test_notification_trigger_links_are_typed_and_remain_server_managed(): void

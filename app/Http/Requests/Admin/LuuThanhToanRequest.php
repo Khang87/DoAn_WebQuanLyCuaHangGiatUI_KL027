@@ -67,23 +67,11 @@ class LuuThanhToanRequest extends FormRequest
             }
 
             $grandTotal = (float) ($invoice?->ThanhTien ?? $order->hoaDons->first()?->ThanhTien ?? $order->ThanhTien);
-            $payment = $this->route('payment');
-            $paymentId = $payment instanceof ThanhToan
-                ? $payment->getKey()
-                : (is_numeric($payment) ? (int) $payment : null);
-            $paidQuery = $order->thanhToans()->where('TrangThai', PaymentStatus::Paid->value);
 
-            if ($paymentId !== null) {
-                $paidQuery->where('ThanhToanID', '!=', $paymentId);
-            }
-
-            $paidTotal = (float) $paidQuery->sum('SoTien');
-            $remaining = max(0, $grandTotal - $paidTotal);
-
-            if ((float) $amount > $remaining) {
+            if (round((float) $amount, 2) !== round($grandTotal, 2)) {
                 $validator->errors()->add(
                     'amount',
-                    'Số tiền thanh toán không được vượt quá số tiền còn phải thu ('.number_format($remaining).' đ).',
+                    'Số tiền thanh toán phải bằng toàn bộ số tiền phải trả ('.number_format($grandTotal).' đ).',
                 );
             }
         });

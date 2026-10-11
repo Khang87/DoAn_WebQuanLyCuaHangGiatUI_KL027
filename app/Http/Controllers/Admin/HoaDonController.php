@@ -91,11 +91,6 @@ class HoaDonController extends Controller
         return auth()->user()?->canPermission('invoices.edit_paid') ?? false;
     }
 
-    private function canDeleteSettled(): bool
-    {
-        return auth()->user()?->canPermission('invoices.delete_paid') ?? false;
-    }
-
     public function edit(Request $request, int|string $id)
     {
         $invoice = $this->invoiceService->find($id);
@@ -126,7 +121,7 @@ class HoaDonController extends Controller
         }
 
         try {
-            $this->invoiceService->update($invoice, $request->validated(), $this->canOverrideSettled());
+            $this->invoiceService->update($invoice, $request->validated());
 
             return redirect()->route('invoices.index')->with('success', 'Hóa đơn đã được cập nhật.');
         } catch (SettledOrderException $e) {
@@ -145,7 +140,7 @@ class HoaDonController extends Controller
         }
 
         try {
-            $this->invoiceService->delete($invoice, $this->canDeleteSettled());
+            $this->invoiceService->delete($invoice);
 
             return redirect()->route('invoices.index')->with('success', 'Hóa đơn đã được xóa.');
         } catch (SettledOrderException $e) {
@@ -166,7 +161,7 @@ class HoaDonController extends Controller
         $status = $request->input('status');
 
         try {
-            $this->invoiceService->updateStatus($invoice, $status, $this->canOverrideSettled());
+            $this->invoiceService->updateStatus($invoice, $status);
 
             return back()->with('success', 'Trạng thái hóa đơn đã được cập nhật.');
         } catch (SettledOrderException $e) {

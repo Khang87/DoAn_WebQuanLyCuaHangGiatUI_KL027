@@ -199,6 +199,8 @@ trait BookingInspectionFixture
             $table->string('DiaChiNhan')->nullable();
             $table->string('HinhThucTraDo')->nullable();
             $table->string('DiaChiTra')->nullable();
+            $table->decimal('PickupDeliveryFee', 12, 2)->default(0);
+            $table->decimal('DeliveryFee', 12, 2)->default(0);
             $table->date('NgayHen');
             $table->time('GioHen');
             $table->string('GhiChu', 500)->nullable();

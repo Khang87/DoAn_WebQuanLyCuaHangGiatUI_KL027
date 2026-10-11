@@ -74,7 +74,7 @@ class ReviewService
                 throw new \InvalidArgumentException('Đơn hàng không tồn tại.');
             }
 
-            if (! in_array($order->TrangThai, [OrderStatus::Delivered->value, OrderStatus::Paid->value], true)) {
+            if ($order->TrangThai !== OrderStatus::Delivered->value) {
                 throw new \InvalidArgumentException('Chỉ có thể đánh giá đơn hàng đã hoàn thành.');
             }
 

@@ -4,7 +4,6 @@ namespace App\Services;
 
 use App\Enums\DeliveryStatus;
 use App\Enums\OrderStatus;
-use App\Exceptions\SettledOrderException;
 use App\Models\DonHang;
 use App\Models\GiaoNhan;
 use Carbon\Carbon;
@@ -15,9 +14,6 @@ class DeliveryRules
 {
     public static function assertMutableOrder(DonHang $order): void
     {
-        if ($order->isLocked()) {
-            throw SettledOrderException::forOrder($order->MaDonHang);
-        }
         if ($order->statusEnum() === OrderStatus::Cancelled) {
             throw ValidationException::withMessages(['order_id' => 'Không thể thay đổi giao nhận của đơn đã hủy.']);
         }
@@ -47,6 +43,26 @@ class DeliveryRules
         }
         $target = DeliveryStatus::parse($data['status']);
         $previous = $current ? DeliveryStatus::parse($current->TrangThai) : DeliveryStatus::Pending;
+        $isReturnLeg = $data['method'] === 'giao_do';
+
+        if ($isReturnLeg) {
+            if ($data['fulfillment'] !== 'Tại nhà' || ! $order->requiresHomeDelivery()) {
+                throw ValidationException::withMessages([
+                    'method' => 'Chỉ đơn có phương thức trả đồ tại nhà mới được có chặng giao đồ.',
+                ]);
+            }
+            if ($isReturnLeg && ! $current && $target !== DeliveryStatus::Pending) {
+                throw ValidationException::withMessages([
+                    'status' => 'Phiếu giao đồ mới phải được lưu ở trạng thái chờ trước khi bắt đầu giao.',
+                ]);
+            }
+            if (! $current && ! in_array($order->statusEnum(), [OrderStatus::Washed, OrderStatus::Delivering], true)) {
+                throw ValidationException::withMessages([
+                    'order_id' => 'Chỉ đơn đã hoàn thành giặt mới được lập chặng giao đồ.',
+                ]);
+            }
+        }
+
         if ($previous !== $target && ($previous === DeliveryStatus::Completed || $previous === DeliveryStatus::Cancelled || ($previous === DeliveryStatus::Delivering && $target === DeliveryStatus::Pending))) {
             throw ValidationException::withMessages(['status' => 'Không thể mở lại hoặc lùi trạng thái giao nhận.']);
         }
@@ -61,6 +77,18 @@ class DeliveryRules
             if (! in_array($order->statusEnum(), $allowed, true)) {
                 throw ValidationException::withMessages(['status' => 'Đơn hàng chưa ở trạng thái cho phép thực hiện chặng giao nhận này.']);
             }
+        }
+        if ($isReturnLeg && $target === DeliveryStatus::Delivering && $previous !== DeliveryStatus::Delivering) {
+            if (empty($data['employee_id'])) {
+                throw ValidationException::withMessages(['employee_id' => 'Hãy phân công nhân viên đang hoạt động trước khi bắt đầu giao.']);
+            }
+            EmployeeAssignment::assertAssignable((int) $data['employee_id'], 'employee_id');
+        }
+        if ($isReturnLeg && $target === DeliveryStatus::Completed && $previous !== DeliveryStatus::Delivering) {
+            throw ValidationException::withMessages(['status' => 'Chỉ có thể hoàn thành chặng giao đang được thực hiện.']);
+        }
+        if ($isReturnLeg && $target === DeliveryStatus::Completed && $order->statusEnum() !== OrderStatus::Delivering) {
+            throw ValidationException::withMessages(['status' => 'Đơn hàng phải ở trạng thái đang giao trước khi hoàn tất chặng.']);
         }
         self::validateSchedule($data, $current);
 

@@ -72,11 +72,17 @@ class DashboardController extends Controller
         $deliveryCount = (int) $todayDeliveryCounts->get('GIAO_DO', 0);
 
         // --- Danh sách: Đơn hàng cần xử lý ---
-        $processingOrders = DonHang::with(['khachHang', 'nhanVien'])
+        $processingOrders = DonHang::with([
+            'khachHang',
+            'nhanVien',
+            'booking:BookingID,HinhThucTraDo',
+            'giaoNhans:GiaoNhanID,DonHangID,NhanVienID,LoaiGiaoNhan,TrangThai',
+        ])
             ->whereIn('TrangThai', [
                 OrderStatus::Pending->value,
                 OrderStatus::Received->value,
                 OrderStatus::Washing->value,
+                OrderStatus::Washed->value,
             ])
             ->orderBy('NgayTao', 'asc')
             ->limit(50)
@@ -128,22 +134,18 @@ class DashboardController extends Controller
             OrderStatus::Received->value,
             OrderStatus::Washing->value,
             OrderStatus::Washed->value,
-            OrderStatus::Delivering->value,
         ];
+        if ($order->statusEnum() === OrderStatus::Washed) {
+            if (! $order->requiresHomeDelivery()) {
+                $allowed[] = OrderStatus::Delivered->value;
+            }
+        }
 
-        if (! in_array($newStatus, $allowed)) {
+        if (! in_array($newStatus, $allowed, true)) {
             return response()->json([
                 'success' => false,
                 'message' => 'Trạng thái không hợp lệ.',
             ], 400);
-        }
-
-        // Đơn đã quyết toán (hoàn thành hoặc đã thanh toán) là chỉ đọc.
-        if ($order->isLocked()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Đơn hàng '.$order->MaDonHang.' đã quyết toán nên không thể đổi trạng thái.',
-            ], 409);
         }
 
         $order = $this->orderService->updateStatus($order, (string) $newStatus);

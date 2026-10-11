@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Enums\DeliveryStatus;
+use App\Enums\OrderStatus;
 use App\Models\DonHang;
 use App\Models\GiaoNhan;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
@@ -11,6 +12,8 @@ use Illuminate\Validation\ValidationException;
 
 class DeliveryService
 {
+    public function __construct(private OrderService $orderService) {}
+
     public function getAll(array $filters = []): LengthAwarePaginator
     {
         $query = GiaoNhan::query();
@@ -103,7 +106,17 @@ class DeliveryService
             if ($current->ThoiGianDuKien?->format('Y-m-d H:i') === ($validated['pickup_date'].' '.$validated['pickup_time'])) {
                 unset($attributes['ThoiGianDuKien']);
             }
+            $previousStatus = DeliveryStatus::parseForLeg($current->TrangThai, $current->LoaiGiaoNhan);
             $current->update($attributes);
+            $targetStatus = DeliveryStatus::parseForLeg($current->TrangThai, $current->LoaiGiaoNhan);
+
+            if ($current->LoaiGiaoNhan === 'GIAO_DO' && $previousStatus !== $targetStatus) {
+                if ($targetStatus === DeliveryStatus::Delivering) {
+                    $this->orderService->syncStatusFromDelivery($order, $current, OrderStatus::Delivering);
+                } elseif ($targetStatus === DeliveryStatus::Completed) {
+                    $this->orderService->syncStatusFromDelivery($order, $current, OrderStatus::Delivered);
+                }
+            }
 
             return $current->fresh();
         });
@@ -115,8 +128,14 @@ class DeliveryService
             $order = DonHang::query()->lockForUpdate()->findOrFail($delivery->DonHangID);
             $current = GiaoNhan::query()->lockForUpdate()->findOrFail($delivery->getKey());
             DeliveryRules::assertMutableOrder($order);
-            if ($current->DonHangID !== $order->DonHangID || DeliveryStatus::parse($current->TrangThai) === DeliveryStatus::Completed) {
-                throw ValidationException::withMessages(['delivery' => 'Không thể xóa phiếu đã hoàn thành hoặc đã thay đổi.']);
+            if (
+                $current->DonHangID !== $order->DonHangID
+                || DeliveryStatus::parseForLeg($current->TrangThai, $current->LoaiGiaoNhan) === DeliveryStatus::Completed
+                || ($current->LoaiGiaoNhan === 'GIAO_DO' && DeliveryStatus::parseForLeg($current->TrangThai, $current->LoaiGiaoNhan) === DeliveryStatus::Cancelled)
+            ) {
+                throw ValidationException::withMessages([
+                    'delivery' => 'Không thể xóa phiếu đã hoàn thành hoặc lần giao đã hủy cần được giữ lại lịch sử.',
+                ]);
             }
 
             return $current->delete();

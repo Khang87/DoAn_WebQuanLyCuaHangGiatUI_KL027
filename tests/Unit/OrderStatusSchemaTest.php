@@ -40,11 +40,11 @@ class OrderStatusSchemaTest extends TestCase
 
     public function test_completed_order_milestones_are_distinguished_from_in_progress_statuses(): void
     {
-        foreach ([OrderStatus::Received, OrderStatus::Washed, OrderStatus::Delivered, OrderStatus::Paid] as $status) {
+        foreach ([OrderStatus::Received, OrderStatus::Washed, OrderStatus::Delivered] as $status) {
             $this->assertTrue($status->isCompletedMilestone());
         }
 
-        foreach ([OrderStatus::Pending, OrderStatus::Washing, OrderStatus::Delivering, OrderStatus::Cancelled] as $status) {
+        foreach ([OrderStatus::Pending, OrderStatus::Washing, OrderStatus::Delivering, OrderStatus::Paid, OrderStatus::Cancelled] as $status) {
             $this->assertFalse($status->isCompletedMilestone());
         }
     }

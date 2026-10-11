@@ -14,7 +14,7 @@ use App\Models\HoaDon;
 use App\Services\PaymentService;
 use App\Support\FriendlyError;
 use Illuminate\Http\Request;
-use Illuminate\Http\Response;
+use Symfony\Component\HttpFoundation\Response;
 
 class ThanhToanController extends Controller
 {
@@ -91,11 +91,7 @@ class ThanhToanController extends Controller
             }
 
             $preselectedInvoice = $preselectedOrder->hoaDons->first();
-            $orderTotal = $preselectedOrder->hoaDons->first()?->ThanhTien ?? $preselectedOrder->ThanhTien;
-            $paidTotal = $preselectedOrder->thanhToans()
-                ->where('TrangThai', PaymentStatus::Paid->value)
-                ->sum('SoTien');
-            $preselectedAmount = max(0, (float) $orderTotal - (float) $paidTotal);
+            $preselectedAmount = (float) ($preselectedOrder->hoaDons->first()?->ThanhTien ?? $preselectedOrder->ThanhTien);
         }
 
         $orders = DonHang::with('khachHang')
@@ -103,7 +99,7 @@ class ThanhToanController extends Controller
             ->orderBy('NgayTao', 'desc')
             ->get();
         $invoices = HoaDon::with('donHang.khachHang')
-            ->where('TrangThai', '!=', InvoiceStatus::Paid->value)
+            ->whereNotIn('TrangThai', [InvoiceStatus::Paid->value, InvoiceStatus::Cancelled->value])
             ->when($preselectedOrder, fn ($query) => $query->where('DonHangID', $preselectedOrder->getKey()))
             ->orderBy('NgayLap', 'desc')
             ->get();
@@ -111,6 +107,12 @@ class ThanhToanController extends Controller
         $invoiceId = $request->query('invoice_id');
         if (! $preselectedOrder) {
             $preselectedInvoice = $invoiceId ? HoaDon::find($invoiceId) : null;
+            if ($preselectedInvoice && InvoiceStatus::parse($preselectedInvoice->TrangThai) === InvoiceStatus::Cancelled) {
+                return redirect()->route('payments.index')->with('error', 'Không thể tạo thanh toán cho hóa đơn đã hủy.');
+            }
+        } elseif ($preselectedInvoice && InvoiceStatus::parse($preselectedInvoice->TrangThai) === InvoiceStatus::Cancelled) {
+            return redirect()->route('orders.show', $preselectedOrder)
+                ->with('error', 'Không thể tạo thanh toán cho hóa đơn đã hủy.');
         }
 
         return view('admin.payments.create', compact('orders', 'invoices', 'preselectedOrder', 'preselectedInvoice', 'preselectedAmount'));
@@ -162,10 +164,16 @@ class ThanhToanController extends Controller
             );
         }
 
+        $fullAmount = (float) ($payment->donHang?->hoaDons?->first()?->ThanhTien
+            ?? $payment->donHang?->ThanhTien
+            ?? $payment->SoTien);
         $orders = DonHang::with('khachHang')->where('TrangThai', '!=', 'Đã hủy')->orderBy('NgayTao', 'desc')->get();
-        $invoices = HoaDon::with('donHang.khachHang')->where('TrangThai', '!=', InvoiceStatus::Paid->value)->orderBy('NgayLap', 'desc')->get();
+        $invoices = HoaDon::with('donHang.khachHang')
+            ->whereNotIn('TrangThai', [InvoiceStatus::Paid->value, InvoiceStatus::Cancelled->value])
+            ->orderBy('NgayLap', 'desc')
+            ->get();
 
-        return view('admin.payments.edit', compact('payment', 'orders', 'invoices'));
+        return view('admin.payments.edit', compact('payment', 'orders', 'invoices', 'fullAmount'));
     }
 
     public function update(LuuThanhToanRequest $request, int $id)

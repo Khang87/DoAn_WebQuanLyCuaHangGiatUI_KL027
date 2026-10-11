@@ -49,6 +49,11 @@ enum PaymentStatus: string
         return $this === self::Paid;
     }
 
+    public function isFinanciallyFinal(): bool
+    {
+        return in_array($this, [self::Paid, self::Refunded], true);
+    }
+
     /**
      * @return array<int, string>
      */

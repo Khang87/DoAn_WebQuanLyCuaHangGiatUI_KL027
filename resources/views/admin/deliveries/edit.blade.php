@@ -5,6 +5,7 @@
 @php
     $orderOptions = $orders ?? \App\Models\DonHang::orderByDesc('NgayTao')->get();
     $employeeOptions = $employees ?? \App\Models\NhanVien::where('TrangThai', 'Hoạt động')->orderBy('HoTen')->get();
+    $statusOptions ??= \App\Enums\DeliveryStatus::options();
 @endphp
 <div class="delivery-form-shell"><div class="card"><div class="card-body">
     <div class="d-flex justify-content-between align-items-center mb-4"><h2 class="h5 mb-0">Cập nhật lịch giao nhận</h2><div><span class="text-muted">Mã giao nhận</span><h4 class="mb-0">{{ $delivery->MaGiaoNhan ?? ('GH' . str_pad($delivery->GiaoNhanID, 3, '0', STR_PAD_LEFT)) }}</h4></div></div>
@@ -22,7 +23,7 @@
             <div class="col-12"><label class="form-label" for="address">Địa chỉ giao nhận (bắt buộc khi tại nhà)</label><input type="text" class="form-control" id="address" name="address" value="{{ old('address', $delivery->DiaChi) }}" @required(old('fulfillment', $delivery->HinhThuc) === 'Tại nhà') @disabled(old('fulfillment', $delivery->HinhThuc) === 'Tại cửa hàng')></div>
             <div class="col-md-6"><label class="form-label" for="pickup_date">Ngày giao nhận</label><input type="date" class="form-control" id="pickup_date" name="pickup_date" aria-describedby="schedule-help" value="{{ old('pickup_date', $delivery->ThoiGianDuKien?->format('Y-m-d')) }}">@error('pickup_date')<div class="text-danger small">{{ $message }}</div>@enderror</div>
             <div class="col-md-6"><label class="form-label" for="pickup_time">Giờ giao nhận</label><input type="time" class="form-control" id="pickup_time" name="pickup_time" aria-describedby="schedule-help" value="{{ old('pickup_time', $delivery->ThoiGianDuKien?->format('H:i')) }}">@error('pickup_time')<div class="text-danger small">{{ $message }}</div>@enderror</div>
-            <div class="col-12"><label class="form-label" for="status">Trạng thái</label><x-admin.status-select name="status" id="status" :options="\App\Enums\DeliveryStatus::options()" :selected="\App\Enums\DeliveryStatus::parseForLeg($delivery->TrangThai, $delivery->LoaiGiaoNhan)->value" class="form-select" /></div>
+            <div class="col-12"><label class="form-label" for="status">Trạng thái</label><x-admin.status-select name="status" id="status" :options="$statusOptions" :selected="\App\Enums\DeliveryStatus::parseForLeg($delivery->TrangThai, $delivery->LoaiGiaoNhan)->value" class="form-select" /></div>
             <div class="col-12 form-text" id="schedule-help" aria-live="polite">Phiếu trả đang chờ có thể chưa đặt lịch. Khi đặt lịch, hãy nhập đủ ngày và giờ.</div>
             <div class="col-12"><label class="form-label" for="notes">Ghi chú</label><textarea class="form-control" id="notes" name="notes" rows="3">{{ old('notes', $delivery->GhiChu) }}</textarea></div>
         </div>
