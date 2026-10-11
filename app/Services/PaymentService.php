@@ -8,9 +8,12 @@ use App\Enums\PaymentStatus;
 use App\Exceptions\SettledOrderException;
 use App\Models\DonHang;
 use App\Models\HoaDon;
+use App\Models\NhatKyHeThong;
+use App\Models\TaiKhoan;
 use App\Models\ThanhToan;
 use Carbon\Carbon;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -20,7 +23,7 @@ class PaymentService
         private OrderService $orderService,
     ) {}
 
-    public function getAll(array $filters = []): LengthAwarePaginator
+    private function filteredPayments(array $filters): Builder
     {
         $query = ThanhToan::query();
 
@@ -37,6 +40,10 @@ class PaymentService
         }
         if (! empty($filters['date_to'])) {
             $query->where('ThoiGian', '<', Carbon::parse($filters['date_to'])->addDay()->startOfDay());
+        }
+
+        if (! empty($filters['collector_id'])) {
+            $query->whereHas('collectionAudit', fn ($audit) => $audit->where('TaiKhoanID', $filters['collector_id']));
         }
 
         if (! empty($filters['method'])) {
@@ -87,7 +94,43 @@ class PaymentService
         $sort = $filters['sort'] ?? 'latest';
         [$sortBy, $sortOrder] = $sortMap[$sort] ?? ['ThoiGian', 'desc'];
 
-        return $query->with(['donHang.khachHang.taiKhoan', 'donHang.hoaDons', 'donHang.thanhToans'])->orderBy($sortBy, $sortOrder)->orderBy('ThanhToanID', $sortOrder)->paginate(10)->withQueryString();
+        return $query->orderBy($sortBy, $sortOrder)->orderBy('ThanhToanID', $sortOrder);
+    }
+
+    public function getAll(array $filters = []): LengthAwarePaginator
+    {
+        return $this->filteredPayments($filters)
+            ->with(['donHang.khachHang.taiKhoan', 'donHang.hoaDons', 'donHang.thanhToans'])
+            ->paginate(10)->withQueryString();
+    }
+
+    public function historyTotals(array $filters): object
+    {
+        return $this->filteredPayments($filters)->reorder()->selectRaw(
+            'COALESCE(SUM(CASE WHEN "TrangThai" IN (?, ?) THEN "SoTien" ELSE 0 END), 0) AS collected, COALESCE(SUM(CASE WHEN "TrangThai" = ? THEN "SoTien" ELSE 0 END), 0) AS refunded',
+            [PaymentStatus::Paid->value, PaymentStatus::Refunded->value, PaymentStatus::Refunded->value]
+        )->toBase()->first();
+    }
+
+    public function historyCollectors()
+    {
+        return TaiKhoan::query()->whereIn('TaiKhoanID', NhatKyHeThong::query()->select('TaiKhoanID')
+            ->where('BangDuLieu', 'ThanhToan')->where('HanhDong', ThanhToan::COLLECTION_AUDIT_ACTION)->whereNotNull('TaiKhoanID'))
+            ->with(['nhanVien', 'khachHang'])->orderBy('TaiKhoanID')->get();
+    }
+
+    public function ordersAwaitingCollection(array $filters = []): LengthAwarePaginator
+    {
+        return DonHang::query()->with(['khachHang.taiKhoan', 'hoaDons' => fn ($invoices) => $invoices->orderBy('HoaDonID')])
+            ->whereNotIn('TrangThai', [OrderStatus::Cancelled->value, OrderStatus::Paid->value])
+            ->whereRaw('COALESCE((SELECT "ThanhTien" FROM "HoaDon" WHERE "HoaDon"."DonHangID" = "DonHang"."DonHangID" ORDER BY "HoaDonID" LIMIT 1), "DonHang"."ThanhTien") > 0')
+            ->whereDoesntHave('hoaDons', fn ($invoices) => $invoices->whereIn('TrangThai', [InvoiceStatus::Paid->value, InvoiceStatus::Cancelled->value]))
+            ->whereDoesntHave('thanhToans', fn ($payments) => $payments->where('TrangThai', PaymentStatus::Paid->value))
+            ->when(! empty($filters['order_id']), fn ($query) => $query->where('DonHangID', $filters['order_id']))
+            ->when(! empty($filters['search']), fn ($query) => $query->where(fn ($search) => $search
+                ->where('MaDonHang', 'LIKE', '%'.$filters['search'].'%')
+                ->orWhereHas('khachHang', fn ($customers) => $customers->where('HoTen', 'LIKE', '%'.$filters['search'].'%'))))
+            ->orderByDesc('NgayTao')->orderByDesc('DonHangID')->paginate(10)->withQueryString();
     }
 
     public function find(int $id): ?ThanhToan
@@ -150,6 +193,7 @@ class PaymentService
             }
 
             $payment = ThanhToan::create($attributes);
+            $this->recordCollection($payment);
 
             $order = $payment->donHang;
 
@@ -218,6 +262,7 @@ class PaymentService
             }
 
             $payment->update($attributes);
+            $this->recordCollection($payment);
 
             if ($invoice) {
                 $this->updateInvoiceStatus($invoice);
@@ -229,6 +274,22 @@ class PaymentService
 
             return $payment->fresh();
         });
+    }
+
+    private function recordCollection(ThanhToan $payment): void
+    {
+        if (! $payment->isSettled()) {
+            return;
+        }
+
+        NhatKyHeThong::firstOrCreate([
+            'HanhDong' => ThanhToan::COLLECTION_AUDIT_ACTION,
+            'BangDuLieu' => 'ThanhToan', 'BanGhiID' => $payment->getKey(),
+        ], [
+            'TaiKhoanID' => auth()->id(),
+            'DuLieuMoi' => $payment->only(['DonHangID', 'SoTien', 'PhuongThuc', 'MaGiaoDich']),
+            'ThoiGian' => now(),
+        ]);
     }
 
     /**

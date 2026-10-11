@@ -21,6 +21,9 @@
 </style>
 @endpush
 
+@if($errors->any())
+<div class="alert alert-danger" role="alert"><ul class="mb-0">@foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul></div>
+@endif
 <div class="card">
     <div class="card-body">
         <div class="d-flex justify-content-between align-items-center mb-4">
@@ -80,8 +83,7 @@
                 <div class="col-md-6">
                     @if($preselectedOrder)
                         <label class="form-label">Số tiền thanh toán toàn bộ</label>
-                        <input type="number" class="form-control" value="{{ $preselectedAmount }}" min="0" step="1000" disabled aria-describedby="payment-amount-help">
-                        <input type="hidden" name="amount" value="{{ $preselectedAmount }}">
+                        <input type="number" class="form-control" name="amount" value="{{ old('amount', $preselectedAmount) }}" min="0.01" step="0.01" required aria-describedby="payment-amount-help">
                     @else
                         <label class="form-label">Số tiền thanh toán toàn bộ <span class="text-danger ms-1">*</span></label>
                         <input type="number" class="form-control" name="amount" value="{{ old('amount') }}" placeholder="250000" min="0" step="1000" required>
@@ -104,7 +106,7 @@
                         <option value="{{ \App\Enums\PaymentStatus::Paid->value }}" selected>{{ \App\Enums\PaymentStatus::Paid->label() }}</option>
                     </select>
                     <input type="hidden" name="status" value="{{ \App\Enums\PaymentStatus::Paid->value }}">
-                    <div class="form-text" id="payment-status-help">Giao dịch được ghi nhận là thành công khi lưu.</div>
+                    <div class="form-text" id="payment-status-help">Giao dịch được ghi nhận là thành công khi lưu. Chỉ lưu sau khi xác nhận đã nhận đủ tiền.</div>
                 </div>
                 <div class="col-md-6">
                     <label class="form-label">Ngày thanh toán</label>
@@ -155,7 +157,7 @@
             const isCash = methodSelect.value === 'cash';
             transactionCode.placeholder = isCash
                 ? 'Mã giao dịch tiền mặt tự động'
-                : 'Nhập mã giao dịch / Mã tham chiếu từ Ngân hàng / Ví';
+                : 'Mã giao dịch chuyển khoản tự động';
 
             const prefix = isCash ? 'TM' : 'CK';
             const now = new Date();

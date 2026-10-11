@@ -9,3 +9,11 @@ Reuse PaymentService for data, add date bounds and stable sort tie-breaking ther
 This is a view of stored payment records, not a new immutable event log. Financial finality protections and existing deletion rules remain authoritative. No DB migration or production data mutation is needed.
 
 Verify permissions and read-only details, all statuses including refunds, combined filters, date boundaries, deterministic pagination/row numbering and original payment management routes. Browser checks use an isolated fixture dedicated to payment history so unrelated delivery setup does not block them.
+
+## Collection versus reconciliation
+
+`payments.index` is an actionable, paginated queue of eligible unpaid orders, not a second transaction list. Selecting an order opens its existing collection form. Exclude cancelled orders/invoices, financially settled orders, and zero-total invoices/orders. Preserve the order processing milestone when collecting money. The user explicitly confirmed keeping one full payment per order; instalments are excluded. Never label the operational status as a payment status.
+
+History remains GET-only, displays the actual transaction reference and collector, and supports collector/date/method search. Record authenticated account attribution in the existing NhatKyHeThong table atomically with successful collection. Never infer the collector from the employee assigned to the order; old records without attribution display “Chưa ghi nhận”. No schema migration is required.
+
+Filtered totals cover the entire matching dataset, not just the current page. Gross collection includes successful and refunded records; refunded total includes refunded records; net equals gross minus refunds. Pending/failed rows do not contribute. This reconciles stored payment records, not operating expenses or an immutable event ledger. Today/month shortcuts use application local dates. Tests must confirm history reads do not mutate payment/order/invoice/audit data, totals across pages, attribution, ACL, and unchanged existing financial guards.

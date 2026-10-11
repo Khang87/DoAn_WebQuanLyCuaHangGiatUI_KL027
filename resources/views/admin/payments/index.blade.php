@@ -1,191 +1,45 @@
 @extends('layouts.app')
 @section('title', 'Thanh toán - Sky Laundry')
 @section('page-title', 'Thanh toán')
-
 @section('content')
-<!-- Page Actions: nút "Thêm" luôn nằm góc trên bên trái -->
 <div class="page-toolbar">
-    @can('payments.create')
-        <a href="{{ route('payments.create') }}" class="btn btn-create">
-            <i class="bi bi-plus-lg"></i>Thêm thanh toán
-        </a>
-    @endcan
-    <p class="text-muted page-toolbar__desc">Theo dõi các khoản thu của đơn hàng.</p>
+    <p class="text-muted page-toolbar__desc mb-0">Chọn đơn hàng cần thu tiền để ghi nhận thanh toán.</p>
+    <a href="{{ route('payment-history.index') }}" class="btn btn-outline-secondary"><i class="bi bi-clock-history me-1" aria-hidden="true"></i>Lịch sử thanh toán</a>
 </div>
-
-<form action="{{ url()->current() }}" method="GET" class="row g-3 align-items-center mb-4">
-    <div class="col-12 col-md-auto flex-grow-1">
-        <div class="input-group input-group-sm shadow-sm rounded-3 overflow-hidden">
-            <span class="input-group-text bg-white border-end-0 ps-3">
-                <i class="fas fa-search text-muted"></i>
-            </span>
-            <input type="text" name="search" class="form-control form-control-sm border-start-0 ps-2" placeholder="Tìm theo ID, mã thanh toán, tên khách..." value="{{ request('search') }}">
+@if($errors->any())<div class="alert alert-danger" role="alert">{{ $errors->first() }}</div>@endif
+<form action="{{ route('payments.index') }}" method="GET" class="card mb-4">
+    <div class="card-body d-flex flex-wrap gap-2 align-items-end">
+        <div class="flex-grow-1">
+            <label for="collection-search" class="form-label">Tìm đơn hàng hoặc khách hàng</label>
+            <input id="collection-search" name="search" class="form-control" maxlength="200" value="{{ old('search', request('search')) }}" placeholder="Mã đơn hàng, tên khách hàng...">
         </div>
-    </div>
-    <div class="col-12 col-sm-6 col-md-auto">
-        <select name="method" class="form-select form-select-sm filter-select shadow-sm rounded-3" onchange="this.form.submit()">
-            <option value="">Tất cả phương thức</option>
-            @foreach($methods as $value => $label)
-                <option value="{{ $value }}" @selected(request('method') === $value)>{{ $label }}</option>
-            @endforeach
-        </select>
-    </div>
-    <div class="col-12 col-sm-6 col-md-auto">
-        <x-admin.status-select
-            name="status"
-            id="filter-status"
-            :options="\App\Enums\PaymentStatus::options()"
-            placeholder="Tất cả trạng thái"
-            class="form-select form-select-sm filter-select shadow-sm rounded-3"
-            submit
-        />
-    </div>
-    <div class="col-12 col-sm-6 col-md-auto">
-        <select name="sort" class="form-select form-select-sm filter-select shadow-sm rounded-3" onchange="this.form.submit()">
-            <option value="">Tất cả cách sắp xếp</option>
-            <option value="created_at_desc" @selected(request('sort') === 'created_at_desc')>Mới nhất</option>
-            <option value="created_at_asc" @selected(request('sort') === 'created_at_asc')>Cũ nhất</option>
-            <option value="amount_desc" @selected(request('sort') === 'amount_desc')>Số tiền cao nhất</option>
-            <option value="amount_asc" @selected(request('sort') === 'amount_asc')>Số tiền thấp nhất</option>
-            <option value="id_desc" @selected(request('sort') === 'id_desc')>Mã giảm dần</option>
-            <option value="id_asc" @selected(request('sort') === 'id_asc')>Mã tăng dần</option>
-        </select>
+        <button class="btn btn-primary" type="submit">Tìm kiếm</button>
+        <a href="{{ route('payments.index') }}" class="btn btn-outline-secondary">Xóa bộ lọc</a>
     </div>
 </form>
-
-<!-- Payments Table -->
 <div class="card">
-    <div class="card-body p-0">
-        <div class="table-responsive">
-            <table class="table-custom mb-0">
-                <thead>
-                    <tr>
-                        <th scope="col">STT</th>
-                        <th class="fw-semibold text-dark">Mã thanh toán</th>
-                        <th class="fw-semibold text-dark">Mã đơn hàng</th>
-                        <th class="fw-semibold text-dark">Khách hàng</th>
-                        <th class="fw-semibold text-dark">Số tiền</th>
-                        <th class="fw-semibold text-dark">Phương thức</th>
-                        <th class="fw-semibold text-dark">Trạng thái</th>
-                        <th class="fw-semibold text-dark">Ngày thanh toán</th>
-                        <th class="fw-semibold text-dark">Thao tác</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @forelse($payments as $payment)
-                    <tr>
-                        <td>{{ $payments->firstItem() + $loop->index }}</td>
-                        <td><strong>TT{{ $payment->ThanhToanID }}</strong></td>
-                        <td><span class="text-dark">{{ $payment->donHang?->MaDonHang ?: $payment->DonHangID }}</span></td>
-                        <td>
-                            @php($customerAccount = $payment->donHang?->khachHang?->taiKhoan)
-                            <div class="d-flex align-items-center">
-                                <img src="{{ $payment->donHang?->khachHang?->avatar_url ?? asset('assets/images/user_1.jpg') }}" alt="Ảnh khách hàng" class="rounded-circle me-2 avatar-cover" style="width: 40px; height: 40px;" onerror="this.onerror=null; this.src='{{ asset('assets/images/user_'.((($customerAccount?->getKey() ?? 0) % 8) + 1).'.jpg') }}';">
-                                <div>
-                                    <div class="fw-semibold">{{ $payment->donHang?->khachHang?->HoTen ?: '-' }}</div>
-                                    <small class="text-muted">{{ $payment->donHang?->khachHang?->SoDienThoai ?: 'Chưa có SĐT' }}</small>
-                                </div>
-                            </div>
-                        </td>
-                        <td class="fw-semibold">{{ number_format($payment->SoTien) }} VNĐ</td>
-                        <td>
-                            <i class="bi {{ $payment->getMethodIcon() }} me-1"></i>{{ $payment->getMethodLabel() }}
-                        </td>
-                        <td>
-                            <x-admin.status-badge :status="$payment->TrangThai" :enum="\App\Enums\PaymentStatus::class" />
-                        </td>
-                        <td>{{ $payment->ThoiGian?->format('d/m/Y H:i') }}</td>
-                        <td>
-                            <div class="d-flex gap-2">
-                                @php($canManageSettled = ! $payment->isFinanciallyFinal() && (! $payment->isLocked() || auth()->user()?->isOwner()))
-                                @can('payments.view')
-                                    <a href="{{ route('payments.show', $payment) }}" class="btn btn-order-action view" title="Xem"><i class="bi bi-eye"></i></a>
-                                @endcan
-                                @if($canManageSettled)
-                                    @can('payments.edit')
-                                        <a href="{{ route('payments.edit', $payment) }}" class="btn btn-order-action edit" title="Sửa"><i class="bi bi-pencil"></i></a>
-                                    @endcan
-                                @endif
-                                @if($canManageSettled)
-                                    @can('payments.delete')
-                                        <form action="{{ route('payments.destroy', $payment) }}" method="POST" class="d-inline" id="deletePaymentForm_{{ $payment->ThanhToanID }}">
-                                            @csrf @method('DELETE')
-                                            <button type="submit" class="btn btn-order-action delete" title="Xóa"><i class="bi bi-trash"></i></button>
-                                        </form>
-                                    @endcan
-                                @endif
-                            </div>
-                        </td>
-                    </tr>
-                    @empty
-                    <tr>
-                        <td colspan="9" class="text-center text-muted py-4">Chưa có dữ liệu nào</td>
-                    </tr>
-                    @endempty
-                </tbody>
-            </table>
-        </div>
+    <div class="card-body p-0 table-responsive">
+        <table class="table-custom mb-0" aria-label="Đơn hàng cần thanh toán">
+            <thead><tr><th scope="col">STT</th><th scope="col">Đơn hàng</th><th scope="col">Khách hàng</th><th scope="col">Trạng thái xử lý</th><th scope="col">Số tiền cần thu</th><th scope="col">Thao tác</th></tr></thead>
+            <tbody>
+            @forelse($orders as $order)
+                <tr data-collection-order="{{ $order->getKey() }}">
+                    <td>{{ $orders->firstItem() + $loop->index }}</td>
+                    <td class="fw-semibold">{{ $order->MaDonHang }}</td>
+                    <td><div class="d-flex align-items-center gap-2">
+                        <img src="{{ $order->khachHang?->avatar_url ?? asset('assets/images/user_1.jpg') }}" alt="Ảnh khách hàng" class="rounded-circle avatar-cover" width="32" height="32" loading="lazy" onerror="this.onerror=null;this.src='{{ asset('assets/images/user_1.jpg') }}';">
+                        <span>{{ $order->khachHang?->HoTen ?: '—' }}</span>
+                    </div></td>
+                    <td><x-admin.status-badge :status="$order->TrangThai" :enum="\App\Enums\OrderStatus::class" /></td>
+                    <td>{{ number_format((float) ($order->hoaDons->first()?->ThanhTien ?? $order->ThanhTien)) }} VNĐ</td>
+                    <td>@can('payments.create')<a class="btn btn-primary btn-sm" href="{{ route('payments.create', ['order_id' => $order->getKey()]) }}">Thu tiền</a>@else<span class="text-muted">Chỉ xem</span>@endcan</td>
+                </tr>
+            @empty
+                <tr><td colspan="6" class="text-center text-muted py-4">Không có đơn hàng cần thu tiền phù hợp.</td></tr>
+            @endforelse
+            </tbody>
+        </table>
     </div>
+    @if($orders->hasPages())<div class="card-footer">{{ $orders->links() }}</div>@endif
 </div>
-
-@if($payments->hasPages())
-<nav class="mt-4">
-    <div class="d-flex justify-content-between align-items-center">
-        <div class="text-muted small">Hiển thị {{ $payments->firstItem() }} - {{ $payments->lastItem() }} của {{ $payments->total() }} thanh toán</div>
-        <ul class="pagination mb-0">
-            @if ($payments->onFirstPage())
-                <li class="page-item disabled"><span class="page-link"><i class="bi bi-chevron-left"></i></span></li>
-            @else
-                <li class="page-item"><a class="page-link" href="{{ $payments->appends(request()->query())->url($payments->currentPage() - 1) }}"><i class="bi bi-chevron-left"></i></a></li>
-            @endif
-            @foreach ($payments->getUrlRange(max(1, $payments->currentPage() - 2), min($payments->lastPage(), $payments->currentPage() + 2)) as $page => $url)
-                @if ($page == $payments->currentPage())
-                    <li class="page-item active"><span class="page-link">{{ $page }}</span></li>
-                @else
-                    <li class="page-item"><a class="page-link" href="{{ $payments->appends(request()->query())->url($page) }}">{{ $page }}</a></li>
-                @endif
-            @endforeach
-            @if ($payments->onLastPage())
-                <li class="page-item disabled"><span class="page-link"><i class="bi bi-chevron-right"></i></span></li>
-            @else
-                <li class="page-item"><a class="page-link" href="{{ $payments->appends(request()->query())->url($payments->currentPage() + 1) }}"><i class="bi bi-chevron-right"></i></a></li>
-            @endif
-        </ul>
-    </div>
-</nav>
-@endif
 @endsection
-
-@push('scripts')
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        document.querySelectorAll('[id^="deletePaymentForm_"]').forEach(function(form) {
-            form.addEventListener('submit', function(e) {
-                e.preventDefault();
-
-                if (typeof Swal === 'undefined') {
-                    if (confirm('Bạn có chắc muốn xóa?')) {
-                        form.submit();
-                    }
-                    return;
-                }
-
-                Swal.fire({
-                    title: 'Xóa thanh toán?',
-                    text: 'Hành động này không thể hoàn tác.',
-                    icon: 'warning',
-                    showCancelButton: true,
-                    confirmButtonColor: '#dc2626',
-                    cancelButtonColor: '#64748b',
-                    confirmButtonText: 'Xóa',
-                    cancelButtonText: 'Hủy'
-                }).then((result) => {
-                    if (result.isConfirmed) {
-                        form.submit();
-                    }
-                });
-            });
-        });
-    });
-</script>
-@endpush

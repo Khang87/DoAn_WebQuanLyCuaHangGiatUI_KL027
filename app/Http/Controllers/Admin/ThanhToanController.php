@@ -49,21 +49,14 @@ class ThanhToanController extends Controller
 
     public function index(Request $request)
     {
-        $payments = $this->paymentService->getAll([
-            'search' => $request->input('search'),
-            'order_id' => $request->input('order_id'),
-            'invoice_id' => $request->input('invoice_id'),
-            'method' => $request->input('method'),
-            'status' => $request->input('status'),
-            'sort' => $request->input('sort'),
+        $filters = $request->validate([
+            'search' => ['nullable', 'string', 'max:200'],
+            'order_id' => ['nullable', 'integer', 'min:1', 'max:2147483647'],
+            'page' => ['nullable', 'integer', 'min:1', 'max:2147483647'],
         ]);
+        $orders = $this->paymentService->ordersAwaitingCollection($filters);
 
-        $methods = [
-            'cash' => 'Tiền mặt',
-            'bank_transfer' => 'Chuyển khoản / QR',
-        ];
-
-        return view('admin.payments.index', compact('payments', 'methods'));
+        return view('admin.payments.index', compact('orders'));
     }
 
     public function create(Request $request)

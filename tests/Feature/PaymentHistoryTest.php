@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\ThanhToan;
 use App\Models\User;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
@@ -19,6 +20,8 @@ class PaymentHistoryTest extends TestCase
         Schema::create('TaiKhoan', function (Blueprint $table): void {
             $table->increments('TaiKhoanID');
             $table->integer('KhachHangID')->nullable();
+            $table->integer('NhanVienID')->nullable();
+            $table->string('TenDangNhap')->nullable();
         });
         Schema::create('KhachHang', function (Blueprint $table): void {
             $table->increments('KhachHangID');
@@ -29,11 +32,16 @@ class PaymentHistoryTest extends TestCase
             $table->increments('DonHangID');
             $table->integer('KhachHangID')->nullable();
             $table->string('MaDonHang');
+            $table->string('TrangThai')->default('Đã tiếp nhận');
+            $table->dateTime('NgayTao')->nullable();
+            $table->decimal('ThanhTien', 18, 2)->default(15000);
         });
         Schema::create('HoaDon', function (Blueprint $table): void {
             $table->increments('HoaDonID');
             $table->integer('DonHangID');
             $table->string('MaHoaDon');
+            $table->string('TrangThai')->default('Chưa thanh toán');
+            $table->decimal('ThanhTien', 18, 2)->default(15000);
         });
         Schema::create('ThanhToan', function (Blueprint $table): void {
             $table->increments('ThanhToanID');
@@ -44,6 +52,19 @@ class PaymentHistoryTest extends TestCase
             $table->dateTime('ThoiGian')->nullable();
             $table->string('MaGiaoDich');
             $table->text('GhiChu')->nullable();
+        });
+        Schema::create('NhanVien', function (Blueprint $table): void {
+            $table->increments('NhanVienID');
+            $table->string('HoTen');
+        });
+        Schema::create('NhatKyHeThong', function (Blueprint $table): void {
+            $table->increments('NhatKyID');
+            $table->integer('TaiKhoanID')->nullable();
+            $table->string('HanhDong');
+            $table->string('BangDuLieu');
+            $table->integer('BanGhiID');
+            $table->text('DuLieuMoi')->nullable();
+            $table->dateTime('ThoiGian')->nullable();
         });
         Schema::create('ThongBao', function (Blueprint $table): void {
             $table->increments('ThongBaoID');
@@ -78,6 +99,58 @@ class PaymentHistoryTest extends TestCase
             'DonHangID' => 1, 'SoTien' => 15000, 'PhuongThuc' => $method, 'TrangThai' => $status,
             'ThoiGian' => $date, 'MaGiaoDich' => 'TX-'.$status, 'GhiChu' => '<script>window.bad=true</script>',
         ], 'ThanhToanID');
+    }
+
+    public function test_history_totals_cover_all_pages_and_exclude_failed_and_pending_payments(): void
+    {
+        for ($i = 0; $i < 11; $i++) {
+            $this->payment();
+        }
+        $this->payment('Đã hoàn tiền');
+        $this->payment('Thất bại');
+        $this->payment('Chờ thanh toán');
+        $before = DB::table('ThanhToan')->get()->toJson();
+        $this->actingAs($this->viewer())->get('/payment-history?page=2')->assertOk()
+            ->assertViewHas('totals', fn ($totals) => (float) $totals->collected === 180000.0 && (float) $totals->refunded === 15000.0);
+        $this->get('/payment-history?status='.urlencode('Thất bại'))->assertOk()
+            ->assertViewHas('totals', fn ($totals) => (float) $totals->collected === 0.0 && (float) $totals->refunded === 0.0);
+        $this->assertSame($before, DB::table('ThanhToan')->get()->toJson());
+        $this->assertSame(0, DB::table('NhatKyHeThong')->count());
+        $this->assertSame('Đã tiếp nhận', DB::table('DonHang')->value('TrangThai'));
+        $this->assertSame('Chưa thanh toán', DB::table('HoaDon')->value('TrangThai'));
+    }
+
+    public function test_history_filters_actual_collector_and_does_not_infer_missing_attribution(): void
+    {
+        DB::table('NhanVien')->insert(['NhanVienID' => 1, 'HoTen' => 'Người thu tiền']);
+        DB::table('TaiKhoan')->insert(['TaiKhoanID' => 1, 'NhanVienID' => 1, 'TenDangNhap' => 'collector']);
+        $id = $this->payment();
+        $this->payment();
+        DB::table('NhatKyHeThong')->insert([
+            'TaiKhoanID' => 1, 'HanhDong' => ThanhToan::COLLECTION_AUDIT_ACTION,
+            'BangDuLieu' => 'ThanhToan', 'BanGhiID' => $id,
+        ]);
+        $this->actingAs($this->viewer())->get('/payment-history?collector_id=1')->assertOk()
+            ->assertViewHas('payments', fn ($rows) => $rows->total() === 1 && $rows->first()->getKey() === $id)
+            ->assertSee('Người thu tiền');
+        $this->get('/payment-history')->assertSee('Chưa ghi nhận');
+        $this->get('/payment-history/'.$id)->assertSee('Người thu tiền');
+    }
+
+    public function test_payment_entry_lists_unpaid_orders_instead_of_transaction_records(): void
+    {
+        foreach ([2 => 'Đã hủy', 3 => 'Đã thanh toán', 4 => 'Đã tiếp nhận', 5 => 'Đang giặt'] as $id => $status) {
+            DB::table('DonHang')->insert(['DonHangID' => $id, 'MaDonHang' => 'DH'.$id, 'TrangThai' => $status]);
+        }
+        DB::table('HoaDon')->insert(['DonHangID' => 4, 'MaHoaDon' => 'HD4', 'TrangThai' => 'Đã hủy']);
+        DB::table('ThanhToan')->insert(['DonHangID' => 5, 'SoTien' => 15000, 'PhuongThuc' => 'Tiền mặt', 'TrangThai' => 'Thành công', 'MaGiaoDich' => 'COLLECTED']);
+        DB::table('DonHang')->insert(['DonHangID' => 6, 'MaDonHang' => 'FREE', 'ThanhTien' => 0]);
+        DB::table('DonHang')->insert(['DonHangID' => 7, 'MaDonHang' => 'FREE-INVOICE', 'ThanhTien' => 15000]);
+        DB::table('HoaDon')->insert(['DonHangID' => 7, 'MaHoaDon' => 'FREE', 'ThanhTien' => 0]);
+        $this->actingAs($this->viewer())->get('/payments')->assertOk()
+            ->assertViewHas('orders', fn ($rows) => $rows->total() === 1 && $rows->first()->getKey() === 1)
+            ->assertSee('Đơn hàng cần thanh toán')->assertDontSee('COLLECTED')
+            ->assertDontSee('href="'.route('payments.create', ['order_id' => 1]).'"', false);
     }
 
     public function test_invalid_html_date_range_displays_feedback_and_preserves_dates(): void
