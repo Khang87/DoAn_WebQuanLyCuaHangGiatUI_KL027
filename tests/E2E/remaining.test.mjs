@@ -35,6 +35,10 @@ test('remaining testcase UI variants with HTTP sessions and PostgreSQL', {timeou
             for(const path of ['/orders/create',`/orders/${cases.legacy}/edit`,`/bookings/${cases.booking}/inspection`]) {
                 await b.navigate(path);
                 const priceFields=await b.evaluate(`(()=>{const p=[...document.querySelectorAll('input[name$="[DonGia]"]:not([type="hidden"])')];return {count:p.length,locked:p.every(f=>f.readOnly||f.disabled),inspection:Boolean(document.querySelector('.booking-item'))}})()`);
+                if (path === '/orders/create') {
+                    assert.deepEqual(await b.evaluate(`(()=>{const select=document.querySelector('#status');return {tag:select.tagName,value:select.value,name:select.name,enabled:[...select.options].filter(option=>!option.disabled).map(option=>option.value),count:document.querySelectorAll('[name="TrangThai"]').length}})()`),
+                        {tag:'SELECT',value:'Đã tiếp nhận',name:'TrangThai',enabled:['Đã tiếp nhận'],count:1});
+                }
                 assert.equal(priceFields.locked,true,path);
                 assert.ok(priceFields.count>0||priceFields.inspection,'Inspection has no editable price field');
             }

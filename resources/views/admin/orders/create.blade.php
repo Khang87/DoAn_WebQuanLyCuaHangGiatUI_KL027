@@ -152,17 +152,13 @@
                         Trạng thái <span class="text-danger ms-1">*</span>
                     </label>
 
-                    <input
-                        type="hidden"
-                        name="TrangThai"
-                        value="{{ \App\Enums\OrderStatus::Received->value }}"
-                    >
-
-                    <input type="hidden" name="TrangThai" value="Đã tiếp nhận">a
-
-                    <div class="form-text">
-                        Kiểm kê đồ thực tế trước khi lưu. Đơn từ Booking cần tạo trên màn hình kiểm kê Booking.
-                    </div>
+                    <select class="form-select @error('TrangThai') is-invalid @enderror" id="status" name="TrangThai" required aria-describedby="order-status-help">
+                        @foreach($statusFlow as $value => $label)
+                            <option value="{{ $value }}" @selected($value === \App\Enums\OrderStatus::Received->value) @disabled($value !== \App\Enums\OrderStatus::Received->value)>{{ $label }}</option>
+                        @endforeach
+                    </select>
+                    @error('TrangThai')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                    <div class="form-text" id="order-status-help">Đơn mới bắt đầu ở trạng thái Đã tiếp nhận sau kiểm kê. Cập nhật trạng thái tiếp theo sau khi lưu đơn. Đơn từ Booking cần tạo trên màn hình kiểm kê Booking.</div>
                 </div>
 
                 {{-- ======== Thông tin nhận và trả đồ ======== --}}
