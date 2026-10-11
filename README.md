@@ -20,6 +20,15 @@ Tin nhắn khách hàng: danh sách đơn tự cập nhật mỗi 3 giây khi tr
 - Màn hình sửa đơn hiển thị mã voucher đã lưu readonly; không thể thêm/đổi voucher để lách quy tắc. Voucher không hợp lệ có cảnh báo và không giảm tiền trong preview; server kiểm tra lại khi lưu. Điểm tích lũy vẫn dùng như trước.
 - Đặc tả: [mobile-booking-vouchers](./docs/specs/mobile-booking-vouchers/README.md); [báo cáo kiểm thử mục 14](./docs/testing/runs/2026-10-10-voucher-policy/README.md).
 
+## Dữ liệu Booking từ mobile — 11/10/2026
+
+- Web hiển thị hồ sơ khách hàng (tên, điện thoại, email, avatar, địa chỉ), lịch hẹn, các dòng dịch vụ/ghi chú, ưu đãi/điểm, phương thức thanh toán, khoảng cách và phí từng chặng đã lưu trên Booking. Thông tin hồ sơ là dữ liệu hiện tại trong database; Booking không có snapshot riêng của tên/điện thoại.
+- Booking cũ chỉ có `HinhThucGiaoDo`/`DiaChiGiao` được đọc tương thích sang `HinhThucTraDo`/`DiaChiTra`, bao gồm tìm kiếm/lọc. Web sửa hình thức/địa chỉ trả sẽ đồng bộ cả hai cặp trường.
+- Khi chuyển Booking thành đơn, phí giao nhận lấy trực tiếp từ Booking trong transaction, không gọi lại dịch vụ định tuyến hoặc ghi đè phí mobile. Phí từng chặng tại nhà vào `GiaoNhan.PhiGiaoNhan`, tổng vào `DonHang.PhiGiaoHang`; chặng tại cửa hàng không tính phí. Phí 0 hợp lệ; phí âm bị từ chối và rollback.
+- Preview tính theo hình thức nhận/trả đang chọn. Tiền giặt vẫn chốt theo kiểm kê/bảng giá hiện hành; voucher, điểm, quyền và kiểm tra thanh toán đủ một lần được giữ. Phương thức mobile chỉ điền sẵn form thanh toán, không tự ghi nhận đã trả tiền.
+- Trigger `private.copy_booking_delivery_fee_to_order` áp dụng cùng quy tắc chặng tại nhà/cửa hàng; Đã cập nhật hàm này trên Supabase ngày 11/10/2026, giữ nguyên owner/ACL; SQL nằm trong `database/sql/booking-mobile-delivery-fees.sql` và định nghĩa được đồng bộ vào `schema.sql`. Không nhận phí từ request web, không backfill dữ liệu production. Tạo đơn trực tiếp trên web tiếp tục dùng cơ chế tính phí hiện hành.
+- Kết quả và giới hạn kiểm thử: [báo cáo Booking mobile](./docs/testing/runs/2026-10-11-booking-mobile/README.md). Suite PostgreSQL rộng còn lỗi cũ cộng điểm trước khi thu đủ; không coi toàn bộ CI đã đạt.
+
 ## Tiền khuyến mãi Booking và địa chỉ — 10/10/2026
 
 - Chi tiết Booking hiển thị voucher từ mobile, tiền dịch vụ dự kiến, giảm khuyến mãi, giảm điểm đã chọn, hai phí giao nhận và tổng ước tính. Dùng chung calculator với kiểm kê; đọc ước tính không trừ điểm/quota hoặc tạo đơn.
@@ -44,7 +53,7 @@ Tin nhắn khách hàng: danh sách đơn tự cập nhật mỗi 3 giây khi tr
 - Luồng service duy nhất là `BookingService::inspectBookingAndCreateOrder()`. Các dòng dự kiến `ChiTietBooking` được giữ làm lịch sử; `ChiTietDonHang` được tạo từ dữ liệu thực tế. Server tra giá hiệu lực theo đúng dịch vụ/loại đồ/đơn vị, không tin đơn giá hoặc thành tiền gửi từ trình duyệt. KG tối thiểu vẫn áp dụng riêng cho từng dòng.
 - Chỉ tạo phiếu `NHAN_DO` khi nhận tại nhà và `GIAO_DO` khi trả tại nhà. Nếu cả hai tại cửa hàng thì không tạo phiếu. Phiếu nhận dùng `NgayHen`/`GioHen`; phiếu trả chưa có lịch thì để `ThoiGianDuKien` NULL, không sao chép thời gian nhận làm thời gian trả.
 - Việc tạo đơn, chi tiết, phiếu, trừ điểm và xác nhận/audit Booking nằm trong cùng transaction. Khóa Booking và trả về đơn hiện hữu khi gửi lại giúp tránh tạo đơn hoặc trừ điểm trùng. Audit ghi cả `HinhThucTraDo` và `DiaChiTra`, bao gồm các lần sửa thông thường.
-- Booking cũ thiếu hình thức trả hiển thị “Chưa bổ sung”; nhân viên phải chọn trước khi chuyển đổi. Đơn cũ đang `Chờ tiếp nhận` tiếp tục dùng bước kiểm tra trên trang đơn hàng; bản sửa không tự chuyển trạng thái các đơn cũ.
+- Booking cũ đọc hình thức trả từ `HinhThucGiaoDo` nếu `HinhThucTraDo` trống; chỉ khi cả hai thiếu thì hiển thị “Chưa bổ sung” và nhân viên phải chọn trước khi chuyển đổi. Đơn cũ đang `Chờ tiếp nhận` tiếp tục dùng bước kiểm tra trên trang đơn hàng; bản sửa không tự chuyển trạng thái các đơn cũ.
 - Admin cấp OTP nội bộ qua `InternalPasswordOtpService`: mã 6 số, TTL **10 phút**, cùng mã qua email Resend và `ThongBao` riêng của người nhận; cache Redis lưu hash. Gửi lại sau 60 giây, tối đa 5 lần sai, dùng một lần. Mật khẩu chỉ đổi khi người nhận hoàn tất `/internal/reset-password`. Luồng tự yêu cầu tại `/forgot-password` và `/reset-password` dùng `PasswordResetOtpService` riêng, TTL 15 phút; hai luồng không dùng chung mã.
 - `TaiKhoan::$fillable` được bổ sung `AvatarURL`. Luồng upload avatar hiện hành được giữ nguyên.
 - `schema.sql` giữ các cột legacy `HinhThucGiaoDo`/`DiaChiGiao` đang được RPC mobile sử dụng. Catalog Live đã được đối chiếu chỉ đọc; không thực thi toàn bộ snapshot hoặc seeder trên Live.

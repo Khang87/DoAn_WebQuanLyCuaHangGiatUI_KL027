@@ -61,6 +61,9 @@ class RewardPointTest extends TestCase
     {
         foreach ([
             'NhatKyHeThong',
+            'ThongBao',
+            'TinNhan',
+            'DanhGia',
             'ThanhToan',
             'HoaDon',
             'ChiTietBooking',
@@ -124,7 +127,7 @@ class RewardPointTest extends TestCase
 
         $this->assertSame(100, $order->DiemSuDung);
         $this->assertSame(100.0, $order->TienGiamDoDiem);
-        $this->assertSame(11900.0, $order->ThanhTien);
+        $this->assertSame(9900.0, $order->ThanhTien);
         $this->assertSame(400, $customer->fresh()->points());
     }
 
@@ -138,7 +141,7 @@ class RewardPointTest extends TestCase
 
         $this->assertSame(500, $order->DiemSuDung);
         $this->assertSame(500.0, $order->TienGiamDoDiem);
-        $this->assertSame(11500.0, $order->ThanhTien);
+        $this->assertSame(9500.0, $order->ThanhTien);
         $this->assertSame(0, $customer->fresh()->points());
     }
 
@@ -441,7 +444,7 @@ class RewardPointTest extends TestCase
         $this->assertFalse($booking->fresh()->DiemDaTru);
     }
 
-    public function test_canceled_order_refunds_points_once_and_deleting_it_does_not_refund_again(): void
+    public function test_canceled_order_refunds_points_once_and_preserves_business_history(): void
     {
         $customer = $this->createCustomer(1, 400);
         $order = $this->createOrder($customer, 10000, 100);
@@ -450,7 +453,13 @@ class RewardPointTest extends TestCase
         $service->updateStatus($order, OrderStatus::Cancelled->value, false, 'Khách yêu cầu hủy');
         $service->updateStatus($order->fresh(), OrderStatus::Cancelled->value);
         $this->assertSame(500, $customer->fresh()->points());
-        $service->delete($order->fresh());
+        try {
+            $service->delete($order->fresh());
+            $this->fail('Orders with cancellation audit must retain their business history.');
+        } catch (ValidationException $exception) {
+            $this->assertArrayHasKey('order', $exception->errors());
+        }
+        $this->assertNotNull($order->fresh());
         $this->assertSame(500, $customer->fresh()->points());
     }
 
@@ -512,7 +521,7 @@ class RewardPointTest extends TestCase
         $customer = $this->createCustomer(1, 500);
         $booking = $this->createBooking($customer);
         $this->reservedPromotion($booking);
-        $booking->forceFill(['DiemSuDung' => 40, 'PickupDeliveryFee' => 1000, 'DeliveryFee' => 2000])->saveQuietly();
+        $booking->forceFill(['HinhThucTraDo' => 'Tại nhà', 'DiaChiTra' => 'Return address', 'DiemSuDung' => 40, 'PickupDeliveryFee' => 1000, 'DeliveryFee' => 2000])->saveQuietly();
         $before = $booking->fresh()->getAttributes();
         // Stored mobile estimate stays distinct from the current inspection price.
         DB::table('BangGia')->update(['DonGia' => 20000]);
@@ -576,7 +585,7 @@ class RewardPointTest extends TestCase
         $customer = $this->createCustomer(1, 500);
         $booking = $this->createBooking($customer);
         $this->reservedPromotion($booking);
-        $booking->forceFill(['PickupDeliveryFee' => 1000, 'DeliveryFee' => 1000])->saveQuietly();
+        $booking->forceFill(['HinhThucTraDo' => 'Tại nhà', 'DiaChiTra' => 'Return address', 'PickupDeliveryFee' => 1000, 'DeliveryFee' => 1000])->saveQuietly();
         $before = $booking->fresh()->getAttributes();
         $items = [array_merge($this->orderItem(), ['DonGia' => 1, 'ThanhTien' => 1])];
 
@@ -633,7 +642,7 @@ class RewardPointTest extends TestCase
         $customer = $this->createCustomer(1, 500);
         $booking = $this->createBooking($customer);
         $this->reservedPromotion($booking);
-        $booking->forceFill(['PickupDeliveryFee' => 1000, 'DeliveryFee' => 1000])->saveQuietly();
+        $booking->forceFill(['HinhThucTraDo' => 'Tại nhà', 'DiaChiTra' => 'Return address', 'PickupDeliveryFee' => 1000, 'DeliveryFee' => 1000])->saveQuietly();
         $this->actingAsBookingEmployee();
         $order = app(BookingService::class)->inspectBookingAndCreateOrder($booking, 1,
             [array_merge($this->orderItem(), ['TinhTrangTruocKhiGiat' => 'Bình thường'])], 500);
@@ -792,6 +801,20 @@ class RewardPointTest extends TestCase
 
     private function createSchema(): void
     {
+        Schema::create('ThongBao', function (Blueprint $table): void {
+            $table->increments('ThongBaoID');
+            $table->unsignedInteger('DonHangID')->nullable();
+            $table->string('LoaiThongBao')->nullable();
+            $table->dateTime('ThoiGianGui')->nullable();
+        });
+        Schema::create('DanhGia', function (Blueprint $table): void {
+            $table->increments('DanhGiaID');
+            $table->unsignedInteger('DonHangID')->nullable();
+        });
+        Schema::create('TinNhan', function (Blueprint $table): void {
+            $table->increments('TinNhanID');
+            $table->unsignedInteger('DonHangID')->nullable();
+        });
         Schema::create('KhuyenMai', function (Blueprint $table): void {
             $table->increments('KhuyenMaiID');
             $table->string('MaKhuyenMai');
@@ -856,6 +879,8 @@ class RewardPointTest extends TestCase
             $table->string('HinhThucNhanDo');
             $table->string('DiaChiNhan')->nullable();
             $table->string('HinhThucTraDo')->nullable();
+            $table->string('HinhThucGiaoDo')->nullable();
+            $table->string('DiaChiGiao')->nullable();
             $table->string('DiaChiTra')->nullable();
             $table->date('NgayHen');
             $table->time('GioHen');

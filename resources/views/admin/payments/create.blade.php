@@ -94,8 +94,8 @@
                 <div class="col-md-6">
                     <label class="form-label">Phương thức <span class="text-danger ms-1">*</span></label>
                     <select class="form-select" name="method" required>
-                        <option value="cash" @selected(old('method', 'cash') === 'cash')>Tiền mặt</option>
-                        <option value="bank_transfer" @selected(old('method') === 'bank_transfer')>Chuyển khoản / QR</option>
+                        <option value="cash" @selected(old('method', $preselectedOrder?->booking?->PhuongThucThanhToan === 'Chuyển khoản' ? 'bank_transfer' : 'cash') === 'cash')>Tiền mặt</option>
+                        <option value="bank_transfer" @selected(old('method', $preselectedOrder?->booking?->PhuongThucThanhToan === 'Chuyển khoản' ? 'bank_transfer' : 'cash') === 'bank_transfer')>Chuyển khoản / QR</option>
                     </select>
                 </div>
                 <div class="col-md-6">

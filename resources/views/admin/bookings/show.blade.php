@@ -98,6 +98,7 @@
                 <p class="text-muted mb-0">Chưa có dịch vụ dự kiến để tính tổng tiền. Tổng thanh toán sẽ được tính khi kiểm kê đồ thực tế.</p>
             @endif
         </x-admin.detail.panel>
+        @include('admin.bookings.mobile-summary')
         <x-admin.detail.panel title="Khách hàng" icon="bi-person" :iconClass="'bg-secondary-subtle text-secondary'">
             <x-admin.detail.info-grid :columns="1">
                 <x-admin.detail.info-item label="Họ và tên" :value="$booking->khachHang?->HoTen" />

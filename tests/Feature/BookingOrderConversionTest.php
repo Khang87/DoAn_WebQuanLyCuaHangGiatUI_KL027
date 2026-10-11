@@ -125,7 +125,7 @@ class BookingOrderConversionTest extends TestCase
             ->assertSee('Ước tính từ lịch đặt')
             ->assertSee('data-booking-amount="TienGiamKhuyenMai"', false)
             ->assertSee('data-booking-amount="ThanhTien"', false)
-            ->assertViewHas('bookingAmounts', fn (array $amounts): bool => $amounts['TongTien'] === 15000.0 && $amounts['ThanhTien'] === 15000.0 && $amounts['DiemSuDung'] === 0);
+            ->assertViewHas('bookingAmounts', fn (array $amounts): bool => $amounts['TongTien'] === 15000.0 && $amounts['ThanhTien'] === 25000.0 && $amounts['DiemSuDung'] === 0);
         $this->assertDatabaseCount('DonHang', 0);
     }
 
@@ -1543,7 +1543,7 @@ class BookingOrderConversionTest extends TestCase
         ];
     }
 
-    public function test_booking_confirmation_reprices_both_final_home_addresses(): void
+    public function test_booking_confirmation_preserves_mobile_fees_when_addresses_are_edited(): void
     {
         $this->createInspectionCatalog();
         $booking = $this->createBooking([
@@ -1567,14 +1567,15 @@ class BookingOrderConversionTest extends TestCase
         );
         $deliveries = $order->giaoNhans()->orderBy('LoaiGiaoNhan')->get()->keyBy('LoaiGiaoNhan');
 
-        $this->assertSame(40000.0, (float) $order->PhiGiaoHang);
-        $this->assertSame(40000.0, (float) $deliveries->sum('PhiGiaoNhan'));
-        $this->assertSame(35000.0, (float) $deliveries['NHAN_DO']->PhiGiaoNhan);
-        $this->assertSame(5000.0, (float) $deliveries['GIAO_DO']->PhiGiaoNhan);
+        $this->assertSame(3000.0, (float) $order->PhiGiaoHang);
+        $this->assertSame(3000.0, (float) $deliveries->sum('PhiGiaoNhan'));
+        $this->assertSame(1000.0, (float) $deliveries['NHAN_DO']->PhiGiaoNhan);
+        $this->assertSame(2000.0, (float) $deliveries['GIAO_DO']->PhiGiaoNhan);
         $this->assertSame('Địa chỉ nhận mới', $deliveries['NHAN_DO']->DiaChi);
         $this->assertSame('Địa chỉ trả mới', $deliveries['GIAO_DO']->DiaChi);
-        $this->assertSame(35000.0, (float) $booking->fresh()->PickupDeliveryFee);
-        $this->assertSame(5000.0, (float) $booking->fresh()->DeliveryFee);
+        Http::assertNothingSent();
+        $this->assertSame(1000.0, (float) $booking->fresh()->PickupDeliveryFee);
+        $this->assertSame(2000.0, (float) $booking->fresh()->DeliveryFee);
     }
 
     public function test_booking_confirmation_fee_failure_rolls_back_booking_order_items_and_deliveries(): void
@@ -1584,7 +1585,7 @@ class BookingOrderConversionTest extends TestCase
         ]);
         $booking->forceFill([
             'PickupDeliveryFee' => 10000,
-            'DeliveryFee' => 15000,
+            'DeliveryFee' => -1,
         ])->saveQuietly();
         $this->actingAsBookingEmployee();
         $this->deliveryRouteFailure = true;
@@ -1601,9 +1602,9 @@ class BookingOrderConversionTest extends TestCase
                     'return_address' => 'Địa chỉ trả mới',
                 ],
             );
-            $this->fail('Booking confirmation must fail when its delivery fee cannot be recalculated.');
+            $this->fail('Booking confirmation must fail when its delivery fee is negative.');
         } catch (ValidationException $exception) {
-            $this->assertArrayHasKey('delivery', $exception->errors());
+            $this->assertArrayHasKey('return_fee', $exception->errors());
         }
 
         $savedBooking = $booking->fresh();
@@ -1611,7 +1612,7 @@ class BookingOrderConversionTest extends TestCase
         $this->assertSame('Tại nhà', $savedBooking->HinhThucNhanDo);
         $this->assertSame('12 Nguyễn Huệ', $savedBooking->DiaChiNhan);
         $this->assertSame(10000.0, (float) $savedBooking->PickupDeliveryFee);
-        $this->assertSame(15000.0, (float) $savedBooking->DeliveryFee);
+        $this->assertSame(-1.0, (float) $savedBooking->DeliveryFee);
         $this->assertSame(0, DonHang::query()->count());
         $this->assertSame(0, ChiTietDonHang::query()->count());
         $this->assertSame(0, GiaoNhan::query()->count());
@@ -1798,6 +1799,63 @@ class BookingOrderConversionTest extends TestCase
         app(OrderService::class)->createFromBooking($booking, $this->actualItems(), 1);
     }
 
+    public function test_mobile_aliases_and_exact_fees_survive_conversion_without_route_api(): void
+    {
+        $this->createInspectionCatalog();
+        $booking = $this->createBooking(['HinhThucTraDo' => null]);
+        $booking->forceFill([
+            'HinhThucGiaoDo' => 'Tại nhà', 'DiaChiGiao' => 'Địa chỉ mobile',
+            'PickupDeliveryFee' => 11111, 'DeliveryFee' => 22222,
+            'PickupDistanceMeters' => 1234, 'DeliveryDistanceMeters' => 5678,
+            'PhuongThucThanhToan' => 'Chuyển khoản',
+        ])->saveQuietly();
+        $this->deliveryRouteFailure = true;
+        $this->actingAsBookingEmployee();
+        // Unsaved or posted money must not replace the locked mobile snapshot.
+        $booking->forceFill(['DeliveryFee' => 999999]);
+        $order = app(OrderService::class)->createFromBooking($booking, $this->actualItems(), 1);
+        $this->assertSame(33333.0, (float) $order->PhiGiaoHang);
+        $this->assertSame(63333.0, (float) $order->ThanhTien);
+        $this->assertSame(22222.0, (float) $booking->fresh()->DeliveryFee);
+        $this->assertSame('Địa chỉ mobile', $order->giaoNhans()->where('LoaiGiaoNhan', 'GIAO_DO')->first()->DiaChi);
+        $this->assertSame(33333.0, (float) $order->giaoNhans()->sum('PhiGiaoNhan'));
+        Http::assertNothingSent();
+    }
+
+    public function test_malformed_raw_mobile_fee_is_rejected_before_float_cast(): void
+    {
+        $booking = $this->createBooking();
+        DB::table('Booking')->where('BookingID', $booking->getKey())->update(['PickupDeliveryFee' => 'not-a-number']);
+        try {
+            $booking->fresh()->deliveryFeeSnapshot();
+            $this->fail('Malformed stored fees must be rejected.');
+        } catch (ValidationException $exception) {
+            $this->assertArrayHasKey('pickup_fee', $exception->errors());
+        }
+    }
+
+    public function test_zero_mobile_fees_are_valid_and_not_recalculated(): void
+    {
+        $this->createInspectionCatalog();
+        $booking = $this->createBooking(['PickupDeliveryFee' => 0, 'DeliveryFee' => 0]);
+        $this->actingAsBookingEmployee();
+        $order = $this->bookingService->inspectBookingAndCreateOrder($booking, 1, $this->actualItems());
+        $this->assertSame(0.0, (float) $order->PhiGiaoHang);
+        $this->assertSame(30000.0, (float) $order->ThanhTien);
+        Http::assertNothingSent();
+    }
+
+    public function test_switching_return_to_store_clears_both_mobile_address_aliases(): void
+    {
+        $booking = $this->createBooking(['HinhThucTraDo' => 'Tại nhà', 'DiaChiTra' => 'Địa chỉ cũ']);
+        $booking->forceFill(['HinhThucGiaoDo' => 'Tại nhà', 'DiaChiGiao' => 'Địa chỉ mobile cũ'])->saveQuietly();
+        $this->bookingService->update($booking, ['return_method' => 'Tại cửa hàng']);
+        $fresh = $booking->fresh();
+        $this->assertSame('Tại cửa hàng', $fresh->HinhThucGiaoDo);
+        $this->assertNull($fresh->DiaChiTra);
+        $this->assertNull($fresh->DiaChiGiao);
+    }
+
     public function test_inspection_keeps_unsaved_receive_and_return_edits(): void
     {
         $this->createInspectionCatalog();
@@ -1808,10 +1866,10 @@ class BookingOrderConversionTest extends TestCase
         ]);
         $this->assertSame(['GIAO_DO'], $order->giaoNhans()->pluck('LoaiGiaoNhan')->all());
         $this->assertSame('Địa chỉ trả mới', $order->giaoNhans()->first()->DiaChi);
-        $this->assertSame(5000.0, (float) $order->PhiGiaoHang);
-        $this->assertSame(5000.0, (float) $order->giaoNhans()->first()->PhiGiaoNhan);
-        $this->assertSame(0.0, (float) $booking->fresh()->PickupDeliveryFee);
-        $this->assertSame(5000.0, (float) $booking->fresh()->DeliveryFee);
+        $this->assertSame(0.0, (float) $order->PhiGiaoHang);
+        $this->assertSame(0.0, (float) $order->giaoNhans()->first()->PhiGiaoNhan);
+        $this->assertSame(10000.0, (float) $booking->fresh()->PickupDeliveryFee);
+        $this->assertSame(0.0, (float) $booking->fresh()->DeliveryFee);
         $this->assertSame('Tại cửa hàng', $booking->fresh()->HinhThucNhanDo);
     }
 

@@ -36,9 +36,11 @@ class DeliverySchedulingTest extends TestCase
 
         Schema::create('NhanVien', function (Blueprint $table): void {
             $table->increments('NhanVienID');
+            $table->string('TrangThai');
         });
 
         DB::table('DonHang')->insert(['DonHangID' => 1]);
+        DB::table('NhanVien')->insert(['NhanVienID' => 1, 'TrangThai' => 'Hoạt động']);
     }
 
     protected function tearDown(): void
@@ -110,7 +112,7 @@ class DeliverySchedulingTest extends TestCase
     {
         Carbon::setTestNow('2026-10-07 10:00:00');
         $request = new LuuGiaoNhanRequest;
-        $data = ['order_id' => 1, 'method' => 'nhan_do', 'fulfillment' => 'Tại cửa hàng',
+        $data = ['order_id' => 1, 'employee_id' => 1, 'method' => 'nhan_do', 'fulfillment' => 'Tại cửa hàng',
             'pickup_date' => '2026-10-08', 'pickup_time' => '10:00'];
         $this->assertFalse(Validator::make($data, $request->rules())->fails());
         $data['fulfillment'] = 'Tại nhà';
@@ -175,7 +177,7 @@ class DeliverySchedulingTest extends TestCase
         $request = new LuuGiaoNhanRequest;
         $data = [
             'order_id' => 1,
-            'employee_id' => null,
+            'employee_id' => 1,
             'method' => 'nhan_do',
             'address' => 'Cửa hàng',
             'pickup_date' => $date,

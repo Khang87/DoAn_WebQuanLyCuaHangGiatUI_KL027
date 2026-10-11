@@ -76,7 +76,15 @@ class BookingController extends Controller
             'items.*.SoLuong' => ['nullable', 'numeric', 'min:0'],
             'items.*.KhoiLuong' => ['nullable', 'numeric', 'min:0'],
             'use_points' => ['required', 'boolean'],
+            'method' => ['sometimes', 'required', 'in:Tại nhà,Tại cửa hàng'],
+            'return_method' => ['sometimes', 'required', 'in:Tại nhà,Tại cửa hàng'],
         ]);
+
+        // Preview selected methods without persisting or accepting client-supplied fees.
+        $record->fill(array_filter([
+            'HinhThucNhanDo' => $validated['method'] ?? null,
+            'HinhThucTraDo' => $validated['return_method'] ?? null,
+        ], fn ($value) => $value !== null));
 
         return response()->json($orders->estimateBooking($record, $validated['items'], (bool) $validated['use_points']))
             ->header('Cache-Control', 'private, no-store');

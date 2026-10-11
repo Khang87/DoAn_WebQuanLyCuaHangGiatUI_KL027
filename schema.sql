@@ -1210,18 +1210,22 @@ BEGIN
     RETURN NEW;
   END IF;
 
-  SELECT "PickupDeliveryFee", "DeliveryFee"
+  SELECT
+    CASE WHEN "HinhThucNhanDo" = 'Tại nhà' THEN coalesce("PickupDeliveryFee", 0) ELSE 0 END,
+    CASE WHEN coalesce("HinhThucTraDo", "HinhThucGiaoDo") = 'Tại nhà' THEN coalesce("DeliveryFee", 0) ELSE 0 END
   INTO pickup_fee, delivery_fee
   FROM public."Booking"
   WHERE "BookingID" = NEW."BookingID";
 
   IF FOUND THEN
-    NEW."PhiGiaoHang" := coalesce(pickup_fee, 0) + coalesce(delivery_fee, 0);
+    IF pickup_fee < 0 OR delivery_fee < 0 THEN
+      RAISE EXCEPTION 'Booking delivery fees must be nonnegative' USING ERRCODE = '23514';
+    END IF;
+    NEW."PhiGiaoHang" := pickup_fee + delivery_fee;
     NEW."ThanhTien" := greatest(
-      NEW."TongTien" + NEW."PhiGiaoHang"
-        - NEW."TienGiamDoDiem" - NEW."TienGiamKhuyenMai",
-      0
-    );
+      NEW."TongTien" - least(NEW."TongTien", greatest(NEW."TienGiamKhuyenMai", 0))
+        - greatest(NEW."TienGiamDoDiem", 0), 0
+    ) + NEW."PhiGiaoHang";
   END IF;
   RETURN NEW;
 END;
@@ -1634,25 +1638,20 @@ BEGIN
   UPDATE public."GiaoNhan" SET "TrangThai"='Đã hủy' WHERE "DonHangID"=NEW."DonHangID";
  END IF;
  IF NEW."TrangThai"='Đã giao' THEN
+  action_name:='Cộng điểm tích lũy đơn hàng';
+  IF NOT EXISTS(SELECT 1 FROM public."NhatKyHeThong" WHERE "BangDuLieu"='DonHang' AND "BanGhiID"=NEW."DonHangID" AND "HanhDong"=action_name) THEN
+   points_awarded:=floor(NEW."ThanhTien"/1000)::integer*100;
+   INSERT INTO public."DiemTichLuy"("KhachHangID","DiemHienTai") VALUES(NEW."KhachHangID",0) ON CONFLICT("KhachHangID") DO NOTHING;
+   SELECT "DiemHienTai" INTO customer_balance FROM public."DiemTichLuy" WHERE "KhachHangID"=NEW."KhachHangID" FOR UPDATE;
+   UPDATE public."DiemTichLuy" SET "DiemHienTai"="DiemHienTai"+points_awarded,"NgayCapNhat"=now() WHERE "KhachHangID"=NEW."KhachHangID";
+   INSERT INTO public."NhatKyHeThong"("HanhDong","BangDuLieu","BanGhiID","DuLieuCu","DuLieuMoi","ThoiGian")
+   VALUES(action_name,'DonHang',NEW."DonHangID",jsonb_build_object('DiemHienTai',customer_balance),jsonb_build_object('DiemCong',points_awarded,'DiemHienTai',customer_balance+points_awarded,'ThanhTien',NEW."ThanhTien"),now());
+  END IF;
   SELECT coalesce((SELECT "ThanhTien" FROM public."HoaDon" WHERE "DonHangID"=NEW."DonHangID" ORDER BY "HoaDonID" LIMIT 1),NEW."ThanhTien") INTO grand_total;
   SELECT coalesce(sum("SoTien"),0) INTO paid_total FROM public."ThanhToan" WHERE "DonHangID"=NEW."DonHangID" AND "TrangThai"='Thành công';
   IF grand_total>0 AND paid_total>=grand_total THEN
    UPDATE public."HoaDon" SET "TrangThai"='Đã thanh toán' WHERE "DonHangID"=NEW."DonHangID";
    UPDATE public."DonHang" SET "TrangThai"='Đã thanh toán',"NgayCapNhat"=now() WHERE "DonHangID"=NEW."DonHangID";
-  END IF;
- ELSIF NEW."TrangThai"='Đã thanh toán' THEN
-  SELECT coalesce((SELECT "ThanhTien" FROM public."HoaDon" WHERE "DonHangID"=NEW."DonHangID" ORDER BY "HoaDonID" LIMIT 1),NEW."ThanhTien") INTO grand_total;
-  SELECT coalesce(sum("SoTien"),0) INTO paid_total FROM public."ThanhToan" WHERE "DonHangID"=NEW."DonHangID" AND "TrangThai"='Thành công';
-  IF grand_total>0 AND paid_total>=grand_total THEN
-   action_name:='Cộng điểm tích lũy đơn hàng';
-   IF NOT EXISTS(SELECT 1 FROM public."NhatKyHeThong" WHERE "BangDuLieu"='DonHang' AND "BanGhiID"=NEW."DonHangID" AND "HanhDong"=action_name) THEN
-    points_awarded:=floor(NEW."ThanhTien"/1000)::integer*100;
-    INSERT INTO public."DiemTichLuy"("KhachHangID","DiemHienTai") VALUES(NEW."KhachHangID",0) ON CONFLICT("KhachHangID") DO NOTHING;
-    SELECT "DiemHienTai" INTO customer_balance FROM public."DiemTichLuy" WHERE "KhachHangID"=NEW."KhachHangID" FOR UPDATE;
-    UPDATE public."DiemTichLuy" SET "DiemHienTai"="DiemHienTai"+points_awarded,"NgayCapNhat"=now() WHERE "KhachHangID"=NEW."KhachHangID";
-    INSERT INTO public."NhatKyHeThong"("HanhDong","BangDuLieu","BanGhiID","DuLieuCu","DuLieuMoi","ThoiGian")
-    VALUES(action_name,'DonHang',NEW."DonHangID",jsonb_build_object('DiemHienTai',customer_balance),jsonb_build_object('DiemCong',points_awarded,'DiemHienTai',customer_balance+points_awarded,'ThanhTien',NEW."ThanhTien"),now());
-   END IF;
   END IF;
  ELSIF NEW."TrangThai"='Đã hủy' AND NEW."DiemSuDung">0 THEN
   action_name:='Hoàn điểm tích lũy đơn hàng';

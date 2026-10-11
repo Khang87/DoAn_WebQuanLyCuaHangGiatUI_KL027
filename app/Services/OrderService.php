@@ -139,7 +139,7 @@ class OrderService
 
         return [
             ...$this->calculateAmounts($subtotal, $promotion, $requestedPoints ?? $availablePoints, $availablePoints,
-                (float) $booking->PickupDeliveryFee + (float) $booking->DeliveryFee),
+                $booking->deliveryFeeSnapshot()['total_fee']),
             'promotion_warning' => $warning,
         ];
     }
@@ -154,7 +154,7 @@ class OrderService
         return DB::transaction(function () use ($booking, $items, $employeeId, $pointsUsed): DonHang {
             $callerBooking = $booking;
             $inspectionChanges = array_intersect_key($booking->getDirty(), array_flip([
-                'HinhThucNhanDo', 'DiaChiNhan', 'HinhThucTraDo', 'DiaChiTra', 'NgayHen', 'GioHen', 'GhiChu',
+                'HinhThucNhanDo', 'DiaChiNhan', 'HinhThucTraDo', 'DiaChiTra', 'HinhThucGiaoDo', 'DiaChiGiao', 'NgayHen', 'GioHen', 'GhiChu',
             ]));
             $booking = Booking::query()->whereKey($booking->BookingID)->lockForUpdate()->firstOrFail();
             $existingOrder = DonHang::query()
@@ -199,16 +199,10 @@ class OrderService
             }
             [$snapshots, $total] = $this->buildItems($items);
 
-            $deliveryQuote = $this->deliveryFeeService->quote(
-                (string) $booking->HinhThucNhanDo,
-                $booking->DiaChiNhan,
-                (string) $booking->HinhThucTraDo,
-                $booking->DiaChiTra,
-            );
-            $booking->forceFill([
-                'PickupDeliveryFee' => $deliveryQuote['pickup_fee'],
-                'DeliveryFee' => $deliveryQuote['return_fee'],
-            ])->saveQuietly();
+            $deliveryQuote = $booking->deliveryFeeSnapshot();
+            // The database fee trigger must see the inspected methods before inserting the order.
+            // Persist only the whitelisted edits; the accepted mobile fees are unchanged.
+            $booking->saveQuietly();
 
             $bookingCode = $booking->MaBooking ?: Booking::nextCode();
             $customer = KhachHang::query()->find($booking->KhachHangID);

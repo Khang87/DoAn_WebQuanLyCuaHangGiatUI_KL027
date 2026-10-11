@@ -158,16 +158,18 @@ test('browser → HTTP → PostgreSQL business flows with real session, CSRF and
             await b.navigate(`/orders/${cases.paid}`);
             assert.equal(b.responses.filter(r => r.type === 'Document').at(-1).status,200,'Paid Order is readable by permitted staff');
             const before=state('order',cases.paid);
-            assert.equal(before.orders[0].TrangThai,'Đã thanh toán');
+            assert.equal(before.orders[0].TrangThai,'Đã giao');
+            assert.equal(before.invoices[0].TrangThai,'Đã thanh toán');
+            assert.equal(Number(before.payments[0].SoTien),Number(before.orders[0].ThanhTien));
             assert.equal(before.legs.length,1);
             async function post(path, method, values) {
                 return b.evaluate(`(async()=>{const body=new URLSearchParams(${JSON.stringify(values)});body.set('_method',${JSON.stringify(method)});body.set('_token',document.querySelector('meta[name="csrf-token"]').content);const r=await fetch(${JSON.stringify(path)},{method:'POST',headers:{'Accept':'application/json','Content-Type':'application/x-www-form-urlencoded'},body});const text=await r.text();return {status:r.status,text}})()`);
             }
-            const edit=await post(`/orders/${cases.paid}`,'PATCH',{KhachHangID:'1',NhanVienID:'1',TrangThai:'Đã thanh toán',GhiChu:'Attempted paid edit'});
+            const edit=await post(`/orders/${cases.paid}`,'PATCH',{KhachHangID:'1',NhanVienID:'1',TrangThai:before.orders[0].TrangThai,GhiChu:'Attempted paid edit'});
             assert.equal(edit.status,403);assert.match(JSON.parse(edit.text).message,/Chi tiết đơn hàng đã khóa/);
             const remove=await post(`/orders/${cases.paid}`,'DELETE',{});
             assert.equal(remove.status,403);assert.match(JSON.parse(remove.text).message,/Bạn không có quyền thực hiện thao tác này/,'Deletion is owner-only, not financial-guard evidence');
-            const values={order_id:String(cases.paid),method:'giao_do',fulfillment:'Tại nhà',address:'Attempted paid delivery',status:'pending'};
+            const values={order_id:String(cases.paid),employee_id:'1',method:'giao_do',fulfillment:'Tại nhà',address:'Attempted paid delivery',status:'pending'};
             for(const [path,method] of [['/deliveries','POST'],[`/deliveries/${before.legs[0].GiaoNhanID}`,'PATCH']]){
                 const result=await post(path,method,values);
                 assert.equal(result.status,200,'Service refusal redirects to readable Order page');

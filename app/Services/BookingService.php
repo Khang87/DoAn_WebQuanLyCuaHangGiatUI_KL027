@@ -34,7 +34,7 @@ class BookingService
         }
 
         if (! empty($filters['return_method'])) {
-            $query->where('HinhThucTraDo', $filters['return_method']);
+            $query->whereRaw('COALESCE("HinhThucTraDo", "HinhThucGiaoDo") = ?', [$filters['return_method']]);
         }
 
         if (! empty($filters['status'])) {
@@ -50,7 +50,7 @@ class BookingService
                 }
                 $q->orWhere('MaBooking', 'LIKE', "%{$search}%");
                 $q->orWhere('DiaChiNhan', 'LIKE', "%{$search}%")
-                    ->orWhere('DiaChiTra', 'LIKE', "%{$search}%");
+                    ->orWhereRaw('COALESCE("DiaChiTra", "DiaChiGiao") LIKE ?', ["%{$search}%"]);
                 $q->orWhereHas('khachHang', function ($sub) use ($search) {
                     $sub->where('HoTen', 'LIKE', "%{$search}%")
                         ->orWhere('SoDienThoai', 'LIKE', "%{$search}%");
@@ -62,8 +62,13 @@ class BookingService
         $sortBy = in_array($filters['sort_by'] ?? null, $allowedSorts) ? $filters['sort_by'] : 'NgayTao';
         $sortOrder = ($filters['sort_order'] ?? 'desc') === 'asc' ? 'asc' : 'desc';
 
+        if ($sortBy === 'HinhThucTraDo') {
+            $query->orderByRaw('COALESCE("HinhThucTraDo", "HinhThucGiaoDo") '.$sortOrder);
+        } else {
+            $query->orderBy($sortBy, $sortOrder);
+        }
+
         return $query->with(['khachHang.diemTichLuy', 'nhanVien', 'donHangs', 'chiTietBookings'])
-            ->orderBy($sortBy, $sortOrder)
             ->paginate(10)
             ->withQueryString();
     }
@@ -211,6 +216,13 @@ class BookingService
             if (($mapped[$method] ?? null) === 'Tại cửa hàng') {
                 $mapped[$address] = null;
             }
+        }
+
+        if (array_key_exists('HinhThucTraDo', $mapped)) {
+            $mapped['HinhThucGiaoDo'] = $mapped['HinhThucTraDo'];
+        }
+        if (array_key_exists('DiaChiTra', $mapped)) {
+            $mapped['DiaChiGiao'] = $mapped['DiaChiTra'];
         }
 
         return $mapped;
@@ -401,6 +413,8 @@ class BookingService
             'NhanVienID',
             'NhanVienXacNhanID',
             'ThoiGianXacNhan',
+            'HinhThucGiaoDo', 'DiaChiGiao', 'PhuongThucThanhToan',
+            'PickupDistanceMeters', 'DeliveryDistanceMeters', 'PickupDeliveryFee', 'DeliveryFee',
         ]);
     }
 
