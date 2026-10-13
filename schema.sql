@@ -2451,35 +2451,35 @@ CREATE OR REPLACE FUNCTION public.notify_customer_of_store_message()
  SECURITY DEFINER
  SET search_path TO ''
 AS $function$
-DECLARE
-  recipient_customer_id integer;
-  sender_is_staff boolean;
-  recipient_is_staff boolean;
+DECLARE recipient_customer_id integer; sender_is_staff boolean;
 BEGIN
-  SELECT a."KhachHangID" INTO recipient_customer_id
-  FROM public."TaiKhoan" AS a
+  SELECT a."KhachHangID" INTO recipient_customer_id FROM public."TaiKhoan" AS a
   WHERE a."TaiKhoanID" = NEW."NguoiNhanID" AND a."TrangThai" = 'Hoạt động';
-
   SELECT EXISTS (
-    SELECT 1 FROM public."TaiKhoan" AS a
-    JOIN public."TaiKhoan_VaiTro" AS av ON av."TaiKhoanID" = a."TaiKhoanID"
-    JOIN public."VaiTro" AS r ON r."VaiTroID" = av."VaiTroID"
-    WHERE a."TaiKhoanID" = NEW."NguoiGuiID"
-      AND a."NhanVienID" IS NOT NULL AND a."TrangThai" = 'Hoạt động'
-      AND r."TrangThai" = 'Hoạt động'
-      AND (r."TenVaiTro" IN ('Nhân viên', 'Chủ cửa hàng') OR r."TenVaiTro" LIKE 'Quản lý%')
+    SELECT 1 FROM public."TaiKhoan" AS sender
+    WHERE sender."TaiKhoanID" = NEW."NguoiGuiID"
+      AND sender."TrangThai" = 'Hoạt động'
+      AND EXISTS (
+      SELECT 1 FROM public."TaiKhoan_VaiTro" AS internal_link
+      JOIN public."VaiTro" AS internal_role ON internal_role."VaiTroID" = internal_link."VaiTroID"
+      WHERE internal_link."TaiKhoanID" = sender."TaiKhoanID"
+        AND internal_role."TrangThai" = 'Hoạt động'
+    )
+    AND NOT EXISTS (
+      SELECT 1 FROM public."TaiKhoan_VaiTro" AS customer_link
+      JOIN public."VaiTro" AS customer_role ON customer_role."VaiTroID" = customer_link."VaiTroID"
+      WHERE customer_link."TaiKhoanID" = sender."TaiKhoanID"
+        AND customer_role."TrangThai" = 'Hoạt động'
+        AND lower(btrim(customer_role."TenVaiTro")) IN ('khách hàng', 'khach hang', 'khachhang', 'khach-hang', 'customer', 'client')
+    )
   ) INTO sender_is_staff;
-
   IF recipient_customer_id IS NOT NULL THEN
     INSERT INTO public."ThongBao" (
-      "TaiKhoanID", "DonHangID", "TinNhanID", "LoaiThongBao",
-      "TieuDe", "NoiDung", "ThoiGianGui", "DaDoc"
+      "TaiKhoanID", "DonHangID", "TinNhanID", "LoaiThongBao", "TieuDe", "NoiDung", "ThoiGianGui", "DaDoc"
     )
-    SELECT customer_account."TaiKhoanID", NEW."DonHangID", NEW."TinNhanID",
-      'new_message',
+    SELECT customer_account."TaiKhoanID", NEW."DonHangID", NEW."TinNhanID", 'new_message',
       CASE WHEN sender_is_staff THEN 'Tin nhắn mới từ cửa hàng' ELSE 'Tin nhắn mới' END,
-      left(CASE WHEN sender_is_staff THEN 'Cửa hàng: ' ELSE 'Tin nhắn: ' END || NEW."NoiDung", 1000),
-      timezone('utc', now())::timestamp, false
+      'Bạn có tin nhắn mới.', timezone('utc', now())::timestamp, false
     FROM public."TaiKhoan" AS customer_account
     WHERE customer_account."KhachHangID" = recipient_customer_id
       AND customer_account."TrangThai" = 'Hoạt động'
@@ -2491,28 +2491,54 @@ BEGIN
       AND NOT EXISTS (
         SELECT 1 FROM public."ThongBao" AS existing
         WHERE existing."TaiKhoanID" = customer_account."TaiKhoanID"
-          AND existing."TinNhanID" = NEW."TinNhanID"
-          AND existing."LoaiThongBao" = 'new_message'
+          AND existing."TinNhanID" = NEW."TinNhanID" AND existing."LoaiThongBao" = 'new_message'
       );
   ELSE
-    SELECT EXISTS (
-      SELECT 1 FROM public."TaiKhoan" AS a
-      JOIN public."TaiKhoan_VaiTro" AS av ON av."TaiKhoanID" = a."TaiKhoanID"
-      JOIN public."VaiTro" AS r ON r."VaiTroID" = av."VaiTroID"
-      WHERE a."TaiKhoanID" = NEW."NguoiNhanID"
-        AND a."NhanVienID" IS NOT NULL AND a."TrangThai" = 'Hoạt động'
-        AND r."TrangThai" = 'Hoạt động'
-        AND (r."TenVaiTro" IN ('Nhân viên', 'Chủ cửa hàng') OR r."TenVaiTro" LIKE 'Quản lý%')
-    ) INTO recipient_is_staff;
-    IF recipient_is_staff THEN
+    IF EXISTS (
+      SELECT 1 FROM public."TaiKhoan" AS recipient
+      WHERE recipient."TaiKhoanID" = NEW."NguoiNhanID"
+        AND recipient."TrangThai" = 'Hoạt động'
+        AND EXISTS (
+      SELECT 1 FROM public."TaiKhoan_VaiTro" AS internal_link
+      JOIN public."VaiTro" AS internal_role ON internal_role."VaiTroID" = internal_link."VaiTroID"
+      WHERE internal_link."TaiKhoanID" = recipient."TaiKhoanID"
+        AND internal_role."TrangThai" = 'Hoạt động'
+    )
+    AND NOT EXISTS (
+      SELECT 1 FROM public."TaiKhoan_VaiTro" AS customer_link
+      JOIN public."VaiTro" AS customer_role ON customer_role."VaiTroID" = customer_link."VaiTroID"
+      WHERE customer_link."TaiKhoanID" = recipient."TaiKhoanID"
+        AND customer_role."TrangThai" = 'Hoạt động'
+        AND lower(btrim(customer_role."TenVaiTro")) IN ('khách hàng', 'khach hang', 'khachhang', 'khach-hang', 'customer', 'client')
+    )
+    ) AND EXISTS (
+      SELECT 1 FROM public."TaiKhoan" AS sender
+      WHERE sender."TaiKhoanID" = NEW."NguoiGuiID"
+        AND sender."KhachHangID" IS NOT NULL
+        AND sender."NhanVienID" IS NULL
+    ) THEN
       INSERT INTO public."ThongBao" (
         "TaiKhoanID", "DonHangID", "TinNhanID", "LoaiThongBao",
         "TieuDe", "NoiDung", "ThoiGianGui", "DaDoc"
-      ) VALUES (
-        NEW."NguoiNhanID", NEW."DonHangID", NEW."TinNhanID", 'new_message',
-        'Tin nhắn mới từ khách hàng', left('Khách hàng: ' || NEW."NoiDung", 1000),
+      )
+      SELECT staff."TaiKhoanID", NEW."DonHangID", NEW."TinNhanID",
+        'new_message', 'Tin nhắn mới từ khách hàng', 'Bạn có tin nhắn mới.',
         timezone('utc', now())::timestamp, false
-      );
+      FROM public."TaiKhoan" AS staff
+      WHERE staff."TrangThai" = 'Hoạt động'
+        AND EXISTS (
+      SELECT 1 FROM public."TaiKhoan_VaiTro" AS internal_link
+      JOIN public."VaiTro" AS internal_role ON internal_role."VaiTroID" = internal_link."VaiTroID"
+      WHERE internal_link."TaiKhoanID" = staff."TaiKhoanID"
+        AND internal_role."TrangThai" = 'Hoạt động'
+    )
+    AND NOT EXISTS (
+      SELECT 1 FROM public."TaiKhoan_VaiTro" AS customer_link
+      JOIN public."VaiTro" AS customer_role ON customer_role."VaiTroID" = customer_link."VaiTroID"
+      WHERE customer_link."TaiKhoanID" = staff."TaiKhoanID"
+        AND customer_role."TrangThai" = 'Hoạt động'
+        AND lower(btrim(customer_role."TenVaiTro")) IN ('khách hàng', 'khach hang', 'khachhang', 'khach-hang', 'customer', 'client')
+    );
     END IF;
   END IF;
   RETURN NEW;
@@ -2544,7 +2570,19 @@ BEGIN
     ON role."VaiTroID" = account_role."VaiTroID"
   JOIN public."TaiKhoan" AS account
     ON account."TaiKhoanID" = account_role."TaiKhoanID"
-  WHERE role."TenVaiTro" IN ('Nhân viên', 'Quản lý', 'Chủ cửa hàng')
+  WHERE EXISTS (
+      SELECT 1 FROM public."TaiKhoan_VaiTro" AS internal_link
+      JOIN public."VaiTro" AS internal_role ON internal_role."VaiTroID" = internal_link."VaiTroID"
+      WHERE internal_link."TaiKhoanID" = account."TaiKhoanID"
+        AND internal_role."TrangThai" = 'Hoạt động'
+    )
+    AND NOT EXISTS (
+      SELECT 1 FROM public."TaiKhoan_VaiTro" AS customer_link
+      JOIN public."VaiTro" AS customer_role ON customer_role."VaiTroID" = customer_link."VaiTroID"
+      WHERE customer_link."TaiKhoanID" = account."TaiKhoanID"
+        AND customer_role."TrangThai" = 'Hoạt động'
+        AND lower(btrim(customer_role."TenVaiTro")) IN ('khách hàng', 'khach hang', 'khachhang', 'khach-hang', 'customer', 'client')
+    )
     AND role."TrangThai" = 'Hoạt động'
     AND account."TrangThai" = 'Hoạt động'
     AND NOT EXISTS (
@@ -4190,8 +4228,6 @@ GRANT EXECUTE ON FUNCTION public.notify_customer_of_store_message() TO PUBLIC;
 GRANT EXECUTE ON FUNCTION public.notify_customer_of_store_message() TO "postgres";
 
 GRANT EXECUTE ON FUNCTION public.notify_customer_of_store_message() TO "service_role";
-
-GRANT EXECUTE ON FUNCTION public.notify_staff_new_booking(p_bookingid bigint, p_booking_number text, p_customer_name text) TO "authenticated";
 
 GRANT EXECUTE ON FUNCTION public.notify_staff_new_booking(p_bookingid bigint, p_booking_number text, p_customer_name text) TO "postgres";
 

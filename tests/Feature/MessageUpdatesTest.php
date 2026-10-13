@@ -102,17 +102,17 @@ class MessageUpdatesTest extends TestCase
             ->assertJsonPath('messages.0.is_mine', true);
     }
 
-    public function test_guest_and_missing_permission_cannot_read_updates(): void
+    public function test_guest_and_missing_role_cannot_read_updates(): void
     {
         $this->getJson('/admin/messages/1/updates')->assertUnauthorized();
-        DB::table('VaiTro_Quyen')->delete();
+        DB::table('TaiKhoan_VaiTro')->delete();
         $this->actingAs($this->staff())->getJson('/admin/messages/1/updates')->assertForbidden();
     }
 
-    public function test_revocation_and_inactive_account_block_subsequent_reads(): void
+    public function test_role_revocation_and_inactive_account_block_subsequent_reads(): void
     {
         $this->actingAs($this->staff())->getJson('/admin/messages/1/updates')->assertOk();
-        DB::table('VaiTro_Quyen')->delete();
+        DB::table('TaiKhoan_VaiTro')->delete();
         PermissionCache::forgetAll();
         $this->getJson('/admin/messages/1/updates')->assertForbidden();
         $this->actingAs(new User(['TaiKhoanID' => 1, 'TrangThai' => 'Khóa']))
@@ -124,10 +124,10 @@ class MessageUpdatesTest extends TestCase
         $this->actingAs($this->staff())->getJson('/admin/messages/999/updates')->assertNotFound();
     }
 
-    public function test_realtime_configuration_requires_session_and_permission(): void
+    public function test_realtime_configuration_requires_session_and_active_role(): void
     {
         $this->postJson('/admin/messages/realtime', ['order_id' => 1])->assertUnauthorized();
-        DB::table('VaiTro_Quyen')->delete();
+        DB::table('TaiKhoan_VaiTro')->delete();
         $this->actingAs($this->staff())->postJson('/admin/messages/realtime', ['order_id' => 1])->assertForbidden();
     }
 

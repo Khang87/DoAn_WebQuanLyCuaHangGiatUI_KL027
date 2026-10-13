@@ -269,6 +269,7 @@
 
             <div class="navbar-actions">
                 <!-- Notifications -->
+            @can('notifications.view')
             @php
                 $authUser = auth()->user();
                 $dropdownNotifications = $authUser
@@ -319,6 +320,7 @@
             </div>
 
                 <span class="visually-hidden" data-notification-status role="status"></span>
+            @endcan
                 <!-- Quick Actions -->
                 @if(auth()->check() && (auth()->user()->can('orders.create') || auth()->user()->can('customers.create') || auth()->user()->can('invoices.create') || auth()->user()->can('services.create') || auth()->user()->can('promotions.create') || auth()->user()->can('deliveries.create')))
                 <div class="dropdown">

@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\TaiKhoan;
 use App\Models\ThongBao;
+use App\Support\InternalCommunicationPolicy;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 
@@ -81,7 +82,7 @@ class NotificationService
         if ($recipient === 'all_customers') {
             $query->whereHas('vaiTros', fn ($roleQuery) => $roleQuery->where('TenVaiTro', 'Khách hàng'));
         } elseif ($recipient === 'all_staff') {
-            $query->whereNotNull('NhanVienID')->whereNull('KhachHangID');
+            InternalCommunicationPolicy::scopeAccounts($query);
         } elseif ($recipient !== 'all') {
             $query->where('TaiKhoanID', (int) $recipient);
         }

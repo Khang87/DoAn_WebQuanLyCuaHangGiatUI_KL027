@@ -575,11 +575,11 @@
                     @endcan
                 @endif
 
-                @if(auth()->user()?->hasRole(['owner', 'manager', 'staff']))
+                    @can('messages.view')
                     <a href="{{ route('admin.messages.index', ['order_id' => $order->DonHangID]) }}" class="btn btn-outline-primary w-100 py-2">
                         <i class="bi bi-chat-dots me-1" aria-hidden="true"></i> Nhắn tin khách hàng
                     </a>
-                @endif
+                    @endcan
 
                 @if($order->hoaDons->isNotEmpty())
                     <a href="{{ route('invoices.show', $order->hoaDons->first()->HoaDonID) }}" class="btn btn-outline-primary w-100 py-2">

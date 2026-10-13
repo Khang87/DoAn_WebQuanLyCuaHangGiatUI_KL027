@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\InternalCommunicationPolicy;
 use App\Support\PermissionCache;
 use App\Support\QuyenMapper;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -158,6 +159,8 @@ class User extends Authenticatable
         'khach hang' => 'customer',
         'khachhang' => 'customer',
         'customer' => 'customer',
+        'client' => 'customer',
+        'khach-hang' => 'customer',
     ];
 
     public function getNameAttribute(): string
@@ -330,26 +333,16 @@ class User extends Authenticatable
      */
     public function permissionCodes(): array
     {
-        $codes = QuyenMapper::coveredCodes($this->maQuyens());
+        $permissions = $this->maQuyens();
+        $internal = $this->canUseAdminCommunications();
+        $codes = [
+            ...QuyenMapper::coveredCodes($permissions),
+            ...array_map(static fn (string $permission): string => strtolower(str_replace('_', '.', $permission)), $permissions),
+            ...($internal ? InternalCommunicationPolicy::DEFAULTS : []),
+        ];
 
-        if ($this->isOwner()) {
-            return array_values(array_unique([
-                ...$codes,
-                ...array_map(
-                    static fn (string $permission): string => strtolower(str_replace('_', '.', $permission)),
-                    $this->maQuyens(),
-                ),
-            ]));
-        }
-
-        $dynamicCodes = array_map(
-            static fn (string $permission): string => strtolower(str_replace('_', '.', $permission)),
-            $this->maQuyens(),
-        );
-
-        return array_values(array_unique(array_filter(
-            [...$codes, ...$dynamicCodes],
-            fn (string $code) => ! QuyenMapper::isOwnerOnly($code),
+        return array_values(array_unique(array_filter($codes, fn (string $code) => ($this->isOwner() || ! QuyenMapper::isOwnerOnly($code))
+            && ($internal || ! InternalCommunicationPolicy::handles($code))
         )));
     }
 
@@ -359,10 +352,25 @@ class User extends Authenticatable
      * Chủ cửa hàng có toàn quyền, kể cả quyền chưa tồn tại trong `PermissionRegistry`
      * (đã được Gate::before cho qua trước, nhưng middleware gọi thẳng hàm này).
      */
+    public function canUseAdminCommunications(): bool
+    {
+        return $this->getKey() !== null && $this->isActive()
+            && InternalCommunicationPolicy::allowsRoles($this->roleNames());
+    }
+
     public function canPermission(string $code): bool
     {
         if (! $this->isActive()) {
             return false;
+        }
+
+        if (InternalCommunicationPolicy::handles($code)) {
+            if (! $this->canUseAdminCommunications()) {
+                return false;
+            }
+            if (in_array($code, InternalCommunicationPolicy::DEFAULTS, true)) {
+                return true;
+            }
         }
 
         if ($this->isOwner()) {

@@ -17,5 +17,8 @@ BEGIN
        OR has_table_privilege('authenticated', 'private.web_message_channels', 'SELECT') THEN
         RAISE EXCEPTION 'Client can read private message channel registry';
     END IF;
+    IF has_function_privilege('authenticated', 'public.notify_staff_new_booking(bigint,text,text)', 'EXECUTE') THEN
+        RAISE EXCEPTION 'Mobile client can forge staff booking notifications';
+    END IF;
 END;
 $$;

@@ -237,12 +237,12 @@ class InternalOtpTest extends TestCase
         $this->assertSame(1, $role->quyens()->count());
     }
 
-    public function test_customer_group_can_access_personal_inbox(): void
+    public function test_customer_group_cannot_access_admin_inbox(): void
     {
         $role = app(RoleService::class)->createRole(['TenVaiTro' => 'Khách hàng']);
         $this->staff->vaiTros()->sync([$role->getKey()]);
         $this->staff->update(['NhanVienID' => null, 'KhachHangID' => 1]);
-        $this->actingAs($this->staff)->get(route('notifications.index'))->assertOk();
+        $this->actingAs($this->staff)->get(route('notifications.index'))->assertForbidden();
         $this->get(route('notifications.create'))->assertForbidden();
     }
 
@@ -289,14 +289,13 @@ class InternalOtpTest extends TestCase
             ->assertDontSee('<span>Tài khoản</span>', false);
     }
 
-    public function test_customers_with_default_permission_can_log_in_to_inbox_only(): void
+    public function test_customers_with_default_permission_cannot_log_in_to_admin_inbox(): void
     {
         $role = app(RoleService::class)->createRole(['TenVaiTro' => 'Khách hàng']);
         $this->staff->vaiTros()->sync([$role->getKey()]);
         $this->staff->update(['NhanVienID' => null, 'KhachHangID' => 1]);
         $this->post(route('login'), ['email' => $this->staff->Email, 'password' => 'OldPassword123'])
-            ->assertRedirect(route('notifications.index'));
-        $this->get(route('notifications.index'))->assertOk();
-        $this->get(route('orders.index'))->assertForbidden();
+            ->assertRedirect()->assertSessionHas('error');
+        $this->assertGuest();
     }
 }

@@ -10,6 +10,7 @@ use App\Models\ThongBao;
 use App\Models\TinNhan;
 use App\Models\User;
 use App\Services\MessageService;
+use App\Support\PermissionCache;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -33,6 +34,11 @@ class AdminCommunicationTest extends TestCase
             $table->unsignedInteger('KhachHangID')->nullable();
             $table->unsignedInteger('NhanVienID')->nullable();
             $table->string('TrangThai')->default('Hoạt động');
+        });
+
+        Schema::create('NhanVien', function (Blueprint $table): void {
+            $table->increments('NhanVienID');
+            $table->string('HoTen');
         });
 
         Schema::create('KhachHang', function (Blueprint $table): void {
@@ -525,6 +531,84 @@ class AdminCommunicationTest extends TestCase
         $route = app('router')->getRoutes()->getByName('notifications.mark-all-read');
 
         $this->assertContains('permission:notifications.view', $route->getAction('middleware'));
+    }
+
+    public function test_custom_internal_role_has_communication_defaults_without_permission_rows(): void
+    {
+        $user = $this->createAccount('future-internal');
+        DB::table('NhanVien')->insert(['NhanVienID' => 1, 'HoTen' => 'Bộ phận mới']);
+        $user->update(['NhanVienID' => 1]);
+        $this->assignRole($user, 'Bộ phận mới bất kỳ');
+        DB::table('VaiTro_Quyen')->delete();
+        $this->actingAs($user);
+
+        foreach (['messages.view', 'messages.create', 'notifications.view'] as $code) {
+            $this->assertTrue($user->canPermission($code), $code);
+            $this->assertTrue($user->can($code), $code);
+            $this->assertContains($code, $user->permissionCodes());
+        }
+        $this->assertFalse($user->can('notifications.create'));
+        $this->assertFalse($user->can('orders.create'));
+        $this->get(route('admin.messages.index'))->assertOk()->assertSee('data-message-inbox', false)
+            ->assertSee('data-notification-updates', false);
+        $this->getJson(route('admin.messages.inbox'))->assertOk();
+        $this->getJson(route('notifications.updates'))->assertOk();
+
+        $customer = $this->createAccount('recipient-new-role', 1);
+        $this->post(route('admin.messages.store'), ['customer_id' => $customer->getKey(), 'content' => 'Xin chào'])
+            ->assertRedirect();
+        $this->assertDatabaseHas('TinNhan', ['NguoiGuiID' => $user->getKey(), 'NoiDung' => 'Xin chào']);
+        $this->get(route('admin.messages.index', ['customer_id' => $customer->getKey()]))
+            ->assertOk()->assertSee('Xin chào')->assertSee('data-message-form', false);
+    }
+
+    public function test_customer_aliases_cannot_use_admin_communications_even_with_grants(): void
+    {
+        foreach (['Khách hàng', 'Customer', 'Client', 'khach-hang'] as $index => $name) {
+            $user = $this->createAccount('excluded-'.$index, $index + 1);
+            $this->assignRole($user, $name);
+            $this->actingAs($user);
+            foreach (['messages.view', 'messages.create', 'notifications.view'] as $code) {
+                $this->assertFalse($user->canPermission($code), $name.': '.$code);
+                $this->assertFalse($user->can($code));
+            }
+            $this->get(route('admin.messages.index'))->assertForbidden();
+            $this->getJson(route('admin.messages.inbox'))->assertForbidden();
+            $this->postJson(route('admin.messages.realtime'), ['order_id' => 1])->assertForbidden();
+            $this->get(route('notifications.index'))->assertForbidden();
+            $this->getJson(route('notifications.updates'))->assertForbidden();
+            $this->post(route('admin.messages.store'), ['customer_id' => 1, 'content' => 'Không được gửi'])->assertForbidden();
+            $html = view('admin.messages.index')->render();
+            $this->assertStringNotContainsString('data-message-inbox', $html);
+            $this->assertStringNotContainsString('data-message-form', $html);
+            $this->assertStringNotContainsString('notification-bell-toggle', $html);
+            $this->assertStringNotContainsString('data-notification-updates', $html);
+        }
+        $this->assertDatabaseCount('TinNhan', 0);
+    }
+
+    public function test_customer_membership_wins_over_owner_for_admin_communications(): void
+    {
+        $user = $this->createAccount('mixed-role');
+        $this->assignRole($user, 'Owner');
+        $this->assignRole($user, 'Khách hàng');
+        $this->actingAs($user);
+        $this->assertFalse($user->can('messages.create'));
+        $this->assertFalse($user->can('notifications.view'));
+        $this->getJson(route('notifications.updates'))->assertForbidden();
+    }
+
+    public function test_missing_or_disabled_internal_roles_do_not_get_defaults(): void
+    {
+        $user = $this->createAccount('no-role');
+        $this->actingAs($user);
+        $this->assertFalse($user->canPermission('messages.view'));
+        $this->assignRole($user, 'Nội bộ đã khóa');
+        DB::table('VaiTro')->update(['TrangThai' => 'Khóa']);
+        PermissionCache::forgetAll();
+        $this->assertFalse($user->canPermission('notifications.view'));
+        $user->update(['TrangThai' => 'Khóa']);
+        $this->assertFalse($user->canPermission('messages.create'));
     }
 
     private function createAccount(string $username, ?int $customerId = null): User

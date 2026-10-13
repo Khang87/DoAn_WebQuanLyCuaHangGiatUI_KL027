@@ -748,14 +748,6 @@
       "kind": "FUNCTION",
       "name": "public.notify_staff_new_booking(p_bookingid bigint, p_booking_number text, p_customer_name text)",
       "schema": "public",
-      "grantee": "authenticated",
-      "grantable": false,
-      "privilege": "EXECUTE"
-    },
-    {
-      "kind": "FUNCTION",
-      "name": "public.notify_staff_new_booking(p_bookingid bigint, p_booking_number text, p_customer_name text)",
-      "schema": "public",
       "grantee": "postgres",
       "grantable": false,
       "privilege": "EXECUTE"
