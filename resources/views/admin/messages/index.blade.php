@@ -4,6 +4,7 @@
 @section('page-title', 'Tin nhắn khách hàng')
 
 @section('content')
+@can('messages.view')
 <div class="row g-4">
     <div class="col-lg-4">
         <div class="card border-0 shadow-sm h-100">
@@ -74,6 +75,7 @@
                         </div>
                     @endforelse
                 </div>
+                @can('messages.create')
                 <div class="card-footer bg-white">
                     @if(!$selectedCustomer && !$selectedOrder?->khachHang?->taiKhoan)
                         <div class="alert alert-warning mb-0">Khách hàng chưa có tài khoản nhận tin nhắn.</div>
@@ -94,6 +96,7 @@
                         @error('message')<div class="text-danger small mt-2">{{ $message }}</div>@enderror
                     @endif
                 </div>
+                @endcan
             @else
                 <div class="card-body text-center text-muted py-5">
                     <i class="bi bi-chat-square-text display-5 d-block mb-3"></i>
@@ -103,11 +106,14 @@
         </div>
     </div>
 </div>
+@endcan
 @endsection
 
 @push('scripts')
+@can('messages.view')
     @vite('resources/js/message-inbox.js')
     @if($selectedOrder || $selectedCustomer)
         @vite(['resources/js/message-updates.js', 'resources/js/message-send-guard.js'])
     @endif
+@endcan
 @endpush

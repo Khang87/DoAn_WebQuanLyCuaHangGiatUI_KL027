@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\DonHang;
 use App\Models\TinNhan;
 use App\Models\User;
+use App\Support\InternalCommunicationPolicy;
 use Carbon\Carbon;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
@@ -33,7 +34,7 @@ class MessageService
     {
         return TinNhan::query()->whereIn('TrangThai', ['Đã gửi', 'Đã nhận'])
             ->whereHas('sender', fn ($query) => $query->whereNotNull('KhachHangID')->whereNull('NhanVienID'))
-            ->whereHas('recipient', fn ($query) => $query->whereNotNull('NhanVienID'));
+            ->whereHas('recipient', fn ($query) => InternalCommunicationPolicy::scopeAccounts($query));
     }
 
     public function markRead(?int $orderId, ?int $customerId, array $messageIds): int
@@ -106,9 +107,9 @@ class MessageService
         return TinNhan::query()->with(['sender.khachHang', 'sender.nhanVien'])
             ->whereNull('DonHangID')->where(fn ($query) => $query
             ->where(fn ($incoming) => $incoming->where('NguoiGuiID', $customer->getKey())
-                ->whereHas('recipient', fn ($staff) => $staff->whereNotNull('NhanVienID')))
+                ->whereHas('recipient', fn ($staff) => InternalCommunicationPolicy::scopeAccounts($staff)))
             ->orWhere(fn ($outgoing) => $outgoing->where('NguoiNhanID', $customer->getKey())
-                ->whereHas('sender', fn ($staff) => $staff->whereNotNull('NhanVienID'))))
+                ->whereHas('sender', fn ($staff) => InternalCommunicationPolicy::scopeAccounts($staff))))
             ->orderByDesc('ThoiGianGui')->orderByDesc('TinNhanID')->limit(100)->get()
             ->sortBy([['ThoiGianGui', 'asc'], ['TinNhanID', 'asc']])->values();
     }

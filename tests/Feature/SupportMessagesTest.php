@@ -147,7 +147,7 @@ class SupportMessagesTest extends TestCase
         $this->assertDatabaseHas('TinNhan', ['TinNhanID' => $new, 'TrangThai' => 'Đã gửi']);
         $this->postJson('/admin/messages/read', ['order_id' => 999, 'message_ids' => [$new]])->assertNotFound();
         $this->postJson('/admin/messages/read', ['order_id' => 1, 'customer_id' => 2, 'message_ids' => [$new]])->assertUnprocessable();
-        DB::table('VaiTro_Quyen')->delete();
+        DB::table('TaiKhoan_VaiTro')->delete();
         PermissionCache::forgetAll();
         $this->postJson('/admin/messages/read', $body)->assertForbidden();
         $this->getJson('/admin/messages/inbox')->assertForbidden();
@@ -209,7 +209,7 @@ class SupportMessagesTest extends TestCase
         $this->postJson('/admin/messages', ['customer_id' => 2, 'content' => 'Hello'])->assertUnauthorized();
         $this->actingAs(User::findOrFail(2))->getJson('/admin/messages/support/3/updates')->assertForbidden();
         $this->postJson('/admin/messages', ['customer_id' => 3, 'content' => 'Hello'])->assertForbidden();
-        DB::table('VaiTro_Quyen')->where('VaiTroID', 1)->delete();
+        DB::table('TaiKhoan_VaiTro')->where('VaiTroID', 1)->delete();
         $this->actingAs(User::findOrFail(1))->getJson('/admin/messages/support/2/updates')->assertForbidden();
         $this->postJson('/admin/messages', ['customer_id' => 2, 'content' => 'Hello'])->assertForbidden();
     }

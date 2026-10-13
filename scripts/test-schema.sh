@@ -26,4 +26,6 @@ docker exec "$schema_container" psql -X -A -t -U postgres -v ON_ERROR_STOP=1 \
 python3 "$root/scripts/schema/compare.py" "$schema_runtime/restored.json"
 docker exec "$schema_container" psql -X -U postgres -v ON_ERROR_STOP=1 \
     -f /checkout/tests/Postgres/schema-security-contract.sql
+docker exec "$schema_container" psql -X -U postgres -v ON_ERROR_STOP=1 \
+    -f /checkout/tests/Postgres/internal-communication-notifications.sql
 echo 'PASS: sessions, profile/read-state column grants and private channel ACL boundaries'

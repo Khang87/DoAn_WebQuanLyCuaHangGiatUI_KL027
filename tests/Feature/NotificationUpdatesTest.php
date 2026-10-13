@@ -120,10 +120,10 @@ class NotificationUpdatesTest extends TestCase
         $this->assertEquals(0, DB::table('ThongBao')->where('ThongBaoID', $id)->value('DaDoc'));
     }
 
-    public function test_guests_and_accounts_without_view_permission_cannot_read_updates(): void
+    public function test_guests_and_accounts_without_active_role_cannot_read_updates(): void
     {
         $this->getJson('/notifications/updates')->assertUnauthorized();
-        DB::table('VaiTro_Quyen')->delete();
+        DB::table('TaiKhoan_VaiTro')->delete();
         $this->actingAs($this->staff())->getJson('/notifications/updates')->assertForbidden();
     }
 }

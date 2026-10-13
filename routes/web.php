@@ -339,7 +339,7 @@ Route::get('/', function () {
     return redirect()->route('login');
 });
 
-// Personal inbox is available to every role, including customers.
+// Admin inbox: defaults for internal roles; customer accounts are excluded.
 Route::middleware(['auth', 'permission:notifications.view'])->group(function () {
     Route::get('notifications', [ThongBaoController::class, 'index'])->name('notifications.index');
     Route::get('notifications/updates', [ThongBaoController::class, 'updates'])->name('notifications.updates');
