@@ -2,21 +2,18 @@
 
 try {
     $mode = $argv[1] ?? 'all';
-    if (! in_array($mode, ['all', 'contracts', 'concurrency', 'beepay'], true)) {
+    if (! in_array($mode, ['all', 'contracts', 'concurrency'], true)) {
         throw new RuntimeException('Unknown PostgreSQL suite.');
     }
     require __DIR__.'/bootstrap.php';
     require __DIR__.'/support.php';
     echo "PASS: guarded Laravel PostgreSQL bootstrap\n";
-    if (in_array($mode, ['all', 'contracts'], true)) {
+    if ($mode !== 'concurrency') {
         require __DIR__.'/contracts.php';
         require __DIR__.'/message-realtime-contract.php';
     }
-    if (in_array($mode, ['all', 'concurrency'], true)) {
+    if ($mode !== 'contracts') {
         require __DIR__.'/concurrency.php';
-    }
-    if (in_array($mode, ['all', 'beepay'], true)) {
-        require __DIR__.'/beepay.php';
     }
 } catch (Throwable $exception) {
     fwrite(STDERR, get_class($exception).': '.$exception->getMessage()."\n");

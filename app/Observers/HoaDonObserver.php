@@ -4,7 +4,6 @@ namespace App\Observers;
 
 use App\Models\HoaDon;
 use App\Models\LichSuThayDoiHoaDon;
-use App\Models\User;
 use LogicException;
 
 class HoaDonObserver
@@ -28,8 +27,7 @@ class HoaDonObserver
             return;
         }
 
-        $actor = $hoaDon->relationLoaded('auditActor') ? $hoaDon->getRelation('auditActor') : null;
-        $accountId = $actor instanceof User ? $actor->getKey() : auth()->id();
+        $accountId = auth()->id();
         if ($accountId === null) {
             throw new LogicException('Cần có tài khoản đăng nhập để ghi lịch sử thay đổi hóa đơn.');
         }

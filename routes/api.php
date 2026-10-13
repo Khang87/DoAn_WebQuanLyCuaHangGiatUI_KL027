@@ -1,7 +1,7 @@
 <?php
 
-use App\Http\Controllers\Api\V1\BeePayController;
 use App\Http\Controllers\Api\V1\DichVuController;
+use App\Http\Controllers\Api\V1\BeePayController;
 use App\Http\Controllers\Api\V1\DonHangController;
 use App\Http\Controllers\Api\V1\GarmentController;
 use App\Http\Controllers\Api\V1\KhachHangController;
