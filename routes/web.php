@@ -153,6 +153,9 @@ Route::middleware(['auth', 'reject.customer'])->group(function () {
     Route::middleware('permission:orders.view')->group(function () {
         Route::get('/orders', [DonHangController::class, 'index'])->name('orders.index');
         Route::get('/orders/{order}', [DonHangController::class, 'show'])->name('orders.show');
+        Route::get('/orders/{order}/payment-status', [DonHangController::class, 'paymentStatus'])
+            ->whereNumber('order')
+            ->name('orders.payment-status');
     });
 
     Route::middleware('permission:orders.edit')->group(function () {

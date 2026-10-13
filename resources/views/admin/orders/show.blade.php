@@ -6,6 +6,9 @@
 @section('content')
 @php
     $isPaid = $order->is_paid;
+    $paidPayment = $order->thanhToans
+        ->sortByDesc('ThoiGian')
+        ->first(fn ($payment) => $payment->TrangThai === \App\Enums\PaymentStatus::Paid->value);
     $isOwner = auth()->user()?->isOwner() ?? false;
     $canEdit = ! $isPaid || $isOwner;
 
@@ -445,6 +448,26 @@
                 <x-admin.detail.money :value="$order->total_amount" class="detail-summary__total text-primary" />
             </div>
 
+            @if($order->booking?->PhuongThucThanhToan === 'Chuyển khoản')
+                <div class="border-top mt-3 pt-3" data-order-payment-status
+                    data-status-url="{{ route('orders.payment-status', $order) }}"
+                    data-paid="{{ $isPaid ? 'true' : 'false' }}">
+                    <div class="d-flex justify-content-between align-items-center gap-2">
+                        <span class="detail-summary__label">Thanh toán chuyển khoản</span>
+                        <span data-payment-status-label class="badge {{ $isPaid ? 'bg-success-subtle text-success-emphasis border border-success' : 'bg-warning-subtle text-warning-emphasis border border-warning' }} px-3 py-2 rounded-pill">
+                            {{ $isPaid ? 'Đã thanh toán' : 'Chưa thanh toán' }}
+                        </span>
+                    </div>
+                    <small data-payment-reference class="text-muted d-block mt-2">
+                        @if($paidPayment?->MaGiaoDich)
+                            Mã giao dịch: {{ $paidPayment->MaGiaoDich }}
+                        @else
+                            Trang sẽ tự cập nhật khi nhận được xác nhận chuyển khoản.
+                        @endif
+                    </small>
+                </div>
+            @endif
+
             @if($order->promotion)
                 <div class="d-flex justify-content-end">
                     <span class="badge bg-primary-subtle text-primary-emphasis border border-primary px-3 py-2 rounded-pill">
@@ -587,6 +610,36 @@
 @push('scripts')
 <script>
     document.addEventListener('DOMContentLoaded', function() {
+        const paymentStatus = document.querySelector('[data-order-payment-status]');
+        if (paymentStatus && paymentStatus.dataset.paid !== 'true') {
+            const statusLabel = paymentStatus.querySelector('[data-payment-status-label]');
+            const reference = paymentStatus.querySelector('[data-payment-reference]');
+            const refreshPaymentStatus = async function() {
+                try {
+                    const response = await fetch(paymentStatus.dataset.statusUrl, {
+                        headers: { Accept: 'application/json' },
+                        credentials: 'same-origin',
+                        cache: 'no-store',
+                    });
+                    if (!response.ok) return;
+
+                    const data = await response.json();
+                    if (!data.paid) return;
+
+                    paymentStatus.dataset.paid = 'true';
+                    statusLabel.textContent = 'Đã thanh toán';
+                    statusLabel.className = 'badge bg-success-subtle text-success-emphasis border border-success px-3 py-2 rounded-pill';
+                    reference.textContent = data.transaction_code
+                        ? 'Mã giao dịch: ' + data.transaction_code
+                        : 'Giao dịch đã được xác nhận.';
+                    window.clearInterval(paymentStatusTimer);
+                } catch (_) {
+                    // A temporary network failure should not stop the next refresh.
+                }
+            };
+            const paymentStatusTimer = window.setInterval(refreshPaymentStatus, 8000);
+        }
+
         const inspectionTable = document.querySelector('#receivingItemsTable tbody');
         const inspectionTemplate = document.getElementById('receivingItemTemplate');
         const addInspectionItem = document.getElementById('addInspectionItem');
