@@ -4229,8 +4229,6 @@ GRANT EXECUTE ON FUNCTION public.notify_customer_of_store_message() TO "postgres
 
 GRANT EXECUTE ON FUNCTION public.notify_customer_of_store_message() TO "service_role";
 
-GRANT EXECUTE ON FUNCTION public.notify_staff_new_booking(p_bookingid bigint, p_booking_number text, p_customer_name text) TO "authenticated";
-
 GRANT EXECUTE ON FUNCTION public.notify_staff_new_booking(p_bookingid bigint, p_booking_number text, p_customer_name text) TO "postgres";
 
 GRANT EXECUTE ON FUNCTION public.notify_staff_new_booking(p_bookingid bigint, p_booking_number text, p_customer_name text) TO "service_role";

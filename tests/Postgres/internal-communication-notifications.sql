@@ -1,5 +1,11 @@
 -- Run only against the disposable schema restore; never against live customer data.
 BEGIN;
+DO $$ BEGIN
+  ASSERT NOT has_function_privilege('authenticated', 'public.notify_staff_new_booking(bigint,text,text)', 'EXECUTE'),
+    'Mobile client must not be able to forge staff booking notifications';
+  ASSERT has_function_privilege('postgres', 'public.notify_staff_new_booking(bigint,text,text)', 'EXECUTE'),
+    'Booking trigger owner must keep permission to notify staff';
+END $$;
 
 INSERT INTO public."KhachHang" ("KhachHangID", "HoTen") VALUES (9901, 'Test customer');
 INSERT INTO public."NhanVien" ("NhanVienID", "HoTen", "SoDienThoai") VALUES

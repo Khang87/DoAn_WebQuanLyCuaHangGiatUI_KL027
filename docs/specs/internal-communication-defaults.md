@@ -6,6 +6,8 @@ Nhóm Khách hàng/Customer/Client bị loại trừ, kể cả tài khoản đ�
 
 Triển khai: chính sách tập trung → User/Gate → Blade/routes → bộ chọn người nhận thông báo nội bộ. Không thay đổi phân quyền tài chính hoặc quy tắc đơn hàng.
 
+Hàm `notify_staff_new_booking` chỉ được gọi bởi trigger tạo Booking hoặc vai trò dịch vụ; khách mobile không được gọi trực tiếp để tạo thông báo giả.
+
 Kiểm chứng: PHPUnit kiểm tra nhóm tùy chỉnh không có quyền DB, gửi chat thực, đọc cập nhật, loại trừ customer/alias/mixed-role, UI bị ẩn, khóa tài khoản/nhóm và quyền module khác. Chạy bộ PHPUnit và build frontend.
 
 Commands: `php vendor/bin/phpunit`; `npm run build`.

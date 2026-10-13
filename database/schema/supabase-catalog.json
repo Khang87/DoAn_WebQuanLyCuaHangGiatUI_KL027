@@ -15979,8 +15979,7 @@
     {
       "acl": [
         "postgres=X/postgres",
-        "service_role=X/postgres",
-        "authenticated=X/postgres"
+        "service_role=X/postgres"
       ],
       "name": "notify_staff_new_booking",
       "owner": "postgres",

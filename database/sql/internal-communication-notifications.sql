@@ -150,3 +150,7 @@ BEGIN
     );
 END;
 $function$;
+
+-- Booking inserts invoke this through a postgres-owned SECURITY DEFINER trigger.
+-- Client RPC access could otherwise forge notifications with arbitrary text.
+REVOKE EXECUTE ON FUNCTION public.notify_staff_new_booking(bigint, text, text) FROM authenticated;
