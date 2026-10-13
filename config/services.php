@@ -54,7 +54,6 @@ return [
 
     'beepay' => [
         'webhook_secret' => env('BEEPAY_WEBHOOK_SECRET'),
-        'audit_account_id' => env('BEEPAY_AUDIT_ACCOUNT_ID'),
         'payment_prefix' => 'DH',
     ],
 

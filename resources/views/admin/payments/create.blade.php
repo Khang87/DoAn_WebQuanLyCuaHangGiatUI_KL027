@@ -118,7 +118,6 @@
                 <div class="col-12 d-none" id="paymentVietQrPanel">
                     <div class="border rounded p-3 p-lg-4">
                         <h6 class="fw-bold mb-3"><i class="bi bi-qr-code-scan me-2"></i>Chuyển khoản MB Bank</h6>
-                        <p class="small text-muted">Nếu đang dùng BeePay, chờ hệ thống xác nhận giao dịch tự động. Chỉ bấm “Lưu thanh toán” thủ công sau khi đã đối soát và xác nhận tiền thực sự vào tài khoản; thao tác lưu sẽ ghi nhận đã thu ngay.</p>
                         <x-admin.vietqr-payment
                             :amount="$preselectedAmount ?? old('amount', 0)"
                             :memo="$preselectedOrder ? \App\Support\BankTransferReference::forOrder($preselectedOrder->DonHangID) : ''"

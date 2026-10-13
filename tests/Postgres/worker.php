@@ -12,15 +12,6 @@ $payload = json_decode($argv[2], true, flags: JSON_THROW_ON_ERROR);
 pgActor(2);
 DB::selectOne("SELECT set_config('application_name', ?, false)", [$argv[1]]);
 try {
-    if ($payload['operation'] === 'beepay') {
-        require __DIR__.'/beepay-support.php';
-        $response = pgBeePay($payload['order_id'], $payload['reference']);
-        if (! in_array($response->getStatusCode(), [200, 422], true)) {
-            throw new RuntimeException('Unexpected webhook result: '.$response->getContent());
-        }
-        echo json_encode(['status' => $response->getStatusCode() === 200 ? 'success' : 'rejected'], JSON_THROW_ON_ERROR)."\n";
-        exit;
-    }
     $result = match ($payload['operation']) {
         'inspect' => app(BookingService::class)->inspectBookingAndCreateOrder(Booking::findOrFail($payload['booking_id']), 1, pgItems(), $payload['points'] ?? 0),
         'delivery' => app(DeliveryService::class)->create(['order_id' => $payload['order_id'], 'method' => 'giao_do', 'address' => 'Local return', 'employee_id' => 1]),
