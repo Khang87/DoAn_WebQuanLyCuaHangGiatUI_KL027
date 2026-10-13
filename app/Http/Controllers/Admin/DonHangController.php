@@ -3,12 +3,14 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Enums\OrderStatus;
+use App\Enums\PaymentStatus;
 use App\Http\Controllers\Concerns\RejectsSettledRecords;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\HoanTatTiepNhanRequest;
 use App\Http\Requests\Admin\LuuDonHangRequest;
 use App\Models\DanhMucLoaiDoGiat;
 use App\Models\DichVu;
+use App\Models\DonHang;
 use App\Models\DonViTinh;
 use App\Models\KhachHang;
 use App\Models\LoaiDichVu;
@@ -18,6 +20,7 @@ use App\Services\DeliveryFeeService;
 use App\Services\OrderService;
 use App\Services\PricingService;
 use App\Support\FriendlyError;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -135,6 +138,23 @@ class DonHangController extends Controller
             'garmentCategories',
             'inspectionPricings',
         ));
+    }
+
+    public function paymentStatus(int $id): JsonResponse
+    {
+        $order = DonHang::with(['booking', 'hoaDons', 'thanhToans'])->findOrFail($id);
+        $invoice = $order->hoaDons->first();
+        $payment = $order->thanhToans
+            ->sortByDesc('ThoiGian')
+            ->first(fn ($item) => $item->TrangThai === PaymentStatus::Paid->value);
+
+        return response()->json([
+            'paid' => $invoice?->isPaid() ?? false,
+            'invoice_status' => $invoice?->TrangThai,
+            'payment_method' => $order->booking?->PhuongThucThanhToan,
+            'transaction_code' => $payment?->MaGiaoDich,
+            'paid_at' => $payment?->ThoiGian?->toIso8601String(),
+        ])->header('Cache-Control', 'no-store, private');
     }
 
     public function completeReceiving(HoanTatTiepNhanRequest $request, int $id)

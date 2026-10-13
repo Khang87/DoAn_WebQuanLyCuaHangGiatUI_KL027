@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\V1\BeePayController;
 use App\Http\Controllers\Api\V1\DichVuController;
 use App\Http\Controllers\Api\V1\DonHangController;
 use App\Http\Controllers\Api\V1\GarmentController;
@@ -19,6 +20,14 @@ use Illuminate\Support\Facades\Route;
 | còn lại chỉ đọc và dành cho cả nhân viên.
 |
 */
+
+Route::prefix('v1')->name('api.v1.')->group(function () {
+    // Public read-only bank details for the customer app, and signed BeePay IPN.
+    Route::get('payment-config', [BeePayController::class, 'config'])->name('payment-config');
+    Route::post('webhooks/beepay', [BeePayController::class, 'webhook'])
+        ->middleware('throttle:120,1')
+        ->name('webhooks.beepay');
+});
 
 Route::middleware(['auth', 'reject.customer'])->prefix('v1')->name('api.v1.')->group(function () {
     // Đơn hàng

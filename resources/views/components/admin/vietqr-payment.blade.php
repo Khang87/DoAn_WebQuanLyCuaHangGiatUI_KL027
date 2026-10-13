@@ -8,21 +8,22 @@
     $bankName = config('services.vietqr.bank_name');
     $accountNumber = config('services.vietqr.account_number');
     $accountName = config('services.vietqr.account_name');
-    $quicklinkUrl = config('services.vietqr.quicklink_url');
-    $quicklinkParts = parse_url($quicklinkUrl);
-    $quicklinkQuery = [];
-
-    parse_str($quicklinkParts['query'] ?? '', $quicklinkQuery);
-    $quicklinkQuery['accountName'] = $accountName ?: ($quicklinkQuery['accountName'] ?? '');
-    $quicklinkQuery['amount'] = (int) $amount;
-    $quicklinkQuery['addInfo'] = $memo;
-    $qrImageUrl = ($quicklinkParts['scheme'] ?? 'https').'://'.($quicklinkParts['host'] ?? 'api.vietqr.io')
-        .($quicklinkParts['path'] ?? '')
-        .'?'.http_build_query($quicklinkQuery, '', '&', PHP_QUERY_RFC3986);
+    $bankBin = config('services.vietqr.bank_bin');
+    $isConfigured = $bankBin === '970422' && ctype_digit((string) $accountNumber)
+        && (string) $accountNumber !== '' && trim((string) $accountName) !== '';
+    $qrImageUrl = $isConfigured
+        ? 'https://img.vietqr.io/image/'.$bankBin.'-'.$accountNumber.'-compact2.png?'
+            .http_build_query([
+                'accountName' => $accountName,
+                'amount' => (int) $amount,
+                'addInfo' => $memo,
+            ], '', '&', PHP_QUERY_RFC3986)
+        : null;
 @endphp
 
 <div class="vietqr-payment">
     <div class="row align-items-center justify-content-center g-4">
+        @if($qrImageUrl)
         <div class="col-sm-auto text-center">
             <img
                 src="{{ $qrImageUrl }}"
@@ -36,7 +37,11 @@
             >
             <div class="small text-muted mt-2">Quét bằng ứng dụng ngân hàng</div>
         </div>
+        @endif
         <div class="col">
+            @unless($isConfigured)
+                <p class="alert alert-warning">Chưa cấu hình tài khoản nhận MB Bank. Không thể tạo mã QR thanh toán.</p>
+            @endunless
             <dl class="row mb-0">
                 <dt class="col-sm-5">Ngân hàng</dt>
                 <dd class="col-sm-7">{{ $bankName ?: 'Chưa cấu hình' }}</dd>

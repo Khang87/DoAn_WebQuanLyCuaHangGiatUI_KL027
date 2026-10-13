@@ -81,11 +81,11 @@
             @endif
         </x-admin.detail.panel>
 
-        @if($balance > 0)
-            <x-admin.detail.panel title="Thanh toán qua VietQR" icon="bi-qr-code-scan" :iconClass="'bg-info-subtle text-info'">
+        @if($balance > 0 && $order?->booking?->PhuongThucThanhToan === 'Chuyển khoản' && $balance == $invoice->ThanhTien)
+            <x-admin.detail.panel title="Chuyển khoản MB Bank" icon="bi-qr-code-scan" :iconClass="'bg-info-subtle text-info'">
                 <x-admin.vietqr-payment
                     :amount="$balance"
-                    :memo="$invoice->MaHoaDon"
+                    :memo="\App\Support\BankTransferReference::forOrder($order->DonHangID)"
                     id-prefix="invoice-vietqr"
                 />
             </x-admin.detail.panel>

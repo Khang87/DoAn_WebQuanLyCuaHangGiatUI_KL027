@@ -53,7 +53,9 @@
                         <option
                             value="{{ $order->DonHangID }}"
                             data-order-code="{{ $order->MaDonHang }}"
+                            data-payment-reference="{{ \App\Support\BankTransferReference::forOrder($order->DonHangID) }}"
                             data-invoice-code="{{ $order->hoaDons->first()?->MaHoaDon ?: $order->MaDonHang }}"
+                            data-invoice-ready="{{ $order->hoaDons->first() ? '1' : '0' }}"
                             data-amount="{{ $order->hoaDons->first()?->ThanhTien ?? $order->ThanhTien }}"
                             @selected((string) old('order_id', $preselectedOrder?->DonHangID) === (string) $order->DonHangID)
                         >
@@ -75,8 +77,11 @@
                             @foreach($invoices as $inv)
                                 <option
                                     value="{{ $inv->HoaDonID }}"
+                                    data-order-id="{{ $inv->DonHangID }}"
                                     data-order-code="{{ $inv->donHang?->MaDonHang }}"
+                                    data-payment-reference="{{ $inv->DonHangID ? \App\Support\BankTransferReference::forOrder($inv->DonHangID) : '' }}"
                                     data-invoice-code="{{ $inv->MaHoaDon }}"
+                                    data-invoice-ready="1"
                                     data-amount="{{ $inv->ThanhTien }}"
                                     @selected((string) old('invoice_id', $preselectedInvoice?->HoaDonID) === (string) $inv->HoaDonID)
                                 >
@@ -112,10 +117,11 @@
                 </div>
                 <div class="col-12 d-none" id="paymentVietQrPanel">
                     <div class="border rounded p-3 p-lg-4">
-                        <h6 class="fw-bold mb-3"><i class="bi bi-qr-code-scan me-2"></i>Thông tin chuyển khoản VietQR</h6>
+                        <h6 class="fw-bold mb-3"><i class="bi bi-qr-code-scan me-2"></i>Chuyển khoản MB Bank</h6>
+                        <p class="small text-muted">Nếu đang dùng BeePay, chờ hệ thống xác nhận giao dịch tự động. Chỉ bấm “Lưu thanh toán” thủ công sau khi đã đối soát và xác nhận tiền thực sự vào tài khoản; thao tác lưu sẽ ghi nhận đã thu ngay.</p>
                         <x-admin.vietqr-payment
                             :amount="$preselectedAmount ?? old('amount', 0)"
-                            :memo="$preselectedInvoice?->MaHoaDon ?: $preselectedOrder?->MaDonHang ?: ''"
+                            :memo="$preselectedOrder ? \App\Support\BankTransferReference::forOrder($preselectedOrder->DonHangID) : ''"
                             id-prefix="payment-vietqr"
                         />
                     </div>
@@ -180,7 +186,7 @@
 
         function selectedPaymentOption() {
             const selectedInvoice = invoiceSelect?.selectedOptions[0];
-            if (selectedInvoice?.value) {
+            if (selectedInvoice?.value && (!orderSelect?.value || selectedInvoice.dataset.orderId === orderSelect.value)) {
                 return selectedInvoice;
             }
 
@@ -190,9 +196,8 @@
 
         function updateVietQr() {
             const isBankTransfer = methodSelect.value === 'bank_transfer';
-            vietQrPanel?.classList.toggle('d-none', !isBankTransfer);
-
             const selectedOption = selectedPaymentOption();
+            vietQrPanel?.classList.toggle('d-none', !isBankTransfer || !selectedOption?.dataset.paymentReference || selectedOption?.dataset.invoiceReady !== '1');
             const selectedAmount = selectedOption?.dataset.amount;
             if (selectedAmount !== undefined && amountInput) {
                 amountInput.value = selectedAmount;
@@ -203,8 +208,7 @@
                 vietQrAmount.textContent = amount.toLocaleString('vi-VN') + ' đ';
             }
 
-            const invoiceCode = selectedOption?.dataset.invoiceCode || '';
-            const memo = invoiceCode;
+            const memo = selectedOption?.dataset.paymentReference || '';
             if (vietQrMemo) {
                 vietQrMemo.textContent = memo;
             }

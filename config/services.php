@@ -46,13 +46,16 @@ return [
     ],
 
     'vietqr' => [
-        'bank_name' => env('VIETQR_BANK_NAME'),
+        'bank_name' => 'MB Bank',
+        'bank_bin' => '970422',
         'account_number' => env('VIETQR_ACCOUNT_NUMBER'),
         'account_name' => env('VIETQR_ACCOUNT_NAME'),
-        'quicklink_url' => env(
-            'VIETQR_QUICKLINK_URL',
-            'https://api.vietqr.io/image/970416-34753417-TOdQsRx.jpg?accountName=NGUYEN%20TRUONG%20KHANG&amount=0'
-        ),
+    ],
+
+    'beepay' => [
+        'webhook_secret' => env('BEEPAY_WEBHOOK_SECRET'),
+        'audit_account_id' => env('BEEPAY_AUDIT_ACCOUNT_ID'),
+        'payment_prefix' => 'DH',
     ],
 
     'google_routes' => [
