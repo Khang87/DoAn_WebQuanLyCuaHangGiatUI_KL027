@@ -19,7 +19,7 @@
     },
       {
   "src": "^/api/v1/(.*)$",
-  "dest": "/api/index.php?__vercel_path=api/$1"
+  "dest": "/api/index.php?__vercel_path=api/v1/$1"
 },
     {
       "handle": "filesystem"
