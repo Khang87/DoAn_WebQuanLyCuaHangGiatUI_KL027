@@ -177,6 +177,40 @@ class PaymentOrderRedirectTest extends TestCase
             ->assertSessionHas('error', 'Không tìm thấy đơn hàng cần thanh toán.');
     }
 
+    public function test_invoice_search_uses_only_columns_present_in_the_invoice_schema(): void
+    {
+        $this->assertFalse(Schema::hasColumn('HoaDon', 'GhiChu'));
+
+        DB::table('KhachHang')->insert([
+            'KhachHangID' => 3,
+            'HoTen' => 'Khách thử nghiệm',
+        ]);
+        DB::table('DonHang')->insert([
+            'DonHangID' => 37,
+            'MaDonHang' => 'DH0037',
+            'KhachHangID' => 3,
+            'TrangThai' => OrderStatus::Delivered->value,
+        ]);
+        DB::table('HoaDon')->insert([
+            'HoaDonID' => 19,
+            'DonHangID' => 37,
+            'MaHoaDon' => 'HD0037',
+            'TrangThai' => InvoiceStatus::Unpaid->value,
+            'ThanhTien' => 50000,
+        ]);
+
+        $invoiceService = app(InvoiceService::class);
+
+        $this->assertSame(
+            [19],
+            $invoiceService->getAll(['search' => '37'])->getCollection()->pluck('HoaDonID')->all(),
+        );
+        $this->assertSame(
+            [19],
+            $invoiceService->getAll(['search' => 'Khách thử nghiệm'])->getCollection()->pluck('HoaDonID')->all(),
+        );
+    }
+
     public function test_paid_or_cancelled_orders_cannot_be_opened_for_payment(): void
     {
         DB::table('DonHang')->insert([

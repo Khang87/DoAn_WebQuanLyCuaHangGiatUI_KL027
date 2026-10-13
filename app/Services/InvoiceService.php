@@ -38,10 +38,11 @@ class InvoiceService
         }
 
         if (! empty($filters['search'])) {
-            $query->where(function ($q) use ($filters) {
-                $q->where('MaHoaDon', 'LIKE', '%'.$filters['search'].'%')
-                    ->orWhere('GhiChu', 'LIKE', '%'.$filters['search'].'%')
-                    ->orWhereHas('donHang.khachHang', fn ($sub) => $sub->where('HoTen', 'LIKE', '%'.$filters['search'].'%'));
+            $search = $filters['search'];
+
+            $query->where(function ($q) use ($search) {
+                $q->where('MaHoaDon', 'LIKE', '%'.$search.'%')
+                    ->orWhereHas('donHang.khachHang', fn ($sub) => $sub->where('HoTen', 'LIKE', '%'.$search.'%'));
             });
         }
 
