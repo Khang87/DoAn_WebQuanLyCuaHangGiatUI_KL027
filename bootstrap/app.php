@@ -4,6 +4,7 @@ use App\Http\Middleware\EnsureUserHasPermission;
 use App\Http\Middleware\EnsureUserHasRole;
 use App\Http\Middleware\RejectCustomerRole;
 use App\Http\Middleware\RestoreRememberedLogin;
+use App\Support\VercelRuntime;
 use Illuminate\Contracts\Auth\Middleware\AuthenticatesRequests;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -47,7 +48,7 @@ $isVercel = isset($_ENV['VERCEL'])
     || getenv('VERCEL') !== false;
 
 if ($isVercel) {
-    $app->useStoragePath('/tmp/storage');
+    VercelRuntime::prepare($app, sys_get_temp_dir());
     $app->booted(static function (): void {
         URL::forceScheme('https');
     });
