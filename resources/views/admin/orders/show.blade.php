@@ -9,6 +9,8 @@
     $paidPayment = $order->thanhToans
         ->sortByDesc('ThoiGian')
         ->first(fn ($payment) => $payment->TrangThai === \App\Enums\PaymentStatus::Paid->value);
+    $unpaidInvoice = $order->hoaDons
+        ->first(fn ($invoice) => $invoice->TrangThai === \App\Enums\InvoiceStatus::Unpaid->value);
     $isOwner = auth()->user()?->isOwner() ?? false;
     $canEdit = ! $isPaid || $isOwner;
 
@@ -465,6 +467,15 @@
                             Trang sẽ tự cập nhật khi nhận được xác nhận chuyển khoản.
                         @endif
                     </small>
+                    @if(! $isPaid && ! $isCancelled && $unpaidInvoice && (float) $unpaidInvoice->ThanhTien > 0)
+                        <div class="mt-3" data-order-payment-qr>
+                            <x-admin.vietqr-payment
+                                :amount="$unpaidInvoice->ThanhTien"
+                                :memo="\App\Support\BankTransferReference::forOrder($order->DonHangID)"
+                                id-prefix="order-vietqr"
+                            />
+                        </div>
+                    @endif
                 </div>
             @endif
 
@@ -632,6 +643,7 @@
                     reference.textContent = data.transaction_code
                         ? 'Mã giao dịch: ' + data.transaction_code
                         : 'Giao dịch đã được xác nhận.';
+                    paymentStatus.querySelector('[data-order-payment-qr]')?.remove();
                     window.clearInterval(paymentStatusTimer);
                 } catch (_) {
                     // A temporary network failure should not stop the next refresh.

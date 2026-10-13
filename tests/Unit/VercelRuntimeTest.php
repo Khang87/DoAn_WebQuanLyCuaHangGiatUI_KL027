@@ -34,11 +34,8 @@ class VercelRuntimeTest extends TestCase
             'CACHE_STORE' => 'array',
             'SESSION_DRIVER' => 'array',
             'LOG_CHANNEL' => 'null',
-            'VIETQR_BANK_BIN' => '970422',
-            'VIETQR_BANK_NAME' => 'MB Bank Test',
             'VIETQR_ACCOUNT_NUMBER' => '123456789',
             'VIETQR_ACCOUNT_NAME' => 'SKY LAUNDRY TEST',
-            'BEEPAY_PAYMENT_PREFIX' => 'SKY',
         ] as $name => $value) {
             $_ENV[$name] = $value;
             $_SERVER[$name] = $value;
@@ -72,10 +69,10 @@ class VercelRuntimeTest extends TestCase
         self::assertSame([
             'enabled' => true,
             'bank_bin' => '970422',
-            'bank_name' => 'MB Bank Test',
+            'bank_name' => 'MB Bank',
             'account_number' => '123456789',
             'account_name' => 'SKY LAUNDRY TEST',
-            'payment_prefix' => 'SKY',
+            'payment_prefix' => 'DH',
         ], json_decode($response->getContent(), true, flags: JSON_THROW_ON_ERROR));
         self::assertFileExists($app->getCachedServicesPath());
         self::assertFileExists($app->getCachedPackagesPath());

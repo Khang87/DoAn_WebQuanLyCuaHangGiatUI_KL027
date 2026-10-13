@@ -22,7 +22,7 @@
     },
     {
       "src": "/(.*)",
-      "dest": "/api/index.php"
+      "dest": "/api/index.php?__vercel_path=$1"
     }
   ]
 }

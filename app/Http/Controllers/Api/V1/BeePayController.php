@@ -27,12 +27,12 @@ class BeePayController extends Controller
         $accountName = trim((string) config('services.vietqr.account_name'));
 
         return response()->json([
-            'enabled' => $bankBin !== '' && $accountNumber !== '' && $accountName !== '',
+            'enabled' => $bankBin === '970422' && ctype_digit($accountNumber) && $accountName !== '',
             'bank_bin' => $bankBin,
             'bank_name' => config('services.vietqr.bank_name'),
             'account_number' => $accountNumber,
             'account_name' => $accountName,
-            'payment_prefix' => (string) config('services.beepay.payment_prefix', 'SKY'),
+            'payment_prefix' => strtoupper((string) config('services.beepay.payment_prefix', 'DH')),
         ]);
     }
 
@@ -63,7 +63,7 @@ class BeePayController extends Controller
             return response()->json(['ok' => true]);
         }
 
-        $prefix = preg_quote((string) config('services.beepay.payment_prefix', 'SKY'), '/');
+        $prefix = preg_quote(strtoupper((string) config('services.beepay.payment_prefix', 'DH')), '/');
         $orderCode = strtoupper(trim((string) ($payload['order_id'] ?? $payload['reference'] ?? '')));
         if (! preg_match('/^'.$prefix.'(\d{8})$/', $orderCode, $matches)) {
             return response()->json(['ok' => false, 'error' => 'Unknown payment reference.'], 422);
