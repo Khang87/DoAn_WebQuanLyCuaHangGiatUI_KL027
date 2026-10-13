@@ -82,17 +82,12 @@
         </x-admin.detail.panel>
 
         @if($balance > 0)
-            <x-admin.detail.panel title="Thanh toán" icon="bi-qr-code-scan" :iconClass="'bg-info-subtle text-info'" class="no-print">
-                <div class="text-center py-3">
-                    <div class="bg-white border rounded d-inline-block p-4">
-                        <i class="bi bi-qr-code-scan text-muted" style="font-size: 4rem;"></i>
-                        <p class="text-muted small mt-2 mb-0">Quét mã để thanh toán qua ngân hàng / ví điện tử</p>
-                    </div>
-                    <div class="mt-3">
-                        <span class="detail-field__label">Nội dung chuyển khoản</span>
-                        <div class="fw-semibold">Thanh toan hoa don {{ $invoice->MaHoaDon }}</div>
-                    </div>
-                </div>
+            <x-admin.detail.panel title="Thanh toán qua VietQR" icon="bi-qr-code-scan" :iconClass="'bg-info-subtle text-info'">
+                <x-admin.vietqr-payment
+                    :amount="$balance"
+                    :memo="$invoice->MaHoaDon"
+                    id-prefix="invoice-vietqr"
+                />
             </x-admin.detail.panel>
         @endif
 

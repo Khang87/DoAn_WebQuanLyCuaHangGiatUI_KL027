@@ -94,7 +94,13 @@ class ThanhToanController extends Controller
             $preselectedAmount = (float) ($preselectedOrder->hoaDons->first()?->ThanhTien ?? $preselectedOrder->ThanhTien);
         }
 
-        $orders = DonHang::with('khachHang')
+        $orders = DonHang::with([
+            'khachHang',
+            'hoaDons' => fn ($query) => $query->whereNotIn('TrangThai', [
+                InvoiceStatus::Paid->value,
+                InvoiceStatus::Cancelled->value,
+            ]),
+        ])
             ->whereNotIn('TrangThai', [OrderStatus::Cancelled->value, OrderStatus::Paid->value])
             ->orderBy('NgayTao', 'desc')
             ->get();

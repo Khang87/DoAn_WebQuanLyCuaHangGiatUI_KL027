@@ -50,7 +50,13 @@
                     <select class="form-select" name="order_id" @disabled($preselectedOrder)>
                         <option value="">Chọn đơn hàng</option>
                         @foreach($orders as $order)
-                        <option value="{{ $order->DonHangID }}" data-order-code="{{ $order->MaDonHang }}" @selected((string) old('order_id', $preselectedOrder?->DonHangID) === (string) $order->DonHangID)>
+                        <option
+                            value="{{ $order->DonHangID }}"
+                            data-order-code="{{ $order->MaDonHang }}"
+                            data-invoice-code="{{ $order->hoaDons->first()?->MaHoaDon ?: $order->MaDonHang }}"
+                            data-amount="{{ $order->hoaDons->first()?->ThanhTien ?? $order->ThanhTien }}"
+                            @selected((string) old('order_id', $preselectedOrder?->DonHangID) === (string) $order->DonHangID)
+                        >
                             {{ $order->MaDonHang }} - {{ $order->khachHang?->HoTen }}
                         </option>
                         @endforeach
@@ -67,7 +73,13 @@
                                 <option value="">Chọn hóa đơn (tùy chọn)</option>
                             @endunless
                             @foreach($invoices as $inv)
-                                <option value="{{ $inv->HoaDonID }}" data-order-code="{{ $inv->donHang?->MaDonHang }}" @selected((string) old('invoice_id', $preselectedInvoice?->HoaDonID) === (string) $inv->HoaDonID)>
+                                <option
+                                    value="{{ $inv->HoaDonID }}"
+                                    data-order-code="{{ $inv->donHang?->MaDonHang }}"
+                                    data-invoice-code="{{ $inv->MaHoaDon }}"
+                                    data-amount="{{ $inv->ThanhTien }}"
+                                    @selected((string) old('invoice_id', $preselectedInvoice?->HoaDonID) === (string) $inv->HoaDonID)
+                                >
                                     {{ $inv->MaHoaDon }} - {{ $inv->donHang?->khachHang?->HoTen }}
                                 </option>
                             @endforeach
@@ -97,6 +109,16 @@
                         <option value="cash" @selected(old('method', $preselectedOrder?->booking?->PhuongThucThanhToan === 'Chuyển khoản' ? 'bank_transfer' : 'cash') === 'cash')>Tiền mặt</option>
                         <option value="bank_transfer" @selected(old('method', $preselectedOrder?->booking?->PhuongThucThanhToan === 'Chuyển khoản' ? 'bank_transfer' : 'cash') === 'bank_transfer')>Chuyển khoản / QR</option>
                     </select>
+                </div>
+                <div class="col-12 d-none" id="paymentVietQrPanel">
+                    <div class="border rounded p-3 p-lg-4">
+                        <h6 class="fw-bold mb-3"><i class="bi bi-qr-code-scan me-2"></i>Thông tin chuyển khoản VietQR</h6>
+                        <x-admin.vietqr-payment
+                            :amount="$preselectedAmount ?? old('amount', 0)"
+                            :memo="$preselectedInvoice?->MaHoaDon ?: $preselectedOrder?->MaDonHang ?: ''"
+                            id-prefix="payment-vietqr"
+                        />
+                    </div>
                 </div>
                 <div class="col-md-6">
                     <label class="form-label">Trạng thái</label>
@@ -134,6 +156,11 @@
         const orderSelect = form?.querySelector('[name="order_id"]:not([type="hidden"])');
         const invoiceSelect = form?.querySelector('[name="invoice_id"]');
         const transactionCode = form?.querySelector('#transaction_code');
+        const vietQrPanel = document.getElementById('paymentVietQrPanel');
+        const vietQrImage = document.getElementById('payment-vietqr-image');
+        const vietQrAmount = document.getElementById('payment-vietqr-amount');
+        const vietQrMemo = document.getElementById('payment-vietqr-memo');
+        const amountInput = form?.querySelector('input[name="amount"]');
 
         if (!methodSelect || !transactionCode) {
             return;
@@ -149,6 +176,45 @@
 
             const selectedInvoice = invoiceSelect?.selectedOptions[0];
             return selectedInvoice?.dataset.orderCode || 'TT';
+        }
+
+        function selectedPaymentOption() {
+            const selectedInvoice = invoiceSelect?.selectedOptions[0];
+            if (selectedInvoice?.value) {
+                return selectedInvoice;
+            }
+
+            const selectedOrder = orderSelect?.selectedOptions[0];
+            return selectedOrder?.value ? selectedOrder : null;
+        }
+
+        function updateVietQr() {
+            const isBankTransfer = methodSelect.value === 'bank_transfer';
+            vietQrPanel?.classList.toggle('d-none', !isBankTransfer);
+
+            const selectedOption = selectedPaymentOption();
+            const selectedAmount = selectedOption?.dataset.amount;
+            if (selectedAmount !== undefined && amountInput) {
+                amountInput.value = selectedAmount;
+            }
+
+            const amount = Number(amountInput?.value || selectedAmount || 0);
+            if (vietQrAmount) {
+                vietQrAmount.textContent = amount.toLocaleString('vi-VN') + ' đ';
+            }
+
+            const invoiceCode = selectedOption?.dataset.invoiceCode || '';
+            const memo = invoiceCode;
+            if (vietQrMemo) {
+                vietQrMemo.textContent = memo;
+            }
+
+            if (vietQrImage?.dataset.quicklinkBase) {
+                const qrUrl = new URL(vietQrImage.dataset.quicklinkBase);
+                qrUrl.searchParams.set('amount', String(Math.round(amount)));
+                qrUrl.searchParams.set('addInfo', memo);
+                vietQrImage.src = qrUrl.toString();
+            }
         }
 
         function suggestTransactionCode() {
@@ -169,6 +235,7 @@
             ].join('');
             lastSuggestedCode = prefix + '_' + selectedOrderCode() + '_' + timestamp;
             transactionCode.value = lastSuggestedCode;
+            updateVietQr();
         }
 
         methodSelect.addEventListener('change', suggestTransactionCode);
@@ -180,6 +247,8 @@
         invoiceSelect?.addEventListener('change', function() {
             suggestTransactionCode();
         });
+
+        amountInput?.addEventListener('input', updateVietQr);
 
         suggestTransactionCode();
     });
