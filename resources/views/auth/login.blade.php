@@ -98,11 +98,7 @@
                 </div>
 
                 <div class="form-group">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox" name="remember" id="remember">
-                            <label class="form-check-label" for="remember">Ghi nhớ đăng nhập</label>
-                        </div>
+                    <div class="d-flex justify-content-end align-items-center">
                         <a href="{{ route('password.request') }}" class="text-primary small">Quên mật khẩu?</a>
                     </div>
                 </div>

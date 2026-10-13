@@ -68,6 +68,7 @@ class InternalOtpTest extends TestCase
             $t->increments('ThongBaoID');
             $t->integer('TaiKhoanID');
             $t->integer('DonHangID')->nullable();
+            $t->integer('BookingID')->nullable();
             $t->string('LoaiThongBao', 50)->nullable();
             $t->string('TieuDe');
             $t->text('NoiDung');
@@ -255,6 +256,74 @@ class InternalOtpTest extends TestCase
         ]);
         $this->assertSame(2, $count);
         $this->assertDatabaseHas('ThongBao', ['TaiKhoanID' => $this->staff->getKey(), 'TieuDe' => 'Thông báo nội bộ']);
+    }
+
+    public function test_new_booking_and_order_notifications_target_management_without_duplicates(): void
+    {
+        $managerRole = VaiTro::create(['TenVaiTro' => 'Quản lý', 'TrangThai' => 'Hoạt động']);
+        $manager = User::create([
+            'TenDangNhap' => 'manager',
+            'Email' => 'manager@example.test',
+            'MatKhau' => Hash::make('OldPassword123'),
+            'NhanVienID' => 3,
+            'TrangThai' => 'Hoạt động',
+        ]);
+        $manager->vaiTros()->attach($managerRole);
+
+        $customerRole = VaiTro::create(['TenVaiTro' => 'Khách hàng', 'TrangThai' => 'Hoạt động']);
+        $customer = User::create([
+            'TenDangNhap' => 'customer',
+            'Email' => 'customer@example.test',
+            'MatKhau' => Hash::make('OldPassword123'),
+            'KhachHangID' => 1,
+            'TrangThai' => 'Hoạt động',
+        ]);
+        $customer->vaiTros()->attach($customerRole);
+
+        $notifications = app(NotificationService::class);
+        $bookingMessage = 'Khách hàng An vừa gửi yêu cầu BK-TEST.';
+        DB::table('ThongBao')->insert([
+            'TaiKhoanID' => $this->owner->getKey(),
+            'LoaiThongBao' => 'new_booking',
+            'TieuDe' => 'Có yêu cầu đặt giặt mới',
+            'NoiDung' => $bookingMessage,
+            'ThoiGianGui' => now(),
+            'DaDoc' => false,
+        ]);
+
+        $this->assertSame(1, $notifications->notifyManagement(
+            'new_booking',
+            'Có yêu cầu đặt giặt mới',
+            $bookingMessage,
+            bookingId: 42,
+            dedupeReference: 'BK-TEST',
+        ));
+        $this->assertSame(2, $notifications->notifyManagement(
+            'new_order',
+            'Có đơn hàng mới',
+            'Đơn hàng DH-TEST vừa được tạo.',
+            orderId: 7,
+        ));
+
+        $this->assertDatabaseCount('ThongBao', 4);
+        $this->assertDatabaseHas('ThongBao', [
+            'TaiKhoanID' => $manager->getKey(),
+            'LoaiThongBao' => 'new_booking',
+            'BookingID' => 42,
+        ]);
+        $this->assertDatabaseHas('ThongBao', [
+            'TaiKhoanID' => $manager->getKey(),
+            'LoaiThongBao' => 'new_order',
+            'DonHangID' => 7,
+        ]);
+        $this->assertDatabaseMissing('ThongBao', [
+            'TaiKhoanID' => $this->staff->getKey(),
+            'LoaiThongBao' => 'new_order',
+        ]);
+        $this->assertDatabaseMissing('ThongBao', [
+            'TaiKhoanID' => $customer->getKey(),
+            'LoaiThongBao' => 'new_order',
+        ]);
     }
 
     public function test_shared_email_and_inactive_targets_are_rejected_before_delivery(): void

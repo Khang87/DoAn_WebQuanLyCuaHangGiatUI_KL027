@@ -7,6 +7,7 @@ use App\Models\ThongBao;
 use App\Support\InternalCommunicationPolicy;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
+use InvalidArgumentException;
 
 class NotificationService
 {
@@ -112,6 +113,78 @@ class NotificationService
         });
 
         return $createdCount;
+    }
+
+    public function notifyManagement(
+        string $type,
+        string $title,
+        string $body,
+        ?int $orderId = null,
+        ?int $bookingId = null,
+        ?string $dedupeReference = null,
+    ): int {
+        if ($orderId === null && $bookingId === null) {
+            throw new InvalidArgumentException('A notification must be associated with an order or booking.');
+        }
+
+        if ($bookingId !== null && ($dedupeReference === null || $dedupeReference === '')) {
+            throw new InvalidArgumentException('A booking notification requires a deduplication reference.');
+        }
+
+        return DB::transaction(function () use ($type, $title, $body, $orderId, $bookingId, $dedupeReference): int {
+            $recipientQuery = TaiKhoan::query()->select('TaiKhoan.TaiKhoanID');
+            InternalCommunicationPolicy::scopeManagementAccounts($recipientQuery);
+            $recipientIds = $recipientQuery
+                ->distinct()
+                ->pluck('TaiKhoanID');
+
+            if ($recipientIds->isEmpty()) {
+                return 0;
+            }
+
+            $existingRecipientIds = DB::table('ThongBao')
+                ->whereIn('TaiKhoanID', $recipientIds)
+                ->where('LoaiThongBao', $type)
+                ->where(function ($query) use ($orderId, $bookingId, $dedupeReference): void {
+                    if ($orderId !== null) {
+                        $query->where('DonHangID', $orderId);
+                    }
+
+                    if ($bookingId !== null) {
+                        $query->orWhere('BookingID', $bookingId)
+                            ->orWhere(function ($bookingQuery) use ($dedupeReference): void {
+                                $bookingQuery->whereNull('DonHangID')
+                                    ->where('NoiDung', 'LIKE', "%{$dedupeReference}%");
+                            });
+                    }
+                })
+                ->pluck('TaiKhoanID')
+                ->all();
+
+            $existingRecipientIds = array_fill_keys(array_map('intval', $existingRecipientIds), true);
+            $notification = [
+                'DonHangID' => $orderId,
+                'BookingID' => $bookingId,
+                'LoaiThongBao' => $type,
+                'TieuDe' => $title,
+                'NoiDung' => $body,
+                'ThoiGianGui' => now()->toDateTimeString(),
+                'DaDoc' => false,
+            ];
+            $rows = $recipientIds
+                ->reject(fn ($recipientId): bool => isset($existingRecipientIds[(int) $recipientId]))
+                ->map(fn ($recipientId): array => [
+                    'TaiKhoanID' => $recipientId,
+                    ...$notification,
+                ])
+                ->all();
+
+            if ($rows !== []) {
+                DB::table('ThongBao')->insert($rows);
+            }
+
+            return count($rows);
+        });
     }
 
     public function update(ThongBao $notification, array $data): ThongBao

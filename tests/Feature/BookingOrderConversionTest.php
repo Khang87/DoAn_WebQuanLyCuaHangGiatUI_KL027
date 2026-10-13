@@ -13,6 +13,7 @@ use App\Models\DonHang;
 use App\Models\GiaoNhan;
 use App\Models\NhatKyHeThong;
 use App\Services\BookingService;
+use App\Services\NotificationService;
 use App\Services\OrderService;
 use App\Services\PricingService;
 use Carbon\Carbon;
@@ -57,7 +58,7 @@ class BookingOrderConversionTest extends TestCase
 
     protected function tearDown(): void
     {
-        foreach (['KhuyenMai', 'NhatKyHeThong', 'ChiTietBooking', 'ChiTietDonHang', 'GiaoNhan', 'HoaDon', 'ThanhToan', 'DiemTichLuy', 'DonHang', 'Booking', 'BangGia', 'DonViTinh', 'LoaiDoGiat', 'DanhMucLoaiDoGiat', 'DichVu', 'LoaiDichVu', 'NhanVien', 'TaiKhoan', 'KhachHang'] as $table) {
+        foreach (['KhuyenMai', 'NhatKyHeThong', 'ChiTietBooking', 'ChiTietDonHang', 'GiaoNhan', 'HoaDon', 'ThanhToan', 'DiemTichLuy', 'DonHang', 'Booking', 'BangGia', 'DonViTinh', 'LoaiDoGiat', 'DanhMucLoaiDoGiat', 'DichVu', 'LoaiDichVu', 'NhanVien', 'ThongBao', 'TaiKhoan_VaiTro', 'VaiTro', 'TaiKhoan', 'KhachHang'] as $table) {
             Schema::dropIfExists($table);
         }
 
@@ -584,7 +585,11 @@ class BookingOrderConversionTest extends TestCase
         $orderService->shouldReceive('createFromBooking')
             ->once()
             ->andThrow($queryException);
-        $this->app->instance(BookingService::class, new BookingService($orderService, app(PricingService::class)));
+        $this->app->instance(BookingService::class, new BookingService(
+            $orderService,
+            app(PricingService::class),
+            app(NotificationService::class),
+        ));
         Log::shouldReceive('error')
             ->once()
             ->with('Booking operation failed', \Mockery::on(
@@ -700,6 +705,7 @@ class BookingOrderConversionTest extends TestCase
     public function test_booking_creation_is_written_to_the_system_audit_log(): void
     {
         $this->actingAsBookingEmployee();
+        $managerId = $this->createManagementAccount();
 
         $booking = $this->bookingService->create([
             'customer_id' => 9,
@@ -718,6 +724,11 @@ class BookingOrderConversionTest extends TestCase
         $this->assertSame($booking->BookingID, $audit->BanGhiID);
         $this->assertSame(1, $audit->TaiKhoanID);
         $this->assertSame(BookingStatus::Pending->value, $audit->DuLieuMoi['Booking']['TrangThai']);
+        $this->assertDatabaseHas('ThongBao', [
+            'TaiKhoanID' => $managerId,
+            'BookingID' => $booking->BookingID,
+            'LoaiThongBao' => 'new_booking',
+        ]);
     }
 
     public function test_weight_booking_applies_the_configured_minimum_to_each_line_and_keeps_actual_weights(): void
@@ -978,6 +989,7 @@ class BookingOrderConversionTest extends TestCase
 
     public function test_order_creation_uses_the_exact_price_tuple_instead_of_the_submitted_price(): void
     {
+        $managerId = $this->createManagementAccount();
         DB::table('DonViTinh')->insert([
             ['DonViTinhID' => 3, 'TenDonViTinh' => 'Cái', 'KyHieu' => 'Cái', 'TrangThai' => 'Hoạt động'],
             ['DonViTinhID' => 4, 'TenDonViTinh' => 'Đôi', 'KyHieu' => 'Đôi', 'TrangThai' => 'Hoạt động'],
@@ -1021,6 +1033,11 @@ class BookingOrderConversionTest extends TestCase
         $this->assertSame(3, $item->DonViTinhID);
         $this->assertSame(15000.0, (float) $item->DonGia);
         $this->assertSame(30000.0, (float) $item->ThanhTien);
+        $this->assertDatabaseHas('ThongBao', [
+            'TaiKhoanID' => $managerId,
+            'DonHangID' => $order->DonHangID,
+            'LoaiThongBao' => 'new_order',
+        ]);
     }
 
     public function test_order_creation_rejects_a_missing_exact_price_tuple(): void

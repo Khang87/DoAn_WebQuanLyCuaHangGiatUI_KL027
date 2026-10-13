@@ -19,6 +19,7 @@ class BookingService
     public function __construct(
         private OrderService $orderService,
         private PricingService $pricingService,
+        private NotificationService $notificationService,
     ) {}
 
     public function getAll(array $filters = []): LengthAwarePaginator
@@ -105,6 +106,16 @@ class BookingService
                 $this->bookingAuditSnapshot($booking),
                 [],
                 $this->bookingItemsAuditSnapshot($booking),
+            );
+
+            $customerName = $booking->khachHang?->HoTen ?? 'Khách hàng';
+            $bookingCode = $booking->MaBooking ?: '#'.$booking->BookingID;
+            $this->notificationService->notifyManagement(
+                'new_booking',
+                'Có yêu cầu đặt giặt mới',
+                "Khách hàng {$customerName} vừa gửi yêu cầu {$bookingCode}.",
+                bookingId: (int) $booking->BookingID,
+                dedupeReference: $bookingCode,
             );
 
             return $booking->fresh(['chiTietBookings']);

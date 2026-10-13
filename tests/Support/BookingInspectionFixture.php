@@ -143,6 +143,25 @@ trait BookingInspectionFixture
         $this->actingAs($user);
     }
 
+    private function createManagementAccount(string $role = 'Quản lý'): int
+    {
+        $roleId = DB::table('VaiTro')->insertGetId([
+            'TenVaiTro' => $role,
+            'TrangThai' => 'Hoạt động',
+        ], 'VaiTroID');
+        $accountId = DB::table('TaiKhoan')->insertGetId([
+            'TenDangNhap' => strtolower(str_replace(' ', '-', $role)),
+            'TrangThai' => 'Hoạt động',
+        ], 'TaiKhoanID');
+
+        DB::table('TaiKhoan_VaiTro')->insert([
+            'TaiKhoanID' => $accountId,
+            'VaiTroID' => $roleId,
+        ]);
+
+        return $accountId;
+    }
+
     private function createSchema(): void
     {
         Schema::create('KhachHang', function (Blueprint $table): void {
@@ -158,6 +177,31 @@ trait BookingInspectionFixture
             $table->string('TenDangNhap');
             $table->string('SoDienThoai')->nullable();
             $table->string('Email')->nullable();
+            $table->string('TrangThai')->default('Hoạt động');
+        });
+
+        Schema::create('VaiTro', function (Blueprint $table): void {
+            $table->increments('VaiTroID');
+            $table->string('TenVaiTro');
+            $table->string('TrangThai')->default('Hoạt động');
+        });
+
+        Schema::create('TaiKhoan_VaiTro', function (Blueprint $table): void {
+            $table->unsignedInteger('TaiKhoanID');
+            $table->unsignedInteger('VaiTroID');
+            $table->primary(['TaiKhoanID', 'VaiTroID']);
+        });
+
+        Schema::create('ThongBao', function (Blueprint $table): void {
+            $table->increments('ThongBaoID');
+            $table->unsignedInteger('TaiKhoanID');
+            $table->unsignedInteger('DonHangID')->nullable();
+            $table->unsignedInteger('BookingID')->nullable();
+            $table->string('LoaiThongBao')->nullable();
+            $table->string('TieuDe');
+            $table->text('NoiDung');
+            $table->dateTime('ThoiGianGui');
+            $table->boolean('DaDoc')->default(false);
         });
 
         Schema::create('DichVu', function (Blueprint $table): void {

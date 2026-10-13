@@ -10,6 +10,11 @@ final class InternalCommunicationPolicy
 {
     private const CUSTOMER_NAMES = ['khách hàng', 'khach hang', 'khachhang', 'khach-hang', 'customer', 'client'];
 
+    private const MANAGEMENT_NAMES = [
+        'chủ cửa hàng', 'chu cua hang', 'chucuahang', 'owner',
+        'quản lý', 'quan ly', 'quanly', 'manager', 'store manager',
+    ];
+
     public const DEFAULTS = ['messages.view', 'messages.create', 'notifications.view'];
 
     public static function handles(string $code): bool
@@ -29,6 +34,21 @@ final class InternalCommunicationPolicy
             ->whereHas('vaiTros', fn ($roles) => $roles->where('TrangThai', 'Hoạt động'))
             ->whereDoesntHave('vaiTros', fn ($roles) => $roles->where('TrangThai', 'Hoạt động')
                 ->whereRaw('lower(trim("VaiTro"."TenVaiTro")) in ('.implode(',', array_fill(0, count(self::CUSTOMER_NAMES), '?')).')', self::CUSTOMER_NAMES));
+    }
+
+    public static function scopeManagementAccounts(Builder $query): Builder
+    {
+        return self::scopeAccounts($query)
+            ->whereHas('vaiTros', fn ($roles) => $roles
+                ->where('TrangThai', 'Hoạt động')
+                ->where(function ($roleQuery): void {
+                    $roleQuery
+                        ->whereRaw(
+                            'lower(trim("VaiTro"."TenVaiTro")) in ('.implode(',', array_fill(0, count(self::MANAGEMENT_NAMES), '?')).')',
+                            self::MANAGEMENT_NAMES,
+                        )
+                        ->orWhere('TenVaiTro', 'LIKE', 'Quản lý%');
+                }));
     }
 
     /** @param list<string> $roles */

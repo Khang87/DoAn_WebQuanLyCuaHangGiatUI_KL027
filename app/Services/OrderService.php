@@ -35,6 +35,7 @@ class OrderService
         private TinhTienGiatUiService $tinhTienGiatUiService,
         private PricingService $pricingService,
         private DeliveryFeeService $deliveryFeeService,
+        private NotificationService $notificationService,
     ) {}
 
     /**
@@ -299,6 +300,15 @@ class OrderService
                 $booking->fill(['DiemDaTru' => false, 'DiemSuDung' => 0, 'TienGiamDoDiem' => 0]);
                 $callerBooking->fill(['DiemDaTru' => false, 'DiemSuDung' => 0, 'TienGiamDoDiem' => 0]);
             }
+
+            $this->notificationService->notifyManagement(
+                'new_order',
+                'Có đơn hàng mới',
+                "Đơn hàng {$order->MaDonHang} của khách hàng ".($customer?->HoTen ?? 'Khách hàng').' vừa được tạo.',
+                orderId: (int) $order->DonHangID,
+                bookingId: (int) $booking->BookingID,
+                dedupeReference: $bookingCode,
+            );
 
             return $order;
         });
@@ -665,6 +675,13 @@ class OrderService
                     'GhiChu' => 'Tự động tạo từ đơn hàng '.$order->MaDonHang,
                 ]);
             }
+
+            $this->notificationService->notifyManagement(
+                'new_order',
+                'Có đơn hàng mới',
+                "Đơn hàng {$order->MaDonHang} của khách hàng ".($customer?->HoTen ?? 'Khách hàng').' vừa được tạo.',
+                orderId: (int) $order->DonHangID,
+            );
 
             return $order->fresh(['chiTietDonHangs', 'khachHang', 'khuyenMai']);
         });
