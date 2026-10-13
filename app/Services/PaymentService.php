@@ -9,6 +9,7 @@ use App\Exceptions\SettledOrderException;
 use App\Models\DonHang;
 use App\Models\HoaDon;
 use App\Models\ThanhToan;
+use App\Models\User;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -85,7 +86,7 @@ class PaymentService
         return ThanhToan::with('donHang.khachHang.taiKhoan', 'donHang.hoaDons')->find($id);
     }
 
-    public function create(array $data): ThanhToan
+    public function create(array $data, ?User $auditActor = null): ThanhToan
     {
         $invoice = ! empty($data['invoice_id']) ? HoaDon::find($data['invoice_id']) : null;
         $targetOrderId = $data['order_id'] ?? $data['DonHangID'] ?? $invoice?->DonHangID;
@@ -111,7 +112,7 @@ class PaymentService
             $data['transaction_code'] = $transactionCode;
         }
 
-        return DB::transaction(function () use ($data, $targetOrderId) {
+        return DB::transaction(function () use ($data, $targetOrderId, $auditActor) {
             $lockedOrder = DonHang::query()->lockForUpdate()->findOrFail($targetOrderId);
             if ($lockedOrder->statusEnum()->isSettled()) {
                 throw SettledOrderException::forOrder($targetOrderId);
@@ -144,7 +145,7 @@ class PaymentService
             $order = $payment->donHang;
 
             if ($invoice !== null) {
-                $this->updateInvoiceStatus($invoice);
+                $this->updateInvoiceStatus($invoice, $auditActor);
             }
 
             if ($order && PaymentStatus::parse($payment->TrangThai)->isPaid()) {
@@ -155,11 +156,11 @@ class PaymentService
         });
     }
 
-    public function update(ThanhToan $payment, array $data, bool $override = false): ThanhToan
+    public function update(ThanhToan $payment, array $data, bool $override = false, ?User $auditActor = null): ThanhToan
     {
         $orderId = (int) $payment->DonHangID;
 
-        return DB::transaction(function () use ($payment, $data, $override, $orderId): ThanhToan {
+        return DB::transaction(function () use ($payment, $data, $override, $orderId, $auditActor): ThanhToan {
             $lockedOrder = DonHang::query()->lockForUpdate()->findOrFail($orderId);
             $payment = ThanhToan::query()->lockForUpdate()->findOrFail($payment->getKey());
             if (isset($data['order_id']) && (int) $data['order_id'] !== (int) $payment->DonHangID) {
@@ -210,7 +211,7 @@ class PaymentService
             $payment->update($attributes);
 
             if ($invoice) {
-                $this->updateInvoiceStatus($invoice);
+                $this->updateInvoiceStatus($invoice, $auditActor);
             }
 
             if ($newStatus->isPaid()) {
@@ -330,7 +331,7 @@ class PaymentService
             ->exists();
     }
 
-    private function updateInvoiceStatus(HoaDon $invoice): void
+    private function updateInvoiceStatus(HoaDon $invoice, ?User $auditActor = null): void
     {
         if (InvoiceStatus::parse($invoice->TrangThai) === InvoiceStatus::Cancelled) {
             return;
@@ -343,10 +344,14 @@ class PaymentService
         $totalPaid = (float) ($payments?->sum('SoTien') ?? 0);
         $isFullyPaid = $paymentCount === 1 && round($totalPaid, 2) === round((float) $invoice->ThanhTien, 2);
 
-        if ($isFullyPaid) {
-            $invoice->update(['TrangThai' => InvoiceStatus::Paid->value]);
-        } else {
-            $invoice->update(['TrangThai' => InvoiceStatus::Unpaid->value]);
+        if ($auditActor !== null) {
+            // Request-scoped attribution for signed integrations, never a persisted invoice column.
+            $invoice->setRelation('auditActor', $auditActor);
+        }
+        try {
+            $invoice->update(['TrangThai' => $isFullyPaid ? InvoiceStatus::Paid->value : InvoiceStatus::Unpaid->value]);
+        } finally {
+            $invoice->unsetRelation('auditActor');
         }
     }
 

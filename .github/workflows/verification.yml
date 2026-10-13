@@ -53,7 +53,9 @@ jobs:
           php vendor/bin/phpunit --fail-on-warning --fail-on-risky
           php artisan view:cache
       - name: PostgreSQL RPC, Web contracts and concurrency
-        run: bash scripts/test-postgres.sh
+        run: |
+          bash scripts/test-postgres.sh beepay
+          bash scripts/test-postgres.sh
       - name: Supabase schema restore and catalog parity
         run: bash scripts/test-schema.sh
       - name: PHP dependency security audit

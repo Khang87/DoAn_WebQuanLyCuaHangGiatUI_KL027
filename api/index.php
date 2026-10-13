@@ -10,4 +10,4 @@ if (isset($_GET['__vercel_path'])) {
     $_SERVER['QUERY_STRING'] = $query;
 }
 
-require __DIR__ . '/../public/index.php';
+require __DIR__.'/../public/index.php';
