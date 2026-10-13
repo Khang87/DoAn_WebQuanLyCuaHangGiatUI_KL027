@@ -17,6 +17,10 @@
       "src": "^/index\\.php$",
       "dest": "/api/index.php"
     },
+      {
+  "src": "^/api/(.*)$",
+  "dest": "/api/index.php?__vercel_path=api/$1"
+},
     {
       "handle": "filesystem"
     },
