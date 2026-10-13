@@ -211,48 +211,26 @@ class AuthFlowTest extends TestCase
         $rememberToken = app(RememberedLogin::class)->issue($this->staff);
         $otp = null;
         $mailer = \Mockery::mock(ResendOtpMailer::class);
-        $mailer->shouldReceive('send')
-            ->once()
-            ->with($this->staff->Email, \Mockery::on(function (string $sentOtp) use (&$otp): bool {
-                $otp = $sentOtp;
+        $mailer->shouldReceive('send')->once()->with($this->staff->Email, \Mockery::on(function (string $sentOtp) use (&$otp): bool {
+            $otp = $sentOtp;
 
-                return preg_match('/^\d{6}$/', $sentOtp) === 1;
-            }));
+            return preg_match('/^\d{6}$/', $sentOtp) === 1;
+        }));
         $this->app->instance(ResendOtpMailer::class, $mailer);
-
-        $this->post(route('password.email'), [
-            'email' => $this->staff->Email,
-        ])->assertRedirect(route('password.reset'))
-            ->assertSessionHas('status')
-            ->assertSessionMissing('simulation_otp');
-
+        $this->post(route('password.email'), ['email' => $this->staff->Email])
+            ->assertRedirect(route('password.request'))->assertSessionHas('status')->assertSessionMissing('simulation_otp');
         $this->assertNotNull($otp);
-        $this->assertSame(
-            hash('sha256', $otp),
-            Cache::store('file')->get('pwd_reset_'.$this->staff->Email),
-        );
-        $this->get(route('password.reset'))
-            ->assertOk()
-            ->assertDontSee($otp);
-
-        $this->post(route('password.update'), [
-            'email' => $this->staff->Email,
-            'otp' => $otp,
-            'password' => 'NewPassword123',
-            'password_confirmation' => 'NewPassword123',
-        ])->assertRedirect(route('login'));
-
+        $this->assertTrue(Hash::check($otp, Cache::store('file')->get('pwd_reset_'.$this->staff->Email)['hash']));
+        $this->get(route('password.request'))->assertOk()->assertDontSee($otp);
+        $this->post(route('password.verify'), ['email' => $this->staff->Email, 'otp' => $otp])->assertRedirect(route('password.reset'));
+        $this->withCookie(config('session.cookie'), session()->getId());
+        $this->get(route('password.reset'))->assertOk();
+        $this->post(route('password.update'), ['password' => 'NewPassword123', 'password_confirmation' => 'NewPassword123'])->assertRedirect(route('login'));
         $this->assertTrue(Hash::check('NewPassword123', $this->staff->fresh()->MatKhau));
         $this->assertNull(app(RememberedLogin::class)->resolve($rememberToken));
         $this->assertNull(Cache::store('file')->get('pwd_reset_'.$this->staff->Email));
-
-        $this->post(route('password.update'), [
-            'email' => $this->staff->Email,
-            'otp' => $otp,
-            'password' => 'AnotherPass123',
-            'password_confirmation' => 'AnotherPass123',
-        ])->assertRedirect(route('password.reset'))
-            ->assertSessionHas('error');
+        $this->post(route('password.update'), ['password' => 'AnotherPass123', 'password_confirmation' => 'AnotherPass123'])
+            ->assertRedirect(route('password.request'))->assertSessionHas('error');
     }
 
     public function test_password_reset_request_does_not_disclose_unknown_emails(): void
@@ -260,14 +238,11 @@ class AuthFlowTest extends TestCase
         $mailer = \Mockery::mock(ResendOtpMailer::class);
         $mailer->shouldNotReceive('send');
         $this->app->instance(ResendOtpMailer::class, $mailer);
-
-        $response = $this->post(route('password.email'), [
-            'email' => 'missing@example.test',
-        ]);
-
-        $response->assertRedirect(route('password.reset'))
-            ->assertSessionHas('status')
+        $this->post(route('password.email'), ['email' => 'missing@example.test'])
+            ->assertRedirect(route('password.request'))->assertSessionHas('status', 'Mã OTP đã được gửi và có hiệu lực trong 15 phút.')
             ->assertSessionMissing('simulation_otp');
+        $this->get(route('password.request'))->assertSee('Gửi lại mã (60s)');
+        $this->get(route('password.reset'))->assertRedirect(route('password.request'));
     }
 
     public function test_password_reset_email_failure_does_not_leave_a_valid_otp(): void
@@ -351,19 +326,12 @@ class AuthFlowTest extends TestCase
 
     public function test_expired_password_reset_otp_cannot_be_used(): void
     {
-        Cache::store('file')->put(
-            'pwd_reset_'.$this->staff->Email,
-            hash('sha256', '123456'),
-            now()->subMinute(),
-        );
-
-        $this->post(route('password.update'), [
-            'email' => $this->staff->Email,
-            'otp' => '123456',
-            'password' => 'NewPassword123',
-            'password_confirmation' => 'NewPassword123',
-        ])->assertRedirect(route('password.reset'))
-            ->assertSessionHas('error', 'Email hoặc mã OTP không đúng hoặc mã đã hết hạn.');
+        Cache::store('file')->put('pwd_reset_'.$this->staff->Email, [
+            'hash' => Hash::make('123456'), 'account_id' => $this->staff->getKey(),
+            'attempts' => 0, 'generation' => 'expired', 'expires_at' => now()->subMinute()->timestamp,
+        ], now()->addMinute());
+        $this->post(route('password.verify'), ['email' => $this->staff->Email, 'otp' => '123456'])
+            ->assertRedirect(route('password.request'))->assertSessionHas('error', 'Email hoặc mã OTP không đúng hoặc mã đã hết hạn.');
     }
 
     public function test_admin_reset_sends_otp_and_keeps_the_password_until_user_confirmation(): void
