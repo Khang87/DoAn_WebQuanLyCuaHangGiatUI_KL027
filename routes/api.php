@@ -1,7 +1,8 @@
 <?php
 
 use App\Http\Controllers\Api\V1\DichVuController;
-use App\Http\Controllers\Api\V1\BeePayController;
+use App\Http\Controllers\Api\V1\PaymentConfigController;
+use App\Http\Controllers\Api\V1\SePayController;
 use App\Http\Controllers\Api\V1\DonHangController;
 use App\Http\Controllers\Api\V1\GarmentController;
 use App\Http\Controllers\Api\V1\KhachHangController;
@@ -22,11 +23,11 @@ use Illuminate\Support\Facades\Route;
 */
 
 Route::prefix('v1')->name('api.v1.')->group(function () {
-    // Public read-only bank details for the customer app, and signed BeePay IPN.
-    Route::get('payment-config', [BeePayController::class, 'config'])->name('payment-config');
-    Route::post('webhooks/beepay', [BeePayController::class, 'webhook'])
+    // Public read-only bank details for the customer app, and payment provider webhooks.
+    Route::get('payment-config', PaymentConfigController::class)->name('payment-config');
+    Route::post('webhooks/sepay', [SePayController::class, 'webhook'])
         ->middleware('throttle:120,1')
-        ->name('webhooks.beepay');
+        ->name('webhooks.sepay');
 });
 
 Route::middleware(['auth', 'reject.customer'])->prefix('v1')->name('api.v1.')->group(function () {

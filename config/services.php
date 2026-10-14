@@ -52,9 +52,12 @@ return [
         'account_name' => env('VIETQR_ACCOUNT_NAME'),
     ],
 
-    'beepay' => [
-        'webhook_secret' => env('BEEPAY_WEBHOOK_SECRET'),
-        'payment_prefix' => 'DH',
+    'payments' => [
+        'payment_prefix' => env('PAYMENT_REFERENCE_PREFIX', 'DH'),
+    ],
+
+    'sepay' => [
+        'webhook_api_key' => env('SEPAY_WEBHOOK_API_KEY'),
     ],
 
     'google_routes' => [
