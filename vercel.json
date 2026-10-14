@@ -22,6 +22,10 @@
       "dest": "/api/index.php?__vercel_path=api/$1"
     },
     {
+      "src": "^/sepay-webhook$",
+      "dest": "/api/index.php?__vercel_path=sepay-webhook"
+    },
+    {
       "handle": "filesystem"
     },
     {

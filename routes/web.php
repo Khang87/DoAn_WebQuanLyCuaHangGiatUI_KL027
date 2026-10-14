@@ -51,6 +51,12 @@ Route::post('/api/v1/webhooks/sepay', [SePayController::class, 'webhook'])
     ->middleware('throttle:120,1')
     ->withoutMiddleware([PreventRequestForgery::class])
     ->name('mobile.sepay-webhook-fallback');
+// Keep the payment callback outside /api because Vercel has a dedicated
+// /api/* rewrite that has returned 404 for this callback in production.
+Route::post('/sepay-webhook', [SePayController::class, 'webhook'])
+    ->middleware('throttle:120,1')
+    ->withoutMiddleware([PreventRequestForgery::class])
+    ->name('mobile.sepay-webhook');
 
 Route::get('/login', [LoginController::class, 'showLoginForm'])->name('login');
 Route::post('/login', [LoginController::class, 'login']);
