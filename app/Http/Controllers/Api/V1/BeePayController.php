@@ -38,7 +38,9 @@ class BeePayController extends Controller
 
     public function webhook(Request $request): Response
     {
-        $secret = (string) config('services.beepay.webhook_secret');
+        // BeePay generates a hex secret; trimming protects against accidental
+        // whitespace when the value is copied into a deployment environment.
+        $secret = trim((string) config('services.beepay.webhook_secret'));
         $configuredAccount = preg_replace('/\D+/', '', (string) config('services.vietqr.account_number'));
         if ($secret === '' || $configuredAccount === '') {
             return response()->json(['ok' => false, 'error' => 'Webhook is not configured.'], 503);
@@ -49,17 +51,28 @@ class BeePayController extends Controller
         $beePaySignature = (string) $request->header('X-BeePay-Signature');
         $signature = $webhookSignature ?: $beePaySignature;
         $providedHash = preg_replace('/^sha256=/i', '', trim($signature));
+        $providedHash = strtolower((string) $providedHash);
         $expectedHash = hash_hmac('sha256', $rawBody, $secret);
 
         if ($providedHash === '' || ! hash_equals($expectedHash, $providedHash)) {
+            $diagnosticPayload = json_decode($rawBody, true);
+            $payloadKeys = is_array($diagnosticPayload) ? array_keys($diagnosticPayload) : [];
+            sort($payloadKeys);
+
             Log::warning('BeePay webhook signature rejected', [
                 'webhook_signature_header_present' => $webhookSignature !== '',
                 'beepay_signature_header_present' => $beePaySignature !== '',
                 'signature_has_sha256_prefix' => str_starts_with(strtolower(trim($signature)), 'sha256='),
                 'signature_hex_length' => strlen($providedHash),
                 'signature_is_hex' => $providedHash !== '' && ctype_xdigit($providedHash),
+                'secret_bytes' => strlen($secret),
+                'raw_body_sha256' => hash('sha256', $rawBody),
                 'raw_body_bytes' => strlen($rawBody),
                 'content_type' => $request->header('Content-Type'),
+                'payload_event' => is_array($diagnosticPayload) && is_string($diagnosticPayload['event'] ?? null)
+                    ? substr($diagnosticPayload['event'], 0, 40)
+                    : null,
+                'payload_keys' => $payloadKeys,
             ]);
 
             return response()->json(['ok' => false, 'error' => 'Invalid signature.'], 401);
