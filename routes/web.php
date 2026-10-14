@@ -27,6 +27,7 @@ use App\Http\Controllers\Admin\VaiTroController;
 use App\Http\Controllers\Auth\InternalPasswordResetController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\PasswordResetController;
+use App\Http\Controllers\Api\V1\BeePayController;
 use App\Http\Controllers\Staff\DashboardController as StaffDashboardController;
 use Illuminate\Support\Facades\Route;
 
@@ -42,6 +43,10 @@ use Illuminate\Support\Facades\Route;
 */
 
 // Authentication Routes
+// Fallback public endpoint for the mobile app when the host does not dispatch
+// Laravel API routes correctly.
+Route::get('/payment-config', [BeePayController::class, 'config'])->name('mobile.payment-config');
+
 Route::get('/login', [LoginController::class, 'showLoginForm'])->name('login');
 Route::post('/login', [LoginController::class, 'login']);
 Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
