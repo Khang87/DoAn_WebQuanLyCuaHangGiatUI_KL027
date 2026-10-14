@@ -16,7 +16,6 @@
 
         @php
             $garmentOptions = $garments;
-            $employeeOptions = $employees;
             $priceOptions = $pricings;
             $minimumWeight = (float) config('giatui.khoi_luong_toi_thieu', 3.0);
 
@@ -121,30 +120,16 @@
                 </div>
 
                 <div class="col-md-6">
-                    <label class="form-label" for="employee_id">
-                        Nhân viên phụ trách <span class="text-danger ms-1">*</span>
-                    </label>
-
-                    <select
-                        class="form-select @error('NhanVienID') is-invalid @enderror"
-                        id="employee_id"
-                        name="NhanVienID"
-                        required
+                    <label class="form-label" for="employee_name">Nhân viên phụ trách</label>
+                    <input
+                        type="text"
+                        class="form-control bg-light text-muted"
+                        id="employee_name"
+                        value="{{ $authenticatedEmployee?->HoTen ?? 'Chưa có hồ sơ nhân viên đang hoạt động' }}"
+                        readonly
                     >
-                        <option value="">Chọn nhân viên phụ trách</option>
-                        @foreach($employeeOptions as $employee)
-                            <option
-                                value="{{ $employee->NhanVienID }}"
-                                @selected(old('NhanVienID') == $employee->NhanVienID)
-                            >
-                                {{ $employee->HoTen }}
-                            </option>
-                        @endforeach
-                    </select>
-
-                    @error('NhanVienID')
-                        <div class="invalid-feedback">{{ $message }}</div>
-                    @enderror
+                    <div class="form-text">Đơn hàng sẽ được gán tự động cho nhân viên thuộc tài khoản đang đăng nhập.</div>
+                    @error('NhanVienID')<div class="text-danger small mt-1">{{ $message }}</div>@enderror
                 </div>
 
                 <div class="col-md-6">

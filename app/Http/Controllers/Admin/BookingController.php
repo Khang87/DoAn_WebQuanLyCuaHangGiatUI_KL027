@@ -13,7 +13,9 @@ use App\Models\LoaiDichVu;
 use App\Models\LoaiDoGiat;
 use App\Models\NhanVien;
 use App\Services\BookingService;
+use App\Services\DeliveryFeeService;
 use App\Services\OrderService;
+use App\Services\PricingService;
 use App\Support\FriendlyError;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
@@ -27,6 +29,7 @@ class BookingController extends Controller
 {
     public function __construct(
         private BookingService $bookingService,
+        private PricingService $pricingService,
     ) {}
 
     public function index(Request $request)
@@ -75,7 +78,6 @@ class BookingController extends Controller
             'items.*.DonViTinhID' => ['required', 'integer', 'min:1'],
             'items.*.SoLuong' => ['nullable', 'numeric', 'min:0'],
             'items.*.KhoiLuong' => ['nullable', 'numeric', 'min:0'],
-            'use_points' => ['required', 'boolean'],
             'method' => ['sometimes', 'required', 'in:Tại nhà,Tại cửa hàng'],
             'return_method' => ['sometimes', 'required', 'in:Tại nhà,Tại cửa hàng'],
         ]);
@@ -86,8 +88,30 @@ class BookingController extends Controller
             'HinhThucTraDo' => $validated['return_method'] ?? null,
         ], fn ($value) => $value !== null));
 
-        return response()->json($orders->estimateBooking($record, $validated['items'], (bool) $validated['use_points']))
+        return response()->json($orders->estimateBooking($record, $validated['items']))
             ->header('Cache-Control', 'private, no-store');
+    }
+
+    public function quoteDeliveryFee(Request $request, int $booking, DeliveryFeeService $deliveryFeeService): JsonResponse
+    {
+        $record = $this->bookingService->find($booking);
+        abort_if(! $record, 404);
+        abort_if(! $record->isConvertibleToOrder(), 409);
+
+        $validated = $request->validate([
+            'method' => ['required', 'in:Tại nhà,Tại cửa hàng'],
+            'address' => ['nullable', 'string', 'max:255', 'required_if:method,Tại nhà'],
+            'return_method' => ['required', 'in:Tại nhà,Tại cửa hàng'],
+            'return_address' => ['nullable', 'string', 'max:255', 'required_if:return_method,Tại nhà'],
+        ]);
+        $quote = $deliveryFeeService->quote(
+            $validated['method'],
+            $validated['address'] ?? null,
+            $validated['return_method'],
+            $validated['return_address'] ?? null,
+        );
+
+        return response()->json($quote)->header('Cache-Control', 'private, no-store');
     }
 
     public function inspection(int $id)
@@ -110,8 +134,10 @@ class BookingController extends Controller
             return redirect()->route('bookings.show', $booking)->with('error', 'Chỉ Booking chờ xác nhận mới có thể kiểm tra thực tế.');
         }
 
-        $responsibleEmployeeLocked = $booking->donHangs->isNotEmpty();
-        $employees = NhanVien::where('TrangThai', 'Hoạt động')->orderBy('HoTen')->get();
+        $authenticatedEmployee = NhanVien::query()
+            ->whereKey(request()->user()?->NhanVienID)
+            ->where('TrangThai', 'Hoạt động')
+            ->first(['NhanVienID', 'HoTen']);
         $serviceIds = $booking->chiTietBookings->pluck('DichVuID')->all();
         $garmentIds = $booking->chiTietBookings->pluck('LoaiDoGiatID')->all();
         $unitIds = $booking->chiTietBookings->pluck('DonViTinhID')->all();
@@ -139,29 +165,13 @@ class BookingController extends Controller
             ->where(fn ($query) => $query->where('TrangThai', 'Hoạt động')->orWhereIn('DonViTinhID', $unitIds))
             ->orderBy('TenDonViTinh')
             ->get();
-        $pricingUnitOptions = BangGia::query()
-            ->with('donViTinh')
-            ->where('TrangThai', 'Hoạt động')
-            ->where(function ($query): void {
-                $query->whereNull('NgayApDung')
-                    ->orWhereDate('NgayApDung', '<=', today());
-            })
-            ->where(function ($query): void {
-                $query->whereNull('NgayKetThuc')
-                    ->orWhereDate('NgayKetThuc', '>=', today());
-            })
-            ->get()
-            ->filter(fn (BangGia $pricing): bool => $pricing->donViTinh !== null)
-            ->unique(fn (BangGia $pricing): string => implode(':', [
-                $pricing->DichVuID,
-                $pricing->LoaiDoGiatID,
-                $pricing->DonViTinhID,
-            ]))
+        $pricingUnitOptions = $this->pricingService->orderOptions()
             ->map(fn (BangGia $pricing): array => [
                 'serviceId' => $pricing->DichVuID,
                 'garmentId' => $pricing->LoaiDoGiatID,
                 'unitId' => $pricing->DonViTinhID,
                 'unit' => $pricing->unit,
+                'price' => (float) $pricing->DonGia,
                 'label' => $pricing->donViTinh->TenDonViTinh.(
                     $pricing->donViTinh->KyHieu ? ' ('.$pricing->donViTinh->KyHieu.')' : ''
                 ),
@@ -171,8 +181,7 @@ class BookingController extends Controller
         return view('admin.bookings.edit', compact(
             'booking',
             'inspectionMode',
-            'responsibleEmployeeLocked',
-            'employees',
+            'authenticatedEmployee',
             'services',
             'serviceOptions',
             'serviceCategories',
@@ -237,14 +246,15 @@ class BookingController extends Controller
 
         try {
             $validated = $request->validated();
-            $pointsToggleSubmitted = array_key_exists('use_points', $validated);
             $order = $this->bookingService->inspectBookingAndCreateOrder(
                 $booking,
-                (int) $validated['staff_id'],
+                $request->user()?->NhanVienID,
                 $validated['items'],
-                $pointsToggleSubmitted ? 0 : (int) ($validated['DiemSuDung'] ?? 0),
-                $pointsToggleSubmitted && (bool) $validated['use_points'],
+                0,
+                false,
                 $validated,
+                (bool) ($validated['recalculate_delivery_fee'] ?? false),
+                true,
             );
 
             return redirect()->route('orders.show', $order)->with(

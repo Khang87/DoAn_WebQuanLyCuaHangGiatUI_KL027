@@ -60,11 +60,17 @@
             const { match, isKg } = updateRowState(row);
             const quantity = Math.max(1, Number(row.querySelector('.item-quantity').value) || 1);
             const weight = Math.max(0, Number(row.querySelector('.item-weight').value) || 0);
-            const amount = Math.round((Number(match?.price) || 0) * (isKg ? Math.max(weight, minimumWeight) : quantity) * 100) / 100;
+            const amount = calculateAmount(match?.price, isKg, quantity, weight);
             row.querySelector('.item-subtotal').value = amount;
             return amount;
         }
 
-        return { syncGarmentOptions, updateRowState, updateRow };
+        function calculateAmount(price, isKg, quantity, weight) {
+            return Math.round(
+                (Number(price) || 0) * (isKg ? Math.max(weight, minimumWeight) : quantity) * 100,
+            ) / 100;
+        }
+
+        return { syncGarmentOptions, updateRowState, updateRow, calculateAmount };
     };
 })(typeof window === 'undefined' ? globalThis : window);

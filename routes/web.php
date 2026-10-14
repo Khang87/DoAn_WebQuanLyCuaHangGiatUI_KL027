@@ -24,11 +24,12 @@ use App\Http\Controllers\Admin\TaiKhoanController;
 use App\Http\Controllers\Admin\ThanhToanController;
 use App\Http\Controllers\Admin\ThongBaoController;
 use App\Http\Controllers\Admin\VaiTroController;
+use App\Http\Controllers\Api\V1\BeePayController;
 use App\Http\Controllers\Auth\InternalPasswordResetController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\PasswordResetController;
-use App\Http\Controllers\Api\V1\BeePayController;
 use App\Http\Controllers\Staff\DashboardController as StaffDashboardController;
+use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -47,7 +48,7 @@ use Illuminate\Support\Facades\Route;
 Route::get('/payment-config', [BeePayController::class, 'config'])->name('mobile.payment-config');
 Route::post('/api/v1/webhooks/beepay', [BeePayController::class, 'webhook'])
     ->middleware('throttle:120,1')
-    ->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\PreventRequestForgery::class])
+    ->withoutMiddleware([PreventRequestForgery::class])
     ->name('mobile.beepay-webhook-fallback');
 Route::post('/beepay-webhook', [BeePayController::class, 'webhook'])
     ->middleware('throttle:120,1')
@@ -214,6 +215,9 @@ Route::middleware(['auth', 'reject.customer'])->group(function () {
         ->name('bookings.inspection');
     Route::post('bookings/{booking}/estimate', [BookingController::class, 'estimate'])
         ->whereNumber('booking')->middleware('permission:bookings.confirm')->name('bookings.estimate');
+    Route::post('bookings/{booking}/delivery-fee-quote', [BookingController::class, 'quoteDeliveryFee'])
+        ->whereNumber('booking')->middleware(['permission:bookings.confirm', 'throttle:20,1'])
+        ->name('bookings.delivery-fee-quote');
     Route::post('bookings/{booking}/confirm', [BookingController::class, 'confirm'])
         ->middleware('permission:bookings.confirm')
         ->name('bookings.confirm');

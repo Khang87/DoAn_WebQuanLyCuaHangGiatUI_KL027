@@ -1,38 +1,468 @@
-const panel=document.querySelector('[data-booking-estimate]');
-if(panel){
-    const form=document.querySelector('#booking-edit-form');
-    const total=panel.querySelector('[data-estimate-total]');
-    const details=panel.querySelector('[data-estimate-details]');
-    const warning=panel.querySelector('[data-estimate-warning]');
-    const money=value=>new Intl.NumberFormat('vi-VN').format(value)+' VNĐ';
-    let timer,controller,generation=0;
-    function changed(){
-        clearTimeout(timer);controller?.abort();const version=++generation;
-        total.textContent='Đang tính…';details.textContent='';warning.textContent='';
-        timer=setTimeout(async()=>{
-            const requestController=new AbortController();controller=requestController;const deadline=setTimeout(()=>requestController.abort(),30000);
-            try{
-                const items=[...form.querySelectorAll('.booking-item')].map(row=>{
-                    const item={};for(const field of row.querySelectorAll('[name^="items["]')){
-                        if(field.disabled)continue;
-                        const key=field.name.match(/\[([^\]]+)\]$/)?.[1];if(key)item[key]=field.value;
-                    }return item;
-                });
-                const response=await fetch(panel.dataset.bookingEstimate,{method:'POST',credentials:'same-origin',headers:{Accept:'application/json','Content-Type':'application/json','X-CSRF-TOKEN':document.querySelector('meta[name="csrf-token"]').content},body:JSON.stringify({items,method:form.querySelector('[name="method"]').value,return_method:form.querySelector('[name="return_method"]').value,use_points:form.querySelector('[name="use_points"][type="checkbox"]')?.checked??false}),signal:requestController.signal});
-                const data=await response.json();if(version!==generation)return;
-                if(!response.ok)throw Error(response.status===422?'Chọn đủ dịch vụ, loại đồ, đơn vị có giá và nhập số lượng/khối lượng hợp lệ.':'Không thể tính ước tính. Vui lòng thử lại.');
-                for(const key of ['TongTien','TienGiamKhuyenMai','TienGiamDoDiem','PhiGiaoHang','ThanhTien'])if(typeof data[key]!=='number'||!Number.isFinite(data[key])||data[key]<0)throw Error('Không thể đọc ước tính.');
-                total.textContent=money(data.ThanhTien);
-                details.textContent=`Tiền hàng: ${money(data.TongTien)} · Khuyến mãi: −${money(data.TienGiamKhuyenMai)} · Điểm: −${money(data.TienGiamDoDiem)} · Phí giao nhận: ${money(data.PhiGiaoHang)}`;
-                warning.textContent=data.promotion_warning??'';
-            }catch(error){if(version===generation){total.textContent='Chưa có ước tính';warning.textContent=error.name==='AbortError'?'Kết nối chậm. Thay đổi dữ liệu để tính lại.':error.message;}}
-            finally{clearTimeout(deadline);}
-        },350);
+const panel = document.querySelector('[data-booking-estimate]');
+
+if (panel) {
+    const form = document.querySelector('#booking-edit-form');
+    const total = panel.querySelector('[data-estimate-total]');
+    const details = panel.querySelector('[data-estimate-details]');
+    const itemBreakdown = panel.querySelector('[data-estimate-items]');
+    const warning = panel.querySelector('[data-estimate-warning]');
+    const quoteButton = document.querySelector('#booking-quote-delivery');
+    const quoteStatus = document.querySelector('#booking-delivery-quote-status');
+    const quoteResult = document.querySelector('#booking-delivery-quote-result');
+    const recalculateInput = form.querySelector('[name="recalculate_delivery_fee"]');
+    const itemsContainer = form.querySelector('#booking-items');
+    const pricingOptions = JSON.parse(panel.dataset.pricingOptions);
+    const services = JSON.parse(panel.dataset.serviceOptions);
+    const garments = JSON.parse(panel.dataset.garmentOptions);
+    const minimumWeight = Number(panel.dataset.minimumWeight);
+    const itemPricing = window.OrderItemPricing({
+        prices: pricingOptions.map(option => ({
+            service_id: option.serviceId,
+            garment_id: option.garmentId,
+            unit_id: option.unitId,
+            unit: option.unit,
+            price: option.price,
+        })),
+        garments: Object.fromEntries(garments.map(garment => [garment.id, garment.name])),
+        minimumWeight,
+    });
+    const money = value => new Intl.NumberFormat('vi-VN').format(value) + ' VNĐ';
+    let estimateData;
+    let estimateSignature;
+    let initialEstimateTimer;
+    let initialEstimatePending = false;
+    let quoteController;
+    let quoteGeneration = 0;
+    let deliveryQuote;
+
+    function roundMoney(value) {
+        return Math.round((value + Number.EPSILON) * 100) / 100;
     }
-    form.addEventListener('reset',()=>setTimeout(changed,0));
-    form.addEventListener('input',changed);form.addEventListener('change',changed);
-    const observer=new MutationObserver(changed);observer.observe(form.querySelector('#booking-items'),{childList:true});
-    window.addEventListener('pagehide',()=>{clearTimeout(timer);generation++;controller?.abort();observer.disconnect();});
-    window.addEventListener('pageshow',event=>{if(event.persisted){observer.observe(form.querySelector('#booking-items'),{childList:true});changed();}});
-    changed();
+
+    function buildItemsTable(items) {
+        const table = document.createElement('table');
+        table.className = 'table table-sm table-bordered align-middle mb-0';
+        const header = table.createTHead().insertRow();
+
+        for (const label of ['Dịch vụ', 'Loại đồ', 'Đơn vị', 'Số lượng / khối lượng', 'Đơn giá', 'Thành tiền']) {
+            const cell = document.createElement('th');
+            cell.scope = 'col';
+            cell.textContent = label;
+            header.append(cell);
+        }
+
+        const body = table.createTBody();
+        for (const item of items) {
+            const row = body.insertRow();
+            for (const value of [
+                item.service_name,
+                item.garment_name,
+                item.unit_name,
+                item.amount,
+                money(item.unit_price),
+                money(item.subtotal),
+            ]) {
+                row.insertCell().textContent = value;
+            }
+        }
+
+        itemBreakdown.replaceChildren(table);
+    }
+
+    function buildTotalsTable(estimate) {
+        const table = document.createElement('table');
+        table.className = 'table table-sm mb-0';
+        const body = table.createTBody();
+        const rows = [
+            ['Tổng tiền dịch vụ:', money(estimate.TongTien)],
+            ['Giảm từ mã:', `−${money(estimate.TienGiamKhuyenMai)}`],
+            [`Điểm đã dùng (${estimate.DiemSuDung} điểm):`, `−${money(estimate.TienGiamDoDiem)}`],
+            ['Phí nhận đồ:', money(estimate.PhiNhanDo)],
+            ['Phí giao đồ:', money(estimate.PhiGiaoDo)],
+        ];
+
+        for (const [label, value] of rows) {
+            const row = body.insertRow();
+            row.insertCell().textContent = label;
+            const amount = row.insertCell();
+            amount.className = 'text-end';
+            amount.textContent = value;
+        }
+
+        details.replaceChildren(table);
+    }
+
+    function calculateCurrentItems() {
+        const items = [];
+        let subtotal = 0;
+        const rowWarnings = [];
+
+        for (const [index, row] of [...itemsContainer.querySelectorAll('.booking-item')].entries()) {
+            row.querySelector('[data-row-number]').textContent = index + 1;
+            const serviceId = row.querySelector('.booking-service').value;
+            const garmentId = row.querySelector('.booking-garment').value;
+            const unitId = row.querySelector('.booking-unit').value;
+            const price = pricingOptions.find(option =>
+                String(option.serviceId) === serviceId
+                && String(option.garmentId) === garmentId
+                && String(option.unitId) === unitId
+            );
+            const priceInput = row.querySelector('.booking-item-price');
+            const subtotalInput = row.querySelector('.booking-item-subtotal');
+
+            if (!serviceId || !garmentId || !unitId || !price) {
+                priceInput.value = '—';
+                subtotalInput.value = '—';
+                rowWarnings.push('Chọn đủ dịch vụ, loại đồ và đơn vị tính có bảng giá hiệu lực.');
+                continue;
+            }
+
+            const isWeightUnit = /^(kg|kgs|kilogram)$/i.test(String(price.unit).trim());
+            const quantity = row.querySelector('.booking-quantity').value;
+            const weight = row.querySelector('.booking-weight').value;
+            const parsedQuantity = Number(quantity);
+            const parsedWeight = Number(weight);
+
+            if (
+                (isWeightUnit && (!Number.isFinite(parsedWeight) || parsedWeight <= 0))
+                || (!isWeightUnit && (!Number.isInteger(parsedQuantity) || parsedQuantity < 1))
+            ) {
+                rowWarnings.push(isWeightUnit
+                    ? 'Nhập khối lượng lớn hơn 0 kg để tính thành tiền.'
+                    : 'Nhập số lượng nguyên dương để tính thành tiền.');
+                priceInput.value = money(price.price);
+                subtotalInput.value = '—';
+                continue;
+            }
+
+            const lineSubtotal = itemPricing.calculateAmount(
+                price.price,
+                isWeightUnit,
+                parsedQuantity,
+                parsedWeight,
+            );
+            const service = services.find(option => String(option.id) === serviceId);
+            const garment = garments.find(option => String(option.id) === garmentId);
+            const displayedAmount = isWeightUnit
+                ? `${parsedWeight} kg`
+                : `${parsedQuantity} ${price.unit}`;
+
+            priceInput.value = money(Number(price.price));
+            subtotalInput.value = money(lineSubtotal);
+            subtotal = roundMoney(subtotal + lineSubtotal);
+            items.push({
+                service_name: service?.name ?? 'Dịch vụ',
+                garment_name: garment?.name ?? 'Loại đồ',
+                unit_name: price.unit,
+                amount: displayedAmount,
+                unit_price: Number(price.price),
+                subtotal: lineSubtotal,
+            });
+        }
+
+        return { items, subtotal, warning: rowWarnings[0] ?? '' };
+    }
+
+    function renderLocalEstimate() {
+        if (!estimateData) {
+            return;
+        }
+
+        const { items, subtotal, warning: itemWarning } = calculateCurrentItems();
+        const promotion = estimateData.promotion_context;
+        let promotionDiscount = 0;
+        let promotionWarning = estimateData.promotion_warning ?? '';
+
+        if (promotion?.eligible) {
+            if (promotion.minimum !== null && subtotal < Number(promotion.minimum)) {
+                promotionWarning = 'Đơn hàng chưa đạt giá trị tối thiểu để dùng mã khuyến mãi.';
+            } else {
+                promotionWarning = '';
+                promotionDiscount = promotion.type === 'Phần trăm'
+                    ? subtotal * Number(promotion.value) / 100
+                    : promotion.type === 'Tiền mặt'
+                        ? Number(promotion.value)
+                        : 0;
+                if (promotion.maximum && promotionDiscount > Number(promotion.maximum)) {
+                    promotionDiscount = Number(promotion.maximum);
+                }
+                promotionDiscount = roundMoney(Math.min(subtotal, promotionDiscount));
+            }
+        }
+
+        const remaining = Math.max(0, subtotal - promotionDiscount);
+        const pointValue = Number(estimateData.point_value);
+        const pointsUsed = pointValue > 0
+            ? Math.max(0, Math.min(
+                Number(estimateData.requested_points),
+                Number(estimateData.available_points),
+                Math.floor(remaining / pointValue),
+            ))
+            : 0;
+        const pointsDiscount = roundMoney(pointsUsed * pointValue);
+        const pickupFee = deliveryQuote?.pickup_fee ?? Number(estimateData.PhiNhanDo);
+        const returnFee = deliveryQuote?.return_fee ?? Number(estimateData.PhiGiaoDo);
+        const amountDue = roundMoney(
+            Math.max(0, remaining - pointsDiscount) + pickupFee + returnFee,
+        );
+        const localEstimate = {
+            TongTien: subtotal,
+            TienGiamKhuyenMai: promotionDiscount,
+            DiemSuDung: pointsUsed,
+            TienGiamDoDiem: pointsDiscount,
+            PhiNhanDo: pickupFee,
+            PhiGiaoDo: returnFee,
+            ThanhTien: amountDue,
+        };
+
+        total.textContent = money(amountDue);
+        buildTotalsTable(localEstimate);
+        buildItemsTable(items);
+        warning.textContent = itemWarning || promotionWarning;
+    }
+
+    function currentEstimateSignature() {
+        const rows = [...itemsContainer.querySelectorAll('.booking-item')].map(row => [
+            row.querySelector('.booking-service-category').value,
+            row.querySelector('.booking-service').value,
+            row.querySelector('.booking-garment').value,
+            row.querySelector('.booking-unit').value,
+            row.querySelector('.booking-quantity').value,
+            row.querySelector('.booking-weight').value,
+        ]);
+
+        return JSON.stringify([rows, deliveryQuote]);
+    }
+
+    function refreshLocalEstimate() {
+        if (!estimateData) {
+            if (initialEstimatePending) {
+                return;
+            }
+            clearTimeout(initialEstimateTimer);
+            initialEstimateTimer = setTimeout(loadInitialEstimate, 200);
+            return;
+        }
+
+        const signature = currentEstimateSignature();
+        if (signature === estimateSignature) {
+            return;
+        }
+
+        estimateSignature = signature;
+        renderLocalEstimate();
+    }
+
+    async function loadInitialEstimate() {
+        if (initialEstimatePending) {
+            return;
+        }
+
+        initialEstimatePending = true;
+        const items = [...itemsContainer.querySelectorAll('.booking-item')].map(row => {
+            const item = {};
+            for (const field of row.querySelectorAll('[name^="items["]')) {
+                if (field.disabled) {
+                    continue;
+                }
+
+                const key = field.name.match(/\[([^\]]+)\]$/)?.[1];
+                if (key) {
+                    item[key] = field.value;
+                }
+            }
+
+            return item;
+        });
+
+        total.textContent = 'Đang tính…';
+        warning.textContent = '';
+
+        try {
+            const response = await fetch(panel.dataset.bookingEstimate, {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: {
+                    Accept: 'application/json',
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                },
+                body: JSON.stringify({
+                    items,
+                    method: form.querySelector('[name="method"]').value,
+                    return_method: form.querySelector('[name="return_method"]').value,
+                }),
+            });
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw Error(response.status === 422
+                    ? 'Chọn đủ dịch vụ, loại đồ, đơn vị có giá và nhập số lượng/khối lượng hợp lệ.'
+                    : `Không thể tải ước tính (HTTP ${response.status}). Vui lòng thử lại.`);
+            }
+            for (const key of [
+                'TongTien', 'TienGiamKhuyenMai', 'DiemSuDung', 'TienGiamDoDiem',
+                'PhiNhanDo', 'PhiGiaoDo', 'ThanhTien', 'available_points',
+                'requested_points', 'point_value',
+            ]) {
+                if (typeof data[key] !== 'number' || !Number.isFinite(data[key]) || data[key] < 0) {
+                    throw Error('Máy chủ trả về dữ liệu ước tính không hợp lệ.');
+                }
+            }
+            if (!Array.isArray(data.items) || !Object.hasOwn(data, 'promotion_context')) {
+                throw Error('Máy chủ trả về dữ liệu chi tiết ước tính không đầy đủ.');
+            }
+
+            estimateData = data;
+            initialEstimatePending = false;
+            estimateSignature = null;
+            refreshLocalEstimate();
+        } catch (error) {
+            initialEstimatePending = false;
+            total.textContent = 'Chưa có ước tính';
+            warning.textContent = error instanceof TypeError
+                ? 'Không thể kết nối đến máy chủ tính giá. Vui lòng thử lại.'
+                : error.message;
+        }
+    }
+
+    function changedDeliveryDetails() {
+        deliveryQuote = null;
+        quoteController?.abort();
+        quoteGeneration++;
+        quoteButton.disabled = false;
+        recalculateInput.value = '0';
+        quoteResult.hidden = true;
+        quoteStatus.textContent =
+            'Phí đang dùng là phí đã lưu từ Booking. Nhấn nút để tính lại theo thông tin hiện tại.';
+        refreshLocalEstimate();
+    }
+
+    quoteButton.addEventListener('click', async () => {
+        if (quoteButton.disabled) {
+            return;
+        }
+
+        const method = form.querySelector('[name="method"]');
+        const address = form.querySelector('[name="address"]');
+        const returnMethod = form.querySelector('[name="return_method"]');
+        const returnAddress = form.querySelector('[name="return_address"]');
+
+        if (method.value === 'Tại nhà' && !address.value.trim()) {
+            quoteStatus.textContent = 'Vui lòng nhập địa chỉ nhận đồ tại nhà.';
+            address.focus();
+            return;
+        }
+        if (returnMethod.value === 'Tại nhà' && !returnAddress.value.trim()) {
+            quoteStatus.textContent = 'Vui lòng nhập địa chỉ trả đồ tại nhà.';
+            returnAddress.focus();
+            return;
+        }
+
+        quoteButton.disabled = true;
+        quoteStatus.textContent = 'Đang tính phí giao nhận...';
+        quoteController?.abort();
+        const requestController = new AbortController();
+        quoteController = requestController;
+        const version = ++quoteGeneration;
+
+        try {
+            const response = await fetch(panel.dataset.deliveryQuote, {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: {
+                    Accept: 'application/json',
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                },
+                body: JSON.stringify({
+                    method: method.value,
+                    address: method.value === 'Tại nhà' ? address.value.trim() : null,
+                    return_method: returnMethod.value,
+                    return_address: returnMethod.value === 'Tại nhà' ? returnAddress.value.trim() : null,
+                }),
+                signal: requestController.signal,
+            });
+            const data = await response.json().catch(() => null);
+
+            if (version !== quoteGeneration) {
+                return;
+            }
+            if (!response.ok) {
+                const validationMessage = Object.values(data?.errors ?? {}).flat()[0];
+                throw Error(
+                    validationMessage
+                    || data?.message
+                    || `Máy chủ không thể tính phí giao nhận (HTTP ${response.status}). Vui lòng thử lại.`,
+                );
+            }
+            if (
+                !data
+                || !Number.isFinite(Number(data.pickup_fee))
+                || !Number.isFinite(Number(data.return_fee))
+                || !Number.isFinite(Number(data.total_fee))
+            ) {
+                throw Error('Máy chủ trả về dữ liệu phí giao nhận không hợp lệ. Vui lòng thử lại.');
+            }
+
+            deliveryQuote = {
+                pickup_fee: Number(data.pickup_fee),
+                return_fee: Number(data.return_fee),
+            };
+            recalculateInput.value = '1';
+            quoteResult.querySelector('[data-pickup-fee]').textContent = money(deliveryQuote.pickup_fee);
+            quoteResult.querySelector('[data-return-fee]').textContent = money(deliveryQuote.return_fee);
+            quoteResult.hidden = false;
+            quoteStatus.textContent = 'Đã báo giá theo địa chỉ hiện tại. Phí sẽ được máy chủ tính lại khi xác nhận.';
+            refreshLocalEstimate();
+        } catch (error) {
+            if (version === quoteGeneration) {
+                quoteStatus.textContent = error.name === 'AbortError'
+                    ? 'Yêu cầu tính phí đã bị hủy.'
+                    : error instanceof TypeError
+                        ? 'Không thể kết nối đến máy chủ tính phí giao nhận. Vui lòng thử lại.'
+                        : error.message;
+            }
+        } finally {
+            if (quoteController === requestController) {
+                quoteButton.disabled = false;
+            }
+        }
+    });
+
+    for (const field of [
+        form.querySelector('[name="method"]'),
+        form.querySelector('[name="address"]'),
+        form.querySelector('[name="return_method"]'),
+        form.querySelector('[name="return_address"]'),
+    ]) {
+        field.addEventListener('input', changedDeliveryDetails);
+        field.addEventListener('change', changedDeliveryDetails);
+    }
+
+    form.addEventListener('input', refreshLocalEstimate);
+    form.addEventListener('change', refreshLocalEstimate);
+    itemsContainer.addEventListener('click', () => setTimeout(refreshLocalEstimate, 0));
+    const observer = new MutationObserver(refreshLocalEstimate);
+    observer.observe(itemsContainer, { childList: true });
+    form.addEventListener('reset', () => {
+        setTimeout(() => {
+            changedDeliveryDetails();
+            refreshLocalEstimate();
+        }, 0);
+    });
+    window.addEventListener('pagehide', () => {
+        clearTimeout(initialEstimateTimer);
+        quoteGeneration++;
+        quoteController?.abort();
+        observer.disconnect();
+    });
+    window.addEventListener('pageshow', event => {
+        if (event.persisted) {
+            observer.observe(itemsContainer, { childList: true });
+            refreshLocalEstimate();
+        }
+    });
+
+    loadInitialEstimate();
 }

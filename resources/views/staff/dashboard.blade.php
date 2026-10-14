@@ -92,7 +92,8 @@
             </div>
             <div class="card-body">
                 <div class="table-responsive">
-                    <table class="table table-hover mb-0">
+                    <table class="table table-hover mb-0"
+                           data-staff-order-status-url="{{ route('staff.dashboard.update-order-status', ['order' => '__ID__']) }}">
                         <thead>
                             <tr>
                                 <th scope="col">STT</th>
@@ -270,65 +271,5 @@
 @endsection
 
 @push('scripts')
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const selects = document.querySelectorAll('.status-select');
-
-        selects.forEach(function(select) {
-            select.addEventListener('change', function() {
-                const orderId = this.getAttribute('data-order-id');
-                const newStatus = this.value;
-
-                if (!newStatus) return;
-
-                fetch('{{ route('staff.dashboard.update-order-status', ['order' => '__ID__']) }}'.replace('__ID__', orderId), {
-                    method: 'PATCH',
-                    headers: {
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
-                        'Accept': 'application/json',
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ status: newStatus })
-                })
-                .then(function(response) { return response.json(); })
-                .then(function(data) {
-                    if (data.success) {
-                        Swal.fire({
-                            icon: 'success',
-                            title: 'Đã cập nhật!',
-                            text: 'Đơn hàng đã chuyển sang: ' + data.status_label,
-                            timer: 1500,
-                            showConfirmButton: false
-                        });
-
-                        // Loại bỏ dòng khỏi danh sách sau khi cập nhật thành công
-                        setTimeout(function() {
-                            const row = select.closest('tr');
-                            if (row) row.remove();
-                        }, 1200);
-                    } else {
-                        Swal.fire({
-                            icon: 'error',
-                            title: 'Lỗi!',
-                            text: data.message,
-                            timer: 2000,
-                            showConfirmButton: false
-                        });
-                        select.selectedIndex = 0;
-                    }
-                })
-                .catch(function() {
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Lỗi!',
-                        text: 'Có lỗi xảy ra. Vui lòng thử lại.',
-                        timer: 2000,
-                        showConfirmButton: false
-                    });
-                    select.selectedIndex = 0;
-                });
-            });
-        });
-    });
-</script>
+@vite('resources/js/staff-dashboard.js')
 @endpush

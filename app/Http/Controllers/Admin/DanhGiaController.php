@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\LuuDanhGiaRequest;
+use App\Http\Requests\Admin\PhanHoiDanhGiaRequest;
 use App\Services\ReviewService;
 use App\Support\FriendlyError;
 use Illuminate\Http\Request;
@@ -72,7 +73,7 @@ class DanhGiaController extends Controller
         }
     }
 
-    public function respond(Request $request, int $id)
+    public function respond(PhanHoiDanhGiaRequest $request, int $id)
     {
         $review = $this->reviewService->find($id);
 
@@ -81,7 +82,10 @@ class DanhGiaController extends Controller
         }
 
         try {
-            $this->reviewService->update($review, ['shop_response' => $request->input('shop_response')]);
+            $this->reviewService->updateShopResponse(
+                $review,
+                $request->validated()['shop_response'],
+            );
 
             return redirect()->route('reviews.show', $review)->with('success', 'Phản hồi đã được gửi.');
         } catch (\Exception $e) {

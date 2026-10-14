@@ -156,14 +156,29 @@ class DashboardRevenueChartTest extends TestCase
         }
     }
 
+    public function test_invalid_revenue_chart_filter_falls_back_to_seven_days(): void
+    {
+        $response = app(DashboardController::class)->getRevenueChartData(
+            Request::create('/', 'GET', ['filter' => 'unsupported'])
+        );
+        $chart = $response->getData(true);
+
+        $this->assertSame('7_days', $chart['filter']);
+        $this->assertSame('Doanh thu 7 ngày gần nhất', $chart['filter_label']);
+        $this->assertCount(7, $chart['labels']);
+        $this->assertCount(7, $chart['data']);
+    }
+
     public function test_dashboard_kpis_use_database_values_and_return_zero_when_empty(): void
     {
         DB::table('ThanhToan')->delete();
         DB::table('HoaDon')->delete();
         DB::table('DonHang')->delete();
 
-        $emptyDashboard = app(DashboardController::class)->index()->getData();
+        $emptyDashboard = app(DashboardController::class)->index(Request::create('/', 'GET'))->getData();
 
+        $this->assertSame('7_days', $emptyDashboard['revenueFilter']);
+        $this->assertCount(7, $emptyDashboard['revenueChartData']['labels']);
         $this->assertSame(0.0, $emptyDashboard['todayRevenue']);
         $this->assertSame(0.0, $emptyDashboard['weekRevenue']);
         $this->assertSame(0.0, $emptyDashboard['monthRevenue']);
@@ -195,8 +210,14 @@ class DashboardRevenueChartTest extends TestCase
             ['DanhGiaID' => 3, 'SoSao' => 1, 'TrangThai' => 'Ẩn', 'NgayDanhGia' => '2026-10-04 11:00:00'],
         ]);
 
-        $dashboard = app(DashboardController::class)->index()->getData();
+        $dashboard = app(DashboardController::class)->index(
+            Request::create('/admin/dashboard', 'GET', ['filter' => 'this_year'])
+        )->getData();
 
+        $this->assertSame('this_year', $dashboard['revenueFilter']);
+        $this->assertSame('this_year', $dashboard['revenueChartData']['filter']);
+        $this->assertCount(12, $dashboard['revenueChartData']['labels']);
+        $this->assertCount(12, $dashboard['revenueChartData']['data']);
         $this->assertSame(450.0, $dashboard['todayRevenue']);
         $this->assertSame(450.0, $dashboard['weekRevenue']);
         $this->assertSame(450.0, $dashboard['monthRevenue']);
@@ -208,5 +229,12 @@ class DashboardRevenueChartTest extends TestCase
         $this->assertSame(1, $dashboard['newCustomersMonth']);
         $this->assertSame(4.5, $dashboard['averageRating']);
         $this->assertSame(2, $dashboard['totalReviews']);
+
+        $dashboardWithInvalidFilter = app(DashboardController::class)->index(
+            Request::create('/admin/dashboard', 'GET', ['filter' => 'unsupported'])
+        )->getData();
+
+        $this->assertSame('7_days', $dashboardWithInvalidFilter['revenueFilter']);
+        $this->assertSame('7_days', $dashboardWithInvalidFilter['revenueChartData']['filter']);
     }
 }

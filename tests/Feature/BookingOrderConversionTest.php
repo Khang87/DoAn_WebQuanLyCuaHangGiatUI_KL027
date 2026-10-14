@@ -7,12 +7,15 @@ use App\Enums\OrderStatus;
 use App\Http\Middleware\EnsureUserHasPermission;
 use App\Http\Middleware\RejectCustomerRole;
 use App\Http\Middleware\RestoreRememberedLogin;
+use App\Http\Requests\Admin\XacNhanBookingRequest;
 use App\Models\BangGia;
 use App\Models\ChiTietDonHang;
 use App\Models\DonHang;
 use App\Models\GiaoNhan;
 use App\Models\NhatKyHeThong;
+use App\Models\User;
 use App\Services\BookingService;
+use App\Services\DeliveryFeeService;
 use App\Services\NotificationService;
 use App\Services\OrderService;
 use App\Services\PricingService;
@@ -116,6 +119,24 @@ class BookingOrderConversionTest extends TestCase
         });
     }
 
+    private function createPromotionTable(): void
+    {
+        Schema::create('KhuyenMai', function (Blueprint $table): void {
+            $table->increments('KhuyenMaiID');
+            $table->string('MaKhuyenMai')->unique();
+            $table->string('TenKhuyenMai')->nullable();
+            $table->string('LoaiKhuyenMai');
+            $table->decimal('GiaTriGiam', 12, 2);
+            $table->decimal('GiaTriDonToiThieu', 12, 2)->nullable();
+            $table->decimal('MucGiamToiDa', 12, 2)->nullable();
+            $table->integer('SoLuongSuDung')->nullable();
+            $table->text('DieuKienApDung')->nullable();
+            $table->date('NgayBatDau');
+            $table->date('NgayKetThuc');
+            $table->string('TrangThai');
+        });
+    }
+
     public function test_booking_detail_shows_saved_estimate_without_spending_points(): void
     {
         $this->createInspectionCatalog();
@@ -138,6 +159,188 @@ class BookingOrderConversionTest extends TestCase
             ->assertSee('Chưa có dịch vụ dự kiến để tính tổng tiền')
             ->assertDontSee('data-booking-money-summary', false)
             ->assertViewHas('bookingAmounts', fn ($amounts): bool => $amounts === null);
+    }
+
+    public function test_booking_estimate_uses_saved_points_and_returns_each_priced_service_line(): void
+    {
+        $this->createInspectionCatalog();
+        $this->createPromotionTable();
+        DB::table('KhuyenMai')->insert([
+            'KhuyenMaiID' => 3,
+            'MaKhuyenMai' => 'BOOKING10',
+            'LoaiKhuyenMai' => 'Phần trăm',
+            'GiaTriGiam' => 10,
+            'NgayBatDau' => today()->subDay()->toDateString(),
+            'NgayKetThuc' => today()->addDay()->toDateString(),
+            'TrangThai' => 'Hoạt động',
+        ]);
+        DB::table('DonViTinh')->insert([
+            'DonViTinhID' => 4,
+            'TenDonViTinh' => 'Kilogram',
+            'KyHieu' => 'KG',
+            'TrangThai' => 'Hoạt động',
+        ]);
+        DB::table('BangGia')->insert([
+            'DichVuID' => 1,
+            'LoaiDoGiatID' => 2,
+            'DonViTinhID' => 4,
+            'DonGia' => 10000,
+            'NgayApDung' => '2026-01-01',
+            'TrangThai' => 'Hoạt động',
+        ]);
+        DB::table('DiemTichLuy')->insert([
+            'KhachHangID' => 9,
+            'DiemHienTai' => 500,
+        ]);
+        $booking = $this->createBooking([
+            'DiemSuDung' => 25,
+            'TienGiamDoDiem' => 25,
+        ]);
+        $booking->forceFill(['KhuyenMaiID' => 3])->saveQuietly();
+        $this->withoutMiddleware([Authenticate::class, EnsureUserHasPermission::class, RejectCustomerRole::class, RestoreRememberedLogin::class]);
+
+        $this->postJson(route('bookings.estimate', $booking), [
+            'method' => 'Tại nhà',
+            'return_method' => 'Tại cửa hàng',
+            'items' => [
+                ['DichVuID' => 1, 'LoaiDoGiatID' => 2, 'DonViTinhID' => 3, 'SoLuong' => 2],
+                ['DichVuID' => 1, 'LoaiDoGiatID' => 2, 'DonViTinhID' => 4, 'KhoiLuong' => 4.25],
+            ],
+        ])->assertOk()
+            ->assertJsonPath('DiemSuDung', 25)
+            ->assertJsonPath('TienGiamDoDiem', 25)
+            ->assertJsonPath('items.0.service_name', 'Giặt')
+            ->assertJsonPath('items.0.garment_name', 'Áo sơ mi')
+            ->assertJsonPath('items.0.unit_name', 'Cái')
+            ->assertJsonPath('items.0.amount', '2 Cái')
+            ->assertJsonPath('items.0.quantity', 2)
+            ->assertJsonPath('items.0.unit_price', 15000)
+            ->assertJsonPath('items.0.subtotal', 30000)
+            ->assertJsonPath('items.1.unit_name', 'KG')
+            ->assertJsonPath('items.1.weight', 4.25)
+            ->assertJsonPath('items.1.amount', '4.25 kg')
+            ->assertJsonPath('items.1.unit_price', 10000)
+            ->assertJsonPath('items.1.subtotal', 42500)
+            ->assertJsonPath('requested_points', 25)
+            ->assertJsonPath('available_points', 500)
+            ->assertJsonPath('point_value', 1)
+            ->assertJsonPath('promotion_context.eligible', true)
+            ->assertJsonPath('promotion_context.type', 'Phần trăm')
+            ->assertJsonPath('promotion_context.value', 10);
+    }
+
+    public function test_booking_inspection_shows_saved_rewards_as_read_only(): void
+    {
+        $this->createInspectionCatalog();
+        $this->createPromotionTable();
+        DB::table('KhuyenMai')->insert([
+            'KhuyenMaiID' => 3,
+            'MaKhuyenMai' => 'BOOKING10',
+            'LoaiKhuyenMai' => 'Phần trăm',
+            'GiaTriGiam' => 10,
+            'NgayBatDau' => today()->subDay()->toDateString(),
+            'NgayKetThuc' => today()->addDay()->toDateString(),
+            'TrangThai' => 'Hoạt động',
+        ]);
+        $booking = $this->createBooking([
+            'DiemSuDung' => 50,
+            'TienGiamDoDiem' => 50,
+        ]);
+        $booking->forceFill(['KhuyenMaiID' => 3])->saveQuietly();
+        $this->withoutMiddleware([Authenticate::class, EnsureUserHasPermission::class, RejectCustomerRole::class, RestoreRememberedLogin::class]);
+
+        $this->get(route('bookings.inspection', $booking))->assertOk()
+            ->assertSee('BOOKING10')
+            ->assertSee('50 điểm (50 VNĐ)')
+            ->assertSee('Tính lại phí giao nhận')
+            ->assertSee('booking-items-table', false)
+            ->assertSee('Tình trạng trước khi giặt')
+            ->assertSee('data-pricing-options', false)
+            ->assertSee('data-estimate-items', false)
+            ->assertDontSee('name="use_points"', false)
+            ->assertDontSee('name="DiemSuDung"', false);
+    }
+
+    public function test_order_edit_displays_saved_rewards_without_edit_controls(): void
+    {
+        $this->createInspectionCatalog();
+        $this->createPromotionTable();
+        DB::table('KhuyenMai')->insert([
+            'KhuyenMaiID' => 3,
+            'MaKhuyenMai' => 'BOOKING10',
+            'LoaiKhuyenMai' => 'Phần trăm',
+            'GiaTriGiam' => 10,
+            'NgayBatDau' => today()->subDay()->toDateString(),
+            'NgayKetThuc' => today()->addDay()->toDateString(),
+            'TrangThai' => 'Hoạt động',
+        ]);
+        $order = DonHang::query()->create([
+            'MaDonHang' => 'DH0001',
+            'KhachHangID' => 9,
+            'NhanVienID' => 1,
+            'TrangThai' => OrderStatus::Pending->value,
+            'DiemSuDung' => 50,
+            'TienGiamDoDiem' => 50,
+            'KhuyenMaiID' => 3,
+            'TongTien' => 30000,
+            'TienGiamKhuyenMai' => 3000,
+            'ThanhTien' => 26950,
+        ]);
+        $order->chiTietDonHangs()->create([
+            'DichVuID' => 1,
+            'LoaiDoGiatID' => 2,
+            'DonViTinhID' => 3,
+            'SoLuong' => 2,
+            'DonGia' => 15000,
+            'ThanhTien' => 30000,
+            'TinhTrangTruocKhiGiat' => 'Bình thường',
+        ]);
+        $this->withoutMiddleware([Authenticate::class, EnsureUserHasPermission::class, RejectCustomerRole::class, RestoreRememberedLogin::class]);
+
+        $this->get(route('orders.edit', $order))->assertOk()
+            ->assertSee('BOOKING10')
+            ->assertSee('50 điểm (50 VNĐ)')
+            ->assertDontSee('name="use_points"', false)
+            ->assertDontSee('name="DiemSuDung"', false);
+    }
+
+    public function test_booking_confirmation_preserves_saved_coupon_and_points_without_a_reward_control(): void
+    {
+        $this->createInspectionCatalog();
+        $this->createPromotionTable();
+        DB::table('KhuyenMai')->insert([
+            'KhuyenMaiID' => 3,
+            'MaKhuyenMai' => 'BOOKING10',
+            'LoaiKhuyenMai' => 'Phần trăm',
+            'GiaTriGiam' => 10,
+            'NgayBatDau' => today()->subDay()->toDateString(),
+            'NgayKetThuc' => today()->addDay()->toDateString(),
+            'TrangThai' => 'Hoạt động',
+        ]);
+        DB::table('DiemTichLuy')->insert([
+            'KhachHangID' => 9,
+            'DiemHienTai' => 500,
+        ]);
+        $booking = $this->createBooking([
+            'DiemSuDung' => 50,
+            'TienGiamDoDiem' => 50,
+        ]);
+        $booking->forceFill(['KhuyenMaiID' => 3])->saveQuietly();
+        $this->actingAsBookingEmployee();
+        $this->withoutMiddleware([Authenticate::class, EnsureUserHasPermission::class, RejectCustomerRole::class, RestoreRememberedLogin::class]);
+
+        $this->post(route('bookings.confirm', $booking), [
+            ...$this->inspectionPayload($booking, 1),
+            'items' => $this->actualItems(),
+        ])->assertRedirect();
+
+        $order = DonHang::query()->where('BookingID', $booking->BookingID)->firstOrFail();
+        $this->assertSame(3, $order->KhuyenMaiID);
+        $this->assertSame(50, $order->DiemSuDung);
+        $this->assertSame(3000.0, $order->TienGiamKhuyenMai);
+        $this->assertSame(50.0, $order->TienGiamDoDiem);
+        $this->assertSame(36950.0, $order->ThanhTien);
+        $this->assertSame(450, DB::table('DiemTichLuy')->where('KhachHangID', 9)->value('DiemHienTai'));
     }
 
     public function test_manual_order_store_rejects_completed_status_and_booking_link(): void
@@ -188,6 +391,9 @@ class BookingOrderConversionTest extends TestCase
                 ->assertSee('id="status" name="TrangThai" required', false)
                 ->assertSee('value="Đã tiếp nhận" selected', false)
                 ->assertSee('value="Đang giặt"  disabled', false)
+                ->assertSee('id="employee_name"', false)
+                ->assertSee('Chưa có hồ sơ nhân viên đang hoạt động')
+                ->assertDontSee('name="NhanVienID"', false)
                 ->assertDontSee('<input type="hidden" name="TrangThai"', false);
         } finally {
             Schema::dropIfExists('KhuyenMai');
@@ -221,22 +427,81 @@ class BookingOrderConversionTest extends TestCase
     public function test_manual_order_store_persists_actual_condition_before_washing(): void
     {
         $this->createRequestCatalog();
+        DB::table('NhanVien')->insert([
+            'NhanVienID' => 2,
+            'HoTen' => 'Nhân viên giả mạo từ request',
+        ]);
         DB::table('BangGia')->insert(['DichVuID' => 1, 'LoaiDoGiatID' => 2, 'DonViTinhID' => 2, 'DonGia' => 10000, 'NgayApDung' => '2026-01-01', 'TrangThai' => 'Hoạt động']);
         $this->actingAsBookingEmployee();
         $this->withoutMiddleware([Authenticate::class, EnsureUserHasPermission::class, RejectCustomerRole::class, RestoreRememberedLogin::class]);
         $this->post(route('orders.store'), [
             'KhachHangID' => 9,
-            'NhanVienID' => 1,
+            'NhanVienID' => 2,
+            'staff_id' => 2,
             'TrangThai' => OrderStatus::Received->value,
             'items' => [['DichVuID' => 1, 'LoaiDoGiatID' => 2, 'DonViTinhID' => 2, 'SoLuong' => 2, 'TinhTrangTruocKhiGiat' => '  Ố nhẹ ở cổ áo  ']],
         ])->assertSessionHasNoErrors();
         $order = DonHang::query()->sole();
         $this->assertNull($order->BookingID);
+        $this->assertSame(1, $order->NhanVienID);
         $this->assertSame(OrderStatus::Received->value, $order->TrangThai);
         $this->assertSame('Ố nhẹ ở cổ áo', $order->chiTietDonHangs()->sole()->TinhTrangTruocKhiGiat);
         $this->assertSame(20000.0, $order->ThanhTien);
         app(OrderService::class)->updateStatus($order, OrderStatus::Washing->value);
         $this->assertSame(OrderStatus::Washing->value, $order->fresh()->TrangThai);
+    }
+
+    public function test_manual_order_store_rejects_account_without_employee_profile_despite_client_employee_id(): void
+    {
+        $this->createRequestCatalog();
+        $this->withoutMiddleware([
+            Authenticate::class,
+            EnsureUserHasPermission::class,
+            RejectCustomerRole::class,
+            RestoreRememberedLogin::class,
+        ]);
+        $user = new User;
+        $user->forceFill([
+            'TaiKhoanID' => 2,
+            'NhanVienID' => null,
+            'TrangThai' => 'Hoạt động',
+        ]);
+        $this->actingAs($user);
+
+        $this->post(route('orders.store'), [
+            'KhachHangID' => 9,
+            'NhanVienID' => 1,
+            'TrangThai' => OrderStatus::Received->value,
+            'items' => [['DichVuID' => 1, 'LoaiDoGiatID' => 2, 'DonViTinhID' => 2, 'SoLuong' => 1, 'TinhTrangTruocKhiGiat' => 'Bình thường']],
+        ])->assertSessionHasErrors('NhanVienID');
+
+        $this->assertSame(0, DonHang::query()->count());
+        $this->assertSame(0, ChiTietDonHang::query()->count());
+        $this->assertSame(0, GiaoNhan::query()->count());
+    }
+
+    public function test_manual_order_store_rejects_inactive_authenticated_employee_without_side_effects(): void
+    {
+        $this->createRequestCatalog();
+        DB::table('NhanVien')->where('NhanVienID', 1)->update(['TrangThai' => 'Ngừng hoạt động']);
+        $this->withoutMiddleware([
+            Authenticate::class,
+            EnsureUserHasPermission::class,
+            RejectCustomerRole::class,
+            RestoreRememberedLogin::class,
+        ]);
+        $this->actingAsBookingEmployee();
+
+        $this->post(route('orders.store'), [
+            'KhachHangID' => 9,
+            'NhanVienID' => 1,
+            'TrangThai' => OrderStatus::Received->value,
+            'items' => [['DichVuID' => 1, 'LoaiDoGiatID' => 2, 'DonViTinhID' => 2, 'SoLuong' => 1, 'TinhTrangTruocKhiGiat' => 'Bình thường']],
+        ])->assertSessionHasErrors('NhanVienID');
+
+        $this->assertSame(0, DonHang::query()->count());
+        $this->assertSame(0, ChiTietDonHang::query()->count());
+        $this->assertSame(0, GiaoNhan::query()->count());
     }
 
     public function test_confirming_a_booking_creates_its_order_item_and_scheduled_delivery(): void
@@ -256,7 +521,12 @@ class BookingOrderConversionTest extends TestCase
             'NgayApDung' => '2026-01-01',
             'TrangThai' => 'Hoạt động',
         ]);
-        $booking = $this->createBooking();
+        DB::table('NhanVien')->insert([
+            'NhanVienID' => 2,
+            'HoTen' => 'Nhân viên tiếp nhận trước đó',
+            'TrangThai' => 'Hoạt động',
+        ]);
+        $booking = $this->createBooking(['NhanVienID' => 2]);
         $this->actingAsBookingEmployee();
 
         $this->bookingService->update($booking, [
@@ -293,6 +563,8 @@ class BookingOrderConversionTest extends TestCase
         $this->assertSame('Tại nhà', $delivery->HinhThuc);
         $this->assertSame('12 Nguyễn Huệ', $delivery->DiaChi);
         $this->assertSame('2026-10-05 14:30:00', $delivery->ThoiGianDuKien->format('Y-m-d H:i:s'));
+        $this->assertSame(1, $order->NhanVienID);
+        $this->assertSame(2, $booking->fresh()->NhanVienID);
         $this->assertSame(1, $booking->fresh()->NhanVienXacNhanID);
         $this->assertSame(2, DB::table('ChiTietBooking')->where('BookingID', $booking->BookingID)->count());
         $this->assertNotNull($booking->fresh()->ThoiGianXacNhan);
@@ -387,9 +659,15 @@ class BookingOrderConversionTest extends TestCase
         $this->assertNotEmpty($matches);
         $this->assertStringContainsString('value="2"', $matches[1]);
         $this->assertStringNotContainsString('value="3"', $matches[1]);
+        $this->assertStringNotContainsString('name="staff_id"', $response->getContent());
+
+        $this->get(route('bookings.inspection', $booking))
+            ->assertOk()
+            ->assertDontSee('name="staff_id"', false)
+            ->assertSee('Chưa có hồ sơ nhân viên đang hoạt động');
     }
 
-    public function test_confirm_route_changes_pending_booking_and_creates_one_order(): void
+    public function test_confirm_route_uses_authenticated_employee_instead_of_client_staff_selection(): void
     {
         DB::table('DonViTinh')->insert([
             'DonViTinhID' => 3,
@@ -417,30 +695,25 @@ class BookingOrderConversionTest extends TestCase
             EnsureUserHasPermission::class,
             RejectCustomerRole::class,
         ]);
-
         $this->from(route('bookings.show', $booking->BookingID))
             ->post(route('bookings.confirm', $booking->BookingID))
             ->assertRedirect(route('bookings.inspection', $booking))
-            ->assertSessionHasErrors('staff_id');
+            ->assertSessionHasErrors('items');
         $this->assertSame(0, DonHang::query()->count());
 
-        DB::table('NhanVien')->insert([
-            'NhanVienID' => 2,
-            'HoTen' => 'Nhân viên được giao',
-        ]);
-        $response = $this->post(route('bookings.confirm', $booking->BookingID), $this->inspectionPayload($booking, 2));
+        $response = $this->post(route('bookings.confirm', $booking->BookingID), $this->inspectionPayload($booking, 999));
 
         $order = DonHang::query()->where('BookingID', $booking->BookingID)->firstOrFail();
         $response->assertRedirect(route('orders.show', $order));
         $this->assertSame(BookingStatus::Confirmed->value, $booking->fresh()->TrangThai);
-        $this->assertSame(2, $order->NhanVienID);
-        $this->assertSame(2, $booking->fresh()->NhanVienID);
+        $this->assertSame(1, $order->NhanVienID);
+        $this->assertSame(1, $booking->fresh()->NhanVienID);
         $this->assertSame(1, $booking->fresh()->NhanVienXacNhanID);
         $this->assertNotNull($booking->fresh()->ThoiGianXacNhan);
         $this->assertSame(1, DonHang::query()->where('BookingID', $booking->BookingID)->count());
         $this->assertSame(1, GiaoNhan::query()->where('DonHangID', $order->DonHangID)->count());
 
-        $this->post(route('bookings.confirm', $booking->BookingID), $this->inspectionPayload($booking, 2))
+        $this->post(route('bookings.confirm', $booking->BookingID), $this->inspectionPayload($booking, 999))
             ->assertRedirect(route('orders.show', $order));
         $this->assertSame(1, DonHang::query()->where('BookingID', $booking->BookingID)->count());
     }
@@ -504,7 +777,136 @@ class BookingOrderConversionTest extends TestCase
         $this->assertSame('Địa chỉ mới', $updatedBooking->DiaChiNhan);
     }
 
-    public function test_confirm_route_requires_a_responsible_employee_before_creating_an_order(): void
+    public function test_booking_update_uses_authenticated_employee_instead_of_client_staff_selection(): void
+    {
+        DB::table('NhanVien')->insert([
+            'NhanVienID' => 2,
+            'HoTen' => 'Nhân viên được gửi từ client',
+        ]);
+        $booking = $this->createBooking(['NhanVienID' => 2]);
+        $this->actingAsBookingEmployee();
+
+        $updatedBooking = $this->bookingService->update($booking, [
+            'staff_id' => 999,
+            'address' => 'Địa chỉ mới',
+        ]);
+
+        $this->assertSame(1, $updatedBooking->NhanVienID);
+        $this->assertSame(1, $booking->fresh()->NhanVienID);
+    }
+
+    public function test_booking_update_rejects_client_staff_selection_without_authenticated_employee_profile(): void
+    {
+        $booking = $this->createBooking();
+        $user = new User;
+        $user->forceFill([
+            'TaiKhoanID' => 2,
+            'NhanVienID' => null,
+            'TrangThai' => 'Hoạt động',
+        ]);
+        $this->actingAs($user);
+
+        try {
+            $this->bookingService->update($booking, ['staff_id' => 1]);
+            $this->fail('A client-provided staff ID must not be accepted without an authenticated employee profile.');
+        } catch (ValidationException $exception) {
+            $this->assertArrayHasKey('staff_id', $exception->errors());
+        }
+
+        $this->assertSame(1, $booking->fresh()->NhanVienID);
+    }
+
+    public function test_booking_update_rejects_inactive_authenticated_employee_without_partial_changes(): void
+    {
+        $booking = $this->createBooking();
+        $this->actingAsBookingEmployee();
+        DB::table('NhanVien')->where('NhanVienID', 1)->update(['TrangThai' => 'Khóa']);
+        $auditCount = NhatKyHeThong::query()->count();
+
+        try {
+            $this->bookingService->update($booking, [
+                'staff_id' => 1,
+                'address' => 'Không được lưu',
+            ]);
+            $this->fail('An inactive authenticated employee must not update a booking.');
+        } catch (ValidationException $exception) {
+            $this->assertArrayHasKey('staff_id', $exception->errors());
+        }
+
+        $this->assertSame('12 Nguyễn Huệ', $booking->fresh()->DiaChiNhan);
+        $this->assertSame(1, $booking->fresh()->NhanVienID);
+        $this->assertSame($auditCount, NhatKyHeThong::query()->count());
+        $this->assertSame(0, DonHang::query()->count());
+    }
+
+    public function test_booking_confirmation_rejects_inactive_authenticated_employee_without_partial_changes(): void
+    {
+        $this->createInspectionCatalog();
+        $booking = $this->createBooking();
+        $this->bookingService->update($booking, [
+            'items' => [
+                ['DichVuID' => 1, 'LoaiDoGiatID' => 2, 'DonViTinhID' => 3, 'SoLuong' => 1],
+            ],
+        ]);
+        $this->actingAsBookingEmployee();
+        $this->withoutMiddleware([
+            EnsureUserHasPermission::class,
+            RejectCustomerRole::class,
+        ]);
+        DB::table('NhanVien')->where('NhanVienID', 1)->update(['TrangThai' => 'Khóa']);
+        $auditCount = NhatKyHeThong::query()->count();
+
+        $this->post(
+            route('bookings.confirm', $booking->BookingID),
+            $this->inspectionPayload($booking, 1),
+        )->assertRedirect(route('bookings.inspection', $booking))
+            ->assertSessionHasErrors('booking');
+
+        $booking->refresh();
+        $this->assertSame(BookingStatus::Pending->value, $booking->TrangThai);
+        $this->assertSame(1, $booking->NhanVienID);
+        $this->assertNull($booking->NhanVienXacNhanID);
+        $this->assertNull($booking->ThoiGianXacNhan);
+        $this->assertSame($auditCount, NhatKyHeThong::query()->count());
+        $this->assertSame(0, DonHang::query()->count());
+        $this->assertSame(0, ChiTietDonHang::query()->count());
+        $this->assertSame(0, GiaoNhan::query()->count());
+    }
+
+    public function test_booking_confirmation_retry_rejects_inactive_employee_without_changing_existing_order(): void
+    {
+        $this->createInspectionCatalog();
+        $booking = $this->createBooking();
+        $this->actingAsBookingEmployee();
+        $order = $this->bookingService->inspectBookingAndCreateOrder(
+            $booking,
+            999,
+            $this->actualItems(),
+        );
+        $bookingSnapshot = $booking->fresh()->getAttributes();
+        $orderSnapshot = $order->fresh()->getAttributes();
+        $auditCount = NhatKyHeThong::query()->count();
+        DB::table('NhanVien')->where('NhanVienID', 1)->update(['TrangThai' => 'Khóa']);
+
+        try {
+            $this->bookingService->inspectBookingAndCreateOrder(
+                $booking->fresh(),
+                999,
+                $this->actualItems(),
+            );
+            $this->fail('An inactive authenticated employee must not receive a successful confirmation retry.');
+        } catch (ValidationException $exception) {
+            $this->assertArrayHasKey('booking', $exception->errors());
+        }
+
+        $this->assertSame($bookingSnapshot, $booking->fresh()->getAttributes());
+        $this->assertSame($orderSnapshot, $order->fresh()->getAttributes());
+        $this->assertSame($auditCount, NhatKyHeThong::query()->count());
+        $this->assertSame(1, DonHang::query()->where('BookingID', $booking->BookingID)->count());
+        $this->assertSame(1, ChiTietDonHang::query()->where('DonHangID', $order->DonHangID)->count());
+    }
+
+    public function test_confirm_route_rejects_missing_authenticated_employee_even_when_client_submits_one(): void
     {
         DB::table('DonViTinh')->insert([
             'DonViTinhID' => 3,
@@ -527,20 +929,26 @@ class BookingOrderConversionTest extends TestCase
                 ['DichVuID' => 1, 'LoaiDoGiatID' => 2, 'DonViTinhID' => 3, 'SoLuong' => 1],
             ],
         ]);
-        $this->actingAsBookingEmployee();
+        $user = new User;
+        $user->forceFill([
+            'TaiKhoanID' => 2,
+            'NhanVienID' => null,
+            'TrangThai' => 'Hoạt động',
+        ]);
+        $this->actingAs($user);
         $this->withoutMiddleware([
             EnsureUserHasPermission::class,
             RejectCustomerRole::class,
         ]);
 
         $this->from(route('bookings.index'))
-            ->post(route('bookings.confirm', $booking->BookingID))
+            ->post(route('bookings.confirm', $booking->BookingID), $this->inspectionPayload($booking, 1))
             ->assertRedirect(route('bookings.inspection', $booking))
-            ->assertSessionHasErrors([
-                'staff_id' => 'Vui lòng chọn nhân viên phụ trách.',
-            ]);
+            ->assertSessionHasErrors('booking');
 
         $this->assertSame(BookingStatus::Pending->value, $booking->fresh()->TrangThai);
+        $this->assertSame(1, $booking->fresh()->NhanVienID);
+        $this->assertNull($booking->fresh()->NhanVienXacNhanID);
         $this->assertSame(0, DonHang::query()->where('BookingID', $booking->BookingID)->count());
     }
 
@@ -589,6 +997,7 @@ class BookingOrderConversionTest extends TestCase
             $orderService,
             app(PricingService::class),
             app(NotificationService::class),
+            app(DeliveryFeeService::class),
         ));
         Log::shouldReceive('error')
             ->once()
@@ -989,6 +1398,7 @@ class BookingOrderConversionTest extends TestCase
 
     public function test_order_creation_uses_the_exact_price_tuple_instead_of_the_submitted_price(): void
     {
+        $this->actingAsBookingEmployee();
         $managerId = $this->createManagementAccount();
         DB::table('DonViTinh')->insert([
             ['DonViTinhID' => 3, 'TenDonViTinh' => 'Cái', 'KyHieu' => 'Cái', 'TrangThai' => 'Hoạt động'],
@@ -1042,6 +1452,7 @@ class BookingOrderConversionTest extends TestCase
 
     public function test_order_creation_rejects_a_missing_exact_price_tuple(): void
     {
+        $this->actingAsBookingEmployee();
         DB::table('DonViTinh')->insert([
             ['DonViTinhID' => 3, 'TenDonViTinh' => 'Cái', 'KyHieu' => 'Cái', 'TrangThai' => 'Hoạt động'],
             ['DonViTinhID' => 4, 'TenDonViTinh' => 'Đôi', 'KyHieu' => 'Đôi', 'TrangThai' => 'Hoạt động'],
@@ -1363,6 +1774,7 @@ class BookingOrderConversionTest extends TestCase
 
     public function test_order_service_rounds_excess_weight_precision_before_calculating_and_persisting(): void
     {
+        $this->actingAsBookingEmployee();
         DB::table('DonViTinh')->insert([
             'DonViTinhID' => 1,
             'TenDonViTinh' => 'Kilogram',
@@ -1421,44 +1833,29 @@ class BookingOrderConversionTest extends TestCase
         $this->assertSame(2.35, $validated['items'][0]['KhoiLuong']);
     }
 
-    public function test_order_request_requires_a_valid_responsible_employee_for_create_and_update(): void
+    public function test_order_request_does_not_require_client_employee_id_for_creation_but_requires_it_for_update(): void
     {
         $this->createRequestCatalog();
 
-        foreach (['POST', 'PUT'] as $method) {
-            try {
-                $this->validateOrderRequest(['NhanVienID' => null], $method);
-                $this->fail('The responsible employee is required for order creation and updates.');
-            } catch (ValidationException $exception) {
-                $this->assertArrayHasKey('NhanVienID', $exception->errors());
-                $this->assertSame('Vui lòng chọn nhân viên phụ trách.', $exception->errors()['NhanVienID'][0]);
-            }
-
-            $validated = $this->validateOrderRequest(['NhanVienID' => 1], $method);
-            $this->assertSame(1, $validated['NhanVienID']);
-        }
-    }
-
-    public function test_booking_edit_requires_a_responsible_employee_when_converting_to_an_order(): void
-    {
-        $this->createRequestCatalog();
+        $createData = $this->validateOrderRequest([], 'POST');
+        $this->assertArrayNotHasKey('NhanVienID', $createData);
 
         try {
-            $this->validateBookingRequest([
-                'staff_id' => null,
-                'status' => BookingStatus::Confirmed->value,
-            ]);
-            $this->fail('A responsible employee is required when confirming a booking.');
+            $this->validateOrderRequest(['NhanVienID' => null], 'PUT');
+            $this->fail('An employee remains required when updating an existing order.');
         } catch (ValidationException $exception) {
-            $this->assertArrayHasKey('staff_id', $exception->errors());
-            $this->assertSame('Vui lòng chọn nhân viên phụ trách.', $exception->errors()['staff_id'][0]);
+            $this->assertArrayHasKey('NhanVienID', $exception->errors());
         }
 
-        $validated = $this->validateBookingRequest([
-            'staff_id' => 1,
-            'status' => BookingStatus::Confirmed->value,
-        ]);
-        $this->assertSame(1, $validated['staff_id']);
+        $updatedData = $this->validateOrderRequest(['NhanVienID' => 1], 'PUT');
+        $this->assertSame(1, $updatedData['NhanVienID']);
+    }
+
+    public function test_booking_confirmation_request_does_not_validate_client_employee_id(): void
+    {
+        $this->createRequestCatalog();
+        $request = new XacNhanBookingRequest;
+        $this->assertArrayNotHasKey('staff_id', $request->rules());
     }
 
     public function test_booking_request_requires_the_amount_matching_the_selected_unit(): void
@@ -1593,6 +1990,66 @@ class BookingOrderConversionTest extends TestCase
         Http::assertNothingSent();
         $this->assertSame(1000.0, (float) $booking->fresh()->PickupDeliveryFee);
         $this->assertSame(2000.0, (float) $booking->fresh()->DeliveryFee);
+    }
+
+    public function test_booking_can_requote_delivery_fees_and_conversion_uses_the_server_quote(): void
+    {
+        $this->createInspectionCatalog();
+        $this->createPromotionTable();
+        $booking = $this->createBooking([
+            'HinhThucTraDo' => 'Tại nhà',
+            'DiaChiTra' => '88 Lê Lợi',
+            'PickupDeliveryFee' => 1000,
+            'DeliveryFee' => 2000,
+        ]);
+        $this->actingAsBookingEmployee();
+        $this->withoutMiddleware([Authenticate::class, EnsureUserHasPermission::class, RejectCustomerRole::class, RestoreRememberedLogin::class]);
+
+        $quoteResponse = $this->postJson(route('bookings.delivery-fee-quote', $booking), [
+            'method' => 'Tại nhà',
+            'address' => 'Địa chỉ nhận mới',
+            'return_method' => 'Tại nhà',
+            'return_address' => 'Địa chỉ trả mới',
+        ])->assertOk();
+        $quote = $quoteResponse->json();
+        $this->assertGreaterThan(0, $quote['total_fee']);
+
+        $this->post(route('bookings.confirm', $booking), [
+            ...$this->inspectionPayload($booking, 1),
+            'method' => 'Tại nhà',
+            'address' => 'Địa chỉ nhận mới',
+            'return_method' => 'Tại nhà',
+            'return_address' => 'Địa chỉ trả mới',
+            'items' => $this->actualItems(),
+            'recalculate_delivery_fee' => 1,
+        ])->assertRedirect();
+
+        $order = DonHang::query()->where('BookingID', $booking->BookingID)->firstOrFail();
+        $savedBooking = $booking->fresh();
+        $this->assertSame((float) $quote['total_fee'], (float) $order->PhiGiaoHang);
+        $this->assertSame((float) $quote['pickup_fee'], (float) $savedBooking->PickupDeliveryFee);
+        $this->assertSame((float) $quote['return_fee'], (float) $savedBooking->DeliveryFee);
+    }
+
+    public function test_booking_delivery_quote_reports_missing_addresses_and_route_service_errors(): void
+    {
+        $booking = $this->createBooking();
+        $this->actingAsBookingEmployee();
+        $this->withoutMiddleware([Authenticate::class, EnsureUserHasPermission::class, RejectCustomerRole::class, RestoreRememberedLogin::class]);
+
+        $this->postJson(route('bookings.delivery-fee-quote', $booking), [
+            'method' => 'Tại nhà',
+            'return_method' => 'Tại nhà',
+        ])->assertUnprocessable()
+            ->assertJsonValidationErrors(['address', 'return_address']);
+
+        $this->deliveryRouteFailure = true;
+        $this->postJson(route('bookings.delivery-fee-quote', $booking), [
+            'method' => 'Tại nhà',
+            'address' => 'Địa chỉ nhận mới',
+            'return_method' => 'Tại cửa hàng',
+        ])->assertUnprocessable()
+            ->assertJsonValidationErrors('delivery');
     }
 
     public function test_booking_confirmation_fee_failure_rolls_back_booking_order_items_and_deliveries(): void
@@ -1766,6 +2223,7 @@ class BookingOrderConversionTest extends TestCase
     {
         $this->createInspectionCatalog();
         $booking = $this->createBooking();
+        $this->actingAsBookingEmployee();
         DB::table('NhanVien')->where('NhanVienID', 1)->update(['TrangThai' => 'Khóa']);
         foreach ([
             fn () => app(OrderService::class)->create(['KhachHangID' => 9, 'NhanVienID' => 1,

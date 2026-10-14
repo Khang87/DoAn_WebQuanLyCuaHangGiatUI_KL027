@@ -120,11 +120,15 @@ trait BookingInspectionFixture
                 $snapshot['items'] ?? [['DichVuID' => 1, 'LoaiDoGiatID' => 2, 'DonViTinhID' => 2, 'SoLuong' => 1]],
             );
         }
-        $request = LuuDonHangRequest::create('/admin/orders/1', $method, array_merge([
+        $defaults = [
             'KhachHangID' => 9,
-            'NhanVienID' => 1,
             'TrangThai' => $method === 'POST' ? OrderStatus::Received->value : OrderStatus::Pending->value,
-        ], $snapshot));
+        ];
+        if ($method !== 'POST') {
+            $defaults['NhanVienID'] = 1;
+        }
+
+        $request = LuuDonHangRequest::create('/admin/orders/1', $method, array_merge($defaults, $snapshot));
         $request->setContainer($this->app);
         $request->setRedirector($this->app['redirect']);
         $request->validateResolved();
@@ -266,6 +270,11 @@ trait BookingInspectionFixture
             $table->unsignedInteger('NhanVienID')->nullable();
             $table->unsignedInteger('NhanVienXacNhanID')->nullable();
             $table->dateTime('ThoiGianXacNhan')->nullable();
+            $table->integer('DiemSuDung')->default(0);
+            $table->decimal('TienGiamDoDiem', 18, 2)->default(0);
+            $table->boolean('DiemDaTru')->default(false);
+            $table->unsignedInteger('KhuyenMaiID')->nullable();
+            $table->boolean('KhuyenMaiDaTru')->default(false);
         });
 
         Schema::create('ChiTietBooking', function (Blueprint $table): void {

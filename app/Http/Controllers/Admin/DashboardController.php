@@ -31,7 +31,7 @@ class DashboardController extends Controller
      * Hiển thị trang Dashboard dành cho Quản lý.
      * Bao gồm: KPI tài chính, biểu đồ, bảng dữ liệu nhanh.
      */
-    public function index()
+    public function index(Request $request)
     {
         $today = Carbon::today(config('app.timezone'));
         $thisMonth = $today->month;
@@ -120,6 +120,15 @@ class DashboardController extends Controller
                 'revenue' => $this->sumDailyRevenue($dailyRevenue, $date, $date),
             ];
         })->values();
+        $revenueFilter = $this->normalizeRevenueFilter($request->query('filter'));
+        $revenueChartData = $revenueFilter === '7_days'
+            ? [
+                'labels' => $last7DaysRevenue->pluck('date')->all(),
+                'data' => $last7DaysRevenue->pluck('revenue')->all(),
+                'filter' => '7_days',
+                'filter_label' => $this->getFilterLabel('7_days'),
+            ]
+            : $this->buildRevenueChartData($revenueFilter);
 
         // --- Biểu đồ: Doanh thu 12 tháng gần nhất (cuộn tròn, có giới hạn năm) ---
         $last12Months = collect(range(11, 0))->map(function ($monthsAgo) use ($dailyRevenue) {
@@ -181,7 +190,8 @@ class DashboardController extends Controller
             'newCustomersMonth' => $newCustomersMonth,
             'averageRating' => $averageRating,
             'totalReviews' => $totalReviews,
-            'last7DaysRevenue' => $last7DaysRevenue,
+            'revenueFilter' => $revenueFilter,
+            'revenueChartData' => $revenueChartData,
             'last12Months' => $last12Months,
             'statusDistribution' => $statusDistribution,
             'topServices' => $topServices,
@@ -292,7 +302,16 @@ class DashboardController extends Controller
      */
     public function getRevenueChartData(Request $request)
     {
-        $filter = $request->get('filter', '7_days');
+        $filter = $this->normalizeRevenueFilter($request->query('filter'));
+
+        return response()->json($this->buildRevenueChartData($filter));
+    }
+
+    /**
+     * @return array{labels: array<int, string>, data: array<int, float>, filter: string, filter_label: string}
+     */
+    private function buildRevenueChartData(string $filter): array
+    {
         $today = Carbon::today(config('app.timezone'));
         $thisYear = $today->year;
         $groupBy = 'day';
@@ -354,12 +373,19 @@ class DashboardController extends Controller
         $totals = $this->getGroupedRevenueTotals($from, $to, $groupBy);
         $data = array_map(fn (int|string $periodKey): float => $totals[$periodKey] ?? 0.0, $periodKeys);
 
-        return response()->json([
+        return [
             'labels' => $labels,
             'data' => $data,
             'filter' => $filter,
             'filter_label' => $this->getFilterLabel($filter),
-        ]);
+        ];
+    }
+
+    private function normalizeRevenueFilter(mixed $filter): string
+    {
+        return in_array($filter, ['today', '7_days', 'this_month', 'this_year'], true)
+            ? $filter
+            : '7_days';
     }
 
     /**

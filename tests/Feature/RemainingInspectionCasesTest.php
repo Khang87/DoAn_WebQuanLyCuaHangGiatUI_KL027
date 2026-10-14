@@ -113,7 +113,35 @@ class RemainingInspectionCasesTest extends TestCase
 
     public static function employees(): array
     {
-        return ['84 active' => ['Hoạt động', 1, true], '85 locked' => ['Khóa', 1, false], '86 inactive' => ['Ngừng hoạt động', 1, false], '87 missing' => ['Hoạt động', 999, false], '87 wrong type' => ['Hoạt động', 'abc', false], '88 null' => ['Hoạt động', null, false], '88 empty' => ['Hoạt động', '', false]];
+        return [
+            '84 active authenticated employee overrides client ID' => ['Hoạt động', 999, true],
+            '85 locked authenticated employee' => ['Khóa', 1, false],
+            '86 inactive authenticated employee' => ['Ngừng hoạt động', 1, false],
+        ];
+    }
+
+    public static function malformedEmployeeIds(): array
+    {
+        return [
+            'non-numeric value' => ['abc'],
+            'null value' => [null],
+            'empty value' => [''],
+        ];
+    }
+
+    #[DataProvider('malformedEmployeeIds')]
+    public function test_order_creation_rejects_malformed_client_employee_id(mixed $id): void
+    {
+        $before = $this->snapshot();
+        $response = $this->post(route('orders.store'), [
+            'KhachHangID' => 9,
+            'NhanVienID' => $id,
+            'TrangThai' => OrderStatus::Received->value,
+            'items' => [$this->row()],
+        ]);
+
+        $response->assertSessionHasErrors('NhanVienID');
+        $this->assertSame($before, $this->snapshot());
     }
 
     #[DataProvider('employees')]
@@ -136,10 +164,12 @@ class RemainingInspectionCasesTest extends TestCase
         }
         if ($valid) {
             $this->assertSame(2, DonHang::count());
+            $this->assertSame([1, 1], DonHang::query()->orderBy('DonHangID')->pluck('NhanVienID')->all());
             app(OrderService::class)->create($data);
             $newBooking = $this->createBooking(['HinhThucNhanDo' => 'Tại cửa hàng']);
             app(BookingService::class)->inspectBookingAndCreateOrder($newBooking, 1, [$this->row()]);
             $this->assertSame(4, DonHang::count());
+            $this->assertSame([1, 1, 1, 1], DonHang::query()->orderBy('DonHangID')->pluck('NhanVienID')->all());
 
             return;
         }
