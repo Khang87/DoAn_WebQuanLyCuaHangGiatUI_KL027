@@ -510,7 +510,7 @@
 <script src="{{ asset('assets/libs/apexcharts/apexcharts.min.js') }}"></script>
 <script>
     (function () {
-        const formatVnd = value => `${new Intl.NumberFormat('vi-VN').format(value || 0)} VNĐ`;
+        const formatCurrency = value => `${new Intl.NumberFormat('vi-VN').format(Number(value) || 0)} VNĐ`;
         const revenueLabels = @json($chartData['labels'] ?? []);
         const revenueValues = @json($chartData['revenue'] ?? []);
         const orderValues = @json($chartData['orders'] ?? []);
@@ -584,7 +584,7 @@
                 tooltip: {
                     shared: true,
                     y: {
-                        formatter: (value, { seriesIndex }) => seriesIndex === 0 ? formatVnd(value) : `${value} đơn`,
+                        formatter: (value, { seriesIndex }) => seriesIndex === 0 ? formatCurrency(value) : `${value} đơn`,
                     },
                 },
                 noData: { text: 'Chưa có dữ liệu trong khoảng thời gian này' },
@@ -622,10 +622,14 @@
                             size: '62%',
                             labels: {
                                 show: true,
+                                value: {
+                                    show: true,
+                                    formatter: value => formatCurrency(value),
+                                },
                                 total: {
                                     show: true,
                                     label: 'Doanh thu dịch vụ',
-                                    formatter: context => formatVnd(context.globals.seriesTotals.reduce((total, value) => total + value, 0)),
+                                    formatter: context => formatCurrency(context.globals.seriesTotals.reduce((total, value) => total + value, 0)),
                                 },
                             },
                         },
@@ -633,7 +637,7 @@
                 },
                 tooltip: {
                     y: {
-                        formatter: value => formatVnd(value),
+                        formatter: value => formatCurrency(value),
                     },
                 },
                 noData: { text: 'Chưa có dữ liệu dịch vụ trong khoảng thời gian này' },

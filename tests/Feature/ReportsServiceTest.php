@@ -252,7 +252,9 @@ class ReportsServiceTest extends TestCase
     public function test_reports_page_renders_for_owner_with_isolated_fixtures(): void
     {
         $this->actingAs($this->reportOwner())->get('/reports')
-            ->assertOk()->assertSee('Báo cáo', false);
+            ->assertOk()
+            ->assertSee('Báo cáo', false)
+            ->assertSee('formatter: value => formatCurrency(value)', false);
     }
 
     public function test_reports_page_renders_with_all_supported_date_filters(): void
