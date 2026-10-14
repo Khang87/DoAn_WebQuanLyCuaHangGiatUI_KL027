@@ -164,6 +164,16 @@ class BookingOrderConversionTest extends TestCase
     public function test_booking_estimate_uses_saved_points_and_returns_each_priced_service_line(): void
     {
         $this->createInspectionCatalog();
+        $this->createPromotionTable();
+        DB::table('KhuyenMai')->insert([
+            'KhuyenMaiID' => 3,
+            'MaKhuyenMai' => 'BOOKING10',
+            'LoaiKhuyenMai' => 'Phần trăm',
+            'GiaTriGiam' => 10,
+            'NgayBatDau' => today()->subDay()->toDateString(),
+            'NgayKetThuc' => today()->addDay()->toDateString(),
+            'TrangThai' => 'Hoạt động',
+        ]);
         DB::table('DonViTinh')->insert([
             'DonViTinhID' => 4,
             'TenDonViTinh' => 'Kilogram',
@@ -186,6 +196,7 @@ class BookingOrderConversionTest extends TestCase
             'DiemSuDung' => 25,
             'TienGiamDoDiem' => 25,
         ]);
+        $booking->forceFill(['KhuyenMaiID' => 3])->saveQuietly();
         $this->withoutMiddleware([Authenticate::class, EnsureUserHasPermission::class, RejectCustomerRole::class, RestoreRememberedLogin::class]);
 
         $this->postJson(route('bookings.estimate', $booking), [
@@ -200,12 +211,22 @@ class BookingOrderConversionTest extends TestCase
             ->assertJsonPath('TienGiamDoDiem', 25)
             ->assertJsonPath('items.0.service_name', 'Giặt')
             ->assertJsonPath('items.0.garment_name', 'Áo sơ mi')
+            ->assertJsonPath('items.0.unit_name', 'Cái')
             ->assertJsonPath('items.0.amount', '2 Cái')
+            ->assertJsonPath('items.0.quantity', 2)
             ->assertJsonPath('items.0.unit_price', 15000)
             ->assertJsonPath('items.0.subtotal', 30000)
+            ->assertJsonPath('items.1.unit_name', 'KG')
+            ->assertJsonPath('items.1.weight', 4.25)
             ->assertJsonPath('items.1.amount', '4.25 kg')
             ->assertJsonPath('items.1.unit_price', 10000)
-            ->assertJsonPath('items.1.subtotal', 42500);
+            ->assertJsonPath('items.1.subtotal', 42500)
+            ->assertJsonPath('requested_points', 25)
+            ->assertJsonPath('available_points', 500)
+            ->assertJsonPath('point_value', 1)
+            ->assertJsonPath('promotion_context.eligible', true)
+            ->assertJsonPath('promotion_context.type', 'Phần trăm')
+            ->assertJsonPath('promotion_context.value', 10);
     }
 
     public function test_booking_inspection_shows_saved_rewards_as_read_only(): void
@@ -232,6 +253,9 @@ class BookingOrderConversionTest extends TestCase
             ->assertSee('BOOKING10')
             ->assertSee('50 điểm (50 VNĐ)')
             ->assertSee('Tính lại phí giao nhận')
+            ->assertSee('booking-items-table', false)
+            ->assertSee('Tình trạng trước khi giặt')
+            ->assertSee('data-pricing-options', false)
             ->assertSee('data-estimate-items', false)
             ->assertDontSee('name="use_points"', false)
             ->assertDontSee('name="DiemSuDung"', false);

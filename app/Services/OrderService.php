@@ -130,9 +130,12 @@ class OrderService
             return [
                 'service_name' => $serviceNames->get($item['DichVuID'], 'Dịch vụ không tồn tại'),
                 'garment_name' => $garmentNames->get($item['LoaiDoGiatID'], 'Loại đồ không tồn tại'),
+                'unit_name' => $unit?->KyHieu ?: $unit?->TenDonViTinh,
                 'amount' => $item['KhoiLuong'] !== null
                     ? (float) $item['KhoiLuong'].' kg'
                     : (int) $item['SoLuong'].' '.($unit?->KyHieu ?: $unit?->TenDonViTinh),
+                'quantity' => $item['KhoiLuong'] !== null ? null : (int) $item['SoLuong'],
+                'weight' => $item['KhoiLuong'] !== null ? (float) $item['KhoiLuong'] : null,
                 'unit_price' => (float) $item['DonGia'],
                 'subtotal' => (float) $item['ThanhTien'],
             ];
@@ -153,13 +156,37 @@ class OrderService
     /** A null points request means use all available points in the inspection preview. */
     private function calculateBookingEstimate(Booking $booking, float $subtotal, ?int $requestedPoints): array
     {
-        $customer = KhachHang::find($booking->KhachHangID);
+        $customer = $booking->relationLoaded('khachHang')
+            ? $booking->getRelation('khachHang')
+            : KhachHang::find($booking->KhachHangID);
         $availablePoints = ($customer?->points() ?? 0)
             + ($booking->DiemDaTru ? (int) $booking->DiemSuDung : 0);
         $promotion = $booking->khuyenMai;
         $warning = $promotion?->rejectionReasonForCustomer($customer, $subtotal);
         if ($booking->KhuyenMaiID && ! $promotion) {
             $warning = 'Không tìm thấy khuyến mãi của lịch đặt. Vui lòng kiểm tra trước khi xác nhận.';
+        }
+        $promotionContext = null;
+        if ($promotion !== null) {
+            $minimumSubtotal = (float) ($promotion->GiaTriDonToiThieu ?? $subtotal);
+            $promotionEligible = $warning === null;
+            if ($warning === 'Đơn hàng chưa đạt giá trị tối thiểu để dùng mã khuyến mãi.') {
+                $promotionEligible = $promotion->rejectionReasonForCustomer(
+                    $customer,
+                    max($subtotal, $minimumSubtotal),
+                ) === null;
+            }
+            $promotionContext = [
+                'eligible' => $promotionEligible,
+                'type' => $promotion->LoaiKhuyenMai,
+                'value' => (float) $promotion->GiaTriGiam,
+                'minimum' => $promotion->GiaTriDonToiThieu === null
+                    ? null
+                    : (float) $promotion->GiaTriDonToiThieu,
+                'maximum' => $promotion->MucGiamToiDa === null
+                    ? null
+                    : (float) $promotion->MucGiamToiDa,
+            ];
         }
         if ($warning !== null) {
             $promotion = null;
@@ -173,6 +200,10 @@ class OrderService
             'PhiNhanDo' => $deliveryFees['pickup_fee'],
             'PhiGiaoDo' => $deliveryFees['return_fee'],
             'promotion_warning' => $warning,
+            'promotion_context' => $promotionContext,
+            'available_points' => $availablePoints,
+            'requested_points' => $requestedPoints ?? $availablePoints,
+            'point_value' => self::POINT_VALUE,
         ];
     }
 

@@ -15,6 +15,7 @@ use App\Models\NhanVien;
 use App\Services\BookingService;
 use App\Services\DeliveryFeeService;
 use App\Services\OrderService;
+use App\Services\PricingService;
 use App\Support\FriendlyError;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
@@ -28,6 +29,7 @@ class BookingController extends Controller
 {
     public function __construct(
         private BookingService $bookingService,
+        private PricingService $pricingService,
     ) {}
 
     public function index(Request $request)
@@ -163,29 +165,13 @@ class BookingController extends Controller
             ->where(fn ($query) => $query->where('TrangThai', 'Hoạt động')->orWhereIn('DonViTinhID', $unitIds))
             ->orderBy('TenDonViTinh')
             ->get();
-        $pricingUnitOptions = BangGia::query()
-            ->with('donViTinh')
-            ->where('TrangThai', 'Hoạt động')
-            ->where(function ($query): void {
-                $query->whereNull('NgayApDung')
-                    ->orWhereDate('NgayApDung', '<=', today());
-            })
-            ->where(function ($query): void {
-                $query->whereNull('NgayKetThuc')
-                    ->orWhereDate('NgayKetThuc', '>=', today());
-            })
-            ->get()
-            ->filter(fn (BangGia $pricing): bool => $pricing->donViTinh !== null)
-            ->unique(fn (BangGia $pricing): string => implode(':', [
-                $pricing->DichVuID,
-                $pricing->LoaiDoGiatID,
-                $pricing->DonViTinhID,
-            ]))
+        $pricingUnitOptions = $this->pricingService->orderOptions()
             ->map(fn (BangGia $pricing): array => [
                 'serviceId' => $pricing->DichVuID,
                 'garmentId' => $pricing->LoaiDoGiatID,
                 'unitId' => $pricing->DonViTinhID,
                 'unit' => $pricing->unit,
+                'price' => (float) $pricing->DonGia,
                 'label' => $pricing->donViTinh->TenDonViTinh.(
                     $pricing->donViTinh->KyHieu ? ' ('.$pricing->donViTinh->KyHieu.')' : ''
                 ),
