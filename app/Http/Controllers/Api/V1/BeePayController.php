@@ -45,12 +45,23 @@ class BeePayController extends Controller
         }
 
         $rawBody = $request->getContent();
-        $signature = (string) ($request->header('X-Webhook-Signature')
-            ?: $request->header('X-BeePay-Signature'));
+        $webhookSignature = (string) $request->header('X-Webhook-Signature');
+        $beePaySignature = (string) $request->header('X-BeePay-Signature');
+        $signature = $webhookSignature ?: $beePaySignature;
         $providedHash = preg_replace('/^sha256=/i', '', trim($signature));
         $expectedHash = hash_hmac('sha256', $rawBody, $secret);
 
         if ($providedHash === '' || ! hash_equals($expectedHash, $providedHash)) {
+            Log::warning('BeePay webhook signature rejected', [
+                'webhook_signature_header_present' => $webhookSignature !== '',
+                'beepay_signature_header_present' => $beePaySignature !== '',
+                'signature_has_sha256_prefix' => str_starts_with(strtolower(trim($signature)), 'sha256='),
+                'signature_hex_length' => strlen($providedHash),
+                'signature_is_hex' => $providedHash !== '' && ctype_xdigit($providedHash),
+                'raw_body_bytes' => strlen($rawBody),
+                'content_type' => $request->header('Content-Type'),
+            ]);
+
             return response()->json(['ok' => false, 'error' => 'Invalid signature.'], 401);
         }
 
