@@ -28,6 +28,7 @@ use App\Http\Controllers\Auth\InternalPasswordResetController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\PasswordResetController;
 use App\Http\Controllers\Api\V1\PaymentConfigController;
+use App\Http\Controllers\Api\V1\SePayController;
 use App\Http\Controllers\Staff\DashboardController as StaffDashboardController;
 use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Support\Facades\Route;
@@ -46,6 +47,10 @@ use Illuminate\Support\Facades\Route;
 // Authentication Routes
 // Fallback payment configuration endpoint for hosts that do not dispatch API routes.
 Route::get('/payment-config', PaymentConfigController::class)->name('mobile.payment-config');
+Route::post('/api/v1/webhooks/sepay', [SePayController::class, 'webhook'])
+    ->middleware('throttle:120,1')
+    ->withoutMiddleware([PreventRequestForgery::class])
+    ->name('mobile.sepay-webhook-fallback');
 
 Route::get('/login', [LoginController::class, 'showLoginForm'])->name('login');
 Route::post('/login', [LoginController::class, 'login']);
