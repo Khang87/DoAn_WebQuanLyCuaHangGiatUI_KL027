@@ -49,6 +49,10 @@ Route::post('/api/v1/webhooks/beepay', [BeePayController::class, 'webhook'])
     ->middleware('throttle:120,1')
     ->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\PreventRequestForgery::class])
     ->name('mobile.beepay-webhook-fallback');
+Route::post('/beepay-webhook', [BeePayController::class, 'webhook'])
+    ->middleware('throttle:120,1')
+    ->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\PreventRequestForgery::class])
+    ->name('beepay.webhook');
 
 Route::get('/login', [LoginController::class, 'showLoginForm'])->name('login');
 Route::post('/login', [LoginController::class, 'login']);
