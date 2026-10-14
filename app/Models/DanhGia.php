@@ -19,7 +19,15 @@ class DanhGia extends Model
     public const CREATED_AT = 'NgayDanhGia';
 
     protected $fillable = [
-        'DonHangID', 'KhachHangID', 'SoSao', 'BinhLuan', 'NgayDanhGia', 'TrangThai', 'DanhGiaID'];
+        'DonHangID',
+        'KhachHangID',
+        'SoSao',
+        'BinhLuan',
+        'NgayDanhGia',
+        'TrangThai',
+        'DanhGiaID',
+        'shop_response',
+    ];
 
     protected $casts = [
         'DonHangID' => 'integer',

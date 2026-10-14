@@ -8,6 +8,7 @@ use App\Models\DanhGia;
 use App\Models\DonHang;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
+use RuntimeException;
 
 class ReviewService
 {
@@ -96,6 +97,20 @@ class ReviewService
         $review->update($data);
 
         return $review->fresh();
+    }
+
+    public function updateShopResponse(DanhGia $review, string $shopResponse): DanhGia
+    {
+        return DB::transaction(function () use ($review, $shopResponse): DanhGia {
+            $review->update(['shop_response' => $shopResponse]);
+            $savedReview = $review->fresh();
+
+            if ($savedReview === null || $savedReview->getAttribute('shop_response') !== $shopResponse) {
+                throw new RuntimeException('Phản hồi đánh giá chưa được lưu chính xác.');
+            }
+
+            return $savedReview;
+        });
     }
 
     public function delete(DanhGia $review): bool
