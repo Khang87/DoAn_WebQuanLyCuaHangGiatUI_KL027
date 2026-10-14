@@ -142,6 +142,39 @@ class OrderDeliveryProgressTest extends TestCase
         $this->assertSame(OrderStatus::Delivered->value, $updated->TrangThai);
     }
 
+    public function test_staff_dashboard_status_route_returns_a_status_that_remains_in_its_order_list(): void
+    {
+        $this->createOrder(9);
+        DB::table('DonHang')->where('DonHangID', 9)->update(['TrangThai' => OrderStatus::Received->value]);
+        $this->actingAs($this->userWithStatusPermission());
+
+        $this->patchJson(route('staff.dashboard.update-order-status', 9), [
+            'status' => OrderStatus::Washing->value,
+        ])->assertOk()->assertJson([
+            'success' => true,
+            'status' => OrderStatus::Washing->value,
+            'status_label' => OrderStatus::Washing->label(),
+        ]);
+
+        $this->assertSame(OrderStatus::Washing->value, DB::table('DonHang')->where('DonHangID', 9)->value('TrangThai'));
+    }
+
+    public function test_staff_dashboard_status_route_returns_a_status_that_removes_a_store_pickup_order_from_its_list(): void
+    {
+        $this->createOrder(10);
+        $this->actingAs($this->userWithStatusPermission());
+
+        $this->patchJson(route('staff.dashboard.update-order-status', 10), [
+            'status' => OrderStatus::Delivered->value,
+        ])->assertOk()->assertJson([
+            'success' => true,
+            'status' => OrderStatus::Delivered->value,
+            'status_label' => OrderStatus::Delivered->label(),
+        ]);
+
+        $this->assertSame(OrderStatus::Delivered->value, DB::table('DonHang')->where('DonHangID', 10)->value('TrangThai'));
+    }
+
     public function test_booking_for_home_return_requires_delivery_even_without_delivery_leg(): void
     {
         DB::table('Booking')->insert(['BookingID' => 1, 'HinhThucTraDo' => 'Tại nhà']);

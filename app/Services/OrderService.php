@@ -537,6 +537,14 @@ class OrderService
     public function create(array $data): DonHang
     {
         $this->promotionRejection = null;
+        $authenticatedEmployeeId = Auth::user()?->NhanVienID;
+        if (! $authenticatedEmployeeId) {
+            throw ValidationException::withMessages([
+                'NhanVienID' => 'Tài khoản hiện tại chưa liên kết hồ sơ nhân viên để tạo đơn hàng.',
+            ]);
+        }
+        $data['NhanVienID'] = (int) $authenticatedEmployeeId;
+
         // Tương thích với các nơi gọi create() chưa truyền phương thức nhận/trả đồ.
         $data['HinhThucNhanDo'] ??= 'Tại cửa hàng';
         $data['HinhThucTraDo'] ??= 'Tại cửa hàng';

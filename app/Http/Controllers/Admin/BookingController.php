@@ -110,8 +110,10 @@ class BookingController extends Controller
             return redirect()->route('bookings.show', $booking)->with('error', 'Chỉ Booking chờ xác nhận mới có thể kiểm tra thực tế.');
         }
 
-        $responsibleEmployeeLocked = $booking->donHangs->isNotEmpty();
-        $employees = NhanVien::where('TrangThai', 'Hoạt động')->orderBy('HoTen')->get();
+        $authenticatedEmployee = NhanVien::query()
+            ->whereKey(request()->user()?->NhanVienID)
+            ->where('TrangThai', 'Hoạt động')
+            ->first(['NhanVienID', 'HoTen']);
         $serviceIds = $booking->chiTietBookings->pluck('DichVuID')->all();
         $garmentIds = $booking->chiTietBookings->pluck('LoaiDoGiatID')->all();
         $unitIds = $booking->chiTietBookings->pluck('DonViTinhID')->all();
@@ -171,8 +173,7 @@ class BookingController extends Controller
         return view('admin.bookings.edit', compact(
             'booking',
             'inspectionMode',
-            'responsibleEmployeeLocked',
-            'employees',
+            'authenticatedEmployee',
             'services',
             'serviceOptions',
             'serviceCategories',
@@ -240,7 +241,7 @@ class BookingController extends Controller
             $pointsToggleSubmitted = array_key_exists('use_points', $validated);
             $order = $this->bookingService->inspectBookingAndCreateOrder(
                 $booking,
-                (int) $validated['staff_id'],
+                $request->user()?->NhanVienID,
                 $validated['items'],
                 $pointsToggleSubmitted ? 0 : (int) ($validated['DiemSuDung'] ?? 0),
                 $pointsToggleSubmitted && (bool) $validated['use_points'],

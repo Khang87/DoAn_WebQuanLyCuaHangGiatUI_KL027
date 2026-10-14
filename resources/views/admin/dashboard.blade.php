@@ -187,16 +187,20 @@
     <div class="col-12 col-xl-8">
         <div class="card h-100">
             <div class="card-header d-flex justify-content-between align-items-center">
-                <h5 class="card-title mb-0" id="revenue-chart-title">Doanh thu 7 ngày gần nhất</h5>
-                <select class="form-select form-select-sm" id="revenueFilter" style="width: auto;">
-                    <option value="today">Hôm nay</option>
-                    <option value="7_days" selected>7 ngày gần nhất</option>
-                    <option value="this_month">Tháng này</option>
-                    <option value="this_year">Năm nay</option>
+                <h5 class="card-title mb-0" id="revenue-chart-title">{{ $revenueChartData['filter_label'] }}</h5>
+                <select class="form-select form-select-sm"
+                        id="revenueFilter"
+                        data-revenue-chart-url="{{ route('admin.dashboard.revenue-chart') }}"
+                        style="width: auto;">
+                    <option value="today" @selected($revenueFilter === 'today')>Hôm nay</option>
+                    <option value="7_days" @selected($revenueFilter === '7_days')>7 ngày gần nhất</option>
+                    <option value="this_month" @selected($revenueFilter === 'this_month')>Tháng này</option>
+                    <option value="this_year" @selected($revenueFilter === 'this_year')>Năm nay</option>
                 </select>
             </div>
             <div class="card-body">
                 <div id="revenue-chart" style="height: 300px;"></div>
+                <div id="revenue-filter-status" class="small text-danger mt-2" role="status" aria-live="polite" hidden></div>
             </div>
         </div>
     </div>
@@ -320,7 +324,7 @@
     var revenueChartOptions = {
         series: [{
             name: 'Doanh thu',
-            data: @json($last7DaysRevenue->pluck('revenue'))
+            data: @json($revenueChartData['data'])
         }],
         chart: {
             type: 'area',
@@ -341,7 +345,7 @@
         dataLabels: { enabled: false },
         stroke: { curve: 'smooth', width: 3 },
         xaxis: {
-            categories: @json($last7DaysRevenue->pluck('date')),
+            categories: @json($revenueChartData['labels']),
             labels: { style: { colors: '#64748B', fontSize: '12px' } }
         },
         yaxis: {
@@ -364,6 +368,11 @@
 
     var revenueChart = new ApexCharts(document.querySelector("#revenue-chart"), revenueChartOptions);
     revenueChart.render();
+    window.adminRevenueChart = revenueChart;
+    window.adminRevenueChartData = {
+        labels: revenueChartOptions.xaxis.categories,
+        data: revenueChartOptions.series[0].data
+    };
 
     var statusOptions = {
         series: @json($statusDistribution->values()->all()),
@@ -454,32 +463,6 @@
     var topServiceChart = new ApexCharts(document.querySelector("#top-service-chart"), topServiceOptions);
     topServiceChart.render();
 
-    // AJAX handler for revenue filter
-    document.getElementById('revenueFilter').addEventListener('change', function () {
-        var filter = this.value;
-        var titleEl = document.getElementById('revenue-chart-title');
-
-        fetch('{{ route("admin.dashboard.revenue-chart") }}?filter=' + filter)
-            .then(response => response.json())
-            .then(data => {
-                // Update chart title
-                if (titleEl && data.filter_label) {
-                    titleEl.textContent = data.filter_label;
-                }
-                // Update chart data
-                revenueChart.updateOptions({
-                    series: [{
-                        name: 'Doanh thu',
-                        data: data.data
-                    }],
-                    xaxis: {
-                        categories: data.labels
-                    }
-                });
-            })
-            .catch(error => {
-                console.error('Error fetching revenue data:', error);
-            });
-    });
 </script>
+@vite('resources/js/admin-revenue-dashboard.js')
 @endpush

@@ -7,7 +7,6 @@ use App\Enums\PaymentStatus;
 use App\Http\Controllers\Concerns\RejectsSettledRecords;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\HoanTatTiepNhanRequest;
-use Illuminate\Http\JsonResponse;
 use App\Http\Requests\Admin\LuuDonHangRequest;
 use App\Models\DanhMucLoaiDoGiat;
 use App\Models\DichVu;
@@ -21,6 +20,7 @@ use App\Services\DeliveryFeeService;
 use App\Services\OrderService;
 use App\Services\PricingService;
 use App\Support\FriendlyError;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -73,13 +73,16 @@ class DonHangController extends Controller
         $selectedCustomer = $customers->firstWhere('KhachHangID', $selectedCustomerId);
         $services = DichVu::where('TrangThai', 'Hoạt động')->orderBy('TenDichVu')->get();
         $garments = LoaiDoGiat::where('TrangThai', 'Hoạt động')->orderBy('TenLoaiDoGiat')->get();
-        $employees = NhanVien::where('TrangThai', 'Hoạt động')->orderBy('HoTen')->get(['NhanVienID', 'HoTen']);
+        $authenticatedEmployee = NhanVien::query()
+            ->whereKey($request->user()?->NhanVienID)
+            ->where('TrangThai', 'Hoạt động')
+            ->first(['NhanVienID', 'HoTen']);
         $statusFlow = $this->orderService->getStatusFlow();
         $pricings = $this->pricingService->orderOptions();
         $nextOrderCode = $this->orderService->nextOrderCode();
 
         return view('admin.orders.create', array_merge(
-            compact('customers', 'selectedCustomer', 'services', 'garments', 'employees', 'statusFlow', 'pricings', 'nextOrderCode'),
+            compact('customers', 'selectedCustomer', 'services', 'garments', 'authenticatedEmployee', 'statusFlow', 'pricings', 'nextOrderCode'),
             $this->categoryOptions()
         ));
     }

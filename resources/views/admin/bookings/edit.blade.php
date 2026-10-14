@@ -46,32 +46,22 @@
                     <input class="form-control bg-light text-muted" id="booking-customer-email" value="{{ $customerEmail ?: '—' }}" disabled>
                 </div>
                 <div class="col-md-6">
-                    <label class="form-label" for="booking-staff-id">
-                        Nhân viên phụ trách
-                        @if(! $responsibleEmployeeLocked)
-                            <span class="text-danger d-none" data-staff-required-indicator>*</span>
-                        @endif
+                    <label class="form-label" for="booking-staff-name">
+                        {{ $inspectionMode ? 'Nhân viên tiếp nhận Booking' : 'Nhân viên phụ trách hiện tại' }}
                     </label>
-                    @if($responsibleEmployeeLocked)
-                        <input type="hidden" name="staff_id" value="{{ $booking->NhanVienID }}">
-                    @endif
-                    <select
-                        class="form-select @error('staff_id') is-invalid @enderror"
-                        id="booking-staff-id"
-                        name="staff_id"
-                        @disabled($responsibleEmployeeLocked)
+                    <input
+                        type="text"
+                        class="form-control bg-light text-muted"
+                        id="booking-staff-name"
+                        value="{{ $inspectionMode
+                            ? ($authenticatedEmployee?->HoTen ?? 'Chưa có hồ sơ nhân viên đang hoạt động')
+                            : ($booking->nhanVien?->HoTen ?? 'Chưa phân công') }}"
+                        readonly
                     >
-                        <option value="">Chọn nhân viên phụ trách</option>
-                        @foreach($employees as $employee)
-                            <option
-                                value="{{ $employee->NhanVienID }}"
-                                @selected(($responsibleEmployeeLocked ? $booking->NhanVienID : old('staff_id', $booking->NhanVienID ?? '')) == $employee->NhanVienID)
-                            >{{ $employee->HoTen }}</option>
-                        @endforeach
-                    </select>
-                    @error('staff_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
-                    @if($responsibleEmployeeLocked)
-                        <div class="form-text">Nhân viên phụ trách đã được khóa vì Booking đã chuyển thành đơn hàng.</div>
+                    @if($inspectionMode)
+                        <div class="form-text">Booking được tiếp nhận bởi nhân viên thuộc tài khoản đang đăng nhập.</div>
+                    @else
+                        <div class="form-text">Thông tin này chỉ để xem; không thể đổi nhân viên phụ trách tại đây.</div>
                     @endif
                 </div>
                 <div class="col-md-6"><label class="form-label">Hình thức nhận đồ <span class="text-danger ms-1">*</span></label><select class="form-select @error('method') is-invalid @enderror" name="method" id="booking-method" required>@foreach(\App\Enums\ReceiveMethod::options() as $value => $label)<option value="{{ $value }}" @selected(old('method', $booking->HinhThucNhanDo) === $value)>{{ $label }}</option>@endforeach</select>@error('method')<div class="invalid-feedback">{{ $message }}</div>@enderror</div>
@@ -193,9 +183,6 @@
         const returnMethod = document.getElementById('booking-return-method');
         const returnAddress = document.getElementById('booking-return-address');
         const address = document.querySelector('[name="address"]');
-        const status = document.getElementById('booking-status');
-        const staff = document.getElementById('booking-staff-id');
-        const staffRequiredIndicator = document.querySelector('[data-staff-required-indicator]');
         const form = document.getElementById('booking-edit-form');
         const itemsContainer = document.getElementById('booking-items');
         const addItemButton = document.getElementById('add-booking-item');
@@ -212,16 +199,6 @@
                 field.classList.toggle('bg-light', field.disabled);
                 field.classList.toggle('text-muted', field.disabled);
             }
-        }
-
-        function updateStaffRequirement() {
-            if (staff.disabled) {
-                return;
-            }
-
-            const required = inspectionMode || status?.value === @json(\App\Enums\BookingStatus::Confirmed->value);
-            staff.required = required;
-            staffRequiredIndicator.classList.toggle('d-none', !required);
         }
 
         function syncServiceOptions(item, preserveSelection = true) {
@@ -331,11 +308,9 @@
 
         method.addEventListener('change', updateAddressRequirement);
         returnMethod.addEventListener('change', updateAddressRequirement);
-        status?.addEventListener('change', updateStaffRequirement);
         form.addEventListener('reset', function () {
             setTimeout(function () {
                 updateAddressRequirement();
-                updateStaffRequirement();
                 itemsContainer.querySelectorAll('.booking-item').forEach(function (item) {
                     syncServiceOptions(item);
                     syncGarmentOptions(item);
@@ -400,7 +375,6 @@
         });
         form.addEventListener('reset', () => setTimeout(updateAddressRequirement, 0));
         updateAddressRequirement();
-        updateStaffRequirement();
         itemsContainer.querySelectorAll('.booking-item').forEach(function (item) {
             const category = item.querySelector('.booking-service-category');
             const selectedService = services.find(option =>

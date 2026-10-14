@@ -13,6 +13,7 @@ use App\Models\KhachHang;
 use App\Models\User;
 use App\Services\BookingService;
 use App\Services\DeliveryFeeService;
+use App\Services\NotificationService;
 use App\Services\OrderService;
 use App\Services\PaymentService;
 use Illuminate\Database\Schema\Blueprint;
@@ -33,6 +34,10 @@ class RewardPointTest extends TestCase
 
         $this->createSchema();
         $this->createCatalog();
+        $notificationService = Mockery::mock(NotificationService::class);
+        $notificationService->shouldReceive('notifyManagement')->byDefault()->andReturn(0);
+        $this->app->instance(NotificationService::class, $notificationService);
+        $this->actingAsBookingEmployee();
         $deliveryFeeService = Mockery::mock(DeliveryFeeService::class)->makePartial();
         $deliveryFeeService->shouldReceive('quote')->andReturnUsing(
             function (

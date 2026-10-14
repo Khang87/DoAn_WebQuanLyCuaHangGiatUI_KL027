@@ -142,6 +142,17 @@ class BookingService
                 ]);
             }
 
+            $assignedEmployeeId = null;
+            if ($hasConvertedOrder) {
+                unset($data['staff_id']);
+            } elseif (array_key_exists('staff_id', $data)) {
+                $assignedEmployeeId = $this->requireAuthenticatedEmployeeId(
+                    'staff_id',
+                    'Tài khoản hiện tại chưa liên kết hồ sơ nhân viên để cập nhật Booking.',
+                );
+                unset($data['staff_id']);
+            }
+
             if (
                 ($data['status'] ?? null) === BookingStatus::Cancelled->value
                 && $lockedBooking->TrangThai !== BookingStatus::Cancelled->value
@@ -160,6 +171,9 @@ class BookingService
 
             unset($data['customer_id']);
             $mappedData = $this->mapRequestData($data);
+            if ($assignedEmployeeId !== null) {
+                $mappedData['NhanVienID'] = $assignedEmployeeId;
+            }
             $wasPending = $lockedBooking->TrangThai === BookingStatus::Pending->value;
             $isBeingConfirmed = ($data['status'] ?? null) === BookingStatus::Confirmed->value;
 
@@ -204,7 +218,6 @@ class BookingService
     {
         $map = [
             'customer_id' => 'KhachHangID',
-            'staff_id' => 'NhanVienID',
             'method' => 'HinhThucNhanDo',
             'scheduled_date' => 'NgayHen',
             'scheduled_time' => 'GioHen',
@@ -256,17 +269,27 @@ class BookingService
         });
     }
 
-    /** Kiểm tra thực tế và tạo đơn trong một giao dịch, có khóa chống tạo trùng. */
+    /**
+     * Kiểm tra thực tế và tạo đơn trong một giao dịch, có khóa chống tạo trùng.
+     *
+     * @param  int|null  $employeeId  Legacy caller value; the authenticated account is authoritative.
+     * @param  array<int, array<string, mixed>>  $items
+     * @param  array<string, mixed>  $bookingData
+     */
     public function inspectBookingAndCreateOrder(
         Booking $booking,
-        int $employeeId,
+        ?int $employeeId,
         array $items,
         int $pointsUsed = 0,
         bool $useAllAvailablePoints = false,
         array $bookingData = [],
     ): DonHang {
-        return DB::transaction(function () use ($booking, $employeeId, $items, $pointsUsed, $useAllAvailablePoints, $bookingData): DonHang {
+        return DB::transaction(function () use ($booking, $items, $pointsUsed, $useAllAvailablePoints, $bookingData): DonHang {
             $lockedBooking = Booking::query()->lockForUpdate()->findOrFail($booking->BookingID);
+            $employeeId = $this->requireAuthenticatedEmployeeId(
+                'booking',
+                'Tài khoản hiện tại chưa liên kết hồ sơ nhân viên để xác nhận Booking.',
+            );
             $existing = $this->findOrderForBooking($lockedBooking);
             if ($existing !== null) {
                 return $existing;
@@ -278,12 +301,7 @@ class BookingService
                 ]);
             }
 
-            $confirmerId = auth()->user()?->NhanVienID;
-            if (! $confirmerId) {
-                throw ValidationException::withMessages([
-                    'booking' => 'Tài khoản hiện tại chưa liên kết hồ sơ nhân viên để xác nhận Booking.',
-                ]);
-            }
+            $confirmerId = $employeeId;
 
             $before = $this->bookingAuditSnapshot($lockedBooking);
             $beforeItems = $this->bookingItemsAuditSnapshot($lockedBooking);
@@ -297,7 +315,6 @@ class BookingService
 
             $order = $this->orderService->createFromBooking($lockedBooking, $items, $employeeId, $pointsUsed);
             $lockedBooking->fill([
-                'NhanVienID' => $employeeId,
                 'TrangThai' => BookingStatus::Confirmed->value,
                 'NhanVienXacNhanID' => $confirmerId,
                 'ThoiGianXacNhan' => now(),
@@ -309,6 +326,20 @@ class BookingService
 
             return $order->fresh();
         });
+    }
+
+    private function requireAuthenticatedEmployeeId(string $field, string $missingProfileMessage): int
+    {
+        $employeeId = auth()->user()?->NhanVienID;
+
+        if (! $employeeId) {
+            throw ValidationException::withMessages([$field => $missingProfileMessage]);
+        }
+
+        $employeeId = (int) $employeeId;
+        EmployeeAssignment::assertAssignable($employeeId, $field);
+
+        return $employeeId;
     }
 
     private function releaseLegacyPoints(Booking $booking): void
