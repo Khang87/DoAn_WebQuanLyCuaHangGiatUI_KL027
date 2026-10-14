@@ -159,7 +159,12 @@ class SePayController extends Controller
             Log::error('SePay webhook processing failed.', [
                 'order_id' => $orderCode,
                 'transaction_ref' => $transactionReference,
-                'exception' => $exception,
+                // Keep the primary cause visible in providers that truncate
+                // long log entries (the full exception trace can hide it).
+                'exception_class' => $exception::class,
+                'exception_message' => mb_substr($exception->getMessage(), 0, 500),
+                'exception_file' => $exception->getFile(),
+                'exception_line' => $exception->getLine(),
             ]);
 
             return response()->json(['success' => false, 'message' => 'Could not process payment.'], 500);
