@@ -43,9 +43,12 @@ use Illuminate\Support\Facades\Route;
 */
 
 // Authentication Routes
-// Fallback public endpoint for the mobile app when the host does not dispatch
-// Laravel API routes correctly.
+// Fallback endpoints for hosts that do not dispatch Laravel API routes correctly.
 Route::get('/payment-config', [BeePayController::class, 'config'])->name('mobile.payment-config');
+Route::post('/api/v1/webhooks/beepay', [BeePayController::class, 'webhook'])
+    ->middleware('throttle:120,1')
+    ->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\PreventRequestForgery::class])
+    ->name('mobile.beepay-webhook-fallback');
 
 Route::get('/login', [LoginController::class, 'showLoginForm'])->name('login');
 Route::post('/login', [LoginController::class, 'login']);
