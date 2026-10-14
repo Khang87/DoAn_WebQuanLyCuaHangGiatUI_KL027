@@ -82,7 +82,7 @@ class OrderSeeder extends Seeder
                 $subtotal = 0;
 
                 $order = DonHang::create([
-                    'MaDonHang' => 'DH'.str_pad((string) $sequence, 3, '0', STR_PAD_LEFT),
+                    'MaDonHang' => 'DH'.str_pad((string) $sequence, 8, '0', STR_PAD_LEFT),
                     'KhachHangID' => $customer->KhachHangID,
                     'NhanVienID' => $staff->isNotEmpty() ? $staff->random()->NhanVienID : null,
                     'TrangThai' => $status,

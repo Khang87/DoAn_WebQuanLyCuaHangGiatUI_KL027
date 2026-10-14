@@ -1369,6 +1369,6 @@ class OrderService
 
     private function formatOrderCode(int $orderId): string
     {
-        return 'DH'.str_pad((string) $orderId, 4, '0', STR_PAD_LEFT);
+        return 'DH'.str_pad((string) $orderId, 8, '0', STR_PAD_LEFT);
     }
 }

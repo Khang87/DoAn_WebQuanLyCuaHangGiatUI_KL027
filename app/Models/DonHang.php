@@ -171,6 +171,19 @@ class DonHang extends Model
         return $this->MaDonHang;
     }
 
+    /**
+     * Chuẩn hóa mã đơn cũ khi đọc để mọi giao diện/API đều hiện đủ 8 chữ số.
+     * Mã tạm TMP... và các mã không theo dạng DH + số được giữ nguyên.
+     */
+    public function getMaDonHangAttribute(?string $value): ?string
+    {
+        if ($value === null || preg_match('/^DH(\d+)$/i', $value, $matches) !== 1) {
+            return $value;
+        }
+
+        return 'DH'.str_pad($matches[1], 8, '0', STR_PAD_LEFT);
+    }
+
     public function getIsPaidAttribute(): bool
     {
         return $this->isPaid();
