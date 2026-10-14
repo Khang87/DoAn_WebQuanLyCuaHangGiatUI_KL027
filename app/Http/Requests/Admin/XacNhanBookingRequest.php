@@ -17,7 +17,9 @@ class XacNhanBookingRequest extends LuuBookingRequest
             'items' => ['required', 'array', 'min:1'],
             'items.*.TinhTrangTruocKhiGiat' => ['required', 'string', 'max:320'],
             'items.*.GhiChu' => ['nullable', 'string', 'max:160'],
-            'use_points' => ['nullable', 'boolean'],
+            'DiemSuDung' => ['prohibited'],
+            'use_points' => ['prohibited'],
+            'recalculate_delivery_fee' => ['sometimes', 'boolean'],
         ]);
     }
 

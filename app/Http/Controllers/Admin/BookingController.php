@@ -13,6 +13,7 @@ use App\Models\LoaiDichVu;
 use App\Models\LoaiDoGiat;
 use App\Models\NhanVien;
 use App\Services\BookingService;
+use App\Services\DeliveryFeeService;
 use App\Services\OrderService;
 use App\Support\FriendlyError;
 use Illuminate\Database\QueryException;
@@ -75,7 +76,6 @@ class BookingController extends Controller
             'items.*.DonViTinhID' => ['required', 'integer', 'min:1'],
             'items.*.SoLuong' => ['nullable', 'numeric', 'min:0'],
             'items.*.KhoiLuong' => ['nullable', 'numeric', 'min:0'],
-            'use_points' => ['required', 'boolean'],
             'method' => ['sometimes', 'required', 'in:Tại nhà,Tại cửa hàng'],
             'return_method' => ['sometimes', 'required', 'in:Tại nhà,Tại cửa hàng'],
         ]);
@@ -86,8 +86,30 @@ class BookingController extends Controller
             'HinhThucTraDo' => $validated['return_method'] ?? null,
         ], fn ($value) => $value !== null));
 
-        return response()->json($orders->estimateBooking($record, $validated['items'], (bool) $validated['use_points']))
+        return response()->json($orders->estimateBooking($record, $validated['items']))
             ->header('Cache-Control', 'private, no-store');
+    }
+
+    public function quoteDeliveryFee(Request $request, int $booking, DeliveryFeeService $deliveryFeeService): JsonResponse
+    {
+        $record = $this->bookingService->find($booking);
+        abort_if(! $record, 404);
+        abort_if(! $record->isConvertibleToOrder(), 409);
+
+        $validated = $request->validate([
+            'method' => ['required', 'in:Tại nhà,Tại cửa hàng'],
+            'address' => ['nullable', 'string', 'max:255', 'required_if:method,Tại nhà'],
+            'return_method' => ['required', 'in:Tại nhà,Tại cửa hàng'],
+            'return_address' => ['nullable', 'string', 'max:255', 'required_if:return_method,Tại nhà'],
+        ]);
+        $quote = $deliveryFeeService->quote(
+            $validated['method'],
+            $validated['address'] ?? null,
+            $validated['return_method'],
+            $validated['return_address'] ?? null,
+        );
+
+        return response()->json($quote)->header('Cache-Control', 'private, no-store');
     }
 
     public function inspection(int $id)
@@ -238,14 +260,15 @@ class BookingController extends Controller
 
         try {
             $validated = $request->validated();
-            $pointsToggleSubmitted = array_key_exists('use_points', $validated);
             $order = $this->bookingService->inspectBookingAndCreateOrder(
                 $booking,
                 $request->user()?->NhanVienID,
                 $validated['items'],
-                $pointsToggleSubmitted ? 0 : (int) ($validated['DiemSuDung'] ?? 0),
-                $pointsToggleSubmitted && (bool) $validated['use_points'],
+                0,
+                false,
                 $validated,
+                (bool) ($validated['recalculate_delivery_fee'] ?? false),
+                true,
             );
 
             return redirect()->route('orders.show', $order)->with(

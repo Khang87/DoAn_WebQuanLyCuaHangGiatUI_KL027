@@ -66,8 +66,8 @@ class LuuDonHangRequest extends FormRequest
             'BookingID' => $isCreating ? ['prohibited'] : ['nullable', 'integer', 'exists:Booking,BookingID'],
             'KhuyenMaiID' => ['prohibited'],
             'promotion_code' => ['prohibited'],
-            'DiemSuDung' => ['nullable', 'integer', 'min:0'],
-            'use_points' => ['nullable', 'boolean'],
+            'DiemSuDung' => $isCreating ? ['nullable', 'integer', 'min:0'] : ['prohibited'],
+            'use_points' => $isCreating ? ['nullable', 'boolean'] : ['prohibited'],
 
             // Phương thức nhận/trả đồ của đơn tạo trực tiếp trên website.
             'HinhThucNhanDo' => [

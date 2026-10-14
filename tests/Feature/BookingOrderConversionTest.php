@@ -15,6 +15,7 @@ use App\Models\GiaoNhan;
 use App\Models\NhatKyHeThong;
 use App\Models\User;
 use App\Services\BookingService;
+use App\Services\DeliveryFeeService;
 use App\Services\NotificationService;
 use App\Services\OrderService;
 use App\Services\PricingService;
@@ -118,6 +119,24 @@ class BookingOrderConversionTest extends TestCase
         });
     }
 
+    private function createPromotionTable(): void
+    {
+        Schema::create('KhuyenMai', function (Blueprint $table): void {
+            $table->increments('KhuyenMaiID');
+            $table->string('MaKhuyenMai')->unique();
+            $table->string('TenKhuyenMai')->nullable();
+            $table->string('LoaiKhuyenMai');
+            $table->decimal('GiaTriGiam', 12, 2);
+            $table->decimal('GiaTriDonToiThieu', 12, 2)->nullable();
+            $table->decimal('MucGiamToiDa', 12, 2)->nullable();
+            $table->integer('SoLuongSuDung')->nullable();
+            $table->text('DieuKienApDung')->nullable();
+            $table->date('NgayBatDau');
+            $table->date('NgayKetThuc');
+            $table->string('TrangThai');
+        });
+    }
+
     public function test_booking_detail_shows_saved_estimate_without_spending_points(): void
     {
         $this->createInspectionCatalog();
@@ -140,6 +159,164 @@ class BookingOrderConversionTest extends TestCase
             ->assertSee('Chưa có dịch vụ dự kiến để tính tổng tiền')
             ->assertDontSee('data-booking-money-summary', false)
             ->assertViewHas('bookingAmounts', fn ($amounts): bool => $amounts === null);
+    }
+
+    public function test_booking_estimate_uses_saved_points_and_returns_each_priced_service_line(): void
+    {
+        $this->createInspectionCatalog();
+        DB::table('DonViTinh')->insert([
+            'DonViTinhID' => 4,
+            'TenDonViTinh' => 'Kilogram',
+            'KyHieu' => 'KG',
+            'TrangThai' => 'Hoạt động',
+        ]);
+        DB::table('BangGia')->insert([
+            'DichVuID' => 1,
+            'LoaiDoGiatID' => 2,
+            'DonViTinhID' => 4,
+            'DonGia' => 10000,
+            'NgayApDung' => '2026-01-01',
+            'TrangThai' => 'Hoạt động',
+        ]);
+        DB::table('DiemTichLuy')->insert([
+            'KhachHangID' => 9,
+            'DiemHienTai' => 500,
+        ]);
+        $booking = $this->createBooking([
+            'DiemSuDung' => 25,
+            'TienGiamDoDiem' => 25,
+        ]);
+        $this->withoutMiddleware([Authenticate::class, EnsureUserHasPermission::class, RejectCustomerRole::class, RestoreRememberedLogin::class]);
+
+        $this->postJson(route('bookings.estimate', $booking), [
+            'method' => 'Tại nhà',
+            'return_method' => 'Tại cửa hàng',
+            'items' => [
+                ['DichVuID' => 1, 'LoaiDoGiatID' => 2, 'DonViTinhID' => 3, 'SoLuong' => 2],
+                ['DichVuID' => 1, 'LoaiDoGiatID' => 2, 'DonViTinhID' => 4, 'KhoiLuong' => 4.25],
+            ],
+        ])->assertOk()
+            ->assertJsonPath('DiemSuDung', 25)
+            ->assertJsonPath('TienGiamDoDiem', 25)
+            ->assertJsonPath('items.0.service_name', 'Giặt')
+            ->assertJsonPath('items.0.garment_name', 'Áo sơ mi')
+            ->assertJsonPath('items.0.amount', '2 Cái')
+            ->assertJsonPath('items.0.unit_price', 15000)
+            ->assertJsonPath('items.0.subtotal', 30000)
+            ->assertJsonPath('items.1.amount', '4.25 kg')
+            ->assertJsonPath('items.1.unit_price', 10000)
+            ->assertJsonPath('items.1.subtotal', 42500);
+    }
+
+    public function test_booking_inspection_shows_saved_rewards_as_read_only(): void
+    {
+        $this->createInspectionCatalog();
+        $this->createPromotionTable();
+        DB::table('KhuyenMai')->insert([
+            'KhuyenMaiID' => 3,
+            'MaKhuyenMai' => 'BOOKING10',
+            'LoaiKhuyenMai' => 'Phần trăm',
+            'GiaTriGiam' => 10,
+            'NgayBatDau' => today()->subDay()->toDateString(),
+            'NgayKetThuc' => today()->addDay()->toDateString(),
+            'TrangThai' => 'Hoạt động',
+        ]);
+        $booking = $this->createBooking([
+            'DiemSuDung' => 50,
+            'TienGiamDoDiem' => 50,
+        ]);
+        $booking->forceFill(['KhuyenMaiID' => 3])->saveQuietly();
+        $this->withoutMiddleware([Authenticate::class, EnsureUserHasPermission::class, RejectCustomerRole::class, RestoreRememberedLogin::class]);
+
+        $this->get(route('bookings.inspection', $booking))->assertOk()
+            ->assertSee('BOOKING10')
+            ->assertSee('50 điểm (50 VNĐ)')
+            ->assertSee('Tính lại phí giao nhận')
+            ->assertSee('data-estimate-items', false)
+            ->assertDontSee('name="use_points"', false)
+            ->assertDontSee('name="DiemSuDung"', false);
+    }
+
+    public function test_order_edit_displays_saved_rewards_without_edit_controls(): void
+    {
+        $this->createInspectionCatalog();
+        $this->createPromotionTable();
+        DB::table('KhuyenMai')->insert([
+            'KhuyenMaiID' => 3,
+            'MaKhuyenMai' => 'BOOKING10',
+            'LoaiKhuyenMai' => 'Phần trăm',
+            'GiaTriGiam' => 10,
+            'NgayBatDau' => today()->subDay()->toDateString(),
+            'NgayKetThuc' => today()->addDay()->toDateString(),
+            'TrangThai' => 'Hoạt động',
+        ]);
+        $order = DonHang::query()->create([
+            'MaDonHang' => 'DH0001',
+            'KhachHangID' => 9,
+            'NhanVienID' => 1,
+            'TrangThai' => OrderStatus::Pending->value,
+            'DiemSuDung' => 50,
+            'TienGiamDoDiem' => 50,
+            'KhuyenMaiID' => 3,
+            'TongTien' => 30000,
+            'TienGiamKhuyenMai' => 3000,
+            'ThanhTien' => 26950,
+        ]);
+        $order->chiTietDonHangs()->create([
+            'DichVuID' => 1,
+            'LoaiDoGiatID' => 2,
+            'DonViTinhID' => 3,
+            'SoLuong' => 2,
+            'DonGia' => 15000,
+            'ThanhTien' => 30000,
+            'TinhTrangTruocKhiGiat' => 'Bình thường',
+        ]);
+        $this->withoutMiddleware([Authenticate::class, EnsureUserHasPermission::class, RejectCustomerRole::class, RestoreRememberedLogin::class]);
+
+        $this->get(route('orders.edit', $order))->assertOk()
+            ->assertSee('BOOKING10')
+            ->assertSee('50 điểm (50 VNĐ)')
+            ->assertDontSee('name="use_points"', false)
+            ->assertDontSee('name="DiemSuDung"', false);
+    }
+
+    public function test_booking_confirmation_preserves_saved_coupon_and_points_without_a_reward_control(): void
+    {
+        $this->createInspectionCatalog();
+        $this->createPromotionTable();
+        DB::table('KhuyenMai')->insert([
+            'KhuyenMaiID' => 3,
+            'MaKhuyenMai' => 'BOOKING10',
+            'LoaiKhuyenMai' => 'Phần trăm',
+            'GiaTriGiam' => 10,
+            'NgayBatDau' => today()->subDay()->toDateString(),
+            'NgayKetThuc' => today()->addDay()->toDateString(),
+            'TrangThai' => 'Hoạt động',
+        ]);
+        DB::table('DiemTichLuy')->insert([
+            'KhachHangID' => 9,
+            'DiemHienTai' => 500,
+        ]);
+        $booking = $this->createBooking([
+            'DiemSuDung' => 50,
+            'TienGiamDoDiem' => 50,
+        ]);
+        $booking->forceFill(['KhuyenMaiID' => 3])->saveQuietly();
+        $this->actingAsBookingEmployee();
+        $this->withoutMiddleware([Authenticate::class, EnsureUserHasPermission::class, RejectCustomerRole::class, RestoreRememberedLogin::class]);
+
+        $this->post(route('bookings.confirm', $booking), [
+            ...$this->inspectionPayload($booking, 1),
+            'items' => $this->actualItems(),
+        ])->assertRedirect();
+
+        $order = DonHang::query()->where('BookingID', $booking->BookingID)->firstOrFail();
+        $this->assertSame(3, $order->KhuyenMaiID);
+        $this->assertSame(50, $order->DiemSuDung);
+        $this->assertSame(3000.0, $order->TienGiamKhuyenMai);
+        $this->assertSame(50.0, $order->TienGiamDoDiem);
+        $this->assertSame(36950.0, $order->ThanhTien);
+        $this->assertSame(450, DB::table('DiemTichLuy')->where('KhachHangID', 9)->value('DiemHienTai'));
     }
 
     public function test_manual_order_store_rejects_completed_status_and_booking_link(): void
@@ -796,6 +973,7 @@ class BookingOrderConversionTest extends TestCase
             $orderService,
             app(PricingService::class),
             app(NotificationService::class),
+            app(DeliveryFeeService::class),
         ));
         Log::shouldReceive('error')
             ->once()
@@ -1788,6 +1966,66 @@ class BookingOrderConversionTest extends TestCase
         Http::assertNothingSent();
         $this->assertSame(1000.0, (float) $booking->fresh()->PickupDeliveryFee);
         $this->assertSame(2000.0, (float) $booking->fresh()->DeliveryFee);
+    }
+
+    public function test_booking_can_requote_delivery_fees_and_conversion_uses_the_server_quote(): void
+    {
+        $this->createInspectionCatalog();
+        $this->createPromotionTable();
+        $booking = $this->createBooking([
+            'HinhThucTraDo' => 'Tại nhà',
+            'DiaChiTra' => '88 Lê Lợi',
+            'PickupDeliveryFee' => 1000,
+            'DeliveryFee' => 2000,
+        ]);
+        $this->actingAsBookingEmployee();
+        $this->withoutMiddleware([Authenticate::class, EnsureUserHasPermission::class, RejectCustomerRole::class, RestoreRememberedLogin::class]);
+
+        $quoteResponse = $this->postJson(route('bookings.delivery-fee-quote', $booking), [
+            'method' => 'Tại nhà',
+            'address' => 'Địa chỉ nhận mới',
+            'return_method' => 'Tại nhà',
+            'return_address' => 'Địa chỉ trả mới',
+        ])->assertOk();
+        $quote = $quoteResponse->json();
+        $this->assertGreaterThan(0, $quote['total_fee']);
+
+        $this->post(route('bookings.confirm', $booking), [
+            ...$this->inspectionPayload($booking, 1),
+            'method' => 'Tại nhà',
+            'address' => 'Địa chỉ nhận mới',
+            'return_method' => 'Tại nhà',
+            'return_address' => 'Địa chỉ trả mới',
+            'items' => $this->actualItems(),
+            'recalculate_delivery_fee' => 1,
+        ])->assertRedirect();
+
+        $order = DonHang::query()->where('BookingID', $booking->BookingID)->firstOrFail();
+        $savedBooking = $booking->fresh();
+        $this->assertSame((float) $quote['total_fee'], (float) $order->PhiGiaoHang);
+        $this->assertSame((float) $quote['pickup_fee'], (float) $savedBooking->PickupDeliveryFee);
+        $this->assertSame((float) $quote['return_fee'], (float) $savedBooking->DeliveryFee);
+    }
+
+    public function test_booking_delivery_quote_reports_missing_addresses_and_route_service_errors(): void
+    {
+        $booking = $this->createBooking();
+        $this->actingAsBookingEmployee();
+        $this->withoutMiddleware([Authenticate::class, EnsureUserHasPermission::class, RejectCustomerRole::class, RestoreRememberedLogin::class]);
+
+        $this->postJson(route('bookings.delivery-fee-quote', $booking), [
+            'method' => 'Tại nhà',
+            'return_method' => 'Tại nhà',
+        ])->assertUnprocessable()
+            ->assertJsonValidationErrors(['address', 'return_address']);
+
+        $this->deliveryRouteFailure = true;
+        $this->postJson(route('bookings.delivery-fee-quote', $booking), [
+            'method' => 'Tại nhà',
+            'address' => 'Địa chỉ nhận mới',
+            'return_method' => 'Tại cửa hàng',
+        ])->assertUnprocessable()
+            ->assertJsonValidationErrors('delivery');
     }
 
     public function test_booking_confirmation_fee_failure_rolls_back_booking_order_items_and_deliveries(): void

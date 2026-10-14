@@ -54,10 +54,6 @@
                 'unit' => $pricing->unit,
                 'unit_id' => $pricing->DonViTinhID,
             ])->values()->toJson();
-            $customerPointsJson = $customers->mapWithKeys(fn ($customer) => [
-                $customer->KhachHangID => (int) ($customer->diemTichLuy?->DiemHienTai ?? 0),
-            ])->toJson();
-
         @endphp
         <form action="{{ route('orders.update', $order->DonHangID) }}" method="POST" id="orderForm">
             @csrf
@@ -163,25 +159,16 @@
                     <div class="card border-primary">
                         <div class="card-body">
                             <h6 class="mb-3"><i class="fas fa-ticket me-2 text-primary"></i>Ưu đãi áp dụng</h6>
-                            <div class="row g-3 align-items-end">
-                                <div class="col-md-8">
+                            <div class="row g-3 align-items-start">
+                                <div class="col-md-6">
                                     <label class="form-label" for="saved-promotion">Voucher đã lưu</label>
                                     <input type="text" class="form-control" id="saved-promotion" readonly value="{{ $order->khuyenMai?->MaKhuyenMai ?: 'Không có voucher' }}">
                                     <div class="form-text">Voucher được giữ từ Booking hoặc đơn cũ và kiểm tra lại khi lưu; không thể thêm hoặc đổi tại đây. Số tiền hiển thị là dự kiến trước khi lưu.</div>
                                     @if($savedVoucherWarning)<div class="text-warning small" data-saved-voucher-warning>{{ $savedVoucherWarning }}</div>@endif
                                 </div>
-                                <div class="col-md-4">
-                                    <input type="hidden" id="points_used" name="DiemSuDung" value="{{ old('DiemSuDung', $order->DiemSuDung) }}">
-                                    <input type="hidden" name="use_points" value="0">
-                                    <div class="rounded-3 border bg-white p-2">
-                                        <div class="form-check form-switch mb-0">
-                                            <input class="form-check-input" type="checkbox" role="switch" id="use_points" name="use_points" value="1" @checked((bool) old('use_points', $order->DiemSuDung > 0))>
-                                            <label class="form-check-label fw-semibold" for="use_points">Dùng điểm tích lũy</label>
-                                        </div>
-                                        <div class="form-text mt-1" id="pointsToggleStatus" aria-live="polite">Đang tắt — không trừ điểm của khách.</div>
-                                        <div class="form-text" id="customerPointsText">Khách đang có 0 điểm (tương đương 0 VNĐ)</div>
-                                    </div>
-                                    @error('DiemSuDung')<div class="text-danger small">{{ $message }}</div>@enderror
+                                <div class="col-md-6">
+                                    <label class="form-label" for="saved-points">Điểm đã sử dụng</label>
+                                    <input type="text" class="form-control" id="saved-points" readonly value="{{ number_format((int) $order->DiemSuDung, 0, ',', '.') }} điểm ({{ number_format((float) $order->TienGiamDoDiem, 0, ',', '.') }} VNĐ)">
                                 </div>
                             </div>
                         </div>
@@ -204,9 +191,9 @@
                                                 <td>Tiền giảm voucher:</td>
                                                 <td class="text-end text-success">-<span id="promotionDiscount">0</span> VNĐ</td>
                                             </tr>
-                                            <tr id="pointsDiscountRow" class="d-none">
+                                            <tr id="pointsDiscountRow" class="{{ (float) $order->TienGiamDoDiem > 0 ? '' : 'd-none' }}">
                                                 <td>Tiền giảm do điểm:</td>
-                                                <td class="text-end text-success">-<span id="pointsDiscount">0</span> VNĐ</td>
+                                                <td class="text-end text-success">-<span id="pointsDiscount">{{ number_format((float) $order->TienGiamDoDiem, 0, ',', '.') }}</span> VNĐ</td>
                                             </tr>
                                             <tr class="table-light">
                                                 <td class="fw-bold fs-5">TỔNG THANH TOÁN:</td>
@@ -239,10 +226,8 @@
 <script src="{{ asset('assets/js/order-item-pricing.js') }}"></script>
 <script>
 (function () {
-    const POINT_VALUE = {{ App\Services\OrderService::POINT_VALUE }};
     const minimumWeight = @json($minimumWeight);
     const prices = {!! $pricesJson !!};
-    const customerPoints = {!! $customerPointsJson !!};
     const services = @json($services->mapWithKeys(fn ($service) => [
         $service->DichVuID => ['name' => $service->TenDichVu, 'category_id' => $service->LoaiDichVuID],
     ]));
@@ -250,13 +235,9 @@
     const serviceCategories = @json($serviceCategories->pluck('TenLoaiDichVu', 'LoaiDichVuID'));
 
     const table = document.getElementById('itemsTable');
-    const pointsInput = document.getElementById('points_used');
-    const pointsToggle = document.getElementById('use_points');
-    const pointsText = document.getElementById('customerPointsText');
-    const pointsToggleStatus = document.getElementById('pointsToggleStatus');
     const customerSelect = document.getElementById('customer_id');
     const originalCustomerId = @json((string) $order->KhachHangID);
-    const previouslyUsedPoints = {{ (int) $order->DiemSuDung }};
+    const savedPointsDiscount = {{ (float) $order->TienGiamDoDiem }};
 
     const savedPromotion = @json($savedPromotionPreview);
 
@@ -264,8 +245,6 @@
         subtotal: document.getElementById('subtotalAmount'),
         promotion: document.getElementById('promotionDiscount'),
         promotionRow: document.getElementById('promotionDiscountRow'),
-        points: document.getElementById('pointsDiscount'),
-        pointsRow: document.getElementById('pointsDiscountRow'),
         grand: document.getElementById('grandTotal')
     };
 
@@ -291,14 +270,6 @@
         return Math.min(discount, subtotal);
     }
 
-    function updateCustomerPointsHint() {
-        const id = customerSelect.value;
-        const available = id
-            ? (customerPoints[id] || 0) + (id === originalCustomerId ? previouslyUsedPoints : 0)
-            : 0;
-        pointsText.textContent = `Khách đang có ${fmt(available)} điểm (tương đương ${fmt(available * POINT_VALUE)} VNĐ)`;
-    }
-
     function updateTotals() {
         let subtotal = 0;
         table.querySelectorAll('tbody tr').forEach((row, index) => {
@@ -307,28 +278,11 @@
         });
 
         const promoDiscount = promotionDiscountFor(subtotal);
-        const remaining = Math.max(0, subtotal - promoDiscount);
-
-        const selectedCustomerId = customerSelect.value;
-        const available = selectedCustomerId
-            ? (customerPoints[selectedCustomerId] || 0) + (selectedCustomerId === originalCustomerId ? previouslyUsedPoints : 0)
-            : 0;
-        const redeemablePoints = Math.floor(remaining / POINT_VALUE);
-        const usedPoints = pointsToggle.checked
-            ? Math.max(0, Math.min(available, redeemablePoints))
-            : 0;
-        pointsInput.value = usedPoints;
-        pointsToggleStatus.textContent = pointsToggle.checked
-            ? `Đang bật — dự kiến dùng ${fmt(usedPoints)} điểm.`
-            : 'Đang tắt — không trừ điểm của khách.';
-        const pointsDiscount = usedPoints * POINT_VALUE;
 
         out.subtotal.textContent = fmt(subtotal);
         out.promotion.textContent = fmt(promoDiscount);
         out.promotionRow.classList.toggle('d-none', promoDiscount <= 0);
-        out.points.textContent = fmt(pointsDiscount);
-        out.pointsRow.classList.toggle('d-none', pointsDiscount <= 0);
-        out.grand.textContent = fmt(Math.max(0, subtotal - promoDiscount - pointsDiscount));
+        out.grand.textContent = fmt(Math.max(0, subtotal - promoDiscount - savedPointsDiscount));
     }
 
     table.addEventListener('input', event => {
@@ -343,11 +297,7 @@
         updateRow(row);
         updateTotals();
     });
-    pointsToggle.addEventListener('change', () => {
-        updateCustomerPointsHint();
-        updateTotals();
-    });
-    customerSelect.addEventListener('change', () => { updateCustomerPointsHint(); updateTotals(); });
+    customerSelect.addEventListener('change', updateTotals);
 
     let nextItemIndex = Math.max(-1, ...Array.from(table.querySelectorAll('[name^="items["]'), input => Number(input.name.match(/^items\[(\d+)\]/)?.[1] ?? -1))) + 1;
 
@@ -396,7 +346,6 @@
         syncGarmentOptions(row);
         updateRow(row);
     });
-    updateCustomerPointsHint();
     updateTotals();
 })();
 </script>

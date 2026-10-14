@@ -81,6 +81,37 @@
                     <input type="text" id="booking-return-address" class="form-control @error('return_address') is-invalid @enderror" name="return_address" value="{{ old('return_address', $booking->DiaChiTra) }}" maxlength="255" @required(old('return_method', $booking->HinhThucTraDo) === \App\Enums\ReturnMethod::Home->value) @disabled(old('return_method', $booking->HinhThucTraDo) !== \App\Enums\ReturnMethod::Home->value)>
                     @error('return_address')<div class="invalid-feedback">{{ $message }}</div>@enderror
                 </div>
+                @if($inspectionMode)
+                    <div class="col-12">
+                        <div class="border rounded-3 p-3">
+                            <h6 class="mb-2">Ưu đãi từ Booking</h6>
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="form-label" for="booking-promotion">Mã giảm giá</label>
+                                    <input class="form-control" id="booking-promotion" value="{{ $booking->khuyenMai?->MaKhuyenMai ?: 'Không có mã giảm giá' }}" readonly>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label" for="booking-points">Điểm đã sử dụng</label>
+                                    <input class="form-control" id="booking-points" value="{{ number_format((int) $booking->DiemSuDung, 0, ',', '.') }} điểm ({{ number_format((float) $booking->TienGiamDoDiem, 0, ',', '.') }} VNĐ)" readonly>
+                                </div>
+                            </div>
+                            <div class="form-text mt-2">Ưu đãi chỉ được kế thừa từ Booking; không thể thêm, đổi hoặc bỏ tại màn hình kiểm tra.</div>
+                        </div>
+                    </div>
+                    <div class="col-12">
+                        <button type="button" class="btn btn-outline-primary" id="booking-quote-delivery">
+                            <i class="bi bi-geo-alt me-1"></i>Tính lại phí giao nhận
+                        </button>
+                        <div class="small mt-2" id="booking-delivery-quote-status" role="status" aria-live="polite">
+                            Phí đang dùng là phí đã lưu từ Booking. Nhấn nút sau khi thay đổi địa chỉ hoặc phương thức nếu muốn tính lại.
+                        </div>
+                        <div class="row g-2 small mt-1" id="booking-delivery-quote-result" hidden>
+                            <div class="col-md-6">Phí nhận đồ: <strong data-pickup-fee></strong></div>
+                            <div class="col-md-6">Phí giao đồ: <strong data-return-fee></strong></div>
+                        </div>
+                        <input type="hidden" name="recalculate_delivery_fee" value="0">
+                    </div>
+                @endif
                 <div class="col-md-6"><label class="form-label">Ngày hẹn <span class="text-danger ms-1">*</span></label><input type="date" class="form-control @error('scheduled_date') is-invalid @enderror" name="scheduled_date" value="{{ old('scheduled_date', $booking->NgayHen?->format('Y-m-d')) }}" required>@error('scheduled_date')<div class="invalid-feedback">{{ $message }}</div>@enderror</div>
                 <div class="col-md-6"><label class="form-label">Giờ hẹn <span class="text-danger ms-1">*</span></label><input type="time" class="form-control @error('scheduled_time') is-invalid @enderror" name="scheduled_time" value="{{ old('scheduled_time', $booking->GioHen?->format('H:i')) }}" required>@error('scheduled_time')<div class="invalid-feedback">{{ $message }}</div>@enderror</div>
                 @if($errors->any())
@@ -153,21 +184,16 @@
                 <div class="col-md-6"><label class="form-label">Trạng thái</label><x-admin.status-select name="status" id="booking-status" :options="\App\Enums\BookingStatus::options()" :selected="old('status', $booking->TrangThai)" class="form-select @error('status') is-invalid @enderror" />@error('status')<div class="invalid-feedback">{{ $message }}</div>@enderror</div>
                 @else
                     <div class="col-12">
-                        <input type="hidden" name="use_points" value="0">
-                        <div class="form-check form-switch">
-                            <input class="form-check-input" type="checkbox" role="switch" id="booking-use-points" name="use_points" value="1" @checked((bool) old('use_points', (int) $booking->DiemSuDung > 0))>
-                            <label class="form-check-label" for="booking-use-points">Dùng điểm tích lũy (tối đa theo tổng tiền thực tế)</label>
-                        </div>
-                        <div class="form-text">Khách đang có {{ number_format($customer?->points() ?? 0) }} điểm. Điểm chỉ được trừ khi tạo đơn thành công.</div>
-                        <div class="alert alert-info mt-3 mb-0">Kiểm tra trực tiếp loại đồ, dịch vụ, số lượng/kg và tình trạng trước khi giặt. Khi xác nhận, đơn hàng được tạo ở trạng thái Đã tiếp nhận.</div>
+                        <div class="alert alert-info mb-0">Kiểm tra trực tiếp loại đồ, dịch vụ, số lượng/kg và tình trạng trước khi giặt. Mã giảm giá và điểm sử dụng lấy từ Booking; khi xác nhận, đơn hàng được tạo ở trạng thái Đã tiếp nhận.</div>
                     </div>
                 @endif
                 <div class="col-12"><label class="form-label">Ghi chú</label><textarea class="form-control @error('notes') is-invalid @enderror" name="notes" rows="3" maxlength="500">{{ old('notes', $booking->GhiChu) }}</textarea>@error('notes')<div class="invalid-feedback">{{ $message }}</div>@enderror</div>
             </div>
             @if($inspectionMode)
-                <div class="alert alert-info mt-3" data-booking-estimate="{{ route('bookings.estimate', $booking) }}">
+                <div class="alert alert-info mt-3" data-booking-estimate="{{ route('bookings.estimate', $booking) }}" data-delivery-quote="{{ route('bookings.delivery-fee-quote', $booking) }}">
                     <strong>Tổng tiền ước tính: <span data-estimate-total>Đang tính…</span></strong>
                     <div data-estimate-details class="small"></div>
+                    <div data-estimate-items class="table-responsive mt-2"></div>
                     <div data-estimate-warning class="small text-danger" role="status"></div>
                     <small>Ước tính từ bảng giá hiện tại. Giá, khuyến mãi và điểm được kiểm tra lại khi tạo đơn.</small>
                 </div>

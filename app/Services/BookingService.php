@@ -20,6 +20,7 @@ class BookingService
         private OrderService $orderService,
         private PricingService $pricingService,
         private NotificationService $notificationService,
+        private DeliveryFeeService $deliveryFeeService,
     ) {}
 
     public function getAll(array $filters = []): LengthAwarePaginator
@@ -283,8 +284,10 @@ class BookingService
         int $pointsUsed = 0,
         bool $useAllAvailablePoints = false,
         array $bookingData = [],
+        bool $recalculateDeliveryFee = false,
+        bool $useSavedBookingPoints = false,
     ): DonHang {
-        return DB::transaction(function () use ($booking, $items, $pointsUsed, $useAllAvailablePoints, $bookingData): DonHang {
+        return DB::transaction(function () use ($booking, $items, $pointsUsed, $useAllAvailablePoints, $bookingData, $recalculateDeliveryFee, $useSavedBookingPoints): DonHang {
             $lockedBooking = Booking::query()->lockForUpdate()->findOrFail($booking->BookingID);
             $employeeId = $this->requireAuthenticatedEmployeeId(
                 'booking',
@@ -301,12 +304,32 @@ class BookingService
                 ]);
             }
 
+            if ($useSavedBookingPoints) {
+                $pointsUsed = (int) $lockedBooking->DiemSuDung;
+            }
+
             $confirmerId = $employeeId;
 
             $before = $this->bookingAuditSnapshot($lockedBooking);
             $beforeItems = $this->bookingItemsAuditSnapshot($lockedBooking);
             unset($bookingData['customer_id'], $bookingData['status'], $bookingData['staff_id']);
             $lockedBooking->fill($this->mapRequestData($bookingData));
+
+            if ($recalculateDeliveryFee) {
+                $quote = $this->deliveryFeeService->quote(
+                    (string) $lockedBooking->HinhThucNhanDo,
+                    $lockedBooking->DiaChiNhan,
+                    (string) $lockedBooking->HinhThucTraDo,
+                    $lockedBooking->DiaChiTra,
+                );
+                $lockedBooking->forceFill([
+                    'PickupDistanceMeters' => $quote['pickup_distance_meters'],
+                    'PickupDeliveryFee' => $quote['pickup_fee'],
+                    'DeliveryDistanceMeters' => $quote['return_distance_meters'],
+                    'DeliveryFee' => $quote['return_fee'],
+                ]);
+                $lockedBooking->saveQuietly();
+            }
 
             if ($useAllAvailablePoints) {
                 $pointsUsed = (int) (KhachHang::query()->find($lockedBooking->KhachHangID)?->points() ?? 0)

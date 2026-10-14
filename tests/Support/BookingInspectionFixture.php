@@ -270,6 +270,11 @@ trait BookingInspectionFixture
             $table->unsignedInteger('NhanVienID')->nullable();
             $table->unsignedInteger('NhanVienXacNhanID')->nullable();
             $table->dateTime('ThoiGianXacNhan')->nullable();
+            $table->integer('DiemSuDung')->default(0);
+            $table->decimal('TienGiamDoDiem', 18, 2)->default(0);
+            $table->boolean('DiemDaTru')->default(false);
+            $table->unsignedInteger('KhuyenMaiID')->nullable();
+            $table->boolean('KhuyenMaiDaTru')->default(false);
         });
 
         Schema::create('ChiTietBooking', function (Blueprint $table): void {

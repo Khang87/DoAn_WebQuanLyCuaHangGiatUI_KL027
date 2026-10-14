@@ -101,12 +101,33 @@ class LuuDonHangRequestTest extends TestCase
         }
     }
 
-    private function orderRequestRules(int $orderId): array
+    public function test_order_update_cannot_change_points_but_creation_can_select_them(): void
     {
-        $route = new Route(['PUT'], '/orders/{order}', []);
-        $route->bind(Request::create('/orders/'.$orderId, 'PUT'));
+        $createRules = $this->orderRequestRules(0, 'POST');
+        $updateRules = $this->orderRequestRules(7);
+        $rewardFields = ['DiemSuDung', 'use_points'];
+
+        $this->assertTrue(Validator::make(
+            ['DiemSuDung' => 25, 'use_points' => 1],
+            array_intersect_key($createRules, array_flip($rewardFields)),
+        )->passes());
+
+        $validator = Validator::make(
+            ['DiemSuDung' => 25, 'use_points' => 1],
+            array_intersect_key($updateRules, array_flip($rewardFields)),
+        );
+        $this->assertTrue($validator->fails());
+        $this->assertTrue($validator->errors()->has('DiemSuDung'));
+        $this->assertTrue($validator->errors()->has('use_points'));
+    }
+
+    private function orderRequestRules(int $orderId, string $method = 'PUT'): array
+    {
+        $route = new Route([$method], '/orders/{order}', []);
+        $route->bind(Request::create('/orders/'.$orderId, $method));
 
         $request = new LuuDonHangRequest;
+        $request->setMethod($method);
         $request->setRouteResolver(static fn (): Route => $route);
 
         return $request->rules();

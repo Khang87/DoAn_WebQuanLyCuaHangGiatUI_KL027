@@ -12,6 +12,7 @@ use App\Exceptions\SettledOrderException;
 use App\Models\BangGia;
 use App\Models\Booking;
 use App\Models\ChiTietDonHang;
+use App\Models\DichVu;
 use App\Models\DonHang;
 use App\Models\DonViTinh;
 use App\Models\GiaoNhan;
@@ -110,11 +111,37 @@ class OrderService
     }
 
     /** Read-only inspection preview; conversion still rechecks prices under a lock. */
-    public function estimateBooking(Booking $booking, array $items, bool $usePoints): array
+    public function estimateBooking(Booking $booking, array $items): array
     {
-        [, $subtotal] = $this->buildItems($items);
+        [$snapshots, $subtotal] = $this->buildItems($items);
+        $serviceNames = DichVu::query()
+            ->whereIn('DichVuID', array_column($snapshots, 'DichVuID'))
+            ->pluck('TenDichVu', 'DichVuID');
+        $garmentNames = LoaiDoGiat::query()
+            ->whereIn('LoaiDoGiatID', array_column($snapshots, 'LoaiDoGiatID'))
+            ->pluck('TenLoaiDoGiat', 'LoaiDoGiatID');
+        $units = DonViTinh::query()
+            ->whereIn('DonViTinhID', array_column($snapshots, 'DonViTinhID'))
+            ->get(['DonViTinhID', 'TenDonViTinh', 'KyHieu'])
+            ->keyBy('DonViTinhID');
+        $lineItems = array_map(function (array $item) use ($serviceNames, $garmentNames, $units): array {
+            $unit = $units->get((int) $item['DonViTinhID']);
 
-        return $this->calculateBookingEstimate($booking, $subtotal, $usePoints ? null : 0);
+            return [
+                'service_name' => $serviceNames->get($item['DichVuID'], 'Dịch vụ không tồn tại'),
+                'garment_name' => $garmentNames->get($item['LoaiDoGiatID'], 'Loại đồ không tồn tại'),
+                'amount' => $item['KhoiLuong'] !== null
+                    ? (float) $item['KhoiLuong'].' kg'
+                    : (int) $item['SoLuong'].' '.($unit?->KyHieu ?: $unit?->TenDonViTinh),
+                'unit_price' => (float) $item['DonGia'],
+                'subtotal' => (float) $item['ThanhTien'],
+            ];
+        }, $snapshots);
+
+        return [
+            ...$this->calculateBookingEstimate($booking, $subtotal, (int) $booking->DiemSuDung),
+            'items' => $lineItems,
+        ];
     }
 
     /** Stored mobile estimate; actual inspection reprices items separately. */
@@ -138,9 +165,13 @@ class OrderService
             $promotion = null;
         }
 
+        $deliveryFees = $booking->deliveryFeeSnapshot();
+
         return [
             ...$this->calculateAmounts($subtotal, $promotion, $requestedPoints ?? $availablePoints, $availablePoints,
-                $booking->deliveryFeeSnapshot()['total_fee']),
+                $deliveryFees['total_fee']),
+            'PhiNhanDo' => $deliveryFees['pickup_fee'],
+            'PhiGiaoDo' => $deliveryFees['return_fee'],
             'promotion_warning' => $warning,
         ];
     }
@@ -200,10 +231,10 @@ class OrderService
             }
             [$snapshots, $total] = $this->buildItems($items);
 
-            $deliveryQuote = $booking->deliveryFeeSnapshot();
             // The database fee trigger must see the inspected methods before inserting the order.
-            // Persist only the whitelisted edits; the accepted mobile fees are unchanged.
+            // Persist only the whitelisted edits and any server-generated fee quote.
             $booking->saveQuietly();
+            $deliveryQuote = $booking->deliveryFeeSnapshot();
 
             $bookingCode = $booking->MaBooking ?: Booking::nextCode();
             $customer = KhachHang::query()->find($booking->KhachHangID);
@@ -764,9 +795,7 @@ class OrderService
             $sameCustomer = ! $customerChanged;
             $customerPoints = ($customer?->points() ?? 0)
                 + ($sameCustomer ? $previousPoints : 0);
-            $pointsRequested = array_key_exists('use_points', $data)
-                ? ((bool) $data['use_points'] ? $customerPoints : 0)
-                : (int) ($data['DiemSuDung'] ?? 0);
+            $pointsRequested = $previousPoints;
 
             $this->assertRequestedPointsAvailable($pointsRequested, $customerPoints);
 
