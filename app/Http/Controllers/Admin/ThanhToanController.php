@@ -12,8 +12,12 @@ use App\Http\Requests\Admin\LuuThanhToanRequest;
 use App\Models\DonHang;
 use App\Models\HoaDon;
 use App\Services\PaymentService;
+use App\Support\BankTransferReference;
 use App\Support\FriendlyError;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpFoundation\Response;
 
 class ThanhToanController extends Controller
@@ -126,6 +130,12 @@ class ThanhToanController extends Controller
 
     public function store(LuuThanhToanRequest $request)
     {
+        if ($request->validated('method') !== 'cash') {
+            throw ValidationException::withMessages([
+                'method' => 'Chuyển khoản chỉ được ghi nhận khi ngân hàng xác nhận giao dịch.',
+            ]);
+        }
+
         try {
             $data = $request->validated();
             $data['status'] = PaymentStatus::Paid->value;
@@ -136,6 +146,69 @@ class ThanhToanController extends Controller
         } catch (\Exception $e) {
             return redirect()->route('payments.create')->with('error', FriendlyError::message($e))->withInput();
         }
+    }
+
+    public function startBankTransfer(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'order_id' => ['required', 'integer', 'exists:DonHang,DonHangID'],
+            'invoice_id' => ['nullable', 'integer', 'exists:HoaDon,HoaDonID'],
+        ]);
+
+        $intent = DB::transaction(function () use ($data): array {
+            $order = DonHang::query()->lockForUpdate()->findOrFail($data['order_id']);
+            $invoice = $order->hoaDons()->lockForUpdate()->orderBy('HoaDonID')->first();
+            if (! $invoice || InvoiceStatus::parse($invoice->TrangThai) !== InvoiceStatus::Unpaid) {
+                throw ValidationException::withMessages(['order_id' => 'Đơn hàng cần có hóa đơn chưa thanh toán để tạo mã QR.']);
+            }
+            if (isset($data['invoice_id']) && (int) $data['invoice_id'] !== (int) $invoice->getKey()) {
+                throw ValidationException::withMessages(['invoice_id' => 'Hóa đơn không thuộc lựa chọn thanh toán hiện tại.']);
+            }
+            if ($order->statusEnum() === OrderStatus::Cancelled || $order->isPaid()) {
+                throw ValidationException::withMessages(['order_id' => 'Đơn hàng không còn nhận thanh toán.']);
+            }
+
+            $pending = $order->thanhToans()->where('PhuongThuc', 'Chuyển khoản')
+                ->where('TrangThai', PaymentStatus::Pending->value)->lockForUpdate()->first();
+            if ($pending) {
+                if (round((float) $pending->SoTien, 2) !== round((float) $invoice->ThanhTien, 2)) {
+                    $this->paymentService->update($pending, [
+                        'order_id' => $order->getKey(), 'invoice_id' => $invoice->getKey(),
+                        'amount' => $invoice->ThanhTien, 'method' => 'bank_transfer',
+                        'status' => PaymentStatus::Pending->value,
+                    ]);
+                }
+            } else {
+                $this->paymentService->create([
+                    'order_id' => $order->getKey(), 'invoice_id' => $invoice->getKey(),
+                    'amount' => $invoice->ThanhTien, 'method' => 'bank_transfer',
+                    'status' => PaymentStatus::Pending->value,
+                ]);
+            }
+
+            return [
+                'order_id' => (int) $order->getKey(),
+                'amount' => (float) $invoice->ThanhTien,
+                'reference' => BankTransferReference::forOrder((int) $order->getKey()),
+            ];
+        });
+
+        return response()->json($intent)->header('Cache-Control', 'no-store, private');
+    }
+
+    public function bankTransferStatus(Request $request): JsonResponse
+    {
+        $data = $request->validate(['order_id' => ['required', 'integer', 'exists:DonHang,DonHangID']]);
+        $order = DonHang::with('hoaDons')->findOrFail($data['order_id']);
+        $payment = $order->thanhToans()->where('TrangThai', PaymentStatus::Paid->value)
+            ->orderByDesc('ThoiGian')->orderByDesc('ThanhToanID')->first();
+        $paid = $order->hoaDons->contains(fn ($invoice) => $invoice->isPaid());
+
+        return response()->json([
+            'paid' => $paid && $payment?->PhuongThuc === 'Chuyển khoản',
+            'settled_by_other_method' => $paid && $payment && $payment->PhuongThuc !== 'Chuyển khoản',
+            'transaction_code' => $paid ? $payment?->MaGiaoDich : null,
+        ])->header('Cache-Control', 'no-store, private');
     }
 
     public function show(int $id)
