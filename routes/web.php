@@ -24,11 +24,11 @@ use App\Http\Controllers\Admin\TaiKhoanController;
 use App\Http\Controllers\Admin\ThanhToanController;
 use App\Http\Controllers\Admin\ThongBaoController;
 use App\Http\Controllers\Admin\VaiTroController;
+use App\Http\Controllers\Api\V1\PaymentConfigController;
+use App\Http\Controllers\Api\V1\SePayController;
 use App\Http\Controllers\Auth\InternalPasswordResetController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\PasswordResetController;
-use App\Http\Controllers\Api\V1\PaymentConfigController;
-use App\Http\Controllers\Api\V1\SePayController;
 use App\Http\Controllers\Staff\DashboardController as StaffDashboardController;
 use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Support\Facades\Route;
@@ -225,6 +225,10 @@ Route::middleware(['auth', 'reject.customer'])->group(function () {
         ->middleware('permission:bookings.confirm')
         ->name('bookings.confirm');
 
+    Route::post('payments/bank-transfer', [ThanhToanController::class, 'startBankTransfer'])
+        ->middleware(['permission:payments.create', 'throttle:20,1'])->name('payments.bank-transfer.start');
+    Route::get('payments/bank-transfer/status', [ThanhToanController::class, 'bankTransferStatus'])
+        ->middleware('permission:payments.create')->name('payments.bank-transfer.status');
     Route::resource('payments', ThanhToanController::class)
         ->middlewareFor(['index', 'show'], 'permission:payments.view')
         ->middlewareFor(['create', 'store'], 'permission:payments.create')

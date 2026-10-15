@@ -152,6 +152,53 @@ class PaymentOrderRedirectTest extends TestCase
             ->assertDontSee('Số tiền thanh toán <span class="text-danger', false);
     }
 
+    public function test_web_qr_waits_for_authenticated_bank_confirmation_and_cannot_be_saved_manually(): void
+    {
+        DB::table('DonHang')->insert([
+            'DonHangID' => 37, 'MaDonHang' => 'DH00000037',
+            'TrangThai' => OrderStatus::Received->value, 'ThanhTien' => 50000,
+        ]);
+        DB::table('HoaDon')->insert([
+            'HoaDonID' => 19, 'DonHangID' => 37, 'MaHoaDon' => 'HD00000037',
+            'TrangThai' => InvoiceStatus::Unpaid->value, 'ThanhTien' => 50000,
+        ]);
+
+        $this->withoutMiddleware()->postJson(route('payments.bank-transfer.start'), ['order_id' => 37, 'invoice_id' => 19])
+            ->assertOk()->assertJsonPath('reference', 'DH00000037')->assertJsonPath('amount', 50000);
+        $this->postJson(route('payments.bank-transfer.start'), ['order_id' => 37, 'invoice_id' => 19])->assertOk();
+        $this->assertSame(1, DB::table('ThanhToan')->where('DonHangID', 37)->count());
+        $this->assertSame(PaymentStatus::Pending->value, DB::table('ThanhToan')->where('DonHangID', 37)->value('TrangThai'));
+        $this->getJson(route('payments.bank-transfer.status', ['order_id' => 37]))->assertOk()->assertJsonPath('paid', false);
+
+        $pendingId = DB::table('ThanhToan')->where('DonHangID', 37)->value('ThanhToanID');
+        $this->putJson(route('payments.update', $pendingId), [
+            'order_id' => 37, 'invoice_id' => 19, 'amount' => 50000,
+            'method' => 'bank_transfer', 'status' => PaymentStatus::Paid->value,
+        ])->assertUnprocessable()->assertJsonValidationErrors('status');
+
+        $this->postJson(route('payments.store'), [
+            'order_id' => 37, 'invoice_id' => 19, 'amount' => 50000,
+            'method' => 'bank_transfer', 'status' => PaymentStatus::Paid->value,
+        ])->assertUnprocessable()->assertJsonValidationErrors('method');
+        $this->assertSame(0, DB::table('ThanhToan')->where('DonHangID', 37)
+            ->where('TrangThai', PaymentStatus::Paid->value)->count());
+
+        config()->set('services.sepay.webhook_api_key', 'test-bank-key');
+        config()->set('services.vietqr.account_number', '123456789');
+        $payload = [
+            'id' => 123, 'code' => 'DH00000037', 'transferType' => 'in',
+            'transferAmount' => 50000, 'accountNumber' => '123456789',
+        ];
+        $this->postJson(route('mobile.sepay-webhook'), $payload)->assertUnauthorized();
+        $this->withHeader('Authorization', 'Apikey test-bank-key')
+            ->postJson(route('mobile.sepay-webhook'), $payload)->assertOk()->assertJsonPath('success', true);
+
+        $this->getJson(route('payments.bank-transfer.status', ['order_id' => 37]))
+            ->assertOk()->assertJsonPath('paid', true)->assertJsonPath('transaction_code', 'SEPAY-123');
+        $this->assertSame(1, DB::table('ThanhToan')->where('DonHangID', 37)->count());
+        $this->assertSame(InvoiceStatus::Paid->value, DB::table('HoaDon')->where('HoaDonID', 19)->value('TrangThai'));
+    }
+
     public function test_invoice_field_is_hidden_when_the_selected_order_has_no_invoice(): void
     {
         DB::table('DonHang')->insert([

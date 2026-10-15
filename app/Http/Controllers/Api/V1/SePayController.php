@@ -86,7 +86,14 @@ class SePayController extends Controller
         try {
             DB::transaction(function () use ($matches, $transactionReference, $receivedAmount, $payload): void {
                 $order = DonHang::query()->with('booking')->lockForUpdate()->findOrFail((int) $matches[1]);
-                if ($order->booking?->PhuongThucThanhToan !== 'Chuyển khoản') {
+                $pendingPayment = ThanhToan::query()
+                    ->where('DonHangID', $order->DonHangID)
+                    ->where('PhuongThuc', 'Chuyển khoản')
+                    ->where('TrangThai', PaymentStatus::Pending->value)
+                    ->orderByDesc('ThoiGian')
+                    ->lockForUpdate()
+                    ->first();
+                if ($order->booking?->PhuongThucThanhToan !== 'Chuyển khoản' && ! $pendingPayment) {
                     throw new \DomainException('This order was not configured for bank transfer.');
                 }
 
@@ -113,13 +120,6 @@ class SePayController extends Controller
                     }
                     throw new \DomainException('The bank transaction reference was already used.');
                 }
-
-                $pendingPayment = ThanhToan::query()
-                    ->where('DonHangID', $order->DonHangID)
-                    ->where('TrangThai', PaymentStatus::Pending->value)
-                    ->orderByDesc('ThoiGian')
-                    ->lockForUpdate()
-                    ->first();
 
                 $attributes = [
                     'amount' => (float) $invoice->ThanhTien,
