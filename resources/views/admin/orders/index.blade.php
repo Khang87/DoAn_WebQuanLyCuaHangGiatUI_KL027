@@ -59,7 +59,7 @@
                         <th class="fw-bold text-dark">Số lượng</th>
                         <th class="fw-bold text-dark">Ghi chú khách hàng</th>
                         <th class="fw-bold text-dark">Thành tiền</th>
-                        <th class="fw-bold text-dark">Trạng thái</th>
+                        <th class="fw-bold text-dark text-center">Trạng thái</th>
                         <th class="fw-bold text-dark">Ngày tạo</th>
                         <th class="fw-bold text-dark">Thao tác</th>
                     </tr>
@@ -92,7 +92,7 @@
                         </td>
                         <td><small class="text-muted">{{ $order->GhiChu ?: 'Không có ghi chú' }}</small></td>
                         <td class="text-dark">{{ number_format((float) $order->ThanhTien) }} đ</td>
-                        <td>
+                        <td class="text-center">
                             <div class="d-inline-flex align-items-center flex-nowrap gap-1 text-nowrap">
                                 <x-admin.order-status-badges :order="$order" :is-paid="$order->isPaid()" :is-receiving="false" compact />
                             </div>
