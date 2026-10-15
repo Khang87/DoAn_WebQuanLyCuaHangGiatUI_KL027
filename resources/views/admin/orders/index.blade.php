@@ -93,7 +93,7 @@
                         <td><small class="text-muted">{{ $order->GhiChu ?: 'Không có ghi chú' }}</small></td>
                         <td class="text-dark">{{ number_format((float) $order->ThanhTien) }} đ</td>
                         <td>
-                            <x-admin.status-badge :status="$order->TrangThai" :enum="\App\Enums\OrderStatus::class" />
+                            <x-admin.order-status-badges :order="$order" :is-paid="$order->isPaid()" :is-receiving="false" />
                         </td>
                         <td class="text-dark">{{ $order->NgayTao?->format('d/m/Y H:i') ?: '-' }}</td>
                         <td>
