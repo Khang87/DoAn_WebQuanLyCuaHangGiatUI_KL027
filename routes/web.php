@@ -225,6 +225,10 @@ Route::middleware(['auth', 'reject.customer'])->group(function () {
         ->middleware('permission:bookings.confirm')
         ->name('bookings.confirm');
 
+    Route::post('payments/bank-transfer', [ThanhToanController::class, 'startBankTransfer'])
+        ->middleware(['permission:payments.create', 'throttle:20,1'])->name('payments.bank-transfer.start');
+    Route::get('payments/bank-transfer/status', [ThanhToanController::class, 'bankTransferStatus'])
+        ->middleware('permission:payments.create')->name('payments.bank-transfer.status');
     Route::resource('payments', ThanhToanController::class)
         ->middlewareFor(['index', 'show'], 'permission:payments.view')
         ->middlewareFor(['create', 'store'], 'permission:payments.create')
