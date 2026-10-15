@@ -25,7 +25,7 @@ class SupportMessagesTest extends TestCase
             $t->string('TrangThai')->default('Hoạt động');
         });
         foreach (['KhachHang' => 'KhachHangID', 'NhanVien' => 'NhanVienID'] as $name => $id) {
-            Schema::create($name, function (Blueprint $t) use ($id): void {
+            Schema::create($name, function (Blueprint $t) use ($id, $name): void {
                 $t->increments($id);
                 $t->string('HoTen');
                 if ($name === 'KhachHang') {
