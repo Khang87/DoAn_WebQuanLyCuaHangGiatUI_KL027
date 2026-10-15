@@ -23,7 +23,7 @@ if (inbox) {
             heading.className = 'd-flex justify-content-between gap-2';
             const title = document.createElement('span');
             title.className = 'fw-semibold';
-            title.textContent = order.number;
+            title.textContent = order.customer;
             if (order.unread) {
                 const dot = document.createElement('span');
                 dot.className = 'd-inline-block rounded-circle bg-danger ms-2';
@@ -36,15 +36,19 @@ if (inbox) {
             const date = document.createElement('small');
             date.textContent = order.date ?? '';
             heading.append(title, date);
-            const customer = document.createElement('small');
-            customer.textContent = order.customer;
-            row.append(heading, customer);
+            const number = document.createElement('small');
+            number.className = 'd-block';
+            number.textContent = order.number;
+            const preview = document.createElement('small');
+            preview.className = 'd-block message-inbox-preview';
+            preview.textContent = order.preview || 'Chưa có tin nhắn';
+            row.append(heading, number, preview);
             fragment.append(row);
         }
         if (!orders.length) {
             const empty = document.createElement('div');
             empty.className = 'text-center text-muted p-4';
-            empty.textContent = 'Chưa có đơn hàng.';
+            empty.textContent = 'Không tìm thấy hội thoại đơn hàng.';
             fragment.append(empty);
         }
         inbox.replaceChildren(fragment);
@@ -70,6 +74,7 @@ if (inbox) {
             if (!Array.isArray(data.orders) || data.orders.length > 20 || data.orders.some(order =>
                 !Number.isSafeInteger(order.id) || order.id < 1 || typeof order.number !== 'string'
                 || typeof order.customer !== 'string' || typeof order.unread !== 'boolean'
+                || (order.preview !== null && typeof order.preview !== 'string')
                 || (order.date !== null && typeof order.date !== 'string'))) throw new Error('Invalid inbox response');
             if (document.hidden || disposed) return;
             render(data.orders);
