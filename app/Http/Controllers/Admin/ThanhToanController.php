@@ -263,6 +263,14 @@ class ThanhToanController extends Controller
             abort(404);
         }
 
+        if ($request->validated('status') === PaymentStatus::Paid->value
+            && ($request->validated('method') === 'bank_transfer'
+                || ($payment->PhuongThuc === 'Chuyển khoản' && $payment->TrangThai === PaymentStatus::Pending->value))) {
+            throw ValidationException::withMessages([
+                'status' => 'Chuyển khoản chỉ được ghi nhận khi ngân hàng xác nhận giao dịch.',
+            ]);
+        }
+
         // Kiểm tra khoản thu đã thanh toán - nhân viên/quản lý không được sửa
         if ($denied = $this->denyIfPaidAndNotOwner($request, $payment, 'chỉnh sửa')) {
             return $denied;
