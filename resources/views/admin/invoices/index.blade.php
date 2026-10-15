@@ -114,11 +114,7 @@
     </div>
 </div>
 
-@if($invoices->hasPages())
-<div class="mt-3">
-    {{ $invoices->appends(request()->query())->links('pagination::bootstrap-5') }}
-</div>
-@endif
+<x-admin.pagination :paginator="$invoices" label="hóa đơn" />
 @endsection
 
 @push('scripts')
