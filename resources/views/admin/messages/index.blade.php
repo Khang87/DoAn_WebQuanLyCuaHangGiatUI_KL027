@@ -3,43 +3,76 @@
 @section('title', 'Tin nhắn khách hàng - Sky Laundry')
 @section('page-title', 'Tin nhắn khách hàng')
 
+@push('styles')
+<style>
+    .message-chat-card { display: flex; flex-direction: column; height: min(48rem, calc(100vh - 10rem)); min-height: 30rem; }
+    .message-chat-history { flex: 1; min-height: 0; overflow-y: auto; }
+    .message-inbox-list { max-height: min(35rem, calc(100vh - 19rem)); overflow-y: auto; }
+    .message-inbox-preview { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    @media (max-width: 991.98px) {
+        .message-chat-card { height: 36rem; }
+        .message-inbox-list { max-height: 19rem; }
+    }
+</style>
+@endpush
+
 @section('content')
 @can('messages.view')
-<div class="row g-4">
-    <div class="col-lg-4">
-        <div class="card border-0 shadow-sm h-100">
+@php($selectedProfile = $selectedCustomer?->khachHang ?: $selectedOrder?->khachHang)
+<div class="row g-3 align-items-start">
+    <div class="col-12 col-md-4 col-xl-3">
+        <div class="card border-0 shadow-sm">
             <div class="card-header bg-white py-3">
-                <h5 class="mb-0 fw-semibold"><i class="bi bi-chat-dots me-2"></i>Đơn hàng</h5>
+                <h5 class="mb-3 fw-semibold"><i class="bi bi-chat-dots me-2"></i>Hội thoại</h5>
+                <form action="{{ route('admin.messages.index') }}" method="GET" role="search" class="input-group input-group-sm">
+                    <input type="hidden" name="tab" value="{{ $activeTab }}">
+                    <input type="search" name="q" value="{{ $search }}" class="form-control" maxlength="100" placeholder="Tên, SĐT hoặc mã đơn" aria-label="Tìm hội thoại">
+                    <button class="btn btn-outline-primary" type="submit" aria-label="Tìm kiếm"><i class="bi bi-search"></i></button>
+                </form>
             </div>
-            <div class="list-group list-group-flush" data-message-inbox="{{ route('admin.messages.inbox', ['page' => $orders->currentPage()]) }}" data-selected-order="{{ $selectedOrder?->DonHangID }}" data-message-link="{{ route('admin.messages.index') }}">
+            <nav class="nav nav-pills nav-fill gap-1 p-2 border-bottom" aria-label="Loại hội thoại">
+                <a class="nav-link {{ $activeTab === 'orders' ? 'active' : '' }}" href="{{ route('admin.messages.index', ['tab' => 'orders', 'q' => $search]) }}" @if($activeTab === 'orders') aria-current="page" @endif>Đơn hàng</a>
+                <a class="nav-link {{ $activeTab === 'support' ? 'active' : '' }}" href="{{ route('admin.messages.index', ['tab' => 'support', 'q' => $search]) }}" @if($activeTab === 'support') aria-current="page" @endif>Tư vấn</a>
+            </nav>
+            @if($activeTab === 'orders')
+            <div class="list-group list-group-flush message-inbox-list" data-message-inbox="{{ route('admin.messages.inbox', ['page' => $orders->currentPage(), 'q' => $search]) }}" data-selected-order="{{ $selectedOrder?->DonHangID }}" data-message-link="{{ route('admin.messages.index', ['q' => $search]) }}">
                 @forelse($orders as $order)
-                    <a href="{{ route('admin.messages.index', ['order_id' => $order->DonHangID]) }}"
+                    <a href="{{ route('admin.messages.index', ['order_id' => $order->DonHangID, 'q' => $search]) }}"
                         data-inbox-order="{{ $order->DonHangID }}" class="list-group-item list-group-item-action {{ $selectedOrder?->DonHangID === $order->DonHangID ? 'active' : '' }}">
                         <div class="d-flex justify-content-between gap-2">
-                            <span class="fw-semibold">{{ $order->MaDonHang }} @if($order->unread_count > 0)<span class="d-inline-block rounded-circle bg-danger ms-2" style="width:10px;height:10px" role="img" aria-label="Tin nhắn chưa đọc" data-unread-dot></span>@endif</span>
+                            <span class="fw-semibold text-truncate">{{ $order->khachHang?->HoTen ?: 'Khách hàng' }} @if($order->unread_count > 0)<span class="d-inline-block rounded-circle bg-danger ms-2" style="width:10px;height:10px" role="img" aria-label="Tin nhắn chưa đọc" data-unread-dot></span>@endif</span>
                             <small>{{ $order->last_message_at ? \Carbon\Carbon::parse($order->last_message_at, 'UTC')->setTimezone(config('app.timezone'))->format('d-m-Y') : $order->NgayTao?->format('d-m-Y') }}</small>
                         </div>
-                        <small>{{ $order->khachHang?->HoTen ?: 'Khách hàng' }}</small>
+                        <small class="d-block">{{ $order->MaDonHang }}</small>
+                        <small class="d-block message-inbox-preview">{{ $order->last_message_preview ?: 'Chưa có tin nhắn' }}</small>
                     </a>
                 @empty
-                    <div class="text-center text-muted p-4">Chưa có đơn hàng.</div>
+                    <div class="text-center text-muted p-4">Không tìm thấy hội thoại đơn hàng.</div>
                 @endforelse
             </div>
-            <div class="card-header bg-white"><h6 class="mb-0">Hỗ trợ trước khi đặt hàng</h6></div>
-            <div class="list-group list-group-flush">
-                @foreach($supportCustomers as $customer)
-                    <a class="list-group-item list-group-item-action {{ $selectedCustomer?->getKey() === $customer->getKey() ? 'active' : '' }}" href="{{ route('admin.messages.index', ['customer_id' => $customer->getKey()]) }}">{{ $customer->name }}</a>
-                @endforeach
+            @if($orders->hasPages())<div class="card-footer bg-white">{{ $orders->links() }}</div>@endif
+            @else
+            <div class="list-group list-group-flush message-inbox-list">
+                @forelse($supportCustomers as $customer)
+                    <a class="list-group-item list-group-item-action {{ $selectedCustomer?->getKey() === $customer->getKey() ? 'active' : '' }}" href="{{ route('admin.messages.index', ['customer_id' => $customer->getKey(), 'q' => $search]) }}">
+                        <div class="d-flex justify-content-between gap-2">
+                            <span class="fw-semibold text-truncate">{{ $customer->name }}</span>
+                            <small>{{ $customer->last_message_at ? \Carbon\Carbon::parse($customer->last_message_at, 'UTC')->setTimezone(config('app.timezone'))->format('d-m-Y') : '' }}</small>
+                        </div>
+                        <small class="d-block">{{ $customer->khachHang?->SoDienThoai ?: 'Tư vấn khách hàng' }}</small>
+                        <small class="d-block message-inbox-preview">{{ $customer->last_message_preview ?: 'Chưa có tin nhắn' }}</small>
+                    </a>
+                @empty
+                    <div class="text-center text-muted p-4">Không tìm thấy khách hàng tư vấn.</div>
+                @endforelse
             </div>
-            <div class="card-footer bg-white">{{ $supportCustomers->links() }}</div>
-            @if($orders->hasPages())
-                <div class="card-footer bg-white">{{ $orders->links() }}</div>
+            @if($supportCustomers->hasPages())<div class="card-footer bg-white">{{ $supportCustomers->links() }}</div>@endif
             @endif
         </div>
     </div>
 
-    <div class="col-lg-8">
-        <div class="card border-0 shadow-sm">
+    <div class="col-12 col-md-8 col-xl-6">
+        <div class="card border-0 shadow-sm message-chat-card">
             @if($selectedOrder || $selectedCustomer)
                 <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
                     <div>
@@ -51,7 +84,7 @@
                         <i class="bi bi-box-arrow-up-right me-1"></i>Chi tiết đơn
                     </a>@endif
                 </div>
-                <div class="card-body bg-light" style="min-height: 360px; max-height: 520px; overflow-y: auto; position: relative;"
+                <div class="card-body bg-light message-chat-history"
                     data-message-read="{{ route('admin.messages.read') }}"
                     data-message-realtime="{{ route('admin.messages.realtime') }}"
                     data-message-updates="{{ $selectedCustomer ? route('admin.messages.support-updates', $selectedCustomer->getKey()) : route('admin.messages.updates', $selectedOrder->DonHangID) }}"
@@ -80,17 +113,24 @@
                     @if(!$selectedCustomer && !$selectedOrder?->khachHang?->taiKhoan)
                         <div class="alert alert-warning mb-0">Khách hàng chưa có tài khoản nhận tin nhắn.</div>
                     @else
-                        <form method="POST" action="{{ route('admin.messages.store') }}" class="d-flex gap-2" data-message-form>
+                        <form method="POST" action="{{ route('admin.messages.store') }}" class="d-flex flex-column gap-2" data-message-form>
                             @csrf
                             @if($selectedCustomer)
                                 <input type="hidden" name="customer_id" value="{{ $selectedCustomer->getKey() }}">
                             @else
                                 <input type="hidden" name="order_id" value="{{ $selectedOrder->DonHangID }}">
                             @endif
-                            <textarea name="content" rows="2" maxlength="1000" required class="form-control" placeholder="Nhập tin nhắn cho khách hàng...">{{ old('content') }}</textarea>
-                            <button type="submit" class="btn btn-primary align-self-end">
-                                <i class="bi bi-send me-1"></i>Gửi
-                            </button>
+                            <div class="d-flex flex-wrap gap-2" aria-label="Mẫu trả lời nhanh">
+                                <button type="button" class="btn btn-sm btn-outline-secondary" data-message-template="Xin chào, cửa hàng đã nhận tin nhắn của bạn.">Chào khách</button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" data-message-template="Bạn vui lòng cho biết mã đơn hàng để cửa hàng kiểm tra nhé.">Hỏi mã đơn</button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" data-message-template="Cửa hàng sẽ kiểm tra và phản hồi bạn sớm.">Hẹn phản hồi</button>
+                            </div>
+                            <div class="d-flex gap-2">
+                                <textarea name="content" rows="2" maxlength="1000" required class="form-control" placeholder="Nhập tin nhắn cho khách hàng...">{{ old('content') }}</textarea>
+                                <button type="submit" class="btn btn-primary align-self-end">
+                                    <i class="bi bi-send me-1"></i>Gửi
+                                </button>
+                            </div>
                         </form>
                         @error('content')<div class="text-danger small mt-2">{{ $message }}</div>@enderror
                         @error('message')<div class="text-danger small mt-2">{{ $message }}</div>@enderror
@@ -100,11 +140,35 @@
             @else
                 <div class="card-body text-center text-muted py-5">
                     <i class="bi bi-chat-square-text display-5 d-block mb-3"></i>
-                    Chọn một đơn hàng để xem và trả lời tin nhắn.
+                    Chọn một hội thoại để xem và trả lời tin nhắn.
                 </div>
             @endif
         </div>
     </div>
+    <aside class="col-12 col-xl-3" aria-label="Thông tin cuộc trò chuyện">
+        @if($selectedOrder || $selectedCustomer)
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white py-3"><h6 class="mb-0 fw-semibold">Thông tin khách hàng</h6></div>
+            <div class="card-body small">
+                <div class="fw-semibold mb-2">{{ $selectedProfile?->HoTen ?: ($selectedCustomer?->name ?: 'Khách hàng') }}</div>
+                <div class="mb-2"><span class="text-muted">Số điện thoại:</span> {{ $selectedProfile?->SoDienThoai ?: 'Chưa cập nhật' }}</div>
+                <div><span class="text-muted">Địa chỉ:</span> {{ $selectedProfile?->DiaChi ?: 'Chưa cập nhật' }}</div>
+            </div>
+        </div>
+        @if($selectedOrder)
+        <div class="card border-0 shadow-sm mt-3">
+            <div class="card-header bg-white py-3"><h6 class="mb-0 fw-semibold">Đơn {{ $selectedOrder->MaDonHang }}</h6></div>
+            <div class="card-body small">
+                <div class="mb-3"><x-admin.order-status-badges :order="$selectedOrder" :is-paid="$selectedOrder->isPaid()" :is-receiving="false" compact /></div>
+                <div class="d-flex justify-content-between gap-2 mb-3"><span class="text-muted">Giá trị đơn</span><strong>{{ number_format((float) $selectedOrder->ThanhTien) }} đ</strong></div>
+                <a href="{{ route('orders.show', $selectedOrder) }}" class="btn btn-sm btn-outline-primary w-100">Xem chi tiết đơn</a>
+            </div>
+        </div>
+        @endif
+        @else
+        <div class="card border-0 shadow-sm"><div class="card-body text-muted small py-4">Thông tin khách hàng và đơn hàng sẽ hiển thị khi bạn chọn hội thoại.</div></div>
+        @endif
+    </aside>
 </div>
 @endcan
 @endsection

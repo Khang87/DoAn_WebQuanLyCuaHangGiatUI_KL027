@@ -24,7 +24,10 @@ class MessageController extends Controller
         $validated = $request->validate([
             'order_id' => ['nullable', 'integer', 'min:1', 'prohibits:customer_id'],
             'customer_id' => ['nullable', 'integer', 'min:1', 'prohibits:order_id'],
+            'q' => ['nullable', 'string', 'max:100'],
+            'tab' => ['nullable', 'in:orders,support'],
         ]);
+        $search = trim($validated['q'] ?? '');
 
         $order = isset($validated['order_id'])
             ? $this->messageService->findOrder((int) $validated['order_id'])
@@ -37,10 +40,12 @@ class MessageController extends Controller
         $customer = isset($validated['customer_id']) ? $this->messageService->supportCustomer((int) $validated['customer_id']) : null;
 
         return view('admin.messages.index', [
-            'orders' => $this->messageService->getOrders(),
+            'orders' => $this->messageService->getOrders($search),
             'selectedOrder' => $order,
             'selectedCustomer' => $customer,
-            'supportCustomers' => $this->messageService->supportCustomers(),
+            'supportCustomers' => $this->messageService->supportCustomers($search),
+            'activeTab' => $customer ? 'support' : ($order ? 'orders' : ($validated['tab'] ?? 'orders')),
+            'search' => $search,
             'messages' => $order ? $this->messageService->getMessages($order) : ($customer ? $this->messageService->supportMessages($customer) : collect()),
         ]);
     }
@@ -80,11 +85,15 @@ class MessageController extends Controller
 
     public function inbox(Request $request): JsonResponse
     {
-        $request->validate(['page' => ['nullable', 'integer', 'min:1']]);
+        $validated = $request->validate([
+            'page' => ['nullable', 'integer', 'min:1'],
+            'q' => ['nullable', 'string', 'max:100'],
+        ]);
 
-        return response()->json(['orders' => $this->messageService->getOrders()->map(fn ($order) => [
+        return response()->json(['orders' => $this->messageService->getOrders(trim($validated['q'] ?? ''))->map(fn ($order) => [
             'id' => (int) $order->getKey(), 'number' => (string) $order->MaDonHang,
             'customer' => $order->khachHang?->HoTen ?: 'Khách hàng',
+            'preview' => $order->last_message_preview,
             'unread' => (int) $order->unread_count > 0,
             'date' => $order->last_message_at ? Carbon::parse($order->last_message_at, 'UTC')->setTimezone(config('app.timezone'))->format('d-m-Y') : $order->NgayTao?->format('d-m-Y'),
         ])->values()])->header('Cache-Control', 'private, no-store');

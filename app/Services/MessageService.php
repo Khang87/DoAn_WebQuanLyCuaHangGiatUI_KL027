@@ -14,17 +14,31 @@ use Illuminate\Validation\ValidationException;
 
 class MessageService
 {
-    public function getOrders(): LengthAwarePaginator
+    public function getOrders(?string $search = null): LengthAwarePaginator
     {
         $activity = TinNhan::query()->select('DonHangID')->selectRaw('MAX("ThoiGianGui") AS last_message_at, MAX("TinNhanID") AS last_message_id')
             ->whereNotNull('DonHangID')->groupBy('DonHangID');
         $unread = $this->unreadIncoming()->select('DonHangID')->selectRaw('COUNT(*) AS unread_count')
             ->whereNotNull('DonHangID')->groupBy('DonHangID');
 
-        return DonHang::query()->with(['khachHang.taiKhoan'])->select('DonHang.*')
+        $orders = DonHang::query()->with(['khachHang.taiKhoan'])->select('DonHang.*')
             ->leftJoinSub($activity, 'activity', 'activity.DonHangID', '=', 'DonHang.DonHangID')
             ->leftJoinSub($unread, 'unread', 'unread.DonHangID', '=', 'DonHang.DonHangID')
             ->addSelect('activity.last_message_at', 'unread.unread_count')
+            ->addSelect(['last_message_preview' => TinNhan::query()->select('NoiDung')
+                ->whereColumn('TinNhan.DonHangID', 'DonHang.DonHangID')
+                ->orderByDesc('ThoiGianGui')->orderByDesc('TinNhanID')->limit(1)]);
+
+        if ($search !== null && $search !== '') {
+            $term = '%'.mb_strtolower($search).'%';
+            $orders->where(fn ($query) => $query
+                ->whereRaw('LOWER("DonHang"."MaDonHang") LIKE ?', [$term])
+                ->orWhereHas('khachHang', fn ($customer) => $customer
+                    ->whereRaw('LOWER("HoTen") LIKE ?', [$term])
+                    ->orWhere('SoDienThoai', 'like', '%'.$search.'%')));
+        }
+
+        return $orders
             ->orderByRaw('CASE WHEN activity.last_message_at IS NULL THEN 1 ELSE 0 END')
             ->orderByDesc('activity.last_message_at')->orderByDesc('activity.last_message_id')->orderByDesc('DonHang.NgayTao')->orderByDesc('DonHang.DonHangID')
             ->paginate(20)->withQueryString();
@@ -89,11 +103,32 @@ class MessageService
             ->values();
     }
 
-    public function supportCustomers(): LengthAwarePaginator
+    public function supportCustomers(?string $search = null): LengthAwarePaginator
     {
-        return User::query()->with('khachHang')->whereNotNull('KhachHangID')
-            ->whereNull('NhanVienID')->where('TrangThai', 'Hoạt động')
-            ->orderByDesc('TaiKhoanID')->paginate(20, ['*'], 'support_page')->withQueryString();
+        $customers = User::query()->with('khachHang')->whereNotNull('KhachHangID')
+            ->whereNull('NhanVienID')->where('TrangThai', 'Hoạt động');
+
+        if ($search !== null && $search !== '') {
+            $term = '%'.mb_strtolower($search).'%';
+            $customers->where(fn ($query) => $query
+                ->whereRaw('LOWER("TenDangNhap") LIKE ?', [$term])
+                ->orWhereHas('khachHang', fn ($customer) => $customer
+                    ->whereRaw('LOWER("HoTen") LIKE ?', [$term])
+                    ->orWhere('SoDienThoai', 'like', '%'.$search.'%')));
+        }
+
+        $supportMessage = fn () => TinNhan::query()->whereNull('DonHangID')
+            ->where(fn ($query) => $query
+                ->where(fn ($incoming) => $incoming->whereColumn('NguoiGuiID', 'TaiKhoan.TaiKhoanID')
+                    ->whereHas('recipient', fn ($staff) => InternalCommunicationPolicy::scopeAccounts($staff)))
+                ->orWhere(fn ($outgoing) => $outgoing->whereColumn('NguoiNhanID', 'TaiKhoan.TaiKhoanID')
+                    ->whereHas('sender', fn ($staff) => InternalCommunicationPolicy::scopeAccounts($staff))))
+            ->orderByDesc('ThoiGianGui')->orderByDesc('TinNhanID')->limit(1);
+
+        return $customers->addSelect(['TaiKhoan.*',
+            'last_message_preview' => $supportMessage()->select('NoiDung'),
+            'last_message_at' => $supportMessage()->select('ThoiGianGui'),
+        ])->orderByDesc('TaiKhoanID')->paginate(20, ['*'], 'support_page')->withQueryString();
     }
 
     public function supportCustomer(int $id): User
