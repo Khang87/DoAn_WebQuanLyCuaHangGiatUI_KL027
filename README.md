@@ -70,7 +70,7 @@ Thông tin phiên bản được đối chiếu từ các tệp cấu hình ph�
 
 ## Triển khai production
 
-- Domain production: [https://do-an-web-quan-ly-cua-hang-giat-ui.vercel.app](https://do-an-web-quan-ly-cua-hang-giat-ui.vercel.app).
+- Domain production: [https://sky-laundry.vercel.app](https://sky-laundry.vercel.app).
 - Kiểm tra công khai ngày 06/10/2026: `/login` trả HTTP 200; `/profile` yêu cầu đăng nhập và chuyển về trang đăng nhập.
 - Ảnh đại diện dùng biến môi trường `SUPABASE_AVATAR_BUCKET`; Bucket ID chính xác là `avatars` (phân biệt chữ hoa/thường). Cấu hình Laravel giữ nguyên casing thay vì tự chuyển sang chữ hoa.
 - Trên production, bucket `avatars` đã được xác nhận; sau deploy `2776f72`, kiểm thử ảnh PNG 1×1 hoàn tất: xin signed URL, upload Storage, xác minh object và lưu URL hồ sơ đều thành công (HTTP 200), ảnh vẫn hiển thị sau khi tải lại trang. Ảnh đại diện cũ của tài khoản test được thay bằng ảnh thử theo xác nhận của người dùng; không thay đổi schema, migration hay cấu hình bucket. Xem [TESTCASES.md](./TESTCASES.md).
