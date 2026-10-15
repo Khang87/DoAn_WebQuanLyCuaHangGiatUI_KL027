@@ -86,12 +86,7 @@
         </div>
     </div>
 
-@if($customers->hasPages())
-<div class="mt-4 d-flex justify-content-between align-items-center">
-    <small class="text-muted">Hiển thị {{ $customers->firstItem() }} - {{ $customers->lastItem() }} của {{ $customers->total() }} khách hàng</small>
-    {{ $customers->links('pagination::bootstrap-5') }}
-</div>
-@endif
+<x-admin.pagination :paginator="$customers" label="khách hàng" />
 @endsection
 
 @push('scripts')

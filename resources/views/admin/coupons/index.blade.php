@@ -91,11 +91,7 @@
     </div>
 </div>
 
-@if($coupons->hasPages())
-<div class="mt-3">
-    {{ $coupons->appends(request()->query())->links('pagination::bootstrap-5') }}
-</div>
-@endif
+<x-admin.pagination :paginator="$coupons" label="mã giảm giá" />
 @endsection
 
 @push('scripts')

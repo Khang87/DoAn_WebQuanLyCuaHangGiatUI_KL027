@@ -115,14 +115,5 @@
     </div>
 </div>
 
-@if($categories->hasPages())
-    <nav class="mt-4">
-        <div class="d-flex justify-content-between align-items-center">
-            <div class="text-muted small">
-                Hiển thị {{ $categories->firstItem() }} - {{ $categories->lastItem() }} của {{ $categories->total() }} danh mục
-            </div>
-            {{ $categories->links() }}
-        </div>
-    </nav>
-@endif
+<x-admin.pagination :paginator="$categories" label="danh mục" />
 @endsection

@@ -128,32 +128,7 @@
     </div>
 </div>
 
-@if($payments->hasPages())
-<nav class="mt-4">
-    <div class="d-flex justify-content-between align-items-center">
-        <div class="text-muted small">Hiển thị {{ $payments->firstItem() }} - {{ $payments->lastItem() }} của {{ $payments->total() }} thanh toán</div>
-        <ul class="pagination mb-0">
-            @if ($payments->onFirstPage())
-                <li class="page-item disabled"><span class="page-link"><i class="bi bi-chevron-left"></i></span></li>
-            @else
-                <li class="page-item"><a class="page-link" href="{{ $payments->appends(request()->query())->url($payments->currentPage() - 1) }}"><i class="bi bi-chevron-left"></i></a></li>
-            @endif
-            @foreach ($payments->getUrlRange(max(1, $payments->currentPage() - 2), min($payments->lastPage(), $payments->currentPage() + 2)) as $page => $url)
-                @if ($page == $payments->currentPage())
-                    <li class="page-item active"><span class="page-link">{{ $page }}</span></li>
-                @else
-                    <li class="page-item"><a class="page-link" href="{{ $payments->appends(request()->query())->url($page) }}">{{ $page }}</a></li>
-                @endif
-            @endforeach
-            @if ($payments->onLastPage())
-                <li class="page-item disabled"><span class="page-link"><i class="bi bi-chevron-right"></i></span></li>
-            @else
-                <li class="page-item"><a class="page-link" href="{{ $payments->appends(request()->query())->url($payments->currentPage() + 1) }}"><i class="bi bi-chevron-right"></i></a></li>
-            @endif
-        </ul>
-    </div>
-</nav>
-@endif
+<x-admin.pagination :paginator="$payments" label="thanh toán" />
 @endsection
 
 @push('scripts')

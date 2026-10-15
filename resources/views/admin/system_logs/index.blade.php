@@ -219,8 +219,7 @@
             </table>
         </div>
     </div>
-    @if($logs->hasPages())
-        <div class="card-footer bg-white">{{ $logs->links() }}</div>
-    @endif
 </div>
+
+<x-admin.pagination :paginator="$logs" label="nhật ký" />
 @endsection

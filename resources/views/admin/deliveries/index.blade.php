@@ -103,32 +103,7 @@
     </div>
 </div>
 
-@if($deliveries->hasPages())
-<nav class="mt-4">
-    <div class="d-flex justify-content-between align-items-center">
-        <div class="text-muted small">Hiển thị {{ $deliveries->firstItem() }} - {{ $deliveries->lastItem() }} của {{ $deliveries->total() }} giao nhận</div>
-        <ul class="pagination mb-0">
-            @if ($deliveries->onFirstPage())
-                <li class="page-item disabled"><span class="page-link"><i class="bi bi-chevron-left"></i></span></li>
-            @else
-                <li class="page-item"><a class="page-link" href="{{ $deliveries->appends(request()->query())->url($deliveries->currentPage() - 1) }}"><i class="bi bi-chevron-left"></i></a></li>
-            @endif
-            @foreach ($deliveries->getUrlRange(max(1, $deliveries->currentPage() - 2), min($deliveries->lastPage(), $deliveries->currentPage() + 2)) as $page => $url)
-                @if ($page == $deliveries->currentPage())
-                    <li class="page-item active"><span class="page-link">{{ $page }}</span></li>
-                @else
-                    <li class="page-item"><a class="page-link" href="{{ $deliveries->appends(request()->query())->url($page) }}">{{ $page }}</a></li>
-                @endif
-            @endforeach
-            @if ($deliveries->onLastPage())
-                <li class="page-item disabled"><span class="page-link"><i class="bi bi-chevron-right"></i></span></li>
-            @else
-                <li class="page-item"><a class="page-link" href="{{ $deliveries->appends(request()->query())->url($deliveries->currentPage() + 1) }}"><i class="bi bi-chevron-right"></i></a></li>
-            @endif
-        </ul>
-    </div>
-</nav>
-@endif
+<x-admin.pagination :paginator="$deliveries" label="giao nhận" />
 @endsection
 
 @push('scripts')

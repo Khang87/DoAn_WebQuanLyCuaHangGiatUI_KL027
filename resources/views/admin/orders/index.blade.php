@@ -139,12 +139,7 @@
     </div>
 </div>
 
-@if($orders->hasPages())
-<nav class="mt-4 d-flex justify-content-between align-items-center">
-    <small class="text-muted">Hiển thị {{ $orders->firstItem() }} - {{ $orders->lastItem() }} của {{ $orders->total() }} đơn hàng</small>
-    {{ $orders->links('pagination::bootstrap-5') }}
-</nav>
-@endif
+<x-admin.pagination :paginator="$orders" label="đơn hàng" />
 @endsection
 
 @push('scripts')

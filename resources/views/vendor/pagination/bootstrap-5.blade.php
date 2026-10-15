@@ -1,7 +1,7 @@
 @if ($paginator->hasPages())
-    <nav class="d-flex justify-items-center justify-content-between">
+    <nav class="d-flex justify-items-center justify-content-between" aria-label="Phân trang">
         <div class="d-flex justify-content-between flex-fill d-sm-none">
-            <ul class="pagination">
+            <ul class="pagination mb-0">
                 {{-- Previous Page Link --}}
                 @if ($paginator->onFirstPage())
                     <li class="page-item disabled" aria-disabled="true">
@@ -27,6 +27,7 @@
         </div>
 
         <div class="d-none flex-sm-fill d-sm-flex align-items-sm-center justify-content-sm-between">
+            @if($showSummary ?? true)
             <div class="small text-muted">
                 {{ __('pagination.showing') }}
                 <span class="fw-semibold">{{ $paginator->firstItem() }}</span>
@@ -36,17 +37,18 @@
                 <span class="fw-semibold">{{ $paginator->total() }}</span>
                 {{ __('pagination.results') }}
             </div>
+            @endif
 
             <div>
-                <ul class="pagination">
+                <ul class="pagination mb-0">
                     {{-- Previous Page Link --}}
                     @if ($paginator->onFirstPage())
                         <li class="page-item disabled" aria-disabled="true" aria-label="@lang('pagination.previous')">
-                            <span class="page-link" aria-hidden="true">&lsaquo;</span>
+                            <span class="page-link" aria-hidden="true"><i class="bi bi-chevron-left" aria-hidden="true"></i></span>
                         </li>
                     @else
                         <li class="page-item">
-                            <a class="page-link" href="{{ $paginator->previousPageUrl() }}" rel="prev" aria-label="@lang('pagination.previous')">&lsaquo;</a>
+                            <a class="page-link" href="{{ $paginator->previousPageUrl() }}" rel="prev" aria-label="@lang('pagination.previous')"><i class="bi bi-chevron-left" aria-hidden="true"></i></a>
                         </li>
                     @endif
 
@@ -72,11 +74,11 @@
                     {{-- Next Page Link --}}
                     @if ($paginator->hasMorePages())
                         <li class="page-item">
-                            <a class="page-link" href="{{ $paginator->nextPageUrl() }}" rel="next" aria-label="@lang('pagination.next')">&rsaquo;</a>
+                            <a class="page-link" href="{{ $paginator->nextPageUrl() }}" rel="next" aria-label="@lang('pagination.next')"><i class="bi bi-chevron-right" aria-hidden="true"></i></a>
                         </li>
                     @else
                         <li class="page-item disabled" aria-disabled="true" aria-label="@lang('pagination.next')">
-                            <span class="page-link" aria-hidden="true">&rsaquo;</span>
+                            <span class="page-link" aria-hidden="true"><i class="bi bi-chevron-right" aria-hidden="true"></i></span>
                         </li>
                     @endif
                 </ul>
