@@ -93,7 +93,9 @@
                         <td><small class="text-muted">{{ $order->GhiChu ?: 'Không có ghi chú' }}</small></td>
                         <td class="text-dark">{{ number_format((float) $order->ThanhTien) }} đ</td>
                         <td>
-                            <x-admin.order-status-badges :order="$order" :is-paid="$order->isPaid()" :is-receiving="false" />
+                            <div class="d-inline-flex align-items-center flex-nowrap gap-1">
+                                <x-admin.order-status-badges :order="$order" :is-paid="$order->isPaid()" :is-receiving="false" compact />
+                            </div>
                         </td>
                         <td class="text-dark">{{ $order->NgayTao?->format('d/m/Y H:i') ?: '-' }}</td>
                         <td>
