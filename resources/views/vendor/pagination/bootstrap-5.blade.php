@@ -1,7 +1,7 @@
 @if ($paginator->hasPages())
-    <nav class="d-flex justify-items-center justify-content-between">
+    <nav class="d-flex justify-items-center justify-content-between" aria-label="Phân trang">
         <div class="d-flex justify-content-between flex-fill d-sm-none">
-            <ul class="pagination">
+            <ul class="pagination mb-0">
                 {{-- Previous Page Link --}}
                 @if ($paginator->onFirstPage())
                     <li class="page-item disabled" aria-disabled="true">
@@ -27,6 +27,7 @@
         </div>
 
         <div class="d-none flex-sm-fill d-sm-flex align-items-sm-center justify-content-sm-between">
+            @if($showSummary ?? true)
             <div class="small text-muted">
                 {{ __('pagination.showing') }}
                 <span class="fw-semibold">{{ $paginator->firstItem() }}</span>
@@ -36,9 +37,10 @@
                 <span class="fw-semibold">{{ $paginator->total() }}</span>
                 {{ __('pagination.results') }}
             </div>
+            @endif
 
             <div>
-                <ul class="pagination">
+                <ul class="pagination mb-0">
                     {{-- Previous Page Link --}}
                     @if ($paginator->onFirstPage())
                         <li class="page-item disabled" aria-disabled="true" aria-label="@lang('pagination.previous')">
