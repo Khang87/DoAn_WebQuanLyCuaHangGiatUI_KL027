@@ -118,10 +118,5 @@
     @endforelse
 </div>
 
-@if($services->hasPages())
-<div class="mt-4 d-flex justify-content-between align-items-center">
-    <small class="text-muted">Hiển thị {{ $services->firstItem() }} - {{ $services->lastItem() }} của {{ $services->total() }} dịch vụ</small>
-    {{ $services->links('pagination::bootstrap-5') }}
-</div>
-@endif
+<x-admin.pagination :paginator="$services" label="dịch vụ" />
 @endsection
