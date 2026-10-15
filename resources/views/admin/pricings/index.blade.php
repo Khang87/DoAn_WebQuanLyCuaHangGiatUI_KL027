@@ -105,32 +105,7 @@
     </div>
 </div>
 
-@if($pricings->hasPages())
-<nav class="mt-4">
-    <div class="d-flex justify-content-between align-items-center">
-        <div class="text-muted small">Hiển thị {{ $pricings->firstItem() }} - {{ $pricings->lastItem() }} của {{ $pricings->total() }} bảng giá</div>
-        <ul class="pagination mb-0">
-            @if ($pricings->onFirstPage())
-                <li class="page-item disabled"><span class="page-link"><i class="bi bi-chevron-left"></i></span></li>
-            @else
-                <li class="page-item"><a class="page-link" href="{{ $pricings->appends(request()->query())->url($pricings->currentPage() - 1) }}"><i class="bi bi-chevron-left"></i></a></li>
-            @endif
-            @foreach ($pricings->getUrlRange(max(1, $pricings->currentPage() - 2), min($pricings->lastPage(), $pricings->currentPage() + 2)) as $page => $url)
-                @if ($page == $pricings->currentPage())
-                    <li class="page-item active"><span class="page-link">{{ $page }}</span></li>
-                @else
-                    <li class="page-item"><a class="page-link" href="{{ $pricings->appends(request()->query())->url($page) }}">{{ $page }}</a></li>
-                @endif
-            @endforeach
-            @if ($pricings->onLastPage())
-                <li class="page-item disabled"><span class="page-link"><i class="bi bi-chevron-right"></i></span></li>
-            @else
-                <li class="page-item"><a class="page-link" href="{{ $pricings->appends(request()->query())->url($pricings->currentPage() + 1) }}"><i class="bi bi-chevron-right"></i></a></li>
-            @endif
-        </ul>
-    </div>
-</nav>
-@endif
+<x-admin.pagination :paginator="$pricings" label="bảng giá" />
 @endsection
 
 @push('scripts')
