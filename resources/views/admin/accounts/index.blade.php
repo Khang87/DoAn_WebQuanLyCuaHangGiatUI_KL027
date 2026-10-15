@@ -147,11 +147,7 @@
     </div>
 </div>
 
-@if($accounts->hasPages())
-<div class="mt-3">
-    {{ $accounts->appends(request()->query())->links('pagination::bootstrap-5') }}
-</div>
-@endif
+<x-admin.pagination :paginator="$accounts" label="tài khoản" />
 
 @if($canManageRoles)
 <div class="modal fade" id="updateRoleModal" tabindex="-1" aria-labelledby="updateRoleModalLabel" aria-hidden="true">
