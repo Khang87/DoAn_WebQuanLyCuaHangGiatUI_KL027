@@ -12,3 +12,15 @@ test('double submit is blocked until page returns, without changing draft',()=>{
     events.submit(event);assert.equal(prevented,1);
     form.dataset.accessLost='true';windowEvents.pageshow();assert.equal(button.disabled,true);
 });
+
+test('quick reply fills the composer and does not submit a message',()=>{
+    const events={};
+    const composer={value:'',focused:false,focus(){this.focused=true;}};
+    const template={dataset:{messageTemplate:'Cửa hàng sẽ kiểm tra và phản hồi bạn sớm.'},addEventListener:(name,fn)=>events[name]=fn};
+    const form={dataset:{},querySelector:selector=>selector.startsWith('textarea')?composer:{textContent:'Gửi'},querySelectorAll:()=>[template],addEventListener(){}};
+    vm.runInNewContext(readFileSync(new URL('../../resources/js/message-send-guard.js',import.meta.url),'utf8'),{document:{querySelector:()=>form},window:{addEventListener(){}}});
+    events.click();
+    assert.equal(composer.value,template.dataset.messageTemplate);
+    assert.equal(composer.focused,true);
+    form.dataset.accessLost='true';composer.value='';events.click();assert.equal(composer.value,'');
+});
