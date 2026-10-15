@@ -98,12 +98,7 @@
     </div>
 </div>
 
-@if($bookings->hasPages())
-<div class="mt-4 d-flex justify-content-between align-items-center">
-    <small class="text-muted">Hiển thị {{ $bookings->firstItem() }} - {{ $bookings->lastItem() }} của {{ $bookings->total() }} lịch hẹn</small>
-    {{ $bookings->links('pagination::bootstrap-5') }}
-</div>
-@endif
+<x-admin.pagination :paginator="$bookings" label="lịch hẹn" />
 
 @endsection
 
