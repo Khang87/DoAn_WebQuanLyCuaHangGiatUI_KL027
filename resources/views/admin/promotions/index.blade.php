@@ -118,12 +118,7 @@
     </div>
 </div>
 
-@if($promotions->hasPages())
-<div class="mt-4 d-flex justify-content-between align-items-center">
-    <small class="text-muted">Hiển thị {{ $promotions->firstItem() }} - {{ $promotions->lastItem() }} của {{ $promotions->total() }} khuyến mãi</small>
-    {{ $promotions->links('pagination::bootstrap-5') }}
-</div>
-@endif
+<x-admin.pagination :paginator="$promotions" label="khuyến mãi" />
 @endsection
 
 @push('scripts')
