@@ -1176,6 +1176,23 @@ body {
     border-color: var(--border-light) !important;
 }
 
+/* Order status pills in the list keep the same colors as the detail header. */
+.table-custom .order-status-badges .badge.bg-primary-subtle {
+    background-color: var(--bs-primary-bg-subtle) !important;
+}
+
+.table-custom .order-status-badges .badge.bg-info-subtle {
+    background-color: var(--bs-info-bg-subtle) !important;
+}
+
+.table-custom .order-status-badges .badge.border-primary {
+    border-color: var(--bs-primary) !important;
+}
+
+.table-custom .order-status-badges .badge.border-info {
+    border-color: var(--bs-info) !important;
+}
+
 /* Dữ liệu trong bảng chỉ hiển thị text thuần: không gạch dưới, không link.
    Rule giữ lại để mọi link nào lọt vào bảng cũng không bị gạch chân. */
 .table a:not(.badge):not(.btn),
