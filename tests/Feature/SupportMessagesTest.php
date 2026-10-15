@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\User;
+use App\Services\MessageService;
 use App\Support\PermissionCache;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
@@ -27,6 +28,9 @@ class SupportMessagesTest extends TestCase
             Schema::create($name, function (Blueprint $t) use ($id): void {
                 $t->increments($id);
                 $t->string('HoTen');
+                if ($name === 'KhachHang') {
+                    $t->string('SoDienThoai')->nullable();
+                }
                 $t->string('TrangThai')->default('Hoạt động');
             });
         }
@@ -120,6 +124,29 @@ class SupportMessagesTest extends TestCase
         $this->getJson('/admin/messages/inbox')->assertJsonPath('orders.0.unread', false)->assertJsonPath('orders.1.unread', true);
         $this->message(2, 1, 1);
         $this->getJson('/admin/messages/inbox')->assertJsonPath('orders.0.unread', true);
+    }
+
+    public function test_inbox_search_and_previews_stay_with_their_conversations(): void
+    {
+        DB::table('KhachHang')->where('KhachHangID', 1)->update(['SoDienThoai' => '0901111222']);
+        DB::table('DonHang')->where('DonHangID', 1)->update(['MaDonHang' => 'DH-AN', 'KhachHangID' => 1]);
+        DB::table('DonHang')->insert(['DonHangID' => 2, 'MaDonHang' => 'DH-BINH', 'KhachHangID' => 2]);
+        DB::table('TinNhan')->insert([
+            ['NguoiGuiID' => 2, 'NguoiNhanID' => 1, 'DonHangID' => 1, 'NoiDung' => 'Tin đơn An', 'ThoiGianGui' => '2026-10-09 12:00:00'],
+            ['NguoiGuiID' => 3, 'NguoiNhanID' => 1, 'DonHangID' => 2, 'NoiDung' => 'Tin đơn Bình', 'ThoiGianGui' => '2026-10-09 13:00:00'],
+            ['NguoiGuiID' => 2, 'NguoiNhanID' => 1, 'DonHangID' => null, 'NoiDung' => 'Tư vấn An', 'ThoiGianGui' => '2026-10-09 14:00:00'],
+        ]);
+
+        $service = app(MessageService::class);
+        $orders = $service->getOrders('0901111222');
+        $this->assertSame(1, $orders->total());
+        $this->assertSame('Tin đơn An', $orders->first()->last_message_preview);
+        $this->assertSame(1, $service->getOrders('dh-an')->total());
+
+        $customers = $service->supportCustomers('Nguyễn An');
+        $this->assertSame(1, $customers->total());
+        $this->assertSame('Tư vấn An', $customers->first()->last_message_preview);
+        $this->assertSame(1, $service->supportCustomers('0901111222')->total());
     }
 
     public function test_opening_recent_window_clears_older_unread_history_without_touching_later_arrivals(): void
