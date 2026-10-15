@@ -4,6 +4,7 @@
 @section('page-title', 'Ghi nhận thanh toán')
 
 @section('content')
+@php($initialMethod = old('method', $preselectedOrder?->booking?->PhuongThucThanhToan === 'Chuyển khoản' ? 'bank_transfer' : 'cash'))
 @push('styles')
 <style>
     #paymentForm .form-control:read-only,
@@ -42,7 +43,9 @@
             </div>
         @endif
 
-        <form action="{{ route('payments.store') }}" method="POST" id="paymentForm">
+        <form action="{{ route('payments.store') }}" method="POST" id="paymentForm"
+            data-bank-start-url="{{ route('payments.bank-transfer.start') }}"
+            data-bank-status-url="{{ route('payments.bank-transfer.status') }}">
             @csrf
             <div class="row g-4">
                 <div class="col-md-6">
@@ -111,8 +114,8 @@
                 <div class="col-md-6">
                     <label class="form-label">Phương thức <span class="text-danger ms-1">*</span></label>
                     <select class="form-select" name="method" required>
-                        <option value="cash" @selected(old('method', $preselectedOrder?->booking?->PhuongThucThanhToan === 'Chuyển khoản' ? 'bank_transfer' : 'cash') === 'cash')>Tiền mặt</option>
-                        <option value="bank_transfer" @selected(old('method', $preselectedOrder?->booking?->PhuongThucThanhToan === 'Chuyển khoản' ? 'bank_transfer' : 'cash') === 'bank_transfer')>Chuyển khoản / QR</option>
+                        <option value="cash" @selected($initialMethod === 'cash')>Tiền mặt</option>
+                        <option value="bank_transfer" @selected($initialMethod === 'bank_transfer')>Chuyển khoản / QR</option>
                     </select>
                 </div>
                 <div class="col-12 d-none" id="paymentVietQrPanel">
@@ -125,28 +128,35 @@
                         />
                     </div>
                 </div>
-                <div class="col-md-6">
+                <div class="col-12 {{ $initialMethod === 'bank_transfer' ? '' : 'd-none' }}" id="paymentBankNotice" role="status" aria-live="polite">
+                    <div class="alert alert-info mb-0 d-flex align-items-center gap-2">
+                        <span class="spinner-border spinner-border-sm" data-bank-spinner aria-hidden="true"></span>
+                        <span data-bank-status-text>Đang chuẩn bị thông tin chuyển khoản...</span>
+                    </div>
+                </div>
+                <div class="col-md-6 {{ $initialMethod === 'bank_transfer' ? 'd-none' : '' }}" data-cash-only>
                     <label class="form-label">Trạng thái</label>
                     <select class="form-select" disabled aria-describedby="payment-status-help">
                         <option value="{{ \App\Enums\PaymentStatus::Paid->value }}" selected>{{ \App\Enums\PaymentStatus::Paid->label() }}</option>
                     </select>
                     <input type="hidden" name="status" value="{{ \App\Enums\PaymentStatus::Paid->value }}">
-                    <div class="form-text" id="payment-status-help">Giao dịch được ghi nhận là thành công khi lưu.</div>
+                    <div class="form-text" id="payment-status-help">Giao dịch chỉ thành công sau khi nhân viên xác nhận đã nhận đủ tiền mặt.</div>
                 </div>
-                <div class="col-md-6">
+                <div class="col-md-6 {{ $initialMethod === 'bank_transfer' ? 'd-none' : '' }}" data-cash-only>
                     <label class="form-label">Ngày thanh toán</label>
                     <input type="datetime-local" class="form-control" value="{{ now()->format('Y-m-d\TH:i') }}" disabled aria-describedby="payment-date-help">
                     <div class="form-text" id="payment-date-help">Thời gian được tự động ghi nhận khi lưu thanh toán.</div>
                 </div>
-                <div class="col-md-6">
+                <div class="col-md-6 {{ $initialMethod === 'bank_transfer' ? 'd-none' : '' }}" data-cash-only>
                     <label class="form-label">Mã giao dịch</label>
                     <input type="text" class="form-control" id="transaction_code" name="transaction_code" value="{{ old('transaction_code') }}" placeholder="Mã giao dịch tự động" maxlength="100" readonly aria-describedby="transaction-code-help">
                     <div class="form-text" id="transaction-code-help">Mã được hệ thống tự tạo theo phương thức thanh toán.</div>
                 </div>
             </div>
             <div class="d-flex justify-content-end gap-2 mt-4">
-                <a href="{{ route('payments.index') }}" class="btn btn-outline-secondary">Hủy</a>
-                <button type="submit" class="btn btn-primary">Lưu thanh toán</button>
+                <a href="{{ route('payments.index') }}" class="btn btn-outline-secondary">Quay lại</a>
+                <a href="{{ route('orders.index') }}" class="btn btn-success d-none" id="paymentBankComplete">Hoàn tất</a>
+                <button type="submit" class="btn btn-primary {{ $initialMethod === 'bank_transfer' ? 'd-none' : '' }}" id="paymentCashSubmit" @disabled($initialMethod === 'bank_transfer')>Xác nhận đã thu tiền</button>
             </div>
         </form>
     </div>
@@ -154,106 +164,5 @@
 @endsection
 
 @push('scripts')
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const form = document.getElementById('paymentForm');
-        const methodSelect = form?.querySelector('[name="method"]');
-        const orderSelect = form?.querySelector('[name="order_id"]:not([type="hidden"])');
-        const invoiceSelect = form?.querySelector('[name="invoice_id"]');
-        const transactionCode = form?.querySelector('#transaction_code');
-        const vietQrPanel = document.getElementById('paymentVietQrPanel');
-        const vietQrImage = document.getElementById('payment-vietqr-image');
-        const vietQrAmount = document.getElementById('payment-vietqr-amount');
-        const vietQrMemo = document.getElementById('payment-vietqr-memo');
-        const amountInput = form?.querySelector('input[name="amount"]');
-
-        if (!methodSelect || !transactionCode) {
-            return;
-        }
-
-        let lastSuggestedCode = '';
-
-        function selectedOrderCode() {
-            const selectedOrder = orderSelect?.selectedOptions[0];
-            if (selectedOrder?.dataset.orderCode) {
-                return selectedOrder.dataset.orderCode;
-            }
-
-            const selectedInvoice = invoiceSelect?.selectedOptions[0];
-            return selectedInvoice?.dataset.orderCode || 'TT';
-        }
-
-        function selectedPaymentOption() {
-            const selectedInvoice = invoiceSelect?.selectedOptions[0];
-            if (selectedInvoice?.value && (!orderSelect?.value || selectedInvoice.dataset.orderId === orderSelect.value)) {
-                return selectedInvoice;
-            }
-
-            const selectedOrder = orderSelect?.selectedOptions[0];
-            return selectedOrder?.value ? selectedOrder : null;
-        }
-
-        function updateVietQr() {
-            const isBankTransfer = methodSelect.value === 'bank_transfer';
-            const selectedOption = selectedPaymentOption();
-            vietQrPanel?.classList.toggle('d-none', !isBankTransfer || !selectedOption?.dataset.paymentReference || selectedOption?.dataset.invoiceReady !== '1');
-            const selectedAmount = selectedOption?.dataset.amount;
-            if (selectedAmount !== undefined && amountInput) {
-                amountInput.value = selectedAmount;
-            }
-
-            const amount = Number(amountInput?.value || selectedAmount || 0);
-            if (vietQrAmount) {
-                vietQrAmount.textContent = amount.toLocaleString('vi-VN') + ' đ';
-            }
-
-            const memo = selectedOption?.dataset.paymentReference || '';
-            if (vietQrMemo) {
-                vietQrMemo.textContent = memo;
-            }
-
-            if (vietQrImage?.dataset.quicklinkBase) {
-                const qrUrl = new URL(vietQrImage.dataset.quicklinkBase);
-                qrUrl.searchParams.set('amount', String(Math.round(amount)));
-                qrUrl.searchParams.set('addInfo', memo);
-                vietQrImage.src = qrUrl.toString();
-            }
-        }
-
-        function suggestTransactionCode() {
-            const isCash = methodSelect.value === 'cash';
-            transactionCode.placeholder = isCash
-                ? 'Mã giao dịch tiền mặt tự động'
-                : 'Nhập mã giao dịch / Mã tham chiếu từ Ngân hàng / Ví';
-
-            const prefix = isCash ? 'TM' : 'CK';
-            const now = new Date();
-            const timestamp = [
-                now.getFullYear(),
-                String(now.getMonth() + 1).padStart(2, '0'),
-                String(now.getDate()).padStart(2, '0'),
-                String(now.getHours()).padStart(2, '0'),
-                String(now.getMinutes()).padStart(2, '0'),
-                String(now.getSeconds()).padStart(2, '0'),
-            ].join('');
-            lastSuggestedCode = prefix + '_' + selectedOrderCode() + '_' + timestamp;
-            transactionCode.value = lastSuggestedCode;
-            updateVietQr();
-        }
-
-        methodSelect.addEventListener('change', suggestTransactionCode);
-
-        orderSelect?.addEventListener('change', function() {
-            suggestTransactionCode();
-        });
-
-        invoiceSelect?.addEventListener('change', function() {
-            suggestTransactionCode();
-        });
-
-        amountInput?.addEventListener('input', updateVietQr);
-
-        suggestTransactionCode();
-    });
-</script>
+@vite('resources/js/payment-create.js')
 @endpush
