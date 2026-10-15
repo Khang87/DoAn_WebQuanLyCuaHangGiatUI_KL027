@@ -67,32 +67,7 @@
     </div>
 </div>
 
-@if($notifications->hasPages())
-<nav class="mt-4">
-    <div class="d-flex justify-content-between align-items-center">
-        <div class="text-muted small">Hiển thị {{ $notifications->firstItem() }} - {{ $notifications->lastItem() }} của {{ $notifications->total() }} thông báo</div>
-        <ul class="pagination mb-0">
-            @if ($notifications->onFirstPage())
-                <li class="page-item disabled"><span class="page-link"><i class="bi bi-chevron-left"></i></span></li>
-            @else
-                <li class="page-item"><a class="page-link" href="{{ $notifications->appends(request()->query())->url($notifications->currentPage() - 1) }}"><i class="bi bi-chevron-left"></i></a></li>
-            @endif
-            @foreach ($notifications->getUrlRange(max(1, $notifications->currentPage() - 2), min($notifications->lastPage(), $notifications->currentPage() + 2)) as $page => $url)
-                @if ($page == $notifications->currentPage())
-                    <li class="page-item active"><span class="page-link">{{ $page }}</span></li>
-                @else
-                    <li class="page-item"><a class="page-link" href="{{ $notifications->appends(request()->query())->url($page) }}">{{ $page }}</a></li>
-                @endif
-            @endforeach
-            @if ($notifications->onLastPage())
-                <li class="page-item disabled"><span class="page-link"><i class="bi bi-chevron-right"></i></span></li>
-            @else
-                <li class="page-item"><a class="page-link" href="{{ $notifications->appends(request()->query())->url($notifications->currentPage() + 1) }}"><i class="bi bi-chevron-right"></i></a></li>
-            @endif
-        </ul>
-    </div>
-</nav>
-@endif
+<x-admin.pagination :paginator="$notifications" label="thông báo" />
 
 <script>
 document.addEventListener('DOMContentLoaded', function () {
