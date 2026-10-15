@@ -170,6 +170,12 @@ class PaymentOrderRedirectTest extends TestCase
         $this->assertSame(PaymentStatus::Pending->value, DB::table('ThanhToan')->where('DonHangID', 37)->value('TrangThai'));
         $this->getJson(route('payments.bank-transfer.status', ['order_id' => 37]))->assertOk()->assertJsonPath('paid', false);
 
+        $pendingId = DB::table('ThanhToan')->where('DonHangID', 37)->value('ThanhToanID');
+        $this->putJson(route('payments.update', $pendingId), [
+            'order_id' => 37, 'invoice_id' => 19, 'amount' => 50000,
+            'method' => 'bank_transfer', 'status' => PaymentStatus::Paid->value,
+        ])->assertUnprocessable()->assertJsonValidationErrors('status');
+
         $this->postJson(route('payments.store'), [
             'order_id' => 37, 'invoice_id' => 19, 'amount' => 50000,
             'method' => 'bank_transfer', 'status' => PaymentStatus::Paid->value,
