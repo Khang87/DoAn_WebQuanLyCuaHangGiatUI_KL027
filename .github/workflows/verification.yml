@@ -50,8 +50,8 @@ jobs:
       - name: SQLite regression suite and Blade compilation
         run: |
           export APP_KEY="base64:$(openssl rand -base64 32)"
-          php vendor/bin/phpunit --fail-on-warning --fail-on-risky
           php artisan view:cache
+          php vendor/bin/phpunit --fail-on-warning --fail-on-risky
       - name: PostgreSQL RPC, Web contracts and concurrency
         run: bash scripts/test-postgres.sh
       - name: Supabase schema restore and catalog parity
