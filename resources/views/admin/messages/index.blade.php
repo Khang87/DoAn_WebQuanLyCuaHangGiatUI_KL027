@@ -113,17 +113,24 @@
                     @if(!$selectedCustomer && !$selectedOrder?->khachHang?->taiKhoan)
                         <div class="alert alert-warning mb-0">Khách hàng chưa có tài khoản nhận tin nhắn.</div>
                     @else
-                        <form method="POST" action="{{ route('admin.messages.store') }}" class="d-flex gap-2" data-message-form>
+                        <form method="POST" action="{{ route('admin.messages.store') }}" class="d-flex flex-column gap-2" data-message-form>
                             @csrf
                             @if($selectedCustomer)
                                 <input type="hidden" name="customer_id" value="{{ $selectedCustomer->getKey() }}">
                             @else
                                 <input type="hidden" name="order_id" value="{{ $selectedOrder->DonHangID }}">
                             @endif
-                            <textarea name="content" rows="2" maxlength="1000" required class="form-control" placeholder="Nhập tin nhắn cho khách hàng...">{{ old('content') }}</textarea>
-                            <button type="submit" class="btn btn-primary align-self-end">
-                                <i class="bi bi-send me-1"></i>Gửi
-                            </button>
+                            <div class="d-flex flex-wrap gap-2" aria-label="Mẫu trả lời nhanh">
+                                <button type="button" class="btn btn-sm btn-outline-secondary" data-message-template="Xin chào, cửa hàng đã nhận tin nhắn của bạn.">Chào khách</button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" data-message-template="Bạn vui lòng cho biết mã đơn hàng để cửa hàng kiểm tra nhé.">Hỏi mã đơn</button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" data-message-template="Cửa hàng sẽ kiểm tra và phản hồi bạn sớm.">Hẹn phản hồi</button>
+                            </div>
+                            <div class="d-flex gap-2">
+                                <textarea name="content" rows="2" maxlength="1000" required class="form-control" placeholder="Nhập tin nhắn cho khách hàng...">{{ old('content') }}</textarea>
+                                <button type="submit" class="btn btn-primary align-self-end">
+                                    <i class="bi bi-send me-1"></i>Gửi
+                                </button>
+                            </div>
                         </form>
                         @error('content')<div class="text-danger small mt-2">{{ $message }}</div>@enderror
                         @error('message')<div class="text-danger small mt-2">{{ $message }}</div>@enderror
