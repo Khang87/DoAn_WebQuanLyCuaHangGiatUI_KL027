@@ -136,9 +136,29 @@
                     <span>Đơn hàng mới được tạo sau khi kiểm tra thực tế và có trạng thái Đã tiếp nhận. Đơn cũ đang Chờ tiếp nhận vẫn cần hoàn tất kiểm tra trên trang đơn hàng.</span>
                 </div>
             @else
-                <x-admin.detail.empty message="Chưa có đơn — mở form kiểm tra thực tế để tiếp nhận Booking" icon="bi-hourglass-split" />
+                <x-admin.detail.empty :message="config('giatui.booking_two_step') ? 'Booking chưa chuyển thành đơn hàng chính thức.' : 'Chưa có đơn — mở form kiểm tra thực tế để tiếp nhận Booking'" icon="bi-hourglass-split" />
             @endif
         </x-admin.detail.panel>
+
+        @if(config('giatui.booking_two_step') && $booking->giaoNhanDuKiens->isNotEmpty())
+            <x-admin.detail.panel title="Phiếu nhận và phiếu trả từ Booking" icon="bi-truck" :iconClass="'bg-info-subtle text-info'">
+                @foreach($booking->giaoNhanDuKiens as $leg)
+                    <div class="border rounded p-3 mb-2">
+                        <strong>{{ $leg->LoaiGiaoNhan === 'NHAN_DO' ? 'Phiếu nhận' : 'Phiếu trả' }}</strong>
+                        <span class="ms-2">{{ $leg->HinhThuc }}</span>
+                        <span class="ms-2 text-muted">{{ $leg->TrangThai }}</span>
+                        <div class="text-muted small">{{ $leg->DiaChi ?: 'Tại cửa hàng' }}</div>
+                    </div>
+                @endforeach
+            </x-admin.detail.panel>
+        @endif
+
+        @if(config('giatui.booking_two_step') && $booking->kiemKe)
+            <x-admin.detail.panel title="Kiểm kê thực tế" icon="bi-clipboard-check" :iconClass="'bg-warning-subtle text-warning'">
+                <p class="mb-1">Phiên bản {{ $booking->kiemKe->PhienBan }} · {{ count($booking->kiemKe->DuLieuThucTe['items'] ?? []) }} dòng đồ thực tế</p>
+                <p class="mb-0">{{ $booking->kiemKe->CoChenhLech ? ($booking->kiemKe->isCustomerApproved() ? 'Khách đã xác nhận chênh lệch.' : 'Đang chờ khách xác nhận chênh lệch trên mobile.') : 'Không có chênh lệch.' }}</p>
+            </x-admin.detail.panel>
+        @endif
 
         <div class="card shadow-sm border-0 order-first">
             <div class="card-header bg-transparent border-bottom d-flex align-items-center gap-2 py-3">
@@ -148,11 +168,13 @@
                 <h5 class="card-title mb-0 fw-bold">Thao tác</h5>
             </div>
             <div class="card-body d-flex flex-column gap-2">
+                @if(! config('giatui.booking_two_step') || $booking->statusEnum() === \App\Enums\BookingStatus::Pending)
                 @can('bookings.edit')
                     <a href="{{ route('bookings.edit', $booking) }}" class="btn btn-primary w-100 py-2">
                         <i class="fas fa-pencil-alt me-1"></i> Chỉnh sửa
                     </a>
                 @endcan
+                @endif
 
                 @php $order = $booking->donHangs->first() @endphp
                 @if($order)
@@ -161,11 +183,29 @@
                         <i class="bi bi-receipt me-1"></i> Xem đơn {{ $order->MaDonHang }}
                     </a>
                     @endcan
+                @elseif(config('giatui.booking_two_step') && $booking->statusEnum() === \App\Enums\BookingStatus::Pending)
+                    @can('bookings.confirm')
+                        <form action="{{ route('bookings.approve', $booking) }}" method="POST">@csrf<button class="btn btn-primary w-100 py-2" type="submit">Xác nhận Booking</button></form>
+                        <form action="{{ route('bookings.cancel', $booking) }}" method="POST">@csrf<button class="btn btn-outline-danger w-100 py-2" type="submit">Hủy Booking</button></form>
+                    @endcan
                 @elseif($booking->statusEnum() === \App\Enums\BookingStatus::Pending)
                     @can('bookings.confirm')
                         <a href="{{ route('bookings.inspection', $booking) }}" class="btn btn-outline-primary py-2 w-100">
                             <i class="bi bi-clipboard-check me-1"></i>Kiểm tra thực tế &amp; chuyển đổi
                         </a>
+                    @endcan
+                @elseif(config('giatui.booking_two_step') && $booking->statusEnum() === \App\Enums\BookingStatus::Confirmed)
+                    @can('bookings.confirm')
+                        @if($booking->giaoNhanDuKiens->firstWhere('LoaiGiaoNhan', 'NHAN_DO')?->TrangThai !== 'Đã nhận')
+                            <form action="{{ route('bookings.receive', $booking) }}" method="POST">@csrf<button class="btn btn-primary w-100 py-2" type="submit">Ghi nhận đã nhận đồ</button></form>
+                        @else
+                        @if($booking->kiemKe && (! $booking->kiemKe->CoChenhLech || $booking->kiemKe->isCustomerApproved()))
+                            <form action="{{ route('bookings.finalize-inspection', $booking) }}" method="POST">@csrf<button class="btn btn-success w-100 py-2" type="submit">Tạo đơn từ kiểm kê đã xác nhận</button></form>
+                        @endif
+                        <a href="{{ route('bookings.inspection', $booking) }}" class="btn btn-outline-primary py-2 w-100">
+                            <i class="bi bi-clipboard-check me-1"></i>Kiểm kê và tạo đơn
+                        </a>
+                        @endif
                     @endcan
                 @elseif($booking->statusEnum() === \App\Enums\BookingStatus::Confirmed)
                     <div class="alert alert-warning mb-0" role="alert">
