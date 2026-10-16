@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Admin;
 
+use App\Enums\BookingStatus;
 use App\Models\Booking;
 use Illuminate\Validation\Validator;
 
@@ -40,7 +41,7 @@ class XacNhanBookingRequest extends LuuBookingRequest
             $routeBooking = $this->route('booking');
             $booking = $routeBooking instanceof Booking ? $routeBooking : Booking::query()->find($routeBooking);
             $convertible = config('giatui.booking_two_step')
-                ? $booking?->statusEnum() === \App\Enums\BookingStatus::Confirmed
+                ? $booking?->statusEnum() === BookingStatus::Confirmed
                 : $booking?->isConvertibleToOrder();
             if ($booking && ! $convertible && ! $booking->donHangs()->exists()) {
                 $validator->errors()->add('booking', 'Chỉ Booking chờ xác nhận mới có thể kiểm tra thực tế và tạo đơn.');
