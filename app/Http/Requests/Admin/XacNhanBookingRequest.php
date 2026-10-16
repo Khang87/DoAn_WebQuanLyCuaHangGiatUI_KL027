@@ -20,6 +20,7 @@ class XacNhanBookingRequest extends LuuBookingRequest
             'DiemSuDung' => ['prohibited'],
             'use_points' => ['prohibited'],
             'recalculate_delivery_fee' => ['sometimes', 'boolean'],
+            'quality_difference' => ['sometimes', 'boolean'],
         ]);
     }
 
@@ -38,7 +39,10 @@ class XacNhanBookingRequest extends LuuBookingRequest
         $validator->after(function (Validator $validator): void {
             $routeBooking = $this->route('booking');
             $booking = $routeBooking instanceof Booking ? $routeBooking : Booking::query()->find($routeBooking);
-            if ($booking && ! $booking->isConvertibleToOrder() && ! $booking->donHangs()->exists()) {
+            $convertible = config('giatui.booking_two_step')
+                ? $booking?->statusEnum() === \App\Enums\BookingStatus::Confirmed
+                : $booking?->isConvertibleToOrder();
+            if ($booking && ! $convertible && ! $booking->donHangs()->exists()) {
                 $validator->errors()->add('booking', 'Chỉ Booking chờ xác nhận mới có thể kiểm tra thực tế và tạo đơn.');
             }
         });
