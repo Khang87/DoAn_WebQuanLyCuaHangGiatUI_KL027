@@ -50,9 +50,13 @@
             <x-admin.detail.info-grid :columns="2">
                 <x-admin.detail.info-item label="Đơn hàng">
                     @if($review->DonHangID)
+                        @can('orders.view')
                         <a href="{{ route('orders.show', $review->DonHangID) }}" class="text-decoration-none">
                             {{ $review->donHang?->MaDonHang ?: 'Xem đơn hàng' }}
                         </a>
+                        @else
+                        {{ $review->donHang?->MaDonHang ?: '—' }}
+                        @endcan
                     @else
                         <span class="detail-empty-value">—</span>
                     @endif
@@ -95,6 +99,7 @@
                 <x-admin.detail.empty message="Chưa có phản hồi cho đánh giá này" icon="bi-reply" />
             @endif
 
+            @can('reviews.respond')
             <form action="{{ route('reviews.respond', $review) }}" method="POST" class="mt-3">
                 @csrf
                 @method('PATCH')
@@ -105,6 +110,7 @@
                     <i class="bi bi-send me-1"></i>Gửi phản hồi
                 </button>
             </form>
+            @endcan
         </x-admin.detail.panel>
 
         <div class="card shadow-sm border-0 order-first">
