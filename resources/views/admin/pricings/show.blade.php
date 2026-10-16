@@ -91,11 +91,13 @@
                     </x-admin.detail.info-item>
                     <x-admin.detail.info-item label="Danh mục" :value="$pricing->dichVu->loaiDichVu?->TenLoaiDichVu" />
                 </x-admin.detail.info-grid>
+                @can('services.view')
                 <div class="mt-3">
                     <a href="{{ route('services.show', $pricing->dichVu) }}" class="btn btn-outline-secondary btn-sm w-100">
                         <i class="bi bi-box-arrow-up-right me-1"></i>Xem dịch vụ
                     </a>
                 </div>
+                @endcan
             @else
                 <x-admin.detail.empty message="Bảng giá không gắn với dịch vụ nào" icon="bi-box" />
             @endif
