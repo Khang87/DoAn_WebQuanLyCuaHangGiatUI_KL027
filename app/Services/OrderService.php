@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Enums\BookingStatus;
 use App\Enums\DeliveryStatus;
 use App\Enums\InvoiceStatus;
 use App\Enums\OrderStatus;
@@ -11,6 +12,7 @@ use App\Enums\ReturnMethod;
 use App\Exceptions\SettledOrderException;
 use App\Models\BangGia;
 use App\Models\Booking;
+use App\Models\BookingKiemKe;
 use App\Models\ChiTietDonHang;
 use App\Models\DichVu;
 use App\Models\DonHang;
@@ -229,7 +231,7 @@ class OrderService
             }
 
             $canConvert = config('giatui.booking_two_step')
-                ? $booking->TrangThai === \App\Enums\BookingStatus::Confirmed->value
+                ? $booking->TrangThai === BookingStatus::Confirmed->value
                 : $booking->isConvertibleToOrder();
             if (! $canConvert) {
                 throw ValidationException::withMessages(['booking' => 'Chỉ Booking chờ xác nhận mới có thể được kiểm tra và tạo đơn.']);
@@ -239,7 +241,7 @@ class OrderService
                     ->where('TrangThai', 'Đã nhận')->exists()) {
                     throw ValidationException::withMessages(['booking' => 'Chưa ghi nhận nhận đồ thực tế.']);
                 }
-                $inspection = \App\Models\BookingKiemKe::query()->where('BookingID', $booking->BookingID)->lockForUpdate()->first();
+                $inspection = BookingKiemKe::query()->where('BookingID', $booking->BookingID)->lockForUpdate()->first();
                 $storedInspection = $inspection?->DuLieuThucTe;
                 $expectedItems = $storedInspection['items'] ?? null;
                 $actualItems = array_map(static fn (array $item): array => array_intersect_key($item, array_flip([
