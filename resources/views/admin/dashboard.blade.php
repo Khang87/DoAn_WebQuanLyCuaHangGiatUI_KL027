@@ -55,8 +55,10 @@
 
 @section('content')
 <!-- ===== KPI Cards Row (2 rows x 3 cols = 6 cards) ===== -->
+@if(auth()->user()?->canAny(['reports.revenue', 'orders.view', 'customers.view', 'reviews.view']))
 <div class="row g-4 mb-4">
     <!-- 1. Doanh thu hôm nay -->
+    @can('reports.revenue')
     <div class="col-12 col-md-6 col-xl-4">
         <div class="card stat-card stat-card--revenue-today h-100">
             <div class="card-body">
@@ -123,6 +125,8 @@
     </div>
 
     <!-- 4. Tổng đơn hàng -->
+    @endcan
+    @can('orders.view')
     <div class="col-12 col-md-6 col-xl-4">
         <div class="card stat-card stat-card--orders h-100">
             <div class="card-body">
@@ -145,6 +149,8 @@
     </div>
 
     <!-- 5. Tổng khách hàng -->
+    @endcan
+    @can('customers.view')
     <div class="col-12 col-md-6 col-xl-4">
         <div class="card stat-card stat-card--customers h-100">
             <div class="card-body">
@@ -163,6 +169,8 @@
     </div>
 
     <!-- 6. Điểm đánh giá trung bình -->
+    @endcan
+    @can('reviews.view')
     <div class="col-12 col-md-6 col-xl-4">
         <div class="card stat-card stat-card--rating h-100">
             <div class="card-body">
@@ -179,11 +187,15 @@
             </div>
         </div>
     </div>
+    @endcan
 </div>
+@endif
 
 <!-- ===== Charts Row ===== -->
+@if(auth()->user()?->canAny(['reports.revenue', 'orders.view']))
 <div class="row g-4 mb-4">
     <!-- Doanh thu theo bộ lọc -->
+    @can('reports.revenue')
     <div class="col-12 col-xl-8">
         <div class="card h-100">
             <div class="card-header d-flex justify-content-between align-items-center">
@@ -206,6 +218,8 @@
     </div>
 
     <!-- Trạng thái đơn hàng (Donut) -->
+    @endcan
+    @can('orders.view')
     <div class="col-12 col-xl-4">
         <div class="card h-100">
             <div class="card-header">
@@ -216,15 +230,18 @@
             </div>
         </div>
     </div>
+    @endcan
 </div>
+@endif
 
 <!-- ===== Top Services ===== -->
+@can('services.view')
 <div class="row g-4 mb-4">
     <div class="col-12 col-xl-6">
         <div class="card h-100">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <h5 class="card-title mb-0">Top dịch vụ được đặt nhiều nhất</h5>
-                <a href="{{ route('services.index') }}" class="btn btn-sm btn-outline-primary">Xem tất cả</a>
+                @can('services.view')<a href="{{ route('services.index') }}" class="btn btn-sm btn-outline-primary">Xem tất cả</a>@endcan
             </div>
             <div class="card-body">
                 <div id="top-service-chart" style="height: 320px;"></div>
@@ -232,15 +249,18 @@
         </div>
     </div>
 </div>
+@endcan
 
 <!-- ===== Data Tables Row ===== -->
+@if(auth()->user()?->canAny(['orders.view', 'reviews.view']))
 <div class="row g-4">
     <!-- Đơn hàng mới nhất -->
+    @can('orders.view')
     <div class="col-12 col-xl-7">
         <div class="card h-100">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <h5 class="card-title mb-0">Đơn hàng mới nhất</h5>
-                <a href="{{ route('orders.index') }}" class="btn btn-sm btn-outline-primary">Xem tất cả</a>
+                @can('orders.view')<a href="{{ route('orders.index') }}" class="btn btn-sm btn-outline-primary">Xem tất cả</a>@endcan
             </div>
             <div class="card-body p-0">
                 <div class="table-responsive">
@@ -265,7 +285,7 @@
                                 <td>{{ $order->nhanVien?->HoTen ?: '-' }}</td>
                                 <td><strong>{{ number_format((float) $order->ThanhTien) }} đ</strong></td>
                                 <td><x-admin.status-badge :status="$order->TrangThai" :enum="\App\Enums\OrderStatus::class" /></td>
-                                <td><a href="{{ route('orders.show', $order) }}" class="btn btn-order-action view" title="Xem"><i class="bi bi-eye"></i></a></td>
+                                <td>@can('orders.view')<a href="{{ route('orders.show', $order) }}" class="btn btn-order-action view" title="Xem"><i class="bi bi-eye"></i></a>@endcan</td>
                             </tr>
                             @empty
                             <tr><td colspan="7" class="text-center text-muted py-4">Chưa có đơn hàng</td></tr>
@@ -278,11 +298,13 @@
     </div>
 
     <!-- Đánh giá mới nhất -->
+    @endcan
+    @can('reviews.view')
     <div class="col-12 col-xl-5">
         <div class="card h-100">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <h5 class="card-title mb-0">Đánh giá mới nhất</h5>
-                <a href="{{ route('reviews.index') }}" class="btn btn-sm btn-outline-primary">Xem tất cả</a>
+                @can('reviews.view')<a href="{{ route('reviews.index') }}" class="btn btn-sm btn-outline-primary">Xem tất cả</a>@endcan
             </div>
             <div class="card-body">
                 @forelse($latestReviews as $review)
@@ -310,12 +332,15 @@
             </div>
         </div>
     </div>
+    @endcan
 </div>
+@endif
 @endsection
 
 @push('scripts')
 <script src="{{ asset('assets/libs/apexcharts/apexcharts.min.js') }}"></script>
 <script>
+    @can('reports.revenue')
     function numberWithCommas(x) {
         return x.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
     }
@@ -373,7 +398,9 @@
         labels: revenueChartOptions.xaxis.categories,
         data: revenueChartOptions.series[0].data
     };
+    @endcan
 
+    @can('orders.view')
     var statusOptions = {
         series: @json($statusDistribution->values()->all()),
         chart: {
@@ -408,7 +435,11 @@
             markers: { width: 10, height: 10 }
         }
     };
+    var statusChart = new ApexCharts(document.querySelector("#status-chart"), statusOptions);
+    statusChart.render();
+    @endcan
 
+    @can('services.view')
     var topServiceOptions = {
         series: [{
             name: 'Số đơn',
@@ -457,12 +488,12 @@
         }
     };
 
-    var statusChart = new ApexCharts(document.querySelector("#status-chart"), statusOptions);
-    statusChart.render();
-
     var topServiceChart = new ApexCharts(document.querySelector("#top-service-chart"), topServiceOptions);
     topServiceChart.render();
+    @endcan
 
 </script>
+@can('reports.revenue')
 @vite('resources/js/admin-revenue-dashboard.js')
+@endcan
 @endpush

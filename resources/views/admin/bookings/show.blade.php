@@ -156,9 +156,11 @@
 
                 @php $order = $booking->donHangs->first() @endphp
                 @if($order)
+                    @can('orders.view')
                     <a href="{{ route('orders.show', $order) }}" class="btn btn-outline-primary w-100 py-2">
                         <i class="bi bi-receipt me-1"></i> Xem đơn {{ $order->MaDonHang }}
                     </a>
+                    @endcan
                 @elseif($booking->statusEnum() === \App\Enums\BookingStatus::Pending)
                     @can('bookings.confirm')
                         <a href="{{ route('bookings.inspection', $booking) }}" class="btn btn-outline-primary py-2 w-100">

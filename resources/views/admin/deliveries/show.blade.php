@@ -114,9 +114,13 @@
                 <x-admin.detail.info-item label="Hình thức" :value="$delivery->HinhThuc" />
                 <x-admin.detail.info-item label="Đơn hàng">
                     @if($delivery->donHang)
+                        @can('orders.view')
                         <a href="{{ route('orders.show', $delivery->donHang->DonHangID) }}" class="text-decoration-none">
                             {{ $delivery->donHang->MaDonHang }}
                         </a>
+                        @else
+                        {{ $delivery->donHang->MaDonHang }}
+                        @endcan
                     @else
                         <span class="detail-empty-value">—</span>
                     @endif
@@ -136,10 +140,12 @@
             </div>
 
             @if($delivery->GhiChu)
+                @can('customers.view')
                 <div class="mt-3">
                     <div class="detail-field__label mb-2">Ghi chú</div>
                     <div class="detail-text">{{ $delivery->GhiChu }}</div>
                 </div>
+                @endcan
             @endif
         </x-admin.detail.panel>
 

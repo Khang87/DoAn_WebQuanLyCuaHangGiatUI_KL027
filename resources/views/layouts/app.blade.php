@@ -61,6 +61,7 @@
             @endcan
 
             <!-- Quan ly - Chung (Staff & Admin) -->
+            @if($authUser?->canAny(['customers.view', 'orders.view', 'messages.view', 'service_categories.view', 'services.view', 'garment_categories.view', 'pricings.view']))
             <div class="sidebar-menu-section">
                 <div class="sidebar-menu-title">Quản lý</div>
                 <ul class="sidebar-menu-list">
@@ -128,8 +129,10 @@
                     @endcan
                 </ul>
             </div>
+            @endif
 
 <!-- Giao nhan & Thanh toan (Staff & Admin) -->
+            @if($authUser?->canAny(['deliveries.view', 'reviews.view', 'bookings.view', 'payments.view', 'invoices.view']))
             <div class="sidebar-menu-section">
                 <div class="sidebar-menu-title">Giao nhận & Thanh toán</div>
                 <ul class="sidebar-menu-list">
@@ -175,6 +178,7 @@
                     @endcan
                 </ul>
             </div>
+            @endif
 
 @if(auth()->user()?->can('promotions.view') || auth()->user()?->can('reports.view'))
             <!-- Khuyen mai & Bao cao (Chi quan ly) -->
@@ -202,6 +206,7 @@
             @endif
 
             <!-- Hệ thống: mỗi module kiểm tra quyền riêng. -->
+            @if($authUser?->canAny(['accounts.view', 'notifications.view', 'system_logs.view', 'roles.manage']))
             <div class="sidebar-menu-section">
                 <div class="sidebar-menu-title">Hệ thống</div>
                 <ul class="sidebar-menu-list">
@@ -221,14 +226,14 @@
                         </a>
                     </li>
                     @endcan
-                    @if(auth()->user()?->isOwner())
+                    @can('system_logs.view')
                         <li class="sidebar-menu-item">
                             <a href="{{ route('admin.system-logs.index') }}" class="sidebar-menu-link {{ request()->routeIs('admin.system-logs.*') ? 'active' : '' }}">
                                 <i class="bi bi-journal-text"></i>
                                 <span>Nhật ký hệ thống</span>
                             </a>
                         </li>
-                    @endif
+                    @endcan
                     @can('roles.manage')
                     <li class="sidebar-menu-item">
                         <a href="{{ route('roles.index') }}" class="sidebar-menu-link {{ request()->routeIs('roles.*') ? 'active' : '' }}">
@@ -245,6 +250,7 @@
                     @endcan
                 </ul>
             </div>
+            @endif
         </div>
 
         <!-- Sidebar Profile -->

@@ -89,8 +89,22 @@ Route::middleware(['auth', 'reject.customer'])->group(function () {
             ['admin.dashboard', 'dashboard.view'],
             ['orders.index', 'orders.view'],
             ['customers.index', 'customers.view'],
+            ['admin.messages.index', 'messages.view'],
+            ['service-categories.index', 'service_categories.view'],
+            ['services.index', 'services.view'],
+            ['garment-categories.index', 'garment_categories.view'],
+            ['pricings.index', 'pricings.view'],
+            ['deliveries.index', 'deliveries.view'],
+            ['reviews.index', 'reviews.view'],
+            ['bookings.index', 'bookings.view'],
+            ['payments.index', 'payments.view'],
+            ['invoices.index', 'invoices.view'],
+            ['promotions.index', 'promotions.view'],
             ['reports.index', 'reports.view'],
+            ['accounts.index', 'accounts.view'],
             ['notifications.index', 'notifications.view'],
+            ['admin.system-logs.index', 'system_logs.view'],
+            ['roles.index', 'roles.manage'],
         ] as [$route, $permission]) {
             if ($user->canPermission($permission)) {
                 return redirect()->route($route);

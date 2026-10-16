@@ -57,11 +57,13 @@
                     <x-admin.detail.info-item label="Số điện thoại" :value="$order->khachHang->SoDienThoai" />
                     <x-admin.detail.info-item label="Địa chỉ" :value="$order->khachHang->DiaChi" />
                 </x-admin.detail.info-grid>
+                @can('customers.view')
                 <div class="mt-3">
                     <a href="{{ route('customers.show', $order->khachHang->KhachHangID) }}" class="btn btn-outline-secondary btn-sm w-100">
                         <i class="bi bi-box-arrow-up-right me-1"></i>Hồ sơ khách hàng
                     </a>
                 </div>
+                @endcan
             @else
                 <x-admin.detail.empty message="Chưa có thông tin khách hàng" icon="bi-person" />
             @endif
@@ -74,18 +76,26 @@
             <x-admin.detail.info-grid :columns="1">
                 <x-admin.detail.info-item label="Đơn hàng">
                     @if($order)
+                        @can('orders.view')
                         <a href="{{ route('orders.show', $order->DonHangID) }}" class="text-decoration-none">
                             {{ $order->MaDonHang }}
                         </a>
+                        @else
+                        {{ $order->MaDonHang }}
+                        @endcan
                     @else
                         <span class="detail-empty-value">—</span>
                     @endif
                 </x-admin.detail.info-item>
                 <x-admin.detail.info-item label="Hóa đơn">
                     @if($invoice)
+                        @can('invoices.view')
                         <a href="{{ route('invoices.show', $invoice->HoaDonID) }}" class="text-decoration-none">
                             {{ $invoice->MaHoaDon ?: 'Xem hóa đơn' }}
                         </a>
+                        @else
+                        {{ $invoice->MaHoaDon ?: 'Hóa đơn' }}
+                        @endcan
                     @else
                         <span class="detail-empty-value">Chưa liên kết</span>
                     @endif
@@ -101,7 +111,7 @@
                 <h5 class="card-title mb-0 fw-bold">Thao tác</h5>
             </div>
             <div class="card-body d-flex flex-column gap-2">
-                @if($canManageSettled)
+                @if($canManageSettled && auth()->user()?->can('payments.edit'))
                     <a href="{{ route('payments.edit', $payment->ThanhToanID) }}" class="btn btn-primary w-100 py-2">
                         <i class="fas fa-pencil-alt me-1"></i> Chỉnh sửa
                     </a>
