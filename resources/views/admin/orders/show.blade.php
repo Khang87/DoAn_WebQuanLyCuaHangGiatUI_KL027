@@ -165,9 +165,13 @@
             <x-admin.detail.info-grid :columns="2">
                 <x-admin.detail.info-item label="Khách hàng">
                     @if($order->customer)
+                        @can('customers.view')
                         <a href="{{ route('customers.show', $order->customer->getKey()) }}" class="text-decoration-none">
                             {{ $order->customer->name }}
                         </a>
+                        @else
+                        {{ $order->customer->name }}
+                        @endcan
                     @else
                         <span class="detail-empty-value">Khách hàng đã bị xóa</span>
                     @endif
@@ -180,9 +184,13 @@
                 />
                 <x-admin.detail.info-item label="Nguồn đơn">
                     @if($order->booking)
+                        @can('bookings.view')
                         <a href="{{ route('bookings.show', $order->booking) }}" class="text-decoration-none">
                             <i class="bi bi-calendar-check me-1"></i>Lịch hẹn {{ $order->booking->code }}
                         </a>
+                        @else
+                        Lịch hẹn {{ $order->booking->code }}
+                        @endcan
                     @else
                         <span class="detail-empty-value">Nhập trực tiếp</span>
                     @endif
@@ -514,11 +522,13 @@
                             </div>
                         @endif
 
+                        @can('deliveries.view')
                         <div class="mt-3">
                             <a href="{{ route('deliveries.show', $delivery->GiaoNhanID) }}" class="btn btn-outline-secondary btn-sm w-100">
                                 <i class="bi bi-box-arrow-up-right me-1"></i>Chi tiết phiếu giao nhận
                             </a>
                         </div>
+                        @endcan
                     </div>
                 @endforeach
             @else
@@ -582,9 +592,11 @@
                     @endcan
 
                 @if($order->hoaDons->isNotEmpty())
+                    @can('invoices.view')
                     <a href="{{ route('invoices.show', $order->hoaDons->first()->HoaDonID) }}" class="btn btn-outline-primary w-100 py-2">
                         <i class="fas fa-file-invoice me-1" aria-hidden="true"></i> Xem hóa đơn
                     </a>
+                    @endcan
                 @elseif(in_array($order->TrangThai, ['Hoàn thành giặt', 'Đang giao', 'Đã giao'], true))
                     @can('invoices.create')
                         <a href="{{ route('invoices.create', ['order_id' => $order->getKey()]) }}" class="btn btn-outline-primary w-100 py-2">
