@@ -148,8 +148,8 @@ class DeliveryContractTest extends TestCase
 
         $this->get(route('deliveries.create'))->assertOk()->assertSee('Trần Văn Bình')
             ->assertDontSee('<select class="form-select" id="employee_id"', false);
-        $this->post(route('deliveries.store'), $this->data(['employee_id' => 3]))
-            ->assertSessionHasErrors('employee_id');
+        $this->postJson(route('deliveries.store'), $this->data(['employee_id' => 3]))
+            ->assertUnprocessable()->assertJsonValidationErrors('employee_id');
         $this->assertSame(0, GiaoNhan::count());
 
         $ownData = $this->data();
@@ -187,8 +187,8 @@ class DeliveryContractTest extends TestCase
         $this->actingAs($manager)->withoutMiddleware()->get(route('deliveries.create'))
             ->assertOk()->assertSee('Nhân viên giao nhận')
             ->assertDontSee('Chủ cửa hàng mẫu')->assertDontSee('Quản lý mẫu');
-        $this->post(route('deliveries.store'), $this->data(['employee_id' => 4]))
-            ->assertSessionHasErrors('employee_id');
+        $this->postJson(route('deliveries.store'), $this->data(['employee_id' => 4]))
+            ->assertUnprocessable()->assertJsonValidationErrors('employee_id');
     }
 
     public function test_pending_return_can_be_unscheduled_and_notes_edit_preserves_schedule_and_status(): void
