@@ -15,6 +15,7 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\ViewErrorBag;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 use Mockery;
@@ -143,7 +144,7 @@ class DeliveryContractTest extends TestCase
         $user->NhanVienID = 1;
         $user->shouldReceive('isManager')->andReturn(false);
         $this->actingAs($user)->withoutMiddleware();
-        view()->share('errors', new \Illuminate\Support\ViewErrorBag);
+        view()->share('errors', new ViewErrorBag);
 
         $this->get(route('deliveries.create'))->assertOk()->assertSee('Trần Văn Bình')
             ->assertDontSee('<select class="form-select" id="employee_id"', false);
@@ -181,7 +182,7 @@ class DeliveryContractTest extends TestCase
         DB::table('TaiKhoan_VaiTro')->insert(['TaiKhoanID' => 44, 'VaiTroID' => 4]);
         $manager = Mockery::mock(User::class)->makePartial();
         $manager->shouldReceive('isManager')->andReturn(true);
-        view()->share('errors', new \Illuminate\Support\ViewErrorBag);
+        view()->share('errors', new ViewErrorBag);
 
         $this->actingAs($manager)->withoutMiddleware()->get(route('deliveries.create'))
             ->assertOk()->assertSee('Nhân viên giao nhận')
