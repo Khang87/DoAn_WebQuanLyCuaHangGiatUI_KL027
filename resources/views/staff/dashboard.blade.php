@@ -5,8 +5,10 @@
 
 @section('content')
 <!-- ===== Operational KPI Cards Row ===== -->
+@if(auth()->user()?->canAny(['orders.view', 'deliveries.view']))
 <div class="row g-4 mb-4">
     <!-- Đơn hàng chờ tiếp nhận -->
+    @can('orders.view')
     <div class="col-12 col-sm-6 col-xl-3">
         <div class="card stat-card h-100">
             <div class="card-body">
@@ -61,6 +63,8 @@
     </div>
 
     <!-- Lịch nhận / giao đồ hôm nay -->
+    @endcan
+    @can('deliveries.view')
     <div class="col-12 col-sm-6 col-xl-3">
         <div class="card stat-card h-100">
             <div class="card-body">
@@ -80,20 +84,23 @@
             </div>
         </div>
     </div>
+    @endcan
 </div>
+@endif
 
 <!-- ===== Orders To Process ===== -->
+@can('orders.view')
 <div class="row g-4 mb-4">
     <div class="col-12">
         <div class="card shadow-sm border-0 rounded-3">
             <div class="card-header bg-white d-flex justify-content-between align-items-center">
                 <h5 class="card-title mb-0">Đơn hàng cần xử lý</h5>
-                <a href="{{ route('orders.index') }}" class="btn btn-sm btn-outline-primary">Xem tất cả</a>
+                @can('orders.view')<a href="{{ route('orders.index') }}" class="btn btn-sm btn-outline-primary">Xem tất cả</a>@endcan
             </div>
             <div class="card-body">
                 <div class="table-responsive">
                     <table class="table table-hover mb-0"
-                           data-staff-order-status-url="{{ route('staff.dashboard.update-order-status', ['order' => '__ID__']) }}">
+                           @can('orders.update_status') data-staff-order-status-url="{{ route('staff.dashboard.update-order-status', ['order' => '__ID__']) }}" @endcan>
                         <thead>
                             <tr>
                                 <th scope="col">STT</th>
@@ -101,7 +108,7 @@
                                 <th>Khách hàng</th>
                                 <th>SĐT</th>
                                 <th>Trạng thái hiện Tại</th>
-                                <th>Cập nhật nhanh</th>
+                                @can('orders.update_status')<th>Cập nhật nhanh</th>@endcan
                                 <th>Thao tác</th>
                             </tr>
                         </thead>
@@ -113,6 +120,7 @@
                                 <td>{{ $order->khachHang?->HoTen ?: '-' }}</td>
                                 <td>{{ $order->khachHang?->SoDienThoai ?: '-' }}</td>
                                 <td><x-admin.status-badge :status="$order->TrangThai" :enum="\App\Enums\OrderStatus::class" /></td>
+                                @can('orders.update_status')
                                 <td style="min-width: 200px;">
                                     <select class="form-select form-select-sm status-select"
                                             data-order-id="{{ $order->DonHangID }}"
@@ -134,6 +142,7 @@
                                         @endif
                                     </select>
                                 </td>
+                                @endcan
                                 <td>
                                     @if($order->TrangThai === \App\Enums\OrderStatus::Washed->value
                                         && $order->requiresHomeDelivery()
@@ -144,11 +153,11 @@
                                             <i class="bi bi-truck"></i>
                                         </a>
                                     @endif
-                                    <a href="{{ route('orders.show', $order) }}" class="btn btn-order-action view" title="Xem"><i class="bi bi-eye"></i></a>
+                                    @can('orders.view')<a href="{{ route('orders.show', $order) }}" class="btn btn-order-action view" title="Xem"><i class="bi bi-eye"></i></a>@endcan
                                 </td>
                             </tr>
                             @empty
-                            <tr><td colspan="7" class="text-center text-muted py-4">Không có đơn hàng cần xử lý</td></tr>
+                            <tr><td colspan="{{ auth()->user()?->can('orders.update_status') ? 7 : 6 }}" class="text-center text-muted py-4">Không có đơn hàng cần xử lý</td></tr>
                             @endforelse
                         </tbody>
                     </table>
@@ -157,15 +166,18 @@
         </div>
     </div>
 </div>
+@endcan
 
 <!-- ===== Pickup/Delivery Schedule & Upcoming Bookings ===== -->
+@if(auth()->user()?->canAny(['deliveries.view', 'bookings.view']))
 <div class="row g-4">
     <!-- Lịch nhận đồ / giao đồ hôm nay -->
+    @can('deliveries.view')
     <div class="col-lg-6">
         <div class="card shadow-sm border-0 rounded-3 h-100">
             <div class="card-header bg-white d-flex justify-content-between align-items-center">
                 <h5 class="card-title mb-0">Lịch nhận / giao đồ hôm nay</h5>
-                <a href="{{ route('deliveries.index') }}" class="btn btn-sm btn-outline-primary">Xem tất cả</a>
+                @can('deliveries.view')<a href="{{ route('deliveries.index') }}" class="btn btn-sm btn-outline-primary">Xem tất cả</a>@endcan
             </div>
             <div class="card-body p-0">
                 <div class="table-responsive">
@@ -223,12 +235,14 @@
         </div>
     </div>
 
+    @endcan
 <!-- Lịch hẹn sắp tới -->
+    @can('bookings.view')
         <div class="col-lg-6">
             <div class="card shadow-sm border-0 rounded-3 h-100">
                 <div class="card-header bg-white d-flex justify-content-between align-items-center">
                     <h5 class="card-title mb-0">Lịch hẹn sắp tới</h5>
-                    <a href="{{ route('bookings.index') }}" class="btn btn-sm btn-outline-primary">Xem tất cả</a>
+                    @can('bookings.view')<a href="{{ route('bookings.index') }}" class="btn btn-sm btn-outline-primary">Xem tất cả</a>@endcan
                 </div>
             <div class="card-body p-0">
                 <div class="table-responsive">
@@ -267,7 +281,9 @@
             </div>
         </div>
     </div>
+    @endcan
 </div>
+@endif
 @endsection
 
 @push('scripts')
