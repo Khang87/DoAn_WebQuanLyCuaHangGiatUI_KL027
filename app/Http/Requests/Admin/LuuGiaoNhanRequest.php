@@ -7,6 +7,7 @@ use App\Models\GiaoNhan;
 use App\Services\DeliveryRules;
 use App\Services\EmployeeAssignment;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Validation\Validator;
 
@@ -14,19 +15,32 @@ class LuuGiaoNhanRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return true;
+        $user = $this->user();
+        if (! $user || $user->isManager()) {
+            return true;
+        }
+
+        return $user->nhanVien?->TrangThai === 'Hoạt động'
+            && ($this->currentDelivery() === null
+                || (int) $this->currentDelivery()->NhanVienID === (int) $user->NhanVienID);
     }
 
     protected function prepareForValidation(): void
     {
         $this->merge(['fulfillment' => $this->input('fulfillment', 'Tại nhà')]);
+        if ($this->user() && ! $this->user()->isManager() && ! $this->has('employee_id')) {
+            $this->merge(['employee_id' => $this->user()->NhanVienID]);
+        }
     }
 
     public function rules(): array
     {
         return [
             'order_id' => ['required', 'exists:DonHang,DonHangID'],
-            'employee_id' => ['required', 'integer', EmployeeAssignment::rule($this->currentDelivery()?->NhanVienID)],
+            'employee_id' => [
+                'required', 'integer', EmployeeAssignment::rule($this->currentDelivery()?->NhanVienID),
+                ...($this->user() && ! $this->user()->isManager() ? [Rule::in([(int) $this->user()->NhanVienID])] : []),
+            ],
             'method' => ['required', 'in:nhan_do,giao_do'],
             'fulfillment' => ['sometimes', 'in:Tại cửa hàng,Tại nhà'],
             'address' => ['nullable', 'required_if:fulfillment,Tại nhà', 'string', 'max:255'],
@@ -40,6 +54,14 @@ class LuuGiaoNhanRequest extends FormRequest
     public function withValidator(Validator $validator): void
     {
         $validator->after(function (Validator $validator): void {
+            $employeeId = $this->input('employee_id');
+            if ($this->user()?->isManager() && is_numeric($employeeId)
+                && ! $validator->errors()->has('employee_id')
+                && ! EmployeeAssignment::deliveryCandidates($this->currentDelivery()?->NhanVienID)
+                    ->whereKey((int) $employeeId)->exists()) {
+                $validator->errors()->add('employee_id', 'Chỉ được phân công nhân viên giao nhận, không chọn tài khoản quản lý.');
+            }
+
             if ($validator->errors()->has('pickup_date') || $validator->errors()->has('pickup_time')) {
                 return;
             }
@@ -72,6 +94,7 @@ class LuuGiaoNhanRequest extends FormRequest
             'employee_id.required' => 'Vui lòng chọn nhân viên phụ trách.',
             'employee_id.integer' => 'Nhân viên phụ trách không hợp lệ.',
             'employee_id.exists' => 'Vui lòng chọn nhân viên đang hoạt động.',
+            'employee_id.in' => 'Bạn chỉ được phân công chính mình.',
             'method.required' => 'Loại giao nhận là bắt buộc.',
             'method.in' => 'Loại giao nhận không hợp lệ.',
             'address.required_if' => 'Địa chỉ giao nhận là bắt buộc khi thực hiện tại nhà.',
