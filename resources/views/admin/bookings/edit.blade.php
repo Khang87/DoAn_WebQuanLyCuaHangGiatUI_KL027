@@ -118,6 +118,12 @@
                             <div class="form-text mt-2">Ưu đãi chỉ được kế thừa từ Booking; không thể thêm, đổi hoặc bỏ tại màn hình kiểm tra.</div>
                         </div>
                     </div>
+                    @if(config('giatui.booking_two_step'))
+                        <div class="col-12 form-check ms-3">
+                            <input class="form-check-input" type="checkbox" id="quality_difference" name="quality_difference" value="1" @checked(old('quality_difference'))>
+                            <label class="form-check-label" for="quality_difference">Có chênh lệch về tình trạng/chất lượng so với khách khai báo</label>
+                        </div>
+                    @endif
                     <div class="col-12">
                         <button type="button" class="btn btn-outline-primary" id="booking-quote-delivery">
                             <i class="bi bi-geo-alt me-1"></i>Tính lại phí giao nhận
@@ -321,7 +327,7 @@
                     </div>
                 </div>
             @endif
-            <div class="d-flex justify-content-end gap-2 mt-4"><button type="reset" class="btn btn-outline-secondary">Làm mới</button><button type="submit" class="btn btn-primary">{{ $inspectionMode ? 'Xác nhận & tạo đơn' : 'Cập nhật' }}</button></div>
+            <div class="d-flex justify-content-end gap-2 mt-4"><button type="reset" class="btn btn-outline-secondary">Làm mới</button><button type="submit" class="btn btn-primary">{{ $inspectionMode ? (config('giatui.booking_two_step') ? 'Lưu kiểm kê / tạo đơn' : 'Xác nhận & tạo đơn') : 'Cập nhật' }}</button></div>
         </form>
     </div>
 </div>
