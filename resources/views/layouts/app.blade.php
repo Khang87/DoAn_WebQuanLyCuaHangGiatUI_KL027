@@ -46,6 +46,7 @@
         <!-- Navigation Menu -->
         <div class="flex-grow-1 overflow-y-auto">
             <!-- Menu chính -->
+            @can('dashboard.view')
             <div class="sidebar-menu-section">
                 <div class="sidebar-menu-title">Menu chính</div>
                 <ul class="sidebar-menu-list">
@@ -57,6 +58,7 @@
                     </li>
                 </ul>
             </div>
+            @endcan
 
             <!-- Quan ly - Chung (Staff & Admin) -->
             <div class="sidebar-menu-section">
