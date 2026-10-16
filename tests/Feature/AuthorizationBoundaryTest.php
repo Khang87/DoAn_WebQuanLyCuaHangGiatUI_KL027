@@ -55,7 +55,7 @@ class AuthorizationBoundaryTest extends TestCase
             ->view('admin.customers.index', compact('customers'))
             ->assertSee(route('customers.show', 7), false)
             ->assertDontSee(route('customers.edit', 7), false)
-            ->assertDontSee(route('customers.destroy', 7), false);
+            ->assertDontSee('id="deleteCustomerForm_7"', false);
     }
 
     public function test_customer_cannot_access_admin_routes(): void
