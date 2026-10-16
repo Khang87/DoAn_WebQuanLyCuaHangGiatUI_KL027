@@ -85,6 +85,7 @@
             </table>
         </div>
     </div>
+</div>
 
 <x-admin.pagination :paginator="$customers" label="khách hàng" />
 @endsection
