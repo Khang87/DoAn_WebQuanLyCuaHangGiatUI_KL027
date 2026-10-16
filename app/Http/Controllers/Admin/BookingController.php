@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Enums\BookingStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\LuuBookingRequest;
 use App\Http\Requests\Admin\XacNhanBookingRequest;
@@ -97,7 +98,7 @@ class BookingController extends Controller
         $record = $this->bookingService->find($booking);
         abort_if(! $record, 404);
         abort_if(! (config('giatui.booking_two_step')
-            ? $record->statusEnum() === \App\Enums\BookingStatus::Confirmed
+            ? $record->statusEnum() === BookingStatus::Confirmed
             : $record->isConvertibleToOrder()), 409);
 
         $validated = $request->validate([
@@ -193,7 +194,7 @@ class BookingController extends Controller
             return redirect()->route('orders.show', $booking->donHangs->first());
         }
         if ($inspectionMode && ! (config('giatui.booking_two_step')
-            ? $booking->statusEnum() === \App\Enums\BookingStatus::Confirmed
+            ? $booking->statusEnum() === BookingStatus::Confirmed
             : $booking->isConvertibleToOrder())) {
             return redirect()->route('bookings.show', $booking)->with('error', 'Booking chưa ở trạng thái cho phép kiểm kê.');
         }
