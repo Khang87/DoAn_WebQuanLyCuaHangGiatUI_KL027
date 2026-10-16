@@ -143,6 +143,7 @@ class DeliveryContractTest extends TestCase
         $user->NhanVienID = 1;
         $user->shouldReceive('isManager')->andReturn(false);
         $this->actingAs($user)->withoutMiddleware();
+        view()->share('errors', new \Illuminate\Support\ViewErrorBag);
 
         $this->get(route('deliveries.create'))->assertOk()->assertSee('Trần Văn Bình')
             ->assertDontSee('<select class="form-select" id="employee_id"', false);
@@ -173,13 +174,14 @@ class DeliveryContractTest extends TestCase
         DB::table('NhanVien')->where('NhanVienID', 1)->update(['HoTen' => 'Nhân viên giao nhận']);
         DB::table('NhanVien')->insert([
             ['NhanVienID' => 3, 'HoTen' => 'Chủ cửa hàng mẫu', 'ChucDanh' => 'Chủ cửa hàng', 'TrangThai' => 'Hoạt động'],
-            ['NhanVienID' => 4, 'HoTen' => 'Quản lý mẫu', 'TrangThai' => 'Hoạt động'],
+            ['NhanVienID' => 4, 'HoTen' => 'Quản lý mẫu', 'ChucDanh' => null, 'TrangThai' => 'Hoạt động'],
         ]);
         DB::table('TaiKhoan')->insert(['TaiKhoanID' => 44, 'NhanVienID' => 4]);
         DB::table('VaiTro')->insert(['VaiTroID' => 4, 'TenVaiTro' => 'Quản lý']);
         DB::table('TaiKhoan_VaiTro')->insert(['TaiKhoanID' => 44, 'VaiTroID' => 4]);
         $manager = Mockery::mock(User::class)->makePartial();
         $manager->shouldReceive('isManager')->andReturn(true);
+        view()->share('errors', new \Illuminate\Support\ViewErrorBag);
 
         $this->actingAs($manager)->withoutMiddleware()->get(route('deliveries.create'))
             ->assertOk()->assertSee('Nhân viên giao nhận')
