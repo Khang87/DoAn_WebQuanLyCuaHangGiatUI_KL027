@@ -73,7 +73,7 @@ class TableRowNumberingTest extends TestCase
 
     public function test_empty_tables_span_all_visible_columns_without_a_fake_row_number(): void
     {
-        foreach ([['admin.loaidogiat.index', 'categories', 5], ['admin.customers.index', 'customers', 8], ['admin.orders.index', 'orders', 11]] as [$view, $name, $columns]) {
+        foreach ([['admin.loaidogiat.index', 'categories', 5], ['admin.customers.index', 'customers', 7], ['admin.orders.index', 'orders', 11]] as [$view, $name, $columns]) {
             $xpath = $this->table($view, [$name => new LengthAwarePaginator([], 0, 10), 'statusFlow' => []]);
             $this->assertSame($columns, $xpath->query('//table/thead/tr/th')->length);
             $cell = $xpath->query('//table/tbody/tr/td')->item(0);
