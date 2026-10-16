@@ -8,6 +8,7 @@ use App\Exceptions\SettledOrderException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\LuuGiaoNhanRequest;
 use App\Models\DonHang;
+use App\Models\GiaoNhan;
 use App\Models\KhachHang;
 use App\Models\NhanVien;
 use App\Models\User;
