@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Enums\BookingStatus;
 use App\Enums\DeliveryStatus;
 use App\Enums\InvoiceStatus;
 use App\Enums\OrderStatus;
@@ -11,6 +12,7 @@ use App\Enums\ReturnMethod;
 use App\Exceptions\SettledOrderException;
 use App\Models\BangGia;
 use App\Models\Booking;
+use App\Models\BookingKiemKe;
 use App\Models\ChiTietDonHang;
 use App\Models\DichVu;
 use App\Models\DonHang;
@@ -228,8 +230,27 @@ class OrderService
                 return $existingOrder;
             }
 
-            if (! $booking->isConvertibleToOrder()) {
+            $canConvert = config('giatui.booking_two_step')
+                ? $booking->TrangThai === BookingStatus::Confirmed->value
+                : $booking->isConvertibleToOrder();
+            if (! $canConvert) {
                 throw ValidationException::withMessages(['booking' => 'Chỉ Booking chờ xác nhận mới có thể được kiểm tra và tạo đơn.']);
+            }
+            if (config('giatui.booking_two_step')) {
+                if (! $booking->giaoNhanDuKiens()->where('LoaiGiaoNhan', 'NHAN_DO')
+                    ->where('TrangThai', 'Đã nhận')->exists()) {
+                    throw ValidationException::withMessages(['booking' => 'Chưa ghi nhận nhận đồ thực tế.']);
+                }
+                $inspection = BookingKiemKe::query()->where('BookingID', $booking->BookingID)->lockForUpdate()->first();
+                $storedInspection = $inspection?->DuLieuThucTe;
+                $expectedItems = $storedInspection['items'] ?? null;
+                $actualItems = array_map(static fn (array $item): array => array_intersect_key($item, array_flip([
+                    'DichVuID', 'LoaiDoGiatID', 'DonViTinhID', 'SoLuong', 'KhoiLuong', 'TinhTrangTruocKhiGiat', 'GhiChu',
+                ])), $items);
+                if (! $inspection || $expectedItems != $actualItems
+                    || ($inspection->CoChenhLech && ! $inspection->isCustomerApproved())) {
+                    throw ValidationException::withMessages(['booking' => 'Khách chưa xác nhận bản kiểm kê mới nhất.']);
+                }
             }
             // Preserve edits from inspection, never stale customer/status/reward markers.
             $booking->fill($inspectionChanges);
@@ -353,7 +374,10 @@ class OrderService
                     'ThoiGianDuKien' => $leg['type'] === 'NHAN_DO'
                         ? $booking->NgayHen->format('Y-m-d').' '.$booking->GioHen->format('H:i:s')
                         : null,
-                    'TrangThai' => DeliveryStatus::Pending->dbValue(),
+                    'ThoiGianThucTe' => config('giatui.booking_two_step') && $leg['type'] === 'NHAN_DO'
+                        ? $booking->giaoNhanDuKiens()->where('LoaiGiaoNhan', 'NHAN_DO')->value('ThoiGianThucTe') : null,
+                    'TrangThai' => config('giatui.booking_two_step') && $leg['type'] === 'NHAN_DO'
+                        ? DeliveryStatus::Completed->dbValue() : DeliveryStatus::Pending->dbValue(),
                     'GhiChu' => $booking->GhiChu,
                 ]);
             }

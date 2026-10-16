@@ -1,5 +1,11 @@
 # Sky Laundry
 
+## Luồng Booking hai bước (đang chuẩn bị triển khai Web)
+
+Đặc tả: [booking-intake-two-step.md](docs/specs/booking-intake-two-step.md). Khi bật `BOOKING_TWO_STEP=true`, nhân viên xác nhận Booking để lập hai phiếu dự kiến gắn Booking, ghi nhận đã nhận đồ, rồi kiểm kê. Nếu kiểm kê khác dữ liệu khách khai báo, Web lưu bản kiểm kê theo phiên bản và gửi thông báo; chỉ tạo đơn sau khi khách xác nhận đúng phiên bản đó. Booking không có mặt hàng khai báo được kiểm kê như đơn thông thường.
+
+Trước khi bật cờ trên Web, chạy [booking-two-step.sql](database/sql/booking-two-step.sql) trên Supabase và kiểm tra RLS. Mobile đọc `BookingKiemKe` của khách đang đăng nhập, hiển thị `DuLieuThucTe` và xác nhận bằng cách cập nhật duy nhất `XacNhanPhienBan = PhienBan` của bản kiểm kê hiện tại. Mobile không được sửa mặt hàng kiểm kê. Cờ mặc định tắt để không gọi bảng mới trước khi schema và màn hình xác nhận mobile sẵn sàng.
+
 Sky Laundry là hệ thống quản lý cửa hàng giặt ủi, hỗ trợ quy trình vận hành cho Chủ cửa hàng, Quản lý, Nhân viên và Khách hàng. Ứng dụng gồm giao diện web Laravel và API JSON phiên bản hóa, sử dụng cơ sở dữ liệu PostgreSQL trên Supabase theo cấu trúc hiện có.
 
 Tin nhắn khách hàng: danh sách đơn tự cập nhật mỗi 3 giây khi trang đang mở; cuộc trò chuyện có tin mới lên đầu. Chấm đỏ biểu thị tin khách gửi chưa đọc. Mở cuộc trò chuyện sẽ ghi nhận đã đọc đến mốc tin đã tải, đồng bộ trạng thái với mobile và giữ nguyên tin có ID lớn hơn mốc đó. Nội dung cuộc trò chuyện tiếp tục dùng Supabase Realtime, với API Laravel dự phòng.

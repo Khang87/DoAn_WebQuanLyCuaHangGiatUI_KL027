@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Enums\BookingStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\LuuBookingRequest;
 use App\Http\Requests\Admin\XacNhanBookingRequest;
@@ -96,7 +97,9 @@ class BookingController extends Controller
     {
         $record = $this->bookingService->find($booking);
         abort_if(! $record, 404);
-        abort_if(! $record->isConvertibleToOrder(), 409);
+        abort_if(! (config('giatui.booking_two_step')
+            ? $record->statusEnum() === BookingStatus::Confirmed
+            : $record->isConvertibleToOrder()), 409);
 
         $validated = $request->validate([
             'method' => ['required', 'in:Tại nhà,Tại cửa hàng'],
@@ -119,6 +122,66 @@ class BookingController extends Controller
         return $this->edit($id, true);
     }
 
+    public function approve(int $id)
+    {
+        abort_unless(config('giatui.booking_two_step'), 404);
+        $booking = $this->bookingService->find($id);
+        abort_if(! $booking, 404);
+
+        try {
+            $this->bookingService->approve($booking);
+
+            return redirect()->route('bookings.show', $booking)->with('success', 'Đã xác nhận Booking và lập phiếu nhận, phiếu trả. Chưa tạo đơn hàng.');
+        } catch (ValidationException $e) {
+            return redirect()->route('bookings.show', $booking)->withErrors($e->errors());
+        }
+    }
+
+    public function cancelPending(int $id)
+    {
+        abort_unless(config('giatui.booking_two_step'), 404);
+        $booking = $this->bookingService->find($id);
+        abort_if(! $booking, 404);
+
+        try {
+            $this->bookingService->cancelPending($booking);
+
+            return redirect()->route('bookings.show', $booking)->with('success', 'Đã hủy Booking.');
+        } catch (ValidationException $e) {
+            return redirect()->route('bookings.show', $booking)->withErrors($e->errors());
+        }
+    }
+
+    public function finalizeInspection(int $id)
+    {
+        abort_unless(config('giatui.booking_two_step'), 404);
+        $booking = $this->bookingService->find($id);
+        abort_if(! $booking, 404);
+
+        try {
+            $order = $this->bookingService->finalizeInspection($booking);
+
+            return redirect()->route('orders.show', $order)->with('success', 'Đã tạo đơn '.$order->MaDonHang.' từ bản kiểm kê khách xác nhận.');
+        } catch (ValidationException $e) {
+            return redirect()->route('bookings.show', $booking)->withErrors($e->errors());
+        }
+    }
+
+    public function markReceived(int $id)
+    {
+        abort_unless(config('giatui.booking_two_step'), 404);
+        $booking = $this->bookingService->find($id);
+        abort_if(! $booking, 404);
+
+        try {
+            $this->bookingService->markReceived($booking);
+
+            return redirect()->route('bookings.show', $booking)->with('success', 'Đã ghi nhận nhận đồ thực tế. Có thể bắt đầu kiểm kê.');
+        } catch (ValidationException $e) {
+            return redirect()->route('bookings.show', $booking)->withErrors($e->errors());
+        }
+    }
+
     public function edit(int $id, bool $inspectionMode = false)
     {
         $booking = $this->bookingService->find($id);
@@ -130,8 +193,14 @@ class BookingController extends Controller
         if ($inspectionMode && $booking->donHangs->isNotEmpty()) {
             return redirect()->route('orders.show', $booking->donHangs->first());
         }
-        if ($inspectionMode && ! $booking->isConvertibleToOrder()) {
-            return redirect()->route('bookings.show', $booking)->with('error', 'Chỉ Booking chờ xác nhận mới có thể kiểm tra thực tế.');
+        if ($inspectionMode && ! (config('giatui.booking_two_step')
+            ? $booking->statusEnum() === BookingStatus::Confirmed
+            : $booking->isConvertibleToOrder())) {
+            return redirect()->route('bookings.show', $booking)->with('error', 'Booking chưa ở trạng thái cho phép kiểm kê.');
+        }
+        if ($inspectionMode && config('giatui.booking_two_step')
+            && $booking->giaoNhanDuKiens->firstWhere('LoaiGiaoNhan', 'NHAN_DO')?->TrangThai !== 'Đã nhận') {
+            return redirect()->route('bookings.show', $booking)->with('error', 'Hãy ghi nhận nhận đồ trước khi kiểm kê.');
         }
 
         $authenticatedEmployee = NhanVien::query()
@@ -246,6 +315,16 @@ class BookingController extends Controller
 
         try {
             $validated = $request->validated();
+            if (config('giatui.booking_two_step')) {
+                $order = $this->bookingService->submitInspection($booking, $validated);
+                if (! $order) {
+                    return redirect()->route('bookings.show', $booking)->with(
+                        'success', 'Đã lưu bản kiểm kê có chênh lệch và gửi yêu cầu khách xác nhận trên mobile. Chưa tạo đơn hàng.',
+                    );
+                }
+
+                return redirect()->route('orders.show', $order)->with('success', 'Đã tạo đơn '.$order->MaDonHang.' từ bản kiểm kê hợp lệ.');
+            }
             $order = $this->bookingService->inspectBookingAndCreateOrder(
                 $booking,
                 $request->user()?->NhanVienID,
