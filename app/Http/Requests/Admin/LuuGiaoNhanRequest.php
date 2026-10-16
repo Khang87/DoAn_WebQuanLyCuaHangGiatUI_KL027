@@ -27,7 +27,18 @@ class LuuGiaoNhanRequest extends FormRequest
 
     protected function prepareForValidation(): void
     {
-        $this->merge(['fulfillment' => $this->input('fulfillment', 'Tại nhà')]);
+        $delivery = $this->currentDelivery();
+
+        if ($delivery) {
+            $this->merge([
+                'order_id' => $delivery->DonHangID,
+                'method' => strtolower($delivery->LoaiGiaoNhan),
+                'fulfillment' => $delivery->HinhThuc,
+            ]);
+        } else {
+            $this->merge(['fulfillment' => $this->input('fulfillment', 'Tại nhà')]);
+        }
+
         if ($this->user() && ! $this->user()->isManager() && ! $this->has('employee_id')) {
             $this->merge(['employee_id' => $this->user()->NhanVienID]);
         }

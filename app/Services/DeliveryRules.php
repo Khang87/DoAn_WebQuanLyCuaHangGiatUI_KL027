@@ -51,6 +51,9 @@ class DeliveryRules
         if ($current && ((int) $data['order_id'] !== $current->DonHangID || strtoupper($data['method']) !== $current->LoaiGiaoNhan)) {
             throw ValidationException::withMessages(['order_id' => 'Không thể đổi đơn hàng hoặc chặng của phiếu đã tạo.']);
         }
+        if ($current && $data['fulfillment'] !== $current->HinhThuc) {
+            throw ValidationException::withMessages(['fulfillment' => 'Không thể đổi hình thức của phiếu giao nhận đã tạo.']);
+        }
         $target = DeliveryStatus::from($data['status']);
         $previous = $current
             ? DeliveryStatus::parseForLeg($current->TrangThai, $current->LoaiGiaoNhan)

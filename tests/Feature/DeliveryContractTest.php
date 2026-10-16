@@ -170,6 +170,72 @@ class DeliveryContractTest extends TestCase
         $this->assertSame(1, app(DeliveryService::class)->getAll(['employee_id' => 1])->total());
     }
 
+    public function test_edit_form_shows_locked_delivery_details_and_ignores_tampered_values(): void
+    {
+        DB::table('KhachHang')->insert(['KhachHangID' => 1, 'HoTen' => 'Khoa Vo']);
+        DB::table('NhanVien')->where('NhanVienID', 1)->update(['HoTen' => 'Trần Văn Bình']);
+        DB::table('DonHang')->where('DonHangID', 1)->update([
+            'MaDonHang' => 'DH00000072',
+            'KhachHangID' => 1,
+        ]);
+        DB::table('DonHang')->insert([
+            'DonHangID' => 2,
+            'MaDonHang' => 'DH00000073',
+            'TrangThai' => OrderStatus::Washed->value,
+        ]);
+        DB::table('GiaoNhan')->insert([
+            'GiaoNhanID' => 1,
+            'DonHangID' => 1,
+            'NhanVienID' => 1,
+            'LoaiGiaoNhan' => 'GIAO_DO',
+            'HinhThuc' => 'Tại nhà',
+            'DiaChi' => '12 Nguyễn Huệ',
+            'TrangThai' => 'Chờ thực hiện',
+        ]);
+
+        $user = Mockery::mock(User::class)->makePartial();
+        $user->NhanVienID = 1;
+        $user->shouldReceive('isManager')->andReturn(false);
+        $this->actingAs($user)->withoutMiddleware();
+        view()->share('errors', new ViewErrorBag);
+
+        $this->get(route('deliveries.edit', 1))
+            ->assertOk()
+            ->assertSee('DH00000072 · Khoa Vo')
+            ->assertSee('value="Giao đồ"', false)
+            ->assertSee('value="Tại nhà"', false)
+            ->assertSee('value="Trần Văn Bình"', false)
+            ->assertSee('class="form-control delivery-fixed-field" id="order_display"', false)
+            ->assertSee('class="form-control delivery-fixed-field" id="method_display"', false)
+            ->assertSee('class="form-control delivery-fixed-field" id="fulfillment_display"', false)
+            ->assertDontSee('Chọn đơn hàng')
+            ->assertDontSee('<select class="form-select" id="employee_id"', false);
+
+        $this->put(route('deliveries.update', 1), $this->data([
+            'order_id' => 2,
+            'method' => 'nhan_do',
+            'fulfillment' => 'Tại cửa hàng',
+            'employee_id' => 1,
+        ]))->assertSessionHasNoErrors();
+
+        $delivery = GiaoNhan::findOrFail(1);
+        $this->assertSame(1, (int) $delivery->DonHangID);
+        $this->assertSame('GIAO_DO', $delivery->LoaiGiaoNhan);
+        $this->assertSame('Tại nhà', $delivery->HinhThuc);
+        $this->reject(
+            fn () => app(DeliveryService::class)->update($delivery, ['fulfillment' => 'Tại cửa hàng']),
+            'fulfillment',
+        );
+
+        $manager = Mockery::mock(User::class)->makePartial();
+        $manager->shouldReceive('isManager')->andReturn(true);
+        $this->actingAs($manager)->withoutMiddleware();
+
+        $this->get(route('deliveries.edit', 1))
+            ->assertOk()
+            ->assertSee('<select class="form-select" id="employee_id" name="employee_id"', false);
+    }
+
     public function test_manager_assignment_list_excludes_owner_and_manager_profiles(): void
     {
         DB::table('NhanVien')->where('NhanVienID', 1)->update(['HoTen' => 'Nhân viên giao nhận']);
