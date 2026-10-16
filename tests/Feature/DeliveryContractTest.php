@@ -55,7 +55,20 @@ class DeliveryContractTest extends TestCase
         Schema::create('NhanVien', function (Blueprint $table): void {
             $table->increments('NhanVienID');
             $table->string('HoTen')->nullable();
+            $table->string('ChucDanh')->nullable();
             $table->string('TrangThai')->default('Hoạt động');
+        });
+        Schema::create('TaiKhoan', function (Blueprint $table): void {
+            $table->increments('TaiKhoanID');
+            $table->unsignedInteger('NhanVienID')->nullable();
+        });
+        Schema::create('VaiTro', function (Blueprint $table): void {
+            $table->increments('VaiTroID');
+            $table->string('TenVaiTro');
+        });
+        Schema::create('TaiKhoan_VaiTro', function (Blueprint $table): void {
+            $table->unsignedInteger('TaiKhoanID');
+            $table->unsignedInteger('VaiTroID');
         });
         Schema::create('GiaoNhan', function (Blueprint $table): void {
             $table->increments('GiaoNhanID');
@@ -99,7 +112,7 @@ class DeliveryContractTest extends TestCase
 
     protected function tearDown(): void
     {
-        foreach (['NhatKyHeThong', 'HoaDon', 'ThanhToan', 'GiaoNhan', 'NhanVien', 'KhachHang', 'Booking', 'DonHang'] as $table) {
+        foreach (['NhatKyHeThong', 'HoaDon', 'ThanhToan', 'GiaoNhan', 'TaiKhoan_VaiTro', 'VaiTro', 'TaiKhoan', 'NhanVien', 'KhachHang', 'Booking', 'DonHang'] as $table) {
             Schema::dropIfExists($table);
         }
         $this->travelBack();
@@ -119,6 +132,60 @@ class DeliveryContractTest extends TestCase
         } catch (ValidationException $exception) {
             $this->assertArrayHasKey($field, $exception->errors());
         }
+    }
+
+    public function test_staff_can_only_assign_and_access_their_own_deliveries(): void
+    {
+        DB::table('NhanVien')->where('NhanVienID', 1)->update(['HoTen' => 'Trần Văn Bình']);
+        DB::table('NhanVien')->insert(['NhanVienID' => 3, 'HoTen' => 'Nhân viên khác', 'TrangThai' => 'Hoạt động']);
+        $user = Mockery::mock(User::class)->makePartial();
+        $user->TaiKhoanID = 100;
+        $user->NhanVienID = 1;
+        $user->shouldReceive('isManager')->andReturn(false);
+        $this->actingAs($user)->withoutMiddleware();
+
+        $this->get(route('deliveries.create'))->assertOk()->assertSee('Trần Văn Bình')
+            ->assertDontSee('<select class="form-select" id="employee_id"', false);
+        $this->post(route('deliveries.store'), $this->data(['employee_id' => 3]))
+            ->assertSessionHasErrors('employee_id');
+        $this->assertSame(0, GiaoNhan::count());
+
+        $ownData = $this->data();
+        unset($ownData['employee_id']);
+        $this->post(route('deliveries.store'), $ownData)->assertSessionHasNoErrors();
+        $this->assertSame(1, (int) GiaoNhan::firstOrFail()->NhanVienID);
+
+        DB::table('DonHang')->insert(['DonHangID' => 2]);
+        DB::table('GiaoNhan')->insert([
+            'DonHangID' => 2, 'NhanVienID' => 3, 'LoaiGiaoNhan' => 'GIAO_DO',
+            'HinhThuc' => 'Tại nhà', 'DiaChi' => '12 Nguyễn Huệ', 'TrangThai' => 'Chờ thực hiện',
+        ]);
+        $other = GiaoNhan::where('DonHangID', 2)->firstOrFail();
+        $this->get(route('deliveries.show', $other))->assertForbidden();
+        $this->get(route('deliveries.edit', $other))->assertForbidden();
+        $this->put(route('deliveries.update', $other), $this->data(['order_id' => 2, 'employee_id' => 3]))->assertForbidden();
+        $this->delete(route('deliveries.destroy', $other))->assertForbidden();
+        $this->assertSame(1, app(DeliveryService::class)->getAll(['employee_id' => 1])->total());
+    }
+
+    public function test_manager_assignment_list_excludes_owner_and_manager_profiles(): void
+    {
+        DB::table('NhanVien')->where('NhanVienID', 1)->update(['HoTen' => 'Nhân viên giao nhận']);
+        DB::table('NhanVien')->insert([
+            ['NhanVienID' => 3, 'HoTen' => 'Chủ cửa hàng mẫu', 'ChucDanh' => 'Chủ cửa hàng', 'TrangThai' => 'Hoạt động'],
+            ['NhanVienID' => 4, 'HoTen' => 'Quản lý mẫu', 'TrangThai' => 'Hoạt động'],
+        ]);
+        DB::table('TaiKhoan')->insert(['TaiKhoanID' => 44, 'NhanVienID' => 4]);
+        DB::table('VaiTro')->insert(['VaiTroID' => 4, 'TenVaiTro' => 'Quản lý']);
+        DB::table('TaiKhoan_VaiTro')->insert(['TaiKhoanID' => 44, 'VaiTroID' => 4]);
+        $manager = Mockery::mock(User::class)->makePartial();
+        $manager->shouldReceive('isManager')->andReturn(true);
+
+        $this->actingAs($manager)->withoutMiddleware()->get(route('deliveries.create'))
+            ->assertOk()->assertSee('Nhân viên giao nhận')
+            ->assertDontSee('Chủ cửa hàng mẫu')->assertDontSee('Quản lý mẫu');
+        $this->post(route('deliveries.store'), $this->data(['employee_id' => 4]))
+            ->assertSessionHasErrors('employee_id');
     }
 
     public function test_pending_return_can_be_unscheduled_and_notes_edit_preserves_schedule_and_status(): void
@@ -458,6 +525,7 @@ class DeliveryContractTest extends TestCase
     private function requestWithPermissions(array $permissions): Request
     {
         $user = Mockery::mock(User::class)->makePartial();
+        $user->shouldReceive('isManager')->andReturn(true);
         $user->shouldReceive('canPermission')
             ->andReturnUsing(fn (string $permission): bool => in_array($permission, $permissions, true));
 
