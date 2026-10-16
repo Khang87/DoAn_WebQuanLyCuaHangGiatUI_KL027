@@ -17,7 +17,15 @@
         @endif
         <div class="row g-3">
             <div class="col-md-6"><label class="form-label" for="order_id">Đơn hàng <span class="text-danger">*</span></label><select class="form-select" id="order_id" disabled aria-label="Đơn hàng của phiếu"><option value="">Chọn đơn hàng</option>@foreach($orderOptions as $order)<option value="{{ $order->DonHangID }}" @selected(old('order_id', $delivery->DonHangID) == $order->DonHangID)>{{ $order->MaDonHang }} · {{ $order->khachHang?->HoTen ?: 'Khách hàng' }}</option>@endforeach</select></div>
-            <div class="col-md-6"><label class="form-label" for="employee_id">Nhân viên phụ trách <span class="text-danger">*</span></label><select class="form-select" id="employee_id" name="employee_id" required><option value="">Chọn nhân viên</option>@foreach($employeeOptions as $employee)<option value="{{ $employee->NhanVienID }}" @selected(old('employee_id', $delivery->NhanVienID) == $employee->NhanVienID)>{{ $employee->HoTen }}</option>@endforeach</select></div>
+            <div class="col-md-6">
+                <label class="form-label" for="employee_id">Nhân viên phụ trách <span class="text-danger">*</span></label>
+                @if($canAssignEmployee ?? true)
+                    <select class="form-select" id="employee_id" name="employee_id" required><option value="">Chọn nhân viên</option>@foreach($employeeOptions as $employee)<option value="{{ $employee->NhanVienID }}" @selected(old('employee_id', $delivery->NhanVienID) == $employee->NhanVienID)>{{ $employee->HoTen }}</option>@endforeach</select>
+                @else
+                    <input class="form-control" id="employee_id" value="{{ $assignedEmployee->HoTen }}" readonly>
+                    <input type="hidden" name="employee_id" value="{{ $assignedEmployee->NhanVienID }}">
+                @endif
+            </div>
             <div class="col-12"><label class="form-label" for="method">Loại giao nhận <span class="text-danger ms-1">*</span></label><select class="form-select" id="method" disabled><option value="nhan_do" @selected(old('method', strtolower((string) $delivery->LoaiGiaoNhan)) === 'nhan_do')>Nhận đồ</option><option value="giao_do" @selected(old('method', strtolower((string) $delivery->LoaiGiaoNhan)) === 'giao_do')>Giao đồ</option></select></div>
             <div class="col-12"><label class="form-label" for="fulfillment">Hình thức</label><select class="form-select" id="fulfillment" name="fulfillment" required><option value="Tại cửa hàng" @selected(old('fulfillment', $delivery->HinhThuc) === 'Tại cửa hàng')>Tại cửa hàng</option><option value="Tại nhà" @selected(old('fulfillment', $delivery->HinhThuc) === 'Tại nhà')>Tại nhà</option></select></div>
             <div class="col-12"><label class="form-label" for="address">Địa chỉ giao nhận (bắt buộc khi tại nhà)</label><input type="text" class="form-control" id="address" name="address" value="{{ old('address', $delivery->DiaChi) }}" @required(old('fulfillment', $delivery->HinhThuc) === 'Tại nhà') @disabled(old('fulfillment', $delivery->HinhThuc) === 'Tại cửa hàng')></div>
