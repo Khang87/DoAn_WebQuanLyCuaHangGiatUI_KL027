@@ -49,6 +49,8 @@ jobs:
           bash scripts/check-php-format.sh
       - name: Supabase schema restore and catalog parity
         run: bash scripts/test-schema.sh
+      - name: Booking two-step regression
+        run: php artisan test --filter=test_two_step_
       - name: SQLite regression suite and Blade compilation
         run: |
           export APP_KEY="base64:$(openssl rand -base64 32)"
