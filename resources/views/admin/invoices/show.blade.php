@@ -163,9 +163,13 @@
                 <x-admin.detail.info-item label="Ngày lập" :value="$invoice->NgayLap?->format('d/m/Y') ?: now()->format('d/m/Y')" />
                 <x-admin.detail.info-item label="Đơn hàng">
                     @if($order)
+                        @can('orders.view')
                         <a href="{{ route('orders.show', $order->DonHangID) }}" class="text-decoration-none">
                             {{ $order->MaDonHang }}
                         </a>
+                        @else
+                        {{ $order->MaDonHang }}
+                        @endcan
                     @else
                         <span class="detail-empty-value">—</span>
                     @endif
