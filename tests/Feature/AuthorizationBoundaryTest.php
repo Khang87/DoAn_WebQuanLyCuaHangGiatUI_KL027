@@ -5,12 +5,59 @@ namespace Tests\Feature;
 use App\Http\Middleware\EnsureUserHasPermission;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Mockery;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 use Tests\TestCase;
 
 class AuthorizationBoundaryTest extends TestCase
 {
+    public function test_sidebar_hides_unavailable_modules_and_empty_groups_before_rendering(): void
+    {
+        $staff = Mockery::mock(User::class)->makePartial();
+        $staff->shouldReceive('isActive')->andReturn(true);
+        $staff->shouldReceive('isOwner')->andReturn(false);
+        $staff->shouldReceive('canPermission')->andReturnUsing(
+            fn (string $permission): bool => $permission === 'customers.view',
+        );
+
+        $this->actingAs($staff)
+            ->view('layouts.app')
+            ->assertSee('Khách hàng')
+            ->assertDontSee('sidebar-menu-title">Giao nhận & Thanh toán', false)
+            ->assertDontSee('sidebar-menu-title">Hệ thống', false)
+            ->assertDontSee('sidebar-menu-title">Menu chính', false)
+            ->assertDontSee('href="'.route('orders.index').'"', false);
+    }
+
+    public function test_customer_list_hides_edit_and_delete_for_view_only_role(): void
+    {
+        $staff = Mockery::mock(User::class)->makePartial();
+        $staff->shouldReceive('isActive')->andReturn(true);
+        $staff->shouldReceive('isOwner')->andReturn(false);
+        $staff->shouldReceive('canPermission')->andReturnUsing(
+            fn (string $permission): bool => $permission === 'customers.view',
+        );
+
+        $customers = new LengthAwarePaginator([
+            (object) [
+                'KhachHangID' => 7,
+                'HoTen' => 'Khách kiểm thử',
+                'SoDienThoai' => null,
+                'Email' => null,
+                'DiaChi' => null,
+                'diemTichLuy' => null,
+                'NgayTao' => null,
+            ],
+        ], 1, 10);
+
+        $this->actingAs($staff)
+            ->view('admin.customers.index', compact('customers'))
+            ->assertSee(route('customers.show', 7), false)
+            ->assertDontSee(route('customers.edit', 7), false)
+            ->assertDontSee(route('customers.destroy', 7), false);
+    }
+
     public function test_customer_cannot_access_admin_routes(): void
     {
         $customer = Mockery::mock(User::class)->makePartial();
