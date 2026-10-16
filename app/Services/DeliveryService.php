@@ -18,6 +18,10 @@ class DeliveryService
     {
         $query = GiaoNhan::query();
 
+        if (isset($filters['employee_id'])) {
+            $query->where('NhanVienID', $filters['employee_id']);
+        }
+
         if (! empty($filters['customer_id'])) {
             $query->whereHas('donHang', fn ($orderQuery) => $orderQuery->where('KhachHangID', $filters['customer_id']));
         }
