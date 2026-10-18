@@ -12,32 +12,6 @@ class ChatMessageDecryptionService
     private ?string $key = null;
 
     /**
-     * @return array{ciphertext: string, nonce: string}
-     */
-    public function encryptContent(string $plainText): array
-    {
-        $nonce = random_bytes(12);
-        $tag = '';
-        $cipherText = openssl_encrypt(
-            $plainText,
-            'aes-256-gcm',
-            $this->encryptionKey(),
-            OPENSSL_RAW_DATA,
-            $nonce,
-            $tag,
-        );
-
-        if (! is_string($cipherText)) {
-            throw new ChatMessageDecryptionException('Encrypted chat message could not be created.');
-        }
-
-        return [
-            'ciphertext' => base64_encode($cipherText.$tag),
-            'nonce' => base64_encode($nonce),
-        ];
-    }
-
-    /**
      * @param  Collection<int, TinNhan>  $messages
      * @return Collection<int, TinNhan>
      */

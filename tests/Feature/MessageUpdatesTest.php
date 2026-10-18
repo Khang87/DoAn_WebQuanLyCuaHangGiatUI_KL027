@@ -124,12 +124,8 @@ class MessageUpdatesTest extends TestCase
             'services.supabase.service_role_key' => 'test-service-role-key',
         ]);
         Http::fake([
-            'https://example.supabase.co/functions/v1/chat-encryption' => Http::response([
-                'messages' => [[
-                    'TinNhanID' => $id,
-                    'NoiDung' => 'image:2/attachment.jpg',
-                    'ImageUrl' => 'https://example.supabase.co/storage/v1/object/sign/chat-images/2/attachment.jpg',
-                ]],
+            'https://example.supabase.co/storage/v1/object/sign/chat-images/2/attachment.jpg' => Http::response([
+                'signedURL' => '/object/sign/chat-images/2/attachment.jpg',
             ]),
         ]);
 
