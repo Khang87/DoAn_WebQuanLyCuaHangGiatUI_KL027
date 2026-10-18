@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Enums\InvoiceStatus;
 use App\Models\DiemTichLuy;
 use App\Models\KhachHang;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
@@ -92,11 +93,35 @@ class CustomerService
         return $customer->fresh();
     }
 
-    public function delete(KhachHang $customer): ?string
+    /**
+     * @return array{
+     *     message: string,
+     *     orders: list<array{id: int, code: string, status: string, payment_status: string}>
+     * }|null
+     */
+    public function delete(KhachHang $customer): ?array
     {
-        return DB::transaction(function () use ($customer): ?string {
+        return DB::transaction(function () use ($customer): ?array {
+            $orders = DB::table('DonHang')
+                ->leftJoin('HoaDon', 'HoaDon.DonHangID', '=', 'DonHang.DonHangID')
+                ->where('DonHang.KhachHangID', $customer->getKey())
+                ->orderBy('DonHang.MaDonHang')
+                ->get([
+                    'DonHang.DonHangID',
+                    'DonHang.MaDonHang',
+                    'DonHang.TrangThai',
+                    'HoaDon.TrangThai as invoice_status',
+                ])
+                ->map(fn (object $order): array => [
+                    'id' => (int) $order->DonHangID,
+                    'code' => (string) $order->MaDonHang,
+                    'status' => (string) $order->TrangThai,
+                    'payment_status' => (string) ($order->invoice_status ?? InvoiceStatus::Unpaid->value),
+                ])
+                ->all();
+
             $relatedRecords = array_filter([
-                'đơn hàng' => $customer->donHangs()->count(),
+                'đơn hàng' => count($orders),
                 'lịch hẹn' => $customer->bookings()->count(),
                 'đánh giá' => $customer->danhGia()->count(),
                 'tài khoản' => $customer->taiKhoan()->count(),
@@ -109,7 +134,10 @@ class CustomerService
                     $details[] = $count.' '.$recordType;
                 }
 
-                return 'Không thể xóa khách hàng vì còn dữ liệu liên quan: '.implode(', ', $details).'.';
+                return [
+                    'message' => 'Không thể xóa khách hàng vì còn dữ liệu liên quan: '.implode(', ', $details).'.',
+                    'orders' => $orders,
+                ];
             }
 
             DiemTichLuy::query()
@@ -117,7 +145,10 @@ class CustomerService
                 ->delete();
 
             if (! $customer->delete()) {
-                return 'Không thể xóa khách hàng. Vui lòng thử lại.';
+                return [
+                    'message' => 'Không thể xóa khách hàng. Vui lòng thử lại.',
+                    'orders' => [],
+                ];
             }
 
             return null;

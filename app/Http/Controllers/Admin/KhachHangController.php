@@ -102,7 +102,14 @@ class KhachHangController extends Controller
             $error = $this->customerService->delete($customer);
 
             if ($error !== null) {
-                return redirect()->route('customers.index')->with('error', $error);
+                $orders = array_map(
+                    fn (array $order): array => $order + ['url' => route('orders.show', $order['id'])],
+                    $error['orders'],
+                );
+
+                return redirect()->route('customers.index')
+                    ->with('error', $error['message'])
+                    ->with('customer_blocking_orders', $orders);
             }
 
             return redirect()->route('customers.index')->with('success', 'Khách hàng đã được xóa.');
