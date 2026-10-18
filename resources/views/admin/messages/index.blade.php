@@ -54,6 +54,9 @@
                     data-message-read="{{ route('admin.messages.read') }}"
                     data-message-realtime="{{ route('admin.messages.realtime') }}"
                     data-message-updates="{{ $selectedCustomer ? route('admin.messages.support-updates', $selectedCustomer->getKey()) : route('admin.messages.updates', $selectedOrder->DonHangID) }}"
+                    data-message-hide="{{ route('admin.messages.hide', ['message' => 0]) }}"
+                    data-message-recall="{{ route('admin.messages.recall', ['message' => 0]) }}"
+                    data-message-can-manage="{{ auth()->user()->can('messages.create') ? '1' : '0' }}"
                     data-order-id="{{ $selectedOrder?->DonHangID }}" data-customer-account-id="{{ $selectedCustomer?->getKey() }}" aria-label="Nội dung cuộc trò chuyện">
                     @forelse($messages as $message)
                         @php($isMine = (int) $message->NguoiGuiID === (int) auth()->id())
@@ -62,10 +65,20 @@
                                 <div class="small {{ $isMine ? 'text-white-50' : 'text-muted' }}">
                                     {{ app(\App\Services\MessageService::class)->displayName($message, auth()->user()) }}
                                 </div>
-                                <div class="text-break">{{ $message->NoiDung }}</div>
+                                @if($message->ImageUrl ?? false)
+                                    <a href="{{ $message->ImageUrl }}" target="_blank" rel="noopener noreferrer"><img src="{{ $message->ImageUrl }}" alt="Ảnh đính kèm" class="img-fluid rounded mb-1" style="max-height:240px"></a>
+                                @else
+                                    <div class="text-break">{{ $message->NoiDung }}</div>
+                                @endif
                                 <div class="small text-end {{ $isMine ? 'text-white-50' : 'text-muted' }}">
                                     {{ app(\App\Services\MessageService::class)->sentAt($message)?->format('d-m-Y H:i') }}
                                 </div>
+                                @can('messages.create')
+                                    <div class="d-flex justify-content-end gap-1 mt-1">
+                                        @if($isMine)<button type="button" class="btn btn-sm btn-link p-0 {{ $isMine ? 'text-white' : '' }}" data-message-recall="{{ $message->TinNhanID }}">Thu hồi</button>@endif
+                                        <button type="button" class="btn btn-sm btn-link p-0 {{ $isMine ? 'text-white' : '' }}" data-message-hide="{{ $message->TinNhanID }}">Xóa</button>
+                                    </div>
+                                @endcan
                             </div>
                         </div>
                     @empty
@@ -78,17 +91,28 @@
                     @if(!$selectedCustomer && !$selectedOrder?->khachHang?->taiKhoan)
                         <div class="alert alert-warning mb-0">Khách hàng chưa có tài khoản nhận tin nhắn.</div>
                     @else
-                        <form method="POST" action="{{ route('admin.messages.store') }}" class="d-flex gap-2" data-message-form>
+                        <form method="POST" enctype="multipart/form-data" action="{{ route('admin.messages.store') }}" class="d-flex flex-column gap-2" data-message-form>
                             @csrf
                             @if($selectedCustomer)
                                 <input type="hidden" name="customer_id" value="{{ $selectedCustomer->getKey() }}">
                             @else
                                 <input type="hidden" name="order_id" value="{{ $selectedOrder->DonHangID }}">
                             @endif
-                            <textarea name="content" rows="2" maxlength="1000" required class="form-control" placeholder="Nhập tin nhắn cho khách hàng...">{{ old('content') }}</textarea>
-                            <button type="submit" class="btn btn-primary align-self-end">
-                                <i class="bi bi-send me-1"></i>Gửi
-                            </button>
+                            <div class="d-flex flex-wrap gap-2" aria-label="Mẫu trả lời nhanh">
+                                <button type="button" class="btn btn-sm btn-outline-secondary" data-message-template="Xin chào, cửa hàng đã nhận tin nhắn của bạn.">Chào khách</button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" data-message-template="Bạn vui lòng cho biết mã đơn hàng để cửa hàng kiểm tra nhé.">Hỏi mã đơn</button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" data-message-template="Cửa hàng sẽ kiểm tra và phản hồi bạn sớm.">Hẹn phản hồi</button>
+                            </div>
+                            <div class="d-flex gap-2">
+                                <textarea name="content" rows="2" maxlength="1000" class="form-control" placeholder="Nhập tin nhắn cho khách hàng...">{{ old('content') }}</textarea>
+                                <label class="btn btn-outline-secondary align-self-end mb-0" title="Chọn ảnh">
+                                    <i class="bi bi-image"></i><span class="visually-hidden">Chọn ảnh</span>
+                                    <input type="file" name="image" accept="image/jpeg,image/png,image/webp" class="d-none" data-message-image>
+                                </label>
+                                <button type="submit" class="btn btn-primary align-self-end">
+                                    <i class="bi bi-send me-1"></i>Gửi
+                                </button>
+                            </div>
                         </form>
                         @error('content')<div class="text-danger small mt-2">{{ $message }}</div>@enderror
                         @error('message')<div class="text-danger small mt-2">{{ $message }}</div>@enderror

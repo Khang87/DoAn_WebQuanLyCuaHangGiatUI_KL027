@@ -5,12 +5,15 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\DonHang;
 use App\Models\User;
+use App\Models\TinNhan;
 use App\Services\MessageRealtimeService;
 use App\Services\MessageService;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 class MessageController extends Controller
@@ -45,19 +48,29 @@ class MessageController extends Controller
         ]);
     }
 
-    public function store(Request $request): RedirectResponse
+    public function store(Request $request): RedirectResponse|JsonResponse
     {
         $validated = $request->validate([
             'order_id' => ['nullable', 'required_without:customer_id', 'prohibits:customer_id', 'integer', 'min:1', 'exists:DonHang,DonHangID'],
             'customer_id' => ['nullable', 'required_without:order_id', 'prohibits:order_id', 'integer', 'min:1'],
-            'content' => ['required', 'string', 'max:1000'],
+            'content' => ['nullable', 'string', 'max:1000'],
+            'image' => ['nullable', 'required_without:content', 'image', 'mimes:jpeg,png,webp', 'max:5120'],
         ]);
+        if (! $request->hasFile('image') && trim((string) ($validated['content'] ?? '')) === '') {
+            throw ValidationException::withMessages(['content' => 'Vui lòng nhập tin nhắn hoặc chọn ảnh.']);
+        }
 
         if (isset($validated['customer_id'])) {
             $customer = $this->messageService->supportCustomer((int) $validated['customer_id']);
-            $this->messageService->sendSupport($customer, $request->user(), $validated['content']);
+            if ($request->hasFile('image')) {
+                $this->messageService->sendSupportImage($customer, $request->user(), $request->file('image'));
+            } else {
+                $this->messageService->sendSupport($customer, $request->user(), $validated['content']);
+            }
 
-            return redirect()->route('admin.messages.index', ['customer_id' => $customer->getKey()]);
+            return $request->expectsJson()
+                ? response()->json(['ok' => true])
+                : redirect()->route('admin.messages.index', ['customer_id' => $customer->getKey()]);
         }
 
         $order = $this->messageService->findOrder((int) $validated['order_id']);
@@ -72,10 +85,58 @@ class MessageController extends Controller
             abort(403);
         }
 
-        $this->messageService->sendFromStore($order, $sender, $validated['content']);
+        if ($request->hasFile('image')) {
+            $this->messageService->sendOrderImage($order, $sender, $request->file('image'));
+        } else {
+            $this->messageService->sendFromStore($order, $sender, $validated['content']);
+        }
 
-        return redirect()
-            ->route('admin.messages.index', ['order_id' => $order->DonHangID]);
+        return $request->expectsJson()
+            ? response()->json(['ok' => true])
+            : redirect()->route('admin.messages.index', ['order_id' => $order->DonHangID]);
+    }
+
+    public function hide(TinNhan $message, Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'order_id' => ['nullable', 'required_without:customer_id', 'integer', 'min:1', 'prohibits:customer_id'],
+            'customer_id' => ['nullable', 'required_without:order_id', 'integer', 'min:1', 'prohibits:order_id'],
+        ]);
+        $this->assertConversationContains($message, $validated);
+        DB::table('TinNhanAn')->insertOrIgnore([
+            'TaiKhoanID' => (int) $request->user()->getAuthIdentifier(), 'TinNhanID' => (int) $message->getKey(),
+            'ThoiGianAn' => now('UTC'),
+        ]);
+
+        return response()->json(['ok' => true])->header('Cache-Control', 'private, no-store');
+    }
+
+    public function recall(TinNhan $message, Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'order_id' => ['nullable', 'required_without:customer_id', 'integer', 'min:1', 'prohibits:customer_id'],
+            'customer_id' => ['nullable', 'required_without:order_id', 'integer', 'min:1', 'prohibits:order_id'],
+        ]);
+        $this->assertConversationContains($message, $validated);
+        if ((int) $message->NguoiGuiID !== (int) $request->user()->getAuthIdentifier()) {
+            abort(403);
+        }
+        $this->messageService->recall($message);
+
+        return response()->json(['ok' => true])->header('Cache-Control', 'private, no-store');
+    }
+
+    /** @param array{order_id?: int|null, customer_id?: int|null} $validated */
+    private function assertConversationContains(TinNhan $message, array $validated): void
+    {
+        if (isset($validated['order_id'])) {
+            abort_unless((int) $message->DonHangID === (int) $validated['order_id'], 404);
+            DonHang::query()->findOrFail((int) $validated['order_id']);
+
+            return;
+        }
+        $customer = $this->messageService->supportCustomer((int) $validated['customer_id']);
+        abort_unless($message->DonHangID === null && in_array((int) $customer->getKey(), [(int) $message->NguoiGuiID, (int) $message->NguoiNhanID], true), 404);
     }
 
     public function inbox(Request $request): JsonResponse
@@ -153,7 +214,7 @@ class MessageController extends Controller
                 'sender_name' => $this->messageService->displayName($message, $viewer),
                 'is_mine' => (int) $message->NguoiGuiID === (int) $viewer->getKey(),
                 'sent_at' => $this->messageService->sentAt($message)?->toIso8601String(),
-            ])->values(),
+            ] + (($message->ImageUrl ?? null) ? ['image_url' => $message->ImageUrl] : []))->values(),
         ])->header('Cache-Control', 'private, no-store');
     }
 
@@ -176,7 +237,7 @@ class MessageController extends Controller
                     'sender_name' => $this->messageService->displayName($message, $viewer),
                     'is_mine' => (int) $message->NguoiGuiID === (int) $viewer->getKey(),
                     'sent_at' => $this->messageService->sentAt($message)?->toIso8601String(),
-                ])->values(),
+                ] + (($message->ImageUrl ?? null) ? ['image_url' => $message->ImageUrl] : []))->values(),
         ])->header('Cache-Control', 'private, no-store');
     }
 }
