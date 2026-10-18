@@ -15,7 +15,7 @@
 
 <form action="{{ url()->current() }}" method="GET" class="row g-3 align-items-center mb-4">
     <div class="col-12 col-md-auto flex-grow-1">
-        <div class="input-group input-group-sm shadow-sm rounded-3 overflow-hidden">
+        <div class="input-group input-group-sm shadow-sm rounded-3 overflow-hidden filter-search">
             <span class="input-group-text bg-white border-end-0 ps-3">
                 <i class="fas fa-search text-muted"></i>
             </span>
@@ -56,10 +56,8 @@
                 <thead>
                     <tr>
                         <th scope="col" class="fw-bold text-dark">STT</th>
-                        <th class="fw-bold text-dark">Mã danh mục</th>
                         <th class="fw-bold text-dark">Tên danh mục</th>
                         <th class="fw-bold text-dark">Mô tả</th>
-                        <th class="fw-bold text-dark">Số loại đồ</th>
                         <th class="fw-bold text-dark">Ngày tạo</th>
                         <th class="fw-bold text-dark">Trạng thái</th>
                         <th class="fw-bold text-dark">Thao tác</th>
@@ -67,12 +65,10 @@
                 </thead>
                 <tbody>
                     @forelse($categories as $category)
-                        <tr data-id="{{ $category->DanhMucID }}">
+                        <tr>
                             <td>{{ $categories->firstItem() + $loop->index }}</td>
-                            <td>{{ 'DM'.str_pad((string) $category->DanhMucID, 4, '0', STR_PAD_LEFT) }}</td>
                             <td><strong>{{ $category->TenDanhMuc }}</strong></td>
                             <td>{{ \Illuminate\Support\Str::limit($category->MoTa, 50) ?: '—' }}</td>
-                            <td>{{ $category->loai_do_giats_count }}</td>
                             <td>{{ $category->NgayTao?->format('d/m/Y H:i') ?? '—' }}</td>
                             <td>
                                 <x-admin.status-badge :status="$category->TrangThai" :enum="\App\Enums\RecordStatus::class" />
@@ -106,7 +102,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="8" class="text-center text-muted py-4">Chưa có danh mục loại đồ giặt nào</td>
+                            <td colspan="6" class="text-center text-muted py-4">Chưa có danh mục loại đồ giặt nào</td>
                         </tr>
                     @endforelse
                 </tbody>

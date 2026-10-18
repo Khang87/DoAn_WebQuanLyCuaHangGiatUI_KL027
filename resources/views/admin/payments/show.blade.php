@@ -5,7 +5,6 @@
 
 @section('content')
 @php
-    $paymentCode = 'TT' . str_pad((string) $payment->ThanhToanID, 4, '0', STR_PAD_LEFT);
     $isLocked = $payment->isLocked();
     $isOwner = auth()->user()?->isOwner() ?? false;
     $isFinanciallyFinal = $payment->isFinanciallyFinal();
@@ -15,7 +14,7 @@
 @endphp
 
 <x-admin.detail.page-header
-    title="Thanh toán {{ $paymentCode }}"
+    title="Chi tiết thanh toán"
     :subtitle="$payment->getMethodLabel() . ' · ' . $payment->ThoiGian?->format('d/m/Y H:i')"
 >
     <x-slot:badge>
@@ -34,7 +33,6 @@
     <div class="col-lg-7">
         <x-admin.detail.panel title="Thông tin thanh toán" icon="bi-cash-coin" :iconClass="'bg-primary-subtle text-primary'">
             <x-admin.detail.info-grid :columns="2">
-                <x-admin.detail.info-item label="Mã thanh toán" :value="$paymentCode" />
                 <x-admin.detail.info-item label="Số tiền">
                     <x-admin.detail.money :value="$payment->SoTien" class="detail-summary__total text-primary" />
                 </x-admin.detail.info-item>

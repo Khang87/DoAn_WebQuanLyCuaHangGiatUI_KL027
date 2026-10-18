@@ -7,7 +7,7 @@
 <div class="card">
     <div class="card-body">
         <div class="d-flex justify-content-between align-items-center mb-4">
-            <h5 class="mb-0">Thông tin danh mục</h5>
+            <h5 class="mb-0">Thông tin loại đồ giặt</h5>
             <a href="{{ route('loaidogiat.index') }}" class="btn btn-outline-secondary btn-sm">
                 <i class="bi bi-arrow-left me-1"></i>Quay lại
             </a>
@@ -26,6 +26,7 @@
                             </option>
                         @endforeach
                     </select>
+                    <div class="form-text">Chọn nhóm phân loại mà loại đồ giặt này thuộc về.</div>
                     @error('DanhMucID')
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
@@ -59,7 +60,6 @@
             </div>
 
             <div class="d-flex justify-content-end gap-2 mt-4">
-                <button type="reset" class="btn btn-outline-secondary">Làm mới</button>
                 <button type="submit" class="btn btn-primary">
                     <i class="bi bi-check-lg me-1"></i>Lưu loại đồ giặt
                 </button>

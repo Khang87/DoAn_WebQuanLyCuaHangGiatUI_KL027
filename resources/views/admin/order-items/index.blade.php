@@ -14,7 +14,7 @@
 </div>
 <form action="{{ url()->current() }}" method="GET" class="row g-3 align-items-center mb-4">
     <div class="col-12">
-        <div class="input-group input-group-sm shadow-sm rounded-3 overflow-hidden">
+        <div class="input-group input-group-sm shadow-sm rounded-3 overflow-hidden filter-search">
             <span class="input-group-text bg-white border-end-0 ps-3">
                 <i class="fas fa-search text-muted"></i>
             </span>
@@ -28,13 +28,12 @@
         <div class="table-responsive">
             <table class="table table-hover mb-0">
                 <thead>
-                    <tr><th scope="col">STT</th><th>Mã mặt hàng</th><th>Đơn hàng</th><th>Mặt hàng</th><th>Loại</th><th>Đơn giá</th><th>SL</th><th>Thành tiền</th><th>Ghi chú</th><th>Thao tác</th></tr>
+                    <tr><th scope="col">STT</th><th>Đơn hàng</th><th>Mặt hàng</th><th>Loại</th><th>Đơn giá</th><th>SL</th><th>Thành tiền</th><th>Ghi chú</th><th>Thao tác</th></tr>
                 </thead>
                 <tbody>
                     @forelse($items as $item)
                     <tr>
                         <td>{{ $items->firstItem() + $loop->index }}</td>
-                        <td>{{ $item->code ?? 'CT' . str_pad($item->id, 4, '0', STR_PAD_LEFT) }}</td>
                         <td><span class="text-dark">{{ $item->order?->code }}</span></td>
                         <td><strong>{{ $item->item_name }}</strong></td>
                         <td>{{ $item->item_type }}</td>
@@ -59,7 +58,7 @@
                         </td>
                     </tr>
                     @empty
-                    <tr><td colspan="10" class="text-center text-muted py-4">Chưa có chi tiết</td></tr>
+                    <tr><td colspan="9" class="text-center text-muted py-4">Chưa có chi tiết</td></tr>
                     @endforelse
                 </tbody>
             </table>

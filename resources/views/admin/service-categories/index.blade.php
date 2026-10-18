@@ -15,11 +15,11 @@
 </div>
 <form action="{{ url()->current() }}" method="GET" class="row g-3 align-items-center mb-4">
     <div class="col-12 col-md-auto flex-grow-1">
-        <div class="input-group input-group-sm shadow-sm rounded-3 overflow-hidden">
+        <div class="input-group input-group-sm shadow-sm rounded-3 overflow-hidden filter-search">
             <span class="input-group-text bg-white border-end-0 ps-3">
                 <i class="fas fa-search text-muted"></i>
             </span>
-            <input type="text" name="search" class="form-control form-control-sm border-start-0 ps-2" placeholder="Tìm theo ID, tên danh mục..." value="{{ request('search') }}">
+            <input type="text" name="search" class="form-control form-control-sm border-start-0 ps-2" placeholder="Tìm theo tên danh mục..." value="{{ request('search') }}">
         </div>
     </div>
     <div class="col-12 col-sm-6 col-md-auto">
@@ -51,7 +51,6 @@
                 <thead>
                     <tr>
                         <th scope="col" class="fw-bold text-dark">STT</th>
-                        <th class="fw-bold text-dark">Mã danh mục</th>
                         <th class="fw-bold text-dark">Tên danh mục</th>
                         <th class="fw-bold text-dark">Mô tả</th>
                         <th class="fw-bold text-dark">Trạng thái</th>
@@ -61,9 +60,8 @@
                 <tbody>
                     @forelse($categories as $category)
                     @php $stt = $categories->firstItem() + $loop->index; @endphp
-                    <tr data-id="{{ $category->LoaiDichVuID }}">
+                    <tr>
                         <td>{{ $stt }}</td>
-                        <td>{{ 'DV' . str_pad($category->LoaiDichVuID, 4, '0', STR_PAD_LEFT) }}</td>
                         <td><strong>{{ $category->TenLoaiDichVu ?: '-' }}</strong></td>
                         <td>{{ \Illuminate\Support\Str::limit($category->MoTa, 50) ?: '-' }}</td>
                         <td>
@@ -94,7 +92,7 @@
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="6" class="text-center text-muted py-4">Chưa có dữ liệu nào</td>
+                        <td colspan="5" class="text-center text-muted py-4">Chưa có dữ liệu nào</td>
                     </tr>
                     @endempty
                 </tbody>

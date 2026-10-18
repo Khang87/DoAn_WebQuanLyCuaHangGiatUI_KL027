@@ -639,6 +639,13 @@ body {
     color: #9ca3af !important;
 }
 
+.btn-outline-secondary:not(:disabled):not(.disabled):hover,
+.btn-outline-secondary:not(:disabled):not(.disabled):focus-visible {
+    color: #ffffff !important;
+    background-color: #475569 !important;
+    border-color: #475569 !important;
+}
+
 .order-toolbar {
     display: flex;
     justify-content: space-between;
@@ -1213,6 +1220,16 @@ select.form-select.filter-select {
     min-width: 160px !important;
     max-width: 200px !important;
     text-align: left !important;
+}
+
+.filter-search {
+    height: 40px;
+}
+
+.filter-search .input-group-text,
+.filter-search .form-control {
+    height: 100%;
+    font-size: 0.875rem;
 }
 
 select,

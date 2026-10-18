@@ -27,7 +27,7 @@
     $statusOptions ??= \App\Enums\DeliveryStatus::options();
 @endphp
 <div class="delivery-form-shell"><div class="card"><div class="card-body">
-    <div class="d-flex justify-content-between align-items-center mb-4"><h2 class="h5 mb-0">Cập nhật lịch giao nhận</h2><div><span class="text-muted">Mã giao nhận</span><h4 class="mb-0">{{ $delivery->MaGiaoNhan ?? ('GH' . str_pad($delivery->GiaoNhanID, 3, '0', STR_PAD_LEFT)) }}</h4></div></div>
+    <div class="d-flex justify-content-between align-items-center mb-4"><h2 class="h5 mb-0">Cập nhật lịch giao nhận</h2></div>
     <form action="{{ route('deliveries.update', $delivery) }}" method="POST">@csrf @method('PUT')
         <input type="hidden" name="order_id" value="{{ $delivery->DonHangID }}">
         <input type="hidden" name="method" value="{{ strtolower($delivery->LoaiGiaoNhan) }}">

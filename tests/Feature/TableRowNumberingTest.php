@@ -58,17 +58,18 @@ class TableRowNumberingTest extends TestCase
         $this->assertSame('2', trim($xpath->query('//table/tbody/tr[2]/td[1]')->item(0)->textContent));
     }
 
-    public function test_customer_ids_remain_the_first_column_without_row_numbers(): void
+    public function test_customer_list_uses_contiguous_row_numbers_instead_of_internal_ids(): void
     {
         $rows = collect([42, 900])->map(fn (int $id) => (new KhachHang)->forceFill([
             'KhachHangID' => $id, 'HoTen' => 'Khách '.$id,
         ])->setRelation('diemTichLuy', null));
         $customers = new LengthAwarePaginator($rows, 12, 10, 2, ['path' => '/customers']);
         $xpath = $this->table('admin.customers.index', compact('customers'));
-        $this->assertSame('ID khách hàng', trim($xpath->query('//table/thead/tr/th[1]')->item(0)->textContent));
-        $this->assertSame(0, $xpath->query('//table/thead/tr/th[normalize-space(.)="STT"]')->length);
-        $this->assertSame('42', trim($xpath->query('//table/tbody/tr[1]/td[1]')->item(0)->textContent));
-        $this->assertSame('900', trim($xpath->query('//table/tbody/tr[2]/td[1]')->item(0)->textContent));
+        $this->assertSame('STT', trim($xpath->query('//table/thead/tr/th[1]')->item(0)->textContent));
+        $this->assertSame(1, $xpath->query('//table/thead/tr/th[normalize-space(.)="STT"]')->length);
+        $this->assertSame('11', trim($xpath->query('//table/tbody/tr[1]/td[1]')->item(0)->textContent));
+        $this->assertSame('12', trim($xpath->query('//table/tbody/tr[2]/td[1]')->item(0)->textContent));
+        $this->assertSame(0, $xpath->query('//table/thead/tr/th[normalize-space(.)="ID khách hàng"]')->length);
     }
 
     public function test_empty_tables_span_all_visible_columns_without_a_fake_row_number(): void

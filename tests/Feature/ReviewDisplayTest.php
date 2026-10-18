@@ -10,7 +10,7 @@ use Tests\TestCase;
 
 class ReviewDisplayTest extends TestCase
 {
-    public function test_review_list_displays_order_code_and_customer_id_from_schema_relations(): void
+    public function test_review_list_displays_order_code_and_customer_name_without_technical_ids(): void
     {
         $customer = new KhachHang;
         $customer->setAttribute('KhachHangID', 7);
@@ -38,11 +38,12 @@ class ReviewDisplayTest extends TestCase
             'totalReviews' => 1,
         ])->render();
 
-        $this->assertStringContainsString('DH0024', $html);
-        $this->assertStringContainsString('KH007', $html);
+        $this->assertStringContainsString('DH00000024', $html);
+        $this->assertStringNotContainsString('KH007', $html);
         $this->assertStringContainsString('Khách hàng kiểm thử', $html);
         $this->assertStringContainsString('Dịch vụ sạch sẽ và đúng hẹn.', $html);
         $this->assertStringContainsString('06/10/2026 14:50', $html);
         $this->assertStringContainsString('<th>Ngày đánh giá</th>', $html);
+        $this->assertStringContainsString('<th scope="col">STT</th>', $html);
     }
 }

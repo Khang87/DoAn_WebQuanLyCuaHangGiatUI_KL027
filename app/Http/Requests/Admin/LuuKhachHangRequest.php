@@ -15,10 +15,11 @@ class LuuKhachHangRequest extends FormRequest
     public function rules(): array
     {
         $id = $this->route('customer') ?? $this->route('id') ?? null;
+        $isCreating = $this->isMethod('post');
 
         return [
             'HoTen' => ['required', 'string', 'max:255'],
-            'Email' => ['nullable', 'email', 'max:255', Rule::unique('KhachHang', 'Email')->ignore($id, 'KhachHangID')],
+            'Email' => ['nullable', ...($isCreating ? ['required_without:SoDienThoai'] : []), 'email', 'max:255', Rule::unique('KhachHang', 'Email')->ignore($id, 'KhachHangID')],
             'SoDienThoai' => ['nullable', 'string', 'max:30', Rule::unique('KhachHang', 'SoDienThoai')->ignore($id, 'KhachHangID')],
             'DiaChi' => ['nullable', 'string', 'max:500'],
             'DiemHienTai' => ['nullable', 'integer', 'min:0'],
@@ -31,6 +32,7 @@ class LuuKhachHangRequest extends FormRequest
             'HoTen.required' => 'Họ tên là bắt buộc.',
             'HoTen.string' => 'Họ tên phải là chuỗi ký tự.',
             'HoTen.max' => 'Họ tên không được vượt quá 255 ký tự.',
+            'Email.required_without' => 'Vui lòng nhập số điện thoại hoặc email.',
             'Email.email' => 'Định dạng email không hợp lệ.',
             'Email.unique' => 'Email này đã được đăng ký trước đó rồi.',
             'SoDienThoai.unique' => 'Số điện thoại này đã được đăng ký trước đó rồi.',

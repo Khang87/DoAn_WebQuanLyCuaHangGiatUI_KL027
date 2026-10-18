@@ -16,7 +16,7 @@
 @endphp
 
 <div class="invoice-print-heading">
-    <h1>HÓA ĐƠN {{ $invoice->MaHoaDon ?: '#'.$invoice->HoaDonID }}</h1>
+    <h1>HÓA ĐƠN {{ $invoice->MaHoaDon }}</h1>
     <div>Ngày lập: {{ $invoice->NgayLap?->format('d/m/Y') ?: now()->format('d/m/Y') }}</div>
     @if($customer?->HoTen)
         <div>Khách hàng: {{ $customer->HoTen }}</div>
@@ -27,7 +27,7 @@
 </div>
 
 <x-admin.detail.page-header
-    title="Hóa đơn {{ $invoice->MaHoaDon ?: '#' . $invoice->HoaDonID }}"
+    title="Hóa đơn {{ $invoice->MaHoaDon }}"
     :subtitle="$invoice->NgayLap?->format('d/m/Y')"
 >
     <x-slot:badge>

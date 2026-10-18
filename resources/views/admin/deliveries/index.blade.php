@@ -13,7 +13,7 @@
 </div>
 <form action="{{ url()->current() }}" method="GET" class="row g-3 align-items-center mb-4">
     <div class="col-12 col-md-auto flex-grow-1">
-        <div class="input-group input-group-sm shadow-sm rounded-3 overflow-hidden">
+        <div class="input-group input-group-sm shadow-sm rounded-3 overflow-hidden filter-search">
             <span class="input-group-text bg-white border-end-0 ps-3"><i class="fas fa-search text-muted"></i></span>
             <input type="text" name="search" class="form-control form-control-sm border-start-0 ps-2" placeholder="Tìm theo mã đơn, khách hàng hoặc địa chỉ..." value="{{ request('search') }}">
         </div>
@@ -43,7 +43,6 @@
                 <thead class="table-light">
                     <tr>
                         <th scope="col">STT</th>
-                        <th>Mã giao nhận</th>
                         <th>Mã đơn hàng</th>
                         <th>Khách hàng</th>
                         <th>Loại giao nhận</th>
@@ -58,7 +57,6 @@
                     @forelse($deliveries as $delivery)
                     <tr>
                         <td>{{ $deliveries->firstItem() + $loop->index }}</td>
-                        <td><strong>{{ $delivery->MaGiaoNhan ?: ('GH' . str_pad($delivery->GiaoNhanID, 3, '0', STR_PAD_LEFT)) }}</strong></td>
                         <td><span class="text-dark">{{ $delivery->donHang?->MaDonHang ?: '—' }}</span></td>
                         <td>{{ $delivery->donHang?->khachHang?->HoTen ?: $delivery->nhanVien?->HoTen ?: '—' }}</td>
                         <td>
@@ -95,7 +93,7 @@
                         </td>
                     </tr>
                     @empty
-                    <tr><td colspan="10" class="text-center text-muted py-4">Chưa có dữ liệu giao nhận</td></tr>
+                    <tr><td colspan="9" class="text-center text-muted py-4">Chưa có dữ liệu giao nhận</td></tr>
                     @endforelse
                 </tbody>
             </table>

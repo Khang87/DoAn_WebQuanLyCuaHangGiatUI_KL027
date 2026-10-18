@@ -28,7 +28,6 @@
                         <thead>
                             <tr>
                                 <th scope="col">STT</th>
-                                <th>Mã loại đồ</th>
                                 <th>Tên loại đồ</th>
                                 <th>Mô tả</th>
                                 <th>Trạng thái</th>
@@ -38,7 +37,6 @@
                             @foreach($garments as $garment)
                                 <tr>
                                     <td>{{ $garments->firstItem() + $loop->index }}</td>
-                                    <td>{{ 'LD'.str_pad((string) $garment->LoaiDoGiatID, 4, '0', STR_PAD_LEFT) }}</td>
                                     <td class="fw-semibold">{{ $garment->TenLoaiDoGiat }}</td>
                                     <td>{{ $garment->MoTa ?: '—' }}</td>
                                     <td><x-admin.status-badge :status="$garment->TrangThai" :enum="\App\Enums\RecordStatus::class" size="px-2 py-1" /></td>
@@ -56,8 +54,6 @@
         <x-admin.detail.panel title="Thông tin danh mục" icon="bi-folder" :iconClass="'bg-primary-subtle text-primary'">
             <x-admin.detail.info-grid :columns="2">
                 <x-admin.detail.info-item label="Tên danh mục" :value="$category->TenDanhMuc" />
-                <x-admin.detail.info-item label="Danh mục ID" :value="$category->DanhMucID" />
-                <x-admin.detail.info-item label="Mã danh mục" :value="'DM'.str_pad((string) $category->DanhMucID, 4, '0', STR_PAD_LEFT)" />
                 <x-admin.detail.info-item label="Số loại đồ" :value="$category->loaiDoGiats()->count()" />
                 <x-admin.detail.info-item label="Trạng thái">
                     <x-admin.status-badge :status="$category->TrangThai" :enum="\App\Enums\RecordStatus::class" :pill="false" />

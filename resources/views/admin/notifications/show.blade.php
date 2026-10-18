@@ -26,7 +26,7 @@
 @endphp
 
 <x-admin.detail.page-header
-    title="Thông báo #{{ $notification->ThongBaoID }}"
+    title="Chi tiết thông báo"
     :subtitle="$notification->ThoiGianGui?->format('d/m/Y H:i')"
 >
     <x-slot:badge>
