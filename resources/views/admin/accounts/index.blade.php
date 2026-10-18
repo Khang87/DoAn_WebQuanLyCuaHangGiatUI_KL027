@@ -16,6 +16,20 @@
 @if(session('success'))
     <div class="alert alert-success">{{ session('success') }}</div>
 @endif
+@if(session('blocking_orders'))
+    <div class="alert alert-danger" role="alert">
+        <p class="mb-2">{{ session('error') }}</p>
+        <ul class="mb-0">
+            @foreach(session('blocking_orders') as $order)
+                <li>
+                    <a href="{{ route('orders.show', $order['id']) }}">
+                        {{ $order['code'] }} — {{ $order['status'] }}
+                    </a>
+                </li>
+            @endforeach
+        </ul>
+    </div>
+@endif
 @if($errors->any())
     <div class="alert alert-danger">{{ $errors->first() }}</div>
 @endif
