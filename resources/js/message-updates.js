@@ -302,6 +302,8 @@ if (conversation) {
             const row = button.closest('[data-message-id]');
             const content = row?.querySelector('.text-break');
             if (!row || !content) return;
+            row.dataset.actionsOpen = 'false';
+            row.querySelector('[data-message-menu-toggle]')?.setAttribute('aria-expanded', 'false');
             const original = content.textContent ?? '';
             const editor = document.createElement('div');
             editor.className = 'message-inline-editor mt-2';
@@ -357,7 +359,10 @@ if (conversation) {
                     'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content ?? '',
                 }, body: JSON.stringify(conversationTarget()),
             });
-            if (!response.ok) throw new Error('Không thể cập nhật tin nhắn.');
+            if (!response.ok) {
+                const body = await response.json().catch(() => ({}));
+                throw new Error(body.message || Object.values(body.errors ?? {}).flat()[0] || 'Không thể cập nhật tin nhắn.');
+            }
             signature = undefined;
             await sync();
         } catch (error) {
