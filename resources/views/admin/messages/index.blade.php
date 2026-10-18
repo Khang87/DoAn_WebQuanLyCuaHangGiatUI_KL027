@@ -99,7 +99,7 @@
                     @forelse($messages as $message)
                         @php($isMine = (int) $message->NguoiGuiID === (int) auth()->id())
                         <div class="d-flex {{ $isMine ? 'justify-content-end' : 'justify-content-start' }} mb-3" data-message-id="{{ $message->TinNhanID }}" tabindex="0">
-                            <div class="rounded-3 px-3 py-2 {{ $isMine ? 'bg-primary text-white' : 'bg-white border' }}" style="max-width: 82%;">
+                            <div class="rounded-3 px-3 py-2 {{ ($message->DaThuHoi ?? false) ? 'bg-light border text-muted fst-italic' : ($isMine ? 'bg-primary text-white' : 'bg-white border') }}" style="max-width: 82%;">
                                 <div class="small {{ $isMine ? 'text-white-50' : 'text-muted' }}">
                                     {{ app(\App\Services\MessageService::class)->displayName($message, auth()->user()) }}
                                 </div>
@@ -115,8 +115,8 @@
                                     <div class="message-actions" data-message-actions>
                                         <button type="button" class="message-menu-toggle btn btn-sm" data-message-menu-toggle aria-label="Tùy chọn tin nhắn" aria-expanded="false">⋮</button>
                                         <div class="message-actions-menu" data-message-actions-menu>
-                                            @if($isMine && !($message->ImageUrl ?? false))<button type="button" class="dropdown-item" data-message-edit="{{ $message->TinNhanID }}">Sửa</button>@endif
-                                            @if($isMine)<button type="button" class="dropdown-item" data-message-recall="{{ $message->TinNhanID }}">Thu hồi</button>@endif
+                                            @if(!($message->DaThuHoi ?? false) && $isMine && !($message->ImageUrl ?? false))<button type="button" class="dropdown-item" data-message-edit="{{ $message->TinNhanID }}">Sửa</button>@endif
+                                            @if(!($message->DaThuHoi ?? false) && $isMine)<button type="button" class="dropdown-item" data-message-recall="{{ $message->TinNhanID }}">Thu hồi</button>@endif
                                             <button type="button" class="dropdown-item" data-message-hide="{{ $message->TinNhanID }}">Xóa</button>
                                         </div>
                                     </div>

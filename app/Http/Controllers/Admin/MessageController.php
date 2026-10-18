@@ -311,6 +311,7 @@ class MessageController extends Controller
             $messages = $this->messageService->supportMessages($account)->map(fn ($message): array => [
                 'id' => (int) $message->getKey(), 'content' => (string) $message->NoiDung,
                 'image_url' => $message->ImageUrl,
+                'recalled' => (bool) ($message->DaThuHoi ?? false),
                 'sender_name' => $this->messageService->displayName($message, $viewer),
                 'is_mine' => (int) $message->NguoiGuiID === (int) $viewer->getKey(),
                 'sent_at' => $this->messageService->sentAt($message)?->toIso8601String(),
@@ -345,6 +346,7 @@ class MessageController extends Controller
                     'id' => (int) $message->getKey(),
                     'content' => (string) $message->NoiDung,
                     'image_url' => $message->ImageUrl,
+                    'recalled' => (bool) ($message->DaThuHoi ?? false),
                     'sender_name' => $this->messageService->displayName($message, $viewer),
                     'is_mine' => (int) $message->NguoiGuiID === (int) $viewer->getKey(),
                     'sent_at' => $this->messageService->sentAt($message)?->toIso8601String(),

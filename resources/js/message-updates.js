@@ -96,7 +96,7 @@ if (conversation) {
             row.tabIndex = 0;
             row.className = `d-flex ${message.is_mine ? 'justify-content-end' : 'justify-content-start'} mb-3`;
             const bubble = document.createElement('div');
-            bubble.className = `rounded-3 px-3 py-2 ${message.is_mine ? 'bg-primary text-white' : 'bg-white border'}`;
+            bubble.className = `rounded-3 px-3 py-2 ${message.recalled ? 'bg-light border text-muted fst-italic' : (message.is_mine ? 'bg-primary text-white' : 'bg-white border')}`;
             bubble.style.maxWidth = '82%';
             const sender = document.createElement('div');
             sender.className = `small ${message.is_mine ? 'text-white-50' : 'text-muted'}`;
@@ -140,7 +140,7 @@ if (conversation) {
                 const menu = document.createElement('div');
                 menu.className = 'message-actions-menu';
                 menu.dataset.messageActionsMenu = '';
-                if (message.is_mine && !message.image_url && conversation.dataset.messageEdit) {
+                if (!message.recalled && message.is_mine && !message.image_url && conversation.dataset.messageEdit) {
                     const edit = document.createElement('button');
                     edit.type = 'button';
                     edit.className = 'dropdown-item';
@@ -148,7 +148,7 @@ if (conversation) {
                     edit.textContent = 'Sửa';
                     menu.append(edit);
                 }
-                if (message.is_mine) {
+                if (!message.recalled && message.is_mine) {
                     const recall = document.createElement('button');
                     recall.type = 'button';
                     recall.className = 'dropdown-item';

@@ -213,8 +213,10 @@ class MessageService
                 if (! is_array($data)) {
                     throw new \RuntimeException('Supabase did not return a presented chat message.');
                 }
-                $message->setAttribute('NoiDung', (string) ($data['NoiDung'] ?? ''));
-                $message->setAttribute('ImageUrl', $data['ImageUrl'] ?? null);
+                $recalled = (bool) ($data['DaThuHoi'] ?? false);
+                $message->setAttribute('DaThuHoi', $recalled);
+                $message->setAttribute('NoiDung', $recalled ? 'Tin nhắn đã thu hồi' : (string) ($data['NoiDung'] ?? ''));
+                $message->setAttribute('ImageUrl', $recalled ? null : ($data['ImageUrl'] ?? null));
                 $message->setAttribute('DaChinhSua', (bool) ($data['DaChinhSua'] ?? false));
             }
         } catch (\Throwable $exception) {
