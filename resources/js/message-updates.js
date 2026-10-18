@@ -452,10 +452,11 @@ if (conversation) {
                             const detail = await storageResponse.json().catch(() => ({}));
                             throw new Error(detail.message || detail.error || `Tải ảnh lên kho thất bại (HTTP ${storageResponse.status}).`);
                         }
-                        formData.delete('image');
-                        formData.set('image_path', uploadData.path);
                         const messageResponse = await fetch(form.action, {
-                            method: 'POST', credentials: 'same-origin', headers: { Accept: 'application/json', 'X-CSRF-TOKEN': csrf }, body: formData, signal: sendController.signal,
+                            method: 'POST', credentials: 'same-origin',
+                            headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf },
+                            body: JSON.stringify({ ...conversationTarget(), image_path: uploadData.path }),
+                            signal: sendController.signal,
                         });
                         if (!messageResponse.ok) {
                             const body = await messageResponse.json().catch(() => ({}));
