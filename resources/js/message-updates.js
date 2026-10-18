@@ -312,11 +312,25 @@ if (conversation) {
         }
     });
 
+    let pressTimer = null;
+    conversation.addEventListener('pointerdown', event => {
+        const row = event.target.closest('[data-message-id]');
+        if (!row || !messageActionsAllowed || event.target.closest('[data-message-actions]')) return;
+        clearTimeout(pressTimer);
+        pressTimer = setTimeout(() => {
+            conversation.querySelectorAll('[data-actions-open="true"]').forEach(open => { open.dataset.actionsOpen = 'false'; });
+            row.dataset.actionsOpen = 'true';
+        }, 500);
+    });
+    for (const name of ['pointerup', 'pointercancel', 'pointerleave']) {
+        conversation.addEventListener(name, () => clearTimeout(pressTimer));
+    }
     conversation.addEventListener('contextmenu', event => {
         const row = event.target.closest('[data-message-id]');
         if (!row || !messageActionsAllowed) return;
         event.preventDefault();
-        row.dataset.actionsOpen = row.dataset.actionsOpen !== 'true' ? 'true' : 'false';
+        conversation.querySelectorAll('[data-actions-open="true"]').forEach(open => { open.dataset.actionsOpen = 'false'; });
+        row.dataset.actionsOpen = 'true';
     });
 
     if (form) {
@@ -357,7 +371,12 @@ if (conversation) {
                         if (!uploadUrlResponse.ok) throw new Error(upload.message || Object.values(upload.errors ?? {}).flat()[0] || 'Không tạo được đường dẫn tải ảnh.');
                         const signedUrl = new URL(upload.signed_url);
                         if (signedUrl.protocol !== 'https:' || !signedUrl.hostname.endsWith('.supabase.co')) throw new Error('Đường dẫn tải ảnh không hợp lệ.');
-                        const uploaded = await fetch(signedUrl, { method: 'POST', headers: { apikey: upload.api_key, 'Content-Type': image.type, 'x-upsert': 'false' }, body: image });
+                        const uploadBody = new FormData();
+                        uploadBody.append('cacheControl', '3600');
+                        uploadBody.append('', image);
+                        const uploaded = await fetch(signedUrl, {
+                            method: 'PUT', headers: { apikey: upload.api_key, 'x-upsert': 'false' }, body: uploadBody,
+                        });
                         if (!uploaded.ok) throw new Error('Không tải được ảnh lên kho lưu trữ.');
                         const finalize = new FormData();
                         for (const key of ['order_id', 'customer_id']) { const field = form.elements.namedItem(key); if (field) finalize.set(key, field.value); }
@@ -391,6 +410,33 @@ if (conversation) {
             } finally {
                 submit.disabled = false;
             }
+        });
+
+        const imageInput = form.querySelector('[data-message-image]');
+        const attachClipboardImage = file => {
+            if (!file || !file.type.startsWith('image/')) return false;
+            if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+                showStatus('Chỉ hỗ trợ ảnh JPEG, PNG hoặc WEBP.');
+                return true;
+            }
+            if (file.size > 5 * 1024 * 1024) {
+                showStatus('Ảnh tối đa 5 MB.');
+                return true;
+            }
+            const transfer = new DataTransfer();
+            const namedFile = new File([file], file.name || `anh-dan-vao.${file.type.split('/')[1]}`, { type: file.type });
+            transfer.items.add(namedFile);
+            imageInput.files = transfer.files;
+            showStatus('Đã đính kèm ảnh. Nhấn Gửi để gửi vào cuộc trò chuyện.');
+            return true;
+        };
+        imageInput?.addEventListener('change', () => {
+            if (imageInput.files?.[0]) showStatus(`Đã chọn ảnh: ${imageInput.files[0].name}`);
+        });
+        form.addEventListener('paste', event => {
+            const items = [...(event.clipboardData?.items ?? [])];
+            const imageItem = items.find(item => item.kind === 'file' && item.type.startsWith('image/'));
+            if (imageItem && attachClipboardImage(imageItem.getAsFile())) event.preventDefault();
         });
     }
 

@@ -206,9 +206,6 @@
 @push('styles')
 <style>
     .message-chat-history [data-message-actions] { display: none !important; }
-    .message-chat-history [data-message-id]:hover [data-message-actions],
-    .message-chat-history [data-message-id]:focus-within [data-message-actions],
     .message-chat-history [data-message-id][data-actions-open="true"] [data-message-actions] { display: flex !important; }
-    @media (hover: none) { .message-chat-history [data-message-actions] { display: flex !important; } }
 </style>
 @endpush
