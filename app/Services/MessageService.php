@@ -293,7 +293,7 @@ class MessageService
     {
         $encrypted = $this->messageCryptoService->encryptContent(trim($content));
 
-        return TinNhan::query()->create([
+        return $this->createMessage([
             'NguoiGuiID' => $sender->getKey(), 'NguoiNhanID' => $customer->getKey(),
             'DonHangID' => null,
             'NoiDung' => '',
@@ -358,7 +358,7 @@ class MessageService
 
     private function createImageMessage(User $sender, User $recipient, ?int $orderId, string $path): TinNhan
     {
-        return TinNhan::query()->create([
+        return $this->createMessage([
             'NguoiGuiID' => $sender->getKey(), 'NguoiNhanID' => $recipient->getKey(), 'DonHangID' => $orderId,
             'NoiDung' => 'image:'.$path, 'ThoiGianGui' => now('UTC'), 'TrangThai' => 'Đã gửi',
         ]);
@@ -371,22 +371,28 @@ class MessageService
             'Content-Type' => (string) $image->getMimeType(), 'x-upsert' => 'false',
         ])->throw();
         try {
-            return TinNhan::query()->create([
+            return $this->createMessage([
                 'NguoiGuiID' => $sender->getKey(), 'NguoiNhanID' => $recipient->getKey(), 'DonHangID' => $orderId,
                 'NoiDung' => 'image:'.$path, 'ThoiGianGui' => now('UTC'), 'TrangThai' => 'Đã gửi',
             ]);
         } catch (\Throwable $exception) {
-            $this->storageRequest('DELETE', '/storage/v1/object/chat-images/'.$this->encodeStoragePath($path))->throw();
+            try {
+                $this->storageRequest('DELETE', '/storage/v1/object/chat-images/'.$this->encodeStoragePath($path))->throw();
+            } catch (\Throwable $cleanupException) {
+                Log::warning('Failed to clean up an unsent chat image.', [
+                    'exception' => $cleanupException::class,
+                ]);
+            }
             throw $exception;
         }
     }
 
     public function recall(TinNhan $message): void
     {
-        $this->messageDecryptionService->decryptMessages(collect([$message]));
         $path = str_starts_with((string) $message->NoiDung, 'image:')
             ? substr((string) $message->NoiDung, strlen('image:')) : null;
-        $message->delete();
+        $this->postgrestRequest('DELETE', '/rest/v1/TinNhan?TinNhanID=eq.'.(int) $message->getKey()
+            .'&NguoiGuiID=eq.'.(int) $message->NguoiGuiID.'&select=TinNhanID', null, 'return=representation')->throw();
         if ($path !== null) {
             try {
                 $this->storageRequest('DELETE', '/storage/v1/object/chat-images/'.$this->encodeStoragePath($path))->throw();
@@ -401,18 +407,26 @@ class MessageService
 
     public function edit(TinNhan $message, string $content): void
     {
-        $this->messageDecryptionService->decryptMessages(collect([$message]));
         if (str_starts_with((string) $message->NoiDung, 'image:')) {
             throw ValidationException::withMessages(['content' => 'Không thể sửa nội dung của tin nhắn ảnh.']);
         }
         $encrypted = $this->messageDecryptionService->encryptContent(trim($content));
-        $message->forceFill([
-            'NoiDung' => '',
-            'NoiDungMaHoa' => $encrypted['ciphertext'],
-            'NoiDungNonce' => $encrypted['nonce'],
-            'MaHoaPhienBan' => 1,
-            'DaChinhSua' => true,
-        ])->save();
+        $response = $this->postgrestRequest(
+            'PATCH',
+            '/rest/v1/TinNhan?TinNhanID=eq.'.(int) $message->getKey()
+                .'&NguoiGuiID=eq.'.(int) $message->NguoiGuiID.'&select=TinNhanID',
+            [
+                'NoiDung' => '',
+                'NoiDungMaHoa' => $encrypted['ciphertext'],
+                'NoiDungNonce' => $encrypted['nonce'],
+                'MaHoaPhienBan' => 1,
+                'DaChinhSua' => true,
+            ],
+            'return=representation',
+        )->throw();
+        if (! is_array($response->json()) || $response->json() === []) {
+            abort(404, 'Tin nhắn không còn tồn tại.');
+        }
     }
 
     public function hideForAccount(int $messageId, int $accountId): void
@@ -423,15 +437,16 @@ class MessageService
             throw new \RuntimeException('Chat message hiding is not configured.');
         }
 
-        Http::acceptJson()->withHeaders([
-            'apikey' => $serviceKey,
-            'Prefer' => 'resolution=ignore-duplicates,return=minimal',
-        ])->withToken($serviceKey)->timeout(15)
-            ->post($projectUrl.'/rest/v1/TinNhanAn?on_conflict=TaiKhoanID,TinNhanID', [[
+        $this->postgrestRequest(
+            'POST',
+            '/rest/v1/TinNhanAn?on_conflict=TaiKhoanID,TinNhanID',
+            [[
                 'TaiKhoanID' => $accountId,
                 'TinNhanID' => $messageId,
-                'ThoiGianAn' => now('UTC')->toISOString(),
-            ]])->throw();
+                'ThoiGianAn' => now('UTC')->format('Y-m-d H:i:s'),
+            ]],
+            'resolution=ignore-duplicates,return=minimal',
+        )->throw();
     }
 
     private function storageRequest(string $method, string $path, ?string $body = null, array $headers = []): Response
@@ -446,6 +461,61 @@ class MessageService
         return $method === 'POST'
             ? $request->withBody($body ?? '', $headers['Content-Type'] ?? 'application/octet-stream')->post($projectUrl.$path)
             : $request->delete($projectUrl.$path);
+    }
+
+    /** @param array<string, mixed>|list<array<string, mixed>>|null $payload */
+    private function postgrestRequest(string $method, string $path, ?array $payload = null, ?string $prefer = null): \Illuminate\Http\Client\Response
+    {
+        $projectUrl = rtrim((string) config('services.supabase.project_url'), '/');
+        $serviceKey = (string) config('services.supabase.service_role_key');
+        if ($projectUrl === '' || $serviceKey === '') {
+            throw new \RuntimeException('Chat database operations are not configured.');
+        }
+
+        $headers = ['apikey' => $serviceKey];
+        if ($prefer !== null) {
+            $headers['Prefer'] = $prefer;
+        }
+        $request = Http::acceptJson()->withHeaders($headers)->withToken($serviceKey)->timeout(20);
+        $url = $projectUrl.$path;
+        $response = match (strtoupper($method)) {
+            'POST' => $request->post($url, $payload ?? []),
+            'PATCH' => $request->patch($url, $payload ?? []),
+            'DELETE' => $request->delete($url),
+            default => throw new \InvalidArgumentException('Unsupported chat database operation.'),
+        };
+
+        if ($response->failed()) {
+            Log::error('Supabase rejected a web chat database operation.', [
+                'method' => strtoupper($method),
+                'resource' => strtok($path, '?'),
+                'status' => $response->status(),
+                'response' => mb_substr($response->body(), 0, 500),
+            ]);
+        }
+
+        return $response;
+    }
+
+    /** @param array<string, mixed> $attributes */
+    private function createMessage(array $attributes): TinNhan
+    {
+        if (($attributes['ThoiGianGui'] ?? null) instanceof \DateTimeInterface) {
+            $attributes['ThoiGianGui'] = $attributes['ThoiGianGui']->format('Y-m-d H:i:s');
+        }
+
+        $response = $this->postgrestRequest(
+            'POST',
+            '/rest/v1/TinNhan?select=TinNhanID,NguoiGuiID,NguoiNhanID,DonHangID,NoiDung,ThoiGianGui,TrangThai',
+            [$attributes],
+            'return=representation',
+        )->throw();
+        $created = $response->json();
+        if (! is_array($created) || ! isset($created[0]) || ! is_array($created[0])) {
+            throw new \RuntimeException('Supabase did not return the created chat message.');
+        }
+
+        return TinNhan::query()->getModel()->newFromBuilder($created[0]);
     }
 
     private function encodeStoragePath(string $path): string
@@ -465,7 +535,7 @@ class MessageService
 
         $encrypted = $this->messageCryptoService->encryptContent(trim($content));
 
-        return TinNhan::query()->create([
+        return $this->createMessage([
             'NguoiGuiID' => $sender->getKey(),
             'NguoiNhanID' => $recipientId,
             'DonHangID' => $order->DonHangID,
