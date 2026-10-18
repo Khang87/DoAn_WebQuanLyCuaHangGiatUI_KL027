@@ -91,6 +91,7 @@
                     data-message-hide="{{ route('admin.messages.hide', ['message' => 0]) }}"
                     data-message-recall="{{ route('admin.messages.recall', ['message' => 0]) }}"
                     data-message-edit="{{ route('admin.messages.edit', ['message' => 0]) }}"
+                    data-message-image-upload="{{ route('admin.messages.image-upload-url') }}"
                     data-message-can-manage="{{ auth()->user()->can('messages.create') ? '1' : '0' }}"
                     data-order-id="{{ $selectedOrder?->DonHangID }}" data-customer-account-id="{{ $selectedCustomer?->getKey() }}" aria-label="Nội dung cuộc trò chuyện">
                     @forelse($messages as $message)
@@ -150,7 +151,7 @@
                                     <i class="bi bi-send me-1"></i>Gửi
                                 </button>
                             </div>
-                            <small class="text-muted">Ảnh sẽ tự tối ưu trước khi gửi (tối đa 3 MB sau khi tối ưu).</small>
+                            <small class="text-muted">Ảnh JPEG, PNG hoặc WEBP tối đa 5 MB. Ảnh sẽ hiện ngay trong khung chat khi bắt đầu gửi.</small>
                         </form>
                         @error('content')<div class="text-danger small mt-2">{{ $message }}</div>@enderror
                         @error('message')<div class="text-danger small mt-2">{{ $message }}</div>@enderror

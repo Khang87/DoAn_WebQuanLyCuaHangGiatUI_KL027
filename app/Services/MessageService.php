@@ -281,6 +281,50 @@ class MessageService
         return $this->sendImage($sender, $recipient, (int) $order->getKey(), $image);
     }
 
+    /** @return array{path: string, signed_url: string, token: string, api_key: string} */
+    public function createImageUploadUrl(User $sender, string $mimeType): array
+    {
+        $projectUrl = rtrim((string) config('services.supabase.project_url'), '/');
+        $serviceKey = (string) config('services.supabase.service_role_key');
+        if ($projectUrl === '' || $serviceKey === '') {
+            throw new \RuntimeException('Chat image uploads are not configured.');
+        }
+
+        $data = Http::acceptJson()->withHeaders(['apikey' => $serviceKey])->withToken($serviceKey)
+            ->timeout(20)->post($projectUrl.'/functions/v1/chat-encryption', [
+                'action' => 'create_image_upload', 'sender_account_id' => (int) $sender->getKey(), 'mime_type' => $mimeType,
+            ])->throw()->json();
+        if (! is_array($data) || ! is_string($data['path'] ?? null) || ! is_string($data['signed_url'] ?? null)
+            || ! is_string($data['token'] ?? null) || ! is_string($data['api_key'] ?? null)) {
+            throw new \RuntimeException('Chat image upload URL response is invalid.');
+        }
+
+        return $data;
+    }
+
+    public function sendSupportImagePath(User $customer, User $sender, string $path): TinNhan
+    {
+        return $this->createImageMessage($sender, $customer, null, $path);
+    }
+
+    public function sendOrderImagePath(DonHang $order, User $sender, string $path): TinNhan
+    {
+        $recipient = $order->khachHang?->taiKhoan;
+        if (! $recipient) {
+            throw ValidationException::withMessages(['message' => 'Khách hàng của đơn hàng chưa có tài khoản nhận tin nhắn.']);
+        }
+
+        return $this->createImageMessage($sender, $recipient, (int) $order->getKey(), $path);
+    }
+
+    private function createImageMessage(User $sender, User $recipient, ?int $orderId, string $path): TinNhan
+    {
+        return TinNhan::query()->create([
+            'NguoiGuiID' => $sender->getKey(), 'NguoiNhanID' => $recipient->getKey(), 'DonHangID' => $orderId,
+            'NoiDung' => 'image:'.$path, 'ThoiGianGui' => now('UTC'), 'TrangThai' => 'Đã gửi',
+        ]);
+    }
+
     private function sendImage(User $sender, User $recipient, ?int $orderId, UploadedFile $image): TinNhan
     {
         $path = (int) $sender->getKey().'/'.bin2hex(random_bytes(16)).'.'.$image->extension();

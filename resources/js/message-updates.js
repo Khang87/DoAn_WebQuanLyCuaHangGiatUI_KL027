@@ -66,8 +66,24 @@ if (conversation) {
     }
 
     function render(messages) {
-        const nextSignature = JSON.stringify(messages);
-        if (signature === nextSignature) return;
+        // Signed Storage URLs rotate on every poll. Ignore query tokens when deciding
+        // whether the message content itself changed, so polling does not blink the chat.
+        const nextSignature = JSON.stringify(messages.map(message => ({ ...message,
+            image_url: message.image_url ? new URL(message.image_url).pathname : null,
+        })));
+        if (signature === nextSignature) {
+            for (const message of messages) {
+                if (!message.image_url) continue;
+                const row = [...conversation.children].find(item => item.dataset.messageId === String(message.id));
+                const image = row?.querySelector('img');
+                if (image && Date.now() - Number(image.dataset.signedUrlUpdatedAt || 0) > 50 * 60 * 1000) {
+                    row.querySelector('a').href = message.image_url;
+                    image.src = message.image_url;
+                    image.dataset.signedUrlUpdatedAt = String(Date.now());
+                }
+            }
+            return false;
+        }
         const atBottom = conversation.scrollHeight - conversation.scrollTop - conversation.clientHeight < 48;
         const anchor = [...conversation.children].find(row => row.offsetTop >= conversation.scrollTop);
         const anchorId = anchor?.dataset.messageId;
@@ -93,6 +109,7 @@ if (conversation) {
                 link.rel = 'noopener noreferrer';
                 const image = document.createElement('img');
                 image.src = message.image_url;
+                image.dataset.signedUrlUpdatedAt = String(Date.now());
                 image.alt = 'Ảnh đính kèm';
                 image.className = 'img-fluid rounded mb-1';
                 image.style.maxHeight = '240px';
@@ -153,6 +170,7 @@ if (conversation) {
             conversation.scrollTop = restoredAnchor ? restoredAnchor.offsetTop - anchorOffset : previousTop;
         }
         signature = nextSignature;
+        return true;
     }
 
     function schedule() {
@@ -191,7 +209,7 @@ if (conversation) {
                 throw new Error('Invalid conversation response');
             }
             if (document.hidden || disposed) return;
-            render(data.messages);
+            const messagesChanged = render(data.messages);
             const ids = data.messages.filter(message => !acknowledged.has(message.id)).map(message => message.id);
             if (conversation.dataset.messageRead && ids.length) {
                 const receipt = await fetch(conversation.dataset.messageRead, {
@@ -203,7 +221,7 @@ if (conversation) {
                 if (!receipt.ok) throw new Error('Read acknowledgement failed');
                 ids.forEach(id => acknowledged.add(id));
             }
-            window.dispatchEvent(new Event('message-inbox-changed'));
+            if (messagesChanged) window.dispatchEvent(new Event('message-inbox-changed'));
             retry = interval;
             showStatus(connected ? 'Đang nhận tin nhắn trực tiếp' : 'Realtime chưa kết nối; cập nhật dự phòng mỗi 3 giây');
         } catch {
@@ -313,10 +331,47 @@ if (conversation) {
                 const imageInput = form.querySelector('[data-message-image]');
                 const image = imageInput?.files?.[0];
                 if (image) {
-                    showStatus(image.size > 3 * 1024 * 1024 ? 'Đang tối ưu ảnh…' : 'Đang tải ảnh…');
-                    const preparedImage = await prepareMessageImage(image);
-                    const extension = preparedImage.type === 'image/png' ? 'png' : preparedImage.type === 'image/webp' ? 'webp' : 'jpg';
-                    formData.set('image', preparedImage, `tin-nhan.${extension}`);
+                    if (image.size > 5 * 1024 * 1024) throw new Error('Ảnh tối đa 5 MB.');
+                    if (!['image/jpeg', 'image/png', 'image/webp'].includes(image.type)) throw new Error('Chỉ hỗ trợ ảnh JPEG, PNG hoặc WEBP.');
+                    const previewUrl = URL.createObjectURL(image);
+                    const optimistic = document.createElement('div');
+                    optimistic.className = 'd-flex justify-content-end mb-3';
+                    optimistic.dataset.pendingImage = 'true';
+                    const bubble = document.createElement('div');
+                    bubble.className = 'rounded-3 px-3 py-2 bg-primary text-white';
+                    bubble.style.maxWidth = '82%';
+                    const sender = document.createElement('div'); sender.className = 'small text-white-50'; sender.textContent = 'Cửa hàng';
+                    const preview = document.createElement('img'); preview.src = previewUrl; preview.alt = 'Ảnh đang gửi';
+                    preview.className = 'img-fluid rounded mb-1'; preview.style.maxHeight = '240px';
+                    const pendingLabel = document.createElement('div'); pendingLabel.className = 'small text-end text-white-50'; pendingLabel.textContent = 'Đang gửi ảnh…';
+                    bubble.append(sender, preview, pendingLabel); optimistic.append(bubble); conversation.append(optimistic);
+                    conversation.scrollTop = conversation.scrollHeight;
+                    try {
+                        showStatus('Đang tải ảnh lên…');
+                        const csrf = document.querySelector('meta[name="csrf-token"]')?.content ?? '';
+                        const uploadUrlResponse = await fetch(conversation.dataset.messageImageUpload, {
+                            method: 'POST', credentials: 'same-origin', headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf },
+                            body: JSON.stringify({ ...conversationTarget(), mime_type: image.type }),
+                        });
+                        const upload = await uploadUrlResponse.json().catch(() => ({}));
+                        if (!uploadUrlResponse.ok) throw new Error(upload.message || Object.values(upload.errors ?? {}).flat()[0] || 'Không tạo được đường dẫn tải ảnh.');
+                        const signedUrl = new URL(upload.signed_url);
+                        if (signedUrl.protocol !== 'https:' || !signedUrl.hostname.endsWith('.supabase.co')) throw new Error('Đường dẫn tải ảnh không hợp lệ.');
+                        const uploaded = await fetch(signedUrl, { method: 'POST', headers: { apikey: upload.api_key, 'Content-Type': image.type, 'x-upsert': 'false' }, body: image });
+                        if (!uploaded.ok) throw new Error('Không tải được ảnh lên kho lưu trữ.');
+                        const finalize = new FormData();
+                        for (const key of ['order_id', 'customer_id']) { const field = form.elements.namedItem(key); if (field) finalize.set(key, field.value); }
+                        finalize.set('image_path', upload.path);
+                        const response = await fetch(form.action, { method: 'POST', credentials: 'same-origin', headers: { Accept: 'application/json', 'X-CSRF-TOKEN': csrf }, body: finalize });
+                        if (!response.ok) { const body = await response.json().catch(() => ({})); throw new Error(body.message || Object.values(body.errors ?? {}).flat()[0] || 'Không lưu được tin nhắn ảnh.'); }
+                        optimistic.remove(); URL.revokeObjectURL(previewUrl);
+                    } catch (error) { optimistic.remove(); URL.revokeObjectURL(previewUrl); throw error; }
+                    form.querySelector('textarea[name="content"]').value = '';
+                    imageInput.value = '';
+                    window.dispatchEvent(new Event('message-inbox-changed'));
+                    signature = undefined;
+                    await sync();
+                    return;
                 }
                 const response = await fetch(form.action, {
                     method: 'POST', credentials: 'same-origin', headers: { Accept: 'application/json' },

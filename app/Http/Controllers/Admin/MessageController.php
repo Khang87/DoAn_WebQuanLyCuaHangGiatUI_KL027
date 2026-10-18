@@ -59,15 +59,19 @@ class MessageController extends Controller
             'order_id' => ['nullable', 'required_without:customer_id', 'prohibits:customer_id', 'integer', 'min:1', 'exists:DonHang,DonHangID'],
             'customer_id' => ['nullable', 'required_without:order_id', 'prohibits:order_id', 'integer', 'min:1'],
             'content' => ['nullable', 'string', 'max:1000'],
-            'image' => ['nullable', 'required_without:content', 'image', 'mimes:jpeg,png,webp', 'max:3072'],
+            'image' => ['nullable', 'image', 'mimes:jpeg,png,webp', 'max:5120'],
+            'image_path' => ['nullable', 'string', 'max:100', 'regex:/^\d+\/[a-f0-9-]+\.(jpg|png|webp)$/'],
         ]);
-        if (! $request->hasFile('image') && trim((string) ($validated['content'] ?? '')) === '') {
+        if (! $request->hasFile('image') && empty($validated['image_path']) && trim((string) ($validated['content'] ?? '')) === '') {
             throw ValidationException::withMessages(['content' => 'Vui lòng nhập tin nhắn hoặc chọn ảnh.']);
         }
 
         if (isset($validated['customer_id'])) {
             $customer = $this->messageService->supportCustomer((int) $validated['customer_id']);
-            if ($request->hasFile('image')) {
+            if (! empty($validated['image_path'])) {
+                abort_unless(str_starts_with($validated['image_path'], $request->user()->getAuthIdentifier().'/'), 403);
+                $this->messageService->sendSupportImagePath($customer, $request->user(), $validated['image_path']);
+            } elseif ($request->hasFile('image')) {
                 $this->messageService->sendSupportImage($customer, $request->user(), $request->file('image'));
             } else {
                 $this->messageService->sendSupport($customer, $request->user(), $validated['content']);
@@ -90,7 +94,10 @@ class MessageController extends Controller
             abort(403);
         }
 
-        if ($request->hasFile('image')) {
+        if (! empty($validated['image_path'])) {
+            abort_unless(str_starts_with($validated['image_path'], $sender->getAuthIdentifier().'/'), 403);
+            $this->messageService->sendOrderImagePath($order, $sender, $validated['image_path']);
+        } elseif ($request->hasFile('image')) {
             $this->messageService->sendOrderImage($order, $sender, $request->file('image'));
         } else {
             $this->messageService->sendFromStore($order, $sender, $validated['content']);
@@ -114,6 +121,26 @@ class MessageController extends Controller
         ]);
 
         return response()->json(['ok' => true])->header('Cache-Control', 'private, no-store');
+    }
+
+    public function imageUploadUrl(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'order_id' => ['nullable', 'required_without:customer_id', 'integer', 'min:1', 'prohibits:customer_id'],
+            'customer_id' => ['nullable', 'required_without:order_id', 'integer', 'min:1', 'prohibits:order_id'],
+            'mime_type' => ['required', 'in:image/jpeg,image/png,image/webp'],
+        ]);
+        if (isset($validated['customer_id'])) {
+            $this->messageService->supportCustomer((int) $validated['customer_id']);
+        } else {
+            $order = $this->messageService->findOrder((int) $validated['order_id']);
+            abort_unless($order && $order->khachHang?->taiKhoan, 404);
+        }
+        $sender = $request->user();
+        abort_unless($sender instanceof User, 403);
+
+        return response()->json($this->messageService->createImageUploadUrl($sender, $validated['mime_type']))
+            ->header('Cache-Control', 'private, no-store');
     }
 
     public function recall(TinNhan $message, Request $request): JsonResponse
