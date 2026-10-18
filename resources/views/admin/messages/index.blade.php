@@ -90,11 +90,12 @@
                     data-message-updates="{{ $selectedCustomer ? route('admin.messages.support-updates', $selectedCustomer->getKey()) : route('admin.messages.updates', $selectedOrder->DonHangID) }}"
                     data-message-hide="{{ route('admin.messages.hide', ['message' => 0]) }}"
                     data-message-recall="{{ route('admin.messages.recall', ['message' => 0]) }}"
+                    data-message-edit="{{ route('admin.messages.edit', ['message' => 0]) }}"
                     data-message-can-manage="{{ auth()->user()->can('messages.create') ? '1' : '0' }}"
                     data-order-id="{{ $selectedOrder?->DonHangID }}" data-customer-account-id="{{ $selectedCustomer?->getKey() }}" aria-label="Nội dung cuộc trò chuyện">
                     @forelse($messages as $message)
                         @php($isMine = (int) $message->NguoiGuiID === (int) auth()->id())
-                        <div class="d-flex {{ $isMine ? 'justify-content-end' : 'justify-content-start' }} mb-3" data-message-id="{{ $message->TinNhanID }}">
+                        <div class="d-flex {{ $isMine ? 'justify-content-end' : 'justify-content-start' }} mb-3" data-message-id="{{ $message->TinNhanID }}" tabindex="0">
                             <div class="rounded-3 px-3 py-2 {{ $isMine ? 'bg-primary text-white' : 'bg-white border' }}" style="max-width: 82%;">
                                 <div class="small {{ $isMine ? 'text-white-50' : 'text-muted' }}">
                                     {{ app(\App\Services\MessageService::class)->displayName($message, auth()->user()) }}
@@ -108,8 +109,9 @@
                                     {{ app(\App\Services\MessageService::class)->sentAt($message)?->format('d-m-Y H:i') }}
                                 </div>
                                 @can('messages.create')
-                                    <div class="d-flex justify-content-end gap-1 mt-1">
-                                        @if($isMine)<button type="button" class="btn btn-sm btn-link p-0 {{ $isMine ? 'text-white' : '' }}" data-message-recall="{{ $message->TinNhanID }}">Thu hồi</button>@endif
+                                    <div class="message-actions d-flex justify-content-end gap-2 mt-1" data-message-actions>
+                                        @if($isMine && !($message->ImageUrl ?? false))<button type="button" class="btn btn-sm btn-link p-0 {{ $isMine ? 'text-white' : '' }}" data-message-edit="{{ $message->TinNhanID }}">Sửa</button>@endif
+                                        @if($isMine)<button type="button" class="btn btn-sm btn-link p-0 text-white" data-message-recall="{{ $message->TinNhanID }}">Thu hồi</button>@endif
                                         <button type="button" class="btn btn-sm btn-link p-0 {{ $isMine ? 'text-white' : '' }}" data-message-hide="{{ $message->TinNhanID }}">Xóa</button>
                                     </div>
                                 @endcan
@@ -148,6 +150,7 @@
                                     <i class="bi bi-send me-1"></i>Gửi
                                 </button>
                             </div>
+                            <small class="text-muted">Ảnh sẽ tự tối ưu trước khi gửi (tối đa 3 MB sau khi tối ưu).</small>
                         </form>
                         @error('content')<div class="text-danger small mt-2">{{ $message }}</div>@enderror
                         @error('message')<div class="text-danger small mt-2">{{ $message }}</div>@enderror
@@ -197,4 +200,14 @@
         @vite(['resources/js/message-updates.js', 'resources/js/message-send-guard.js'])
     @endif
 @endcan
+@endpush
+
+@push('styles')
+<style>
+    .message-chat-history [data-message-actions] { display: none !important; }
+    .message-chat-history [data-message-id]:hover [data-message-actions],
+    .message-chat-history [data-message-id]:focus-within [data-message-actions],
+    .message-chat-history [data-message-id][data-actions-open="true"] [data-message-actions] { display: flex !important; }
+    @media (hover: none) { .message-chat-history [data-message-actions] { display: flex !important; } }
+</style>
 @endpush

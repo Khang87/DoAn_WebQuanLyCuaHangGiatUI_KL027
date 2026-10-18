@@ -309,6 +309,23 @@ class MessageService
         }
     }
 
+    public function edit(TinNhan $message, User $sender, string $content): void
+    {
+        $projectUrl = rtrim((string) config('services.supabase.project_url'), '/');
+        $serviceKey = (string) config('services.supabase.service_role_key');
+        if ($projectUrl === '' || $serviceKey === '') {
+            throw new \RuntimeException('Chat message editing is not configured.');
+        }
+
+        Http::acceptJson()->withHeaders(['apikey' => $serviceKey])->withToken($serviceKey)
+            ->timeout(20)->post($projectUrl.'/functions/v1/chat-encryption', [
+                'action' => 'edit_message',
+                'message_id' => (int) $message->getKey(),
+                'sender_account_id' => (int) $sender->getAuthIdentifier(),
+                'content' => trim($content),
+            ])->throw();
+    }
+
     private function storageRequest(string $method, string $path, ?string $body = null, array $headers = []): \Illuminate\Http\Client\Response
     {
         $projectUrl = rtrim((string) config('services.supabase.project_url'), '/');

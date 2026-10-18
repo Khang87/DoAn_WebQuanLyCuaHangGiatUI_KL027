@@ -149,6 +149,8 @@ Route::middleware(['auth', 'reject.customer'])->group(function () {
         ->whereNumber('message')->middleware('permission:messages.create')->name('admin.messages.hide');
     Route::post('/admin/messages/{message}/recall', [MessageController::class, 'recall'])
         ->whereNumber('message')->middleware('permission:messages.create')->name('admin.messages.recall');
+    Route::patch('/admin/messages/{message}/edit', [MessageController::class, 'edit'])
+        ->whereNumber('message')->middleware('permission:messages.create')->name('admin.messages.edit');
 
     Route::get('/staff/dashboard', [StaffDashboardController::class, 'index'])
         ->middleware('permission:dashboard.view')

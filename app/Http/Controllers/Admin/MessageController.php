@@ -59,7 +59,7 @@ class MessageController extends Controller
             'order_id' => ['nullable', 'required_without:customer_id', 'prohibits:customer_id', 'integer', 'min:1', 'exists:DonHang,DonHangID'],
             'customer_id' => ['nullable', 'required_without:order_id', 'prohibits:order_id', 'integer', 'min:1'],
             'content' => ['nullable', 'string', 'max:1000'],
-            'image' => ['nullable', 'required_without:content', 'image', 'mimes:jpeg,png,webp', 'max:5120'],
+            'image' => ['nullable', 'required_without:content', 'image', 'mimes:jpeg,png,webp', 'max:3072'],
         ]);
         if (! $request->hasFile('image') && trim((string) ($validated['content'] ?? '')) === '') {
             throw ValidationException::withMessages(['content' => 'Vui lòng nhập tin nhắn hoặc chọn ảnh.']);
@@ -127,6 +127,20 @@ class MessageController extends Controller
             abort(403);
         }
         $this->messageService->recall($message);
+
+        return response()->json(['ok' => true])->header('Cache-Control', 'private, no-store');
+    }
+
+    public function edit(TinNhan $message, Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'order_id' => ['nullable', 'required_without:customer_id', 'integer', 'min:1', 'prohibits:customer_id'],
+            'customer_id' => ['nullable', 'required_without:order_id', 'integer', 'min:1', 'prohibits:order_id'],
+            'content' => ['required', 'string', 'min:1', 'max:1000'],
+        ]);
+        $this->assertConversationContains($message, $validated);
+        abort_unless((int) $message->NguoiGuiID === (int) $request->user()->getAuthIdentifier(), 403);
+        $this->messageService->edit($message, $request->user(), $validated['content']);
 
         return response()->json(['ok' => true])->header('Cache-Control', 'private, no-store');
     }

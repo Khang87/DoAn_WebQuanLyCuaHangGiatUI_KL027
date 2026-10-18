@@ -17,6 +17,35 @@ if (conversation) {
         status.textContent = text;
     }
 
+    async function prepareMessageImage(file) {
+        const maxBytes = 3 * 1024 * 1024;
+        if (file.size <= maxBytes) return file;
+        if (file.size > 20 * 1024 * 1024) throw new Error('Ảnh gốc vượt quá 20 MB.');
+        if (typeof createImageBitmap !== 'function') throw new Error('Trình duyệt không hỗ trợ tối ưu ảnh.');
+        const bitmap = await createImageBitmap(file);
+        try {
+            let scale = Math.min(1, 2000 / Math.max(bitmap.width, bitmap.height));
+            while (scale >= 0.2) {
+                const canvas = document.createElement('canvas');
+                canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+                canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+                const context = canvas.getContext('2d');
+                if (!context) throw new Error('Không thể xử lý ảnh đã chọn.');
+                context.fillStyle = '#fff';
+                context.fillRect(0, 0, canvas.width, canvas.height);
+                context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+                for (const quality of [0.84, 0.72, 0.6, 0.5]) {
+                    const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', quality));
+                    if (blob && blob.size <= maxBytes) return new File([blob], 'tin-nhan.jpg', { type: 'image/jpeg' });
+                }
+                scale *= 0.8;
+            }
+        } finally {
+            bitmap.close();
+        }
+        throw new Error('Không thể nén ảnh xuống dưới 3 MB.');
+    }
+
     function formatSentAt(timestamp) {
         if (timestamp === null) return '';
         const date = new Date(timestamp);
@@ -48,6 +77,7 @@ if (conversation) {
         for (const message of messages) {
             const row = document.createElement('div');
             row.dataset.messageId = String(message.id);
+            row.tabIndex = 0;
             row.className = `d-flex ${message.is_mine ? 'justify-content-end' : 'justify-content-start'} mb-3`;
             const bubble = document.createElement('div');
             bubble.className = `rounded-3 px-3 py-2 ${message.is_mine ? 'bg-primary text-white' : 'bg-white border'}`;
@@ -80,7 +110,16 @@ if (conversation) {
             bubble.append(time);
             if (conversation.dataset.messageHide && messageActionsAllowed) {
                 const actions = document.createElement('div');
-                actions.className = 'd-flex justify-content-end gap-2 mt-1';
+                actions.className = 'message-actions d-flex justify-content-end gap-2 mt-1';
+                actions.dataset.messageActions = '';
+                if (message.is_mine && !message.image_url && conversation.dataset.messageEdit) {
+                    const edit = document.createElement('button');
+                    edit.type = 'button';
+                    edit.className = `btn btn-sm btn-link p-0 ${message.is_mine ? 'text-white' : ''}`;
+                    edit.dataset.messageEdit = String(message.id);
+                    edit.textContent = 'Sửa';
+                    actions.append(edit);
+                }
                 if (message.is_mine) {
                     const recall = document.createElement('button');
                     recall.type = 'button';
@@ -203,8 +242,35 @@ if (conversation) {
     }
 
     conversation.addEventListener('click', async event => {
-        const button = event.target.closest('[data-message-hide], [data-message-recall]');
+        const button = event.target.closest('[data-message-hide], [data-message-recall], [data-message-edit]');
         if (!button || !messageActionsAllowed) return;
+        if (button.hasAttribute('data-message-edit')) {
+            const messageId = button.dataset.messageEdit;
+            const row = button.closest('[data-message-id]');
+            const content = row?.querySelector('.text-break')?.textContent ?? '';
+            const editedContent = window.prompt('Sửa tin nhắn', content);
+            if (editedContent === null || editedContent.trim() === '' || editedContent === content) return;
+            button.disabled = true;
+            try {
+                const endpoint = conversation.dataset.messageEdit.replace(/\/0\/edit$/, `/${messageId}/edit`);
+                const response = await fetch(endpoint, {
+                    method: 'PATCH', credentials: 'same-origin', headers: {
+                        Accept: 'application/json', 'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content ?? '',
+                    }, body: JSON.stringify({ ...conversationTarget(), content: editedContent }),
+                });
+                if (!response.ok) {
+                    const body = await response.json().catch(() => ({}));
+                    throw new Error(body.message || Object.values(body.errors ?? {}).flat()[0] || 'Không sửa được tin nhắn.');
+                }
+                signature = undefined;
+                await sync();
+            } catch (error) {
+                showStatus(error.message || 'Không sửa được tin nhắn.');
+                button.disabled = false;
+            }
+            return;
+        }
         const isRecall = button.hasAttribute('data-message-recall');
         const messageId = button.dataset[isRecall ? 'messageRecall' : 'messageHide'];
         const action = isRecall ? 'recall' : 'hide';
@@ -228,6 +294,13 @@ if (conversation) {
         }
     });
 
+    conversation.addEventListener('contextmenu', event => {
+        const row = event.target.closest('[data-message-id]');
+        if (!row || !messageActionsAllowed) return;
+        event.preventDefault();
+        row.dataset.actionsOpen = row.dataset.actionsOpen !== 'true' ? 'true' : 'false';
+    });
+
     if (form) {
         form.addEventListener('submit', async event => {
             event.preventDefault();
@@ -236,9 +309,18 @@ if (conversation) {
             submit.disabled = true;
             showStatus('Đang gửi tin nhắn…');
             try {
+                const formData = new FormData(form);
+                const imageInput = form.querySelector('[data-message-image]');
+                const image = imageInput?.files?.[0];
+                if (image) {
+                    showStatus(image.size > 3 * 1024 * 1024 ? 'Đang tối ưu ảnh…' : 'Đang tải ảnh…');
+                    const preparedImage = await prepareMessageImage(image);
+                    const extension = preparedImage.type === 'image/png' ? 'png' : preparedImage.type === 'image/webp' ? 'webp' : 'jpg';
+                    formData.set('image', preparedImage, `tin-nhan.${extension}`);
+                }
                 const response = await fetch(form.action, {
                     method: 'POST', credentials: 'same-origin', headers: { Accept: 'application/json' },
-                    body: new FormData(form),
+                    body: formData,
                 });
                 if (!response.ok) {
                     const body = await response.json().catch(() => ({}));
