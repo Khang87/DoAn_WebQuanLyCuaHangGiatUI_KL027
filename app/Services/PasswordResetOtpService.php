@@ -16,6 +16,8 @@ class PasswordResetOtpService
 
     private const THROTTLE_PREFIX = 'auth:password-reset-throttle:';
 
+    private const IP_THROTTLE_PREFIX = 'auth:password-reset-ip-throttle:';
+
     private const OTP_LIFETIME_MINUTES = 15;
 
     public function __construct(private ResendOtpMailer $otpMailer) {}
@@ -27,12 +29,16 @@ class PasswordResetOtpService
         return max(0, min(60, (int) $deadline - now()->timestamp));
     }
 
-    public function send(string $email): void
+    public function send(string $email, string $ipAddress): void
     {
         $email = mb_strtolower(trim($email));
         $cache = Cache::store(config('cache.auth_store'));
         $key = $this->otpKey($email);
-        $cache->lock($key.':lock', 90)->block(5, function () use ($cache, $key, $email): void {
+        $cache->lock($key.':lock', 90)->block(5, function () use ($cache, $key, $email, $ipAddress): void {
+            if (! $cache->add($this->ipThrottleKey($ipAddress), now()->addMinute()->timestamp, 60)) {
+                throw new PasswordResetOtpException('Vui lòng chờ một phút trước khi yêu cầu mã khôi phục tiếp theo.', throttled: true);
+            }
+
             if (! $cache->add($this->throttleKey($email), now()->addMinute()->timestamp, 60)) {
                 throw new PasswordResetOtpException('Vui lòng chờ một phút trước khi yêu cầu mã OTP mới.', throttled: true);
             }
@@ -41,11 +47,22 @@ class PasswordResetOtpService
             if ($users->count() !== 1) {
                 return;
             }
+            $user = $users->first();
+
+            if ($user->TrangThai !== 'Hoạt động') {
+                $status = mb_strtolower((string) $user->TrangThai);
+                $message = str_contains($status, 'xóa') || str_contains($status, 'xoa')
+                    ? 'Tài khoản đang chờ xử lý xóa nên không thể khôi phục mật khẩu.'
+                    : 'Tài khoản đang bị khóa hoặc ngừng hoạt động nên không thể khôi phục mật khẩu.';
+
+                throw new PasswordResetOtpException($message);
+            }
+
             $otp = (string) random_int(100000, 999999);
             $generation = bin2hex(random_bytes(32));
             try {
                 if (! $cache->put($key, [
-                    'account_id' => (int) $users->first()->getKey(),
+                    'account_id' => (int) $user->getKey(),
                     'hash' => Hash::make($otp),
                     'attempts' => 0,
                     'generation' => $generation,
@@ -91,7 +108,8 @@ class PasswordResetOtpService
             }
             $users = User::query()->whereRaw('LOWER("Email") = ?', [$email])->get();
             $user = $users->count() === 1 ? $users->first() : null;
-            if (! $user || (int) $user->getKey() !== $record['account_id'] || ! Hash::check($otp, $record['hash'])) {
+            if (! $user || $user->TrangThai !== 'Hoạt động'
+                || (int) $user->getKey() !== $record['account_id'] || ! Hash::check($otp, $record['hash'])) {
                 $record['attempts']++;
                 if ($record['attempts'] >= 5) {
                     $cache->forget($key);
@@ -106,7 +124,7 @@ class PasswordResetOtpService
             if (! $cache->put($this->grantKey($token), [
                 'account_id' => (int) $user->getKey(),
                 'email' => $email,
-                'password_digest' => hash('sha256', $user->MatKhau),
+                'password_digest' => hash('sha256', (string) $user->MatKhau),
                 'session_digest' => hash('sha256', $sessionId),
                 'generation' => $record['generation'],
                 'expires_at' => now()->addMinutes(15)->timestamp,
@@ -121,6 +139,17 @@ class PasswordResetOtpService
     public function canReset(?string $token, string $sessionId): bool
     {
         return $this->validGrant($token, $sessionId) !== null;
+    }
+
+    public function passwordMatchesCurrent(?string $token, string $password, string $sessionId): bool
+    {
+        $grant = $this->validGrant($token, $sessionId);
+        if ($grant === null) {
+            return false;
+        }
+        $user = User::query()->find($grant['account_id']);
+
+        return is_string($user?->MatKhau) && Hash::check($password, $user->MatKhau);
     }
 
     public function reset(?string $token, string $password, string $sessionId): bool
@@ -139,7 +168,9 @@ class PasswordResetOtpService
                 }
                 $user = User::query()->lockForUpdate()->find($grant['account_id']);
                 if (! $user || mb_strtolower(trim($user->Email ?? '')) !== $grant['email']
-                    || ! hash_equals($grant['password_digest'], hash('sha256', $user->MatKhau))) {
+                    || $user->TrangThai !== 'Hoạt động'
+                    || (is_string($user->MatKhau) && Hash::check($password, $user->MatKhau))
+                    || ! hash_equals($grant['password_digest'], hash('sha256', (string) $user->MatKhau))) {
                     return false;
                 }
                 // Consume before writing: even a failed write must never permit replay.
@@ -166,7 +197,8 @@ class PasswordResetOtpService
         }
         $user = User::query()->find($grant['account_id']);
         if (! $user || mb_strtolower(trim($user->Email ?? '')) !== $grant['email']
-            || ! hash_equals($grant['password_digest'], hash('sha256', $user->MatKhau))) {
+            || $user->TrangThai !== 'Hoạt động'
+            || ! hash_equals($grant['password_digest'], hash('sha256', (string) $user->MatKhau))) {
             return null;
         }
 
@@ -181,6 +213,11 @@ class PasswordResetOtpService
     private function throttleKey(string $email): string
     {
         return self::THROTTLE_PREFIX.hash('sha256', mb_strtolower(trim($email)));
+    }
+
+    private function ipThrottleKey(string $ipAddress): string
+    {
+        return self::IP_THROTTLE_PREFIX.hash('sha256', trim($ipAddress));
     }
 
     private function otpKey(string $email): string

@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Services\PasswordResetOtpService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rules\Password;
 use Illuminate\View\View;
 
 class PasswordResetController extends Controller
@@ -30,7 +31,7 @@ class PasswordResetController extends Controller
         $email = mb_strtolower(trim($validated['email']));
         $request->session()->forget('password_reset_grant');
         try {
-            $otpService->send($email);
+            $otpService->send($email, (string) $request->ip());
         } catch (PasswordResetOtpException $exception) {
             if ($exception->throttled) {
                 $request->session()->put('reset_email', $email);
@@ -41,8 +42,8 @@ class PasswordResetController extends Controller
         $request->session()->put('reset_email', $email);
 
         return redirect()->route('password.request')
-            ->with('status', 'Mã OTP đã được gửi và có hiệu lực trong 15 phút.')
-            ->with('otp_privacy_notice', 'Nếu email đã đăng ký, bạn sẽ nhận được mã trong hộp thư.');
+            ->with('status', 'Yêu cầu khôi phục mật khẩu đã được tiếp nhận.')
+            ->with('otp_privacy_notice', 'Nếu email thuộc tài khoản đang hoạt động, mã khôi phục có hiệu lực 15 phút sẽ được gửi.');
     }
 
     public function verifyOtp(Request $request, PasswordResetOtpService $otpService): RedirectResponse
@@ -82,7 +83,19 @@ class PasswordResetController extends Controller
 
             return redirect()->route('password.request')->with('error', 'Phiên đặt lại mật khẩu không hợp lệ hoặc đã hết hạn. Vui lòng xác thực OTP lại.');
         }
-        $validated = $request->validate(['password' => ['required', 'string', 'min:8', 'confirmed']]);
+        $validated = $request->validate([
+            'password' => ['required', 'string', 'confirmed', Password::min(8)->mixedCase()->numbers()->symbols()],
+        ], [
+            'password.min' => 'Mật khẩu phải có ít nhất 8 ký tự.',
+            'password.mixedCase' => 'Mật khẩu phải có cả chữ hoa và chữ thường.',
+            'password.numbers' => 'Mật khẩu phải có ít nhất một chữ số.',
+            'password.symbols' => 'Mật khẩu phải có ít nhất một ký tự đặc biệt.',
+        ]);
+        if ($otpService->passwordMatchesCurrent($token, $validated['password'], $request->session()->getId())) {
+            return back()->withErrors([
+                'password' => 'Mật khẩu mới phải khác mật khẩu hiện tại.',
+            ]);
+        }
         if (! $otpService->reset($token, $validated['password'], $request->session()->getId())) {
             $request->session()->forget('password_reset_grant');
 

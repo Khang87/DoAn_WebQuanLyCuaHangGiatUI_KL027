@@ -16,7 +16,7 @@
                 <i class="bi bi-shield-lock" style="font-size: 3rem; color: var(--primary-blue);"></i>
                 <h1>Đặt lại mật khẩu</h1>
                 <p>Bước 2/2 · Đặt mật khẩu mới</p>
-                <p>Email đã được xác thực. Mật khẩu cần ít nhất 8 ký tự.</p>
+                <p>Email đã được xác thực. Mật khẩu cần ít nhất 8 ký tự, có chữ hoa, chữ thường, số, ký tự đặc biệt và khác mật khẩu hiện tại.</p>
             </div>
 
             @if(session('status'))

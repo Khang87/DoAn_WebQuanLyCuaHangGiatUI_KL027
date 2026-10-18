@@ -92,6 +92,9 @@ class AuthFlowTest extends TestCase
         Cache::store('file')->forget(
             'auth:password-reset-throttle:'.hash('sha256', $this->staff->Email),
         );
+        Cache::store('file')->forget(
+            'auth:password-reset-ip-throttle:'.hash('sha256', '127.0.0.1'),
+        );
         Cache::store('file')->forget('pwd_reset_'.$this->staff->Email);
         Cache::store('file')->forget(
             'auth:password-reset-throttle:'.hash('sha256', 'missing@example.test'),
@@ -225,8 +228,8 @@ class AuthFlowTest extends TestCase
         $this->post(route('password.verify'), ['email' => $this->staff->Email, 'otp' => $otp])->assertRedirect(route('password.reset'));
         $this->withCookie(config('session.cookie'), session()->getId());
         $this->get(route('password.reset'))->assertOk();
-        $this->post(route('password.update'), ['password' => 'NewPassword123', 'password_confirmation' => 'NewPassword123'])->assertRedirect(route('login'));
-        $this->assertTrue(Hash::check('NewPassword123', $this->staff->fresh()->MatKhau));
+        $this->post(route('password.update'), ['password' => 'NewPassword123!', 'password_confirmation' => 'NewPassword123!'])->assertRedirect(route('login'));
+        $this->assertTrue(Hash::check('NewPassword123!', $this->staff->fresh()->MatKhau));
         $this->assertNull(app(RememberedLogin::class)->resolve($rememberToken));
         $this->assertNull(Cache::store('file')->get('pwd_reset_'.$this->staff->Email));
         $this->post(route('password.update'), ['password' => 'AnotherPass123', 'password_confirmation' => 'AnotherPass123'])
@@ -239,7 +242,8 @@ class AuthFlowTest extends TestCase
         $mailer->shouldNotReceive('send');
         $this->app->instance(ResendOtpMailer::class, $mailer);
         $this->post(route('password.email'), ['email' => 'missing@example.test'])
-            ->assertRedirect(route('password.request'))->assertSessionHas('status', 'Mã OTP đã được gửi và có hiệu lực trong 15 phút.')
+            ->assertRedirect(route('password.request'))->assertSessionHas('status', 'Yêu cầu khôi phục mật khẩu đã được tiếp nhận.')
+            ->assertSessionHas('otp_privacy_notice')
             ->assertSessionMissing('simulation_otp');
         $this->get(route('password.request'))->assertSee('Gửi lại mã (60s)');
         $this->get(route('password.reset'))->assertRedirect(route('password.request'));
