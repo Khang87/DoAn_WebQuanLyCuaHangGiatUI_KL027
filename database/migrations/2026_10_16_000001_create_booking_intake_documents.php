@@ -2,8 +2,8 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
@@ -12,6 +12,8 @@ return new class extends Migration
         Schema::create('BookingGiaoNhan', function (Blueprint $table): void {
             $table->increments('BookingGiaoNhanID');
             $table->unsignedInteger('BookingID');
+            $table->unsignedInteger('DonHangID')->nullable();
+            $table->unsignedInteger('BookingKiemKeID')->nullable();
             $table->string('LoaiGiaoNhan', 30);
             $table->string('HinhThuc', 30);
             $table->string('DiaChi', 255)->nullable();
@@ -22,7 +24,10 @@ return new class extends Migration
             $table->string('TrangThai', 30)->default('Chờ thực hiện');
             $table->dateTime('NgayTao');
             $table->unique(['BookingID', 'LoaiGiaoNhan']);
+            $table->index('DonHangID');
+            $table->index('BookingKiemKeID');
             $table->foreign('BookingID')->references('BookingID')->on('Booking')->cascadeOnDelete();
+            $table->foreign('DonHangID')->references('DonHangID')->on('DonHang')->nullOnDelete();
             $table->foreign('NhanVienID')->references('NhanVienID')->on('NhanVien')->nullOnDelete();
         });
 
@@ -36,6 +41,9 @@ return new class extends Migration
             $table->dateTime('XacNhanLuc')->nullable();
             $table->dateTime('CapNhatLuc');
             $table->foreign('BookingID')->references('BookingID')->on('Booking')->cascadeOnDelete();
+        });
+        Schema::table('BookingGiaoNhan', function (Blueprint $table): void {
+            $table->foreign('BookingKiemKeID')->references('BookingKiemKeID')->on('BookingKiemKe')->nullOnDelete();
         });
         if (DB::getDriverName() === 'pgsql') {
             DB::statement('ALTER TABLE "BookingGiaoNhan" ENABLE ROW LEVEL SECURITY');
