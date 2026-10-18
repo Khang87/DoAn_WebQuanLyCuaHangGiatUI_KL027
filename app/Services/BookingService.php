@@ -90,7 +90,12 @@ class BookingService
                 'nhanVienXacNhan',
                 'donHangs',
                 'khuyenMai',
-            ], config('giatui.booking_two_step') ? ['giaoNhanDuKiens', 'kiemKe'] : []))
+            ], config('giatui.booking_two_step') ? [
+                'giaoNhanDuKiens', 'kiemKe',
+                'donHangs.chiTietDonHangs.dichVu',
+                'donHangs.chiTietDonHangs.loaiDoGiat',
+                'donHangs.chiTietDonHangs.donViTinh',
+            ] : []))
             ->find($id);
     }
 

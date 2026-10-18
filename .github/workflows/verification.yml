@@ -51,11 +51,12 @@ jobs:
         run: bash scripts/test-schema.sh
       - name: Booking two-step regression
         run: php artisan test --filter=test_two_step_
-      - name: SQLite regression suite and Blade compilation
+      - name: Blade compilation
+        run: php artisan view:cache
+      - name: SQLite regression suite
         run: |
           export APP_KEY="base64:$(openssl rand -base64 32)"
           php vendor/bin/phpunit --fail-on-warning --fail-on-risky
-          php artisan view:cache
       - name: PostgreSQL RPC, Web contracts and concurrency
         run: bash scripts/test-postgres.sh
       - name: PHP dependency security audit

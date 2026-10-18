@@ -29,6 +29,13 @@ Thứ tự: booking-approval → booking-legs → booking-inspection → custome
 
 Chứng từ chặng Booking được lưu riêng vì `GiaoNhan.DonHangID` hiện bắt buộc. Khi có đơn, các chặng tại nhà được sao chép sang `GiaoNhan` theo hợp đồng đơn hiện tại; chứng từ Booking vẫn là lịch sử trước đơn.
 
+## Liên kết phiếu Nhận → phiếu Giao
+
+- Xác nhận Booking tạo đồng thời hai dòng `BookingGiaoNhan` (`NHAN_DO`, `GIAO_DO`) với cùng `BookingID`. Phiếu Giao giữ hình thức, địa chỉ và phí dự kiến; chưa có danh sách đồ chính thức.
+- Phiếu Nhận phải ở trạng thái `Đã nhận` và cả hai phiếu phải còn tồn tại trước khi chuyển đổi. Bản `BookingKiemKe` chứa các món thực tế; nếu có chênh lệch thì `XacNhanPhienBan` phải bằng `PhienBan`.
+- Trong cùng giao dịch tạo `DonHang` và `ChiTietDonHang`, hệ thống gắn `DonHangID` và `BookingKiemKeID` cho **cả hai** phiếu Booking. Phiếu Giao đọc mặt hàng/tình trạng đã chốt qua đơn và dùng liên kết kiểm kê để truy vết nguồn. Nếu thiếu một phiếu hoặc liên kết thất bại, toàn bộ giao dịch bị hủy.
+- Trạng thái phiếu Giao vẫn là `Chờ thực hiện` sau khi tạo đơn; việc đối soát dữ liệu không có nghĩa đồ đã giặt xong hoặc đã giao. Các bản ghi `GiaoNhan` của đơn chỉ tạo cho chặng tại nhà như quy tắc hiện tại.
+
 ## Giao diện và bảo mật
 
 - Trang chi tiết Booking có hai thao tác riêng: xác nhận hoặc hủy; form kiểm kê chỉ mở sau xác nhận.

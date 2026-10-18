@@ -149,6 +149,28 @@
             @endif
         </x-admin.detail.panel>
 
+        @if(config('giatui.booking_two_step') && $delivery->LoaiGiaoNhan === 'GIAO_DO')
+            @php
+                $linkedBooking = $delivery->donHang?->booking;
+                $returnNote = $linkedBooking?->giaoNhanDuKiens->firstWhere('LoaiGiaoNhan', 'GIAO_DO');
+                $approvedInspection = $linkedBooking?->kiemKe;
+            @endphp
+            @if($returnNote?->DonHangID === $delivery->DonHangID
+                && $returnNote?->BookingKiemKeID === $approvedInspection?->BookingKiemKeID)
+                <x-admin.detail.panel title="Đồ trả từ phiếu nhận" icon="bi-clipboard-check" :iconClass="'bg-info-subtle text-info'">
+                    <p class="small text-muted mb-2">
+                        Đã đối soát theo Booking {{ $linkedBooking->MaBooking }} · kiểm kê phiên bản {{ $approvedInspection->PhienBan }}.
+                        @can('bookings.view')<a href="{{ route('bookings.show', $linkedBooking) }}">Xem Booking</a>@endcan
+                    </p>
+                    <ul class="small mb-0 ps-3" data-delivery-return-items>
+                        @foreach($delivery->donHang->chiTietDonHangs as $item)
+                            <li>{{ $item->item_name }} · {{ $item->KhoiLuong ?: $item->SoLuong }} {{ $item->unit }} · {{ $item->TinhTrangTruocKhiGiat }}</li>
+                        @endforeach
+                    </ul>
+                </x-admin.detail.panel>
+            @endif
+        @endif
+
         <x-admin.detail.panel title="Tiến độ giao nhận" icon="bi-clock-history" :iconClass="'bg-secondary-subtle text-secondary'">
             <div class="detail-timeline order-detail-timeline">
                 @foreach($deliveryProgressSteps as $index => $step)
