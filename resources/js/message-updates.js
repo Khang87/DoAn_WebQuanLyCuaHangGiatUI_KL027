@@ -417,11 +417,12 @@ if (conversation) {
                         if (!uploadUrlResponse.ok) throw new Error(upload.message || Object.values(upload.errors ?? {}).flat()[0] || 'Không tạo được đường dẫn tải ảnh.');
                         const signedUrl = new URL(upload.signed_url);
                         if (signedUrl.protocol !== 'https:' || !signedUrl.hostname.endsWith('.supabase.co')) throw new Error('Đường dẫn tải ảnh không hợp lệ.');
-                        const uploadBody = new FormData();
-                        uploadBody.append('cacheControl', '3600');
-                        uploadBody.append('', image);
                         const uploaded = await fetch(signedUrl, {
-                            method: 'PUT', headers: { apikey: upload.api_key, 'x-upsert': 'false' }, body: uploadBody,
+                            method: 'PUT', headers: {
+                                apikey: upload.api_key,
+                                'Content-Type': image.type,
+                                'x-upsert': 'false',
+                            }, body: image,
                         });
                         if (!uploaded.ok) throw new Error('Không tải được ảnh lên kho lưu trữ.');
                         const finalize = new FormData();
