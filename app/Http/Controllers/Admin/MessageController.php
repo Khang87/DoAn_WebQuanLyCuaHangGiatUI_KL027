@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\DonHang;
+use App\Models\TinNhan;
 use App\Models\User;
 use App\Services\ChatMessageDecryptionException;
 use App\Services\MessageRealtimeService;
@@ -12,6 +13,7 @@ use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
@@ -66,6 +68,22 @@ class MessageController extends Controller
     }
 
     public function store(Request $request): RedirectResponse|JsonResponse
+    {
+        try {
+            return $this->storeMessage($request);
+        } catch (\Throwable $exception) {
+            if (! $exception instanceof ValidationException) {
+                Log::error('Web chat send failed.', [
+                    'exception' => $exception::class,
+                    'reason' => mb_substr($exception->getMessage(), 0, 400),
+                    'location' => basename($exception->getFile()).':'.$exception->getLine(),
+                ]);
+            }
+            throw $exception;
+        }
+    }
+
+    private function storeMessage(Request $request): RedirectResponse|JsonResponse
     {
         $validated = $request->validate([
             'order_id' => ['nullable', 'required_without:customer_id', 'prohibits:customer_id', 'integer', 'min:1', 'exists:DonHang,DonHangID'],
