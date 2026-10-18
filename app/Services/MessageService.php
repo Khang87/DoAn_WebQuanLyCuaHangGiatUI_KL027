@@ -19,10 +19,6 @@ use Illuminate\Validation\ValidationException;
 
 class MessageService
 {
-    public function __construct(
-        private ChatMessageDecryptionService $messageCryptoService,
-    ) {}
-
     public function getOrders(?string $search = null): LengthAwarePaginator
     {
         $activity = TinNhan::query()->select('DonHangID')->selectRaw('MAX("ThoiGianGui") AS last_message_at, MAX("TinNhanID") AS last_message_id')
@@ -201,66 +197,32 @@ class MessageService
      */
     private function presentWebMessages(Collection $messages, bool $allowDecryptionFailure = false): Collection
     {
-        $encrypted = $messages->filter(fn (TinNhan $message): bool => (int) $message->MaHoaPhienBan === 1);
-
-        if ($encrypted->isNotEmpty()) {
-            try {
-                $this->messageCryptoService->decryptMessages($encrypted);
-            } catch (ChatMessageDecryptionException $exception) {
-                Log::warning('Unable to decrypt encrypted chat messages for web display.', [
-                    'exception' => $exception::class,
-                ]);
-
-                if (! $allowDecryptionFailure) {
-                    throw $exception;
-                }
-
-                foreach ($encrypted as $message) {
-                    $message->setAttribute('NoiDung', 'Chưa thể giải mã tin nhắn. Vui lòng thử lại sau.');
-                }
-            }
-        }
-
-        $images = $messages->filter(fn (TinNhan $message): bool => str_starts_with((string) $message->NoiDung, 'image:'));
-
-        if ($images->isEmpty()) {
+        if ($messages->isEmpty()) {
             return $messages;
         }
 
-        $projectUrl = rtrim((string) config('services.supabase.project_url'), '/');
-        $serviceKey = (string) config('services.supabase.service_role_key');
-
-        if ($projectUrl === '' || $serviceKey === '') {
-            foreach ($images as $message) {
-                $message->setAttribute('NoiDung', 'Tin nhắn có ảnh. Cần cấu hình SUPABASE_SERVICE_ROLE_KEY để xem ảnh.');
-                $message->setAttribute('ImageUrl', null);
-            }
-
-            return $messages;
-        }
-
-        foreach ($images as $message) {
-            $path = substr((string) $message->NoiDung, strlen('image:'));
-            try {
-                $response = Http::acceptJson()->withHeaders(['apikey' => $serviceKey])->withToken($serviceKey)
-                    ->timeout(15)->post($projectUrl.'/storage/v1/object/sign/chat-images/'.$this->encodeStoragePath($path), [
-                        'expiresIn' => 3600,
-                    ])->throw();
-                $signedPath = $response->json('signedURL') ?? $response->json('signedUrl');
-                if (! is_string($signedPath) || $signedPath === '') {
-                    throw new \RuntimeException('Storage did not return a signed image URL.');
+        try {
+            $presented = $this->invokeChatFunction([
+                'action' => 'present_web_messages',
+                'message_ids' => $messages->map(fn (TinNhan $message): int => (int) $message->getKey())->all(),
+            ]);
+            $byId = collect($presented['messages'] ?? [])->keyBy(fn (array $message): int => (int) ($message['TinNhanID'] ?? 0));
+            foreach ($messages as $message) {
+                $data = $byId->get((int) $message->getKey());
+                if (! is_array($data)) {
+                    throw new \RuntimeException('Supabase did not return a presented chat message.');
                 }
-                $imageUrl = str_starts_with($signedPath, 'http')
-                    ? $signedPath
-                    : $projectUrl.(str_starts_with($signedPath, '/object/') ? '/storage/v1' : '').$signedPath;
-                $message->setAttribute('NoiDung', 'Ảnh');
-                $message->setAttribute('ImageUrl', $imageUrl);
-            } catch (\Throwable $exception) {
-                Log::warning('Unable to sign chat image URL.', [
-                    'message_id' => (int) $message->getKey(),
-                    'exception' => $exception::class,
-                ]);
-                $message->setAttribute('NoiDung', 'Chưa thể tải ảnh tin nhắn. Vui lòng thử lại sau.');
+                $message->setAttribute('NoiDung', (string) ($data['NoiDung'] ?? ''));
+                $message->setAttribute('ImageUrl', $data['ImageUrl'] ?? null);
+                $message->setAttribute('DaChinhSua', (bool) ($data['DaChinhSua'] ?? false));
+            }
+        } catch (\Throwable $exception) {
+            Log::warning('Unable to present chat messages for web display.', ['exception' => $exception::class]);
+            if (! $allowDecryptionFailure) {
+                throw $exception;
+            }
+            foreach ($messages as $message) {
+                $message->setAttribute('NoiDung', 'Chưa thể tải nội dung tin nhắn. Vui lòng thử lại sau.');
                 $message->setAttribute('ImageUrl', null);
             }
         }
@@ -291,18 +253,7 @@ class MessageService
 
     public function sendSupport(User $customer, User $sender, string $content): TinNhan
     {
-        $encrypted = $this->messageCryptoService->encryptContent(trim($content));
-
-        return $this->createMessage([
-            'NguoiGuiID' => $sender->getKey(), 'NguoiNhanID' => $customer->getKey(),
-            'DonHangID' => null,
-            'NoiDung' => '',
-            'NoiDungMaHoa' => $encrypted['ciphertext'],
-            'NoiDungNonce' => $encrypted['nonce'],
-            'MaHoaPhienBan' => 1,
-            'ThoiGianGui' => now('UTC'),
-            'TrangThai' => 'Đã gửi',
-        ]);
+        return $this->createWebMessage($sender, $customer, null, trim($content));
     }
 
     public function sendSupportImage(User $customer, User $sender, UploadedFile $image): TinNhan
@@ -323,16 +274,11 @@ class MessageService
     /** @return array{path: string, signed_url: string, token: string, api_key: string} */
     public function createImageUploadUrl(User $sender, string $mimeType): array
     {
-        $projectUrl = rtrim((string) config('services.supabase.project_url'), '/');
-        $serviceKey = (string) config('services.supabase.service_role_key');
-        if ($projectUrl === '' || $serviceKey === '') {
-            throw new \RuntimeException('Chat image uploads are not configured.');
-        }
-
-        $data = Http::acceptJson()->withHeaders(['apikey' => $serviceKey])->withToken($serviceKey)
-            ->timeout(20)->post($projectUrl.'/functions/v1/chat-encryption', [
-                'action' => 'create_image_upload', 'sender_account_id' => (int) $sender->getKey(), 'mime_type' => $mimeType,
-            ])->throw()->json();
+        $data = $this->invokeChatFunction([
+            'action' => 'create_image_upload',
+            'sender_account_id' => (int) $sender->getKey(),
+            'mime_type' => $mimeType,
+        ]);
         if (! is_array($data) || ! is_string($data['path'] ?? null) || ! is_string($data['signed_url'] ?? null)
             || ! is_string($data['token'] ?? null) || ! is_string($data['api_key'] ?? null)) {
             throw new \RuntimeException('Chat image upload URL response is invalid.');
@@ -358,10 +304,7 @@ class MessageService
 
     private function createImageMessage(User $sender, User $recipient, ?int $orderId, string $path): TinNhan
     {
-        return $this->createMessage([
-            'NguoiGuiID' => $sender->getKey(), 'NguoiNhanID' => $recipient->getKey(), 'DonHangID' => $orderId,
-            'NoiDung' => 'image:'.$path, 'ThoiGianGui' => now('UTC'), 'TrangThai' => 'Đã gửi',
-        ]);
+        return $this->createWebMessage($sender, $recipient, $orderId, 'image:'.$path);
     }
 
     private function sendImage(User $sender, User $recipient, ?int $orderId, UploadedFile $image): TinNhan
@@ -371,10 +314,7 @@ class MessageService
             'Content-Type' => (string) $image->getMimeType(), 'x-upsert' => 'false',
         ])->throw();
         try {
-            return $this->createMessage([
-                'NguoiGuiID' => $sender->getKey(), 'NguoiNhanID' => $recipient->getKey(), 'DonHangID' => $orderId,
-                'NoiDung' => 'image:'.$path, 'ThoiGianGui' => now('UTC'), 'TrangThai' => 'Đã gửi',
-            ]);
+            return $this->createWebMessage($sender, $recipient, $orderId, 'image:'.$path);
         } catch (\Throwable $exception) {
             try {
                 $this->storageRequest('DELETE', '/storage/v1/object/chat-images/'.$this->encodeStoragePath($path))->throw();
@@ -389,64 +329,30 @@ class MessageService
 
     public function recall(TinNhan $message): void
     {
-        $path = str_starts_with((string) $message->NoiDung, 'image:')
-            ? substr((string) $message->NoiDung, strlen('image:')) : null;
-        $this->postgrestRequest('DELETE', '/rest/v1/TinNhan?TinNhanID=eq.'.(int) $message->getKey()
-            .'&NguoiGuiID=eq.'.(int) $message->NguoiGuiID.'&select=TinNhanID', null, 'return=representation')->throw();
-        if ($path !== null) {
-            try {
-                $this->storageRequest('DELETE', '/storage/v1/object/chat-images/'.$this->encodeStoragePath($path))->throw();
-            } catch (\Throwable $exception) {
-                Log::warning('Chat message was recalled but its image could not be removed from storage.', [
-                    'message_id' => (int) $message->getKey(),
-                    'exception' => $exception::class,
-                ]);
-            }
-        }
+        $this->invokeChatFunction([
+            'action' => 'recall_message_web',
+            'message_id' => (int) $message->getKey(),
+            'sender_account_id' => (int) $message->NguoiGuiID,
+        ]);
     }
 
     public function edit(TinNhan $message, string $content): void
     {
-        if (str_starts_with((string) $message->NoiDung, 'image:')) {
-            throw ValidationException::withMessages(['content' => 'Không thể sửa nội dung của tin nhắn ảnh.']);
-        }
-        $encrypted = $this->messageDecryptionService->encryptContent(trim($content));
-        $response = $this->postgrestRequest(
-            'PATCH',
-            '/rest/v1/TinNhan?TinNhanID=eq.'.(int) $message->getKey()
-                .'&NguoiGuiID=eq.'.(int) $message->NguoiGuiID.'&select=TinNhanID',
-            [
-                'NoiDung' => '',
-                'NoiDungMaHoa' => $encrypted['ciphertext'],
-                'NoiDungNonce' => $encrypted['nonce'],
-                'MaHoaPhienBan' => 1,
-                'DaChinhSua' => true,
-            ],
-            'return=representation',
-        )->throw();
-        if (! is_array($response->json()) || $response->json() === []) {
-            abort(404, 'Tin nhắn không còn tồn tại.');
-        }
+        $this->invokeChatFunction([
+            'action' => 'edit_message',
+            'message_id' => (int) $message->getKey(),
+            'sender_account_id' => (int) $message->NguoiGuiID,
+            'content' => trim($content),
+        ]);
     }
 
     public function hideForAccount(int $messageId, int $accountId): void
     {
-        $projectUrl = rtrim((string) config('services.supabase.project_url'), '/');
-        $serviceKey = (string) config('services.supabase.service_role_key');
-        if ($projectUrl === '' || $serviceKey === '') {
-            throw new \RuntimeException('Chat message hiding is not configured.');
-        }
-
-        $this->postgrestRequest(
-            'POST',
-            '/rest/v1/TinNhanAn?on_conflict=TaiKhoanID,TinNhanID',
-            [[
-                'TaiKhoanID' => $accountId,
-                'TinNhanID' => $messageId,
-                'ThoiGianAn' => now('UTC')->format('Y-m-d H:i:s'),
-            ]],
-            'resolution=ignore-duplicates,return=minimal',
-        )->throw();
+        $this->invokeChatFunction([
+            'action' => 'hide_message_web',
+            'message_id' => $messageId,
+            'account_id' => $accountId,
+        ]);
     }
 
     private function storageRequest(string $method, string $path, ?string $body = null, array $headers = []): Response
@@ -463,59 +369,57 @@ class MessageService
             : $request->delete($projectUrl.$path);
     }
 
-    /** @param array<string, mixed>|list<array<string, mixed>>|null $payload */
-    private function postgrestRequest(string $method, string $path, ?array $payload = null, ?string $prefer = null): \Illuminate\Http\Client\Response
+    /** @param array<string, mixed> $payload
+     *  @return array<string, mixed>
+     */
+    private function invokeChatFunction(array $payload): array
     {
         $projectUrl = rtrim((string) config('services.supabase.project_url'), '/');
         $serviceKey = (string) config('services.supabase.service_role_key');
         if ($projectUrl === '' || $serviceKey === '') {
-            throw new \RuntimeException('Chat database operations are not configured.');
+            throw new \RuntimeException('Chat operations are not configured.');
         }
 
-        $headers = ['apikey' => $serviceKey];
-        if ($prefer !== null) {
-            $headers['Prefer'] = $prefer;
-        }
-        $request = Http::acceptJson()->withHeaders($headers)->withToken($serviceKey)->timeout(20);
-        $url = $projectUrl.$path;
-        $response = match (strtoupper($method)) {
-            'POST' => $request->post($url, $payload ?? []),
-            'PATCH' => $request->patch($url, $payload ?? []),
-            'DELETE' => $request->delete($url),
-            default => throw new \InvalidArgumentException('Unsupported chat database operation.'),
-        };
-
-        if ($response->failed()) {
+        $response = Http::acceptJson()->withHeaders(['apikey' => $serviceKey])->withToken($serviceKey)
+            ->timeout(20)->post($projectUrl.'/functions/v1/chat-encryption', $payload);
+        $data = $response->json();
+        if (! $response->successful() || ! is_array($data)) {
+            $message = is_array($data) && is_string($data['error'] ?? null)
+                ? $data['error'] : 'Supabase chat function returned an invalid response.';
             Log::error('Supabase rejected a web chat database operation.', [
-                'method' => strtoupper($method),
-                'resource' => strtok($path, '?'),
+                'action' => $payload['action'] ?? 'unknown',
                 'status' => $response->status(),
-                'response' => mb_substr($response->body(), 0, 500),
+                'response' => $message,
             ]);
+            throw new \RuntimeException('Chat action failed (HTTP '.$response->status().'): '.$message);
         }
 
-        return $response;
+        return $data;
     }
 
-    /** @param array<string, mixed> $attributes */
-    private function createMessage(array $attributes): TinNhan
+    private function createWebMessage(User $sender, User $recipient, ?int $orderId, string $content): TinNhan
     {
-        if (($attributes['ThoiGianGui'] ?? null) instanceof \DateTimeInterface) {
-            $attributes['ThoiGianGui'] = $attributes['ThoiGianGui']->format('Y-m-d H:i:s');
+        $result = $this->invokeChatFunction([
+            'action' => str_starts_with($content, 'image:') ? 'create_image_message_web' : 'send_message_web',
+            'sender_account_id' => (int) $sender->getKey(),
+            'recipient_account_id' => (int) $recipient->getKey(),
+            'order_id' => $orderId,
+            'content' => $content,
+        ]);
+        $messageId = filter_var($result['id'] ?? null, FILTER_VALIDATE_INT);
+        if (! $messageId || $messageId < 1) {
+            throw new \RuntimeException('Supabase chat function did not return the created message ID.');
         }
 
-        $response = $this->postgrestRequest(
-            'POST',
-            '/rest/v1/TinNhan?select=TinNhanID,NguoiGuiID,NguoiNhanID,DonHangID,NoiDung,ThoiGianGui,TrangThai',
-            [$attributes],
-            'return=representation',
-        )->throw();
-        $created = $response->json();
-        if (! is_array($created) || ! isset($created[0]) || ! is_array($created[0])) {
-            throw new \RuntimeException('Supabase did not return the created chat message.');
-        }
-
-        return TinNhan::query()->getModel()->newFromBuilder($created[0]);
+        return TinNhan::query()->getModel()->newFromBuilder([
+            'TinNhanID' => $messageId,
+            'NguoiGuiID' => $sender->getKey(),
+            'NguoiNhanID' => $recipient->getKey(),
+            'DonHangID' => $orderId,
+            'NoiDung' => $content,
+            'ThoiGianGui' => now('UTC')->format('Y-m-d H:i:s'),
+            'TrangThai' => 'Đã gửi',
+        ]);
     }
 
     private function encodeStoragePath(string $path): string
@@ -533,18 +437,13 @@ class MessageService
             ]);
         }
 
-        $encrypted = $this->messageCryptoService->encryptContent(trim($content));
+        $recipient = $order->khachHang?->taiKhoan;
+        if (! $recipient) {
+            throw ValidationException::withMessages([
+                'message' => 'Khách hàng của đơn hàng chưa có tài khoản nhận tin nhắn.',
+            ]);
+        }
 
-        return $this->createMessage([
-            'NguoiGuiID' => $sender->getKey(),
-            'NguoiNhanID' => $recipientId,
-            'DonHangID' => $order->DonHangID,
-            'NoiDung' => '',
-            'NoiDungMaHoa' => $encrypted['ciphertext'],
-            'NoiDungNonce' => $encrypted['nonce'],
-            'MaHoaPhienBan' => 1,
-            'ThoiGianGui' => now('UTC'),
-            'TrangThai' => 'Đã gửi',
-        ]);
+        return $this->createWebMessage($sender, $recipient, (int) $order->DonHangID, trim($content));
     }
 }
