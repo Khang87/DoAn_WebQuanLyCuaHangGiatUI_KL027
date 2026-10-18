@@ -2,7 +2,7 @@
 
 ## Luồng Booking hai bước (đang chuẩn bị triển khai Web)
 
-Đặc tả: [booking-intake-two-step.md](docs/specs/booking-intake-two-step.md). Khi bật `BOOKING_TWO_STEP=true`, nhân viên xác nhận Booking để lập hai phiếu dự kiến gắn Booking, ghi nhận đã nhận đồ, rồi kiểm kê. Nếu kiểm kê khác dữ liệu khách khai báo, Web lưu bản kiểm kê theo phiên bản và gửi thông báo; chỉ tạo đơn sau khi khách xác nhận đúng phiên bản đó. Booking không có mặt hàng khai báo được kiểm kê như đơn thông thường.
+Đặc tả: [booking-intake-two-step.md](docs/specs/booking-intake-two-step.md). Khi bật `BOOKING_TWO_STEP=true`, nhân viên xác nhận Booking để lập đồng thời phiếu Nhận và phiếu Giao, ghi nhận đã nhận đồ, rồi kiểm kê. Nếu kiểm kê khác dữ liệu khách khai báo, Web lưu bản kiểm kê theo phiên bản và gửi thông báo; chỉ tạo đơn sau khi khách xác nhận đúng phiên bản đó. Khi tạo đơn, cả hai phiếu được liên kết với đơn và bản kiểm kê; phiếu Giao hiển thị các món thực tế đã đối soát nhưng vẫn chờ thực hiện. Booking không có mặt hàng khai báo được kiểm kê như đơn thông thường.
 
 Trước khi bật cờ trên Web, chạy [booking-two-step.sql](database/sql/booking-two-step.sql) trên Supabase và kiểm tra RLS. Mobile đọc `BookingKiemKe` của khách đang đăng nhập, hiển thị `DuLieuThucTe` và xác nhận bằng cách cập nhật duy nhất `XacNhanPhienBan = PhienBan` của bản kiểm kê hiện tại. Mobile không được sửa mặt hàng kiểm kê. Cờ mặc định tắt để không gọi bảng mới trước khi schema và màn hình xác nhận mobile sẵn sàng.
 
