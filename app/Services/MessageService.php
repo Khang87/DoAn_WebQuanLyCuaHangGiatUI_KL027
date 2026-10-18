@@ -18,6 +18,10 @@ use Illuminate\Validation\ValidationException;
 
 class MessageService
 {
+    public function __construct(
+        private ChatMessageDecryptionService $messageDecryptionService,
+    ) {}
+
     public function getOrders(?string $search = null): LengthAwarePaginator
     {
         $activity = TinNhan::query()->select('DonHangID')->selectRaw('MAX("ThoiGianGui") AS last_message_at, MAX("TinNhanID") AS last_message_id')
@@ -48,7 +52,7 @@ class MessageService
             ->paginate(20)->withQueryString();
         $latestIds = $page->getCollection()->pluck('last_message_id')->filter()->map(fn ($id): int => (int) $id);
         if ($latestIds->isNotEmpty()) {
-            $latest = $this->presentWebMessages(TinNhan::query()->whereIn('TinNhanID', $latestIds)->get())->keyBy('TinNhanID');
+            $latest = $this->presentWebMessages(TinNhan::query()->whereIn('TinNhanID', $latestIds)->get(), true)->keyBy('TinNhanID');
             foreach ($page->getCollection() as $order) {
                 $message = $latest->get((int) $order->last_message_id);
                 if ($message) {
@@ -154,7 +158,7 @@ class MessageService
         ])->orderByDesc('TaiKhoanID')->paginate(20, ['*'], 'support_page')->withQueryString();
         $latestIds = $page->getCollection()->pluck('last_message_id')->filter()->map(fn ($id): int => (int) $id);
         if ($latestIds->isNotEmpty()) {
-            $latest = $this->presentWebMessages(TinNhan::query()->whereIn('TinNhanID', $latestIds)->get())->keyBy('TinNhanID');
+            $latest = $this->presentWebMessages(TinNhan::query()->whereIn('TinNhanID', $latestIds)->get(), true)->keyBy('TinNhanID');
             foreach ($page->getCollection() as $customer) {
                 $message = $latest->get((int) $customer->last_message_id);
                 if ($message) {
@@ -190,44 +194,78 @@ class MessageService
         return $this->presentWebMessages($messages);
     }
 
-    /** @param Collection<int, TinNhan> $messages @return Collection<int, TinNhan> */
-    private function presentWebMessages(Collection $messages): Collection
+    /**
+     * @param  Collection<int, TinNhan>  $messages
+     * @return Collection<int, TinNhan>
+     */
+    private function presentWebMessages(Collection $messages, bool $allowDecryptionFailure = false): Collection
     {
-        $needsPresentation = $messages->filter(fn (TinNhan $message): bool =>
-            (int) $message->MaHoaPhienBan === 1 || str_starts_with((string) $message->NoiDung, 'image:'));
-        if ($needsPresentation->isEmpty()) {
+        $encrypted = $messages->filter(fn (TinNhan $message): bool => (int) $message->MaHoaPhienBan === 1);
+
+        if ($encrypted->isNotEmpty()) {
+            try {
+                $this->messageDecryptionService->decryptMessages($encrypted);
+            } catch (ChatMessageDecryptionException $exception) {
+                Log::warning('Unable to decrypt encrypted chat messages for web display.', [
+                    'exception' => $exception::class,
+                ]);
+
+                if (! $allowDecryptionFailure) {
+                    throw $exception;
+                }
+
+                foreach ($encrypted as $message) {
+                    $message->setAttribute('NoiDung', 'Chưa thể giải mã tin nhắn. Vui lòng thử lại sau.');
+                }
+            }
+        }
+
+        $images = $messages->filter(fn (TinNhan $message): bool => str_starts_with((string) $message->NoiDung, 'image:'));
+
+        if ($images->isEmpty()) {
             return $messages;
         }
+
         $projectUrl = rtrim((string) config('services.supabase.project_url'), '/');
         $serviceKey = (string) config('services.supabase.service_role_key');
+
         if ($projectUrl === '' || $serviceKey === '') {
-            foreach ($needsPresentation as $message) {
-                $message->setAttribute('NoiDung', 'Tin nhắn được mã hóa. Cần cấu hình SUPABASE_SERVICE_ROLE_KEY để xem nội dung.');
+            foreach ($images as $message) {
+                $message->setAttribute('NoiDung', 'Tin nhắn có ảnh. Cần cấu hình SUPABASE_SERVICE_ROLE_KEY để xem ảnh.');
                 $message->setAttribute('ImageUrl', null);
             }
 
             return $messages;
         }
+
         try {
             $response = Http::acceptJson()->withHeaders(['apikey' => $serviceKey])->withToken($serviceKey)
                 ->timeout(20)->post($projectUrl.'/functions/v1/chat-encryption', [
-                    'action' => 'present_web_messages', 'message_ids' => $needsPresentation->map(fn (TinNhan $message): int => (int) $message->getKey())->all(),
+                    'action' => 'present_web_messages',
+                    'message_ids' => $images->map(fn (TinNhan $message): int => (int) $message->getKey())->all(),
                 ])->throw()->json('messages');
+
             if (! is_array($response)) {
-                throw new \RuntimeException('Chat message presentation returned an invalid response.');
+                throw new \RuntimeException('Chat image presentation returned an invalid response.');
             }
         } catch (\Throwable $exception) {
-            Log::warning('Unable to present messages from the chat Edge Function.', ['exception' => $exception::class]);
-            foreach ($needsPresentation as $message) {
-                $message->setAttribute('NoiDung', 'Chưa thể tải nội dung tin nhắn. Vui lòng kiểm tra dịch vụ chat.');
+            Log::warning('Unable to present chat images from the chat Edge Function.', [
+                'exception' => $exception::class,
+            ]);
+
+            foreach ($images as $message) {
+                $message->setAttribute('NoiDung', 'Chưa thể tải ảnh tin nhắn. Vui lòng thử lại sau.');
                 $message->setAttribute('ImageUrl', null);
             }
 
             return $messages;
         }
+
         $presentedById = collect($response)->keyBy(fn (array $row): int => (int) ($row['TinNhanID'] ?? 0));
-        foreach ($needsPresentation as $message) {
+
+        foreach ($images as $message) {
             $row = $presentedById->get((int) $message->getKey());
+
             if (is_array($row)) {
                 $message->setAttribute('NoiDung', (string) ($row['NoiDung'] ?? ''));
                 $message->setAttribute('ImageUrl', $row['ImageUrl'] ?? null);

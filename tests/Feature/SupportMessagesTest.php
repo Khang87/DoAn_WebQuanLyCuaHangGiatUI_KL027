@@ -7,6 +7,7 @@ use App\Services\MessageService;
 use App\Support\PermissionCache;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
@@ -62,6 +63,9 @@ class SupportMessagesTest extends TestCase
             $t->integer('NguoiGuiID');
             $t->integer('NguoiNhanID');
             $t->text('NoiDung');
+            $t->text('NoiDungMaHoa')->nullable();
+            $t->text('NoiDungNonce')->nullable();
+            $t->integer('MaHoaPhienBan')->nullable();
             $t->dateTime('ThoiGianGui')->nullable();
             $t->string('TrangThai')->default('Đã gửi');
         });
@@ -100,6 +104,45 @@ class SupportMessagesTest extends TestCase
             'NguoiGuiID' => $sender, 'NguoiNhanID' => $recipient, 'DonHangID' => $order,
             'NoiDung' => 'Hỏi thông tin trước khi đặt', 'ThoiGianGui' => '2026-10-09 12:00:00',
         ], 'TinNhanID');
+    }
+
+    public function test_encrypted_support_message_is_decrypted_for_the_staff_view(): void
+    {
+        $key = random_bytes(32);
+        $nonce = random_bytes(12);
+        $tag = '';
+        $cipherText = openssl_encrypt(
+            'Cửa hàng sẽ phản hồi sớm.',
+            'aes-256-gcm',
+            $key,
+            OPENSSL_RAW_DATA,
+            $nonce,
+            $tag,
+        );
+        $this->assertIsString($cipherText);
+        DB::table('TinNhan')->insert([
+            'NguoiGuiID' => 2,
+            'NguoiNhanID' => 1,
+            'NoiDung' => '',
+            'NoiDungMaHoa' => base64_encode($cipherText.$tag),
+            'NoiDungNonce' => base64_encode($nonce),
+            'MaHoaPhienBan' => 1,
+        ]);
+        config([
+            'services.supabase.project_url' => 'https://example.supabase.co',
+            'services.supabase.service_role_key' => 'test-service-role-key',
+        ]);
+        Http::fake([
+            'https://example.supabase.co/rest/v1/rpc/get_chat_encryption_key' => Http::response(
+                json_encode(base64_encode($key), JSON_THROW_ON_ERROR),
+                200,
+                ['Content-Type' => 'application/json'],
+            ),
+        ]);
+
+        $this->actingAs(User::findOrFail(1))->getJson('/admin/messages/support/2/updates')
+            ->assertOk()
+            ->assertJsonPath('messages.0.content', 'Cửa hàng sẽ phản hồi sớm.');
     }
 
     public function test_order_inbox_promotes_old_order_and_read_receipt_is_scoped_and_persistent(): void

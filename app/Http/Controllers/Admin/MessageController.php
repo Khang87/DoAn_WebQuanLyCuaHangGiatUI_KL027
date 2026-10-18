@@ -5,7 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\DonHang;
 use App\Models\User;
-use App\Models\TinNhan;
+use App\Services\ChatMessageDecryptionException;
 use App\Services\MessageRealtimeService;
 use App\Services\MessageService;
 use Carbon\Carbon;
@@ -42,6 +42,18 @@ class MessageController extends Controller
 
         $customer = isset($validated['customer_id']) ? $this->messageService->supportCustomer((int) $validated['customer_id']) : null;
 
+        $messageDecryptionUnavailable = false;
+
+        try {
+            $messages = $order
+                ? $this->messageService->getMessages($order)
+                : ($customer ? $this->messageService->supportMessages($customer) : collect());
+        } catch (ChatMessageDecryptionException $exception) {
+            report($exception);
+            $messages = collect();
+            $messageDecryptionUnavailable = true;
+        }
+
         return view('admin.messages.index', [
             'orders' => $this->messageService->getOrders($search),
             'selectedOrder' => $order,
@@ -49,7 +61,8 @@ class MessageController extends Controller
             'supportCustomers' => $this->messageService->supportCustomers($search),
             'activeTab' => $customer ? 'support' : ($order ? 'orders' : ($validated['tab'] ?? 'orders')),
             'search' => $search,
-            'messages' => $order ? $this->messageService->getMessages($order) : ($customer ? $this->messageService->supportMessages($customer) : collect()),
+            'messages' => $messages,
+            'messageDecryptionUnavailable' => $messageDecryptionUnavailable,
         ]);
     }
 
@@ -256,15 +269,25 @@ class MessageController extends Controller
 
         $account = $this->messageService->supportCustomer($customer);
 
-        return response()->json([
-            'order_id' => null,
-            'customer_account_id' => (int) $account->getKey(),
-            'messages' => $this->messageService->supportMessages($account)->map(fn ($message): array => [
+        try {
+            $messages = $this->messageService->supportMessages($account)->map(fn ($message): array => [
                 'id' => (int) $message->getKey(), 'content' => (string) $message->NoiDung,
+                'image_url' => $message->ImageUrl,
                 'sender_name' => $this->messageService->displayName($message, $viewer),
                 'is_mine' => (int) $message->NguoiGuiID === (int) $viewer->getKey(),
                 'sent_at' => $this->messageService->sentAt($message)?->toIso8601String(),
-            ] + (($message->ImageUrl ?? null) ? ['image_url' => $message->ImageUrl] : []))->values(),
+            ])->values();
+        } catch (ChatMessageDecryptionException $exception) {
+            report($exception);
+
+            return response()->json(['message' => 'Encrypted message content is temporarily unavailable'], 503)
+                ->header('Cache-Control', 'private, no-store');
+        }
+
+        return response()->json([
+            'order_id' => null,
+            'customer_account_id' => (int) $account->getKey(),
+            'messages' => $messages,
         ])->header('Cache-Control', 'private, no-store');
     }
 
@@ -278,16 +301,26 @@ class MessageController extends Controller
 
         $conversation = DonHang::query()->findOrFail($order);
 
-        return response()->json([
-            'order_id' => (int) $conversation->getKey(),
-            'messages' => $this->messageService->getMessages($conversation)
+        try {
+            $messages = $this->messageService->getMessages($conversation)
                 ->map(fn ($message): array => [
                     'id' => (int) $message->getKey(),
                     'content' => (string) $message->NoiDung,
+                    'image_url' => $message->ImageUrl,
                     'sender_name' => $this->messageService->displayName($message, $viewer),
                     'is_mine' => (int) $message->NguoiGuiID === (int) $viewer->getKey(),
                     'sent_at' => $this->messageService->sentAt($message)?->toIso8601String(),
-                ] + (($message->ImageUrl ?? null) ? ['image_url' => $message->ImageUrl] : []))->values(),
+                ])->values();
+        } catch (ChatMessageDecryptionException $exception) {
+            report($exception);
+
+            return response()->json(['message' => 'Encrypted message content is temporarily unavailable'], 503)
+                ->header('Cache-Control', 'private, no-store');
+        }
+
+        return response()->json([
+            'order_id' => (int) $conversation->getKey(),
+            'messages' => $messages,
         ])->header('Cache-Control', 'private, no-store');
     }
 }

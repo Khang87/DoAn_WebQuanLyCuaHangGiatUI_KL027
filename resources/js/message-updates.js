@@ -199,6 +199,11 @@ if (conversation) {
                 showStatus(response.status === 401 ? 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.' : 'Cuộc trò chuyện không còn khả dụng.');
                 return;
             }
+            if (response.status === 503) {
+                showStatus('Tin nhắn mã hóa tạm thời chưa thể giải mã. Vui lòng thử lại sau.');
+                retry = Math.min(retry * 2, 120000);
+                return;
+            }
             if (!response.ok) throw new Error('Message sync failed');
             const data = await response.json();
             if (data.order_id !== orderId || (customerId !== null && data.customer_account_id !== customerId) || !Array.isArray(data.messages) || data.messages.length > 100

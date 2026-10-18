@@ -78,7 +78,9 @@
                     <div>
                         <h5 class="mb-1 fw-semibold">{{ $selectedCustomer ? ('Hỗ trợ: '.$selectedCustomer->name) : ('Đơn '.$selectedOrder->MaDonHang) }}</h5>
                         <small class="text-muted">{{ $selectedCustomer?->name ?: ($selectedOrder?->khachHang?->HoTen ?: 'Khách hàng') }}</small>
-                        <small class="d-block text-muted" data-message-status role="status">Đang đồng bộ tin nhắn…</small>
+                        <small class="d-block text-muted" data-message-status role="status">
+                            {{ $messageDecryptionUnavailable ? 'Tin nhắn mã hóa tạm thời chưa thể giải mã. Vui lòng thử lại sau.' : 'Đang đồng bộ tin nhắn…' }}
+                        </small>
                     </div>
                     @if($selectedOrder)<a href="{{ route('orders.show', $selectedOrder) }}" class="btn btn-sm btn-outline-secondary">
                         <i class="bi bi-box-arrow-up-right me-1"></i>Chi tiết đơn
