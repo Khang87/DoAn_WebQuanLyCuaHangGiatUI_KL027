@@ -239,11 +239,56 @@ class SupportMessagesTest extends TestCase
 
     public function test_staff_can_send_support_message_without_an_order(): void
     {
+        $key = random_bytes(32);
+        config([
+            'services.supabase.project_url' => 'https://example.supabase.co',
+            'services.supabase.service_role_key' => 'test-service-role-key',
+        ]);
+        Http::fake([
+            'https://example.supabase.co/rest/v1/rpc/get_chat_encryption_key' => Http::response(
+                json_encode(base64_encode($key), JSON_THROW_ON_ERROR),
+                200,
+                ['Content-Type' => 'application/json'],
+            ),
+        ]);
+
         $this->actingAs(User::findOrFail(1))->post('/admin/messages', ['customer_id' => 2, 'content' => '  Cửa hàng xin chào  '])
             ->assertRedirect()->assertSessionMissing('success');
-        $this->assertDatabaseHas('TinNhan', [
-            'NguoiGuiID' => 1, 'NguoiNhanID' => 2, 'DonHangID' => null, 'NoiDung' => 'Cửa hàng xin chào',
+        $message = DB::table('TinNhan')->where('NguoiGuiID', 1)->first();
+        $this->assertSame(2, $message->NguoiNhanID);
+        $this->assertNull($message->DonHangID);
+        $this->assertSame('', $message->NoiDung);
+        $this->assertNotSame('Cửa hàng xin chào', $message->NoiDungMaHoa);
+        $this->assertSame(1, (int) $message->MaHoaPhienBan);
+        $this->assertNotNull(base64_decode($message->NoiDungNonce, true));
+
+        $this->getJson('/admin/messages/support/2/updates')
+            ->assertOk()
+            ->assertJsonPath('messages.0.content', 'Cửa hàng xin chào');
+
+        Http::assertSent(fn ($request): bool => $request->url() === 'https://example.supabase.co/rest/v1/rpc/get_chat_encryption_key'
+            && $request->hasHeader('apikey', 'test-service-role-key')
+            && $request->hasHeader('Authorization', 'Bearer test-service-role-key'));
+    }
+
+    public function test_support_message_is_not_saved_when_encryption_key_is_unavailable(): void
+    {
+        config([
+            'services.supabase.project_url' => 'https://example.supabase.co',
+            'services.supabase.service_role_key' => 'test-service-role-key',
         ]);
+        Http::fake([
+            'https://example.supabase.co/rest/v1/rpc/get_chat_encryption_key' => Http::response('null', 200, [
+                'Content-Type' => 'application/json',
+            ]),
+        ]);
+
+        $this->actingAs(User::findOrFail(1))
+            ->postJson('/admin/messages', ['customer_id' => 2, 'content' => 'Không được lưu thuần'])
+            ->assertStatus(503)
+            ->assertJsonPath('message', 'Chưa thể mã hóa tin nhắn. Vui lòng thử lại sau.');
+
+        $this->assertDatabaseCount('TinNhan', 0);
     }
 
     public function test_support_history_is_bounded_and_keeps_latest_messages_in_stable_order(): void

@@ -19,7 +19,9 @@ class TinNhan extends Model
     public const CREATED_AT = 'ThoiGianGui';
 
     protected $fillable = [
-        'NguoiGuiID', 'NguoiNhanID', 'DonHangID', 'NoiDung', 'ThoiGianGui', 'TrangThai', 'TinNhanID'];
+        'NguoiGuiID', 'NguoiNhanID', 'DonHangID', 'NoiDung', 'NoiDungMaHoa', 'NoiDungNonce',
+        'MaHoaPhienBan', 'ThoiGianGui', 'TrangThai', 'TinNhanID',
+    ];
 
     protected $casts = [
         'NguoiGuiID' => 'integer',

@@ -244,8 +244,6 @@ Route::middleware(['auth', 'reject.customer'])->group(function () {
         ->middleware('permission:bookings.confirm')->name('bookings.cancel');
     Route::post('bookings/{booking}/receive', [BookingController::class, 'markReceived'])
         ->middleware('permission:bookings.confirm')->name('bookings.receive');
-    Route::post('bookings/{booking}/finalize-inspection', [BookingController::class, 'finalizeInspection'])
-        ->middleware('permission:bookings.confirm')->name('bookings.finalize-inspection');
     Route::post('bookings/{booking}/estimate', [BookingController::class, 'estimate'])
         ->whereNumber('booking')->middleware('permission:bookings.confirm')->name('bookings.estimate');
     Route::post('bookings/{booking}/delivery-fee-quote', [BookingController::class, 'quoteDeliveryFee'])

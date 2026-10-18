@@ -14,6 +14,7 @@ use App\Support\PermissionCache;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
 use Tests\TestCase;
@@ -97,6 +98,9 @@ class AdminCommunicationTest extends TestCase
             $table->unsignedInteger('NguoiNhanID');
             $table->unsignedInteger('DonHangID')->nullable();
             $table->string('NoiDung', 1000);
+            $table->text('NoiDungMaHoa')->nullable();
+            $table->text('NoiDungNonce')->nullable();
+            $table->integer('MaHoaPhienBan')->nullable();
             $table->dateTime('ThoiGianGui')->useCurrent();
             $table->string('TrangThai')->default('Đã gửi');
         });
@@ -118,6 +122,18 @@ class AdminCommunicationTest extends TestCase
 
     public function test_store_message_uses_linked_customer_account_and_keeps_chat_out_of_audit_log(): void
     {
+        $key = random_bytes(32);
+        config([
+            'services.supabase.project_url' => 'https://example.supabase.co',
+            'services.supabase.service_role_key' => 'test-service-role-key',
+        ]);
+        Http::fake([
+            'https://example.supabase.co/rest/v1/rpc/get_chat_encryption_key' => Http::response(
+                json_encode(base64_encode($key), JSON_THROW_ON_ERROR),
+                200,
+                ['Content-Type' => 'application/json'],
+            ),
+        ]);
         $staff = $this->createAccount('store-staff');
         $customerAccount = $this->createAccount('laundry-customer', 18);
         $customer = KhachHang::query()->create([
@@ -136,7 +152,9 @@ class AdminCommunicationTest extends TestCase
         $this->assertSame($staff->TaiKhoanID, $message->NguoiGuiID);
         $this->assertSame($customerAccount->TaiKhoanID, $message->NguoiNhanID);
         $this->assertSame($order->DonHangID, $message->DonHangID);
-        $this->assertSame('Xin chào khách hàng!', $message->NoiDung);
+        $this->assertSame('', $message->NoiDung);
+        $this->assertSame(1, $message->MaHoaPhienBan);
+        $this->assertNotSame('Xin chào khách hàng!', $message->NoiDungMaHoa);
         $this->assertSame('Đã gửi', $message->TrangThai);
         $this->assertNotNull($message->ThoiGianGui);
         $incoming = TinNhan::query()->create([
@@ -153,6 +171,10 @@ class AdminCommunicationTest extends TestCase
             ->getMessages($order)
             ->pluck('TinNhanID')
             ->all());
+        $this->assertSame('Xin chào khách hàng!', app(MessageService::class)
+            ->getMessages($order)
+            ->last()
+            ->NoiDung);
     }
 
     public function test_message_is_rejected_when_customer_has_no_linked_account(): void
@@ -554,10 +576,27 @@ class AdminCommunicationTest extends TestCase
         $this->getJson(route('admin.messages.inbox'))->assertOk();
         $this->getJson(route('notifications.updates'))->assertOk();
 
+        $encryptionKey = random_bytes(32);
+        config([
+            'services.supabase.project_url' => 'https://example.supabase.co',
+            'services.supabase.service_role_key' => 'test-service-role-key',
+        ]);
+        Http::fake([
+            'https://example.supabase.co/rest/v1/rpc/get_chat_encryption_key' => Http::response(
+                json_encode(base64_encode($encryptionKey), JSON_THROW_ON_ERROR),
+                200,
+                ['Content-Type' => 'application/json'],
+            ),
+        ]);
         $customer = $this->createAccount('recipient-new-role', 1);
         $this->post(route('admin.messages.store'), ['customer_id' => $customer->getKey(), 'content' => 'Xin chào'])
             ->assertRedirect();
-        $this->assertDatabaseHas('TinNhan', ['NguoiGuiID' => $user->getKey(), 'NoiDung' => 'Xin chào']);
+        $this->assertDatabaseHas('TinNhan', [
+            'NguoiGuiID' => $user->getKey(),
+            'NoiDung' => '',
+            'MaHoaPhienBan' => 1,
+        ]);
+        $this->assertNotSame('Xin chào', DB::table('TinNhan')->where('NguoiGuiID', $user->getKey())->value('NoiDungMaHoa'));
         $this->get(route('admin.messages.index', ['customer_id' => $customer->getKey()]))
             ->assertOk()->assertSee('Xin chào')->assertSee('data-message-form', false);
     }

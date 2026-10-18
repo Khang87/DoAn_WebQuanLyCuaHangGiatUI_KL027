@@ -175,7 +175,7 @@
         @if(config('giatui.booking_two_step') && $booking->kiemKe)
             <x-admin.detail.panel title="Kiểm kê thực tế" icon="bi-clipboard-check" :iconClass="'bg-warning-subtle text-warning'">
                 <p class="mb-1">Phiên bản {{ $booking->kiemKe->PhienBan }} · {{ count($booking->kiemKe->DuLieuThucTe['items'] ?? []) }} dòng đồ thực tế</p>
-                <p class="mb-0">{{ $booking->kiemKe->CoChenhLech ? ($booking->kiemKe->isCustomerApproved() ? 'Khách đã xác nhận chênh lệch.' : 'Đang chờ khách xác nhận chênh lệch trên mobile.') : 'Không có chênh lệch.' }}</p>
+                <p class="mb-0">{{ $booking->kiemKe->CoChenhLech ? 'Có chênh lệch so với thông tin Booking; nhân viên đã đối soát.' : 'Không có chênh lệch.' }}</p>
             </x-admin.detail.panel>
         @endif
 
@@ -218,11 +218,8 @@
                         @if($booking->giaoNhanDuKiens->firstWhere('LoaiGiaoNhan', 'NHAN_DO')?->TrangThai !== 'Đã nhận')
                             <form action="{{ route('bookings.receive', $booking) }}" method="POST">@csrf<button class="btn btn-primary w-100 py-2" type="submit">Ghi nhận đã nhận đồ</button></form>
                         @else
-                        @if($booking->kiemKe && (! $booking->kiemKe->CoChenhLech || $booking->kiemKe->isCustomerApproved()))
-                            <form action="{{ route('bookings.finalize-inspection', $booking) }}" method="POST">@csrf<button class="btn btn-success w-100 py-2" type="submit">Tạo đơn từ kiểm kê đã xác nhận</button></form>
-                        @endif
                         <a href="{{ route('bookings.inspection', $booking) }}" class="btn btn-outline-primary py-2 w-100">
-                            <i class="bi bi-clipboard-check me-1"></i>Kiểm kê và tạo đơn
+                            <i class="bi bi-clipboard-check me-1"></i>Đối chiếu, điều chỉnh &amp; tạo đơn
                         </a>
                         @endif
                     @endcan

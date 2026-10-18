@@ -300,7 +300,7 @@
                 <div class="col-md-6"><label class="form-label">Trạng thái</label><x-admin.status-select name="status" id="booking-status" :options="\App\Enums\BookingStatus::options()" :selected="old('status', $booking->TrangThai)" class="form-select @error('status') is-invalid @enderror" />@error('status')<div class="invalid-feedback">{{ $message }}</div>@enderror</div>
                 @else
                     <div class="col-12">
-                        <div class="alert alert-info mb-0">Kiểm tra trực tiếp loại đồ, dịch vụ, số lượng/kg và tình trạng trước khi giặt. Mã giảm giá và điểm sử dụng lấy từ Booking; khi xác nhận, đơn hàng được tạo ở trạng thái Đã tiếp nhận.</div>
+                        <div class="alert alert-info mb-0">Đối chiếu thông tin đã đăng ký với đồ thực tế và điều chỉnh nếu cần. Mã giảm giá và điểm sử dụng lấy từ Booking; khi xác nhận, hệ thống tạo đơn ngay. Nếu có thay đổi, khách sẽ nhận được thông báo trên mobile.</div>
                     </div>
                 @endif
                 <div class="col-12"><label class="form-label">Ghi chú</label><textarea class="form-control @error('notes') is-invalid @enderror" name="notes" rows="3" maxlength="500">{{ old('notes', $booking->GhiChu) }}</textarea>@error('notes')<div class="invalid-feedback">{{ $message }}</div>@enderror</div>
@@ -327,7 +327,7 @@
                     </div>
                 </div>
             @endif
-            <div class="d-flex justify-content-end gap-2 mt-4"><button type="reset" class="btn btn-outline-secondary">Làm mới</button><button type="submit" class="btn btn-primary">{{ $inspectionMode ? (config('giatui.booking_two_step') ? 'Lưu kiểm kê / tạo đơn' : 'Xác nhận & tạo đơn') : 'Cập nhật' }}</button></div>
+            <div class="d-flex justify-content-end gap-2 mt-4"><button type="reset" class="btn btn-outline-secondary">Làm mới</button><button type="submit" class="btn btn-primary">{{ $inspectionMode ? 'Xác nhận kiểm kê & tạo đơn' : 'Cập nhật' }}</button></div>
         </form>
     </div>
 </div>

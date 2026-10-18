@@ -200,10 +200,9 @@ class BookingService
         });
     }
 
-    /** @return DonHang|null Null means the customer must approve the saved inspection. */
-    public function submitInspection(Booking $booking, array $data): ?DonHang
+    public function submitInspection(Booking $booking, array $data): DonHang
     {
-        return DB::transaction(function () use ($booking, $data): ?DonHang {
+        return DB::transaction(function () use ($booking, $data): DonHang {
             $locked = Booking::query()->lockForUpdate()->findOrFail($booking->BookingID);
             $existing = $this->findOrderForBooking($locked);
             if ($existing) {
@@ -220,8 +219,8 @@ class BookingService
             $snapshot = $this->inspectionSnapshot($data);
             $changed = $this->inspectionDiffersFromBooking($locked, $snapshot);
             $inspection = BookingKiemKe::query()->where('BookingID', $locked->BookingID)->lockForUpdate()->first();
-            if (! $inspection || $inspection->DuLieuThucTe != $snapshot) {
-                $inspection = BookingKiemKe::updateOrCreate(['BookingID' => $locked->BookingID], [
+            if (! $inspection || $inspection->DuLieuThucTe != $snapshot || $inspection->CoChenhLech !== $changed) {
+                BookingKiemKe::updateOrCreate(['BookingID' => $locked->BookingID], [
                     'DuLieuThucTe' => $snapshot,
                     'CoChenhLech' => $changed,
                     'PhienBan' => ($inspection?->PhienBan ?? 0) + 1,
@@ -229,56 +228,31 @@ class BookingService
                     'XacNhanLuc' => null,
                     'CapNhatLuc' => now(),
                 ]);
-                if ($changed) {
-                    $accountId = $locked->khachHang?->taiKhoan?->TaiKhoanID;
-                    if (! $accountId) {
-                        throw ValidationException::withMessages(['booking' => 'Khách hàng chưa có tài khoản mobile để xác nhận chênh lệch.']);
-                    }
-                    $this->notificationService->create([
-                        'TaiKhoanID' => $accountId,
-                        'BookingID' => $locked->BookingID,
-                        'LoaiThongBao' => 'booking_inspection_approval',
-                        'TieuDe' => 'Xác nhận kiểm kê đồ thực tế',
-                        'NoiDung' => 'Đặt lịch '.$locked->MaBooking.' có chênh lệch sau kiểm kê. Vui lòng xem và xác nhận phiên bản '.$inspection->PhienBan.' trước khi cửa hàng tạo đơn.',
-                        'DaDoc' => false,
-                    ]);
-                }
             }
 
-            if ($inspection->CoChenhLech && ! $inspection->isCustomerApproved()) {
-                return null;
-            }
-
-            return $this->inspectBookingAndCreateOrder(
+            $order = $this->inspectBookingAndCreateOrder(
                 $locked, null, $data['items'], 0, false, $data,
                 (bool) ($data['recalculate_delivery_fee'] ?? false), true,
             );
-        });
-    }
 
-    public function finalizeInspection(Booking $booking): DonHang
-    {
-        return DB::transaction(function () use ($booking): DonHang {
-            $locked = Booking::query()->lockForUpdate()->findOrFail($booking->BookingID);
-            $existing = $this->findOrderForBooking($locked);
-            if ($existing) {
-                return $existing;
-            }
-            $inspection = BookingKiemKe::query()->where('BookingID', $locked->BookingID)->lockForUpdate()->first();
-            if (! $inspection || ($inspection->CoChenhLech && ! $inspection->isCustomerApproved())) {
-                throw ValidationException::withMessages(['booking' => 'Khách chưa xác nhận bản kiểm kê mới nhất.']);
-            }
-            if (! BookingGiaoNhan::query()->where('BookingID', $locked->BookingID)
-                ->where('LoaiGiaoNhan', 'NHAN_DO')->where('TrangThai', 'Đã nhận')->exists()) {
-                throw ValidationException::withMessages(['booking' => 'Chưa ghi nhận nhận đồ thực tế.']);
-            }
-            $snapshot = $inspection->DuLieuThucTe;
-            $data = array_merge($snapshot['booking'], ['quality_difference' => $snapshot['quality_difference']]);
+            if ($changed) {
+                $accountId = $locked->khachHang?->taiKhoan?->TaiKhoanID;
+                if (! $accountId) {
+                    throw ValidationException::withMessages(['booking' => 'Khách hàng chưa có tài khoản mobile để nhận thông báo điều chỉnh kiểm kê.']);
+                }
 
-            return $this->inspectBookingAndCreateOrder(
-                $locked, null, $snapshot['items'], 0, false, $data,
-                (bool) ($data['recalculate_delivery_fee'] ?? false), true,
-            );
+                $this->notificationService->create([
+                    'TaiKhoanID' => $accountId,
+                    'BookingID' => $locked->BookingID,
+                    'DonHangID' => $order->DonHangID,
+                    'LoaiThongBao' => 'booking_inspection_updated',
+                    'TieuDe' => 'Cập nhật kiểm kê Booking',
+                    'NoiDung' => 'Nhân viên đã đối soát và điều chỉnh thông tin đồ thực tế cho Booking '.$locked->MaBooking.'. Đơn hàng '.$order->MaDonHang.' đã được tạo.',
+                    'DaDoc' => false,
+                ]);
+            }
+
+            return $order;
         });
     }
 
@@ -314,6 +288,10 @@ class BookingService
             || ($input['scheduled_time'] ?? null) !== $booking->GioHen?->format('H:i')) {
             return true;
         }
+        if (array_key_exists('notes', $input)
+            && trim((string) $input['notes']) !== trim((string) ($booking->GhiChu ?? ''))) {
+            return true;
+        }
 
         $declared = $booking->chiTietBookings()->get();
         if ($declared->isEmpty()) {
@@ -322,10 +300,10 @@ class BookingService
         $itemKey = static fn (array $item): string => implode(':', [
             (int) ($item['DichVuID'] ?? 0), (int) ($item['LoaiDoGiatID'] ?? 0),
             (int) ($item['DonViTinhID'] ?? 0), (float) ($item['SoLuong'] ?? 0),
-            (float) ($item['KhoiLuong'] ?? 0),
+            (float) ($item['KhoiLuong'] ?? 0), trim((string) ($item['GhiChu'] ?? '')),
         ]);
         $expected = $declared->map(fn ($item): string => $itemKey($item->only([
-            'DichVuID', 'LoaiDoGiatID', 'DonViTinhID', 'SoLuong', 'KhoiLuong',
+            'DichVuID', 'LoaiDoGiatID', 'DonViTinhID', 'SoLuong', 'KhoiLuong', 'GhiChu',
         ])))->sort()->values()->all();
         $actual = collect($snapshot['items'])->map($itemKey)->sort()->values()->all();
 
@@ -529,9 +507,9 @@ class BookingService
 
             if (config('giatui.booking_two_step')) {
                 $inspection = BookingKiemKe::query()->where('BookingID', $lockedBooking->BookingID)->lockForUpdate()->first();
-                if (! $inspection || $inspection->DuLieuThucTe != $this->inspectionSnapshot(array_merge($bookingData, ['items' => $items]))
-                    || ($inspection->CoChenhLech && ! $inspection->isCustomerApproved())) {
-                    throw ValidationException::withMessages(['booking' => 'Bản kiểm kê chưa được lưu hoặc khách chưa xác nhận phiên bản hiện tại.']);
+                $expectedSnapshot = $this->inspectionSnapshot(array_merge($bookingData, ['items' => $items]));
+                if (! $inspection || $inspection->DuLieuThucTe != $expectedSnapshot) {
+                    throw ValidationException::withMessages(['booking' => 'Bản kiểm kê chưa được lưu hoặc không khớp với dữ liệu đang tạo đơn.']);
                 }
             }
 

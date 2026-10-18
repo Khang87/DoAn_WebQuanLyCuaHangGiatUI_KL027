@@ -86,7 +86,11 @@ class MessageController extends Controller
             } elseif ($request->hasFile('image')) {
                 $this->messageService->sendSupportImage($customer, $request->user(), $request->file('image'));
             } else {
-                $this->messageService->sendSupport($customer, $request->user(), $validated['content']);
+                try {
+                    $this->messageService->sendSupport($customer, $request->user(), $validated['content']);
+                } catch (ChatMessageDecryptionException $exception) {
+                    return $this->messageCryptoUnavailable($request, $exception);
+                }
             }
 
             return $request->expectsJson()
@@ -112,12 +116,29 @@ class MessageController extends Controller
         } elseif ($request->hasFile('image')) {
             $this->messageService->sendOrderImage($order, $sender, $request->file('image'));
         } else {
-            $this->messageService->sendFromStore($order, $sender, $validated['content']);
+            try {
+                $this->messageService->sendFromStore($order, $sender, $validated['content']);
+            } catch (ChatMessageDecryptionException $exception) {
+                return $this->messageCryptoUnavailable($request, $exception);
+            }
         }
 
         return $request->expectsJson()
             ? response()->json(['ok' => true])
             : redirect()->route('admin.messages.index', ['order_id' => $order->DonHangID]);
+    }
+
+    private function messageCryptoUnavailable(Request $request, ChatMessageDecryptionException $exception): JsonResponse|RedirectResponse
+    {
+        report($exception);
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'message' => 'Chưa thể mã hóa tin nhắn. Vui lòng thử lại sau.',
+            ], 503)->header('Cache-Control', 'no-store, private');
+        }
+
+        return back()->with('error', 'Chưa thể mã hóa tin nhắn. Vui lòng thử lại sau.');
     }
 
     public function hide(TinNhan $message, Request $request): JsonResponse

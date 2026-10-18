@@ -9,6 +9,7 @@ use App\Support\InternalCommunicationPolicy;
 use Carbon\Carbon;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Http\Client\Response;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Http;
@@ -19,7 +20,7 @@ use Illuminate\Validation\ValidationException;
 class MessageService
 {
     public function __construct(
-        private ChatMessageDecryptionService $messageDecryptionService,
+        private ChatMessageDecryptionService $messageCryptoService,
     ) {}
 
     public function getOrders(?string $search = null): LengthAwarePaginator
@@ -204,7 +205,7 @@ class MessageService
 
         if ($encrypted->isNotEmpty()) {
             try {
-                $this->messageDecryptionService->decryptMessages($encrypted);
+                $this->messageCryptoService->decryptMessages($encrypted);
             } catch (ChatMessageDecryptionException $exception) {
                 Log::warning('Unable to decrypt encrypted chat messages for web display.', [
                     'exception' => $exception::class,
@@ -290,9 +291,17 @@ class MessageService
 
     public function sendSupport(User $customer, User $sender, string $content): TinNhan
     {
+        $encrypted = $this->messageCryptoService->encryptContent(trim($content));
+
         return TinNhan::query()->create([
             'NguoiGuiID' => $sender->getKey(), 'NguoiNhanID' => $customer->getKey(),
-            'DonHangID' => null, 'NoiDung' => trim($content), 'ThoiGianGui' => now('UTC'), 'TrangThai' => 'Đã gửi',
+            'DonHangID' => null,
+            'NoiDung' => '',
+            'NoiDungMaHoa' => $encrypted['ciphertext'],
+            'NoiDungNonce' => $encrypted['nonce'],
+            'MaHoaPhienBan' => 1,
+            'ThoiGianGui' => now('UTC'),
+            'TrangThai' => 'Đã gửi',
         ]);
     }
 
@@ -425,7 +434,7 @@ class MessageService
             ]])->throw();
     }
 
-    private function storageRequest(string $method, string $path, ?string $body = null, array $headers = []): \Illuminate\Http\Client\Response
+    private function storageRequest(string $method, string $path, ?string $body = null, array $headers = []): Response
     {
         $projectUrl = rtrim((string) config('services.supabase.project_url'), '/');
         $serviceKey = (string) config('services.supabase.service_role_key');
@@ -454,11 +463,16 @@ class MessageService
             ]);
         }
 
+        $encrypted = $this->messageCryptoService->encryptContent(trim($content));
+
         return TinNhan::query()->create([
             'NguoiGuiID' => $sender->getKey(),
             'NguoiNhanID' => $recipientId,
             'DonHangID' => $order->DonHangID,
-            'NoiDung' => trim($content),
+            'NoiDung' => '',
+            'NoiDungMaHoa' => $encrypted['ciphertext'],
+            'NoiDungNonce' => $encrypted['nonce'],
+            'MaHoaPhienBan' => 1,
             'ThoiGianGui' => now('UTC'),
             'TrangThai' => 'Đã gửi',
         ]);
