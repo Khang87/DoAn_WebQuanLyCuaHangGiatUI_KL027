@@ -6,6 +6,7 @@ if (conversation) {
     const form = document.querySelector('[data-message-form]');
     const orderId = conversation.dataset.orderId ? Number(conversation.dataset.orderId) : null;
     const customerId = conversation.dataset.customerAccountId ? Number(conversation.dataset.customerAccountId) : null;
+    const messageActionsAllowed = conversation.dataset.messageCanManage === '1';
     const interval = 3000;
     let realtime, connected = false, queued = false;
     let timer, controller, signature, pending = false, stopped = false, disposed = false, retry = interval;
@@ -51,15 +52,50 @@ if (conversation) {
             const bubble = document.createElement('div');
             bubble.className = `rounded-3 px-3 py-2 ${message.is_mine ? 'bg-primary text-white' : 'bg-white border'}`;
             bubble.style.maxWidth = '82%';
-            for (const [text, className] of [
-                [message.sender_name, `small ${message.is_mine ? 'text-white-50' : 'text-muted'}`],
-                [message.content, 'text-break'],
-                [formatSentAt(message.sent_at), `small text-end ${message.is_mine ? 'text-white-50' : 'text-muted'}`],
-            ]) {
+            const sender = document.createElement('div');
+            sender.className = `small ${message.is_mine ? 'text-white-50' : 'text-muted'}`;
+            sender.textContent = message.sender_name;
+            bubble.append(sender);
+            if (message.image_url) {
+                const link = document.createElement('a');
+                link.href = message.image_url;
+                link.target = '_blank';
+                link.rel = 'noopener noreferrer';
+                const image = document.createElement('img');
+                image.src = message.image_url;
+                image.alt = 'Ảnh đính kèm';
+                image.className = 'img-fluid rounded mb-1';
+                image.style.maxHeight = '240px';
+                link.append(image);
+                bubble.append(link);
+            } else {
                 const element = document.createElement('div');
-                element.className = className;
-                element.textContent = text;
+                element.className = 'text-break';
+                element.textContent = message.content;
                 bubble.append(element);
+            }
+            const time = document.createElement('div');
+            time.className = `small text-end ${message.is_mine ? 'text-white-50' : 'text-muted'}`;
+            time.textContent = formatSentAt(message.sent_at);
+            bubble.append(time);
+            if (conversation.dataset.messageHide && messageActionsAllowed) {
+                const actions = document.createElement('div');
+                actions.className = 'd-flex justify-content-end gap-2 mt-1';
+                if (message.is_mine) {
+                    const recall = document.createElement('button');
+                    recall.type = 'button';
+                    recall.className = `btn btn-sm btn-link p-0 ${message.is_mine ? 'text-white' : ''}`;
+                    recall.dataset.messageRecall = String(message.id);
+                    recall.textContent = 'Thu hồi';
+                    actions.append(recall);
+                }
+                const hide = document.createElement('button');
+                hide.type = 'button';
+                hide.className = `btn btn-sm btn-link p-0 ${message.is_mine ? 'text-white' : ''}`;
+                hide.dataset.messageHide = String(message.id);
+                hide.textContent = 'Xóa';
+                actions.append(hide);
+                bubble.append(actions);
             }
             row.append(bubble);
             fragment.append(row);
@@ -111,7 +147,8 @@ if (conversation) {
             if (data.order_id !== orderId || (customerId !== null && data.customer_account_id !== customerId) || !Array.isArray(data.messages) || data.messages.length > 100
                 || data.messages.some(message => !Number.isSafeInteger(message.id) || message.id < 1
                     || typeof message.content !== 'string' || typeof message.sender_name !== 'string'
-                    || typeof message.is_mine !== 'boolean' || (message.sent_at !== null && typeof message.sent_at !== 'string'))) {
+                    || typeof message.is_mine !== 'boolean' || (message.image_url != null && typeof message.image_url !== 'string')
+                    || (message.sent_at !== null && typeof message.sent_at !== 'string'))) {
                 throw new Error('Invalid conversation response');
             }
             if (document.hidden || disposed) return;
@@ -160,6 +197,67 @@ if (conversation) {
             void sync();
         }
     }
+
+    function conversationTarget() {
+        return customerId !== null ? { customer_id: customerId } : { order_id: orderId };
+    }
+
+    conversation.addEventListener('click', async event => {
+        const button = event.target.closest('[data-message-hide], [data-message-recall]');
+        if (!button || !messageActionsAllowed) return;
+        const isRecall = button.hasAttribute('data-message-recall');
+        const messageId = button.dataset[isRecall ? 'messageRecall' : 'messageHide'];
+        const action = isRecall ? 'recall' : 'hide';
+        if (!window.confirm(isRecall ? 'Thu hồi tin nhắn này khỏi cuộc trò chuyện?' : 'Xóa tin nhắn này khỏi phía cửa hàng?')) return;
+        button.disabled = true;
+        try {
+            const template = conversation.dataset[isRecall ? 'messageRecall' : 'messageHide'];
+            const endpoint = template.replace(/\/0\/(hide|recall)$/, `/${messageId}/$1`);
+            const response = await fetch(endpoint, {
+                method: 'POST', credentials: 'same-origin', headers: {
+                    Accept: 'application/json', 'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content ?? '',
+                }, body: JSON.stringify(conversationTarget()),
+            });
+            if (!response.ok) throw new Error('Không thể cập nhật tin nhắn.');
+            signature = undefined;
+            await sync();
+        } catch (error) {
+            showStatus(error.message || 'Không thể cập nhật tin nhắn.');
+            button.disabled = false;
+        }
+    });
+
+    if (form) {
+        form.addEventListener('submit', async event => {
+            event.preventDefault();
+            if (form.dataset.accessLost === 'true') return;
+            const submit = form.querySelector('button[type="submit"]');
+            submit.disabled = true;
+            showStatus('Đang gửi tin nhắn…');
+            try {
+                const response = await fetch(form.action, {
+                    method: 'POST', credentials: 'same-origin', headers: { Accept: 'application/json' },
+                    body: new FormData(form),
+                });
+                if (!response.ok) {
+                    const body = await response.json().catch(() => ({}));
+                    throw new Error(body.message || Object.values(body.errors ?? {}).flat()[0] || 'Không gửi được tin nhắn.');
+                }
+                form.querySelector('textarea[name="content"]').value = '';
+                form.querySelector('[data-message-image]').value = '';
+                window.dispatchEvent(new Event('message-inbox-changed'));
+                signature = undefined;
+                await sync();
+            } catch (error) {
+                showStatus(error.message || 'Không gửi được tin nhắn.');
+            } finally {
+                submit.disabled = false;
+            }
+        });
+    }
+
+    window.addEventListener('message-inbox-changed', () => { void sync(); });
 
     document.addEventListener('visibilitychange', resume);
     window.addEventListener('online', resume);

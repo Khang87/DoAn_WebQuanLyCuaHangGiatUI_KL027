@@ -38,7 +38,7 @@ return [
     ],
 
     'supabase' => [
-        'project_url' => env('SUPABASE_PROJECT_URL'),
+        'project_url' => env('SUPABASE_PROJECT_URL') ?: env('SUPABASE_URL'),
         'anon_key' => env('SUPABASE_ANON_KEY'),
         'publishable_key' => env('SUPABASE_PUBLISHABLE_KEY'),
         'service_role_key' => env('SUPABASE_SERVICE_ROLE_KEY'),
