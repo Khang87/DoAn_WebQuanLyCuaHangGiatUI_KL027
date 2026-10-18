@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
 
@@ -207,12 +208,22 @@ class MessageService
 
             return $messages;
         }
-        $response = Http::acceptJson()->withHeaders(['apikey' => $serviceKey])->withToken($serviceKey)
-            ->timeout(20)->post($projectUrl.'/functions/v1/chat-encryption', [
-                'action' => 'present_web_messages', 'message_ids' => $needsPresentation->map(fn (TinNhan $message): int => (int) $message->getKey())->all(),
-            ])->throw()->json('messages');
-        if (! is_array($response)) {
-            throw new \RuntimeException('Chat message presentation returned an invalid response.');
+        try {
+            $response = Http::acceptJson()->withHeaders(['apikey' => $serviceKey])->withToken($serviceKey)
+                ->timeout(20)->post($projectUrl.'/functions/v1/chat-encryption', [
+                    'action' => 'present_web_messages', 'message_ids' => $needsPresentation->map(fn (TinNhan $message): int => (int) $message->getKey())->all(),
+                ])->throw()->json('messages');
+            if (! is_array($response)) {
+                throw new \RuntimeException('Chat message presentation returned an invalid response.');
+            }
+        } catch (\Throwable $exception) {
+            Log::warning('Unable to present messages from the chat Edge Function.', ['exception' => $exception::class]);
+            foreach ($needsPresentation as $message) {
+                $message->setAttribute('NoiDung', 'Chưa thể tải nội dung tin nhắn. Vui lòng kiểm tra dịch vụ chat.');
+                $message->setAttribute('ImageUrl', null);
+            }
+
+            return $messages;
         }
         $presentedById = collect($response)->keyBy(fn (array $row): int => (int) ($row['TinNhanID'] ?? 0));
         foreach ($needsPresentation as $message) {
