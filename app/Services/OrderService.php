@@ -12,6 +12,7 @@ use App\Enums\ReturnMethod;
 use App\Exceptions\SettledOrderException;
 use App\Models\BangGia;
 use App\Models\Booking;
+use App\Models\BookingGiaoNhan;
 use App\Models\BookingKiemKe;
 use App\Models\ChiTietDonHang;
 use App\Models\DichVu;
@@ -236,10 +237,12 @@ class OrderService
             if (! $canConvert) {
                 throw ValidationException::withMessages(['booking' => 'Chỉ Booking chờ xác nhận mới có thể được kiểm tra và tạo đơn.']);
             }
+            $inspection = null;
             if (config('giatui.booking_two_step')) {
-                if (! $booking->giaoNhanDuKiens()->where('LoaiGiaoNhan', 'NHAN_DO')
-                    ->where('TrangThai', 'Đã nhận')->exists()) {
-                    throw ValidationException::withMessages(['booking' => 'Chưa ghi nhận nhận đồ thực tế.']);
+                $legs = $booking->giaoNhanDuKiens()->lockForUpdate()->get()->keyBy('LoaiGiaoNhan');
+                if ($legs->count() !== 2 || $legs->get('NHAN_DO')?->TrangThai !== 'Đã nhận'
+                    || ! $legs->has('GIAO_DO')) {
+                    throw ValidationException::withMessages(['booking' => 'Cần đủ phiếu Nhận đã hoàn tất và phiếu Giao trước khi tạo đơn.']);
                 }
                 $inspection = BookingKiemKe::query()->where('BookingID', $booking->BookingID)->lockForUpdate()->first();
                 $storedInspection = $inspection?->DuLieuThucTe;
@@ -380,6 +383,25 @@ class OrderService
                         ? DeliveryStatus::Completed->dbValue() : DeliveryStatus::Pending->dbValue(),
                     'GhiChu' => $booking->GhiChu,
                 ]);
+            }
+
+            if ($inspection) {
+                foreach ([
+                    'NHAN_DO' => [$booking->HinhThucNhanDo, $booking->DiaChiNhan, $deliveryQuote['pickup_fee']],
+                    'GIAO_DO' => [$booking->HinhThucTraDo, $booking->DiaChiTra, $deliveryQuote['return_fee']],
+                ] as $legType => [$method, $address, $fee]) {
+                    $linked = BookingGiaoNhan::query()->where('BookingID', $booking->BookingID)
+                        ->where('LoaiGiaoNhan', $legType)->update([
+                            'DonHangID' => $order->DonHangID,
+                            'BookingKiemKeID' => $inspection->BookingKiemKeID,
+                            'HinhThuc' => $method,
+                            'DiaChi' => $method === 'Tại nhà' ? $address : null,
+                            'PhiGiaoNhan' => $fee,
+                        ]);
+                    if ($linked !== 1) {
+                        throw ValidationException::withMessages(['booking' => 'Không thể liên kết đủ phiếu Nhận và Giao với đơn hàng.']);
+                    }
+                }
             }
 
             if (array_key_exists('DiemDaTru', $booking->getAttributes())) {

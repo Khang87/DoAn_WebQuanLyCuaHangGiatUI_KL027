@@ -79,7 +79,18 @@ class DeliveryService
 
     public function find(int $id): ?GiaoNhan
     {
-        return GiaoNhan::with(['donHang.khachHang', 'nhanVien'])->find($id);
+        $relations = ['donHang.khachHang', 'nhanVien'];
+        if (config('giatui.booking_two_step')) {
+            $relations = array_merge($relations, [
+                'donHang.booking.kiemKe',
+                'donHang.booking.giaoNhanDuKiens',
+                'donHang.chiTietDonHangs.dichVu',
+                'donHang.chiTietDonHangs.loaiDoGiat',
+                'donHang.chiTietDonHangs.donViTinh',
+            ]);
+        }
+
+        return GiaoNhan::with($relations)->find($id);
     }
 
     public function create(array $data): GiaoNhan

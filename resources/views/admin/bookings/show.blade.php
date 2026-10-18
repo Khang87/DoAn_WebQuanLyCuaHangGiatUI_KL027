@@ -148,6 +148,25 @@
                         <span class="ms-2">{{ $leg->HinhThuc }}</span>
                         <span class="ms-2 text-muted">{{ $leg->TrangThai }}</span>
                         <div class="text-muted small">{{ $leg->DiaChi ?: 'Tại cửa hàng' }}</div>
+                        @if($leg->DonHangID && $leg->BookingKiemKeID === $booking->kiemKe?->BookingKiemKeID)
+                            <div class="small mt-2">
+                                Đã đối soát từ phiếu nhận · kiểm kê phiên bản {{ $booking->kiemKe->PhienBan }} ·
+                                @can('orders.view')
+                                    <a href="{{ route('orders.show', $order) }}">Đơn {{ $order->MaDonHang }}</a>
+                                @else
+                                    Đơn {{ $order->MaDonHang }}
+                                @endcan
+                            </div>
+                            @if($leg->LoaiGiaoNhan === 'GIAO_DO')
+                                <ul class="small mb-0 mt-2 ps-3" data-booking-return-items>
+                                    @foreach($order->chiTietDonHangs as $item)
+                                        <li>{{ $item->item_name }} · {{ $item->KhoiLuong ?: $item->SoLuong }} {{ $item->unit }} · {{ $item->TinhTrangTruocKhiGiat }}</li>
+                                    @endforeach
+                                </ul>
+                            @endif
+                        @elseif($leg->LoaiGiaoNhan === 'GIAO_DO')
+                            <div class="small text-muted mt-2">Chờ nhánh Nhận hoàn tất kiểm kê và tạo đơn.</div>
+                        @endif
                     </div>
                 @endforeach
             </x-admin.detail.panel>
