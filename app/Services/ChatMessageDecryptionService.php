@@ -71,6 +71,29 @@ class ChatMessageDecryptionService
         return $plainText;
     }
 
+    /** @return array{ciphertext: string, nonce: string} */
+    public function encryptContent(string $plainText): array
+    {
+        $nonce = random_bytes(12);
+        $tag = '';
+        $cipherText = openssl_encrypt(
+            $plainText,
+            'aes-256-gcm',
+            $this->encryptionKey(),
+            OPENSSL_RAW_DATA,
+            $nonce,
+            $tag,
+            '',
+            16,
+        );
+
+        if (! is_string($cipherText) || strlen($tag) !== 16) {
+            throw new ChatMessageDecryptionException('Chat message could not be encrypted.');
+        }
+
+        return ['ciphertext' => base64_encode($cipherText.$tag), 'nonce' => base64_encode($nonce)];
+    }
+
     private function encryptionKey(): string
     {
         if ($this->key !== null) {

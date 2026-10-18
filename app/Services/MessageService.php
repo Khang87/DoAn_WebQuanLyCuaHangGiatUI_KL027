@@ -238,37 +238,29 @@ class MessageService
             return $messages;
         }
 
-        try {
-            $response = Http::acceptJson()->withHeaders(['apikey' => $serviceKey])->withToken($serviceKey)
-                ->timeout(20)->post($projectUrl.'/functions/v1/chat-encryption', [
-                    'action' => 'present_web_messages',
-                    'message_ids' => $images->map(fn (TinNhan $message): int => (int) $message->getKey())->all(),
-                ])->throw()->json('messages');
-
-            if (! is_array($response)) {
-                throw new \RuntimeException('Chat image presentation returned an invalid response.');
-            }
-        } catch (\Throwable $exception) {
-            Log::warning('Unable to present chat images from the chat Edge Function.', [
-                'exception' => $exception::class,
-            ]);
-
-            foreach ($images as $message) {
+        foreach ($images as $message) {
+            $path = substr((string) $message->NoiDung, strlen('image:'));
+            try {
+                $response = Http::acceptJson()->withHeaders(['apikey' => $serviceKey])->withToken($serviceKey)
+                    ->timeout(15)->post($projectUrl.'/storage/v1/object/sign/chat-images/'.$this->encodeStoragePath($path), [
+                        'expiresIn' => 3600,
+                    ])->throw();
+                $signedPath = $response->json('signedURL') ?? $response->json('signedUrl');
+                if (! is_string($signedPath) || $signedPath === '') {
+                    throw new \RuntimeException('Storage did not return a signed image URL.');
+                }
+                $imageUrl = str_starts_with($signedPath, 'http')
+                    ? $signedPath
+                    : $projectUrl.(str_starts_with($signedPath, '/object/') ? '/storage/v1' : '').$signedPath;
+                $message->setAttribute('NoiDung', 'Ảnh');
+                $message->setAttribute('ImageUrl', $imageUrl);
+            } catch (\Throwable $exception) {
+                Log::warning('Unable to sign chat image URL.', [
+                    'message_id' => (int) $message->getKey(),
+                    'exception' => $exception::class,
+                ]);
                 $message->setAttribute('NoiDung', 'Chưa thể tải ảnh tin nhắn. Vui lòng thử lại sau.');
                 $message->setAttribute('ImageUrl', null);
-            }
-
-            return $messages;
-        }
-
-        $presentedById = collect($response)->keyBy(fn (array $row): int => (int) ($row['TinNhanID'] ?? 0));
-
-        foreach ($images as $message) {
-            $row = $presentedById->get((int) $message->getKey());
-
-            if (is_array($row)) {
-                $message->setAttribute('NoiDung', (string) ($row['NoiDung'] ?? ''));
-                $message->setAttribute('ImageUrl', $row['ImageUrl'] ?? null);
             }
         }
 
@@ -382,30 +374,55 @@ class MessageService
 
     public function recall(TinNhan $message): void
     {
-        $this->presentWebMessages(collect([$message]));
+        $this->messageDecryptionService->decryptMessages(collect([$message]));
         $path = str_starts_with((string) $message->NoiDung, 'image:')
             ? substr((string) $message->NoiDung, strlen('image:')) : null;
         $message->delete();
         if ($path !== null) {
-            $this->storageRequest('DELETE', '/storage/v1/object/chat-images/'.$this->encodeStoragePath($path))->throw();
+            try {
+                $this->storageRequest('DELETE', '/storage/v1/object/chat-images/'.$this->encodeStoragePath($path))->throw();
+            } catch (\Throwable $exception) {
+                Log::warning('Chat message was recalled but its image could not be removed from storage.', [
+                    'message_id' => (int) $message->getKey(),
+                    'exception' => $exception::class,
+                ]);
+            }
         }
     }
 
-    public function edit(TinNhan $message, User $sender, string $content): void
+    public function edit(TinNhan $message, string $content): void
+    {
+        $this->messageDecryptionService->decryptMessages(collect([$message]));
+        if (str_starts_with((string) $message->NoiDung, 'image:')) {
+            throw ValidationException::withMessages(['content' => 'Không thể sửa nội dung của tin nhắn ảnh.']);
+        }
+        $encrypted = $this->messageDecryptionService->encryptContent(trim($content));
+        $message->forceFill([
+            'NoiDung' => '',
+            'NoiDungMaHoa' => $encrypted['ciphertext'],
+            'NoiDungNonce' => $encrypted['nonce'],
+            'MaHoaPhienBan' => 1,
+            'DaChinhSua' => true,
+        ])->save();
+    }
+
+    public function hideForAccount(int $messageId, int $accountId): void
     {
         $projectUrl = rtrim((string) config('services.supabase.project_url'), '/');
         $serviceKey = (string) config('services.supabase.service_role_key');
         if ($projectUrl === '' || $serviceKey === '') {
-            throw new \RuntimeException('Chat message editing is not configured.');
+            throw new \RuntimeException('Chat message hiding is not configured.');
         }
 
-        Http::acceptJson()->withHeaders(['apikey' => $serviceKey])->withToken($serviceKey)
-            ->timeout(20)->post($projectUrl.'/functions/v1/chat-encryption', [
-                'action' => 'edit_message',
-                'message_id' => (int) $message->getKey(),
-                'sender_account_id' => (int) $sender->getAuthIdentifier(),
-                'content' => trim($content),
-            ])->throw();
+        Http::acceptJson()->withHeaders([
+            'apikey' => $serviceKey,
+            'Prefer' => 'resolution=ignore-duplicates,return=minimal',
+        ])->withToken($serviceKey)->timeout(15)
+            ->post($projectUrl.'/rest/v1/TinNhanAn?on_conflict=TaiKhoanID,TinNhanID', [[
+                'TaiKhoanID' => $accountId,
+                'TinNhanID' => $messageId,
+                'ThoiGianAn' => now('UTC')->toISOString(),
+            ]])->throw();
     }
 
     private function storageRequest(string $method, string $path, ?string $body = null, array $headers = []): \Illuminate\Http\Client\Response

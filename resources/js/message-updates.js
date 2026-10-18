@@ -407,29 +407,18 @@ if (conversation) {
                     bubble.append(sender, preview, pendingLabel); optimistic.append(bubble); conversation.append(optimistic);
                     conversation.scrollTop = conversation.scrollHeight;
                     try {
-                        showStatus('Đang tải ảnh lên…');
                         const csrf = document.querySelector('meta[name="csrf-token"]')?.content ?? '';
-                        const uploadUrlResponse = await fetch(conversation.dataset.messageImageUpload, {
-                            method: 'POST', credentials: 'same-origin', headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf },
-                            body: JSON.stringify({ ...conversationTarget(), mime_type: image.type }),
+                        showStatus('Đang gửi ảnh…');
+                        formData.set('image', image);
+                        const response = await fetch(form.action, {
+                            method: 'POST', credentials: 'same-origin',
+                            headers: { Accept: 'application/json', 'X-CSRF-TOKEN': csrf },
+                            body: formData,
                         });
-                        const upload = await uploadUrlResponse.json().catch(() => ({}));
-                        if (!uploadUrlResponse.ok) throw new Error(upload.message || Object.values(upload.errors ?? {}).flat()[0] || 'Không tạo được đường dẫn tải ảnh.');
-                        const signedUrl = new URL(upload.signed_url);
-                        if (signedUrl.protocol !== 'https:' || !signedUrl.hostname.endsWith('.supabase.co')) throw new Error('Đường dẫn tải ảnh không hợp lệ.');
-                        const uploaded = await fetch(signedUrl, {
-                            method: 'PUT', headers: {
-                                apikey: upload.api_key,
-                                'Content-Type': image.type,
-                                'x-upsert': 'false',
-                            }, body: image,
-                        });
-                        if (!uploaded.ok) throw new Error('Không tải được ảnh lên kho lưu trữ.');
-                        const finalize = new FormData();
-                        for (const key of ['order_id', 'customer_id']) { const field = form.elements.namedItem(key); if (field) finalize.set(key, field.value); }
-                        finalize.set('image_path', upload.path);
-                        const response = await fetch(form.action, { method: 'POST', credentials: 'same-origin', headers: { Accept: 'application/json', 'X-CSRF-TOKEN': csrf }, body: finalize });
-                        if (!response.ok) { const body = await response.json().catch(() => ({})); throw new Error(body.message || Object.values(body.errors ?? {}).flat()[0] || 'Không lưu được tin nhắn ảnh.'); }
+                        if (!response.ok) {
+                            const body = await response.json().catch(() => ({}));
+                            throw new Error(body.message || Object.values(body.errors ?? {}).flat()[0] || 'Không gửi được ảnh.');
+                        }
                         optimistic.remove(); URL.revokeObjectURL(previewUrl);
                     } catch (error) { optimistic.remove(); URL.revokeObjectURL(previewUrl); throw error; }
                     form.querySelector('textarea[name="content"]').value = '';

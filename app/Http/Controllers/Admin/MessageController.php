@@ -12,7 +12,6 @@ use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
@@ -128,10 +127,10 @@ class MessageController extends Controller
             'customer_id' => ['nullable', 'required_without:order_id', 'integer', 'min:1', 'prohibits:order_id'],
         ]);
         $this->assertConversationContains($message, $validated);
-        DB::table('TinNhanAn')->insertOrIgnore([
-            'TaiKhoanID' => (int) $request->user()->getAuthIdentifier(), 'TinNhanID' => (int) $message->getKey(),
-            'ThoiGianAn' => now('UTC'),
-        ]);
+        $this->messageService->hideForAccount(
+            (int) $message->getKey(),
+            (int) $request->user()->getAuthIdentifier(),
+        );
 
         return response()->json(['ok' => true])->header('Cache-Control', 'private, no-store');
     }
@@ -180,7 +179,7 @@ class MessageController extends Controller
         ]);
         $this->assertConversationContains($message, $validated);
         abort_unless((int) $message->NguoiGuiID === (int) $request->user()->getAuthIdentifier(), 403);
-        $this->messageService->edit($message, $request->user(), $validated['content']);
+        $this->messageService->edit($message, $validated['content']);
 
         return response()->json(['ok' => true])->header('Cache-Control', 'private, no-store');
     }
