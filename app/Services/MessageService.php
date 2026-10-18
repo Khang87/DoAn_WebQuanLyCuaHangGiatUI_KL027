@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\DonHang;
+use App\Models\TaiKhoan;
 use App\Models\TinNhan;
 use App\Models\User;
 use App\Support\InternalCommunicationPolicy;
@@ -302,12 +303,12 @@ class MessageService
         return $this->createImageMessage($sender, $recipient, (int) $order->getKey(), $path);
     }
 
-    private function createImageMessage(User $sender, User $recipient, ?int $orderId, string $path): TinNhan
+    private function createImageMessage(User $sender, User|TaiKhoan $recipient, ?int $orderId, string $path): TinNhan
     {
         return $this->createWebMessage($sender, $recipient, $orderId, 'image:'.$path);
     }
 
-    private function sendImage(User $sender, User $recipient, ?int $orderId, UploadedFile $image): TinNhan
+    private function sendImage(User $sender, User|TaiKhoan $recipient, ?int $orderId, UploadedFile $image): TinNhan
     {
         $path = (int) $sender->getKey().'/'.bin2hex(random_bytes(16)).'.'.$image->extension();
         $this->storageRequest('POST', '/storage/v1/object/chat-images/'.$this->encodeStoragePath($path), $image->getContent(), [
@@ -397,7 +398,7 @@ class MessageService
         return $data;
     }
 
-    private function createWebMessage(User $sender, User $recipient, ?int $orderId, string $content): TinNhan
+    private function createWebMessage(User $sender, User|TaiKhoan $recipient, ?int $orderId, string $content): TinNhan
     {
         $result = $this->invokeChatFunction([
             'action' => str_starts_with($content, 'image:') ? 'create_image_message_web' : 'send_message_web',
