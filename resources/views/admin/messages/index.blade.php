@@ -112,10 +112,13 @@
                                     {{ app(\App\Services\MessageService::class)->sentAt($message)?->format('d-m-Y H:i') }}
                                 </div>
                                 @can('messages.create')
-                                    <div class="message-actions d-flex justify-content-end gap-2 mt-1" data-message-actions>
-                                        @if($isMine && !($message->ImageUrl ?? false))<button type="button" class="btn btn-sm btn-link p-0 {{ $isMine ? 'text-white' : '' }}" data-message-edit="{{ $message->TinNhanID }}">Sửa</button>@endif
-                                        @if($isMine)<button type="button" class="btn btn-sm btn-link p-0 text-white" data-message-recall="{{ $message->TinNhanID }}">Thu hồi</button>@endif
-                                        <button type="button" class="btn btn-sm btn-link p-0 {{ $isMine ? 'text-white' : '' }}" data-message-hide="{{ $message->TinNhanID }}">Xóa</button>
+                                    <div class="message-actions" data-message-actions>
+                                        <button type="button" class="message-menu-toggle btn btn-sm" data-message-menu-toggle aria-label="Tùy chọn tin nhắn" aria-expanded="false">⋮</button>
+                                        <div class="message-actions-menu" data-message-actions-menu>
+                                            @if($isMine && !($message->ImageUrl ?? false))<button type="button" class="dropdown-item" data-message-edit="{{ $message->TinNhanID }}">Sửa</button>@endif
+                                            @if($isMine)<button type="button" class="dropdown-item" data-message-recall="{{ $message->TinNhanID }}">Thu hồi</button>@endif
+                                            <button type="button" class="dropdown-item" data-message-hide="{{ $message->TinNhanID }}">Xóa</button>
+                                        </div>
                                     </div>
                                 @endcan
                             </div>
@@ -207,7 +210,18 @@
 
 @push('styles')
 <style>
-    .message-chat-history [data-message-actions] { display: none !important; }
-    .message-chat-history [data-message-id][data-actions-open="true"] [data-message-actions] { display: flex !important; }
+    .message-chat-history .rounded-3 { position: relative; }
+    .message-chat-history .message-actions { position: absolute; top: .35rem; right: -2.25rem; z-index: 5; }
+    .message-chat-history .justify-content-end > .rounded-3 .message-actions { right: auto; left: -2.25rem; }
+    .message-chat-history .message-menu-toggle { display: none; width: 2rem; height: 2rem; padding: 0; border-radius: 50%; background: #fff; border: 1px solid #dee2e6; color: #495057; font-size: 1.25rem; line-height: 1; }
+    .message-chat-history [data-message-id]:hover .message-menu-toggle,
+    .message-chat-history [data-message-id]:focus-within .message-menu-toggle,
+    .message-chat-history [data-message-id][data-actions-open="true"] .message-menu-toggle { display: inline-flex; align-items: center; justify-content: center; }
+    .message-chat-history .message-actions-menu { display: none; position: absolute; top: 2.1rem; right: 0; min-width: 9rem; padding: .35rem 0; border: 1px solid #dee2e6; border-radius: .5rem; background: #fff; box-shadow: 0 .35rem 1rem #0002; }
+    .message-chat-history .justify-content-end > .rounded-3 .message-actions-menu { right: auto; left: 0; }
+    .message-chat-history [data-message-id][data-actions-open="true"] .message-actions-menu { display: block; }
+    .message-chat-history .message-actions-menu .dropdown-item { width: 100%; padding: .45rem .85rem; text-align: left; color: #212529; background: transparent; border: 0; }
+    .message-chat-history .message-actions-menu .dropdown-item:hover { background: #f1f3f5; }
+    @media (hover: none) { .message-chat-history .message-menu-toggle { display: inline-flex; align-items: center; justify-content: center; } }
 </style>
 @endpush

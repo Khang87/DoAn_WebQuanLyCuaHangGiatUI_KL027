@@ -127,30 +127,42 @@ if (conversation) {
             bubble.append(time);
             if (conversation.dataset.messageHide && messageActionsAllowed) {
                 const actions = document.createElement('div');
-                actions.className = 'message-actions d-flex justify-content-end gap-2 mt-1';
+                actions.className = 'message-actions';
                 actions.dataset.messageActions = '';
+                const toggle = document.createElement('button');
+                toggle.type = 'button';
+                toggle.className = 'message-menu-toggle btn btn-sm';
+                toggle.dataset.messageMenuToggle = '';
+                toggle.setAttribute('aria-label', 'Tùy chọn tin nhắn');
+                toggle.setAttribute('aria-expanded', 'false');
+                toggle.textContent = '⋮';
+                actions.append(toggle);
+                const menu = document.createElement('div');
+                menu.className = 'message-actions-menu';
+                menu.dataset.messageActionsMenu = '';
                 if (message.is_mine && !message.image_url && conversation.dataset.messageEdit) {
                     const edit = document.createElement('button');
                     edit.type = 'button';
-                    edit.className = `btn btn-sm btn-link p-0 ${message.is_mine ? 'text-white' : ''}`;
+                    edit.className = 'dropdown-item';
                     edit.dataset.messageEdit = String(message.id);
                     edit.textContent = 'Sửa';
-                    actions.append(edit);
+                    menu.append(edit);
                 }
                 if (message.is_mine) {
                     const recall = document.createElement('button');
                     recall.type = 'button';
-                    recall.className = `btn btn-sm btn-link p-0 ${message.is_mine ? 'text-white' : ''}`;
+                    recall.className = 'dropdown-item';
                     recall.dataset.messageRecall = String(message.id);
                     recall.textContent = 'Thu hồi';
-                    actions.append(recall);
+                    menu.append(recall);
                 }
                 const hide = document.createElement('button');
                 hide.type = 'button';
-                hide.className = `btn btn-sm btn-link p-0 ${message.is_mine ? 'text-white' : ''}`;
+                hide.className = 'dropdown-item';
                 hide.dataset.messageHide = String(message.id);
                 hide.textContent = 'Xóa';
-                actions.append(hide);
+                menu.append(hide);
+                actions.append(menu);
                 bubble.append(actions);
             }
             row.append(bubble);
@@ -265,33 +277,70 @@ if (conversation) {
     }
 
     conversation.addEventListener('click', async event => {
+        const menuToggle = event.target.closest('[data-message-menu-toggle]');
+        if (menuToggle) {
+            const row = menuToggle.closest('[data-message-id]');
+            const shouldOpen = row.dataset.actionsOpen !== 'true';
+            conversation.querySelectorAll('[data-actions-open="true"]').forEach(open => {
+                open.dataset.actionsOpen = 'false';
+                open.querySelector('[data-message-menu-toggle]')?.setAttribute('aria-expanded', 'false');
+            });
+            row.dataset.actionsOpen = shouldOpen ? 'true' : 'false';
+            menuToggle.setAttribute('aria-expanded', shouldOpen ? 'true' : 'false');
+            return;
+        }
+        if (!event.target.closest('[data-message-actions-menu]')) {
+            conversation.querySelectorAll('[data-actions-open="true"]').forEach(open => {
+                open.dataset.actionsOpen = 'false';
+                open.querySelector('[data-message-menu-toggle]')?.setAttribute('aria-expanded', 'false');
+            });
+        }
         const button = event.target.closest('[data-message-hide], [data-message-recall], [data-message-edit]');
         if (!button || !messageActionsAllowed) return;
         if (button.hasAttribute('data-message-edit')) {
             const messageId = button.dataset.messageEdit;
             const row = button.closest('[data-message-id]');
-            const content = row?.querySelector('.text-break')?.textContent ?? '';
-            const editedContent = window.prompt('Sửa tin nhắn', content);
-            if (editedContent === null || editedContent.trim() === '' || editedContent === content) return;
-            button.disabled = true;
-            try {
-                const endpoint = conversation.dataset.messageEdit.replace(/\/0\/edit$/, `/${messageId}/edit`);
-                const response = await fetch(endpoint, {
-                    method: 'PATCH', credentials: 'same-origin', headers: {
-                        Accept: 'application/json', 'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content ?? '',
-                    }, body: JSON.stringify({ ...conversationTarget(), content: editedContent }),
-                });
-                if (!response.ok) {
-                    const body = await response.json().catch(() => ({}));
-                    throw new Error(body.message || Object.values(body.errors ?? {}).flat()[0] || 'Không sửa được tin nhắn.');
+            const content = row?.querySelector('.text-break');
+            if (!row || !content) return;
+            const original = content.textContent ?? '';
+            const editor = document.createElement('div');
+            editor.className = 'message-inline-editor mt-2';
+            const input = document.createElement('textarea');
+            input.className = 'form-control form-control-sm';
+            input.rows = 2;
+            input.maxLength = 1000;
+            input.value = original;
+            const controls = document.createElement('div');
+            controls.className = 'd-flex justify-content-end gap-2 mt-2';
+            const cancel = document.createElement('button');
+            cancel.type = 'button'; cancel.className = 'btn btn-sm btn-outline-secondary'; cancel.textContent = 'Hủy';
+            const save = document.createElement('button');
+            save.type = 'button'; save.className = 'btn btn-sm btn-light'; save.textContent = 'Lưu';
+            controls.append(cancel, save); editor.append(input, controls); content.replaceWith(editor); input.focus();
+            cancel.addEventListener('click', () => { const restored = document.createElement('div'); restored.className = 'text-break'; restored.textContent = original; editor.replaceWith(restored); });
+            save.addEventListener('click', async () => {
+                const editedContent = input.value.trim();
+                if (!editedContent || editedContent === original) { cancel.click(); return; }
+                save.disabled = true;
+                try {
+                    const endpoint = conversation.dataset.messageEdit.replace(/\/0\/edit$/, `/${messageId}/edit`);
+                    const response = await fetch(endpoint, {
+                        method: 'PATCH', credentials: 'same-origin', headers: {
+                            Accept: 'application/json', 'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content ?? '',
+                        }, body: JSON.stringify({ ...conversationTarget(), content: editedContent }),
+                    });
+                    if (!response.ok) {
+                        const body = await response.json().catch(() => ({}));
+                        throw new Error(body.message || Object.values(body.errors ?? {}).flat()[0] || 'Không sửa được tin nhắn.');
+                    }
+                    signature = undefined;
+                    await sync();
+                } catch (error) {
+                    showStatus(error.message || 'Không sửa được tin nhắn.');
+                    save.disabled = false;
                 }
-                signature = undefined;
-                await sync();
-            } catch (error) {
-                showStatus(error.message || 'Không sửa được tin nhắn.');
-                button.disabled = false;
-            }
+            });
             return;
         }
         const isRecall = button.hasAttribute('data-message-recall');
@@ -317,19 +366,6 @@ if (conversation) {
         }
     });
 
-    let pressTimer = null;
-    conversation.addEventListener('pointerdown', event => {
-        const row = event.target.closest('[data-message-id]');
-        if (!row || !messageActionsAllowed || event.target.closest('[data-message-actions]')) return;
-        clearTimeout(pressTimer);
-        pressTimer = setTimeout(() => {
-            conversation.querySelectorAll('[data-actions-open="true"]').forEach(open => { open.dataset.actionsOpen = 'false'; });
-            row.dataset.actionsOpen = 'true';
-        }, 500);
-    });
-    for (const name of ['pointerup', 'pointercancel', 'pointerleave']) {
-        conversation.addEventListener(name, () => clearTimeout(pressTimer));
-    }
     conversation.addEventListener('contextmenu', event => {
         const row = event.target.closest('[data-message-id]');
         if (!row || !messageActionsAllowed) return;
