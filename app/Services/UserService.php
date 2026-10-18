@@ -144,7 +144,7 @@ class UserService
     /**
      * @return array{
      *     message: ?string,
-     *     orders: list<array{id: int, code: string, status: string}>
+     *     orders: list<array{id: int, code: string, status: string, payment_status: string}>
      * }
      */
     public function delete(User $user): array
@@ -202,12 +202,22 @@ class UserService
                         });
                 })
                 ->orderBy('MaDonHang')
+                ->addSelect([
+                    'paid_invoice_id' => DB::table('HoaDon')
+                        ->select('HoaDonID')
+                        ->whereColumn('HoaDon.DonHangID', 'DonHang.DonHangID')
+                        ->where('HoaDon.TrangThai', InvoiceStatus::Paid->value)
+                        ->limit(1),
+                ])
                 ->lockForUpdate()
                 ->get(['DonHangID', 'MaDonHang', 'TrangThai'])
                 ->map(fn (object $order): array => [
                     'id' => (int) $order->DonHangID,
                     'code' => (string) $order->MaDonHang,
                     'status' => (string) $order->TrangThai,
+                    'payment_status' => $order->paid_invoice_id !== null
+                        ? InvoiceStatus::Paid->value
+                        : InvoiceStatus::Unpaid->value,
                 ])
                 ->all();
 

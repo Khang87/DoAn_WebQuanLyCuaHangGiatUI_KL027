@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Enums\InvoiceStatus;
 use App\Enums\OrderStatus;
+use App\Http\Middleware\EnsureUserHasPermission;
 use App\Models\NhatKyHeThong;
 use App\Models\User;
 use App\Services\UserService;
@@ -11,8 +12,6 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Schema;
-use Illuminate\Support\Facades\View;
-use Illuminate\Support\ViewErrorBag;
 use Tests\TestCase;
 
 class UserAccountAuditTest extends TestCase
@@ -252,6 +251,7 @@ class UserAccountAuditTest extends TestCase
             'id' => 101,
             'code' => 'DH00101',
             'status' => OrderStatus::Washing->value,
+            'payment_status' => InvoiceStatus::Paid->value,
         ]], $result['orders']);
         $this->assertDatabaseHas('TaiKhoan', ['TaiKhoanID' => $user->TaiKhoanID]);
     }
@@ -322,19 +322,42 @@ class UserAccountAuditTest extends TestCase
             'KhachHangID' => $customer,
             'TrangThai' => OrderStatus::Pending->value,
         ]);
+        DB::table('DonHang')->insert([
+            'DonHangID' => 105,
+            'MaDonHang' => 'DH00105',
+            'KhachHangID' => $customer,
+            'TrangThai' => OrderStatus::Washing->value,
+        ]);
+        DB::table('HoaDon')->insert([
+            'DonHangID' => 105,
+            'TrangThai' => InvoiceStatus::Paid->value,
+        ]);
+        $actor = User::query()->create([
+            'TenDangNhap' => 'admin@example.com',
+            'MatKhau' => 'not-used',
+            'Email' => 'admin@example.com',
+            'TrangThai' => 'Hoạt động',
+        ]);
         Gate::before(fn (): bool => true);
-        View::share('errors', new ViewErrorBag);
 
-        $this->withoutMiddleware()
+        $this->withoutMiddleware(EnsureUserHasPermission::class)
+            ->actingAs($actor)
             ->delete(route('accounts.destroy', $user->TaiKhoanID))
             ->assertRedirect(route('accounts.index'))
-            ->assertSessionHas('blocking_orders.0.id', 104);
+            ->assertSessionHas('blocking_orders.0.id', 104)
+            ->assertSessionHas('blocking_orders.0.payment_status', InvoiceStatus::Unpaid->value)
+            ->assertSessionHas('blocking_orders.1.payment_status', InvoiceStatus::Paid->value);
 
         $this->get(route('accounts.index'))
             ->assertOk()
             ->assertSee(route('orders.show', 104), false)
             ->assertSee('DH00104')
-            ->assertSee(OrderStatus::Pending->value);
+            ->assertSee(OrderStatus::Pending->value)
+            ->assertSee(InvoiceStatus::Unpaid->value)
+            ->assertSee(route('orders.show', 105), false)
+            ->assertSee('DH00105')
+            ->assertSee(OrderStatus::Washing->value)
+            ->assertSee(InvoiceStatus::Paid->value);
     }
 
     public function test_deleting_account_removes_its_database_references_when_orders_are_settled(): void

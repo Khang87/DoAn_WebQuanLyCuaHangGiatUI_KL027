@@ -18,13 +18,14 @@
 @endif
 @if(session('blocking_orders'))
     <div class="alert alert-danger" role="alert">
-        <p class="mb-2">{{ session('error') }}</p>
+        <p class="mb-2">{{ session('error') }} Thông tin bên dưới gồm mã đơn, giai đoạn xử lý và tình trạng thanh toán:</p>
         <ul class="mb-0">
             @foreach(session('blocking_orders') as $order)
                 <li>
                     <a href="{{ route('orders.show', $order['id']) }}">
-                        {{ $order['code'] }} — {{ $order['status'] }}
+                        {{ $order['code'] }} ({{ $order['status'] }})
                     </a>
+                    — {{ $order['payment_status'] }}
                 </li>
             @endforeach
         </ul>
