@@ -212,11 +212,15 @@ if (conversation) {
                 return;
             }
             if (response.status === 503) {
-                showStatus('Tin nhắn mã hóa tạm thời chưa thể giải mã. Vui lòng thử lại sau.');
+                const body = await response.json().catch(() => ({}));
+                showStatus(body.message || 'Máy chủ chưa tải được nội dung hội thoại. Đang thử lại…');
                 retry = Math.min(retry * 2, 120000);
                 return;
             }
-            if (!response.ok) throw new Error('Message sync failed');
+            if (!response.ok) {
+                const body = await response.json().catch(() => ({}));
+                throw new Error(body.message || `Máy chủ lỗi khi tải tin nhắn (HTTP ${response.status}).`);
+            }
             const data = await response.json();
             if (data.order_id !== orderId || (customerId !== null && data.customer_account_id !== customerId) || !Array.isArray(data.messages) || data.messages.length > 100
                 || data.messages.some(message => !Number.isSafeInteger(message.id) || message.id < 1
@@ -241,8 +245,8 @@ if (conversation) {
             if (messagesChanged) window.dispatchEvent(new Event('message-inbox-changed'));
             retry = interval;
             showStatus(connected ? 'Đang nhận tin nhắn trực tiếp' : 'Realtime chưa kết nối; cập nhật dự phòng mỗi 3 giây');
-        } catch {
-            if (!document.hidden && !stopped) showStatus('Kết nối gián đoạn. Đang thử lại…');
+        } catch (error) {
+            if (!document.hidden && !stopped) showStatus(error?.message || 'Kết nối gián đoạn. Đang thử lại…');
             retry = Math.min(retry * 2, 120000);
         } finally {
             clearTimeout(deadline);
@@ -380,12 +384,26 @@ if (conversation) {
     });
 
     if (form) {
+        const submit = form.querySelector('button[type="submit"]');
+        const originalSubmitMarkup = submit?.innerHTML ?? '';
+        form.querySelectorAll('[data-message-template]').forEach(template => {
+            template.addEventListener('click', () => {
+                if (form.dataset.accessLost === 'true') return;
+                const composer = form.querySelector('textarea[name="content"]');
+                if (!composer) return;
+                composer.value = template.dataset.messageTemplate ?? '';
+                composer.focus();
+            });
+        });
         form.addEventListener('submit', async event => {
             event.preventDefault();
             if (form.dataset.accessLost === 'true') return;
-            const submit = form.querySelector('button[type="submit"]');
             submit.disabled = true;
+            form.setAttribute('aria-busy', 'true');
+            submit.textContent = 'Đang gửi…';
             showStatus('Đang gửi tin nhắn…');
+            const sendController = new AbortController();
+            const sendDeadline = setTimeout(() => sendController.abort(), 90000);
             try {
                 const formData = new FormData(form);
                 const imageInput = form.querySelector('[data-message-image]');
@@ -408,16 +426,40 @@ if (conversation) {
                     conversation.scrollTop = conversation.scrollHeight;
                     try {
                         const csrf = document.querySelector('meta[name="csrf-token"]')?.content ?? '';
+                        const imageToUpload = await prepareMessageImage(image);
                         showStatus('Đang gửi ảnh…');
-                        formData.set('image', image);
-                        const response = await fetch(form.action, {
-                            method: 'POST', credentials: 'same-origin',
-                            headers: { Accept: 'application/json', 'X-CSRF-TOKEN': csrf },
-                            body: formData,
+                        const uploadUrlResponse = await fetch(conversation.dataset.messageImageUpload, {
+                            method: 'POST', credentials: 'same-origin', cache: 'no-store',
+                            headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf },
+                            body: JSON.stringify({ ...(customerId !== null ? { customer_id: customerId } : { order_id: orderId }), mime_type: imageToUpload.type }),
+                            signal: sendController.signal,
                         });
-                        if (!response.ok) {
-                            const body = await response.json().catch(() => ({}));
-                            throw new Error(body.message || Object.values(body.errors ?? {}).flat()[0] || 'Không gửi được ảnh.');
+                        const uploadData = await uploadUrlResponse.json().catch(() => ({}));
+                        if (!uploadUrlResponse.ok) {
+                            throw new Error(uploadData.message || Object.values(uploadData.errors ?? {}).flat()[0] || `Không tạo được nơi tải ảnh (HTTP ${uploadUrlResponse.status}).`);
+                        }
+                        if (!uploadData.path || !uploadData.signed_url || !uploadData.api_key || !uploadData.project_url) throw new Error('Máy chủ trả về thông tin tải ảnh không hợp lệ.');
+                        let signedUrl = uploadData.signed_url;
+                        if (!/^https?:\/\//i.test(signedUrl)) {
+                            const base = uploadData.project_url.replace(/\/$/, '');
+                            signedUrl = base + (signedUrl.startsWith('/storage/v1/') ? signedUrl : `/storage/v1${signedUrl.startsWith('/') ? '' : '/'}${signedUrl}`);
+                        }
+                        const storageResponse = await fetch(signedUrl, {
+                            method: 'PUT', headers: { apikey: uploadData.api_key, 'x-upsert': 'false', 'Content-Type': imageToUpload.type },
+                            body: imageToUpload, signal: sendController.signal,
+                        });
+                        if (!storageResponse.ok) {
+                            const detail = await storageResponse.json().catch(() => ({}));
+                            throw new Error(detail.message || detail.error || `Tải ảnh lên kho thất bại (HTTP ${storageResponse.status}).`);
+                        }
+                        formData.delete('image');
+                        formData.set('image_path', uploadData.path);
+                        const messageResponse = await fetch(form.action, {
+                            method: 'POST', credentials: 'same-origin', headers: { Accept: 'application/json', 'X-CSRF-TOKEN': csrf }, body: formData, signal: sendController.signal,
+                        });
+                        if (!messageResponse.ok) {
+                            const body = await messageResponse.json().catch(() => ({}));
+                            throw new Error(body.message || Object.values(body.errors ?? {}).flat()[0] || `Lưu tin nhắn ảnh thất bại (HTTP ${messageResponse.status}).`);
                         }
                         optimistic.remove(); URL.revokeObjectURL(previewUrl);
                     } catch (error) { optimistic.remove(); URL.revokeObjectURL(previewUrl); throw error; }
@@ -429,7 +471,7 @@ if (conversation) {
                     return;
                 }
                 const response = await fetch(form.action, {
-                    method: 'POST', credentials: 'same-origin', headers: { Accept: 'application/json' },
+                    method: 'POST', credentials: 'same-origin', headers: { Accept: 'application/json' }, signal: sendController.signal,
                     body: formData,
                 });
                 if (!response.ok) {
@@ -442,9 +484,12 @@ if (conversation) {
                 signature = undefined;
                 await sync();
             } catch (error) {
-                showStatus(error.message || 'Không gửi được tin nhắn.');
+                showStatus(error.name === 'AbortError' ? 'Gửi quá thời gian chờ. Vui lòng thử lại.' : (error.message || 'Không gửi được tin nhắn.'));
             } finally {
+                clearTimeout(sendDeadline);
                 submit.disabled = false;
+                form.removeAttribute('aria-busy');
+                submit.innerHTML = originalSubmitMarkup;
             }
         });
 

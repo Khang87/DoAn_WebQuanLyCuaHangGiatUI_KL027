@@ -271,7 +271,7 @@ class MessageService
         return $this->sendImage($sender, $recipient, (int) $order->getKey(), $image);
     }
 
-    /** @return array{path: string, signed_url: string, token: string, api_key: string} */
+    /** @return array{path: string, signed_url: string, token: string, api_key: string, project_url: string} */
     public function createImageUploadUrl(User $sender, string $mimeType): array
     {
         $data = $this->invokeChatFunction([
@@ -284,7 +284,7 @@ class MessageService
             throw new \RuntimeException('Chat image upload URL response is invalid.');
         }
 
-        return $data;
+        return [...$data, 'project_url' => rtrim((string) config('services.supabase.project_url'), '/')];
     }
 
     public function sendSupportImagePath(User $customer, User $sender, string $path): TinNhan

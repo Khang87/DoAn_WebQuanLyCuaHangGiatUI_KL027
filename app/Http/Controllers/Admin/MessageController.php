@@ -47,7 +47,7 @@ class MessageController extends Controller
             $messages = $order
                 ? $this->messageService->getMessages($order)
                 : ($customer ? $this->messageService->supportMessages($customer) : collect());
-        } catch (ChatMessageDecryptionException $exception) {
+        } catch (\Throwable $exception) {
             report($exception);
             $messages = collect();
             $messageDecryptionUnavailable = true;
@@ -297,10 +297,10 @@ class MessageController extends Controller
                 'is_mine' => (int) $message->NguoiGuiID === (int) $viewer->getKey(),
                 'sent_at' => $this->messageService->sentAt($message)?->toIso8601String(),
             ])->values();
-        } catch (ChatMessageDecryptionException $exception) {
+        } catch (\Throwable $exception) {
             report($exception);
 
-            return response()->json(['message' => 'Encrypted message content is temporarily unavailable'], 503)
+            return response()->json(['message' => 'Chưa thể tải nội dung hội thoại. Vui lòng thử lại sau.'], 503)
                 ->header('Cache-Control', 'private, no-store');
         }
 
@@ -331,10 +331,10 @@ class MessageController extends Controller
                     'is_mine' => (int) $message->NguoiGuiID === (int) $viewer->getKey(),
                     'sent_at' => $this->messageService->sentAt($message)?->toIso8601String(),
                 ])->values();
-        } catch (ChatMessageDecryptionException $exception) {
+        } catch (\Throwable $exception) {
             report($exception);
 
-            return response()->json(['message' => 'Encrypted message content is temporarily unavailable'], 503)
+            return response()->json(['message' => 'Chưa thể tải nội dung hội thoại. Vui lòng thử lại sau.'], 503)
                 ->header('Cache-Control', 'private, no-store');
         }
 
