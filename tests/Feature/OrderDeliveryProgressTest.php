@@ -294,6 +294,31 @@ class OrderDeliveryProgressTest extends TestCase
         $this->assertSame(1, substr_count($html, 'Đang giặt'));
     }
 
+    public function test_order_status_badges_show_last_operational_status_for_legacy_paid_order(): void
+    {
+        $this->createOrder(9);
+        DB::table('DonHang')->where('DonHangID', 9)->update([
+            'TrangThai' => OrderStatus::Paid->value,
+        ]);
+        DB::table('NhatKyHeThong')->insert([
+            'HanhDong' => 'Thay đổi trạng thái đơn hàng',
+            'BangDuLieu' => 'DonHang',
+            'BanGhiID' => 9,
+            'DuLieuCu' => json_encode(['TrangThai' => OrderStatus::Delivered->value]),
+            'DuLieuMoi' => json_encode(['TrangThai' => OrderStatus::Paid->value]),
+            'ThoiGian' => now(),
+        ]);
+
+        $html = view('components.admin.order-status-badges', [
+            'order' => DonHang::findOrFail(9),
+            'isPaid' => true,
+            'isReceiving' => false,
+        ])->render();
+
+        $this->assertStringContainsString('Đã giao', $html);
+        $this->assertStringContainsString('Đã thanh toán', $html);
+    }
+
     private function createOrder(int $id, ?int $bookingId = null): DonHang
     {
         DB::table('DonHang')->insert([

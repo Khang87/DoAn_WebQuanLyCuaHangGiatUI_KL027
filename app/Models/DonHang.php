@@ -8,6 +8,7 @@ use App\Enums\OrderStatus;
 use App\Enums\PaymentStatus;
 use App\Enums\ReturnMethod;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class DonHang extends Model
 {
@@ -118,6 +119,15 @@ class DonHang extends Model
     public function thongBaos()
     {
         return $this->hasMany(ThongBao::class, 'DonHangID');
+    }
+
+    public function statusChanges(): HasMany
+    {
+        return $this->hasMany(NhatKyHeThong::class, 'BanGhiID', 'DonHangID')
+            ->where('BangDuLieu', 'DonHang')
+            ->where('HanhDong', 'Thay đổi trạng thái đơn hàng')
+            ->orderByDesc('ThoiGian')
+            ->orderByDesc('NhatKyID');
     }
 
     public function tinNhans()
@@ -251,6 +261,33 @@ class DonHang extends Model
     public function statusEnum(): OrderStatus
     {
         return OrderStatus::parse($this->TrangThai);
+    }
+
+    public function operationalStatusEnum(): OrderStatus
+    {
+        $status = $this->statusEnum();
+        if ($status !== OrderStatus::Paid) {
+            return $status;
+        }
+
+        $statusChanges = $this->relationLoaded('statusChanges')
+            ? $this->statusChanges
+            : $this->statusChanges()->get();
+        $paidStatusChange = $statusChanges->first(
+            fn (NhatKyHeThong $event): bool => ($event->DuLieuMoi['TrangThai'] ?? null) === OrderStatus::Paid->value
+                && isset($event->DuLieuCu['TrangThai'])
+        );
+        $previousStatus = $paidStatusChange?->DuLieuCu['TrangThai'] ?? null;
+
+        if ($previousStatus === null) {
+            return OrderStatus::Paid;
+        }
+
+        $previousStatus = OrderStatus::parse($previousStatus, OrderStatus::Paid);
+
+        return $previousStatus === OrderStatus::Paid
+            ? OrderStatus::Paid
+            : $previousStatus;
     }
 
     /**

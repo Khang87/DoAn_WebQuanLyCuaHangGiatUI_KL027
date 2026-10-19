@@ -594,6 +594,7 @@ class OrderService
         ])->with([
             'khachHang',
             'chiTietDonHangs.dichVu',
+            'statusChanges',
         ])
             ->orderBy($sortBy, $sortOrder)
             ->paginate(10)
@@ -613,6 +614,7 @@ class OrderService
             'hoaDons',
             'giaoNhans',
             'booking',
+            'statusChanges',
         ])->find($id);
     }
 

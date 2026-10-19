@@ -1,9 +1,12 @@
 @props(['order', 'isPaid', 'isReceiving', 'compact' => false])
 
-@php($badgeSize = $compact ? 'px-2 py-1' : 'px-3 py-2')
+@php
+    $badgeSize = $compact ? 'px-2 py-1' : 'px-3 py-2';
+    $operationalStatus = $order->operationalStatusEnum();
+@endphp
 
-@if(! ($isPaid && $order->statusEnum() === \App\Enums\OrderStatus::Paid))
-    <x-admin.status-badge :status="$order->status" :enum="\App\Enums\OrderStatus::class" :size="$badgeSize" />
+@if(! ($isPaid && $operationalStatus === \App\Enums\OrderStatus::Paid))
+    <x-admin.status-badge :status="$operationalStatus->value" :enum="\App\Enums\OrderStatus::class" :size="$badgeSize" />
 @endif
 
 @if($isPaid)
