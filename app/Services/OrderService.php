@@ -250,9 +250,8 @@ class OrderService
                 $actualItems = array_map(static fn (array $item): array => array_intersect_key($item, array_flip([
                     'DichVuID', 'LoaiDoGiatID', 'DonViTinhID', 'SoLuong', 'KhoiLuong', 'TinhTrangTruocKhiGiat', 'GhiChu',
                 ])), $items);
-                if (! $inspection || $expectedItems != $actualItems
-                    || ($inspection->CoChenhLech && ! $inspection->isCustomerApproved())) {
-                    throw ValidationException::withMessages(['booking' => 'Khách chưa xác nhận bản kiểm kê mới nhất.']);
+                if (! $inspection || $expectedItems != $actualItems) {
+                    throw ValidationException::withMessages(['booking' => 'Bản kiểm kê chưa được lưu hoặc không khớp với dữ liệu đang tạo đơn.']);
                 }
             }
             // Preserve edits from inspection, never stale customer/status/reward markers.

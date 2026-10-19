@@ -1,11 +1,12 @@
 <?php
 
 use App\Http\Controllers\Api\V1\DichVuController;
-use App\Http\Controllers\Api\V1\PaymentConfigController;
 use App\Http\Controllers\Api\V1\DonHangController;
 use App\Http\Controllers\Api\V1\GarmentController;
 use App\Http\Controllers\Api\V1\KhachHangController;
 use App\Http\Controllers\Api\V1\KhuyenMaiController;
+use App\Http\Controllers\Api\V1\PasswordRecoveryController;
+use App\Http\Controllers\Api\V1\PaymentConfigController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -24,6 +25,9 @@ use Illuminate\Support\Facades\Route;
 Route::prefix('v1')->name('api.v1.')->group(function () {
     // Public read-only bank details for the customer app.
     Route::get('payment-config', PaymentConfigController::class)->name('payment-config');
+    Route::post('auth/forgot-password', [PasswordRecoveryController::class, 'forgot'])
+        ->middleware('throttle:5,1')
+        ->name('auth.forgot-password');
 });
 
 Route::middleware(['auth', 'reject.customer'])->prefix('v1')->name('api.v1.')->group(function () {

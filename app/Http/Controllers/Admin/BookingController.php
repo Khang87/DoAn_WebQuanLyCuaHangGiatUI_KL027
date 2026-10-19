@@ -152,21 +152,6 @@ class BookingController extends Controller
         }
     }
 
-    public function finalizeInspection(int $id)
-    {
-        abort_unless(config('giatui.booking_two_step'), 404);
-        $booking = $this->bookingService->find($id);
-        abort_if(! $booking, 404);
-
-        try {
-            $order = $this->bookingService->finalizeInspection($booking);
-
-            return redirect()->route('orders.show', $order)->with('success', 'Đã tạo đơn '.$order->MaDonHang.' từ bản kiểm kê khách xác nhận.');
-        } catch (ValidationException $e) {
-            return redirect()->route('bookings.show', $booking)->withErrors($e->errors());
-        }
-    }
-
     public function markReceived(int $id)
     {
         abort_unless(config('giatui.booking_two_step'), 404);
@@ -317,13 +302,8 @@ class BookingController extends Controller
             $validated = $request->validated();
             if (config('giatui.booking_two_step')) {
                 $order = $this->bookingService->submitInspection($booking, $validated);
-                if (! $order) {
-                    return redirect()->route('bookings.show', $booking)->with(
-                        'success', 'Đã lưu bản kiểm kê có chênh lệch và gửi yêu cầu khách xác nhận trên mobile. Chưa tạo đơn hàng.',
-                    );
-                }
 
-                return redirect()->route('orders.show', $order)->with('success', 'Đã tạo đơn '.$order->MaDonHang.' từ bản kiểm kê hợp lệ.');
+                return redirect()->route('orders.show', $order)->with('success', 'Đã đối soát kiểm kê và tạo đơn '.$order->MaDonHang.'.');
             }
             $order = $this->bookingService->inspectBookingAndCreateOrder(
                 $booking,

@@ -100,6 +100,40 @@
 @endsection
 
 @push('scripts')
+@if(session('customer_blocking_orders'))
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const orders = @json(session('customer_blocking_orders'));
+        const content = document.createElement('div');
+        const summary = document.createElement('p');
+        const list = document.createElement('ul');
+
+        summary.className = 'text-start';
+        summary.textContent = @json(session('error'));
+        list.className = 'text-start mb-0';
+        list.style.maxHeight = '16rem';
+        list.style.overflowY = 'auto';
+
+        orders.forEach(function(order) {
+            const item = document.createElement('li');
+            const link = document.createElement('a');
+            link.href = order.url;
+            link.textContent = `${order.code} (${order.status})`;
+            item.append(link, document.createTextNode(` — ${order.payment_status}`));
+            list.append(item);
+        });
+
+        content.append(summary, list);
+
+        Swal.fire({
+            icon: 'error',
+            title: 'Không thể xóa khách hàng',
+            html: content,
+            confirmButtonText: 'Đóng'
+        });
+    });
+</script>
+@endif
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         document.querySelectorAll('[id^="deleteCustomerForm_"]').forEach(function(form) {

@@ -3,13 +3,19 @@
 namespace App\Services;
 
 use App\Models\DonHang;
+use App\Models\TaiKhoan;
 use App\Models\TinNhan;
 use App\Models\User;
 use App\Support\InternalCommunicationPolicy;
 use Carbon\Carbon;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Http\Client\Response;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
 
 class MessageService
@@ -38,10 +44,23 @@ class MessageService
                     ->orWhere('SoDienThoai', 'like', '%'.$search.'%')));
         }
 
-        return $orders
+        $page = $orders
             ->orderByRaw('CASE WHEN activity.last_message_at IS NULL THEN 1 ELSE 0 END')
             ->orderByDesc('activity.last_message_at')->orderByDesc('activity.last_message_id')->orderByDesc('DonHang.NgayTao')->orderByDesc('DonHang.DonHangID')
             ->paginate(20)->withQueryString();
+        $latestIds = $page->getCollection()->pluck('last_message_id')->filter()->map(fn ($id): int => (int) $id);
+        if ($latestIds->isNotEmpty()) {
+            $latest = $this->presentWebMessages(TinNhan::query()->whereIn('TinNhanID', $latestIds)->get(), true)->keyBy('TinNhanID');
+            foreach ($page->getCollection() as $order) {
+                $message = $latest->get((int) $order->last_message_id);
+                if ($message) {
+                    $content = (string) $message->NoiDung;
+                    $order->setAttribute('last_message_preview', str_starts_with($content, 'image:') ? '📷 Ảnh' : $content);
+                }
+            }
+        }
+
+        return $page;
     }
 
     private function unreadIncoming(): Builder
@@ -89,9 +108,12 @@ class MessageService
      */
     public function getMessages(DonHang $order): Collection
     {
-        return TinNhan::query()
+        $messages = TinNhan::query()
             ->with(['sender.khachHang', 'sender.nhanVien'])
             ->where('DonHangID', $order->DonHangID)
+            ->when(Schema::hasTable('TinNhanAn'), fn ($query) => $query->whereNotExists(fn ($hidden) => $hidden
+                ->selectRaw('1')->from('TinNhanAn')->whereColumn('TinNhanAn.TinNhanID', 'TinNhan.TinNhanID')
+                ->where('TinNhanAn.TaiKhoanID', auth()->id())))
             ->orderByDesc('ThoiGianGui')
             ->orderByDesc('TinNhanID')
             ->limit(100)
@@ -101,6 +123,8 @@ class MessageService
                 ['TinNhanID', 'asc'],
             ])
             ->values();
+
+        return $this->presentWebMessages($messages);
     }
 
     public function supportCustomers(?string $search = null): LengthAwarePaginator
@@ -125,10 +149,24 @@ class MessageService
                     ->whereHas('sender', fn ($staff) => InternalCommunicationPolicy::scopeAccounts($staff))))
             ->orderByDesc('ThoiGianGui')->orderByDesc('TinNhanID')->limit(1);
 
-        return $customers->addSelect(['TaiKhoan.*',
+        $page = $customers->addSelect(['TaiKhoan.*',
             'last_message_preview' => $supportMessage()->select('NoiDung'),
             'last_message_at' => $supportMessage()->select('ThoiGianGui'),
+            'last_message_id' => $supportMessage()->select('TinNhanID'),
         ])->orderByDesc('TaiKhoanID')->paginate(20, ['*'], 'support_page')->withQueryString();
+        $latestIds = $page->getCollection()->pluck('last_message_id')->filter()->map(fn ($id): int => (int) $id);
+        if ($latestIds->isNotEmpty()) {
+            $latest = $this->presentWebMessages(TinNhan::query()->whereIn('TinNhanID', $latestIds)->get(), true)->keyBy('TinNhanID');
+            foreach ($page->getCollection() as $customer) {
+                $message = $latest->get((int) $customer->last_message_id);
+                if ($message) {
+                    $content = (string) $message->NoiDung;
+                    $customer->setAttribute('last_message_preview', str_starts_with($content, 'image:') ? '📷 Ảnh' : $content);
+                }
+            }
+        }
+
+        return $page;
     }
 
     public function supportCustomer(int $id): User
@@ -139,14 +177,60 @@ class MessageService
 
     public function supportMessages(User $customer): Collection
     {
-        return TinNhan::query()->with(['sender.khachHang', 'sender.nhanVien'])
+        $messages = TinNhan::query()->with(['sender.khachHang', 'sender.nhanVien'])
             ->whereNull('DonHangID')->where(fn ($query) => $query
             ->where(fn ($incoming) => $incoming->where('NguoiGuiID', $customer->getKey())
                 ->whereHas('recipient', fn ($staff) => InternalCommunicationPolicy::scopeAccounts($staff)))
             ->orWhere(fn ($outgoing) => $outgoing->where('NguoiNhanID', $customer->getKey())
                 ->whereHas('sender', fn ($staff) => InternalCommunicationPolicy::scopeAccounts($staff))))
+            ->when(Schema::hasTable('TinNhanAn'), fn ($query) => $query->whereNotExists(fn ($hidden) => $hidden
+                ->selectRaw('1')->from('TinNhanAn')->whereColumn('TinNhanAn.TinNhanID', 'TinNhan.TinNhanID')
+                ->where('TinNhanAn.TaiKhoanID', auth()->id())))
             ->orderByDesc('ThoiGianGui')->orderByDesc('TinNhanID')->limit(100)->get()
             ->sortBy([['ThoiGianGui', 'asc'], ['TinNhanID', 'asc']])->values();
+
+        return $this->presentWebMessages($messages);
+    }
+
+    /**
+     * @param  Collection<int, TinNhan>  $messages
+     * @return Collection<int, TinNhan>
+     */
+    private function presentWebMessages(Collection $messages, bool $allowDecryptionFailure = false): Collection
+    {
+        if ($messages->isEmpty()) {
+            return $messages;
+        }
+
+        try {
+            $presented = $this->invokeChatFunction([
+                'action' => 'present_web_messages',
+                'message_ids' => $messages->map(fn (TinNhan $message): int => (int) $message->getKey())->all(),
+            ]);
+            $byId = collect($presented['messages'] ?? [])->keyBy(fn (array $message): int => (int) ($message['TinNhanID'] ?? 0));
+            foreach ($messages as $message) {
+                $data = $byId->get((int) $message->getKey());
+                if (! is_array($data)) {
+                    throw new \RuntimeException('Supabase did not return a presented chat message.');
+                }
+                $recalled = (bool) ($data['DaThuHoi'] ?? false);
+                $message->setAttribute('DaThuHoi', $recalled);
+                $message->setAttribute('NoiDung', $recalled ? 'Tin nhắn đã thu hồi' : (string) ($data['NoiDung'] ?? ''));
+                $message->setAttribute('ImageUrl', $recalled ? null : ($data['ImageUrl'] ?? null));
+                $message->setAttribute('DaChinhSua', (bool) ($data['DaChinhSua'] ?? false));
+            }
+        } catch (\Throwable $exception) {
+            Log::warning('Unable to present chat messages for web display.', ['exception' => $exception::class]);
+            if (! $allowDecryptionFailure) {
+                throw $exception;
+            }
+            foreach ($messages as $message) {
+                $message->setAttribute('NoiDung', 'Chưa thể tải nội dung tin nhắn. Vui lòng thử lại sau.');
+                $message->setAttribute('ImageUrl', null);
+            }
+        }
+
+        return $messages;
     }
 
     public function displayName(TinNhan $message, User $viewer): string
@@ -172,10 +256,178 @@ class MessageService
 
     public function sendSupport(User $customer, User $sender, string $content): TinNhan
     {
-        return TinNhan::query()->create([
-            'NguoiGuiID' => $sender->getKey(), 'NguoiNhanID' => $customer->getKey(),
-            'DonHangID' => null, 'NoiDung' => trim($content), 'ThoiGianGui' => now('UTC'), 'TrangThai' => 'Đã gửi',
+        return $this->createWebMessage($sender, $customer, null, trim($content));
+    }
+
+    public function sendSupportImage(User $customer, User $sender, UploadedFile $image): TinNhan
+    {
+        return $this->sendImage($sender, $customer, null, $image);
+    }
+
+    public function sendOrderImage(DonHang $order, User $sender, UploadedFile $image): TinNhan
+    {
+        $recipient = $order->khachHang?->taiKhoan;
+        if (! $recipient) {
+            throw ValidationException::withMessages(['message' => 'Khách hàng của đơn hàng chưa có tài khoản nhận tin nhắn.']);
+        }
+
+        return $this->sendImage($sender, $recipient, (int) $order->getKey(), $image);
+    }
+
+    /** @return array{path: string, signed_url: string, token: string, api_key: string, project_url: string} */
+    public function createImageUploadUrl(User $sender, string $mimeType): array
+    {
+        $data = $this->invokeChatFunction([
+            'action' => 'create_image_upload',
+            'sender_account_id' => (int) $sender->getKey(),
+            'mime_type' => $mimeType,
         ]);
+        if (! is_array($data) || ! is_string($data['path'] ?? null) || ! is_string($data['signed_url'] ?? null)
+            || ! is_string($data['token'] ?? null) || ! is_string($data['api_key'] ?? null)) {
+            throw new \RuntimeException('Chat image upload URL response is invalid.');
+        }
+
+        return [...$data, 'project_url' => rtrim((string) config('services.supabase.project_url'), '/')];
+    }
+
+    public function sendSupportImagePath(User $customer, User $sender, string $path): TinNhan
+    {
+        return $this->createImageMessage($sender, $customer, null, $path);
+    }
+
+    public function sendOrderImagePath(DonHang $order, User $sender, string $path): TinNhan
+    {
+        $recipient = $order->khachHang?->taiKhoan;
+        if (! $recipient) {
+            throw ValidationException::withMessages(['message' => 'Khách hàng của đơn hàng chưa có tài khoản nhận tin nhắn.']);
+        }
+
+        return $this->createImageMessage($sender, $recipient, (int) $order->getKey(), $path);
+    }
+
+    private function createImageMessage(User $sender, User|TaiKhoan $recipient, ?int $orderId, string $path): TinNhan
+    {
+        return $this->createWebMessage($sender, $recipient, $orderId, 'image:'.$path);
+    }
+
+    private function sendImage(User $sender, User|TaiKhoan $recipient, ?int $orderId, UploadedFile $image): TinNhan
+    {
+        $path = (int) $sender->getKey().'/'.bin2hex(random_bytes(16)).'.'.$image->extension();
+        $this->storageRequest('POST', '/storage/v1/object/chat-images/'.$this->encodeStoragePath($path), $image->getContent(), [
+            'Content-Type' => (string) $image->getMimeType(), 'x-upsert' => 'false',
+        ])->throw();
+        try {
+            return $this->createWebMessage($sender, $recipient, $orderId, 'image:'.$path);
+        } catch (\Throwable $exception) {
+            try {
+                $this->storageRequest('DELETE', '/storage/v1/object/chat-images/'.$this->encodeStoragePath($path))->throw();
+            } catch (\Throwable $cleanupException) {
+                Log::warning('Failed to clean up an unsent chat image.', [
+                    'exception' => $cleanupException::class,
+                ]);
+            }
+            throw $exception;
+        }
+    }
+
+    public function recall(TinNhan $message): void
+    {
+        $this->invokeChatFunction([
+            'action' => 'recall_message_web',
+            'message_id' => (int) $message->getKey(),
+            'sender_account_id' => (int) $message->NguoiGuiID,
+        ]);
+    }
+
+    public function edit(TinNhan $message, string $content): void
+    {
+        $this->invokeChatFunction([
+            'action' => 'edit_message',
+            'message_id' => (int) $message->getKey(),
+            'sender_account_id' => (int) $message->NguoiGuiID,
+            'content' => trim($content),
+        ]);
+    }
+
+    public function hideForAccount(int $messageId, int $accountId): void
+    {
+        $this->invokeChatFunction([
+            'action' => 'hide_message_web',
+            'message_id' => $messageId,
+            'account_id' => $accountId,
+        ]);
+    }
+
+    private function storageRequest(string $method, string $path, ?string $body = null, array $headers = []): Response
+    {
+        $projectUrl = rtrim((string) config('services.supabase.project_url'), '/');
+        $serviceKey = (string) config('services.supabase.service_role_key');
+        if ($projectUrl === '' || $serviceKey === '') {
+            throw new \RuntimeException('Chat image storage is not configured.');
+        }
+        $request = Http::withHeaders(['apikey' => $serviceKey])->withToken($serviceKey)->withHeaders($headers)->timeout(30);
+
+        return $method === 'POST'
+            ? $request->withBody($body ?? '', $headers['Content-Type'] ?? 'application/octet-stream')->post($projectUrl.$path)
+            : $request->delete($projectUrl.$path);
+    }
+
+    /** @param array<string, mixed> $payload
+     *  @return array<string, mixed>
+     */
+    private function invokeChatFunction(array $payload): array
+    {
+        $projectUrl = rtrim((string) config('services.supabase.project_url'), '/');
+        $serviceKey = (string) config('services.supabase.service_role_key');
+        if ($projectUrl === '' || $serviceKey === '') {
+            throw new \RuntimeException('Chat operations are not configured.');
+        }
+
+        $response = Http::acceptJson()->withHeaders(['apikey' => $serviceKey])->withToken($serviceKey)
+            ->timeout(20)->post($projectUrl.'/functions/v1/chat-encryption', $payload);
+        $data = $response->json();
+        if (! $response->successful() || ! is_array($data)) {
+            $message = is_array($data) && is_string($data['error'] ?? null)
+                ? $data['error'] : 'Supabase chat function returned an invalid response.';
+            Log::error('Supabase rejected a web chat database operation.', [
+                'action' => $payload['action'] ?? 'unknown',
+                'status' => $response->status(),
+                'response' => $message,
+            ]);
+            throw new \RuntimeException('Chat action failed (HTTP '.$response->status().'): '.$message);
+        }
+
+        return $data;
+    }
+
+    private function createWebMessage(User $sender, User|TaiKhoan $recipient, ?int $orderId, string $content): TinNhan
+    {
+        $result = $this->invokeChatFunction([
+            'action' => str_starts_with($content, 'image:') ? 'create_image_message_web' : 'send_message_web',
+            'sender_account_id' => (int) $sender->getKey(),
+            'recipient_account_id' => (int) $recipient->getKey(),
+            'order_id' => $orderId,
+            'content' => $content,
+        ]);
+        $messageId = filter_var($result['id'] ?? null, FILTER_VALIDATE_INT);
+        if (! $messageId || $messageId < 1) {
+            throw new \RuntimeException('Supabase chat function did not return the created message ID.');
+        }
+
+        return TinNhan::query()->getModel()->newFromBuilder([
+            'TinNhanID' => $messageId,
+            'NguoiGuiID' => $sender->getKey(),
+            'NguoiNhanID' => $recipient->getKey(),
+            'DonHangID' => $orderId,
+            'NoiDung' => $content,
+            'ThoiGianGui' => now('UTC')->format('Y-m-d H:i:s'),
+            'TrangThai' => 'Đã gửi',
+        ]);
+    }
+
+    private function encodeStoragePath(string $path): string
+    {
+        return implode('/', array_map('rawurlencode', explode('/', $path)));
     }
 
     public function sendFromStore(DonHang $order, User $sender, string $content): TinNhan
@@ -188,13 +440,13 @@ class MessageService
             ]);
         }
 
-        return TinNhan::query()->create([
-            'NguoiGuiID' => $sender->getKey(),
-            'NguoiNhanID' => $recipientId,
-            'DonHangID' => $order->DonHangID,
-            'NoiDung' => trim($content),
-            'ThoiGianGui' => now('UTC'),
-            'TrangThai' => 'Đã gửi',
-        ]);
+        $recipient = $order->khachHang?->taiKhoan;
+        if (! $recipient) {
+            throw ValidationException::withMessages([
+                'message' => 'Khách hàng của đơn hàng chưa có tài khoản nhận tin nhắn.',
+            ]);
+        }
+
+        return $this->createWebMessage($sender, $recipient, (int) $order->DonHangID, trim($content));
     }
 }

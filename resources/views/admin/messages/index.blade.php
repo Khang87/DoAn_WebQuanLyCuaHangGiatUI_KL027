@@ -78,7 +78,9 @@
                     <div>
                         <h5 class="mb-1 fw-semibold">{{ $selectedCustomer ? ('Hỗ trợ: '.$selectedCustomer->name) : ('Đơn '.$selectedOrder->MaDonHang) }}</h5>
                         <small class="text-muted">{{ $selectedCustomer?->name ?: ($selectedOrder?->khachHang?->HoTen ?: 'Khách hàng') }}</small>
-                        <small class="d-block text-muted" data-message-status role="status">Đang đồng bộ tin nhắn…</small>
+                        <small class="d-block text-muted" data-message-status role="status">
+                            {{ $messageDecryptionUnavailable ? 'Máy chủ chưa tải được nội dung hội thoại. Vui lòng thử lại sau.' : 'Đang đồng bộ tin nhắn…' }}
+                        </small>
                     </div>
                     @if($selectedOrder)<a href="{{ route('orders.show', $selectedOrder) }}" class="btn btn-sm btn-outline-secondary">
                         <i class="bi bi-box-arrow-up-right me-1"></i>Chi tiết đơn
@@ -88,18 +90,37 @@
                     data-message-read="{{ route('admin.messages.read') }}"
                     data-message-realtime="{{ route('admin.messages.realtime') }}"
                     data-message-updates="{{ $selectedCustomer ? route('admin.messages.support-updates', $selectedCustomer->getKey()) : route('admin.messages.updates', $selectedOrder->DonHangID) }}"
+                    data-message-hide="{{ route('admin.messages.hide', ['message' => 0]) }}"
+                    data-message-recall="{{ route('admin.messages.recall', ['message' => 0]) }}"
+                    data-message-edit="{{ route('admin.messages.edit', ['message' => 0]) }}"
+                    data-message-image-upload="{{ route('admin.messages.image-upload-url') }}"
+                    data-message-can-manage="{{ auth()->user()->can('messages.create') ? '1' : '0' }}"
                     data-order-id="{{ $selectedOrder?->DonHangID }}" data-customer-account-id="{{ $selectedCustomer?->getKey() }}" aria-label="Nội dung cuộc trò chuyện">
                     @forelse($messages as $message)
                         @php($isMine = (int) $message->NguoiGuiID === (int) auth()->id())
-                        <div class="d-flex {{ $isMine ? 'justify-content-end' : 'justify-content-start' }} mb-3" data-message-id="{{ $message->TinNhanID }}">
-                            <div class="rounded-3 px-3 py-2 {{ $isMine ? 'bg-primary text-white' : 'bg-white border' }}" style="max-width: 82%;">
+                        <div class="d-flex {{ $isMine ? 'justify-content-end' : 'justify-content-start' }} mb-3" data-message-id="{{ $message->TinNhanID }}" tabindex="0">
+                            <div class="rounded-3 px-3 py-2 {{ ($message->DaThuHoi ?? false) ? 'bg-light border text-muted fst-italic' : ($isMine ? 'bg-primary text-white' : 'bg-white border') }}" style="max-width: 82%;">
                                 <div class="small {{ $isMine ? 'text-white-50' : 'text-muted' }}">
                                     {{ app(\App\Services\MessageService::class)->displayName($message, auth()->user()) }}
                                 </div>
-                                <div class="text-break">{{ $message->NoiDung }}</div>
+                                @if($message->ImageUrl ?? false)
+                                    <a href="{{ $message->ImageUrl }}" target="_blank" rel="noopener noreferrer"><img src="{{ $message->ImageUrl }}" alt="Ảnh đính kèm" class="img-fluid rounded mb-1" style="max-height:240px"></a>
+                                @else
+                                    <div class="text-break">{{ $message->NoiDung }}</div>
+                                @endif
                                 <div class="small text-end {{ $isMine ? 'text-white-50' : 'text-muted' }}">
                                     {{ app(\App\Services\MessageService::class)->sentAt($message)?->format('d-m-Y H:i') }}
                                 </div>
+                                @can('messages.create')
+                                    <div class="message-actions" data-message-actions>
+                                        <button type="button" class="message-menu-toggle btn btn-sm" data-message-menu-toggle aria-label="Tùy chọn tin nhắn" aria-expanded="false">⋮</button>
+                                        <div class="message-actions-menu" data-message-actions-menu>
+                                            @if(!($message->DaThuHoi ?? false) && $isMine && !($message->ImageUrl ?? false))<button type="button" class="dropdown-item" data-message-edit="{{ $message->TinNhanID }}">Sửa</button>@endif
+                                            @if(!($message->DaThuHoi ?? false) && $isMine)<button type="button" class="dropdown-item" data-message-recall="{{ $message->TinNhanID }}">Thu hồi</button>@endif
+                                            <button type="button" class="dropdown-item" data-message-hide="{{ $message->TinNhanID }}">Xóa</button>
+                                        </div>
+                                    </div>
+                                @endcan
                             </div>
                         </div>
                     @empty
@@ -113,7 +134,7 @@
                     @if(!$selectedCustomer && !$selectedOrder?->khachHang?->taiKhoan)
                         <div class="alert alert-warning mb-0">Khách hàng chưa có tài khoản nhận tin nhắn.</div>
                     @else
-                        <form method="POST" action="{{ route('admin.messages.store') }}" class="d-flex flex-column gap-2" data-message-form>
+                        <form method="POST" enctype="multipart/form-data" action="{{ route('admin.messages.store') }}" class="d-flex flex-column gap-2" data-message-form>
                             @csrf
                             @if($selectedCustomer)
                                 <input type="hidden" name="customer_id" value="{{ $selectedCustomer->getKey() }}">
@@ -126,11 +147,16 @@
                                 <button type="button" class="btn btn-sm btn-outline-secondary" data-message-template="Cửa hàng sẽ kiểm tra và phản hồi bạn sớm.">Hẹn phản hồi</button>
                             </div>
                             <div class="d-flex gap-2">
-                                <textarea name="content" rows="2" maxlength="1000" required class="form-control" placeholder="Nhập tin nhắn cho khách hàng...">{{ old('content') }}</textarea>
+                                <textarea name="content" rows="2" maxlength="1000" class="form-control" placeholder="Nhập tin nhắn cho khách hàng...">{{ old('content') }}</textarea>
+                                <label class="btn btn-outline-secondary align-self-end mb-0" title="Chọn ảnh">
+                                    <i class="bi bi-image"></i><span class="visually-hidden">Chọn ảnh</span>
+                                    <input type="file" name="image" accept="image/jpeg,image/png,image/webp" class="d-none" data-message-image>
+                                </label>
                                 <button type="submit" class="btn btn-primary align-self-end">
                                     <i class="bi bi-send me-1"></i>Gửi
                                 </button>
                             </div>
+                            <small class="text-muted">Ảnh JPEG, PNG hoặc WEBP tối đa 5 MB. Ảnh sẽ hiện ngay trong khung chat khi bắt đầu gửi.</small>
                         </form>
                         @error('content')<div class="text-danger small mt-2">{{ $message }}</div>@enderror
                         @error('message')<div class="text-danger small mt-2">{{ $message }}</div>@enderror
@@ -177,7 +203,25 @@
 @can('messages.view')
     @vite('resources/js/message-inbox.js')
     @if($selectedOrder || $selectedCustomer)
-        @vite(['resources/js/message-updates.js', 'resources/js/message-send-guard.js'])
+        @vite('resources/js/message-updates.js')
     @endif
 @endcan
+@endpush
+
+@push('styles')
+<style>
+    .message-chat-history .rounded-3 { position: relative; }
+    .message-chat-history .message-actions { position: absolute; top: .35rem; right: -2.25rem; z-index: 5; }
+    .message-chat-history .justify-content-end > .rounded-3 .message-actions { right: auto; left: -2.25rem; }
+    .message-chat-history .message-menu-toggle { display: none; width: 2rem; height: 2rem; padding: 0; border-radius: 50%; background: #fff; border: 1px solid #dee2e6; color: #495057; font-size: 1.25rem; line-height: 1; }
+    .message-chat-history [data-message-id]:hover .message-menu-toggle,
+    .message-chat-history [data-message-id]:focus-within .message-menu-toggle,
+    .message-chat-history [data-message-id][data-actions-open="true"] .message-menu-toggle { display: inline-flex; align-items: center; justify-content: center; }
+    .message-chat-history .message-actions-menu { display: none; position: absolute; top: 2.1rem; right: 0; min-width: 9rem; padding: .35rem 0; border: 1px solid #dee2e6; border-radius: .5rem; background: #fff; box-shadow: 0 .35rem 1rem #0002; }
+    .message-chat-history .justify-content-end > .rounded-3 .message-actions-menu { right: auto; left: 0; }
+    .message-chat-history [data-message-id][data-actions-open="true"] .message-actions-menu { display: block; }
+    .message-chat-history .message-actions-menu .dropdown-item { width: 100%; padding: .45rem .85rem; text-align: left; color: #212529; background: transparent; border: 0; }
+    .message-chat-history .message-actions-menu .dropdown-item:hover { background: #f1f3f5; }
+    @media (hover: none) { .message-chat-history .message-menu-toggle { display: inline-flex; align-items: center; justify-content: center; } }
+</style>
 @endpush

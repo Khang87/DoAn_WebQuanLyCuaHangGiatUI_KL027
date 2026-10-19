@@ -145,6 +145,14 @@ Route::middleware(['auth', 'reject.customer'])->group(function () {
     Route::post('/admin/messages', [MessageController::class, 'store'])
         ->middleware('permission:messages.create')
         ->name('admin.messages.store');
+    Route::post('/admin/messages/image-upload-url', [MessageController::class, 'imageUploadUrl'])
+        ->middleware('permission:messages.create')->name('admin.messages.image-upload-url');
+    Route::post('/admin/messages/{message}/hide', [MessageController::class, 'hide'])
+        ->whereNumber('message')->middleware('permission:messages.create')->name('admin.messages.hide');
+    Route::post('/admin/messages/{message}/recall', [MessageController::class, 'recall'])
+        ->whereNumber('message')->middleware('permission:messages.create')->name('admin.messages.recall');
+    Route::patch('/admin/messages/{message}/edit', [MessageController::class, 'edit'])
+        ->whereNumber('message')->middleware('permission:messages.create')->name('admin.messages.edit');
 
     Route::get('/staff/dashboard', [StaffDashboardController::class, 'index'])
         ->middleware('permission:dashboard.view')
@@ -236,8 +244,6 @@ Route::middleware(['auth', 'reject.customer'])->group(function () {
         ->middleware('permission:bookings.confirm')->name('bookings.cancel');
     Route::post('bookings/{booking}/receive', [BookingController::class, 'markReceived'])
         ->middleware('permission:bookings.confirm')->name('bookings.receive');
-    Route::post('bookings/{booking}/finalize-inspection', [BookingController::class, 'finalizeInspection'])
-        ->middleware('permission:bookings.confirm')->name('bookings.finalize-inspection');
     Route::post('bookings/{booking}/estimate', [BookingController::class, 'estimate'])
         ->whereNumber('booking')->middleware('permission:bookings.confirm')->name('bookings.estimate');
     Route::post('bookings/{booking}/delivery-fee-quote', [BookingController::class, 'quoteDeliveryFee'])

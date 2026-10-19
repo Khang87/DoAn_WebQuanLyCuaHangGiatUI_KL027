@@ -7,10 +7,11 @@ const source=readFileSync(new URL('../../resources/js/message-updates.js',import
 function harness(read=false) {
     const timers=new Map(), events={}, documentEvents={}, calls=[];
     let clock=0;
-    const element=()=>({dataset:{},style:{},children:[],append(child){this.children.push(child);},replaceChildren(fragment){this.children=fragment?.children||[];},scrollTop:0,scrollHeight:10,clientHeight:10});
+    const element=()=>({dataset:{},style:{},children:[],append(child){this.children.push(child);},replaceChildren(fragment){this.children=fragment?.children||[];},addEventListener(){},querySelector(){return null;},querySelectorAll(){return [];},scrollTop:0,scrollHeight:10,clientHeight:10});
     const conversation=element();conversation.dataset={orderId:'7',messageUpdates:'/updates'};if(read)conversation.dataset.messageRead='/read';
     const status={textContent:''}, input={value:'draft',disabled:false};
-    const document={hidden:false,querySelector:s=>s==='[data-message-updates]'?conversation:s==='[data-message-status]'?status:{dataset:{},querySelectorAll:()=>[input]},createElement:element,createDocumentFragment:element,addEventListener:(name,fn)=>{documentEvents[name]=fn;}};
+    const form=element();form.querySelectorAll=()=>[input];
+    const document={hidden:false,querySelector:s=>s==='[data-message-updates]'?conversation:s==='[data-message-status]'?status:s==='[data-message-form]'?form:s==='meta[name="csrf-token"]'?{content:''}:{dataset:{},querySelectorAll:()=>[input]},createElement:element,createDocumentFragment:element,addEventListener:(name,fn)=>{documentEvents[name]=fn;}};
     const navigator={onLine:true};
     const context={Event,document,navigator,window:{dispatchEvent:()=>{},addEventListener:(name,fn)=>{events[name]=fn;}},AbortController,fetch:(url,options)=>new Promise((resolve,reject)=>{calls.push({resolve,reject,options});options.signal.addEventListener('abort',()=>reject(Error('aborted')));}),setTimeout:(fn,ms)=>{timers.set(++clock,{fn,ms});return clock;},clearTimeout:id=>timers.delete(id)};
     vm.runInNewContext(source,context);
@@ -44,6 +45,11 @@ test('network failure backs off then successful recovery restores interval',asyn
     // Retry backs off to six seconds after the first failed request.
     const [id,timer]=[...h.timers][0];assert.equal(timer.ms,6000);h.timers.delete(id);timer.fn();
     await h.respond();assert.equal(h.runTimer(),3000);
+});
+test('encrypted-message decryption outages show a clear status and back off',async()=>{
+    const h=harness();await h.respond(503);
+    assert.equal(h.status.textContent,'Tin nhắn mã hóa tạm thời chưa thể giải mã. Vui lòng thử lại sau.');
+    assert.equal(h.runTimer(),6000);
 });
 for(const code of [401,403,404])test(`${code} clears protected content and stops requests`,async()=>{
     const h=harness();await h.respond(200,[message]);h.runTimer();await h.respond(code);

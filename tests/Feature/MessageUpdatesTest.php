@@ -7,6 +7,7 @@ use App\Services\MessageRealtimeService;
 use App\Support\PermissionCache;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
@@ -44,6 +45,9 @@ class MessageUpdatesTest extends TestCase
             $table->integer('DonHangID');
             $table->integer('NguoiGuiID');
             $table->text('NoiDung');
+            $table->text('NoiDungMaHoa')->nullable();
+            $table->text('NoiDungNonce')->nullable();
+            $table->integer('MaHoaPhienBan')->nullable();
             $table->dateTime('ThoiGianGui')->nullable();
         });
         DB::table('TaiKhoan')->insert([
@@ -78,8 +82,99 @@ class MessageUpdatesTest extends TestCase
             ->assertOk()->assertHeader('Cache-Control', 'no-store, private')
             ->assertExactJson(['order_id' => 1, 'messages' => [[
                 'id' => $id, 'content' => '<img src=x onerror=alert(1)>',
+                'image_url' => null,
                 'sender_name' => 'Mobile', 'is_mine' => false, 'sent_at' => '2026-10-09T19:00:00+07:00',
             ]]]);
+    }
+
+    public function test_encrypted_order_messages_are_returned_as_plaintext(): void
+    {
+        $key = random_bytes(32);
+        $orderMessage = $this->encryptedMessage('Mã đơn hàng đã sẵn sàng.', $key);
+        DB::table('TinNhan')->insert([
+            ['DonHangID' => 1, 'NguoiGuiID' => 2, 'NoiDung' => '', ...$orderMessage],
+        ]);
+        config([
+            'services.supabase.project_url' => 'https://example.supabase.co',
+            'services.supabase.service_role_key' => 'test-service-role-key',
+        ]);
+        Http::fake([
+            'https://example.supabase.co/rest/v1/rpc/get_chat_encryption_key' => Http::response(
+                json_encode(base64_encode($key), JSON_THROW_ON_ERROR),
+                200,
+                ['Content-Type' => 'application/json'],
+            ),
+        ]);
+
+        $this->actingAs($this->staff())->getJson('/admin/messages/1/updates')
+            ->assertOk()
+            ->assertJsonPath('messages.0.content', 'Mã đơn hàng đã sẵn sàng.')
+            ->assertJsonMissingPath('messages.0.NoiDungMaHoa');
+
+        Http::assertSent(fn ($request): bool => $request->url() === 'https://example.supabase.co/rest/v1/rpc/get_chat_encryption_key'
+            && $request->hasHeader('apikey', 'test-service-role-key')
+            && $request->hasHeader('Authorization', 'Bearer test-service-role-key'));
+    }
+
+    public function test_order_updates_include_presented_image_urls(): void
+    {
+        $id = $this->message(content: 'image:2/attachment.jpg');
+        config([
+            'services.supabase.project_url' => 'https://example.supabase.co',
+            'services.supabase.service_role_key' => 'test-service-role-key',
+        ]);
+        Http::fake([
+            'https://example.supabase.co/storage/v1/object/sign/chat-images/2/attachment.jpg' => Http::response([
+                'signedURL' => '/object/sign/chat-images/2/attachment.jpg',
+            ]),
+        ]);
+
+        $this->actingAs($this->staff())->getJson('/admin/messages/1/updates')
+            ->assertOk()
+            ->assertJsonPath('messages.0.id', $id)
+            ->assertJsonPath('messages.0.image_url', 'https://example.supabase.co/storage/v1/object/sign/chat-images/2/attachment.jpg');
+    }
+
+    public function test_encrypted_message_without_a_valid_key_fails_closed(): void
+    {
+        $encrypted = $this->encryptedMessage('Không được trả ciphertext.', random_bytes(32));
+        DB::table('TinNhan')->insert([
+            'DonHangID' => 1,
+            'NguoiGuiID' => 2,
+            'NoiDung' => '',
+            ...$encrypted,
+        ]);
+        config([
+            'services.supabase.project_url' => 'https://example.supabase.co',
+            'services.supabase.service_role_key' => 'test-service-role-key',
+        ]);
+        Http::fake([
+            'https://example.supabase.co/rest/v1/rpc/get_chat_encryption_key' => Http::response('null', 200, [
+                'Content-Type' => 'application/json',
+            ]),
+        ]);
+
+        $this->actingAs($this->staff())->getJson('/admin/messages/1/updates')
+            ->assertStatus(503)
+            ->assertJsonMissingPath('messages');
+    }
+
+    /**
+     * @return array{NoiDungMaHoa: string, NoiDungNonce: string, MaHoaPhienBan: int}
+     */
+    private function encryptedMessage(string $plainText, string $key): array
+    {
+        $nonce = random_bytes(12);
+        $tag = '';
+        $cipherText = openssl_encrypt($plainText, 'aes-256-gcm', $key, OPENSSL_RAW_DATA, $nonce, $tag);
+
+        $this->assertIsString($cipherText);
+
+        return [
+            'NoiDungMaHoa' => base64_encode($cipherText.$tag),
+            'NoiDungNonce' => base64_encode($nonce),
+            'MaHoaPhienBan' => 1,
+        ];
     }
 
     public function test_later_mobile_message_appears_on_next_read_without_old_duplicates(): void

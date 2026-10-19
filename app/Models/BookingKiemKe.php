@@ -32,9 +32,4 @@ class BookingKiemKe extends Model
     {
         return $this->belongsTo(Booking::class, 'BookingID');
     }
-
-    public function isCustomerApproved(): bool
-    {
-        return $this->XacNhanPhienBan === $this->PhienBan;
-    }
 }

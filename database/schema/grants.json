@@ -26,6 +26,22 @@
     },
     {
       "kind": "FUNCTION",
+      "name": "private.apply_booking_points_to_order()",
+      "schema": "private",
+      "grantee": "postgres",
+      "grantable": false,
+      "privilege": "EXECUTE"
+    },
+    {
+      "kind": "FUNCTION",
+      "name": "private.apply_booking_points_to_order()",
+      "schema": "private",
+      "grantee": "PUBLIC",
+      "grantable": false,
+      "privilege": "EXECUTE"
+    },
+    {
+      "kind": "FUNCTION",
       "name": "private.apply_booking_promotion_to_order()",
       "schema": "private",
       "grantee": "postgres",
@@ -154,6 +170,62 @@
     },
     {
       "kind": "FUNCTION",
+      "name": "private.dispatch_push_notification()",
+      "schema": "private",
+      "grantee": "postgres",
+      "grantable": false,
+      "privilege": "EXECUTE"
+    },
+    {
+      "kind": "FUNCTION",
+      "name": "private.get_service_public_reviews(p_service_id integer, p_filter text, p_offset integer, p_limit integer)",
+      "schema": "private",
+      "grantee": "anon",
+      "grantable": false,
+      "privilege": "EXECUTE"
+    },
+    {
+      "kind": "FUNCTION",
+      "name": "private.get_service_public_reviews(p_service_id integer, p_filter text, p_offset integer, p_limit integer)",
+      "schema": "private",
+      "grantee": "authenticated",
+      "grantable": false,
+      "privilege": "EXECUTE"
+    },
+    {
+      "kind": "FUNCTION",
+      "name": "private.get_service_public_reviews(p_service_id integer, p_filter text, p_offset integer, p_limit integer)",
+      "schema": "private",
+      "grantee": "postgres",
+      "grantable": false,
+      "privilege": "EXECUTE"
+    },
+    {
+      "kind": "FUNCTION",
+      "name": "private.get_service_reviews_v2(p_service_id integer, p_filter text, p_offset integer, p_limit integer)",
+      "schema": "private",
+      "grantee": "anon",
+      "grantable": false,
+      "privilege": "EXECUTE"
+    },
+    {
+      "kind": "FUNCTION",
+      "name": "private.get_service_reviews_v2(p_service_id integer, p_filter text, p_offset integer, p_limit integer)",
+      "schema": "private",
+      "grantee": "authenticated",
+      "grantable": false,
+      "privilege": "EXECUTE"
+    },
+    {
+      "kind": "FUNCTION",
+      "name": "private.get_service_reviews_v2(p_service_id integer, p_filter text, p_offset integer, p_limit integer)",
+      "schema": "private",
+      "grantee": "postgres",
+      "grantable": false,
+      "privilege": "EXECUTE"
+    },
+    {
+      "kind": "FUNCTION",
       "name": "private.has_role(role_name text)",
       "schema": "private",
       "grantee": "authenticated",
@@ -258,14 +330,6 @@
     },
     {
       "kind": "FUNCTION",
-      "name": "private.notify_customers_new_promotion()",
-      "schema": "private",
-      "grantee": "PUBLIC",
-      "grantable": false,
-      "privilege": "EXECUTE"
-    },
-    {
-      "kind": "FUNCTION",
       "name": "private.record_legacy_order_status_change()",
       "schema": "private",
       "grantee": "postgres",
@@ -279,6 +343,22 @@
       "grantee": "postgres",
       "grantable": false,
       "privilege": "EXECUTE"
+    },
+    {
+      "kind": "FUNCTION",
+      "name": "private.sync_booking_delivery_fee_to_order()",
+      "schema": "private",
+      "grantee": "postgres",
+      "grantable": false,
+      "privilege": "EXECUTE"
+    },
+    {
+      "kind": "SCHEMA",
+      "name": "private",
+      "schema": "private",
+      "grantee": "anon",
+      "grantable": false,
+      "privilege": "USAGE"
     },
     {
       "kind": "SCHEMA",
@@ -371,15 +451,6 @@
     {
       "kind": "COLUMN",
       "name": "public.\"KhachHang\"",
-      "column": "Email",
-      "schema": "public",
-      "grantee": "authenticated",
-      "grantable": false,
-      "privilege": "UPDATE"
-    },
-    {
-      "kind": "COLUMN",
-      "name": "public.\"KhachHang\"",
       "column": "HoTen",
       "schema": "public",
       "grantee": "authenticated",
@@ -397,8 +468,8 @@
     },
     {
       "kind": "COLUMN",
-      "name": "public.\"ThongBao\"",
-      "column": "DaDoc",
+      "name": "public.\"KhachHang\"",
+      "column": "Email",
       "schema": "public",
       "grantee": "authenticated",
       "grantable": false,
@@ -406,8 +477,8 @@
     },
     {
       "kind": "COLUMN",
-      "name": "public.khachhang",
-      "column": "diachi",
+      "name": "public.\"ThongBao\"",
+      "column": "DaDoc",
       "schema": "public",
       "grantee": "authenticated",
       "grantable": false,
@@ -426,6 +497,15 @@
       "kind": "COLUMN",
       "name": "public.khachhang",
       "column": "hoten",
+      "schema": "public",
+      "grantee": "authenticated",
+      "grantable": false,
+      "privilege": "UPDATE"
+    },
+    {
+      "kind": "COLUMN",
+      "name": "public.khachhang",
+      "column": "diachi",
       "schema": "public",
       "grantee": "authenticated",
       "grantable": false,
@@ -554,6 +634,22 @@
     },
     {
       "kind": "FUNCTION",
+      "name": "public.get_chat_encryption_key()",
+      "schema": "public",
+      "grantee": "postgres",
+      "grantable": false,
+      "privilege": "EXECUTE"
+    },
+    {
+      "kind": "FUNCTION",
+      "name": "public.get_chat_encryption_key()",
+      "schema": "public",
+      "grantee": "service_role",
+      "grantable": false,
+      "privilege": "EXECUTE"
+    },
+    {
+      "kind": "FUNCTION",
       "name": "public.get_current_account_id()",
       "schema": "public",
       "grantee": "authenticated",
@@ -594,6 +690,30 @@
     },
     {
       "kind": "FUNCTION",
+      "name": "public.get_customer_history_page(p_status text, p_offset integer, p_limit integer)",
+      "schema": "public",
+      "grantee": "authenticated",
+      "grantable": false,
+      "privilege": "EXECUTE"
+    },
+    {
+      "kind": "FUNCTION",
+      "name": "public.get_customer_history_page(p_status text, p_offset integer, p_limit integer)",
+      "schema": "public",
+      "grantee": "postgres",
+      "grantable": false,
+      "privilege": "EXECUTE"
+    },
+    {
+      "kind": "FUNCTION",
+      "name": "public.get_customer_history_page(p_status text, p_offset integer, p_limit integer)",
+      "schema": "public",
+      "grantee": "service_role",
+      "grantable": false,
+      "privilege": "EXECUTE"
+    },
+    {
+      "kind": "FUNCTION",
       "name": "public.get_customer_loyalty()",
       "schema": "public",
       "grantee": "authenticated",
@@ -605,6 +725,30 @@
       "name": "public.get_customer_loyalty()",
       "schema": "public",
       "grantee": "postgres",
+      "grantable": false,
+      "privilege": "EXECUTE"
+    },
+    {
+      "kind": "FUNCTION",
+      "name": "public.get_hidden_chat_message_ids(p_peer_account_id integer, p_order_id integer)",
+      "schema": "public",
+      "grantee": "authenticated",
+      "grantable": false,
+      "privilege": "EXECUTE"
+    },
+    {
+      "kind": "FUNCTION",
+      "name": "public.get_hidden_chat_message_ids(p_peer_account_id integer, p_order_id integer)",
+      "schema": "public",
+      "grantee": "postgres",
+      "grantable": false,
+      "privilege": "EXECUTE"
+    },
+    {
+      "kind": "FUNCTION",
+      "name": "public.get_hidden_chat_message_ids(p_peer_account_id integer, p_order_id integer)",
+      "schema": "public",
+      "grantee": "service_role",
       "grantable": false,
       "privilege": "EXECUTE"
     },
@@ -626,6 +770,70 @@
     },
     {
       "kind": "FUNCTION",
+      "name": "public.get_service_public_reviews(p_service_id integer, p_filter text, p_offset integer, p_limit integer)",
+      "schema": "public",
+      "grantee": "anon",
+      "grantable": false,
+      "privilege": "EXECUTE"
+    },
+    {
+      "kind": "FUNCTION",
+      "name": "public.get_service_public_reviews(p_service_id integer, p_filter text, p_offset integer, p_limit integer)",
+      "schema": "public",
+      "grantee": "authenticated",
+      "grantable": false,
+      "privilege": "EXECUTE"
+    },
+    {
+      "kind": "FUNCTION",
+      "name": "public.get_service_public_reviews(p_service_id integer, p_filter text, p_offset integer, p_limit integer)",
+      "schema": "public",
+      "grantee": "postgres",
+      "grantable": false,
+      "privilege": "EXECUTE"
+    },
+    {
+      "kind": "FUNCTION",
+      "name": "public.get_service_public_reviews(p_service_id integer, p_filter text, p_offset integer, p_limit integer)",
+      "schema": "public",
+      "grantee": "service_role",
+      "grantable": false,
+      "privilege": "EXECUTE"
+    },
+    {
+      "kind": "FUNCTION",
+      "name": "public.get_service_reviews_v2(p_service_id integer, p_filter text, p_offset integer, p_limit integer)",
+      "schema": "public",
+      "grantee": "anon",
+      "grantable": false,
+      "privilege": "EXECUTE"
+    },
+    {
+      "kind": "FUNCTION",
+      "name": "public.get_service_reviews_v2(p_service_id integer, p_filter text, p_offset integer, p_limit integer)",
+      "schema": "public",
+      "grantee": "authenticated",
+      "grantable": false,
+      "privilege": "EXECUTE"
+    },
+    {
+      "kind": "FUNCTION",
+      "name": "public.get_service_reviews_v2(p_service_id integer, p_filter text, p_offset integer, p_limit integer)",
+      "schema": "public",
+      "grantee": "postgres",
+      "grantable": false,
+      "privilege": "EXECUTE"
+    },
+    {
+      "kind": "FUNCTION",
+      "name": "public.get_service_reviews_v2(p_service_id integer, p_filter text, p_offset integer, p_limit integer)",
+      "schema": "public",
+      "grantee": "service_role",
+      "grantable": false,
+      "privilege": "EXECUTE"
+    },
+    {
+      "kind": "FUNCTION",
       "name": "public.get_staff_chat_inbox()",
       "schema": "public",
       "grantee": "authenticated",
@@ -674,6 +882,30 @@
     },
     {
       "kind": "FUNCTION",
+      "name": "public.hide_chat_message(p_message_id integer)",
+      "schema": "public",
+      "grantee": "authenticated",
+      "grantable": false,
+      "privilege": "EXECUTE"
+    },
+    {
+      "kind": "FUNCTION",
+      "name": "public.hide_chat_message(p_message_id integer)",
+      "schema": "public",
+      "grantee": "postgres",
+      "grantable": false,
+      "privilege": "EXECUTE"
+    },
+    {
+      "kind": "FUNCTION",
+      "name": "public.hide_chat_message(p_message_id integer)",
+      "schema": "public",
+      "grantee": "service_role",
+      "grantable": false,
+      "privilege": "EXECUTE"
+    },
+    {
+      "kind": "FUNCTION",
       "name": "public.mark_chat_thread_read(p_peer_account_id integer, p_order_id integer)",
       "schema": "public",
       "grantee": "authenticated",
@@ -715,6 +947,30 @@
     {
       "kind": "FUNCTION",
       "name": "public.mark_notifications_read(p_notification_ids bigint[])",
+      "schema": "public",
+      "grantee": "service_role",
+      "grantable": false,
+      "privilege": "EXECUTE"
+    },
+    {
+      "kind": "FUNCTION",
+      "name": "public.migrate_chat_message_encrypted(p_message_id integer, p_ciphertext text, p_nonce text)",
+      "schema": "public",
+      "grantee": "authenticated",
+      "grantable": false,
+      "privilege": "EXECUTE"
+    },
+    {
+      "kind": "FUNCTION",
+      "name": "public.migrate_chat_message_encrypted(p_message_id integer, p_ciphertext text, p_nonce text)",
+      "schema": "public",
+      "grantee": "postgres",
+      "grantable": false,
+      "privilege": "EXECUTE"
+    },
+    {
+      "kind": "FUNCTION",
+      "name": "public.migrate_chat_message_encrypted(p_message_id integer, p_ciphertext text, p_nonce text)",
       "schema": "public",
       "grantee": "service_role",
       "grantable": false,
@@ -762,6 +1018,54 @@
     },
     {
       "kind": "FUNCTION",
+      "name": "public.recall_chat_message(p_message_id integer)",
+      "schema": "public",
+      "grantee": "authenticated",
+      "grantable": false,
+      "privilege": "EXECUTE"
+    },
+    {
+      "kind": "FUNCTION",
+      "name": "public.recall_chat_message(p_message_id integer)",
+      "schema": "public",
+      "grantee": "postgres",
+      "grantable": false,
+      "privilege": "EXECUTE"
+    },
+    {
+      "kind": "FUNCTION",
+      "name": "public.recall_chat_message(p_message_id integer)",
+      "schema": "public",
+      "grantee": "service_role",
+      "grantable": false,
+      "privilege": "EXECUTE"
+    },
+    {
+      "kind": "FUNCTION",
+      "name": "public.register_push_device_token(p_token text)",
+      "schema": "public",
+      "grantee": "authenticated",
+      "grantable": false,
+      "privilege": "EXECUTE"
+    },
+    {
+      "kind": "FUNCTION",
+      "name": "public.register_push_device_token(p_token text)",
+      "schema": "public",
+      "grantee": "postgres",
+      "grantable": false,
+      "privilege": "EXECUTE"
+    },
+    {
+      "kind": "FUNCTION",
+      "name": "public.register_push_device_token(p_token text)",
+      "schema": "public",
+      "grantee": "service_role",
+      "grantable": false,
+      "privilege": "EXECUTE"
+    },
+    {
+      "kind": "FUNCTION",
       "name": "public.request_order_payment(p_donhangid bigint, p_phuongthuc text, p_idempotency_key uuid)",
       "schema": "public",
       "grantee": "authenticated",
@@ -794,9 +1098,25 @@
     },
     {
       "kind": "FUNCTION",
-      "name": "public.send_chat_message(p_recipient_account_id integer, p_content text, p_order_id integer)",
+      "name": "public.send_chat_message_encrypted(p_recipient_account_id integer, p_ciphertext text, p_nonce text, p_order_id integer)",
       "schema": "public",
       "grantee": "authenticated",
+      "grantable": false,
+      "privilege": "EXECUTE"
+    },
+    {
+      "kind": "FUNCTION",
+      "name": "public.send_chat_message_encrypted(p_recipient_account_id integer, p_ciphertext text, p_nonce text, p_order_id integer)",
+      "schema": "public",
+      "grantee": "postgres",
+      "grantable": false,
+      "privilege": "EXECUTE"
+    },
+    {
+      "kind": "FUNCTION",
+      "name": "public.send_chat_message_encrypted(p_recipient_account_id integer, p_ciphertext text, p_nonce text, p_order_id integer)",
+      "schema": "public",
+      "grantee": "service_role",
       "grantable": false,
       "privilege": "EXECUTE"
     },
@@ -1059,6 +1379,30 @@
     {
       "kind": "FUNCTION",
       "name": "public.transition_laundry_order(p_donhangid bigint, p_trangthaimoi text, p_lydo text)",
+      "schema": "public",
+      "grantee": "service_role",
+      "grantable": false,
+      "privilege": "EXECUTE"
+    },
+    {
+      "kind": "FUNCTION",
+      "name": "public.unregister_push_device_token(p_token text)",
+      "schema": "public",
+      "grantee": "authenticated",
+      "grantable": false,
+      "privilege": "EXECUTE"
+    },
+    {
+      "kind": "FUNCTION",
+      "name": "public.unregister_push_device_token(p_token text)",
+      "schema": "public",
+      "grantee": "postgres",
+      "grantable": false,
+      "privilege": "EXECUTE"
+    },
+    {
+      "kind": "FUNCTION",
+      "name": "public.unregister_push_device_token(p_token text)",
       "schema": "public",
       "grantee": "service_role",
       "grantable": false,
@@ -5898,6 +6242,134 @@
     },
     {
       "kind": "TABLE",
+      "name": "public.\"TinNhanAn\"",
+      "schema": "public",
+      "grantee": "postgres",
+      "grantable": false,
+      "privilege": "DELETE"
+    },
+    {
+      "kind": "TABLE",
+      "name": "public.\"TinNhanAn\"",
+      "schema": "public",
+      "grantee": "postgres",
+      "grantable": false,
+      "privilege": "INSERT"
+    },
+    {
+      "kind": "TABLE",
+      "name": "public.\"TinNhanAn\"",
+      "schema": "public",
+      "grantee": "postgres",
+      "grantable": false,
+      "privilege": "MAINTAIN"
+    },
+    {
+      "kind": "TABLE",
+      "name": "public.\"TinNhanAn\"",
+      "schema": "public",
+      "grantee": "postgres",
+      "grantable": false,
+      "privilege": "REFERENCES"
+    },
+    {
+      "kind": "TABLE",
+      "name": "public.\"TinNhanAn\"",
+      "schema": "public",
+      "grantee": "postgres",
+      "grantable": false,
+      "privilege": "SELECT"
+    },
+    {
+      "kind": "TABLE",
+      "name": "public.\"TinNhanAn\"",
+      "schema": "public",
+      "grantee": "postgres",
+      "grantable": false,
+      "privilege": "TRIGGER"
+    },
+    {
+      "kind": "TABLE",
+      "name": "public.\"TinNhanAn\"",
+      "schema": "public",
+      "grantee": "postgres",
+      "grantable": false,
+      "privilege": "TRUNCATE"
+    },
+    {
+      "kind": "TABLE",
+      "name": "public.\"TinNhanAn\"",
+      "schema": "public",
+      "grantee": "postgres",
+      "grantable": false,
+      "privilege": "UPDATE"
+    },
+    {
+      "kind": "TABLE",
+      "name": "public.\"TinNhanAn\"",
+      "schema": "public",
+      "grantee": "service_role",
+      "grantable": false,
+      "privilege": "DELETE"
+    },
+    {
+      "kind": "TABLE",
+      "name": "public.\"TinNhanAn\"",
+      "schema": "public",
+      "grantee": "service_role",
+      "grantable": false,
+      "privilege": "INSERT"
+    },
+    {
+      "kind": "TABLE",
+      "name": "public.\"TinNhanAn\"",
+      "schema": "public",
+      "grantee": "service_role",
+      "grantable": false,
+      "privilege": "MAINTAIN"
+    },
+    {
+      "kind": "TABLE",
+      "name": "public.\"TinNhanAn\"",
+      "schema": "public",
+      "grantee": "service_role",
+      "grantable": false,
+      "privilege": "REFERENCES"
+    },
+    {
+      "kind": "TABLE",
+      "name": "public.\"TinNhanAn\"",
+      "schema": "public",
+      "grantee": "service_role",
+      "grantable": false,
+      "privilege": "SELECT"
+    },
+    {
+      "kind": "TABLE",
+      "name": "public.\"TinNhanAn\"",
+      "schema": "public",
+      "grantee": "service_role",
+      "grantable": false,
+      "privilege": "TRIGGER"
+    },
+    {
+      "kind": "TABLE",
+      "name": "public.\"TinNhanAn\"",
+      "schema": "public",
+      "grantee": "service_role",
+      "grantable": false,
+      "privilege": "TRUNCATE"
+    },
+    {
+      "kind": "TABLE",
+      "name": "public.\"TinNhanAn\"",
+      "schema": "public",
+      "grantee": "service_role",
+      "grantable": false,
+      "privilege": "UPDATE"
+    },
+    {
+      "kind": "TABLE",
       "name": "public.\"VaiTro_Quyen\"",
       "schema": "public",
       "grantee": "authenticated",
@@ -7963,6 +8435,134 @@
     {
       "kind": "TABLE",
       "name": "public.nhanvien",
+      "schema": "public",
+      "grantee": "service_role",
+      "grantable": false,
+      "privilege": "UPDATE"
+    },
+    {
+      "kind": "TABLE",
+      "name": "public.push_device_tokens",
+      "schema": "public",
+      "grantee": "postgres",
+      "grantable": false,
+      "privilege": "DELETE"
+    },
+    {
+      "kind": "TABLE",
+      "name": "public.push_device_tokens",
+      "schema": "public",
+      "grantee": "postgres",
+      "grantable": false,
+      "privilege": "INSERT"
+    },
+    {
+      "kind": "TABLE",
+      "name": "public.push_device_tokens",
+      "schema": "public",
+      "grantee": "postgres",
+      "grantable": false,
+      "privilege": "MAINTAIN"
+    },
+    {
+      "kind": "TABLE",
+      "name": "public.push_device_tokens",
+      "schema": "public",
+      "grantee": "postgres",
+      "grantable": false,
+      "privilege": "REFERENCES"
+    },
+    {
+      "kind": "TABLE",
+      "name": "public.push_device_tokens",
+      "schema": "public",
+      "grantee": "postgres",
+      "grantable": false,
+      "privilege": "SELECT"
+    },
+    {
+      "kind": "TABLE",
+      "name": "public.push_device_tokens",
+      "schema": "public",
+      "grantee": "postgres",
+      "grantable": false,
+      "privilege": "TRIGGER"
+    },
+    {
+      "kind": "TABLE",
+      "name": "public.push_device_tokens",
+      "schema": "public",
+      "grantee": "postgres",
+      "grantable": false,
+      "privilege": "TRUNCATE"
+    },
+    {
+      "kind": "TABLE",
+      "name": "public.push_device_tokens",
+      "schema": "public",
+      "grantee": "postgres",
+      "grantable": false,
+      "privilege": "UPDATE"
+    },
+    {
+      "kind": "TABLE",
+      "name": "public.push_device_tokens",
+      "schema": "public",
+      "grantee": "service_role",
+      "grantable": false,
+      "privilege": "DELETE"
+    },
+    {
+      "kind": "TABLE",
+      "name": "public.push_device_tokens",
+      "schema": "public",
+      "grantee": "service_role",
+      "grantable": false,
+      "privilege": "INSERT"
+    },
+    {
+      "kind": "TABLE",
+      "name": "public.push_device_tokens",
+      "schema": "public",
+      "grantee": "service_role",
+      "grantable": false,
+      "privilege": "MAINTAIN"
+    },
+    {
+      "kind": "TABLE",
+      "name": "public.push_device_tokens",
+      "schema": "public",
+      "grantee": "service_role",
+      "grantable": false,
+      "privilege": "REFERENCES"
+    },
+    {
+      "kind": "TABLE",
+      "name": "public.push_device_tokens",
+      "schema": "public",
+      "grantee": "service_role",
+      "grantable": false,
+      "privilege": "SELECT"
+    },
+    {
+      "kind": "TABLE",
+      "name": "public.push_device_tokens",
+      "schema": "public",
+      "grantee": "service_role",
+      "grantable": false,
+      "privilege": "TRIGGER"
+    },
+    {
+      "kind": "TABLE",
+      "name": "public.push_device_tokens",
+      "schema": "public",
+      "grantee": "service_role",
+      "grantable": false,
+      "privilege": "TRUNCATE"
+    },
+    {
+      "kind": "TABLE",
+      "name": "public.push_device_tokens",
       "schema": "public",
       "grantee": "service_role",
       "grantable": false,

@@ -301,7 +301,7 @@
                 @endif
                 @if($inspectionMode)
                     <div class="col-12">
-                        <div class="alert alert-info mb-0">Kiểm tra trực tiếp loại đồ, dịch vụ, số lượng/kg và tình trạng trước khi giặt. Mã giảm giá và điểm sử dụng lấy từ Booking; khi xác nhận, đơn hàng được tạo ở trạng thái Đã tiếp nhận.</div>
+                        <div class="alert alert-info mb-0">Đối chiếu thông tin đã đăng ký với đồ thực tế và điều chỉnh nếu cần. Mã giảm giá và điểm sử dụng lấy từ Booking; khi xác nhận, hệ thống tạo đơn ngay. Nếu có thay đổi, khách sẽ nhận được thông báo trên mobile.</div>
                     </div>
                 @endif
                 <div class="col-12"><label class="form-label">Ghi chú</label><textarea class="form-control @error('notes') is-invalid @enderror" name="notes" rows="3" maxlength="500">{{ old('notes', $booking->GhiChu) }}</textarea>@error('notes')<div class="invalid-feedback">{{ $message }}</div>@enderror</div>
