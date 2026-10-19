@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Enums\BookingStatus;
+use App\Enums\InvoiceStatus;
 use App\Enums\OrderStatus;
 use App\Models\Booking;
 use App\Models\ChiTietDonHang;
@@ -362,10 +363,15 @@ class ReportsService
                 'ThanhTien',
                 'NgayTao',
             ])
+            ->withExists([
+                'hoaDons as has_paid_invoice' => fn ($invoiceQuery) => $invoiceQuery
+                    ->where('TrangThai', InvoiceStatus::Paid->value),
+            ])
             ->with([
                 'khachHang:KhachHangID,HoTen',
                 'chiTietDonHangs:ChiTietDonHangID,DonHangID,DichVuID',
                 'chiTietDonHangs.dichVu:DichVuID,TenDichVu',
+                'statusChanges',
             ]);
 
         if ($from !== null && $to !== null) {

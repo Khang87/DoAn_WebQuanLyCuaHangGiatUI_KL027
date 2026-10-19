@@ -27,6 +27,6 @@
     }
 @endphp
 
-<span {{ $attributes->merge(['class' => 'badge ' . $badgeClass . ' ' . ($pill ? 'rounded-pill ' : '') . $size]) }}>
+<span {{ $attributes->merge(['class' => 'badge status-badge ' . $badgeClass . ' ' . ($pill ? 'rounded-pill ' : '') . $size]) }}>
     @if($icon)<i class="fas fa-{{ $enum::iconFor($status) }} me-1"></i>@endif{{ $enum::labelFor($status) }}
 </span>

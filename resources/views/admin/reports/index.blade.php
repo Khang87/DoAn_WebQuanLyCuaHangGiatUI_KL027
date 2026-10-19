@@ -474,7 +474,9 @@
                                 <td class="fw-medium text-dark">{{ $order->customer?->name ?: '-' }}</td>
                                 <td class="text-secondary text-truncate" style="max-width: 250px;">{{ $order->items->pluck('service.name')->filter()->join(', ') ?: ($order->service?->name ?: '-') }}</td>
                                 <td class="text-center">
-                                    <x-admin.status-badge :status="$order->status" :enum="\App\Enums\OrderStatus::class" />
+                                    <div class="order-status-badges d-inline-flex align-items-center flex-nowrap gap-1 text-nowrap">
+                                        <x-admin.order-status-badges :order="$order" :is-paid="$order->isPaid()" :is-receiving="false" compact />
+                                    </div>
                                 </td>
                                 <td class="text-end fw-bold text-dark">{{ number_format($order->total_amount, 0, ',', '.') }} VNĐ</td>
                                 <td class="text-center">

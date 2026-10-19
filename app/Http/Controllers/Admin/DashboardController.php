@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Enums\InvoiceStatus;
 use App\Enums\OrderStatus;
 use App\Enums\PaymentStatus;
 use App\Exceptions\SettledOrderException;
@@ -162,11 +163,15 @@ class DashboardController extends Controller
                 'orders_count' => $service->chi_tiet_don_hangs_count,
             ]);
 
-        // --- Bảng: Đơn hàng mới nhất (top 10) ---
+        // --- Bảng: Đơn hàng mới nhất (top 15) ---
         $recentOrders = DonHang::query()
-            ->with(['khachHang', 'nhanVien'])
+            ->with(['khachHang', 'nhanVien', 'statusChanges'])
+            ->withExists([
+                'hoaDons as has_paid_invoice' => fn ($invoiceQuery) => $invoiceQuery
+                    ->where('TrangThai', InvoiceStatus::Paid->value),
+            ])
             ->orderBy('NgayTao', 'desc')
-            ->limit(10)
+            ->limit(15)
             ->get();
 
         // --- Bảng: Đánh giá mới nhất đang hiển thị ---
