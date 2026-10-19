@@ -10,9 +10,7 @@
 @endif
 
 @if($isPaid)
-    <span class="badge bg-success-subtle text-success-emphasis border border-success {{ $badgeSize }} rounded-pill">
-        <i class="bi bi-check-circle me-1"></i>Đã thanh toán
-    </span>
+    <x-admin.status-badge :status="\App\Enums\OrderStatus::Paid->value" :enum="\App\Enums\OrderStatus::class" :size="$badgeSize" />
 @endif
 
 @if($isReceiving)

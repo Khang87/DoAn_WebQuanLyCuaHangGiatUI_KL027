@@ -47,7 +47,7 @@ enum OrderStatus: string
             self::Received, self::Washing => 'bg-primary-subtle text-primary-emphasis border border-primary-subtle fw-semibold',
             self::Washed, self::Delivering => 'bg-info-subtle text-info-emphasis border border-info',
             self::Delivered => 'bg-success-subtle text-success-emphasis border border-success',
-            self::Paid => 'bg-primary-subtle text-primary-emphasis border border-primary',
+            self::Paid => 'bg-success-subtle text-success-emphasis border border-success',
             self::Cancelled => 'bg-danger-subtle text-danger-emphasis border border-danger',
         };
     }

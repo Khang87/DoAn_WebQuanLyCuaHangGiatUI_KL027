@@ -319,6 +319,18 @@ class OrderDeliveryProgressTest extends TestCase
         $this->assertStringContainsString('Đã thanh toán', $html);
     }
 
+    public function test_paid_order_badge_uses_same_style_and_icon_as_delivered_badge(): void
+    {
+        $this->assertSame(
+            OrderStatus::badgeClassFor(OrderStatus::Delivered),
+            OrderStatus::badgeClassFor(OrderStatus::Paid)
+        );
+        $this->assertSame(
+            OrderStatus::iconFor(OrderStatus::Delivered),
+            OrderStatus::iconFor(OrderStatus::Paid)
+        );
+    }
+
     private function createOrder(int $id, ?int $bookingId = null): DonHang
     {
         DB::table('DonHang')->insert([
