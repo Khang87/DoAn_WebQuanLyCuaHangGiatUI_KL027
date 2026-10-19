@@ -76,7 +76,7 @@
                     </div>
                     <div class="col-12">
                         <div class="border rounded-3 p-3">
-                            <h6 class="mb-3">Thông tin nhận và trả đồ</h6>
+                            <h6 class="mb-3">Thông tin nhận và trả đồ từ Booking</h6>
                             <div class="row g-3">
                 @endif
                 <div class="col-md-6"><label class="form-label">Hình thức nhận đồ <span class="text-danger ms-1">*</span></label><select class="form-select @error('method') is-invalid @enderror" name="method" id="booking-method" required>@foreach(\App\Enums\ReceiveMethod::options() as $value => $label)<option value="{{ $value }}" @selected(old('method', $booking->HinhThucNhanDo) === $value)>{{ $label }}</option>@endforeach</select>@error('method')<div class="invalid-feedback">{{ $message }}</div>@enderror</div>
@@ -158,7 +158,7 @@
                 @if($inspectionMode)
                     <div class="col-12">
                         <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
-                            <h6 class="mb-0">Mặt hàng và dịch vụ thực tế</h6>
+                            <h6 class="mb-0">Mặt hàng từ Booking · kiểm tra và chỉnh nếu cần</h6>
                             <button type="button" class="btn btn-sm btn-outline-primary" id="add-booking-item">
                                 <i class="bi bi-plus-lg me-1"></i>Thêm mặt hàng
                             </button>
@@ -301,7 +301,7 @@
                 @endif
                 @if($inspectionMode)
                     <div class="col-12">
-                        <div class="alert alert-info mb-0">Đối chiếu thông tin đã đăng ký với đồ thực tế và điều chỉnh nếu cần. Mã giảm giá và điểm sử dụng lấy từ Booking; khi xác nhận, hệ thống tạo đơn ngay. Nếu có thay đổi, khách sẽ nhận được thông báo trên mobile.</div>
+                        <div class="alert alert-info mb-0">Thông tin Booking đã được điền sẵn. Đối chiếu với đồ thực tế; nếu có sai khác, trao đổi trực tiếp với khách rồi điều chỉnh. Mã giảm giá và điểm sử dụng lấy từ Booking; khi xác nhận, hệ thống tạo đơn ngay. Nếu có thay đổi, khách sẽ nhận được thông báo trên mobile.</div>
                     </div>
                 @endif
                 <div class="col-12"><label class="form-label">Ghi chú</label><textarea class="form-control @error('notes') is-invalid @enderror" name="notes" rows="3" maxlength="500">{{ old('notes', $booking->GhiChu) }}</textarea>@error('notes')<div class="invalid-feedback">{{ $message }}</div>@enderror</div>
@@ -328,7 +328,7 @@
                     </div>
                 </div>
             @endif
-            <div class="d-flex justify-content-end gap-2 mt-4"><button type="reset" class="btn btn-outline-secondary">Khôi phục dữ liệu ban đầu</button><button type="submit" class="btn btn-primary">{{ $inspectionMode ? (config('giatui.booking_two_step') ? 'Lưu kiểm kê / tạo đơn' : 'Xác nhận & tạo đơn') : 'Cập nhật' }}</button></div>
+            <div class="d-flex justify-content-end gap-2 mt-4"><button type="reset" class="btn btn-outline-secondary">Khôi phục dữ liệu ban đầu</button><button type="submit" class="btn btn-primary">{{ $inspectionMode ? (config('giatui.booking_two_step') ? 'Xác nhận thông tin & tạo đơn' : 'Xác nhận & tạo đơn') : 'Cập nhật' }}</button></div>
         </form>
     </div>
 </div>

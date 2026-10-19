@@ -224,8 +224,6 @@ class BookingService
                     'DuLieuThucTe' => $snapshot,
                     'CoChenhLech' => $changed,
                     'PhienBan' => ($inspection?->PhienBan ?? 0) + 1,
-                    'XacNhanPhienBan' => null,
-                    'XacNhanLuc' => null,
                     'CapNhatLuc' => now(),
                 ]);
             }

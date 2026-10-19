@@ -37,8 +37,6 @@ return new class extends Migration
             $table->json('DuLieuThucTe');
             $table->boolean('CoChenhLech');
             $table->unsignedInteger('PhienBan')->default(1);
-            $table->unsignedInteger('XacNhanPhienBan')->nullable();
-            $table->dateTime('XacNhanLuc')->nullable();
             $table->dateTime('CapNhatLuc');
             $table->foreign('BookingID')->references('BookingID')->on('Booking')->cascadeOnDelete();
         });

@@ -108,7 +108,6 @@ class BookingOrderConversionTest extends TestCase
         $this->assertDatabaseHas('BookingKiemKe', [
             'BookingID' => $booking->BookingID,
             'CoChenhLech' => true,
-            'XacNhanPhienBan' => null,
         ]);
         $this->assertDatabaseHas('ThongBao', [
             'TaiKhoanID' => 90,
