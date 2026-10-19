@@ -39,13 +39,15 @@ class PasswordResetOtpService
                 throw new PasswordResetOtpException('Vui lòng chờ một phút trước khi yêu cầu mã khôi phục tiếp theo.', throttled: true);
             }
 
+            $users = User::query()->whereRaw('LOWER("Email") = ?', [$email])->limit(2)->get();
+            if ($users->isEmpty()) {
+                throw new PasswordResetOtpException('Email này không có trong hệ thống.');
+            }
+            if ($users->count() !== 1) {
+                throw new PasswordResetOtpException('Email này thuộc nhiều tài khoản. Vui lòng liên hệ quản trị viên.');
+            }
             if (! $cache->add($this->throttleKey($email), now()->addMinute()->timestamp, 60)) {
                 throw new PasswordResetOtpException('Vui lòng chờ một phút trước khi yêu cầu mã OTP mới.', throttled: true);
-            }
-            // The same response/cooldown applies to unknown or ambiguous emails.
-            $users = User::query()->whereRaw('LOWER("Email") = ?', [$email])->get();
-            if ($users->count() !== 1) {
-                return;
             }
             $user = $users->first();
 
