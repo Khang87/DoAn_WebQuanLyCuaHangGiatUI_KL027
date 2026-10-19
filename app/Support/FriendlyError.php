@@ -30,7 +30,7 @@ class FriendlyError
         $isMissingRelation = $sqlState === '42P01';
 
         if ($isMissingRelation && str_contains($raw, 'donhang_trangthai')) {
-            return 'Không thể tạo đơn hàng vì cấu hình nhật ký trạng thái cũ trên CSDL Supabase chưa tương thích. Booking chưa được xác nhận; vui lòng liên hệ quản trị viên.';
+            return 'Không thể tạo đơn hàng vì cấu hình nhật ký trạng thái cũ trên CSDL Supabase chưa tương thích. Giao dịch tạo đơn đã bị hủy; không phát sinh đơn mới.';
         }
 
         if ($isMissingRelation) {
@@ -39,18 +39,18 @@ class FriendlyError
 
         if ($sqlState === '42703') {
             if (str_contains($raw, 'old.trangthai') || str_contains($raw, 'old" has no field "trangthai')) {
-                return 'Không thể tạo đơn hàng vì trigger Supabase đang đọc sai tên cột trạng thái: schema dùng "TrangThai" có phân biệt chữ hoa/thường. Booking chưa được xác nhận; giao dịch đã được hủy.';
+                return 'Không thể tạo đơn hàng vì trigger Supabase đang đọc sai tên cột trạng thái: schema dùng "TrangThai" có phân biệt chữ hoa/thường. Giao dịch tạo đơn đã bị hủy; trạng thái và chứng từ đã lưu trước đó được giữ nguyên.';
             }
 
             return 'Không thể xử lý '.$subject.' vì câu lệnh hoặc trigger trên CSDL Supabase đang tham chiếu đến cột không tồn tại hoặc sai chữ hoa/thường. Giao dịch đã được hủy; vui lòng liên hệ quản trị viên kiểm tra tên cột với schema.';
         }
 
         if (str_contains($raw, 'record_legacy_order_status_change')) {
-            return 'Không thể tạo đơn hàng vì trigger nhật ký trạng thái cũ trên CSDL Supabase chưa tương thích. Booking chưa được xác nhận; vui lòng liên hệ quản trị viên.';
+            return 'Không thể tạo đơn hàng vì trigger nhật ký trạng thái cũ trên CSDL Supabase chưa tương thích. Giao dịch tạo đơn đã bị hủy; không phát sinh đơn mới.';
         }
 
         if ($sqlState === '25P02') {
-            return 'Giao dịch CSDL đã bị hủy do một lỗi xảy ra trước đó. Booking chưa được xác nhận; vui lòng kiểm tra log lỗi PostgreSQL trước khi thử lại.';
+            return 'Giao dịch CSDL đã bị hủy do một lỗi xảy ra trước đó. Dữ liệu đã lưu trước giao dịch này được giữ nguyên; vui lòng kiểm tra log lỗi PostgreSQL trước khi thử lại.';
         }
 
         if ($e instanceof QueryException) {

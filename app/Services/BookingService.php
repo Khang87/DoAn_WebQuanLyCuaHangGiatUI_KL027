@@ -22,7 +22,6 @@ class BookingService
         private OrderService $orderService,
         private PricingService $pricingService,
         private NotificationService $notificationService,
-        private DeliveryFeeService $deliveryFeeService,
     ) {}
 
     public function getAll(array $filters = []): LengthAwarePaginator
@@ -90,12 +89,12 @@ class BookingService
                 'nhanVienXacNhan',
                 'donHangs',
                 'khuyenMai',
-            ], config('giatui.booking_two_step') ? [
+            ], [
                 'giaoNhanDuKiens', 'kiemKe',
                 'donHangs.chiTietDonHangs.dichVu',
                 'donHangs.chiTietDonHangs.loaiDoGiat',
                 'donHangs.chiTietDonHangs.donViTinh',
-            ] : []))
+            ]))
             ->find($id);
     }
 
@@ -134,8 +133,11 @@ class BookingService
     {
         return DB::transaction(function () use ($booking): Booking {
             $locked = Booking::query()->lockForUpdate()->findOrFail($booking->BookingID);
-            if ($locked->TrangThai !== BookingStatus::Pending->value || $this->hasConvertedOrder($locked)) {
-                throw ValidationException::withMessages(['booking' => 'Chỉ có thể xác nhận Booking đang chờ và chưa có đơn hàng.']);
+            if ($this->hasConvertedOrder($locked)) {
+                throw ValidationException::withMessages(['booking' => 'Booking đã có đơn hàng và không cần xác nhận lại.']);
+            }
+            if (! in_array($locked->TrangThai, [BookingStatus::Pending->value, BookingStatus::Confirmed->value], true)) {
+                throw ValidationException::withMessages(['booking' => 'Chỉ có thể xác nhận Booking đang chờ nhận đồ.']);
             }
 
             $employeeId = $this->requireAuthenticatedEmployeeId('booking', 'Tài khoản cần hồ sơ nhân viên đang hoạt động để xác nhận Booking.');
@@ -146,25 +148,28 @@ class BookingService
                 ['NHAN_DO', $locked->HinhThucNhanDo, $locked->DiaChiNhan, $locked->PickupDeliveryFee],
                 ['GIAO_DO', $locked->HinhThucTraDo, $locked->DiaChiTra, $locked->DeliveryFee],
             ] as [$leg, $method, $address, $fee]) {
-                BookingGiaoNhan::create([
-                    'BookingID' => $locked->BookingID,
-                    'LoaiGiaoNhan' => $leg,
-                    'HinhThuc' => $method,
-                    'DiaChi' => $method === 'Tại nhà' ? $address : null,
-                    'NhanVienID' => $leg === 'NHAN_DO' ? $employeeId : null,
-                    'ThoiGianDuKien' => $leg === 'NHAN_DO' ? $locked->NgayHen->format('Y-m-d').' '.$locked->GioHen->format('H:i:s') : null,
-                    'PhiGiaoNhan' => $method === 'Tại nhà' ? $fee : 0,
-                    'NgayTao' => now(),
-                ]);
+                BookingGiaoNhan::query()->firstOrCreate(
+                    ['BookingID' => $locked->BookingID, 'LoaiGiaoNhan' => $leg],
+                    [
+                        'HinhThuc' => $method,
+                        'DiaChi' => $method === 'Tại nhà' ? $address : null,
+                        'NhanVienID' => $leg === 'NHAN_DO' ? $employeeId : null,
+                        'ThoiGianDuKien' => $leg === 'NHAN_DO' ? $locked->NgayHen->format('Y-m-d').' '.$locked->GioHen->format('H:i:s') : null,
+                        'PhiGiaoNhan' => $method === 'Tại nhà' ? $fee : 0,
+                        'NgayTao' => now(),
+                    ],
+                );
             }
 
-            $locked->forceFill([
-                'TrangThai' => BookingStatus::Confirmed->value,
-                'NhanVienXacNhanID' => $employeeId,
-                'ThoiGianXacNhan' => now(),
-                'NgayCapNhat' => now(),
-            ])->saveQuietly();
-            $this->recordBookingAudit($locked, $before, $this->bookingAuditSnapshot($locked), $beforeItems, $beforeItems);
+            if ($locked->TrangThai === BookingStatus::Pending->value) {
+                $locked->forceFill([
+                    'TrangThai' => BookingStatus::Confirmed->value,
+                    'NhanVienXacNhanID' => $employeeId,
+                    'ThoiGianXacNhan' => now(),
+                    'NgayCapNhat' => now(),
+                ])->saveQuietly();
+                $this->recordBookingAudit($locked, $before, $this->bookingAuditSnapshot($locked), $beforeItems, $beforeItems);
+            }
 
             return $locked->fresh(['giaoNhanDuKiens', 'kiemKe', 'donHangs']);
         });
@@ -230,7 +235,7 @@ class BookingService
 
             $order = $this->inspectBookingAndCreateOrder(
                 $locked, null, $data['items'], 0, false, $data,
-                (bool) ($data['recalculate_delivery_fee'] ?? false), true,
+                false, true,
             );
 
             if ($changed) {
@@ -256,7 +261,7 @@ class BookingService
 
     private function inspectionSnapshot(array $data): array
     {
-        $fields = ['method', 'return_method', 'address', 'return_address', 'scheduled_date', 'scheduled_time', 'notes', 'recalculate_delivery_fee'];
+        $fields = ['method', 'return_method', 'address', 'return_address', 'scheduled_date', 'scheduled_time', 'notes'];
         $items = array_map(fn (array $item): array => array_intersect_key($item, array_flip([
             'DichVuID', 'LoaiDoGiatID', 'DonViTinhID', 'SoLuong', 'KhoiLuong', 'TinhTrangTruocKhiGiat', 'GhiChu',
         ])), $data['items']);
@@ -318,7 +323,7 @@ class BookingService
             $beforeItems = $this->bookingItemsAuditSnapshot($lockedBooking);
             $hasConvertedOrder = $this->hasConvertedOrder($lockedBooking);
 
-            if (config('giatui.booking_two_step') && $lockedBooking->TrangThai === BookingStatus::Confirmed->value
+            if ($lockedBooking->TrangThai === BookingStatus::Confirmed->value
                 && ! $hasConvertedOrder) {
                 throw ValidationException::withMessages(['booking' => 'Booking đã xác nhận chỉ được thay đổi qua kiểm kê thực tế.']);
             }
@@ -370,9 +375,7 @@ class BookingService
 
             if ($wasPending && $isBeingConfirmed) {
                 throw ValidationException::withMessages([
-                    'status' => config('giatui.booking_two_step')
-                        ? 'Hãy dùng thao tác “Xác nhận Booking” để lập phiếu trước khi kiểm kê.'
-                        : 'Hãy dùng thao tác “Tiếp nhận & tạo đơn” để xác nhận Booking và tạo đơn hàng.',
+                    'status' => 'Hãy dùng thao tác “Xác nhận Booking” để lập phiếu nhận trước khi kiểm kê.',
                 ]);
             }
 
@@ -456,7 +459,7 @@ class BookingService
                 return false;
             }
 
-            if (config('giatui.booking_two_step') && $lockedBooking->TrangThai === BookingStatus::Confirmed->value) {
+            if ($lockedBooking->TrangThai === BookingStatus::Confirmed->value) {
                 return false;
             }
 
@@ -494,49 +497,36 @@ class BookingService
                 return $existing;
             }
 
-            $canConvert = config('giatui.booking_two_step')
-                ? $lockedBooking->TrangThai === BookingStatus::Confirmed->value
-                : $lockedBooking->isConvertibleToOrder();
-            if (! $canConvert) {
+            if ($lockedBooking->TrangThai !== BookingStatus::Confirmed->value) {
                 throw ValidationException::withMessages([
-                    'booking' => 'Chỉ đặt lịch đang ở trạng thái Chờ xác nhận mới có thể được kiểm tra và tạo đơn.',
+                    'booking' => 'Hãy xác nhận Booking trước khi kiểm kê và tạo đơn.',
                 ]);
             }
 
-            if (config('giatui.booking_two_step')) {
-                $inspection = BookingKiemKe::query()->where('BookingID', $lockedBooking->BookingID)->lockForUpdate()->first();
-                $expectedSnapshot = $this->inspectionSnapshot(array_merge($bookingData, ['items' => $items]));
-                if (! $inspection || $inspection->DuLieuThucTe != $expectedSnapshot) {
-                    throw ValidationException::withMessages(['booking' => 'Bản kiểm kê chưa được lưu hoặc không khớp với dữ liệu đang tạo đơn.']);
-                }
+            if (! BookingGiaoNhan::query()->where('BookingID', $lockedBooking->BookingID)
+                ->where('LoaiGiaoNhan', 'NHAN_DO')->where('TrangThai', 'Đã nhận')->exists()) {
+                throw ValidationException::withMessages(['booking' => 'Hãy ghi nhận đã nhận đồ trước khi kiểm kê và tạo đơn.']);
+            }
+
+            $inspection = BookingKiemKe::query()->where('BookingID', $lockedBooking->BookingID)->lockForUpdate()->first();
+            $expectedSnapshot = $this->inspectionSnapshot(array_merge($bookingData, ['items' => $items]));
+            if (! $inspection || $inspection->DuLieuThucTe != $expectedSnapshot) {
+                throw ValidationException::withMessages(['booking' => 'Bản kiểm kê chưa được lưu hoặc không khớp với dữ liệu đang tạo đơn.']);
+            }
+            if ($recalculateDeliveryFee) {
+                throw ValidationException::withMessages([
+                    'recalculate_delivery_fee' => 'Phí giao nhận đã lưu từ Booking không được tính lại trong lúc kiểm kê.',
+                ]);
             }
 
             if ($useSavedBookingPoints) {
                 $pointsUsed = (int) $lockedBooking->DiemSuDung;
             }
 
-            $confirmerId = $employeeId;
-
             $before = $this->bookingAuditSnapshot($lockedBooking);
             $beforeItems = $this->bookingItemsAuditSnapshot($lockedBooking);
             unset($bookingData['customer_id'], $bookingData['status'], $bookingData['staff_id']);
             $lockedBooking->fill($this->mapRequestData($bookingData));
-
-            if ($recalculateDeliveryFee) {
-                $quote = $this->deliveryFeeService->quote(
-                    (string) $lockedBooking->HinhThucNhanDo,
-                    $lockedBooking->DiaChiNhan,
-                    (string) $lockedBooking->HinhThucTraDo,
-                    $lockedBooking->DiaChiTra,
-                );
-                $lockedBooking->forceFill([
-                    'PickupDistanceMeters' => $quote['pickup_distance_meters'],
-                    'PickupDeliveryFee' => $quote['pickup_fee'],
-                    'DeliveryDistanceMeters' => $quote['return_distance_meters'],
-                    'DeliveryFee' => $quote['return_fee'],
-                ]);
-                $lockedBooking->saveQuietly();
-            }
 
             if ($useAllAvailablePoints) {
                 $pointsUsed = (int) (KhachHang::query()->find($lockedBooking->KhachHangID)?->points() ?? 0)
@@ -544,13 +534,6 @@ class BookingService
             }
 
             $order = $this->orderService->createFromBooking($lockedBooking, $items, $employeeId, $pointsUsed);
-            if (! config('giatui.booking_two_step')) {
-                $lockedBooking->fill([
-                    'TrangThai' => BookingStatus::Confirmed->value,
-                    'NhanVienXacNhanID' => $confirmerId,
-                    'ThoiGianXacNhan' => now(),
-                ])->saveQuietly();
-            }
             $this->recordBookingAudit(
                 $lockedBooking, $before, $this->bookingAuditSnapshot($lockedBooking),
                 $beforeItems, $this->bookingItemsAuditSnapshot($lockedBooking),
