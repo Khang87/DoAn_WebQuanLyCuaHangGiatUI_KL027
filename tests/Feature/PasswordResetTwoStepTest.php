@@ -3,7 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\User;
-use App\Services\ResendOtpMailer;
+use App\Services\OtpMailer;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -29,11 +29,11 @@ class PasswordResetTwoStepTest extends TestCase
             $table->string('TrangThai');
         });
         $this->user = User::create(['TenDangNhap' => 'reset@example.test', 'Email' => 'reset@example.test', 'MatKhau' => Hash::make('OriginalPass123!'), 'TrangThai' => 'Hoạt động']);
-        $mailer = \Mockery::mock(ResendOtpMailer::class);
+        $mailer = \Mockery::mock(OtpMailer::class);
         $mailer->shouldReceive('send')->andReturnUsing(function (string $email, string $otp) {
             $this->otp = $otp;
         });
-        $this->app->instance(ResendOtpMailer::class, $mailer);
+        $this->app->instance(OtpMailer::class, $mailer);
     }
 
     private function sendOtp(): void

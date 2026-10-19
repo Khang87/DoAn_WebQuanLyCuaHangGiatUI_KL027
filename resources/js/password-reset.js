@@ -6,6 +6,26 @@ export function updateOtpCooldown(button, deadline, currentTime = Date.now()) {
     return seconds;
 }
 
+export function togglePasswordVisibility(input, button) {
+    const isVisible = input.type === 'password';
+    input.type = isVisible ? 'text' : 'password';
+
+    const icon = button.querySelector('i');
+    icon?.classList.toggle('bi-eye', !isVisible);
+    icon?.classList.toggle('bi-eye-slash', isVisible);
+    button.setAttribute('aria-label', isVisible ? 'Ẩn mật khẩu' : 'Hiện mật khẩu');
+    button.setAttribute('aria-pressed', String(isVisible));
+}
+
+if (typeof document !== 'undefined') {
+    document.querySelectorAll('[data-toggle-password]').forEach(button => {
+        const input = document.getElementById(button.dataset.togglePassword);
+        if (input) {
+            button.addEventListener('click', () => togglePasswordVisibility(input, button));
+        }
+    });
+}
+
 const button = typeof document === 'undefined' ? null : document.querySelector('[data-otp-resend]');
 if (button) {
     const seconds = Number(button.dataset.cooldownSeconds);

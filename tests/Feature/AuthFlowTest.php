@@ -6,8 +6,8 @@ use App\Http\Middleware\EnsureUserHasPermission;
 use App\Models\User;
 use App\Models\VaiTro;
 use App\Services\InternalPasswordOtpService;
+use App\Services\OtpMailer;
 use App\Services\RememberedLogin;
-use App\Services\ResendOtpMailer;
 use App\Services\UserService;
 use App\Support\PermissionCache;
 use Illuminate\Database\Schema\Blueprint;
@@ -16,7 +16,6 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
-use Resend\Exceptions\ErrorException;
 use Tests\TestCase;
 
 class AuthFlowTest extends TestCase
@@ -213,13 +212,13 @@ class AuthFlowTest extends TestCase
     {
         $rememberToken = app(RememberedLogin::class)->issue($this->staff);
         $otp = null;
-        $mailer = \Mockery::mock(ResendOtpMailer::class);
+        $mailer = \Mockery::mock(OtpMailer::class);
         $mailer->shouldReceive('send')->once()->with($this->staff->Email, \Mockery::on(function (string $sentOtp) use (&$otp): bool {
             $otp = $sentOtp;
 
             return preg_match('/^\d{6}$/', $sentOtp) === 1;
         }));
-        $this->app->instance(ResendOtpMailer::class, $mailer);
+        $this->app->instance(OtpMailer::class, $mailer);
         $this->post(route('password.email'), ['email' => $this->staff->Email])
             ->assertRedirect(route('password.request'))->assertSessionHas('status')->assertSessionMissing('simulation_otp');
         $this->assertNotNull($otp);
@@ -238,9 +237,9 @@ class AuthFlowTest extends TestCase
 
     public function test_password_reset_request_rejects_unknown_email(): void
     {
-        $mailer = \Mockery::mock(ResendOtpMailer::class);
+        $mailer = \Mockery::mock(OtpMailer::class);
         $mailer->shouldNotReceive('send');
-        $this->app->instance(ResendOtpMailer::class, $mailer);
+        $this->app->instance(OtpMailer::class, $mailer);
         $this->post(route('password.email'), ['email' => 'missing@example.test'])
             ->assertRedirect(route('password.request'))->assertSessionHas('error', 'Email này không có trong hệ thống.')
             ->assertSessionMissing('simulation_otp');
@@ -250,11 +249,11 @@ class AuthFlowTest extends TestCase
 
     public function test_password_reset_email_failure_does_not_leave_a_valid_otp(): void
     {
-        $mailer = \Mockery::mock(ResendOtpMailer::class);
+        $mailer = \Mockery::mock(OtpMailer::class);
         $mailer->shouldReceive('send')
             ->once()
-            ->andThrow(new \RuntimeException('Resend API unavailable.'));
-        $this->app->instance(ResendOtpMailer::class, $mailer);
+            ->andThrow(new \RuntimeException('Gmail SMTP unavailable.'));
+        $this->app->instance(OtpMailer::class, $mailer);
 
         $this->post(route('password.email'), [
             'email' => $this->staff->Email,
@@ -267,37 +266,32 @@ class AuthFlowTest extends TestCase
         ));
     }
 
-    public function test_resend_failure_log_redacts_emails_otp_and_api_credentials(): void
+    public function test_smtp_failure_log_redacts_emails_otp_and_mail_credentials(): void
     {
-        config(['services.resend.key' => 'resend_test_secret']);
+        config([
+            'mail.mailers.gmail.username' => 'sender@gmail.com',
+            'mail.mailers.gmail.password' => 'gmail_app_password',
+        ]);
         Log::shouldReceive('error')
             ->once()
             ->withArgs(function (string $message, array $context): bool {
-                $providerMessage = $context['provider_message'];
+                $mailerMessage = $context['mailer_message'];
 
-                $this->assertStringNotContainsString($this->staff->Email, $providerMessage);
-                $this->assertStringNotContainsString('another@example.test', $providerMessage);
-                $this->assertStringNotContainsString('123456', $providerMessage);
-                $this->assertStringNotContainsString('resend_test_secret', $providerMessage);
-                $this->assertStringNotContainsString('re_abcdefghijklmnopqrst', $providerMessage);
-                $this->assertStringNotContainsString('Bearer test-bearer-secret', $providerMessage);
-                $this->assertSame('validation_error', $context['provider_error_type']);
-                $this->assertSame(403, $context['provider_error_code']);
+                $this->assertStringNotContainsString($this->staff->Email, $mailerMessage);
+                $this->assertStringNotContainsString('another@example.test', $mailerMessage);
+                $this->assertStringNotContainsString('123456', $mailerMessage);
+                $this->assertStringNotContainsString('sender@gmail.com', $mailerMessage);
 
-                return $message === 'Unable to send password reset OTP through Resend.';
+                return $message === 'Unable to send password reset OTP through Gmail SMTP.';
             });
 
-        $mailer = \Mockery::mock(ResendOtpMailer::class);
+        $mailer = \Mockery::mock(OtpMailer::class);
         $mailer->shouldReceive('send')
             ->once()
             ->andReturnUsing(function (string $email, string $otp): void {
-                throw new ErrorException([
-                    'message' => "Failed to send {$otp} to {$email} and another@example.test; key resend_test_secret re_abcdefghijklmnopqrst; Bearer test-bearer-secret",
-                    'name' => 'validation_error',
-                    'statusCode' => 403,
-                ]);
+                throw new \RuntimeException("Failed to send {$otp} to {$email} and another@example.test; sender@gmail.com gmail_app_password; Bearer smtp_session_secret");
             });
-        $this->app->instance(ResendOtpMailer::class, $mailer);
+        $this->app->instance(OtpMailer::class, $mailer);
 
         $this->post(route('password.email'), [
             'email' => $this->staff->Email,
@@ -308,23 +302,6 @@ class AuthFlowTest extends TestCase
         $this->assertFalse(Cache::store('file')->has(
             'auth:password-reset-throttle:'.hash('sha256', $this->staff->Email),
         ));
-    }
-
-    public function test_resend_sandbox_rejects_an_email_that_is_not_the_configured_recipient(): void
-    {
-        config([
-            'services.resend.sandbox_to' => 'resend-owner@example.test',
-        ]);
-
-        try {
-            app(ResendOtpMailer::class)->send('another-account@example.test', '123456');
-            $this->fail('The Resend sandbox must not send OTPs to an unverified recipient.');
-        } catch (\RuntimeException $exception) {
-            $this->assertSame(
-                'The recipient is not the configured Resend sandbox address.',
-                $exception->getMessage(),
-            );
-        }
     }
 
     public function test_expired_password_reset_otp_cannot_be_used(): void
@@ -342,13 +319,13 @@ class AuthFlowTest extends TestCase
         $this->prepareAdminReset();
         $oldHash = $this->staff->MatKhau;
         $otp = null;
-        $mailer = \Mockery::mock(ResendOtpMailer::class);
+        $mailer = \Mockery::mock(OtpMailer::class);
         $mailer->shouldReceive('send')->once()->with($this->staff->Email, \Mockery::on(function (string $code) use (&$otp): bool {
             $otp = $code;
 
             return preg_match('/^\d{6}$/', $code) === 1;
         }), 10);
-        $this->app->instance(ResendOtpMailer::class, $mailer);
+        $this->app->instance(OtpMailer::class, $mailer);
 
         $this->post(route('accounts.reset-password', $this->staff))->assertRedirect(route('accounts.show', $this->staff))
             ->assertSessionHas('success')->assertSessionMissing('simulation_otp');
@@ -374,9 +351,9 @@ class AuthFlowTest extends TestCase
     {
         $this->prepareAdminReset();
         $oldHash = $this->staff->MatKhau;
-        $mailer = \Mockery::mock(ResendOtpMailer::class);
+        $mailer = \Mockery::mock(OtpMailer::class);
         $mailer->shouldReceive('send')->once()->andThrow(new \RuntimeException('Provider unavailable'));
-        $this->app->instance(ResendOtpMailer::class, $mailer);
+        $this->app->instance(OtpMailer::class, $mailer);
         $this->post(route('accounts.reset-password', $this->staff))->assertSessionHas('error');
         $this->assertSame($oldHash, $this->staff->fresh()->MatKhau);
         $this->assertNull(Cache::store('file')->get(app(InternalPasswordOtpService::class)->key($this->staff->Email)));
@@ -387,9 +364,9 @@ class AuthFlowTest extends TestCase
         $this->staff->update(['Email' => null]);
         $this->prepareAdminReset();
         $oldHash = $this->staff->MatKhau;
-        $mailer = \Mockery::mock(ResendOtpMailer::class);
+        $mailer = \Mockery::mock(OtpMailer::class);
         $mailer->shouldNotReceive('send');
-        $this->app->instance(ResendOtpMailer::class, $mailer);
+        $this->app->instance(OtpMailer::class, $mailer);
         $this->post(route('accounts.reset-password', $this->staff))->assertSessionHas('error');
         $this->assertSame($oldHash, $this->staff->fresh()->MatKhau);
     }
@@ -397,9 +374,9 @@ class AuthFlowTest extends TestCase
     public function test_account_reset_without_reset_permission_is_forbidden(): void
     {
         $this->actingAs($this->staff);
-        $mailer = \Mockery::mock(ResendOtpMailer::class);
+        $mailer = \Mockery::mock(OtpMailer::class);
         $mailer->shouldNotReceive('send');
-        $this->app->instance(ResendOtpMailer::class, $mailer);
+        $this->app->instance(OtpMailer::class, $mailer);
         $this->post(route('accounts.reset-password', $this->staff))->assertForbidden();
     }
 

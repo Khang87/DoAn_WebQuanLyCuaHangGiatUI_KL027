@@ -20,7 +20,7 @@ class PasswordResetOtpService
 
     private const OTP_LIFETIME_MINUTES = 15;
 
-    public function __construct(private ResendOtpMailer $otpMailer) {}
+    public function __construct(private OtpMailer $otpMailer) {}
 
     public function cooldownSeconds(string $email): int
     {
@@ -80,15 +80,9 @@ class PasswordResetOtpService
                 $context = [
                     'email_hash' => hash('sha256', $email),
                     'exception' => $exception::class,
-                    'provider_message' => $this->sanitizeProviderMessage($exception->getMessage(), $email, $otp),
+                    'mailer_message' => $this->sanitizeMailerMessage($exception->getMessage(), $email, $otp),
                 ];
-                if (method_exists($exception, 'getErrorType')) {
-                    $context['provider_error_type'] = $exception->getErrorType();
-                }
-                if (method_exists($exception, 'getErrorCode')) {
-                    $context['provider_error_code'] = $exception->getErrorCode();
-                }
-                Log::error('Unable to send password reset OTP through Resend.', $context);
+                Log::error('Unable to send password reset OTP through Gmail SMTP.', $context);
                 throw new PasswordResetOtpException('Không thể gửi email mã OTP lúc này. Vui lòng thử lại sau.');
             }
         });
@@ -227,14 +221,15 @@ class PasswordResetOtpService
         return self::OTP_PREFIX.$email;
     }
 
-    private function sanitizeProviderMessage(string $message, string $email, string $otp): string
+    private function sanitizeMailerMessage(string $message, string $email, string $otp): string
     {
         $message = str_replace(
             array_filter([
                 $email,
                 $otp,
-                (string) config('services.resend.key'),
-                (string) config('services.resend.from'),
+                (string) config('mail.mailers.gmail.username'),
+                (string) config('mail.mailers.gmail.password'),
+                (string) config('mail.from.address'),
             ]),
             '[redacted]',
             $message,
@@ -244,17 +239,15 @@ class PasswordResetOtpService
                 '/[A-Z0-9._%+\-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i',
                 '/\b\d{6}\b/',
                 '/\bBearer\s+\S+/i',
-                '/\bre_[A-Z0-9_-]{10,}\b/i',
             ],
             [
                 '[redacted-email]',
                 '[redacted-otp]',
                 'Bearer [redacted]',
-                '[redacted-key]',
             ],
             $message,
         );
 
-        return $message ?? 'Provider error (message redacted).';
+        return $message ?? 'Mailer error (message redacted).';
     }
 }

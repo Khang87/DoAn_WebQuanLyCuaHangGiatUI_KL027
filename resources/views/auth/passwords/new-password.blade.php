@@ -33,28 +33,52 @@
                 @csrf
                 <div class="mb-3">
                     <label class="form-label" for="password">Mật khẩu mới</label>
-                    <input
-                        class="form-control @error('password') is-invalid @enderror"
-                        type="password"
-                        id="password"
-                        name="password"
-                        minlength="8"
-                        autocomplete="new-password"
-                        required
-                    >
-                    @error('password')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                    <div class="input-group">
+                        <input
+                            class="form-control @error('password') is-invalid @enderror"
+                            type="password"
+                            id="password"
+                            name="password"
+                            minlength="8"
+                            autocomplete="new-password"
+                            required
+                        >
+                        <button
+                            class="btn btn-outline-secondary"
+                            type="button"
+                            data-toggle-password="password"
+                            aria-label="Hiện mật khẩu"
+                            aria-controls="password"
+                            aria-pressed="false"
+                        >
+                            <i class="bi bi-eye" aria-hidden="true"></i>
+                        </button>
+                    </div>
+                    @error('password')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
                 </div>
                 <div class="mb-3">
                     <label class="form-label" for="password_confirmation">Xác nhận mật khẩu mới</label>
-                    <input
-                        class="form-control"
-                        type="password"
-                        id="password_confirmation"
-                        name="password_confirmation"
-                        minlength="8"
-                        autocomplete="new-password"
-                        required
-                    >
+                    <div class="input-group">
+                        <input
+                            class="form-control"
+                            type="password"
+                            id="password_confirmation"
+                            name="password_confirmation"
+                            minlength="8"
+                            autocomplete="new-password"
+                            required
+                        >
+                        <button
+                            class="btn btn-outline-secondary"
+                            type="button"
+                            data-toggle-password="password_confirmation"
+                            aria-label="Hiện mật khẩu"
+                            aria-controls="password_confirmation"
+                            aria-pressed="false"
+                        >
+                            <i class="bi bi-eye" aria-hidden="true"></i>
+                        </button>
+                    </div>
                 </div>
                 <button class="btn btn-primary w-100" type="submit">Cập nhật mật khẩu</button>
             </form>
@@ -64,5 +88,6 @@
             </div>
         </div>
     </div>
+    @vite('resources/js/password-reset.js')
 </body>
 </html>
