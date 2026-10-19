@@ -9,6 +9,12 @@
         height: 2.5rem;
     }
 
+    #booking-edit-form .booking-address-suggestions {
+        max-height: 16rem;
+        overflow-y: auto;
+        z-index: 1080;
+    }
+
     #booking-edit-form .form-control:disabled,
     #booking-edit-form .form-select:disabled {
         background-color: #e9ecef !important;
@@ -84,7 +90,34 @@
                             <div class="row g-3">
                 @endif
                 <div class="col-md-6"><label class="form-label">Hình thức nhận đồ <span class="text-danger ms-1">*</span></label><select class="form-select booking-main-control @error('method') is-invalid @enderror" name="method" id="booking-method" required>@foreach(\App\Enums\ReceiveMethod::options() as $value => $label)<option value="{{ $value }}" @selected(old('method', $booking->HinhThucNhanDo) === $value)>{{ $label }}</option>@endforeach</select>@error('method')<div class="invalid-feedback">{{ $message }}</div>@enderror</div>
-                <div class="col-md-6"><label class="form-label">Địa chỉ nhận đồ</label><input type="text" class="form-control booking-main-control @error('address') is-invalid @enderror" name="address" value="{{ old('address', $booking->DiaChiNhan) }}" maxlength="255" @required(old('method', $booking->HinhThucNhanDo) === \App\Enums\ReceiveMethod::Home->value) @disabled(old('method', $booking->HinhThucNhanDo) !== \App\Enums\ReceiveMethod::Home->value)>@error('address')<div class="invalid-feedback">{{ $message }}</div>@enderror</div>
+                <div class="col-md-6">
+                    <label class="form-label" for="booking-pickup-address">Địa chỉ nhận đồ</label>
+                    <div class="position-relative">
+                        <input
+                            type="text"
+                            id="booking-pickup-address"
+                            class="form-control booking-main-control @error('address') is-invalid @enderror"
+                            name="address"
+                            value="{{ old('address', $booking->DiaChiNhan) }}"
+                            maxlength="255"
+                            @if($inspectionMode)
+                                data-address-autocomplete
+                                data-autocomplete-url="{{ route('bookings.address-autocomplete') }}"
+                                aria-autocomplete="list"
+                                aria-controls="booking-pickup-address-suggestions"
+                                aria-expanded="false"
+                                autocomplete="off"
+                            @endif
+                            @required(old('method', $booking->HinhThucNhanDo) === \App\Enums\ReceiveMethod::Home->value)
+                            @disabled(old('method', $booking->HinhThucNhanDo) !== \App\Enums\ReceiveMethod::Home->value)
+                        >
+                        @if($inspectionMode)
+                            <div id="booking-pickup-address-suggestions" class="list-group booking-address-suggestions position-absolute top-100 start-0 w-100 shadow d-none" role="listbox" aria-label="Gợi ý địa chỉ nhận đồ"></div>
+                            <div class="form-text" data-address-autocomplete-status role="status" aria-live="polite"></div>
+                        @endif
+                        @error('address')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                    </div>
+                </div>
                 <div class="col-md-6">
                     <label class="form-label" for="booking-return-method">Hình thức trả đồ <span class="text-danger">*</span></label>
                     <select class="form-select booking-main-control @error('return_method') is-invalid @enderror" name="return_method" id="booking-return-method" required>
@@ -97,8 +130,31 @@
                 </div>
                 <div class="col-md-6">
                     <label class="form-label" for="booking-return-address">Địa chỉ trả đồ</label>
-                    <input type="text" id="booking-return-address" class="form-control booking-main-control @error('return_address') is-invalid @enderror" name="return_address" value="{{ old('return_address', $booking->DiaChiTra) }}" maxlength="255" @required(old('return_method', $booking->HinhThucTraDo) === \App\Enums\ReturnMethod::Home->value) @disabled(old('return_method', $booking->HinhThucTraDo) !== \App\Enums\ReturnMethod::Home->value)>
-                    @error('return_address')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                    <div class="position-relative">
+                        <input
+                            type="text"
+                            id="booking-return-address"
+                            class="form-control booking-main-control @error('return_address') is-invalid @enderror"
+                            name="return_address"
+                            value="{{ old('return_address', $booking->DiaChiTra) }}"
+                            maxlength="255"
+                            @if($inspectionMode)
+                                data-address-autocomplete
+                                data-autocomplete-url="{{ route('bookings.address-autocomplete') }}"
+                                aria-autocomplete="list"
+                                aria-controls="booking-return-address-suggestions"
+                                aria-expanded="false"
+                                autocomplete="off"
+                            @endif
+                            @required(old('return_method', $booking->HinhThucTraDo) === \App\Enums\ReturnMethod::Home->value)
+                            @disabled(old('return_method', $booking->HinhThucTraDo) !== \App\Enums\ReturnMethod::Home->value)
+                        >
+                        @if($inspectionMode)
+                            <div id="booking-return-address-suggestions" class="list-group booking-address-suggestions position-absolute top-100 start-0 w-100 shadow d-none" role="listbox" aria-label="Gợi ý địa chỉ trả đồ"></div>
+                            <div class="form-text" data-address-autocomplete-status role="status" aria-live="polite"></div>
+                        @endif
+                        @error('return_address')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                    </div>
                 </div>
                 @if($inspectionMode)
                             </div>

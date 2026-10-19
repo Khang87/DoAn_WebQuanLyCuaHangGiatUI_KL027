@@ -1,3 +1,5 @@
+import './booking-address-autocomplete.js';
+
 const panel = document.querySelector('[data-booking-estimate]');
 
 if (panel) {
