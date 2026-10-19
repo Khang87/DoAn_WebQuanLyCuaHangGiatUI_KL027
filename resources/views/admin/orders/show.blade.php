@@ -192,7 +192,7 @@
                         Lịch hẹn {{ $order->booking->code }}
                         @endcan
                     @else
-                        <span class="detail-empty-value">Nhập trực tiếp</span>
+                        Nhập trực tiếp
                     @endif
                 </x-admin.detail.info-item>
                 <x-admin.detail.info-item
