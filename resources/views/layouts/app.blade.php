@@ -408,7 +408,7 @@
     <script defer src="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.all.min.js"></script>
 
     <!-- Flash Messages -->
-    @if(session('success') || (session('error') && ! session('blocking_orders') && ! session('customer_blocking_orders')))
+    @if(session('success') || (session('error') && ! session()->has('blocking_orders') && ! session()->has('customer_blocking_orders')))
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             @if(session('success'))

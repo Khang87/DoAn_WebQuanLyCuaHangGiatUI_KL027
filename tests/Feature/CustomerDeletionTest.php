@@ -47,12 +47,20 @@ class CustomerDeletionTest extends TestCase
             $table->string('TrangThai');
         });
 
-        foreach (['Booking', 'DanhGia', 'TaiKhoan'] as $tableName) {
+        foreach (['Booking', 'DanhGia'] as $tableName) {
             Schema::create($tableName, function (Blueprint $table): void {
                 $table->increments('id');
                 $table->unsignedInteger('KhachHangID')->nullable();
             });
         }
+
+        Schema::create('TaiKhoan', function (Blueprint $table): void {
+            $table->increments('TaiKhoanID');
+            $table->unsignedInteger('KhachHangID')->nullable();
+            $table->string('Email')->nullable();
+            $table->string('TenDangNhap')->nullable();
+            $table->string('UserAuthId')->nullable();
+        });
 
         Schema::create('DiemTichLuy', function (Blueprint $table): void {
             $table->increments('DiemTichLuyID');
@@ -97,7 +105,8 @@ class CustomerDeletionTest extends TestCase
 
         $result = app(CustomerService::class)->delete($customer);
 
-        $this->assertSame('Không thể xóa khách hàng vì còn dữ liệu liên quan: 1 đơn hàng.', $result['message']);
+        $this->assertSame('Không thể xóa khách hàng vì dữ liệu lịch sử và tài khoản liên kết cần được giữ lại.', $result['message']);
+        $this->assertSame([], $result['accounts']);
         $this->assertSame([[
             'id' => $orderId,
             'code' => 'DH100000',
@@ -124,6 +133,15 @@ class CustomerDeletionTest extends TestCase
             'DonHangID' => $paidOrderId,
             'TrangThai' => 'Đã thanh toán',
         ]);
+        $settledOrderId = DB::table('DonHang')->insertGetId([
+            'MaDonHang' => 'DH100002',
+            'KhachHangID' => $customer->KhachHangID,
+            'TrangThai' => 'Đã giao',
+        ], 'DonHangID');
+        DB::table('HoaDon')->insert([
+            'DonHangID' => $settledOrderId,
+            'TrangThai' => 'Đã thanh toán',
+        ]);
 
         $result = app(CustomerService::class)->delete($customer);
 
@@ -141,6 +159,38 @@ class CustomerDeletionTest extends TestCase
                 'payment_status' => 'Đã thanh toán',
             ],
         ], $result['orders']);
+        $this->assertSame([], $result['accounts']);
+    }
+
+    public function test_settled_delivered_order_is_not_listed_but_linked_account_is(): void
+    {
+        $customer = $this->createCustomer();
+        $orderId = DB::table('DonHang')->insertGetId([
+            'MaDonHang' => 'DH100002',
+            'KhachHangID' => $customer->KhachHangID,
+            'TrangThai' => 'Đã giao',
+        ], 'DonHangID');
+        DB::table('HoaDon')->insert([
+            'DonHangID' => $orderId,
+            'TrangThai' => 'Đã thanh toán',
+        ]);
+        $accountId = DB::table('TaiKhoan')->insertGetId([
+            'KhachHangID' => $customer->KhachHangID,
+            'Email' => 'linked@example.test',
+            'TenDangNhap' => 'linked-user',
+            'UserAuthId' => 'google-subject',
+        ], 'TaiKhoanID');
+
+        $result = app(CustomerService::class)->delete($customer);
+
+        $this->assertSame([], $result['orders']);
+        $this->assertSame([[
+            'id' => $accountId,
+            'email' => 'linked@example.test',
+            'username' => 'linked-user',
+            'provider' => 'Google',
+        ]], $result['accounts']);
+        $this->assertSame('Không thể xóa khách hàng vì dữ liệu lịch sử và tài khoản liên kết cần được giữ lại.', $result['message']);
     }
 
     public function test_delete_failure_is_reported_as_an_error_flash_not_success(): void
@@ -154,12 +204,13 @@ class CustomerDeletionTest extends TestCase
             ->once()
             ->with($customer)
             ->andReturn([
-                'message' => 'Không thể xóa khách hàng vì còn dữ liệu liên quan: 1 đơn hàng.',
-                'orders' => [[
-                    'id' => 42,
-                    'code' => 'DH00042',
-                    'status' => 'Đang giặt',
-                    'payment_status' => 'Chưa thanh toán',
+                'message' => 'Không thể xóa khách hàng vì dữ liệu lịch sử và tài khoản liên kết cần được giữ lại.',
+                'orders' => [],
+                'accounts' => [[
+                    'id' => 2,
+                    'email' => 'linked@example.test',
+                    'username' => 'linked-user',
+                    'provider' => 'Google',
                 ]],
             ]);
         $customerService->shouldReceive('getAll')
@@ -173,16 +224,15 @@ class CustomerDeletionTest extends TestCase
             ->delete(route('customers.destroy', 42));
 
         $response->assertRedirect(route('customers.index'))
-            ->assertSessionHas('error', 'Không thể xóa khách hàng vì còn dữ liệu liên quan: 1 đơn hàng.')
-            ->assertSessionHas('customer_blocking_orders.0.code', 'DH00042')
+            ->assertSessionHas('error', 'Không thể xóa khách hàng vì dữ liệu lịch sử và tài khoản liên kết cần được giữ lại.')
+            ->assertSessionHas('customer_blocking_orders', [])
+            ->assertSessionHas('customer_linked_accounts.0.email', 'linked@example.test')
             ->assertSessionMissing('success');
 
         $this->get(route('customers.index'))
             ->assertOk()
-            ->assertSee('DH00042')
-            ->assertSee('\u0110ang gi\u1eb7t')
-            ->assertSee('Ch\u01b0a thanh to\u00e1n')
-            ->assertSee('http:\/\/localhost:8000\/orders\/42')
+            ->assertSee('linked@example.test')
+            ->assertSee('Google')
             ->assertSee('Không thể xóa khách hàng', false);
     }
 

@@ -106,10 +106,15 @@ class KhachHangController extends Controller
                     fn (array $order): array => $order + ['url' => route('orders.show', $order['id'])],
                     $error['orders'],
                 );
+                $accounts = array_map(
+                    fn (array $account): array => $account + ['url' => route('accounts.show', $account['id'])],
+                    $error['accounts'],
+                );
 
                 return redirect()->route('customers.index')
                     ->with('error', $error['message'])
-                    ->with('customer_blocking_orders', $orders);
+                    ->with('customer_blocking_orders', $orders)
+                    ->with('customer_linked_accounts', $accounts);
             }
 
             return redirect()->route('customers.index')->with('success', 'Khách hàng đã được xóa.');

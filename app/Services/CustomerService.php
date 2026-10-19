@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Enums\InvoiceStatus;
+use App\Enums\OrderStatus;
 use App\Models\DiemTichLuy;
 use App\Models\KhachHang;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
@@ -96,7 +97,8 @@ class CustomerService
     /**
      * @return array{
      *     message: string,
-     *     orders: list<array{id: int, code: string, status: string, payment_status: string}>
+     *     orders: list<array{id: int, code: string, status: string, payment_status: string}>,
+     *     accounts: list<array{id: int, email: string, username: string, provider: string}>
      * }|null
      */
     public function delete(KhachHang $customer): ?array
@@ -105,6 +107,18 @@ class CustomerService
             $orders = DB::table('DonHang')
                 ->leftJoin('HoaDon', 'HoaDon.DonHangID', '=', 'DonHang.DonHangID')
                 ->where('DonHang.KhachHangID', $customer->getKey())
+                ->where(function ($query): void {
+                    $query->whereNotIn('DonHang.TrangThai', [
+                        OrderStatus::Delivered->value,
+                        OrderStatus::Cancelled->value,
+                    ])->orWhere(function ($paymentQuery): void {
+                        $paymentQuery->whereNull('HoaDon.TrangThai')
+                            ->orWhereNotIn('HoaDon.TrangThai', [
+                                InvoiceStatus::Paid->value,
+                                InvoiceStatus::Cancelled->value,
+                            ]);
+                    });
+                })
                 ->orderBy('DonHang.MaDonHang')
                 ->get([
                     'DonHang.DonHangID',
@@ -120,23 +134,30 @@ class CustomerService
                 ])
                 ->all();
 
+            $accounts = DB::table('TaiKhoan')
+                ->where('KhachHangID', $customer->getKey())
+                ->orderBy('TaiKhoanID')
+                ->get(['TaiKhoanID', 'Email', 'TenDangNhap', 'UserAuthId'])
+                ->map(fn (object $account): array => [
+                    'id' => (int) $account->TaiKhoanID,
+                    'email' => (string) ($account->Email ?? ''),
+                    'username' => (string) ($account->TenDangNhap ?? ''),
+                    'provider' => filled($account->UserAuthId) ? 'Google' : 'Email/Mật khẩu',
+                ])
+                ->all();
+
             $relatedRecords = array_filter([
-                'đơn hàng' => count($orders),
+                'đơn hàng' => $customer->donHangs()->count(),
                 'lịch hẹn' => $customer->bookings()->count(),
                 'đánh giá' => $customer->danhGia()->count(),
-                'tài khoản' => $customer->taiKhoan()->count(),
+                'tài khoản' => count($accounts),
             ]);
 
             if ($relatedRecords !== []) {
-                $details = [];
-
-                foreach ($relatedRecords as $recordType => $count) {
-                    $details[] = $count.' '.$recordType;
-                }
-
                 return [
-                    'message' => 'Không thể xóa khách hàng vì còn dữ liệu liên quan: '.implode(', ', $details).'.',
+                    'message' => 'Không thể xóa khách hàng vì dữ liệu lịch sử và tài khoản liên kết cần được giữ lại.',
                     'orders' => $orders,
+                    'accounts' => $accounts,
                 ];
             }
 
@@ -148,6 +169,7 @@ class CustomerService
                 return [
                     'message' => 'Không thể xóa khách hàng. Vui lòng thử lại.',
                     'orders' => [],
+                    'accounts' => [],
                 ];
             }
 

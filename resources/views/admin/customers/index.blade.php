@@ -100,19 +100,24 @@
 @endsection
 
 @push('scripts')
-@if(session('customer_blocking_orders'))
+@if(session()->has('customer_blocking_orders'))
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         const orders = @json(session('customer_blocking_orders'));
+        const accounts = @json(session('customer_linked_accounts', []));
         const content = document.createElement('div');
         const summary = document.createElement('p');
-        const list = document.createElement('ul');
+        const orderList = document.createElement('ul');
+        const accountList = document.createElement('ul');
 
         summary.className = 'text-start';
         summary.textContent = @json(session('error'));
-        list.className = 'text-start mb-0';
-        list.style.maxHeight = '16rem';
-        list.style.overflowY = 'auto';
+        orderList.className = 'text-start mb-2';
+        accountList.className = 'text-start mb-0';
+        orderList.style.maxHeight = '10rem';
+        accountList.style.maxHeight = '10rem';
+        orderList.style.overflowY = 'auto';
+        accountList.style.overflowY = 'auto';
 
         orders.forEach(function(order) {
             const item = document.createElement('li');
@@ -120,10 +125,31 @@
             link.href = order.url;
             link.textContent = `${order.code} (${order.status})`;
             item.append(link, document.createTextNode(` — ${order.payment_status}`));
-            list.append(item);
+            orderList.append(item);
         });
 
-        content.append(summary, list);
+        accounts.forEach(function(account) {
+            const item = document.createElement('li');
+            const link = document.createElement('a');
+            link.href = account.url;
+            link.textContent = account.email || account.username || `Tài khoản #${account.id}`;
+            item.append(link, document.createTextNode(` — ${account.provider}`));
+            accountList.append(item);
+        });
+
+        content.append(summary);
+        if (orders.length > 0) {
+            const orderHeading = document.createElement('p');
+            orderHeading.className = 'text-start fw-semibold mb-1';
+            orderHeading.textContent = 'Đơn chưa thanh toán hoặc chưa hoàn tất:';
+            content.append(orderHeading, orderList);
+        }
+        if (accounts.length > 0) {
+            const accountHeading = document.createElement('p');
+            accountHeading.className = 'text-start fw-semibold mb-1';
+            accountHeading.textContent = 'Tài khoản đang liên kết:';
+            content.append(accountHeading, accountList);
+        }
 
         Swal.fire({
             icon: 'error',
