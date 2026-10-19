@@ -43,6 +43,16 @@ class DashboardRevenueChartTest extends TestCase
             $table->dateTime('NgayLap');
         });
 
+        Schema::create('NhatKyHeThong', function (Blueprint $table): void {
+            $table->increments('NhatKyID');
+            $table->string('HanhDong');
+            $table->string('BangDuLieu');
+            $table->unsignedInteger('BanGhiID');
+            $table->json('DuLieuCu')->nullable();
+            $table->json('DuLieuMoi')->nullable();
+            $table->dateTime('ThoiGian');
+        });
+
         Schema::create('ThanhToan', function (Blueprint $table): void {
             $table->increments('ThanhToanID');
             $table->unsignedInteger('DonHangID');
@@ -108,7 +118,7 @@ class DashboardRevenueChartTest extends TestCase
 
     protected function tearDown(): void
     {
-        foreach (['DanhGia', 'ChiTietDonHang', 'DichVu', 'NhanVien', 'KhachHang', 'ThanhToan', 'HoaDon'] as $table) {
+        foreach (['DanhGia', 'ChiTietDonHang', 'DichVu', 'NhanVien', 'KhachHang', 'ThanhToan', 'NhatKyHeThong', 'HoaDon'] as $table) {
             Schema::dropIfExists($table);
         }
         Schema::dropIfExists('DonHang');
@@ -210,9 +220,10 @@ class DashboardRevenueChartTest extends TestCase
             ['DanhGiaID' => 3, 'SoSao' => 1, 'TrangThai' => 'Ẩn', 'NgayDanhGia' => '2026-10-04 11:00:00'],
         ]);
 
-        $dashboard = app(DashboardController::class)->index(
+        $dashboardView = app(DashboardController::class)->index(
             Request::create('/admin/dashboard', 'GET', ['filter' => 'this_year'])
-        )->getData();
+        );
+        $dashboard = $dashboardView->getData();
 
         $this->assertSame('this_year', $dashboard['revenueFilter']);
         $this->assertSame('this_year', $dashboard['revenueChartData']['filter']);
@@ -224,6 +235,17 @@ class DashboardRevenueChartTest extends TestCase
         $this->assertSame(4, $dashboard['totalOrders']);
         $this->assertSame(['completed' => 1, 'processing' => 1, 'cancelled' => 1], $dashboard['statusCounts']);
         $this->assertEqualsCanonicalizing([1, 2, 3, 4], $dashboard['recentOrders']->pluck('DonHangID')->all());
+        $paidOrder = $dashboard['recentOrders']->firstWhere('DonHangID', 1);
+        $this->assertTrue($paidOrder->isPaid());
+        $this->assertSame(OrderStatus::Delivered, $paidOrder->operationalStatusEnum());
+        $statusBadges = view('components.admin.order-status-badges', [
+            'order' => $paidOrder,
+            'isPaid' => $paidOrder->isPaid(),
+            'isReceiving' => false,
+            'compact' => true,
+        ])->render();
+        $this->assertStringContainsString('Đã giao', $statusBadges);
+        $this->assertStringContainsString('Đã thanh toán', $statusBadges);
         $this->assertSame(1, (int) $dashboard['statusDistribution']->get(OrderStatus::Washing->value, 0));
         $this->assertSame(2, $dashboard['totalCustomers']);
         $this->assertSame(1, $dashboard['newCustomersMonth']);
@@ -236,5 +258,27 @@ class DashboardRevenueChartTest extends TestCase
 
         $this->assertSame('7_days', $dashboardWithInvalidFilter['revenueFilter']);
         $this->assertSame('7_days', $dashboardWithInvalidFilter['revenueChartData']['filter']);
+    }
+
+    public function test_dashboard_shows_up_to_fifteen_recent_orders(): void
+    {
+        $orders = [];
+        for ($sequence = 1; $sequence <= 16; $sequence++) {
+            $orders[] = [
+                'DonHangID' => 100 + $sequence,
+                'TrangThai' => OrderStatus::Received->value,
+                'ThanhTien' => 1000,
+                'NgayTao' => Carbon::now()->subMinutes($sequence)->toDateTimeString(),
+            ];
+        }
+
+        DB::table('DonHang')->insert($orders);
+
+        $dashboard = app(DashboardController::class)->index(
+            Request::create('/admin/dashboard', 'GET', ['filter' => 'this_year'])
+        )->getData();
+
+        $this->assertCount(15, $dashboard['recentOrders']);
+        $this->assertSame(115, $dashboard['recentOrders']->last()->DonHangID);
     }
 }

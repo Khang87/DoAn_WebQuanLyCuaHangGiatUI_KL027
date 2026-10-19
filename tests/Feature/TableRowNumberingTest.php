@@ -51,11 +51,13 @@ class TableRowNumberingTest extends TestCase
 
     public function test_collection_rows_are_contiguous_even_when_keys_have_gaps(): void
     {
-        $permissions = collect([4 => (object) ['MaQuyen' => 'ORDERS_VIEW', 'TenQuyen' => 'Xem', 'MoTa' => null, 'vai_tros_count' => 0, 'TrangThai' => 'Hoạt động'],
-            19 => (object) ['MaQuyen' => 'ORDERS_EDIT', 'TenQuyen' => 'Sửa', 'MoTa' => null, 'vai_tros_count' => 0, 'TrangThai' => 'Hoạt động']]);
+        $permissions = collect([4 => (object) ['MaQuyen' => 'ORDERS_VIEW', 'TenQuyen' => 'Xem', 'MoTa' => null, 'TrangThai' => 'Hoạt động'],
+            19 => (object) ['MaQuyen' => 'ORDERS_EDIT', 'TenQuyen' => 'Sửa', 'MoTa' => null, 'TrangThai' => 'Hoạt động']]);
         $xpath = $this->table('admin.permissions.index', compact('permissions'));
         $this->assertSame('1', trim($xpath->query('//table/tbody/tr[1]/td[1]')->item(0)->textContent));
         $this->assertSame('2', trim($xpath->query('//table/tbody/tr[2]/td[1]')->item(0)->textContent));
+        $this->assertSame(6, $xpath->query('//table/thead/tr/th')->length);
+        $this->assertSame(0, $xpath->query('//table/thead/tr/th[normalize-space(.)="Nhóm được cấp"]')->length);
     }
 
     public function test_customer_list_uses_contiguous_row_numbers_instead_of_internal_ids(): void

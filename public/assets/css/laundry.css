@@ -1183,20 +1183,29 @@ body {
     border-color: var(--border-light) !important;
 }
 
-/* Order status pills in the list keep the same colors as the detail header. */
-.table-custom .order-status-badges .badge.bg-primary-subtle {
+/* Shared status badges keep semantic colors in tables, including the dashboard. */
+.table .status-badge.bg-primary-subtle,
+.table-custom .status-badge.bg-primary-subtle {
     background-color: var(--bs-primary-bg-subtle) !important;
 }
 
-.table-custom .order-status-badges .badge.bg-info-subtle {
+.table .status-badge.bg-info-subtle,
+.table-custom .status-badge.bg-info-subtle {
     background-color: var(--bs-info-bg-subtle) !important;
 }
 
-.table-custom .order-status-badges .badge.border-primary {
+.table .status-badge.border-primary,
+.table-custom .status-badge.border-primary {
     border-color: var(--bs-primary) !important;
 }
 
-.table-custom .order-status-badges .badge.border-info {
+.table .status-badge.border-primary-subtle,
+.table-custom .status-badge.border-primary-subtle {
+    border-color: var(--bs-primary-border-subtle) !important;
+}
+
+.table .status-badge.border-info,
+.table-custom .status-badge.border-info {
     border-color: var(--bs-info) !important;
 }
 

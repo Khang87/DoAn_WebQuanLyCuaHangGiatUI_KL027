@@ -59,6 +59,20 @@ class BookingAddressAutocompleteTest extends TestCase
         Http::assertNothingSent();
     }
 
+    public function test_address_autocomplete_supports_hosts_that_strip_the_api_prefix(): void
+    {
+        Http::fake([
+            'https://nominatim.openstreetmap.org/search*' => Http::response([]),
+        ]);
+
+        $this->assertSame('/osm/autocomplete', route('bookings.address-autocomplete', [], false));
+
+        $this->withoutMiddleware()
+            ->getJson('/osm/autocomplete?input=Nguyễn%20Huệ')
+            ->assertOk()
+            ->assertExactJson([]);
+    }
+
     public function test_address_autocomplete_returns_gateway_error_when_nominatim_fails(): void
     {
         Http::fake([

@@ -19,6 +19,7 @@ class ReportsServiceTest extends TestCase
     private const TEST_TABLES = [
         'DonHang',
         'HoaDon',
+        'NhatKyHeThong',
         'ThanhToan',
         'Booking',
         'KhachHang',
@@ -240,6 +241,30 @@ class ReportsServiceTest extends TestCase
         $this->assertTrue($latestOrder->relationLoaded('chiTietDonHangs'));
     }
 
+    public function test_recent_orders_show_operational_and_paid_statuses_and_keep_ten_per_page(): void
+    {
+        $orders = app(ReportsService::class)->getRecentOrders([
+            'range' => 'custom',
+            'date_from' => '2026-01-10',
+            'date_to' => '2026-01-10',
+        ]);
+
+        $paidOrder = $orders->getCollection()->firstWhere('DonHangID', 1);
+        $this->assertTrue($paidOrder->isPaid());
+        $this->assertSame(OrderStatus::Delivered, $paidOrder->operationalStatusEnum());
+        $this->assertSame(10, $orders->perPage());
+
+        $statusBadges = view('components.admin.order-status-badges', [
+            'order' => $paidOrder,
+            'isPaid' => $paidOrder->isPaid(),
+            'isReceiving' => false,
+            'compact' => true,
+        ])->render();
+
+        $this->assertStringContainsString('Đã giao', $statusBadges);
+        $this->assertStringContainsString('Đã thanh toán', $statusBadges);
+    }
+
     public function test_invalid_range_shape_is_rejected_with_a_validation_error(): void
     {
         $response = $this->actingAs($this->reportOwner())
@@ -254,6 +279,7 @@ class ReportsServiceTest extends TestCase
         $this->actingAs($this->reportOwner())->get('/reports')
             ->assertOk()
             ->assertSee('Báo cáo', false)
+            ->assertSee('order-status-badges d-inline-flex align-items-center flex-nowrap gap-1 text-nowrap', false)
             ->assertSee('formatter: value => formatCurrency(value)', false);
     }
 
@@ -272,6 +298,16 @@ class ReportsServiceTest extends TestCase
      */
     private function createTestSchema(): void
     {
+        Schema::create('NhatKyHeThong', function (Blueprint $table): void {
+            $table->increments('NhatKyID');
+            $table->string('HanhDong');
+            $table->string('BangDuLieu');
+            $table->unsignedInteger('BanGhiID');
+            $table->json('DuLieuCu')->nullable();
+            $table->json('DuLieuMoi')->nullable();
+            $table->dateTime('ThoiGian');
+        });
+
         Schema::create('ThongBao', function (Blueprint $table): void {
             $table->increments('ThongBaoID');
             $table->integer('TaiKhoanID')->nullable();

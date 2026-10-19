@@ -257,7 +257,7 @@
     <!-- Đơn hàng mới nhất -->
     @can('orders.view')
     <div class="col-12 col-xl-7">
-        <div class="card h-100">
+        <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <h5 class="card-title mb-0">Đơn hàng mới nhất</h5>
                 @can('orders.view')<a href="{{ route('orders.index') }}" class="btn btn-sm btn-outline-primary">Xem tất cả</a>@endcan
@@ -272,7 +272,7 @@
                                 <th>Khách hàng</th>
                                 <th>Nhân viên</th>
                                 <th>Tổng tiền</th>
-                                <th>Trạng thái</th>
+                                <th class="text-center">Trạng thái</th>
                                 <th>Thao tác</th>
                             </tr>
                         </thead>
@@ -284,7 +284,11 @@
                                 <td>{{ $order->khachHang?->HoTen ?: '-' }}</td>
                                 <td>{{ $order->nhanVien?->HoTen ?: '-' }}</td>
                                 <td><strong>{{ number_format((float) $order->ThanhTien) }} đ</strong></td>
-                                <td><x-admin.status-badge :status="$order->TrangThai" :enum="\App\Enums\OrderStatus::class" /></td>
+                                <td class="text-center">
+                                    <div class="order-status-badges d-inline-flex align-items-center flex-nowrap gap-1 text-nowrap">
+                                        <x-admin.order-status-badges :order="$order" :is-paid="$order->isPaid()" :is-receiving="false" compact />
+                                    </div>
+                                </td>
                                 <td>@can('orders.view')<a href="{{ route('orders.show', $order) }}" class="btn btn-order-action view" title="Xem"><i class="bi bi-eye"></i></a>@endcan</td>
                             </tr>
                             @empty

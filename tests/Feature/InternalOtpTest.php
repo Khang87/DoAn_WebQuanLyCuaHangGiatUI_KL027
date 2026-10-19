@@ -8,7 +8,7 @@ use App\Models\VaiTro;
 use App\Services\DefaultNotificationPermission;
 use App\Services\InternalPasswordOtpService;
 use App\Services\NotificationService;
-use App\Services\ResendOtpMailer;
+use App\Services\OtpMailer;
 use App\Services\RoleService;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Cache;
@@ -91,12 +91,12 @@ class InternalOtpTest extends TestCase
         $this->owner->vaiTros()->attach($ownerRole);
         $this->staff->vaiTros()->attach($staffRole);
         app(DefaultNotificationPermission::class)->backfill();
-        $mailer = \Mockery::mock(ResendOtpMailer::class);
+        $mailer = \Mockery::mock(OtpMailer::class);
         $mailer->shouldReceive('send')->with($this->staff->Email, \Mockery::type('string'), 10)
             ->andReturnUsing(function ($email, $otp) {
                 $this->otp = $otp;
             });
-        $this->app->instance(ResendOtpMailer::class, $mailer);
+        $this->app->instance(OtpMailer::class, $mailer);
     }
 
     private function issue(): void
@@ -175,9 +175,9 @@ class InternalOtpTest extends TestCase
 
     public function test_delivery_failure_rolls_back_notification_and_invalidates_code(): void
     {
-        $mailer = \Mockery::mock(ResendOtpMailer::class);
+        $mailer = \Mockery::mock(OtpMailer::class);
         $mailer->shouldReceive('send')->once()->andThrow(new \RuntimeException('provider error'));
-        $this->app->instance(ResendOtpMailer::class, $mailer);
+        $this->app->instance(OtpMailer::class, $mailer);
         $this->actingAs($this->owner)->post(route('accounts.reset-password', $this->staff))->assertSessionHas('error');
         $this->assertDatabaseCount('ThongBao', 0);
         $this->assertNull(Cache::store('array')->get(app(InternalPasswordOtpService::class)->key($this->staff->Email)));

@@ -239,9 +239,12 @@ Route::middleware(['auth', 'reject.customer'])->group(function () {
     Route::get('bookings/{booking}/inspection', [BookingController::class, 'inspection'])
         ->middleware('permission:bookings.confirm')
         ->name('bookings.inspection');
-    Route::get('api/osm/autocomplete', BookingAddressAutocompleteController::class)
+    Route::get('osm/autocomplete', BookingAddressAutocompleteController::class)
         ->middleware(['permission:bookings.confirm', 'throttle:30,1'])
         ->name('bookings.address-autocomplete');
+    Route::get('api/osm/autocomplete', BookingAddressAutocompleteController::class)
+        ->middleware(['permission:bookings.confirm', 'throttle:30,1'])
+        ->name('bookings.address-autocomplete-api');
     Route::post('bookings/{booking}/approve', [BookingController::class, 'approve'])
         ->middleware('permission:bookings.confirm')->name('bookings.approve');
     Route::post('bookings/{booking}/cancel', [BookingController::class, 'cancelPending'])
