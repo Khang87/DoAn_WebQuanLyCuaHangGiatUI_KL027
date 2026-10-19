@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Enums\DeliveryStatus;
 use App\Enums\OrderStatus;
+use App\Models\BookingGiaoNhan;
 use App\Models\DonHang;
 use App\Models\GiaoNhan;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
@@ -98,8 +99,52 @@ class DeliveryService
         return DB::transaction(function () use ($data): GiaoNhan {
             $order = DonHang::query()->lockForUpdate()->findOrFail($data['order_id'] ?? null);
             DeliveryRules::assertMutableOrder($order);
+
+            if ($order->BookingID !== null && strtolower((string) ($data['method'] ?? '')) === 'giao_do') {
+                $existingReturns = GiaoNhan::query()
+                    ->where('DonHangID', $order->DonHangID)
+                    ->where('LoaiGiaoNhan', 'GIAO_DO')
+                    ->where('TrangThai', '!=', DeliveryStatus::Cancelled->dbValue())
+                    ->lockForUpdate()
+                    ->get();
+
+                if ($existingReturns->count() > 1) {
+                    throw ValidationException::withMessages([
+                        'method' => 'Đơn hàng đã có nhiều phiếu giao còn hiệu lực; cần đối soát trước khi tạo thêm.',
+                    ]);
+                }
+
+                if ($existingReturns->isNotEmpty()) {
+                    $existingReturn = $existingReturns->first();
+                    $expectedFulfillment = $order->booking()->value('HinhThucTraDo');
+                    if ($existingReturn->HinhThuc !== $expectedFulfillment) {
+                        throw ValidationException::withMessages([
+                            'method' => 'Phiếu giao trả hiện có không khớp với hình thức đã chốt; cần đối soát trước khi tiếp tục.',
+                        ]);
+                    }
+
+                    return $existingReturn;
+                }
+            }
+
             $data = DeliveryRules::validate($data, $order);
             $attributes = $this->mapAttributes($data);
+            if ($order->BookingID !== null && $attributes['LoaiGiaoNhan'] === 'GIAO_DO') {
+                $returnPlan = BookingGiaoNhan::query()
+                    ->where('BookingID', $order->BookingID)
+                    ->where('DonHangID', $order->DonHangID)
+                    ->where('LoaiGiaoNhan', 'GIAO_DO')
+                    ->lockForUpdate()
+                    ->first();
+
+                if ($returnPlan === null || $returnPlan->HinhThuc !== $attributes['HinhThuc']) {
+                    throw ValidationException::withMessages([
+                        'booking' => 'Không tìm thấy kế hoạch trả đồ hợp lệ đã liên kết với đơn hàng.',
+                    ]);
+                }
+
+                $attributes['PhiGiaoNhan'] = $returnPlan->PhiGiaoNhan;
+            }
             $this->assertNoConflictingLeg($attributes);
 
             return GiaoNhan::create($attributes);
@@ -129,6 +174,7 @@ class DeliveryService
             $currentStatus = DeliveryStatus::parseForLeg($current->TrangThai, $current->LoaiGiaoNhan);
             $nextStatus = match (true) {
                 $currentStatus === DeliveryStatus::Pending && $current->LoaiGiaoNhan === 'NHAN_DO' => DeliveryStatus::Picking,
+                $currentStatus === DeliveryStatus::Pending && $current->LoaiGiaoNhan === 'GIAO_DO' && $current->HinhThuc === 'Tại cửa hàng' => DeliveryStatus::Completed,
                 $currentStatus === DeliveryStatus::Pending && $current->LoaiGiaoNhan === 'GIAO_DO' => DeliveryStatus::Delivering,
                 $currentStatus === DeliveryStatus::Picking && $current->LoaiGiaoNhan === 'NHAN_DO' => DeliveryStatus::Completed,
                 $currentStatus === DeliveryStatus::Delivering && $current->LoaiGiaoNhan === 'GIAO_DO' => DeliveryStatus::Completed,
@@ -185,6 +231,12 @@ class DeliveryService
             unset($attributes['ThoiGianDuKien']);
         }
         $previousStatus = DeliveryStatus::parseForLeg($current->TrangThai, $current->LoaiGiaoNhan);
+        if (
+            $previousStatus !== DeliveryStatus::Completed
+            && DeliveryStatus::parseForLeg($validated['status'], $current->LoaiGiaoNhan) === DeliveryStatus::Completed
+        ) {
+            $attributes['ThoiGianThucTe'] = now();
+        }
         $current->update($attributes);
         $targetStatus = DeliveryStatus::parseForLeg($current->TrangThai, $current->LoaiGiaoNhan);
 

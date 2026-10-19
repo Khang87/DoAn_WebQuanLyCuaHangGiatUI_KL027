@@ -41,12 +41,22 @@ class DeliveryContractTest extends TestCase
         });
         Schema::create('Booking', function (Blueprint $table): void {
             $table->increments('BookingID');
+            $table->string('TrangThai')->default('DaXacNhan');
             $table->string('HinhThucNhanDo')->nullable();
             $table->string('DiaChiNhan')->nullable();
             $table->string('HinhThucTraDo')->default('Tại nhà');
             $table->string('DiaChiTra')->nullable();
             $table->date('NgayHen')->nullable();
             $table->time('GioHen')->nullable();
+        });
+        Schema::create('BookingGiaoNhan', function (Blueprint $table): void {
+            $table->increments('BookingGiaoNhanID');
+            $table->unsignedInteger('BookingID');
+            $table->unsignedInteger('DonHangID')->nullable();
+            $table->string('LoaiGiaoNhan');
+            $table->string('HinhThuc');
+            $table->string('DiaChi')->nullable();
+            $table->decimal('PhiGiaoNhan', 12, 2)->default(0);
         });
         Schema::create('KhachHang', function (Blueprint $table): void {
             $table->increments('KhachHangID');
@@ -79,6 +89,8 @@ class DeliveryContractTest extends TestCase
             $table->string('HinhThuc');
             $table->string('DiaChi')->nullable();
             $table->dateTime('ThoiGianDuKien')->nullable();
+            $table->dateTime('ThoiGianThucTe')->nullable();
+            $table->decimal('PhiGiaoNhan', 12, 2)->default(0);
             $table->string('TrangThai');
             $table->string('GhiChu')->nullable();
         });
@@ -108,12 +120,20 @@ class DeliveryContractTest extends TestCase
         });
         DB::table('Booking')->insert(['BookingID' => 1, 'HinhThucTraDo' => 'Tại nhà', 'DiaChiTra' => '12 Nguyễn Huệ']);
         DB::table('DonHang')->insert(['DonHangID' => 1, 'BookingID' => 1]);
+        DB::table('BookingGiaoNhan')->insert([
+            'BookingID' => 1,
+            'DonHangID' => 1,
+            'LoaiGiaoNhan' => 'GIAO_DO',
+            'HinhThuc' => 'Tại nhà',
+            'DiaChi' => '12 Nguyễn Huệ',
+            'PhiGiaoNhan' => 4200,
+        ]);
         DB::table('NhanVien')->insert([['NhanVienID' => 1, 'TrangThai' => 'Hoạt động'], ['NhanVienID' => 2, 'TrangThai' => 'Khóa']]);
     }
 
     protected function tearDown(): void
     {
-        foreach (['NhatKyHeThong', 'HoaDon', 'ThanhToan', 'GiaoNhan', 'TaiKhoan_VaiTro', 'VaiTro', 'TaiKhoan', 'NhanVien', 'KhachHang', 'Booking', 'DonHang'] as $table) {
+        foreach (['NhatKyHeThong', 'HoaDon', 'ThanhToan', 'BookingGiaoNhan', 'GiaoNhan', 'TaiKhoan_VaiTro', 'VaiTro', 'TaiKhoan', 'NhanVien', 'KhachHang', 'Booking', 'DonHang'] as $table) {
             Schema::dropIfExists($table);
         }
         $this->travelBack();
@@ -131,7 +151,7 @@ class DeliveryContractTest extends TestCase
             $operation();
             $this->fail('Invalid mutation accepted.');
         } catch (ValidationException $exception) {
-            $this->assertArrayHasKey($field, $exception->errors());
+            $this->assertArrayHasKey($field, $exception->errors(), json_encode($exception->errors()));
         }
     }
 
@@ -350,21 +370,24 @@ class DeliveryContractTest extends TestCase
         $this->assertNull(GiaoNhan::first()->ThoiGianDuKien);
     }
 
-    public function test_two_different_legs_allowed_duplicate_rejected_and_cancelled_leg_can_be_replaced(): void
+    public function test_booking_return_creation_is_idempotent_and_cancelled_leg_can_be_replaced(): void
     {
         $service = app(DeliveryService::class);
         $return = $service->create($this->data());
         $service->create($this->data(['method' => 'nhan_do', 'pickup_date' => '2026-10-08', 'pickup_time' => '10:00']));
-        $this->reject(fn () => $service->create($this->data()), 'method');
+        $repeatedReturn = $service->create($this->data());
+        $this->assertSame($return->GiaoNhanID, $repeatedReturn->GiaoNhanID);
         $service->update($return, ['status' => 'cancelled']);
         $service->create($this->data());
         $this->assertSame(3, GiaoNhan::count());
     }
 
-    public function test_http_duplicate_returns_field_error(): void
+    public function test_http_repeated_booking_return_creation_reuses_the_existing_slip(): void
     {
-        app(DeliveryService::class)->create($this->data());
-        $this->withSession([])->withoutMiddleware()->post(route('deliveries.store'), $this->data())->assertSessionHasErrors('method');
+        $delivery = app(DeliveryService::class)->create($this->data());
+        $this->withSession([])->withoutMiddleware()->post(route('deliveries.store'), $this->data())
+            ->assertRedirect(route('deliveries.show', $delivery))
+            ->assertSessionHasNoErrors();
         $this->assertSame(1, GiaoNhan::count());
     }
 
@@ -382,6 +405,37 @@ class DeliveryContractTest extends TestCase
         $this->assertSame('giao_do', $response->getData()['selectedMethod']);
         $this->assertSame(OrderStatus::Washed->value, $order->fresh()->TrangThai);
         $this->assertSame(0, GiaoNhan::count());
+    }
+
+    public function test_booking_store_return_assignment_screen_uses_store_fulfillment_without_an_address(): void
+    {
+        DB::table('Booking')->where('BookingID', 1)->update([
+            'HinhThucTraDo' => 'Tại cửa hàng',
+            'DiaChiTra' => null,
+        ]);
+        DB::table('BookingGiaoNhan')->where('BookingID', 1)->update([
+            'HinhThuc' => 'Tại cửa hàng',
+            'DiaChi' => null,
+        ]);
+        $response = app(GiaoNhanController::class)->assignForOrder(
+            $this->requestWithPermissions(['deliveries.create']),
+            DonHang::findOrFail(1),
+        );
+
+        $this->assertInstanceOf(View::class, $response);
+        $this->assertSame('Tại cửa hàng', $response->getData()['selectedFulfillment']);
+        $this->assertNull($response->getData()['selectedAddress']);
+        $this->assertSame(0, GiaoNhan::count());
+    }
+
+    public function test_washing_completion_does_not_automatically_create_a_booking_return_slip(): void
+    {
+        DB::table('DonHang')->where('DonHangID', 1)->update(['TrangThai' => OrderStatus::Washing->value]);
+
+        app(OrderService::class)->updateStatus(DonHang::findOrFail(1), OrderStatus::Washed->value);
+
+        $this->assertSame(OrderStatus::Washed->value, DB::table('DonHang')->where('DonHangID', 1)->value('TrangThai'));
+        $this->assertSame(0, GiaoNhan::where('DonHangID', 1)->where('LoaiGiaoNhan', 'GIAO_DO')->count());
     }
 
     public function test_existing_return_slip_is_reused_by_assignment_screen(): void
@@ -428,9 +482,70 @@ class DeliveryContractTest extends TestCase
     public function test_store_return_cannot_create_a_home_delivery_leg(): void
     {
         DB::table('Booking')->where('BookingID', 1)->update(['HinhThucTraDo' => 'Tại cửa hàng']);
+        DB::table('BookingGiaoNhan')->where('BookingID', 1)->update(['HinhThuc' => 'Tại cửa hàng', 'DiaChi' => null]);
 
         $this->reject(fn () => app(DeliveryService::class)->create($this->data()), 'method');
 
+        $this->assertSame(0, GiaoNhan::count());
+    }
+
+    public function test_booking_store_return_is_created_after_washing_and_handover_completes_booking(): void
+    {
+        DB::table('Booking')->where('BookingID', 1)->update([
+            'HinhThucTraDo' => 'Tại cửa hàng',
+            'DiaChiTra' => null,
+        ]);
+        DB::table('BookingGiaoNhan')->where('BookingID', 1)->update([
+            'HinhThuc' => 'Tại cửa hàng',
+            'DiaChi' => null,
+            'PhiGiaoNhan' => 0,
+        ]);
+
+        $service = app(DeliveryService::class);
+        $delivery = $service->create($this->data([
+            'fulfillment' => 'Tại cửa hàng',
+            'address' => null,
+        ]));
+
+        $this->assertSame('Tại cửa hàng', $delivery->HinhThuc);
+        $this->assertNull($delivery->DiaChi);
+        $this->assertSame('Chờ thực hiện', $delivery->TrangThai);
+        $this->assertSame(OrderStatus::Washed->value, DB::table('DonHang')->where('DonHangID', 1)->value('TrangThai'));
+        $this->assertSame('DaXacNhan', DB::table('Booking')->where('BookingID', 1)->value('TrangThai'));
+
+        $this->withoutMiddleware()
+            ->post(route('deliveries.advance-progress', $delivery))
+            ->assertRedirect(route('deliveries.show', $delivery))
+            ->assertSessionHas('success');
+
+        $completed = $delivery->fresh();
+        $this->assertSame('Hoàn thành', $completed->TrangThai);
+        $this->assertNotNull($completed->ThoiGianThucTe);
+        $this->assertSame(OrderStatus::Delivered->value, DB::table('DonHang')->where('DonHangID', 1)->value('TrangThai'));
+        $this->assertSame('HoanThanh', DB::table('Booking')->where('BookingID', 1)->value('TrangThai'));
+        $this->assertSame(0, DB::table('ThanhToan')->count());
+
+        $this->post(route('deliveries.advance-progress', $delivery))
+            ->assertRedirect(route('deliveries.show', $delivery))
+            ->assertSessionHas('error');
+        $this->assertSame(1, GiaoNhan::where('DonHangID', 1)->where('LoaiGiaoNhan', 'GIAO_DO')->count());
+    }
+
+    public function test_booking_return_creation_requires_washed_order_and_rejects_cancelled_booking_over_http(): void
+    {
+        DB::table('DonHang')->where('DonHangID', 1)->update(['TrangThai' => OrderStatus::Washing->value]);
+
+        $this->withoutMiddleware()->postJson(route('deliveries.store'), $this->data())
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('order_id');
+        $this->assertSame(0, GiaoNhan::count());
+
+        DB::table('DonHang')->where('DonHangID', 1)->update(['TrangThai' => OrderStatus::Washed->value]);
+        DB::table('Booking')->where('BookingID', 1)->update(['TrangThai' => 'DaHuy']);
+
+        $this->postJson(route('deliveries.store'), $this->data())
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('booking');
         $this->assertSame(0, GiaoNhan::count());
     }
 
@@ -453,6 +568,7 @@ class DeliveryContractTest extends TestCase
     {
         DB::table('NhanVien')->insert(['NhanVienID' => 3, 'TrangThai' => 'Hoạt động']);
         $delivery = app(DeliveryService::class)->create($this->data(['employee_id' => 3]));
+        $this->assertSame(4200.0, (float) $delivery->PhiGiaoNhan);
         DB::table('ThanhToan')->insert([
             'DonHangID' => 1,
             'TrangThai' => PaymentStatus::Paid->value,
@@ -471,6 +587,8 @@ class DeliveryContractTest extends TestCase
         $delivery = $service->update($delivery, ['status' => 'completed']);
         $this->assertSame('Hoàn thành', $delivery->TrangThai);
         $this->assertSame(OrderStatus::Delivered->value, DB::table('DonHang')->where('DonHangID', 1)->value('TrangThai'));
+        $this->assertSame('HoanThanh', DB::table('Booking')->where('BookingID', 1)->value('TrangThai'));
+        $this->assertNotNull($delivery->fresh()->ThoiGianThucTe);
         $this->assertSame(PaymentStatus::Paid->value, DB::table('ThanhToan')->where('DonHangID', 1)->value('TrangThai'));
         $this->assertSame(1, DB::table('ThanhToan')->where('DonHangID', 1)->count());
     }
@@ -643,7 +761,8 @@ class DeliveryContractTest extends TestCase
         $delivery = $service->update($delivery, ['status' => 'completed']);
         $this->reject(fn () => $service->update($delivery, ['status' => 'pending']), 'status');
         $this->reject(fn () => $service->delete($delivery), 'delivery');
-        $this->reject(fn () => $service->create($this->data()), 'order_id');
+        $this->assertSame($delivery->GiaoNhanID, $service->create($this->data())->GiaoNhanID);
+        $this->assertSame(1, GiaoNhan::count());
     }
 
     public function test_pickup_execution_preserves_type_when_editing_notes_and_cannot_go_back(): void

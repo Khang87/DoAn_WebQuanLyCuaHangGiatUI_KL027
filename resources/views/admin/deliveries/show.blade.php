@@ -10,7 +10,12 @@
         ? \App\Enums\DeliveryStatus::Picking
         : \App\Enums\DeliveryStatus::Delivering;
     $deliveryProgressSteps = [
-        ['status' => \App\Enums\DeliveryStatus::Pending, 'label' => 'Chờ xác nhận'],
+        [
+            'status' => \App\Enums\DeliveryStatus::Pending,
+            'label' => $delivery->LoaiGiaoNhan === 'GIAO_DO' && $delivery->HinhThuc === 'Tại cửa hàng'
+                ? 'Chờ khách đến nhận tại cửa hàng'
+                : 'Chờ xác nhận',
+        ],
         ['status' => $activeDeliveryStatus, 'label' => $activeDeliveryStatus->label()],
         ['status' => \App\Enums\DeliveryStatus::Completed, 'label' => 'Hoàn thành'],
     ];
@@ -21,8 +26,12 @@
     };
     $progressAction = match ($deliveryStatus) {
         \App\Enums\DeliveryStatus::Pending => [
-            'label' => $delivery->LoaiGiaoNhan === 'NHAN_DO' ? 'Bắt đầu nhận đồ' : 'Bắt đầu giao đồ',
-            'icon' => $delivery->LoaiGiaoNhan === 'NHAN_DO' ? 'bi-box-arrow-in-down' : 'bi-truck',
+            'label' => $delivery->LoaiGiaoNhan === 'NHAN_DO'
+                ? 'Bắt đầu nhận đồ'
+                : ($delivery->HinhThuc === 'Tại cửa hàng' ? 'Xác nhận đã bàn giao' : 'Bắt đầu giao đồ'),
+            'icon' => $delivery->LoaiGiaoNhan === 'NHAN_DO'
+                ? 'bi-box-arrow-in-down'
+                : ($delivery->HinhThuc === 'Tại cửa hàng' ? 'bi-check-circle' : 'bi-truck'),
             'variant' => 'primary',
         ],
         \App\Enums\DeliveryStatus::Picking => [
@@ -128,6 +137,7 @@
                 </x-admin.detail.info-item>
                 <x-admin.detail.info-item label="Ngày giao nhận" :value="$delivery->ThoiGianDuKien?->format('d/m/Y')" />
                 <x-admin.detail.info-item label="Giờ giao nhận" :value="$delivery->ThoiGianDuKien?->format('H:i')" />
+                <x-admin.detail.info-item label="Thời gian bàn giao thực tế" :value="$delivery->ThoiGianThucTe?->format('d/m/Y H:i') ?: 'Chưa hoàn tất'" />
                 <x-admin.detail.info-item label="Nhân viên phụ trách" :value="$delivery->nhanVien?->HoTen ?: 'Chưa phân công'" />
                 <x-admin.detail.info-item label="Ngày tạo" :value="$delivery->ThoiGianDuKien?->format('d/m/Y H:i')" />
             </x-admin.detail.info-grid>

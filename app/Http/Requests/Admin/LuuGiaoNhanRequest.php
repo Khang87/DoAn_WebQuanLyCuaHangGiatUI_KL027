@@ -55,8 +55,14 @@ class LuuGiaoNhanRequest extends FormRequest
             'method' => ['required', 'in:nhan_do,giao_do'],
             'fulfillment' => ['sometimes', 'in:Tại cửa hàng,Tại nhà'],
             'address' => ['nullable', 'required_if:fulfillment,Tại nhà', 'string', 'max:255'],
-            'pickup_date' => ['nullable', 'required_if:method,nhan_do', 'required_if:status,picking,delivering,completed', 'required_with:pickup_time', 'date_format:Y-m-d'],
-            'pickup_time' => ['nullable', 'required_if:method,nhan_do', 'required_if:status,picking,delivering,completed', 'required_with:pickup_date', 'date_format:H:i'],
+            'pickup_date' => ['nullable', Rule::requiredIf(
+                $this->input('method') === 'nhan_do'
+                || ($this->input('fulfillment') === 'Tại nhà' && in_array($this->input('status'), ['delivering', 'completed'], true))
+            ), 'required_with:pickup_time', 'date_format:Y-m-d'],
+            'pickup_time' => ['nullable', Rule::requiredIf(
+                $this->input('method') === 'nhan_do'
+                || ($this->input('fulfillment') === 'Tại nhà' && in_array($this->input('status'), ['delivering', 'completed'], true))
+            ), 'required_with:pickup_date', 'date_format:H:i'],
             'status' => ['nullable', 'in:'.implode(',', DeliveryStatus::values())],
             'notes' => ['nullable', 'string', 'max:500'],
         ];
@@ -111,11 +117,11 @@ class LuuGiaoNhanRequest extends FormRequest
             'address.required_if' => 'Địa chỉ giao nhận là bắt buộc khi thực hiện tại nhà.',
             'fulfillment.in' => 'Hình thức phải là Tại cửa hàng hoặc Tại nhà.',
             'address.max' => 'Địa chỉ không được vượt quá 255 ký tự.',
-            'pickup_date.required' => 'Ngày giao nhận là bắt buộc.',
+            'pickup_date.required' => 'Vui lòng chọn ngày giao nhận trước khi tiếp tục.',
             'pickup_date.required_if' => 'Vui lòng chọn ngày giao nhận trước khi tiếp tục.',
             'pickup_date.required_with' => 'Vui lòng chọn ngày giao nhận.',
             'pickup_date.date_format' => 'Ngày giao nhận không hợp lệ.',
-            'pickup_time.required' => 'Giờ giao nhận là bắt buộc.',
+            'pickup_time.required' => 'Vui lòng chọn giờ giao nhận trước khi tiếp tục.',
             'pickup_time.required_if' => 'Vui lòng chọn giờ giao nhận trước khi tiếp tục.',
             'pickup_time.required_with' => 'Vui lòng chọn giờ giao nhận.',
             'pickup_time.date_format' => 'Định dạng giờ phải là HH:MM.',

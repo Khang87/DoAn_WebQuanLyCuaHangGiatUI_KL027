@@ -25,8 +25,13 @@
     $currentStatusIsCompleted = $operationalStatus->isCompletedMilestone();
     $nextProcessStatus = $operationalStatus->nextProcessStatus();
     $requiresHomeDelivery = $order->requiresHomeDelivery();
+    $isBookingReturnOrder = $order->booking !== null;
+    $activeReturnDelivery = $order->giaoNhans
+        ->where('LoaiGiaoNhan', 'GIAO_DO')
+        ->sortByDesc('GiaoNhanID')
+        ->first(fn ($delivery) => \App\Enums\DeliveryStatus::parseForLeg($delivery->TrangThai, $delivery->LoaiGiaoNhan) !== \App\Enums\DeliveryStatus::Cancelled);
     if ($operationalStatus === \App\Enums\OrderStatus::Washed && ! $requiresHomeDelivery) {
-        $nextProcessStatus = \App\Enums\OrderStatus::Delivered;
+        $nextProcessStatus = $isBookingReturnOrder ? null : \App\Enums\OrderStatus::Delivered;
     }
     $nextStatusAction = match ($nextProcessStatus) {
         \App\Enums\OrderStatus::Washing => [
@@ -55,6 +60,9 @@
         ],
         default => null,
     };
+    if ($isBookingReturnOrder && in_array($operationalStatus, [\App\Enums\OrderStatus::Washed, \App\Enums\OrderStatus::Delivering], true)) {
+        $nextStatusAction = null;
+    }
     $inspectionItems = old('items');
     if (! is_array($inspectionItems)) {
         $inspectionItems = $order->chiTietDonHangs->map(function ($item): array {
@@ -553,6 +561,22 @@
                             <i class="bi bi-credit-card me-1" aria-hidden="true"></i> Thanh toán
                         </a>
                     @endcan
+                @endif
+
+                @if($isBookingReturnOrder && in_array($operationalStatus, [\App\Enums\OrderStatus::Washed, \App\Enums\OrderStatus::Delivering], true))
+                    @if($activeReturnDelivery)
+                        @can('deliveries.view')
+                            <a href="{{ route('deliveries.show', $activeReturnDelivery) }}" class="btn btn-outline-primary w-100 py-2">
+                                <i class="bi bi-box-arrow-up-right me-1" aria-hidden="true"></i>Xem phiếu giao
+                            </a>
+                        @endcan
+                    @elseif($operationalStatus === \App\Enums\OrderStatus::Washed)
+                        @can('deliveries.create')
+                            <a href="{{ route('orders.delivery-assignment', $order) }}" class="btn btn-primary w-100 py-2">
+                                <i class="bi bi-truck me-1" aria-hidden="true"></i>Tạo phiếu giao
+                            </a>
+                        @endcan
+                    @endif
                 @endif
 
                 @if($nextStatusAction)

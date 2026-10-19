@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Enums\BookingStatus;
 use App\Enums\DeliveryStatus;
 use App\Enums\OrderStatus;
 use App\Exceptions\SettledOrderException;
@@ -89,12 +90,26 @@ class GiaoNhanController extends Controller
         );
         $latestLeg = $returnLegs->first();
         $isHomeReturn = $order->requiresHomeDelivery();
+        $isBookingReturn = $order->booking !== null;
+        $returnMethod = $order->booking?->HinhThucTraDo;
+        $bookingCancelled = $order->booking?->statusEnum() === BookingStatus::Cancelled;
+        $isEligibleReturnMethod = $isBookingReturn
+            ? in_array($returnMethod, ['Tại nhà', 'Tại cửa hàng'], true)
+            : $isHomeReturn;
 
-        if (! $isHomeReturn || ! in_array($order->statusEnum(), [OrderStatus::Washed, OrderStatus::Delivering], true)) {
-            abort(422, 'Đơn hàng chưa sẵn sàng cho phân công giao đồ tại nhà.');
+        if (
+            $bookingCancelled
+            || ! $isEligibleReturnMethod
+            || ! in_array($order->statusEnum(), [OrderStatus::Washed, OrderStatus::Delivering], true)
+        ) {
+            abort(422, 'Đơn hàng chưa sẵn sàng cho phân công phiếu giao trả.');
         }
 
         if ($activeLeg) {
+            if ($isBookingReturn && $activeLeg->HinhThuc !== $returnMethod) {
+                abort(422, 'Phiếu giao trả hiện có không khớp với hình thức Booking; cần đối soát trước khi tiếp tục.');
+            }
+
             abort_unless($request->user()?->canPermission('deliveries.edit'), 403);
             $this->restrictToOwnDelivery($activeLeg, $user);
 
@@ -103,11 +118,24 @@ class GiaoNhanController extends Controller
 
         abort_unless($request->user()?->canPermission('deliveries.create'), 403);
 
+        $isRetryAfterCancelledReturn = $latestLeg !== null
+            && DeliveryStatus::parseForLeg($latestLeg->TrangThai, $latestLeg->LoaiGiaoNhan) === DeliveryStatus::Cancelled;
+        if (
+            $isBookingReturn
+            && $order->statusEnum() !== OrderStatus::Washed
+            && ! ($order->statusEnum() === OrderStatus::Delivering && $isRetryAfterCancelledReturn)
+        ) {
+            abort(422, 'Chỉ được tạo phiếu giao trả sau khi hoàn thành giặt.');
+        }
+
         $customers = KhachHang::query()->orderBy('HoTen')->get(['KhachHangID', 'HoTen']);
         $employees = ! $user || $user->isManager()
             ? $this->assignableEmployees() : new Collection([$user->nhanVien]);
         $orders = $this->orderOptions($order->getKey());
-        $selectedAddress = $order->booking?->DiaChiTra ?? $latestLeg?->DiaChi;
+        $selectedFulfillment = $isBookingReturn ? $returnMethod : 'Tại nhà';
+        $selectedAddress = $selectedFulfillment === 'Tại nhà'
+            ? ($order->booking?->DiaChiTra ?? $latestLeg?->DiaChi)
+            : null;
 
         return view('admin.deliveries.create', [
             'customers' => $customers,
@@ -117,7 +145,7 @@ class GiaoNhanController extends Controller
             'orders' => $orders,
             'selectedOrderId' => $order->getKey(),
             'selectedMethod' => 'giao_do',
-            'selectedFulfillment' => 'Tại nhà',
+            'selectedFulfillment' => $selectedFulfillment,
             'selectedAddress' => $selectedAddress,
             'statusOptions' => ['pending' => DeliveryStatus::Pending->label()],
         ]);

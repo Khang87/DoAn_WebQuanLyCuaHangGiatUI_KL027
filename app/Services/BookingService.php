@@ -359,6 +359,15 @@ class BookingService
                 ]);
             }
 
+            if (
+                ($data['status'] ?? null) === BookingStatus::Completed->value
+                && $lockedBooking->TrangThai !== BookingStatus::Completed->value
+            ) {
+                throw ValidationException::withMessages([
+                    'status' => 'Chỉ có thể hoàn thành Booking sau khi bàn giao thành công qua phiếu giao trả.',
+                ]);
+            }
+
             if ($hasConvertedOrder && array_key_exists('items', $data)) {
                 throw ValidationException::withMessages([
                     'items' => 'Không thể sửa các dòng dịch vụ sau khi Booking đã được chuyển thành đơn hàng.',

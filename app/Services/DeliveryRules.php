@@ -2,12 +2,15 @@
 
 namespace App\Services;
 
+use App\Enums\BookingStatus;
 use App\Enums\DeliveryStatus;
 use App\Enums\OrderStatus;
+use App\Models\Booking;
 use App\Models\DonHang;
 use App\Models\GiaoNhan;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
 class DeliveryRules
@@ -16,6 +19,13 @@ class DeliveryRules
     {
         if ($order->statusEnum() === OrderStatus::Cancelled) {
             throw ValidationException::withMessages(['order_id' => 'Không thể thay đổi giao nhận của đơn đã hủy.']);
+        }
+
+        if (
+            $order->BookingID !== null
+            && Booking::query()->whereKey($order->BookingID)->value('TrangThai') === BookingStatus::Cancelled->value
+        ) {
+            throw ValidationException::withMessages(['booking' => 'Không thể thay đổi giao nhận của Booking đã hủy.']);
         }
     }
 
@@ -30,16 +40,24 @@ class DeliveryRules
             'address' => ['nullable', 'required_if:fulfillment,Tại nhà', 'string', 'max:255'],
             'employee_id' => ['required', 'integer', EmployeeAssignment::rule($current?->NhanVienID)],
             'status' => ['required', 'in:'.implode(',', DeliveryStatus::values())],
-            'pickup_date' => ['nullable', 'required_if:method,nhan_do', 'required_if:status,picking,delivering,completed', 'required_with:pickup_time', 'date_format:Y-m-d'],
-            'pickup_time' => ['nullable', 'required_if:method,nhan_do', 'required_if:status,picking,delivering,completed', 'required_with:pickup_date', 'date_format:H:i'],
+            'pickup_date' => ['nullable', Rule::requiredIf(
+                ($data['method'] ?? null) === 'nhan_do'
+                || ($data['fulfillment'] === 'Tại nhà' && in_array($data['status'], ['delivering', 'completed'], true))
+            ), 'required_with:pickup_time', 'date_format:Y-m-d'],
+            'pickup_time' => ['nullable', Rule::requiredIf(
+                ($data['method'] ?? null) === 'nhan_do'
+                || ($data['fulfillment'] === 'Tại nhà' && in_array($data['status'], ['delivering', 'completed'], true))
+            ), 'required_with:pickup_date', 'date_format:H:i'],
             'notes' => ['nullable', 'string', 'max:500'],
         ], [
             'employee_id.required' => 'Vui lòng chọn nhân viên phụ trách.',
             'employee_id.integer' => 'Nhân viên phụ trách không hợp lệ.',
             'employee_id.exists' => 'Vui lòng chọn nhân viên đang hoạt động.',
+            'pickup_date.required' => 'Vui lòng chọn ngày giao nhận trước khi tiếp tục.',
             'pickup_date.required_if' => 'Vui lòng chọn ngày giao nhận trước khi tiếp tục.',
             'pickup_date.required_with' => 'Vui lòng chọn ngày giao nhận.',
             'pickup_date.date_format' => 'Ngày giao nhận không hợp lệ.',
+            'pickup_time.required' => 'Vui lòng chọn giờ giao nhận trước khi tiếp tục.',
             'pickup_time.required_if' => 'Vui lòng chọn giờ giao nhận trước khi tiếp tục.',
             'pickup_time.required_with' => 'Vui lòng chọn giờ giao nhận.',
             'pickup_time.date_format' => 'Định dạng giờ giao nhận không hợp lệ.',
@@ -61,17 +79,45 @@ class DeliveryRules
         $isReturnLeg = $data['method'] === 'giao_do';
 
         if ($isReturnLeg) {
-            if ($data['fulfillment'] !== 'Tại nhà' || ! $order->requiresHomeDelivery()) {
+            $booking = $order->BookingID !== null
+                ? Booking::query()->find($order->BookingID)
+                : null;
+            $isBookingReturn = $booking !== null;
+            $returnMethodMatches = $isBookingReturn
+                ? $booking->HinhThucTraDo === $data['fulfillment']
+                : $data['fulfillment'] === 'Tại nhà' && $order->requiresHomeDelivery();
+
+            if ($isBookingReturn && ! $current && $booking->statusEnum() !== BookingStatus::Confirmed) {
                 throw ValidationException::withMessages([
-                    'method' => 'Chỉ đơn có phương thức trả đồ tại nhà mới được có chặng giao đồ.',
+                    'booking' => 'Booking phải đang được xác nhận để tạo hoặc cập nhật phiếu trả đồ.',
                 ]);
             }
-            if ($isReturnLeg && ! $current && $target !== DeliveryStatus::Pending) {
+
+            if (! $returnMethodMatches) {
+                throw ValidationException::withMessages([
+                    'method' => 'Hình thức phiếu giao đồ phải khớp với phương thức trả đã xác nhận.',
+                ]);
+            }
+            if (! $current && $target !== DeliveryStatus::Pending) {
                 throw ValidationException::withMessages([
                     'status' => 'Phiếu giao đồ mới phải được lưu ở trạng thái chờ trước khi bắt đầu giao.',
                 ]);
             }
-            if (! $current && ! in_array($order->statusEnum(), [OrderStatus::Washed, OrderStatus::Delivering], true)) {
+            $allowedCreationStatuses = $isBookingReturn
+                ? [OrderStatus::Washed]
+                : [OrderStatus::Washed, OrderStatus::Delivering];
+            if (
+                $isBookingReturn
+                && $order->statusEnum() === OrderStatus::Delivering
+                && GiaoNhan::query()
+                    ->where('DonHangID', $order->DonHangID)
+                    ->where('LoaiGiaoNhan', 'GIAO_DO')
+                    ->where('TrangThai', DeliveryStatus::Cancelled->dbValue())
+                    ->exists()
+            ) {
+                $allowedCreationStatuses[] = OrderStatus::Delivering;
+            }
+            if (! $current && ! in_array($order->statusEnum(), $allowedCreationStatuses, true)) {
                 throw ValidationException::withMessages([
                     'order_id' => 'Chỉ đơn đã hoàn thành giặt mới được lập chặng giao đồ.',
                 ]);
@@ -103,11 +149,19 @@ class DeliveryRules
             }
             EmployeeAssignment::assertAssignable((int) $data['employee_id'], 'employee_id');
         }
-        if ($isReturnLeg && $target === DeliveryStatus::Completed && $previous !== DeliveryStatus::Delivering) {
-            throw ValidationException::withMessages(['status' => 'Chỉ có thể hoàn thành chặng giao đang được thực hiện.']);
-        }
-        if ($isReturnLeg && $target === DeliveryStatus::Completed && $order->statusEnum() !== OrderStatus::Delivering) {
-            throw ValidationException::withMessages(['status' => 'Đơn hàng phải ở trạng thái đang giao trước khi hoàn tất chặng.']);
+        if ($isReturnLeg && $target === DeliveryStatus::Completed) {
+            $storeHandoverCanCompleteDirectly = $data['fulfillment'] === 'Tại cửa hàng'
+                && $previous === DeliveryStatus::Pending
+                && $order->statusEnum() === OrderStatus::Washed;
+            $homeDeliveryCanComplete = $data['fulfillment'] === 'Tại nhà'
+                && $previous === DeliveryStatus::Delivering
+                && $order->statusEnum() === OrderStatus::Delivering;
+            $legacyDeliveryCanComplete = $previous === DeliveryStatus::Delivering
+                && in_array($order->statusEnum(), [OrderStatus::Delivering, OrderStatus::Washed], true);
+
+            if (! $storeHandoverCanCompleteDirectly && ! $homeDeliveryCanComplete && ! $legacyDeliveryCanComplete) {
+                throw ValidationException::withMessages(['status' => 'Chỉ có thể hoàn tất sau khi xác nhận bàn giao hợp lệ.']);
+            }
         }
         self::validateSchedule($data, $current);
 
