@@ -33,17 +33,12 @@ class PasswordResetController extends Controller
         try {
             $otpService->send($email, (string) $request->ip());
         } catch (PasswordResetOtpException $exception) {
-            if ($exception->throttled) {
-                $request->session()->put('reset_email', $email);
-            }
-
             return redirect()->route('password.request')->withInput(['email' => $email])->with('error', $exception->getMessage());
         }
         $request->session()->put('reset_email', $email);
 
         return redirect()->route('password.request')
-            ->with('status', 'Yêu cầu khôi phục mật khẩu đã được tiếp nhận.')
-            ->with('otp_privacy_notice', 'Nếu email thuộc tài khoản đang hoạt động, mã khôi phục có hiệu lực 15 phút sẽ được gửi.');
+            ->with('status', 'Mã OTP đã được gửi và có hiệu lực trong 15 phút.');
     }
 
     public function verifyOtp(Request $request, PasswordResetOtpService $otpService): RedirectResponse

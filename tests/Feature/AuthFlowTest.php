@@ -236,16 +236,15 @@ class AuthFlowTest extends TestCase
             ->assertRedirect(route('password.request'))->assertSessionHas('error');
     }
 
-    public function test_password_reset_request_does_not_disclose_unknown_emails(): void
+    public function test_password_reset_request_rejects_unknown_email(): void
     {
         $mailer = \Mockery::mock(ResendOtpMailer::class);
         $mailer->shouldNotReceive('send');
         $this->app->instance(ResendOtpMailer::class, $mailer);
         $this->post(route('password.email'), ['email' => 'missing@example.test'])
-            ->assertRedirect(route('password.request'))->assertSessionHas('status', 'Yêu cầu khôi phục mật khẩu đã được tiếp nhận.')
-            ->assertSessionHas('otp_privacy_notice')
+            ->assertRedirect(route('password.request'))->assertSessionHas('error', 'Email này không có trong hệ thống.')
             ->assertSessionMissing('simulation_otp');
-        $this->get(route('password.request'))->assertSee('Gửi lại mã (60s)');
+        $this->get(route('password.request'))->assertDontSee('name="otp"', false);
         $this->get(route('password.reset'))->assertRedirect(route('password.request'));
     }
 

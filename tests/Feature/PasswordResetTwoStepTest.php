@@ -164,17 +164,19 @@ class PasswordResetTwoStepTest extends TestCase
         $this->travel(60)->seconds();
         $this->post('/forgot-password', ['email' => 'third@example.test'])
             ->assertRedirect('/forgot-password')
-            ->assertSessionHas('otp_privacy_notice')
-            ->assertSessionMissing('error');
+            ->assertSessionHas('error', 'Email này không có trong hệ thống.');
     }
 
-    public function test_unknown_email_does_not_send_otp_or_disclose_account_existence(): void
+    public function test_unknown_email_is_rejected_without_sending_otp_or_opening_verification(): void
     {
         $this->post('/forgot-password', ['email' => 'missing@example.test'])
             ->assertRedirect('/forgot-password')
-            ->assertSessionHas('otp_privacy_notice');
+            ->assertSessionHas('error', 'Email này không có trong hệ thống.')
+            ->assertSessionMissing('status');
 
         $this->assertSame('', $this->otp);
+        $this->assertNull(session('reset_email'));
+        $this->get('/forgot-password')->assertOk()->assertDontSee('name="otp"', false);
     }
 
     public function test_locked_account_is_not_sent_recovery_email_and_receives_clear_error(): void
