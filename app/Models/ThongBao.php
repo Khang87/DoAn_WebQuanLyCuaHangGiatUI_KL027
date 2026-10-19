@@ -33,7 +33,7 @@ class ThongBao extends Model
     public const CREATED_AT = 'ThoiGianGui';
 
     protected $fillable = [
-        'TaiKhoanID', 'DonHangID', 'BookingID', 'LoaiThongBao', 'TieuDe', 'NoiDung',
+        'TaiKhoanID', 'DonHangID', 'LoaiThongBao', 'TieuDe', 'NoiDung',
         'ThoiGianGui', 'DaDoc', 'ThongBaoID'];
 
     protected $casts = [

@@ -364,18 +364,19 @@
                     data-minimum-weight="{{ config('giatui.khoi_luong_toi_thieu', 3.0) }}"
                 >
                     <div class="card-body">
-                        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
-                            <h6 class="mb-0">Tổng kết đơn hàng</h6>
-                            <div class="fw-bold fs-5 text-primary">Tổng thanh toán: <span data-estimate-total>Đang tính…</span></div>
-                        </div>
-                        <div data-estimate-details></div>
+                        <h6 class="mb-0">Tổng kết đơn hàng</h6>
                         <div class="table-responsive mt-3" data-estimate-items></div>
                         <div data-estimate-warning class="small text-danger mt-2" role="status" aria-live="polite"></div>
+                        <div class="mt-3" data-estimate-details></div>
                         <div class="form-text mt-2">Giá hiển thị là ước tính theo bảng giá hiện hành; giá, khuyến mãi, điểm và phí được máy chủ kiểm tra lại khi xác nhận.</div>
+                        <div class="border-top mt-3 pt-3 d-flex flex-wrap justify-content-between align-items-center gap-2">
+                            <span class="fw-bold">Tổng thanh toán</span>
+                            <span class="fw-bold fs-5 text-primary" data-estimate-total>Đang tính…</span>
+                        </div>
                     </div>
                 </div>
             @endif
-            <div class="d-flex justify-content-end gap-2 mt-4"><button type="reset" class="btn btn-outline-secondary">Khôi phục dữ liệu ban đầu</button><button type="submit" class="btn btn-primary">{{ $inspectionMode ? 'Xác nhận kiểm kê & tạo đơn' : 'Cập nhật' }}</button></div>
+            <div class="d-flex justify-content-end gap-2 mt-4"><button type="submit" class="btn btn-primary">{{ $inspectionMode ? 'Xác nhận kiểm kê & tạo đơn' : 'Cập nhật' }}</button></div>
         </form>
     </div>
 </div>
@@ -386,7 +387,6 @@
         const returnMethod = document.getElementById('booking-return-method');
         const returnAddress = document.getElementById('booking-return-address');
         const address = document.querySelector('[name="address"]');
-        const form = document.getElementById('booking-edit-form');
         const itemsContainer = document.getElementById('booking-items');
         const addItemButton = document.getElementById('add-booking-item');
         const pricingUnitOptions = @json($pricingUnitOptions);
@@ -511,17 +511,6 @@
 
         method.addEventListener('change', updateAddressRequirement);
         returnMethod.addEventListener('change', updateAddressRequirement);
-        form.addEventListener('reset', function () {
-            setTimeout(function () {
-                updateAddressRequirement();
-                itemsContainer.querySelectorAll('.booking-item').forEach(function (item) {
-                    syncServiceOptions(item);
-                    syncGarmentOptions(item);
-                    syncUnitOptions(item);
-                    updateQuantityFields(item);
-                });
-            });
-        });
         itemsContainer.addEventListener('change', function (event) {
             const item = event.target.closest('.booking-item');
             if (event.target.matches('.booking-service-category')) {
@@ -576,7 +565,6 @@
             document.querySelector('[data-booking-row-status]').textContent = 'Đã thêm dòng mới. Hãy chọn dịch vụ và loại đồ.';
             template.querySelector('.booking-service-category').focus();
         });
-        form.addEventListener('reset', () => setTimeout(updateAddressRequirement, 0));
         updateAddressRequirement();
         itemsContainer.querySelectorAll('.booking-item').forEach(function (item) {
             const category = item.querySelector('.booking-service-category');

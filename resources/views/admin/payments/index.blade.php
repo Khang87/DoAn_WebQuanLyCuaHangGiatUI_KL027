@@ -61,7 +61,6 @@
                 <thead>
                     <tr>
                         <th scope="col">STT</th>
-                        <th class="fw-semibold text-dark">Mã giao dịch</th>
                         <th class="fw-semibold text-dark">Mã đơn hàng</th>
                         <th class="fw-semibold text-dark">Khách hàng</th>
                         <th class="fw-semibold text-dark">Số tiền</th>
@@ -75,7 +74,6 @@
                     @forelse($payments as $payment)
                     <tr>
                         <td>{{ $payments->firstItem() + $loop->index }}</td>
-                        <td>{{ $payment->MaGiaoDich ?: '—' }}</td>
                         <td><span class="text-dark">{{ $payment->donHang?->MaDonHang ?: '—' }}</span></td>
                         <td>
                             @php($customerAccount = $payment->donHang?->khachHang?->taiKhoan)
@@ -119,7 +117,7 @@
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="9" class="text-center text-muted py-4">Chưa có dữ liệu nào</td>
+                        <td colspan="8" class="text-center text-muted py-4">Chưa có dữ liệu nào</td>
                     </tr>
                     @endempty
                 </tbody>

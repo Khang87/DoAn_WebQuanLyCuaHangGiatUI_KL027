@@ -27,7 +27,12 @@
     $statusOptions ??= \App\Enums\DeliveryStatus::options();
 @endphp
 <div class="delivery-form-shell"><div class="card"><div class="card-body">
-    <div class="d-flex justify-content-between align-items-center mb-4"><h2 class="h5 mb-0">Cập nhật lịch giao nhận</h2></div>
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
+        <h2 class="h5 mb-0">Cập nhật lịch giao nhận</h2>
+        <a href="{{ route('deliveries.show', $delivery) }}" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-arrow-left me-1"></i>Quay lại
+        </a>
+    </div>
     <form action="{{ route('deliveries.update', $delivery) }}" method="POST">@csrf @method('PUT')
         <input type="hidden" name="order_id" value="{{ $delivery->DonHangID }}">
         <input type="hidden" name="method" value="{{ strtolower($delivery->LoaiGiaoNhan) }}">
@@ -64,7 +69,7 @@
             <div class="col-12 form-text" id="schedule-help" aria-live="polite">Phiếu trả đang chờ có thể chưa đặt lịch. Khi đặt lịch, hãy nhập đủ ngày và giờ.</div>
             <div class="col-12"><label class="form-label" for="notes">Ghi chú</label><textarea class="form-control" id="notes" name="notes" rows="3">{{ old('notes', $delivery->GhiChu) }}</textarea></div>
         </div>
-        <div class="d-flex justify-content-end gap-2 mt-4"><a href="{{ route('deliveries.show', $delivery) }}" class="btn btn-outline-secondary">Hủy</a><button type="submit" class="btn btn-primary">Lưu thay đổi</button></div>
+        <div class="d-flex justify-content-end mt-4"><button type="submit" class="btn btn-primary">Lưu thay đổi</button></div>
     </form>
 </div></div></div>
 @endsection

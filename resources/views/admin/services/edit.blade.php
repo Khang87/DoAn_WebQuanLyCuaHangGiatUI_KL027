@@ -6,9 +6,9 @@
 @section('content')
 <div class="card">
     <div class="card-body">
-        <div class="d-flex justify-content-between align-items-center mb-4">
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
             <h5 class="mb-0">{{ $service->TenDichVu }}</h5>
-            <a href="{{ route('services.index') }}" class="btn btn-outline-secondary btn-sm">
+            <a href="{{ route('services.show', $service) }}" class="btn btn-outline-secondary btn-sm">
                 <i class="bi bi-arrow-left me-1"></i>Quay lại
             </a>
         </div>
@@ -64,10 +64,9 @@
                 </div>
             </div>
 
-            <div class="d-flex justify-content-end gap-2 mt-4">
-                <a href="{{ route('services.index') }}" class="btn btn-outline-secondary">Hủy</a>
+            <div class="d-flex justify-content-end mt-4">
                 <button type="submit" class="btn btn-primary">
-                    <i class="bi bi-save me-1"></i>Cập nhật
+                    <i class="bi bi-save me-1"></i>Lưu thay đổi
                 </button>
             </div>
         </form>

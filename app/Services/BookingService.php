@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Enums\BookingStatus;
+use App\Enums\DeliveryStatus;
 use App\Enums\OrderStatus;
 use App\Models\BangGia;
 use App\Models\Booking;
@@ -197,6 +198,9 @@ class BookingService
             $employeeId = $this->requireAuthenticatedEmployeeId('booking', 'Cần nhân viên đang hoạt động để nhận đồ.');
             $leg = BookingGiaoNhan::query()->where('BookingID', $locked->BookingID)
                 ->where('LoaiGiaoNhan', 'NHAN_DO')->lockForUpdate()->firstOrFail();
+            if ($leg->TrangThai === DeliveryStatus::Cancelled->dbValue()) {
+                throw ValidationException::withMessages(['booking' => 'Không thể xác nhận nhận đồ trên phiếu đã hủy.']);
+            }
             if ($leg->TrangThai !== 'Đã nhận') {
                 $leg->update(['TrangThai' => 'Đã nhận', 'ThoiGianThucTe' => now(), 'NhanVienID' => $employeeId]);
             }
@@ -246,13 +250,12 @@ class BookingService
 
                 $this->notificationService->create([
                     'TaiKhoanID' => $accountId,
-                    'BookingID' => $locked->BookingID,
                     'DonHangID' => $order->DonHangID,
                     'LoaiThongBao' => 'booking_inspection_updated',
                     'TieuDe' => 'Cập nhật kiểm kê Booking',
                     'NoiDung' => 'Nhân viên đã đối soát và điều chỉnh thông tin đồ thực tế cho Booking '.$locked->MaBooking.'. Đơn hàng '.$order->MaDonHang.' đã được tạo.',
                     'DaDoc' => false,
-                ]);
+                ], $locked);
             }
 
             return $order;

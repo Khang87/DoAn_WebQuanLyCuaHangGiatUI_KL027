@@ -4,6 +4,7 @@ namespace App\Http\Requests\Admin;
 
 use App\Enums\DeliveryStatus;
 use App\Models\GiaoNhan;
+use App\Models\NhanVien;
 use App\Services\DeliveryRules;
 use App\Services\EmployeeAssignment;
 use Illuminate\Foundation\Http\FormRequest;
@@ -52,6 +53,7 @@ class LuuGiaoNhanRequest extends FormRequest
                 'required', 'integer', EmployeeAssignment::rule($this->currentDelivery()?->NhanVienID),
                 ...($this->user() && ! $this->user()->isManager() ? [Rule::in([(int) $this->user()->NhanVienID])] : []),
             ],
+            'employee_search' => ['sometimes', 'string', 'max:255'],
             'method' => ['required', 'in:nhan_do,giao_do'],
             'fulfillment' => ['sometimes', 'in:Tại cửa hàng,Tại nhà'],
             'address' => ['nullable', 'required_if:fulfillment,Tại nhà', 'string', 'max:255'],
@@ -72,11 +74,21 @@ class LuuGiaoNhanRequest extends FormRequest
     {
         $validator->after(function (Validator $validator): void {
             $employeeId = $this->input('employee_id');
-            if ($this->user()?->isManager() && is_numeric($employeeId)
-                && ! $validator->errors()->has('employee_id')
-                && ! EmployeeAssignment::deliveryCandidates($this->currentDelivery()?->NhanVienID)
-                    ->whereKey((int) $employeeId)->exists()) {
-                $validator->errors()->add('employee_id', 'Chỉ được phân công nhân viên giao nhận, không chọn tài khoản quản lý.');
+            if (is_numeric($employeeId) && ! $validator->errors()->has('employee_id')) {
+                $employee = NhanVien::query()->whereKey((int) $employeeId)->first();
+                $isOwnLinkedEmployee = (int) $employeeId === (int) $this->user()?->NhanVienID
+                    && $employee?->TrangThai === 'Hoạt động';
+                $isAssignableEmployee = EmployeeAssignment::deliveryCandidates($this->currentDelivery()?->NhanVienID)
+                    ->whereKey((int) $employeeId)->exists();
+
+                if ($this->user()?->isManager() && ! $isOwnLinkedEmployee && ! $isAssignableEmployee) {
+                    $validator->errors()->add('employee_id', 'Chỉ được phân công nhân viên giao nhận hợp lệ hoặc chính nhân viên đang liên kết với tài khoản.');
+                }
+
+                if ($this->exists('employee_search')
+                    && trim((string) $this->input('employee_search')) !== trim((string) $employee?->HoTen)) {
+                    $validator->errors()->add('employee_id', 'Vui lòng chọn nhân viên từ danh sách gợi ý; không thể chỉ nhập tên.');
+                }
             }
 
             if ($validator->errors()->has('pickup_date') || $validator->errors()->has('pickup_time')) {

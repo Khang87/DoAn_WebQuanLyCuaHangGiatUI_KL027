@@ -157,7 +157,12 @@ class BookingController extends Controller
         try {
             $this->bookingService->markReceived($booking);
 
-            return redirect()->route('bookings.show', $booking)->with('success', 'Đã ghi nhận nhận đồ thực tế. Có thể bắt đầu kiểm kê.');
+            $destination = request()->user()?->canPermission('bookings.confirm')
+                ? 'bookings.inspection'
+                : 'bookings.show';
+
+            return redirect()->route($destination, $booking)
+                ->with('success', 'Đã ghi nhận nhận đồ thực tế. Có thể bắt đầu kiểm kê.');
         } catch (ValidationException $e) {
             return redirect()->route('bookings.show', $booking)->withErrors($e->errors());
         }

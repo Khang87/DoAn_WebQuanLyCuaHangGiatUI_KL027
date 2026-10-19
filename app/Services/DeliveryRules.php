@@ -78,6 +78,17 @@ class DeliveryRules
             : DeliveryStatus::Pending;
         $isReturnLeg = $data['method'] === 'giao_do';
 
+        if (
+            $current
+            && $current->LoaiGiaoNhan === 'GIAO_DO'
+            && $target === DeliveryStatus::Cancelled
+            && $previous !== DeliveryStatus::Cancelled
+        ) {
+            throw ValidationException::withMessages([
+                'status' => 'Hãy dùng thao tác Hủy lịch giao để giữ đúng quyền và lịch sử.',
+            ]);
+        }
+
         if ($isReturnLeg) {
             $booking = $order->BookingID !== null
                 ? Booking::query()->find($order->BookingID)

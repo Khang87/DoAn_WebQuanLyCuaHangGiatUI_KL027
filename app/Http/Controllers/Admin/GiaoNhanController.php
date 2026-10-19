@@ -8,10 +8,10 @@ use App\Enums\OrderStatus;
 use App\Exceptions\SettledOrderException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\LuuGiaoNhanRequest;
+use App\Models\BookingGiaoNhan;
 use App\Models\DonHang;
 use App\Models\GiaoNhan;
 use App\Models\KhachHang;
-use App\Models\NhanVien;
 use App\Models\User;
 use App\Services\DeliveryService;
 use App\Services\EmployeeAssignment;
@@ -39,15 +39,9 @@ class GiaoNhanController extends Controller
             'sort_by' => $request->input('sort_by'),
             'sort_order' => $request->input('sort_order'),
         ];
-        $deliveries = $this->deliveryService->getAll($filters);
-        $bookingDocuments = $this->deliveryService->getBookingDocuments($filters);
+        $deliveries = $this->deliveryService->getUnifiedDeliveries($filters);
 
-        $customers = KhachHang::query()->orderBy('HoTen')->get(['KhachHangID', 'HoTen']);
-        $employees = NhanVien::where('TrangThai', 'Hoạt động')
-            ->orderBy('HoTen')
-            ->get(['NhanVienID', 'HoTen']);
-
-        return view('admin.deliveries.index', compact('deliveries', 'bookingDocuments', 'customers', 'employees'));
+        return view('admin.deliveries.index', compact('deliveries'));
     }
 
     public function create()
@@ -55,13 +49,19 @@ class GiaoNhanController extends Controller
         $user = auth()->user();
         $this->requireActiveEmployeeForStaff($user);
         $canAssignEmployee = ! $user || $user->isManager();
-        $assignedEmployee = $canAssignEmployee ? null : $user->nhanVien;
+        $linkedEmployee = $user?->nhanVien;
+        if ($linkedEmployee?->TrangThai !== 'Hoạt động') {
+            $linkedEmployee = null;
+        }
+        $assignedEmployee = $canAssignEmployee ? null : $linkedEmployee;
         $customers = KhachHang::query()->orderBy('HoTen')->get(['KhachHangID', 'HoTen']);
-        $employees = $this->assignableEmployees();
-        $defaultEmployeeId = old('employee_id', $user?->NhanVienID);
+        $employees = $this->assignableEmployees($linkedEmployee?->NhanVienID);
+        $defaultEmployeeId = old('employee_id', $linkedEmployee?->NhanVienID);
         $selectedEmployee = $employees->firstWhere('NhanVienID', (int) $defaultEmployeeId);
-        if (! $canAssignEmployee) {
-            $selectedEmployee = $assignedEmployee;
+        $oldEmployeeSearch = old('employee_search');
+        if ($oldEmployeeSearch !== null && $selectedEmployee
+            && trim($oldEmployeeSearch) !== trim((string) $selectedEmployee->HoTen)) {
+            $selectedEmployee = null;
         }
         $selectedOrderId = request()->integer('order_id') ?: null;
         $selectedMethod = request()->input('method', 'nhan_do');
@@ -137,8 +137,12 @@ class GiaoNhanController extends Controller
         }
 
         $customers = KhachHang::query()->orderBy('HoTen')->get(['KhachHangID', 'HoTen']);
+        $linkedEmployee = $user?->nhanVien;
+        if ($linkedEmployee?->TrangThai !== 'Hoạt động') {
+            $linkedEmployee = null;
+        }
         $employees = ! $user || $user->isManager()
-            ? $this->assignableEmployees() : new Collection([$user->nhanVien]);
+            ? $this->assignableEmployees($linkedEmployee?->NhanVienID) : new Collection([$linkedEmployee]);
         $orders = $this->orderOptions($order->getKey());
         $selectedFulfillment = $isBookingReturn ? $returnMethod : 'Tại nhà';
         $selectedAddress = $selectedFulfillment === 'Tại nhà'
@@ -146,15 +150,20 @@ class GiaoNhanController extends Controller
             : null;
         $selectedEmployee = $employees->firstWhere(
             'NhanVienID',
-            (int) old('employee_id', $user?->NhanVienID),
+            (int) old('employee_id', $linkedEmployee?->NhanVienID),
         );
+        $oldEmployeeSearch = old('employee_search');
+        if ($oldEmployeeSearch !== null && $selectedEmployee
+            && trim($oldEmployeeSearch) !== trim((string) $selectedEmployee->HoTen)) {
+            $selectedEmployee = null;
+        }
 
         return view('admin.deliveries.create', [
             'customers' => $customers,
             'employees' => $employees,
             'selectedEmployee' => $selectedEmployee,
             'canAssignEmployee' => ! $user || $user->isManager(),
-            'assignedEmployee' => $user && ! $user->isManager() ? $user->nhanVien : null,
+            'assignedEmployee' => $user && ! $user->isManager() ? $linkedEmployee : null,
             'orders' => $orders,
             'selectedOrderId' => $order->getKey(),
             'selectedMethod' => 'giao_do',
@@ -188,8 +197,16 @@ class GiaoNhanController extends Controller
         }
 
         $this->restrictToOwnDelivery($delivery, auth()->user());
+        $displayCode = 'GN-'.$delivery->GiaoNhanID;
+        $canCancelReturnDelivery = $this->deliveryService->canCancelReturnDelivery($delivery);
+        $canEditReturnDelivery = $this->deliveryService->canEditReturnDelivery($delivery);
 
-        return view('admin.deliveries.show', compact('delivery'));
+        return view('admin.deliveries.show', compact(
+            'delivery',
+            'displayCode',
+            'canCancelReturnDelivery',
+            'canEditReturnDelivery',
+        ));
     }
 
     public function showBookingDocument(int $bookingDelivery)
@@ -200,15 +217,84 @@ class GiaoNhanController extends Controller
         }
 
         $user = auth()->user();
-        if ($user && ! $user->isManager()) {
-            $this->requireActiveEmployeeForStaff($user);
-            abort_unless(
-                $user->NhanVienID && (int) $bookingDocument->NhanVienID === (int) $user->NhanVienID,
-                403,
-            );
+        $this->restrictToOwnBookingDocument($bookingDocument, $user);
+
+        $displayCode = 'BGN-'.$bookingDocument->BookingGiaoNhanID;
+        $canManageIntake = $this->deliveryService->canManageBookingIntake($bookingDocument);
+
+        return view('admin.deliveries.booking-document', compact('bookingDocument', 'displayCode', 'canManageIntake'));
+    }
+
+    public function editBookingDocument(int $bookingDelivery)
+    {
+        $bookingDocument = $this->deliveryService->findBookingDocument($bookingDelivery);
+        abort_if(! $bookingDocument, 404);
+
+        $user = auth()->user();
+        $this->restrictToOwnBookingDocument($bookingDocument, $user);
+        abort_unless(
+            $this->deliveryService->canManageBookingIntake($bookingDocument),
+            403,
+            'Phiếu nhận đồ không còn ở trạng thái có thể chỉnh sửa.',
+        );
+
+        $canAssignEmployee = ! $user || $user->isManager();
+        $employees = $canAssignEmployee
+            ? $this->assignableEmployees($bookingDocument->NhanVienID)
+            : new Collection([$bookingDocument->nhanVien]);
+        $displayCode = 'BGN-'.$bookingDocument->BookingGiaoNhanID;
+
+        return view('admin.deliveries.booking-document-edit', compact(
+            'bookingDocument',
+            'canAssignEmployee',
+            'employees',
+            'displayCode',
+        ));
+    }
+
+    public function updateBookingDocument(Request $request, int $bookingDelivery): RedirectResponse
+    {
+        $bookingDocument = $this->deliveryService->findBookingDocument($bookingDelivery);
+        abort_if(! $bookingDocument, 404);
+
+        $user = $request->user();
+        $this->restrictToOwnBookingDocument($bookingDocument, $user);
+        abort_unless(
+            $this->deliveryService->canManageBookingIntake($bookingDocument),
+            403,
+            'Phiếu nhận đồ không còn ở trạng thái có thể chỉnh sửa.',
+        );
+
+        $rules = [
+            'pickup_date' => ['nullable', 'date_format:Y-m-d', 'required_with:pickup_time'],
+            'pickup_time' => ['nullable', 'date_format:H:i', 'required_with:pickup_date'],
+            'address' => [
+                $bookingDocument->HinhThuc === 'Tại nhà' ? 'required' : 'nullable',
+                'string',
+                'max:255',
+            ],
+        ];
+        if (! $user || $user->isManager()) {
+            $rules['employee_id'] = [
+                'required',
+                'integer',
+                EmployeeAssignment::rule($bookingDocument->NhanVienID),
+            ];
         }
 
-        return view('admin.deliveries.booking-document', compact('bookingDocument'));
+        $validated = $request->validate($rules, [
+            'employee_id.required' => 'Vui lòng chọn nhân viên phụ trách.',
+            'employee_id.integer' => 'Nhân viên phụ trách không hợp lệ.',
+            'employee_id.exists' => 'Vui lòng chọn nhân viên đang hoạt động.',
+            'pickup_date.required_with' => 'Ngày và giờ dự kiến phải được nhập cùng nhau.',
+            'pickup_time.required_with' => 'Ngày và giờ dự kiến phải được nhập cùng nhau.',
+            'address.required' => 'Vui lòng nhập địa chỉ nhận đồ tại nhà.',
+        ]);
+
+        $this->deliveryService->updateBookingIntake($bookingDocument, $validated);
+
+        return redirect()->route('deliveries.booking-documents.show', $bookingDocument)
+            ->with('success', 'Phiếu nhận đồ đã được cập nhật.');
     }
 
     public function advanceProgress(int $id): RedirectResponse
@@ -247,6 +333,11 @@ class GiaoNhanController extends Controller
 
         $user = auth()->user();
         $this->restrictToOwnDelivery($delivery, $user);
+        abort_unless(
+            $delivery->LoaiGiaoNhan !== 'GIAO_DO' || $this->deliveryService->canEditReturnDelivery($delivery),
+            403,
+            'Lịch giao đồ không còn ở trạng thái có thể chỉnh sửa.',
+        );
         $canAssignEmployee = ! $user || $user->isManager();
         $assignedEmployee = $canAssignEmployee ? null : $user->nhanVien;
 
@@ -256,6 +347,9 @@ class GiaoNhanController extends Controller
         $orders = $this->orderOptions($delivery->DonHangID);
         $statusOptions = DeliveryStatus::options();
         unset($statusOptions[$delivery->LoaiGiaoNhan === 'GIAO_DO' ? DeliveryStatus::Picking->value : DeliveryStatus::Delivering->value]);
+        if ($delivery->LoaiGiaoNhan === 'GIAO_DO') {
+            unset($statusOptions[DeliveryStatus::Cancelled->value]);
+        }
 
         return view('admin.deliveries.edit', compact('delivery', 'customers', 'employees', 'orders', 'statusOptions', 'canAssignEmployee', 'assignedEmployee'));
     }
@@ -269,6 +363,11 @@ class GiaoNhanController extends Controller
         }
 
         $this->restrictToOwnDelivery($delivery, $request->user());
+        abort_unless(
+            $delivery->LoaiGiaoNhan !== 'GIAO_DO' || $this->deliveryService->canEditReturnDelivery($delivery),
+            403,
+            'Lịch giao đồ không còn ở trạng thái có thể chỉnh sửa.',
+        );
 
         try {
             $this->deliveryService->update($delivery, $request->validated());
@@ -305,6 +404,23 @@ class GiaoNhanController extends Controller
             return back()->with('error', $e->getMessage())->withInput();
         } catch (\Exception $e) {
             return redirect()->route('deliveries.index')->with('error', FriendlyError::message($e));
+        }
+    }
+
+    public function cancelReturnDelivery(int $id): RedirectResponse
+    {
+        $delivery = $this->deliveryService->find($id);
+        abort_if(! $delivery, 404);
+
+        $this->restrictToOwnDelivery($delivery, auth()->user());
+
+        try {
+            $this->deliveryService->cancelReturnDelivery($delivery);
+
+            return redirect()->route('deliveries.index')
+                ->with('success', 'Đã hủy lịch giao. Đơn hàng và trạng thái thanh toán không thay đổi.');
+        } catch (ValidationException $exception) {
+            return redirect()->route('deliveries.show', $delivery)->withErrors($exception->errors());
         }
     }
 
@@ -348,9 +464,19 @@ class GiaoNhanController extends Controller
         }
     }
 
+    private function restrictToOwnBookingDocument(BookingGiaoNhan $document, ?User $user): void
+    {
+        if ($user && ! $user->isManager()) {
+            $this->requireActiveEmployeeForStaff($user);
+            abort_unless($user->NhanVienID && (int) $document->NhanVienID === (int) $user->NhanVienID, 403);
+        }
+    }
+
     private function assignableEmployees(?int $currentId = null): Collection
     {
         return EmployeeAssignment::deliveryCandidates($currentId)
-            ->orderBy('HoTen')->get(['NhanVienID', 'HoTen']);
+            ->orderBy('HoTen')
+            ->orderBy('NhanVienID')
+            ->get(['NhanVienID', 'HoTen', 'ChucDanh', 'SoDienThoai', 'Email', 'NgayVaoLam']);
     }
 }

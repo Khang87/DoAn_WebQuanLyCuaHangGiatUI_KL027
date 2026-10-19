@@ -101,7 +101,7 @@
 
 <x-admin.detail.page-header
     title="Chi tiết phiếu giao nhận"
-    :subtitle="($delivery->LoaiGiaoNhan === 'NHAN_DO' ? 'Nhận đồ' : 'Giao đồ') . ' · ' . ($delivery->ThoiGianDuKien?->format('d/m/Y') ?: 'Chưa hẹn ngày')"
+    :subtitle="$displayCode . ' · ' . ($delivery->LoaiGiaoNhan === 'NHAN_DO' ? 'Nhận đồ' : 'Giao đồ') . ' · ' . ($delivery->ThoiGianDuKien?->format('d/m/Y') ?: 'Chưa hẹn ngày')"
 >
     <x-slot:badge>
         <x-admin.status-badge :status="\App\Enums\DeliveryStatus::parseForLeg($delivery->TrangThai, $delivery->LoaiGiaoNhan)" :enum="\App\Enums\DeliveryStatus::class" />
@@ -113,6 +113,7 @@
     <div class="col-lg-7">
         <x-admin.detail.panel title="Thông tin giao nhận" icon="bi-truck" :iconClass="'bg-primary-subtle text-primary'">
             <x-admin.detail.info-grid :columns="2">
+                <x-admin.detail.info-item label="Mã phiếu" :value="$displayCode" />
                 <x-admin.detail.info-item label="Loại giao nhận">
                     <span class="badge bg-primary-subtle text-primary-emphasis border border-primary px-3 py-2 rounded-pill">
                         <i class="bi {{ $delivery->LoaiGiaoNhan === 'NHAN_DO' ? 'bi-box-arrow-in-down' : 'bi-truck' }} me-1"></i>{{ $delivery->LoaiGiaoNhan === 'NHAN_DO' ? 'Nhận đồ' : 'Giao đồ' }}
@@ -220,7 +221,7 @@
                 </div>
                 <h5 class="card-title mb-0 fw-bold">Thao tác</h5>
             </div>
-            <div class="card-body d-flex flex-column gap-2">
+            <div class="card-body d-flex flex-column gap-3">
                 @if($progressAction)
                     @can('deliveries.edit')
                         <form action="{{ route('deliveries.advance-progress', $delivery) }}" method="POST">
@@ -232,22 +233,36 @@
                     @endcan
                 @endif
 
-                <a href="{{ route('deliveries.edit', $delivery) }}" class="btn btn-primary w-100 py-2">
-                    <i class="fas fa-pencil-alt me-1"></i> Chỉnh sửa
-                </a>
+                <div class="d-flex flex-column gap-2">
+                    @if($delivery->LoaiGiaoNhan !== 'GIAO_DO' || $canEditReturnDelivery)
+                        @can('deliveries.edit')
+                            <a href="{{ route('deliveries.edit', $delivery) }}"
+                               class="btn btn-primary w-100 py-2">
+                                <i class="fas fa-pencil-alt me-1" aria-hidden="true"></i> Chỉnh sửa
+                            </a>
+                        @endcan
+                    @endif
 
-                @can('deliveries.delete')
-                    <x-admin.detail.confirm-form
-                        :action="route('deliveries.destroy', $delivery)"
-                        title="Xóa phiếu giao nhận?"
-                        text="Hành động này không thể hoàn tác."
-                        label="Xóa phiếu giao nhận"
-                        icon="bi-trash"
-                        variant="btn-outline-danger"
-                        size="py-2"
-                        block
-                    />
-                @endcan
+                    @if($delivery->LoaiGiaoNhan === 'GIAO_DO' && $canCancelReturnDelivery)
+                        @can('deliveries.delete')
+                            <x-admin.detail.confirm-form
+                                :action="route('deliveries.cancel-return', $delivery)"
+                                method="POST"
+                                title="Hủy lịch giao?"
+                                text="Phiếu được giữ lại làm lịch sử; đơn hàng và trạng thái thanh toán không thay đổi."
+                                label="Hủy lịch giao"
+                                icon="bi bi-x-circle"
+                                variant="btn-order-action delete"
+                                size=""
+                                iconOnly
+                            />
+                        @endcan
+                    @endif
+                </div>
+
+                @if($delivery->LoaiGiaoNhan === 'GIAO_DO' && $deliveryStatus === \App\Enums\DeliveryStatus::Cancelled)
+                    <p class="small text-muted mb-0">Lịch giao đã hủy; phiếu chỉ còn để tra cứu lịch sử.</p>
+                @endif
 
                 <a href="{{ route('deliveries.index') }}" class="btn btn-outline-secondary w-100 py-2 text-dark">
                     <i class="fas fa-arrow-left me-1"></i> Quay lại danh sách

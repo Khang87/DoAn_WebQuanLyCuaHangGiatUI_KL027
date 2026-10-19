@@ -225,10 +225,22 @@ Route::middleware(['auth', 'reject.customer'])->group(function () {
     Route::post('deliveries/{delivery}/advance-progress', [GiaoNhanController::class, 'advanceProgress'])
         ->middleware('permission:deliveries.edit')
         ->name('deliveries.advance-progress');
+    Route::post('deliveries/{delivery}/cancel-return', [GiaoNhanController::class, 'cancelReturnDelivery'])
+        ->whereNumber('delivery')
+        ->middleware('permission:deliveries.delete')
+        ->name('deliveries.cancel-return');
     Route::get('deliveries/booking-documents/{bookingDelivery}', [GiaoNhanController::class, 'showBookingDocument'])
         ->whereNumber('bookingDelivery')
         ->middleware('permission:deliveries.view')
         ->name('deliveries.booking-documents.show');
+    Route::get('deliveries/booking-documents/{bookingDelivery}/edit', [GiaoNhanController::class, 'editBookingDocument'])
+        ->whereNumber('bookingDelivery')
+        ->middleware('permission:deliveries.edit')
+        ->name('deliveries.booking-documents.edit');
+    Route::put('deliveries/booking-documents/{bookingDelivery}', [GiaoNhanController::class, 'updateBookingDocument'])
+        ->whereNumber('bookingDelivery')
+        ->middleware('permission:deliveries.edit')
+        ->name('deliveries.booking-documents.update');
     Route::resource('deliveries', GiaoNhanController::class)
         ->middlewareFor(['index', 'show'], 'permission:deliveries.view')
         ->middlewareFor(['create', 'store'], 'permission:deliveries.create')
@@ -236,10 +248,9 @@ Route::middleware(['auth', 'reject.customer'])->group(function () {
         ->middlewareFor('destroy', 'permission:deliveries.delete');
 
     // Booking Management (Staff & Admin)
-    Route::resource('bookings', BookingController::class)->except(['create', 'store'])
+    Route::resource('bookings', BookingController::class)->except(['create', 'store', 'destroy'])
         ->middlewareFor(['index', 'show'], 'permission:bookings.view')
-        ->middlewareFor(['edit', 'update'], 'permission:bookings.edit')
-        ->middlewareFor('destroy', 'permission:bookings.delete');
+        ->middlewareFor(['edit', 'update'], 'permission:bookings.edit');
     Route::get('bookings/{booking}/inspection', [BookingController::class, 'inspection'])
         ->middleware('permission:bookings.confirm')
         ->name('bookings.inspection');

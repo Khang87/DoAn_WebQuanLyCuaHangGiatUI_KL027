@@ -140,20 +140,78 @@ class BookingOrderConversionTest extends TestCase
             ->assertSee('Xác nhận đã nhận đồ')
             ->assertDontSee('Kiểm tra và tạo đơn');
 
-        $this->bookingService->markReceived($booking);
+        $this->post(route('bookings.receive', $booking))
+            ->assertRedirect(route('bookings.inspection', $booking))
+            ->assertSessionHas('success', 'Đã ghi nhận nhận đồ thực tế. Có thể bắt đầu kiểm kê.');
+
+        $receivedAt = $intake->fresh()->ThoiGianThucTe;
+        $this->post(route('bookings.receive', $booking))
+            ->assertRedirect(route('bookings.inspection', $booking))
+            ->assertSessionHas('success', 'Đã ghi nhận nhận đồ thực tế. Có thể bắt đầu kiểm kê.');
+
+        $this->assertSame($receivedAt?->toDateTimeString(), $intake->fresh()->ThoiGianThucTe?->toDateTimeString());
+        $this->assertDatabaseCount('DonHang', 0);
+        $this->assertDatabaseCount('BookingKiemKe', 0);
         $this->get(route('deliveries.booking-documents.show', $intake))
             ->assertOk()
             ->assertSee('Kiểm tra và tạo đơn');
 
+        view()->share('errors', new ViewErrorBag);
+        $this->get(route('bookings.inspection', $booking))->assertOk();
         $payload = $this->inspectionPayload($booking, 1);
         $payload['items'] = $this->actualItems();
         $this->bookingService->submitInspection($booking, $payload);
 
         $this->assertSame(1, DonHang::where('BookingID', $booking->BookingID)->count());
+        $bookingResponse = $this->get(route('bookings.show', $booking))
+            ->assertOk()
+            ->assertDontSee('Kiểm kê thực tế')
+            ->assertSee('data-booking-inspection-summary', false)
+            ->assertSee('Đối soát kiểm kê phiên bản 1')
+            ->assertSee('Đơn hàng liên kết')
+            ->assertSee('Phiếu nhận và kế hoạch trả từ Booking');
+        $bookingResponse->assertSeeInOrder([
+            'Thông tin lịch hẹn',
+            'Ước tính từ lịch đặt',
+            'data-booking-mobile-summary',
+            'Khách hàng',
+            'Thao tác',
+            'Phiếu nhận và kế hoạch trả từ Booking',
+            'Đơn hàng liên kết',
+        ], false);
         $this->get(route('deliveries.booking-documents.show', $intake))
             ->assertOk()
             ->assertSee('Đơn hàng đã được tạo từ kiểm kê')
             ->assertDontSee('Kiểm tra và tạo đơn');
+    }
+
+    public function test_failed_http_receipt_does_not_redirect_to_inspection_or_create_records(): void
+    {
+        $booking = $this->createBooking();
+        $user = Mockery::mock(User::class)->makePartial();
+        $user->forceFill([
+            'TaiKhoanID' => 1,
+            'NhanVienID' => 1,
+            'TrangThai' => 'Hoạt động',
+        ]);
+        $user->shouldReceive('isManager')->andReturn(true);
+        $user->shouldReceive('isOwner')->andReturn(true);
+        $user->shouldReceive('isActive')->andReturn(true);
+        $user->shouldReceive('canPermission')->andReturn(true);
+        $this->actingAs($user);
+        $this->withoutMiddleware([
+            EnsureUserHasPermission::class,
+            RejectCustomerRole::class,
+            RestoreRememberedLogin::class,
+        ]);
+
+        $this->post(route('bookings.receive', $booking))
+            ->assertRedirect(route('bookings.show', $booking))
+            ->assertSessionHasErrors('booking');
+
+        $this->assertSame(BookingStatus::Pending->value, $booking->fresh()->TrangThai);
+        $this->assertDatabaseCount('BookingKiemKe', 0);
+        $this->assertDatabaseCount('DonHang', 0);
     }
 
     public function test_inspection_and_conversion_require_an_approved_booking_and_received_intake(): void
@@ -448,6 +506,82 @@ class BookingOrderConversionTest extends TestCase
             ->assertDontSee('Đang chờ khách xác nhận');
     }
 
+    public function test_pending_booking_detail_shows_confirmed_post_cancel_action_without_physical_delete(): void
+    {
+        $booking = $this->createBooking();
+        $this->actingAsBookingEmployee();
+        Schema::create('Quyen', function (Blueprint $table): void {
+            $table->increments('QuyenID');
+            $table->string('MaQuyen');
+            $table->string('TrangThai')->default('Hoạt động');
+        });
+        Schema::create('VaiTro_Quyen', function (Blueprint $table): void {
+            $table->unsignedInteger('VaiTroID');
+            $table->unsignedInteger('QuyenID');
+        });
+        Gate::before(fn (): bool => true);
+        $this->withoutMiddleware([
+            Authenticate::class,
+            EnsureUserHasPermission::class,
+            RejectCustomerRole::class,
+            RestoreRememberedLogin::class,
+        ]);
+
+        $response = $this->get(route('bookings.show', $booking));
+
+        $response->assertOk()
+            ->assertSee('Hủy đặt lịch')
+            ->assertDontSee('Hủy Booking')
+            ->assertDontSee('Xóa đặt lịch')
+            ->assertSee('Xác nhận Booking')
+            ->assertSee('btn-success w-100 py-2', false)
+            ->assertSee('btn btn-outline-danger py-2 w-100', false)
+            ->assertSee(route('bookings.cancel', $booking), false)
+            ->assertSee('data-confirm-form', false)
+            ->assertSee('method="POST"', false)
+            ->assertDontSee('name="_method" value="DELETE"', false);
+
+        $this->post(route('bookings.cancel', $booking))
+            ->assertRedirect(route('bookings.show', $booking))
+            ->assertSessionHas('success', 'Đã hủy Booking.');
+
+        $this->assertDatabaseHas('Booking', [
+            'BookingID' => $booking->BookingID,
+            'TrangThai' => BookingStatus::Cancelled->value,
+        ]);
+        $this->assertDatabaseCount('DonHang', 0);
+        $this->assertDatabaseCount('BookingKiemKe', 0);
+        $this->assertSame(1, NhatKyHeThong::query()
+            ->where('BangDuLieu', 'Booking')
+            ->where('BanGhiID', $booking->BookingID)
+            ->count());
+    }
+
+    public function test_booking_delete_endpoint_is_unavailable_and_keeps_booking_documents_and_inspection(): void
+    {
+        $booking = $this->createBooking();
+        $this->actingAsBookingEmployee();
+        $this->bookingService->approve($booking);
+        $inspectionId = DB::table('BookingKiemKe')->insertGetId([
+            'BookingID' => $booking->BookingID,
+            'DuLieuThucTe' => json_encode(['items' => []]),
+            'CoChenhLech' => false,
+            'PhienBan' => 1,
+            'CapNhatLuc' => now(),
+        ], 'BookingKiemKeID');
+        Gate::before(fn (): bool => true);
+
+        $this->delete('/bookings/'.$booking->BookingID)->assertMethodNotAllowed();
+
+        $this->assertDatabaseHas('Booking', ['BookingID' => $booking->BookingID]);
+        $this->assertDatabaseCount('BookingGiaoNhan', 2);
+        $this->assertDatabaseHas('BookingKiemKe', [
+            'BookingKiemKeID' => $inspectionId,
+            'BookingID' => $booking->BookingID,
+        ]);
+        $this->assertDatabaseCount('DonHang', 0);
+    }
+
     public function test_confirmed_unreceived_booking_shows_store_intake_action_without_order_actions(): void
     {
         $booking = $this->createBooking(['HinhThucNhanDo' => 'Tại cửa hàng']);
@@ -472,6 +606,8 @@ class BookingOrderConversionTest extends TestCase
             ->assertSee('Kế hoạch trả đồ')
             ->assertSee('đây chưa phải phiếu giao vận hành')
             ->assertDontSee('Kiểm tra và tạo đơn')
+            ->assertDontSee('Đơn hàng liên kết')
+            ->assertDontSee('Hủy đặt lịch')
             ->assertDontSee('Xóa đặt lịch');
 
         $this->assertDatabaseCount('DonHang', 0);
@@ -750,6 +886,13 @@ class BookingOrderConversionTest extends TestCase
             ->assertSee('Tình trạng trước khi giặt')
             ->assertSee('data-pricing-options', false)
             ->assertSee('data-estimate-items', false)
+            ->assertSeeInOrder([
+                'Tổng kết đơn hàng',
+                'data-estimate-items',
+                'data-estimate-details',
+                'Tổng thanh toán',
+                'data-estimate-total',
+            ], false)
             ->assertDontSee('name="use_points"', false)
             ->assertDontSee('name="DiemSuDung"', false);
     }
@@ -1113,6 +1256,9 @@ class BookingOrderConversionTest extends TestCase
         $this->assertStringContainsString('value="customer@example.test" disabled', $content);
         $this->assertStringContainsString('bg-light text-muted', $content);
         $this->assertStringNotContainsString('name="HoTen"', $content);
+        $this->assertStringNotContainsString('Khôi phục dữ liệu ban đầu', $content);
+        $this->assertStringNotContainsString('type="reset"', $content);
+        $this->assertStringContainsString('type="submit"', $content);
     }
 
     public function test_booking_edit_only_lists_garments_with_effective_prices_for_the_selected_service(): void

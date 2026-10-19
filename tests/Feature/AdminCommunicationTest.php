@@ -213,6 +213,7 @@ class AdminCommunicationTest extends TestCase
                 'TieuDe' => 'Thông báo kiểm thử',
                 'NoiDung' => 'Nội dung thông báo kiểm thử.',
                 'ThoiGianGui' => '2000-01-01T00:00',
+                'BookingID' => 98765,
             ]);
 
         $response->assertRedirect(route('notifications.index'))
@@ -221,6 +222,7 @@ class AdminCommunicationTest extends TestCase
         $notification = ThongBao::query()->where('TieuDe', 'Thông báo kiểm thử')->firstOrFail();
         $this->assertSame($account->TaiKhoanID, $notification->TaiKhoanID);
         $this->assertSame($expectedSentAt->format('Y-m-d H:i'), $notification->ThoiGianGui->format('Y-m-d H:i'));
+        $this->assertNull($notification->BookingID);
     }
 
     public function test_store_notification_can_send_to_customer_and_staff_groups(): void
@@ -299,6 +301,28 @@ class AdminCommunicationTest extends TestCase
             ->assertOk()
             ->assertSee('name="TieuDe"', false)
             ->assertDontSee('name="ThoiGianGui"', false);
+    }
+
+    public function test_update_notification_ignores_user_supplied_booking_id(): void
+    {
+        $account = $this->createAccount('notification-booking-link');
+        $notification = ThongBao::query()->create([
+            'TaiKhoanID' => $account->TaiKhoanID,
+            'TieuDe' => 'Thông báo cần cập nhật',
+            'NoiDung' => 'Nội dung.',
+        ]);
+
+        $this->actingAs($account)
+            ->withoutMiddleware()
+            ->put(route('notifications.update', $notification->ThongBaoID), [
+                'TaiKhoanID' => $account->TaiKhoanID,
+                'TieuDe' => 'Thông báo đã cập nhật',
+                'NoiDung' => 'Nội dung đã cập nhật.',
+                'BookingID' => 98765,
+            ])
+            ->assertRedirect(route('notifications.index'));
+
+        $this->assertNull($notification->fresh()->BookingID);
     }
 
     public function test_mark_all_read_updates_every_notification_for_current_account_only(): void
