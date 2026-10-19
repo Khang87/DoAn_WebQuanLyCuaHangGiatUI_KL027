@@ -2,9 +2,9 @@
 
 ## Luồng Booking hai bước (đang chuẩn bị triển khai Web)
 
-Đặc tả: [booking-intake-two-step.md](docs/specs/booking-intake-two-step.md). Khi bật `BOOKING_TWO_STEP=true`, nhân viên xác nhận Booking để lập đồng thời phiếu Nhận và phiếu Giao, ghi nhận đã nhận đồ, rồi kiểm kê. Nếu kiểm kê khác dữ liệu khách khai báo, Web lưu bản kiểm kê theo phiên bản và gửi thông báo; chỉ tạo đơn sau khi khách xác nhận đúng phiên bản đó. Khi tạo đơn, cả hai phiếu được liên kết với đơn và bản kiểm kê; phiếu Giao hiển thị các món thực tế đã đối soát nhưng vẫn chờ thực hiện. Booking không có mặt hàng khai báo được kiểm kê như đơn thông thường.
+Đặc tả: [booking-intake-two-step.md](docs/specs/booking-intake-two-step.md). Khi bật `BOOKING_TWO_STEP=true`, nhân viên xác nhận Booking để lập đồng thời phiếu Nhận và phiếu Giao, ghi nhận đã nhận đồ, rồi kiểm kê. Form kiểm kê lấy sẵn dữ liệu Booking. Nhân viên đối chiếu với đồ thực tế, trao đổi trực tiếp với khách khi có sai khác, sửa thông tin và xác nhận để tạo đơn ngay. Mobile nhận thông báo sau khi có điều chỉnh. Khi tạo đơn, cả hai phiếu được liên kết với đơn và bản kiểm kê; phiếu Giao hiển thị các món thực tế đã đối soát nhưng vẫn chờ thực hiện. Booking không có mặt hàng khai báo được kiểm kê như đơn thông thường.
 
-Trước khi bật cờ trên Web, chạy [booking-two-step.sql](database/sql/booking-two-step.sql) trên Supabase và kiểm tra RLS. Mobile đọc `BookingKiemKe` của khách đang đăng nhập, hiển thị `DuLieuThucTe` và xác nhận bằng cách cập nhật duy nhất `XacNhanPhienBan = PhienBan` của bản kiểm kê hiện tại. Mobile không được sửa mặt hàng kiểm kê. Cờ mặc định tắt để không gọi bảng mới trước khi schema và màn hình xác nhận mobile sẵn sàng.
+Trước khi bật cờ trên Web, chạy [booking-two-step.sql](database/sql/booking-two-step.sql) trên Supabase và kiểm tra RLS. Mobile có thể đọc bản kiểm kê và thông báo thuộc Booking của khách đang đăng nhập; chỉ Laravel được sửa dữ liệu kiểm kê. Cờ mặc định tắt để không gọi bảng mới trước khi schema Supabase sẵn sàng.
 
 Sky Laundry là hệ thống quản lý cửa hàng giặt ủi, hỗ trợ quy trình vận hành cho Chủ cửa hàng, Quản lý, Nhân viên và Khách hàng. Ứng dụng gồm giao diện web Laravel và API JSON phiên bản hóa, sử dụng cơ sở dữ liệu PostgreSQL trên Supabase theo cấu trúc hiện có.
 
