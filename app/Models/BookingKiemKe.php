@@ -16,15 +16,13 @@ class BookingKiemKe extends Model
 
     protected $fillable = [
         'BookingID', 'DuLieuThucTe', 'CoChenhLech', 'PhienBan',
-        'XacNhanPhienBan', 'XacNhanLuc', 'CapNhatLuc',
+        'CapNhatLuc',
     ];
 
     protected $casts = [
         'DuLieuThucTe' => 'array',
         'CoChenhLech' => 'boolean',
         'PhienBan' => 'integer',
-        'XacNhanPhienBan' => 'integer',
-        'XacNhanLuc' => 'datetime',
         'CapNhatLuc' => 'datetime',
     ];
 
