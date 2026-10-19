@@ -100,7 +100,7 @@
                         @php($isMine = (int) $message->NguoiGuiID === (int) auth()->id())
                         <div class="d-flex {{ $isMine ? 'justify-content-end' : 'justify-content-start' }} mb-3" data-message-id="{{ $message->TinNhanID }}" tabindex="0">
                             <div class="rounded-3 px-3 py-2 {{ ($message->DaThuHoi ?? false) ? 'bg-light border text-muted fst-italic' : ($isMine ? 'bg-primary text-white' : 'bg-white border') }}" style="max-width: 82%;">
-                                <div class="small {{ $isMine ? 'text-white-50' : 'text-muted' }}">
+                                <div class="small {{ ($message->DaThuHoi ?? false) ? 'text-muted' : ($isMine ? 'text-white-50' : 'text-muted') }}">
                                     {{ app(\App\Services\MessageService::class)->displayName($message, auth()->user()) }}
                                 </div>
                                 @if($message->ImageUrl ?? false)
@@ -108,7 +108,7 @@
                                 @else
                                     <div class="text-break">{{ $message->NoiDung }}</div>
                                 @endif
-                                <div class="small text-end {{ $isMine ? 'text-white-50' : 'text-muted' }}">
+                                <div class="small text-end {{ ($message->DaThuHoi ?? false) ? 'text-muted' : ($isMine ? 'text-white-50' : 'text-muted') }}">
                                     {{ app(\App\Services\MessageService::class)->sentAt($message)?->format('d-m-Y H:i') }}
                                 </div>
                                 @can('messages.create')

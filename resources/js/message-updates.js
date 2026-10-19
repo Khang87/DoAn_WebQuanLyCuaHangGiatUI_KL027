@@ -99,7 +99,7 @@ if (conversation) {
             bubble.className = `rounded-3 px-3 py-2 ${message.recalled ? 'bg-light border text-muted fst-italic' : (message.is_mine ? 'bg-primary text-white' : 'bg-white border')}`;
             bubble.style.maxWidth = '82%';
             const sender = document.createElement('div');
-            sender.className = `small ${message.is_mine ? 'text-white-50' : 'text-muted'}`;
+            sender.className = `small ${message.recalled ? 'text-muted' : (message.is_mine ? 'text-white-50' : 'text-muted')}`;
             sender.textContent = message.sender_name;
             bubble.append(sender);
             if (message.image_url) {
@@ -122,7 +122,7 @@ if (conversation) {
                 bubble.append(element);
             }
             const time = document.createElement('div');
-            time.className = `small text-end ${message.is_mine ? 'text-white-50' : 'text-muted'}`;
+            time.className = `small text-end ${message.recalled ? 'text-muted' : (message.is_mine ? 'text-white-50' : 'text-muted')}`;
             time.textContent = formatSentAt(message.sent_at);
             bubble.append(time);
             if (conversation.dataset.messageHide && messageActionsAllowed) {
