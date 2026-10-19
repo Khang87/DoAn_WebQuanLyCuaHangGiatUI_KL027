@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Enums\InvoiceStatus;
 use App\Enums\OrderStatus;
 use App\Models\DiemTichLuy;
+use App\Models\DonHang;
 use App\Models\KhachHang;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
@@ -104,34 +105,36 @@ class CustomerService
     public function delete(KhachHang $customer): ?array
     {
         return DB::transaction(function () use ($customer): ?array {
-            $orders = DB::table('DonHang')
-                ->leftJoin('HoaDon', 'HoaDon.DonHangID', '=', 'DonHang.DonHangID')
-                ->where('DonHang.KhachHangID', $customer->getKey())
-                ->where(function ($query): void {
-                    $query->whereNotIn('DonHang.TrangThai', [
-                        OrderStatus::Delivered->value,
-                        OrderStatus::Cancelled->value,
-                    ])->orWhere(function ($paymentQuery): void {
-                        $paymentQuery->whereNull('HoaDon.TrangThai')
-                            ->orWhereNotIn('HoaDon.TrangThai', [
-                                InvoiceStatus::Paid->value,
-                                InvoiceStatus::Cancelled->value,
-                            ]);
-                    });
+            $orders = DonHang::query()
+                ->where('KhachHangID', $customer->getKey())
+                ->with(['hoaDons', 'statusChanges'])
+                ->orderBy('MaDonHang')
+                ->lockForUpdate()
+                ->get()
+                ->map(function (DonHang $order): array {
+                    $status = $order->operationalStatusEnum()->value;
+                    $invoiceStatus = $order->hoaDons->first()?->TrangThai;
+                    $paymentStatus = $invoiceStatus ?? (
+                        $order->statusEnum() === OrderStatus::Paid
+                            ? InvoiceStatus::Paid->value
+                            : InvoiceStatus::Unpaid->value
+                    );
+
+                    return [
+                        'id' => (int) $order->getKey(),
+                        'code' => (string) $order->getRawOriginal('MaDonHang'),
+                        'status' => $status,
+                        'payment_status' => (string) $paymentStatus,
+                    ];
                 })
-                ->orderBy('DonHang.MaDonHang')
-                ->get([
-                    'DonHang.DonHangID',
-                    'DonHang.MaDonHang',
-                    'DonHang.TrangThai',
-                    'HoaDon.TrangThai as invoice_status',
-                ])
-                ->map(fn (object $order): array => [
-                    'id' => (int) $order->DonHangID,
-                    'code' => (string) $order->MaDonHang,
-                    'status' => (string) $order->TrangThai,
-                    'payment_status' => (string) ($order->invoice_status ?? InvoiceStatus::Unpaid->value),
-                ])
+                ->filter(fn (array $order): bool => ! in_array($order['status'], [
+                    OrderStatus::Delivered->value,
+                    OrderStatus::Cancelled->value,
+                ], true) || ! in_array($order['payment_status'], [
+                    InvoiceStatus::Paid->value,
+                    InvoiceStatus::Cancelled->value,
+                ], true))
+                ->values()
                 ->all();
 
             $accounts = DB::table('TaiKhoan')

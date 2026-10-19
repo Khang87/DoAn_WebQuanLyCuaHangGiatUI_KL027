@@ -47,6 +47,16 @@ class CustomerDeletionTest extends TestCase
             $table->string('TrangThai');
         });
 
+        Schema::create('NhatKyHeThong', function (Blueprint $table): void {
+            $table->increments('NhatKyID');
+            $table->string('HanhDong');
+            $table->string('BangDuLieu');
+            $table->unsignedInteger('BanGhiID');
+            $table->json('DuLieuCu')->nullable();
+            $table->json('DuLieuMoi')->nullable();
+            $table->dateTime('ThoiGian')->nullable();
+        });
+
         foreach (['Booking', 'DanhGia'] as $tableName) {
             Schema::create($tableName, function (Blueprint $table): void {
                 $table->increments('id');
@@ -72,7 +82,16 @@ class CustomerDeletionTest extends TestCase
 
     protected function tearDown(): void
     {
-        foreach (['DiemTichLuy', 'TaiKhoan', 'DanhGia', 'Booking', 'HoaDon', 'DonHang', 'KhachHang'] as $tableName) {
+        foreach ([
+            'DiemTichLuy',
+            'TaiKhoan',
+            'DanhGia',
+            'Booking',
+            'NhatKyHeThong',
+            'HoaDon',
+            'DonHang',
+            'KhachHang',
+        ] as $tableName) {
             Schema::dropIfExists($tableName);
         }
 
@@ -191,6 +210,36 @@ class CustomerDeletionTest extends TestCase
             'provider' => 'Google',
         ]], $result['accounts']);
         $this->assertSame('Không thể xóa khách hàng vì dữ liệu lịch sử và tài khoản liên kết cần được giữ lại.', $result['message']);
+    }
+
+    public function test_legacy_paid_order_that_was_delivered_is_not_listed_as_blocking(): void
+    {
+        $customer = $this->createCustomer();
+        $orderId = DB::table('DonHang')->insertGetId([
+            'MaDonHang' => 'DH100003',
+            'KhachHangID' => $customer->KhachHangID,
+            'TrangThai' => 'Đã thanh toán',
+        ], 'DonHangID');
+        DB::table('HoaDon')->insert([
+            'DonHangID' => $orderId,
+            'TrangThai' => 'Đã thanh toán',
+        ]);
+        DB::table('NhatKyHeThong')->insert([
+            'HanhDong' => 'Thay đổi trạng thái đơn hàng',
+            'BangDuLieu' => 'DonHang',
+            'BanGhiID' => $orderId,
+            'DuLieuCu' => json_encode(['TrangThai' => 'Đã giao']),
+            'DuLieuMoi' => json_encode(['TrangThai' => 'Đã thanh toán']),
+            'ThoiGian' => now(),
+        ]);
+
+        $result = app(CustomerService::class)->delete($customer);
+
+        $this->assertSame([], $result['orders']);
+        $this->assertSame(
+            'Không thể xóa khách hàng vì dữ liệu lịch sử và tài khoản liên kết cần được giữ lại.',
+            $result['message']
+        );
     }
 
     public function test_delete_failure_is_reported_as_an_error_flash_not_success(): void
