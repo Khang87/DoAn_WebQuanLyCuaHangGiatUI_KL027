@@ -15,11 +15,11 @@
 
 <form action="{{ url()->current() }}" method="GET" class="row g-3 align-items-center mb-4">
     <div class="col-12 col-md-auto flex-grow-1">
-        <div class="input-group input-group-sm shadow-sm rounded-3 overflow-hidden">
+        <div class="input-group input-group-sm shadow-sm rounded-3 overflow-hidden filter-search">
             <span class="input-group-text bg-white border-end-0 ps-3">
                 <i class="fas fa-search text-muted"></i>
             </span>
-            <input type="text" name="search" class="form-control form-control-sm border-start-0 ps-2" placeholder="Tìm theo ID, mã thanh toán, tên khách..." value="{{ request('search') }}">
+            <input type="text" name="search" class="form-control form-control-sm border-start-0 ps-2" placeholder="Tìm theo mã giao dịch, tên khách..." value="{{ request('search') }}">
         </div>
     </div>
     <div class="col-12 col-sm-6 col-md-auto">
@@ -61,7 +61,7 @@
                 <thead>
                     <tr>
                         <th scope="col">STT</th>
-                        <th class="fw-semibold text-dark">Mã thanh toán</th>
+                        <th class="fw-semibold text-dark">Mã giao dịch</th>
                         <th class="fw-semibold text-dark">Mã đơn hàng</th>
                         <th class="fw-semibold text-dark">Khách hàng</th>
                         <th class="fw-semibold text-dark">Số tiền</th>
@@ -75,8 +75,8 @@
                     @forelse($payments as $payment)
                     <tr>
                         <td>{{ $payments->firstItem() + $loop->index }}</td>
-                        <td><strong>TT{{ $payment->ThanhToanID }}</strong></td>
-                        <td><span class="text-dark">{{ $payment->donHang?->MaDonHang ?: $payment->DonHangID }}</span></td>
+                        <td>{{ $payment->MaGiaoDich ?: '—' }}</td>
+                        <td><span class="text-dark">{{ $payment->donHang?->MaDonHang ?: '—' }}</span></td>
                         <td>
                             @php($customerAccount = $payment->donHang?->khachHang?->taiKhoan)
                             <div class="d-flex align-items-center">

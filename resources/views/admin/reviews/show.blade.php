@@ -10,7 +10,7 @@
 @endphp
 
 <x-admin.detail.page-header
-    title="Đánh giá #{{ $review->id }}"
+    title="Chi tiết đánh giá"
     :subtitle="$review->customer?->name ?: $review->order?->customer?->name"
 >
     <x-slot:badge>
@@ -61,13 +61,8 @@
                         <span class="detail-empty-value">—</span>
                     @endif
                 </x-admin.detail.info-item>
-                <x-admin.detail.info-item label="Mã khách hàng">
-                    @if($review->KhachHangID)
-                        <span>KH{{ str_pad((string) $review->KhachHangID, 3, '0', STR_PAD_LEFT) }}</span>
-                        <small class="d-block text-muted">{{ $review->khachHang?->HoTen ?: '—' }}</small>
-                    @else
-                        <span class="detail-empty-value">—</span>
-                    @endif
+                <x-admin.detail.info-item label="Khách hàng">
+                    {{ $review->khachHang?->HoTen ?: '—' }}
                 </x-admin.detail.info-item>
                 <x-admin.detail.info-item label="Ngày đánh giá" :value="$review->created_at?->format('d/m/Y H:i')" />
                 <x-admin.detail.info-item label="Trạng thái">

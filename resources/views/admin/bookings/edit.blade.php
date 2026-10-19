@@ -138,8 +138,11 @@
                         <input type="hidden" name="recalculate_delivery_fee" value="0">
                     </div>
                 @endif
-                <div class="col-md-6"><label class="form-label">Ngày hẹn <span class="text-danger ms-1">*</span></label><input type="date" class="form-control @error('scheduled_date') is-invalid @enderror" name="scheduled_date" value="{{ old('scheduled_date', $booking->NgayHen?->format('Y-m-d')) }}" required>@error('scheduled_date')<div class="invalid-feedback">{{ $message }}</div>@enderror</div>
-                <div class="col-md-6"><label class="form-label">Giờ hẹn <span class="text-danger ms-1">*</span></label><input type="time" class="form-control @error('scheduled_time') is-invalid @enderror" name="scheduled_time" value="{{ old('scheduled_time', $booking->GioHen?->format('H:i')) }}" required>@error('scheduled_time')<div class="invalid-feedback">{{ $message }}</div>@enderror</div>
+                <div class="{{ $inspectionMode ? 'col-md-6' : 'col-md-4' }}"><label class="form-label">Ngày hẹn <span class="text-danger ms-1">*</span></label><input type="date" class="form-control @error('scheduled_date') is-invalid @enderror" name="scheduled_date" value="{{ old('scheduled_date', $booking->NgayHen?->format('Y-m-d')) }}" required>@error('scheduled_date')<div class="invalid-feedback">{{ $message }}</div>@enderror</div>
+                <div class="{{ $inspectionMode ? 'col-md-6' : 'col-md-4' }}"><label class="form-label">Giờ hẹn <span class="text-danger ms-1">*</span></label><input type="time" class="form-control @error('scheduled_time') is-invalid @enderror" name="scheduled_time" value="{{ old('scheduled_time', $booking->GioHen?->format('H:i')) }}" required>@error('scheduled_time')<div class="invalid-feedback">{{ $message }}</div>@enderror</div>
+                @if(! $inspectionMode)
+                    <div class="col-md-4"><label class="form-label">Trạng thái</label><x-admin.status-select name="status" id="booking-status" :options="\App\Enums\BookingStatus::options()" :selected="old('status', $booking->TrangThai)" class="form-select @error('status') is-invalid @enderror" />@error('status')<div class="invalid-feedback">{{ $message }}</div>@enderror</div>
+                @endif
                 @if($errors->any())
                     <div class="col-12"><div class="alert alert-danger mb-0">@foreach($errors->all() as $message)<div>{{ $message }}</div>@endforeach</div></div>
                 @endif
@@ -296,9 +299,7 @@
                         <button type="button" class="btn btn-outline-primary btn-sm" id="add-booking-item"><i class="bi bi-plus-lg me-1"></i>Thêm dòng dịch vụ</button>
                     </div>
                 @endif
-                @if(! $inspectionMode)
-                <div class="col-md-6"><label class="form-label">Trạng thái</label><x-admin.status-select name="status" id="booking-status" :options="\App\Enums\BookingStatus::options()" :selected="old('status', $booking->TrangThai)" class="form-select @error('status') is-invalid @enderror" />@error('status')<div class="invalid-feedback">{{ $message }}</div>@enderror</div>
-                @else
+                @if($inspectionMode)
                     <div class="col-12">
                         <div class="alert alert-info mb-0">Đối chiếu thông tin đã đăng ký với đồ thực tế và điều chỉnh nếu cần. Mã giảm giá và điểm sử dụng lấy từ Booking; khi xác nhận, hệ thống tạo đơn ngay. Nếu có thay đổi, khách sẽ nhận được thông báo trên mobile.</div>
                     </div>
@@ -327,7 +328,7 @@
                     </div>
                 </div>
             @endif
-            <div class="d-flex justify-content-end gap-2 mt-4"><button type="reset" class="btn btn-outline-secondary">Làm mới</button><button type="submit" class="btn btn-primary">{{ $inspectionMode ? 'Xác nhận kiểm kê & tạo đơn' : 'Cập nhật' }}</button></div>
+            <div class="d-flex justify-content-end gap-2 mt-4"><button type="reset" class="btn btn-outline-secondary">Khôi phục dữ liệu ban đầu</button><button type="submit" class="btn btn-primary">{{ $inspectionMode ? (config('giatui.booking_two_step') ? 'Lưu kiểm kê / tạo đơn' : 'Xác nhận & tạo đơn') : 'Cập nhật' }}</button></div>
         </form>
     </div>
 </div>

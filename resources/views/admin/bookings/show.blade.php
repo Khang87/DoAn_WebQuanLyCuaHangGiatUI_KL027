@@ -4,12 +4,8 @@
 @section('page-title', 'Chi tiết đặt lịch')
 
 @section('content')
-@php
-    $bookingCode = $booking->MaBooking ?: 'BK' . str_pad($booking->BookingID, 4, '0', STR_PAD_LEFT);
-@endphp
-
 <x-admin.detail.page-header
-    title="Lịch hẹn {{ $bookingCode }}"
+    title="Chi tiết lịch hẹn"
     :subtitle="$booking->method_label . ' ngày ' . ($booking->NgayHen?->format('d/m/Y') ?: '—')"
 >
     <x-slot:badge>
@@ -21,11 +17,7 @@
     <div class="col-lg-7">
         <x-admin.detail.panel title="Thông tin lịch hẹn" icon="bi-calendar-check" :iconClass="'bg-primary-subtle text-primary'">
             <x-admin.detail.info-grid :columns="2">
-                <x-admin.detail.info-item label="Mã tham chiếu">
-                    <span class="badge bg-primary-subtle text-primary-emphasis border border-primary px-3 py-2 rounded-pill">
-                        {{ $bookingCode }}
-                    </span>
-                </x-admin.detail.info-item>
+                <x-admin.detail.info-item label="Mã đặt lịch" :value="$booking->MaBooking ?: '—'" />
                 <x-admin.detail.info-item label="Trạng thái">
                     <x-admin.status-badge :status="$booking->TrangThai" :enum="\App\Enums\BookingStatus::class" :pill="false" />
                 </x-admin.detail.info-item>

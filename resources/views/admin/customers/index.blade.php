@@ -15,7 +15,7 @@
 </div>
 <form method="GET" action="{{ url()->current() }}" class="row g-3 align-items-center mb-4">
     <div class="col-12 col-md-auto flex-grow-1">
-        <div class="input-group input-group-sm shadow-sm rounded-3 overflow-hidden">
+        <div class="input-group input-group-sm shadow-sm rounded-3 overflow-hidden filter-search">
             <span class="input-group-text bg-white border-end-0 ps-3">
                 <i class="fas fa-search text-muted"></i>
             </span>
@@ -23,10 +23,9 @@
         </div>
     </div>
     <div class="col-12 col-sm-6 col-md-auto">
-        <select name="sort" class="form-select form-select-sm filter-select shadow-sm rounded-3" onchange="this.form.submit()">
+        <select name="sort" class="form-select form-select-sm filter-select shadow-sm rounded-3" onchange="this.form.submit()" style="height: 40px;">
             <option value="latest" @selected(request('sort', 'latest') === 'latest')>Mới nhất</option>
             <option value="oldest" @selected(request('sort') === 'oldest')>Cũ nhất</option>
-            <option value="id_asc" @selected(request('sort') === 'id_asc')>ID khách hàng tăng dần</option>
             <option value="name_asc" @selected(request('sort') === 'name_asc')>Tên A → Z</option>
             <option value="name_desc" @selected(request('sort') === 'name_desc')>Tên Z → A</option>
             <option value="points_desc" @selected(request('sort') === 'points_desc')>Điểm tích lũy cao → thấp</option>
@@ -42,7 +41,7 @@
             <table class="table-custom mb-0">
                 <thead>
                     <tr>
-                        <th class="fw-bold text-dark">ID khách hàng</th>
+                        <th class="fw-bold text-dark">STT</th>
                         <th class="fw-bold text-dark">Khách hàng</th>
                         <th class="fw-bold text-dark">Email</th>
                         <th class="fw-bold text-dark">Số điện thoại</th>
@@ -57,7 +56,7 @@
                 <tbody>
                     @forelse($customers as $customer)
                     <tr>
-                        <td class="text-dark">{{ $customer->KhachHangID }}</td>
+                        <td class="text-dark text-center fw-semibold">{{ $customers->firstItem() + $loop->index }}</td>
                         <td>
                             <div class="fw-semibold text-dark">{{ $customer->HoTen }}</div>
                             <small class="text-muted">{{ $customer->SoDienThoai ?: 'Chưa có số điện thoại' }}</small>

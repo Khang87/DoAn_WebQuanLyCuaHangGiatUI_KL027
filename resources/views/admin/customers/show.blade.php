@@ -6,7 +6,7 @@
 @section('content')
 <x-admin.detail.page-header
     title="Khách hàng {{ $customer->HoTen }}"
-    :subtitle="'ID ' . $customer->KhachHangID"
+    :subtitle="$customer->Email ?: ($customer->SoDienThoai ?: 'Thông tin khách hàng')"
 >
     <x-slot:badge>
         <span class="badge bg-secondary-subtle text-secondary-emphasis border border-secondary">{{ $customer->TrangThai }}</span>
@@ -23,10 +23,9 @@
                 <h4 class="mb-1 text-dark fw-bold">{{ $customer->HoTen }}</h4>
             </div>
             <x-admin.detail.info-grid :columns="2">
-                <x-admin.detail.info-item label="ID khách hàng" :value="$customer->KhachHangID" />
                 <x-admin.detail.info-item label="Họ và tên" :value="$customer->HoTen" />
                 <x-admin.detail.info-item label="Email" :value="$customer->Email ?: '—'" />
-                <x-admin.detail.info-item label="Số điện thoại" :value="$customer->SoDienThoai" />
+                <x-admin.detail.info-item label="Số điện thoại" :value="$customer->SoDienThoai ?: '—'" />
                 <x-admin.detail.info-item label="Địa chỉ" :value="$customer->DiaChi ?: '—'" />
                 <x-admin.detail.info-item label="Ngày đăng ký" :value="$customer->NgayTao?->format('d/m/Y H:i')" />
                 <x-admin.detail.info-item label="Trạng thái" :value="$customer->TrangThai" />

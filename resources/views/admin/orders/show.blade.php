@@ -209,7 +209,7 @@
             @endif
         </x-admin.detail.panel>
 
-        <x-admin.detail.panel title="Chi tiết mặt hàng" icon="bi-list-check" :iconClass="'bg-info-subtle text-info'" flush>
+        <x-admin.detail.panel title="Chi tiết dịch vụ" icon="bi-list-check" :iconClass="'bg-info-subtle text-info'" flush>
             <x-slot:header>
                 <span class="text-muted small">{{ $order->chiTietDonHangs->count() }} mục</span>
             </x-slot:header>
@@ -437,14 +437,14 @@
             </div>
             @if($hasPromotionDiscount)
                 <div class="d-flex justify-content-between align-items-center py-2">
-                    <span class="detail-summary__label">Tiền giảm voucher</span>
+                    <span class="detail-summary__label">Voucher giảm giá</span>
                     <x-admin.detail.money :value="$order->discount_by_promotion" :negative="true" class="text-success fw-semibold" />
                 </div>
             @endif
             @if($hasPointsDiscount)
                 <div class="d-flex justify-content-between align-items-start py-2">
                     <span class="detail-summary__label">
-                        Tiền giảm do điểm
+                        Giảm giá từ điểm tích lũy
                         @if($order->points_used > 0)
                             <small class="d-block">({{ number_format($order->points_used) }} điểm)</small>
                         @endif

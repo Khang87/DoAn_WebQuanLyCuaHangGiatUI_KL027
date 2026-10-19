@@ -5,7 +5,6 @@
 
 @section('content')
 @php
-    $deliveryCode = $delivery->MaGiaoNhan ?: 'GH' . str_pad($delivery->GiaoNhanID, 4, '0', STR_PAD_LEFT);
     $deliveryStatus = \App\Enums\DeliveryStatus::parseForLeg($delivery->TrangThai, $delivery->LoaiGiaoNhan);
     $activeDeliveryStatus = $delivery->LoaiGiaoNhan === 'NHAN_DO'
         ? \App\Enums\DeliveryStatus::Picking
@@ -92,7 +91,7 @@
 @endpush
 
 <x-admin.detail.page-header
-    title="Phiếu giao nhận {{ $deliveryCode }}"
+    title="Chi tiết phiếu giao nhận"
     :subtitle="($delivery->LoaiGiaoNhan === 'NHAN_DO' ? 'Nhận đồ' : 'Giao đồ') . ' · ' . ($delivery->ThoiGianDuKien?->format('d/m/Y') ?: 'Chưa hẹn ngày')"
 >
     <x-slot:badge>
@@ -105,7 +104,6 @@
     <div class="col-lg-7">
         <x-admin.detail.panel title="Thông tin giao nhận" icon="bi-truck" :iconClass="'bg-primary-subtle text-primary'">
             <x-admin.detail.info-grid :columns="2">
-                <x-admin.detail.info-item label="Mã phiếu" :value="$deliveryCode" />
                 <x-admin.detail.info-item label="Loại giao nhận">
                     <span class="badge bg-primary-subtle text-primary-emphasis border border-primary px-3 py-2 rounded-pill">
                         <i class="bi {{ $delivery->LoaiGiaoNhan === 'NHAN_DO' ? 'bi-box-arrow-in-down' : 'bi-truck' }} me-1"></i>{{ $delivery->LoaiGiaoNhan === 'NHAN_DO' ? 'Nhận đồ' : 'Giao đồ' }}

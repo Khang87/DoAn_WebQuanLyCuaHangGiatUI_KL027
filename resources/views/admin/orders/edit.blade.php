@@ -177,31 +177,29 @@
 
                 {{-- ======== Bảng tổng kết ======== --}}
                 <div class="col-12">
-                    <div class="card border-0 bg-light">
+                    <div class="card border-primary">
                         <div class="card-body">
-                            <div class="row justify-content-end">
-                                <div class="col-md-6">
-                                    <table class="table table-sm mb-0">
-                                        <tbody>
-                                            <tr>
-                                                <td>Tạm tính:</td>
-                                                <td class="text-end"><span id="subtotalAmount">0</span> VNĐ</td>
-                                            </tr>
-                                            <tr id="promotionDiscountRow" class="d-none">
-                                                <td>Tiền giảm voucher:</td>
-                                                <td class="text-end text-success">-<span id="promotionDiscount">0</span> VNĐ</td>
-                                            </tr>
-                                            <tr id="pointsDiscountRow" class="{{ (float) $order->TienGiamDoDiem > 0 ? '' : 'd-none' }}">
-                                                <td>Tiền giảm do điểm:</td>
-                                                <td class="text-end text-success">-<span id="pointsDiscount">{{ number_format((float) $order->TienGiamDoDiem, 0, ',', '.') }}</span> VNĐ</td>
-                                            </tr>
-                                            <tr class="table-light">
-                                                <td class="fw-bold fs-5">TỔNG THANH TOÁN:</td>
-                                                <td class="text-end fw-bold fs-5 text-primary"><span id="grandTotal">0</span> VNĐ</td>
-                                            </tr>
-                                        </tbody>
-                                    </table>
-                                </div>
+                            <div class="table-responsive">
+                                <table class="table table-sm mb-0">
+                                    <tbody>
+                                        <tr>
+                                            <td>Tạm tính:</td>
+                                            <td class="text-end"><span id="subtotalAmount">0</span> VNĐ</td>
+                                        </tr>
+                                        <tr id="promotionDiscountRow" class="d-none">
+                                            <td>Voucher giảm giá:</td>
+                                            <td class="text-end text-success">-<span id="promotionDiscount">0</span> VNĐ</td>
+                                        </tr>
+                                        <tr id="pointsDiscountRow" class="{{ (float) $order->TienGiamDoDiem > 0 ? '' : 'd-none' }}">
+                                            <td>Giảm giá từ điểm tích lũy:</td>
+                                            <td class="text-end text-success">-<span id="pointsDiscount">{{ number_format((float) $order->TienGiamDoDiem, 0, ',', '.') }}</span> VNĐ</td>
+                                        </tr>
+                                        <tr class="table-light">
+                                            <td class="fw-bold fs-5">TỔNG THANH TOÁN:</td>
+                                            <td class="text-end fw-bold fs-5 text-primary"><span id="grandTotal">0</span> VNĐ</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
                             </div>
                         </div>
                     </div>
