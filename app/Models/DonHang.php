@@ -280,13 +280,14 @@ class DonHang extends Model
         $previousStatus = $paidStatusChange?->DuLieuCu['TrangThai'] ?? null;
 
         if ($previousStatus === null) {
-            return OrderStatus::Paid;
+            // Payment handlers only set this legacy status after delivery.
+            return OrderStatus::Delivered;
         }
 
-        $previousStatus = OrderStatus::parse($previousStatus, OrderStatus::Paid);
+        $previousStatus = OrderStatus::parse($previousStatus, OrderStatus::Delivered);
 
         return $previousStatus === OrderStatus::Paid
-            ? OrderStatus::Paid
+            ? OrderStatus::Delivered
             : $previousStatus;
     }
 

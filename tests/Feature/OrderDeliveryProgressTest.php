@@ -267,7 +267,7 @@ class OrderDeliveryProgressTest extends TestCase
         $this->assertSame(2500, DB::table('DiemTichLuy')->where('KhachHangID', 1)->value('DiemHienTai'));
     }
 
-    public function test_order_detail_header_shows_paid_badge_only_once_for_legacy_paid_order(): void
+    public function test_order_detail_header_restores_delivered_badge_for_legacy_paid_order_without_history(): void
     {
         $order = new DonHang;
         $order->setRawAttributes([
@@ -282,6 +282,8 @@ class OrderDeliveryProgressTest extends TestCase
         ])->render();
 
         $this->assertSame(1, substr_count($html, 'Đã thanh toán'));
+        $this->assertSame(1, substr_count($html, 'Đã giao'));
+        $this->assertSame(OrderStatus::Delivered, $order->operationalStatusEnum());
 
         $order->setAttribute('TrangThai', OrderStatus::Washing->value);
         $html = view('components.admin.order-status-badges', [

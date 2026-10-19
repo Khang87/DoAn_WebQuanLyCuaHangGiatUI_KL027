@@ -17,14 +17,15 @@
     // Tính trước để tránh dấu ">" trong biểu thức thuộc tính của thẻ Blade.
     $hasPromotionDiscount = (float) $order->discount_by_promotion > 0;
     $hasPointsDiscount = (float) $order->discount_by_points > 0;
+    $operationalStatus = $order->operationalStatusEnum();
     $statusKeys = array_keys($statusFlow);
-    $currentStatusIndex = array_search($order->status, $statusKeys, true);
-    $isCancelled = $order->status === \App\Enums\OrderStatus::Cancelled->value;
-    $isReceiving = $order->status === \App\Enums\OrderStatus::Pending->value;
-    $currentStatusIsCompleted = \App\Enums\OrderStatus::parse($order->status)->isCompletedMilestone();
-    $nextProcessStatus = $order->statusEnum()->nextProcessStatus();
+    $currentStatusIndex = array_search($operationalStatus->value, $statusKeys, true);
+    $isCancelled = $operationalStatus === \App\Enums\OrderStatus::Cancelled;
+    $isReceiving = $operationalStatus === \App\Enums\OrderStatus::Pending;
+    $currentStatusIsCompleted = $operationalStatus->isCompletedMilestone();
+    $nextProcessStatus = $operationalStatus->nextProcessStatus();
     $requiresHomeDelivery = $order->requiresHomeDelivery();
-    if ($order->statusEnum() === \App\Enums\OrderStatus::Washed && ! $requiresHomeDelivery) {
+    if ($operationalStatus === \App\Enums\OrderStatus::Washed && ! $requiresHomeDelivery) {
         $nextProcessStatus = \App\Enums\OrderStatus::Delivered;
     }
     $nextStatusAction = match ($nextProcessStatus) {
@@ -404,7 +405,7 @@
                     @continue($key === \App\Enums\OrderStatus::Paid->value)
                     @continue($key === \App\Enums\OrderStatus::Delivering->value && ! $requiresHomeDelivery)
                     @php
-                        $isCurrentStatus = $key === $order->status;
+                        $isCurrentStatus = $key === $operationalStatus->value;
                         $isCompletedStatus = ! $isCancelled
                             && $currentStatusIndex !== false
                             && ($loop->index < $currentStatusIndex || ($isCurrentStatus && $currentStatusIsCompleted));
