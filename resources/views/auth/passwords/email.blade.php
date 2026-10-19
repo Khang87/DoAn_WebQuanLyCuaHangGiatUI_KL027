@@ -22,9 +22,6 @@
             @if(session('status'))
                 <div class="alert alert-success" role="status">{{ session('status') }}</div>
             @endif
-            @if(session('otp_privacy_notice'))
-                <div class="alert alert-info" role="status">{{ session('otp_privacy_notice') }}</div>
-            @endif
             @if(session('error'))
                 <div class="alert alert-danger" role="alert">{{ session('error') }}</div>
             @endif
@@ -60,7 +57,7 @@
             </form>
 
             @if($email !== '')
-                <p class="small text-muted mt-3">Mã OTP có hiệu lực trong 15 phút. Nếu email thuộc tài khoản đang hoạt động, hãy kiểm tra hộp thư và thư rác.</p>
+                <p class="small text-muted mt-3">Mã OTP có hiệu lực trong 15 phút. Hãy kiểm tra hộp thư và thư rác.</p>
                 <form method="POST" action="{{ route('password.verify') }}">
                     @csrf
                     <input type="hidden" name="email" value="{{ $email }}">
