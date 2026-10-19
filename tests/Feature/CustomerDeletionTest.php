@@ -242,6 +242,36 @@ class CustomerDeletionTest extends TestCase
         );
     }
 
+    public function test_legacy_paid_order_overrides_an_unpaid_invoice_in_deletion_blockers(): void
+    {
+        $customer = $this->createCustomer();
+        $orderId = DB::table('DonHang')->insertGetId([
+            'MaDonHang' => 'DH00000025',
+            'KhachHangID' => $customer->KhachHangID,
+            'TrangThai' => 'Đã thanh toán',
+        ], 'DonHangID');
+        DB::table('HoaDon')->insert([
+            'DonHangID' => $orderId,
+            'TrangThai' => 'Chưa thanh toán',
+        ]);
+        DB::table('NhatKyHeThong')->insert([
+            'HanhDong' => 'Thay đổi trạng thái đơn hàng',
+            'BangDuLieu' => 'DonHang',
+            'BanGhiID' => $orderId,
+            'DuLieuCu' => json_encode(['TrangThai' => 'Đã giao']),
+            'DuLieuMoi' => json_encode(['TrangThai' => 'Đã thanh toán']),
+            'ThoiGian' => now(),
+        ]);
+
+        $result = app(CustomerService::class)->delete($customer);
+
+        $this->assertSame([], $result['orders']);
+        $this->assertSame(
+            'Không thể xóa khách hàng vì dữ liệu lịch sử và tài khoản liên kết cần được giữ lại.',
+            $result['message']
+        );
+    }
+
     public function test_delete_failure_is_reported_as_an_error_flash_not_success(): void
     {
         $customer = new KhachHang;

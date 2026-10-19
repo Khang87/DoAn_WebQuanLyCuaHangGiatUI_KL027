@@ -114,11 +114,10 @@ class CustomerService
                 ->map(function (DonHang $order): array {
                     $status = $order->operationalStatusEnum()->value;
                     $invoiceStatus = $order->hoaDons->first()?->TrangThai;
-                    $paymentStatus = $invoiceStatus ?? (
-                        $order->statusEnum() === OrderStatus::Paid
-                            ? InvoiceStatus::Paid->value
-                            : InvoiceStatus::Unpaid->value
-                    );
+                    $paymentStatus = $order->statusEnum() === OrderStatus::Paid
+                        || $invoiceStatus === InvoiceStatus::Paid->value
+                        ? InvoiceStatus::Paid->value
+                        : ($invoiceStatus ?? InvoiceStatus::Unpaid->value);
 
                     return [
                         'id' => (int) $order->getKey(),
