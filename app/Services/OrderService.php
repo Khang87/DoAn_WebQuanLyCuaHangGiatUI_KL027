@@ -231,28 +231,23 @@ class OrderService
                 return $existingOrder;
             }
 
-            $canConvert = config('giatui.booking_two_step')
-                ? $booking->TrangThai === BookingStatus::Confirmed->value
-                : $booking->isConvertibleToOrder();
-            if (! $canConvert) {
-                throw ValidationException::withMessages(['booking' => 'Chỉ Booking chờ xác nhận mới có thể được kiểm tra và tạo đơn.']);
+            if ($booking->TrangThai !== BookingStatus::Confirmed->value) {
+                throw ValidationException::withMessages(['booking' => 'Chỉ Booking đã xác nhận mới có thể được kiểm kê và tạo đơn.']);
             }
             $inspection = null;
-            if (config('giatui.booking_two_step')) {
-                $legs = $booking->giaoNhanDuKiens()->lockForUpdate()->get()->keyBy('LoaiGiaoNhan');
-                if ($legs->count() !== 2 || $legs->get('NHAN_DO')?->TrangThai !== 'Đã nhận'
-                    || ! $legs->has('GIAO_DO')) {
-                    throw ValidationException::withMessages(['booking' => 'Cần đủ phiếu Nhận đã hoàn tất và phiếu Giao trước khi tạo đơn.']);
-                }
-                $inspection = BookingKiemKe::query()->where('BookingID', $booking->BookingID)->lockForUpdate()->first();
-                $storedInspection = $inspection?->DuLieuThucTe;
-                $expectedItems = $storedInspection['items'] ?? null;
-                $actualItems = array_map(static fn (array $item): array => array_intersect_key($item, array_flip([
-                    'DichVuID', 'LoaiDoGiatID', 'DonViTinhID', 'SoLuong', 'KhoiLuong', 'TinhTrangTruocKhiGiat', 'GhiChu',
-                ])), $items);
-                if (! $inspection || $expectedItems != $actualItems) {
-                    throw ValidationException::withMessages(['booking' => 'Bản kiểm kê chưa được lưu hoặc không khớp với dữ liệu đang tạo đơn.']);
-                }
+            $legs = $booking->giaoNhanDuKiens()->lockForUpdate()->get()->keyBy('LoaiGiaoNhan');
+            if ($legs->count() !== 2 || $legs->get('NHAN_DO')?->TrangThai !== 'Đã nhận'
+                || ! $legs->has('GIAO_DO')) {
+                throw ValidationException::withMessages(['booking' => 'Cần phiếu Nhận đã hoàn tất và phiếu kế hoạch trả trước khi tạo đơn.']);
+            }
+            $inspection = BookingKiemKe::query()->where('BookingID', $booking->BookingID)->lockForUpdate()->first();
+            $storedInspection = $inspection?->DuLieuThucTe;
+            $expectedItems = $storedInspection['items'] ?? null;
+            $actualItems = array_map(static fn (array $item): array => array_intersect_key($item, array_flip([
+                'DichVuID', 'LoaiDoGiatID', 'DonViTinhID', 'SoLuong', 'KhoiLuong', 'TinhTrangTruocKhiGiat', 'GhiChu',
+            ])), $items);
+            if (! $inspection || $expectedItems != $actualItems) {
+                throw ValidationException::withMessages(['booking' => 'Bản kiểm kê chưa được lưu hoặc không khớp với dữ liệu đang tạo đơn.']);
             }
             // Preserve edits from inspection, never stale customer/status/reward markers.
             $booking->fill($inspectionChanges);
@@ -362,24 +357,20 @@ class OrderService
                     'fee' => $deliveryQuote['return_fee'],
                 ],
             ] as $leg) {
-                if ($leg['method'] !== $leg['home']) {
+                if ($leg['type'] === 'GIAO_DO' || $leg['method'] !== $leg['home']) {
                     continue;
                 }
                 GiaoNhan::create([
                     'DonHangID' => $order->DonHangID,
-                    'NhanVienID' => $leg['type'] === 'GIAO_DO' ? null : $employeeId,
+                    'NhanVienID' => $employeeId,
                     'HinhThuc' => $leg['method']->value,
                     'LoaiGiaoNhan' => $leg['type'],
                     'DiaChi' => $leg['address'],
                     'PhiGiaoNhan' => $leg['fee'],
                     // NgayHen/GioHen is the receiving appointment, never the return schedule.
-                    'ThoiGianDuKien' => $leg['type'] === 'NHAN_DO'
-                        ? $booking->NgayHen->format('Y-m-d').' '.$booking->GioHen->format('H:i:s')
-                        : null,
-                    'ThoiGianThucTe' => config('giatui.booking_two_step') && $leg['type'] === 'NHAN_DO'
-                        ? $booking->giaoNhanDuKiens()->where('LoaiGiaoNhan', 'NHAN_DO')->value('ThoiGianThucTe') : null,
-                    'TrangThai' => config('giatui.booking_two_step') && $leg['type'] === 'NHAN_DO'
-                        ? DeliveryStatus::Completed->dbValue() : DeliveryStatus::Pending->dbValue(),
+                    'ThoiGianDuKien' => $booking->NgayHen->format('Y-m-d').' '.$booking->GioHen->format('H:i:s'),
+                    'ThoiGianThucTe' => $booking->giaoNhanDuKiens()->where('LoaiGiaoNhan', 'NHAN_DO')->value('ThoiGianThucTe'),
+                    'TrangThai' => DeliveryStatus::Completed->dbValue(),
                     'GhiChu' => $booking->GhiChu,
                 ]);
             }
@@ -404,8 +395,18 @@ class OrderService
             }
 
             if (array_key_exists('DiemDaTru', $booking->getAttributes())) {
-                $booking->fill(['DiemDaTru' => false, 'DiemSuDung' => 0, 'TienGiamDoDiem' => 0]);
-                $callerBooking->fill(['DiemDaTru' => false, 'DiemSuDung' => 0, 'TienGiamDoDiem' => 0]);
+                $booking->forceFill([
+                    'DiemDaTru' => false,
+                    'DiemSuDung' => 0,
+                    'TienGiamDoDiem' => 0,
+                    'KhuyenMaiDaTru' => false,
+                ])->saveQuietly();
+                $callerBooking->forceFill([
+                    'DiemDaTru' => false,
+                    'DiemSuDung' => 0,
+                    'TienGiamDoDiem' => 0,
+                    'KhuyenMaiDaTru' => false,
+                ]);
             }
 
             $this->notificationService->notifyManagement(
@@ -1206,13 +1207,23 @@ class OrderService
         return DB::transaction(function () use ($order, $delivery, $target): DonHang {
             $lockedOrder = DonHang::query()->lockForUpdate()->findOrFail($order->getKey());
             $lockedDelivery = GiaoNhan::query()->lockForUpdate()->findOrFail($delivery->getKey());
+            $booking = $lockedOrder->BookingID !== null
+                ? Booking::query()->lockForUpdate()->find($lockedOrder->BookingID)
+                : null;
+            $isBookingReturn = $booking !== null;
 
             if (
                 $lockedDelivery->DonHangID !== $lockedOrder->DonHangID
                 || $lockedDelivery->LoaiGiaoNhan !== 'GIAO_DO'
-                || ! $lockedOrder->requiresHomeDelivery()
+                || ($isBookingReturn
+                    ? $booking->HinhThucTraDo !== $lockedDelivery->HinhThuc
+                    : ! $lockedOrder->requiresHomeDelivery())
             ) {
-                throw ValidationException::withMessages(['delivery' => 'Phiếu giao đồ không thuộc một đơn trả tại nhà hợp lệ.']);
+                throw ValidationException::withMessages(['delivery' => 'Phiếu giao đồ không thuộc chặng trả hợp lệ của đơn hàng.']);
+            }
+
+            if ($booking?->statusEnum() === BookingStatus::Cancelled) {
+                throw ValidationException::withMessages(['booking' => 'Không thể hoàn tất giao đồ cho Booking đã hủy.']);
             }
 
             $deliveryStatus = DeliveryStatus::parseForLeg($lockedDelivery->TrangThai, $lockedDelivery->LoaiGiaoNhan);
@@ -1222,24 +1233,38 @@ class OrderService
 
             if ($target === OrderStatus::Delivering) {
                 if (
-                    ! in_array($lockedOrder->statusEnum(), [OrderStatus::Washed, OrderStatus::Delivering, OrderStatus::Paid], true)
+                    $lockedDelivery->HinhThuc !== 'Tại nhà'
+                    || ! in_array($lockedOrder->statusEnum(), [OrderStatus::Washed, OrderStatus::Delivering, OrderStatus::Paid], true)
                     || $deliveryStatus !== DeliveryStatus::Delivering
                     || ! NhanVien::query()->whereKey($lockedDelivery->NhanVienID)->where('TrangThai', 'Hoạt động')->exists()
                 ) {
                     throw ValidationException::withMessages(['status' => 'Chưa đủ điều kiện để bắt đầu giao đơn hàng.']);
                 }
-            } elseif (
-                $target !== OrderStatus::Delivered
-                || $lockedOrder->statusEnum() !== OrderStatus::Delivering
-                || $deliveryStatus !== DeliveryStatus::Completed
-            ) {
+            } elseif ($target === OrderStatus::Delivered) {
+                $canCompleteReturn = $deliveryStatus === DeliveryStatus::Completed
+                    && match ($lockedDelivery->HinhThuc) {
+                        'Tại cửa hàng' => in_array($lockedOrder->statusEnum(), [OrderStatus::Washed, OrderStatus::Delivered], true),
+                        'Tại nhà' => in_array($lockedOrder->statusEnum(), [OrderStatus::Delivering, OrderStatus::Delivered], true),
+                        default => false,
+                    };
+
+                if (! $canCompleteReturn) {
+                    throw ValidationException::withMessages(['status' => 'Trạng thái đơn hàng không khớp với kết quả chặng giao đồ.']);
+                }
+            } else {
                 throw ValidationException::withMessages(['status' => 'Trạng thái đơn hàng không khớp với kết quả chặng giao đồ.']);
             }
 
-            $lockedOrder->update([
-                'TrangThai' => $target->value,
-                'NgayCapNhat' => now(),
-            ]);
+            if ($lockedOrder->statusEnum() !== $target) {
+                $lockedOrder->update([
+                    'TrangThai' => $target->value,
+                    'NgayCapNhat' => now(),
+                ]);
+            }
+
+            if ($target === OrderStatus::Delivered && $booking !== null && $booking->statusEnum() !== BookingStatus::Completed) {
+                $booking->update(['TrangThai' => BookingStatus::Completed->value]);
+            }
 
             return $lockedOrder->fresh();
         });
@@ -1272,6 +1297,11 @@ class OrderService
         }
 
         $current = $lockedOrder->statusEnum();
+        if ($target === OrderStatus::Delivered && $lockedOrder->BookingID !== null) {
+            throw ValidationException::withMessages([
+                'TrangThai' => 'Hoàn tất bàn giao qua phiếu giao đồ để đồng bộ đơn hàng và Booking.',
+            ]);
+        }
         if (
             $current === OrderStatus::Washed
             && $target === OrderStatus::Delivering

@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\Booking;
 use App\Models\TaiKhoan;
 use App\Models\ThongBao;
 use App\Support\InternalCommunicationPolicy;
@@ -69,11 +70,27 @@ class NotificationService
             ->find($id);
     }
 
-    public function create(array $data): ThongBao
+    public function create(array $data, ?Booking $booking = null): ThongBao
     {
+        if (array_key_exists('BookingID', $data)) {
+            throw new InvalidArgumentException('Booking links must be supplied through a persisted Booking model.');
+        }
+        if ($booking !== null && ! $booking->exists) {
+            throw new InvalidArgumentException('A notification can only link to a persisted Booking.');
+        }
+
         $data['ThoiGianGui'] = now();
 
-        return ThongBao::create($data);
+        $notification = new ThongBao;
+        $notification->fill($data);
+
+        if ($booking !== null) {
+            $notification->booking()->associate($booking);
+        }
+
+        $notification->save();
+
+        return $notification;
     }
 
     public function createForRecipient(string $recipient, array $data): int
@@ -189,6 +206,10 @@ class NotificationService
 
     public function update(ThongBao $notification, array $data): ThongBao
     {
+        if (array_key_exists('BookingID', $data)) {
+            throw new InvalidArgumentException('Booking links cannot be changed through notification updates.');
+        }
+
         $notification->update($data);
 
         return $notification->fresh();

@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Enums\BookingStatus;
 use App\Enums\InvoiceStatus;
 use App\Enums\PaymentStatus;
 use App\Models\Booking;
@@ -17,6 +18,47 @@ use Tests\TestCase;
 
 class SchemaModuleCompatibilityTest extends TestCase
 {
+    public function test_booking_list_hides_reference_code_and_keeps_columns_aligned(): void
+    {
+        $booking = new Booking;
+        $booking->setRawAttributes([
+            'BookingID' => 1,
+            'MaBooking' => 'DL-REFERENCE-1',
+            'TrangThai' => BookingStatus::Pending->value,
+            'HinhThucNhanDo' => 'Tại nhà',
+            'HinhThucTraDo' => 'Tại cửa hàng',
+            'NgayHen' => '2026-10-12',
+            'GioHen' => '09:00',
+        ]);
+        $booking->setRelation('khachHang', null);
+        $booking->setRelation('nhanVien', null);
+
+        $html = view('admin.bookings.index', [
+            'bookings' => new LengthAwarePaginator(collect([$booking]), 1, 10),
+        ])->render();
+
+        $this->assertStringNotContainsString('DL-REFERENCE-1', $html);
+        $this->assertStringContainsString('name="search"', $html);
+        $this->assertStringContainsString('Tìm theo mã lịch', $html);
+        $this->assertDoesNotMatchRegularExpression('/<th[^>]*>\s*Mã lịch hẹn\s*<\/th>/u', $html);
+        $this->assertStringNotContainsString('bookings.destroy', $html);
+        $this->assertStringNotContainsString('deleteBookingForm_', $html);
+        $this->assertStringNotContainsString('Bạn có chắc muốn xóa lịch hẹn này?', $html);
+        $this->assertStringNotContainsString('name="_method" value="DELETE"', $html);
+        preg_match('/<tbody>(.*?)<\/tbody>/s', $html, $tableBody);
+        $this->assertNotEmpty($tableBody);
+        $this->assertSame(7, substr_count($tableBody[1], '<td'));
+    }
+
+    public function test_booking_list_empty_state_spans_the_remaining_columns(): void
+    {
+        $html = view('admin.bookings.index', [
+            'bookings' => new LengthAwarePaginator(collect(), 0, 10),
+        ])->render();
+
+        $this->assertStringContainsString('colspan="7"', $html);
+    }
+
     public function test_mobile_customer_avatar_has_priority_over_account_avatar(): void
     {
         $customer = $this->customer('https://example.test/mobile.jpg', 'https://example.test/account.jpg');
@@ -60,6 +102,7 @@ class SchemaModuleCompatibilityTest extends TestCase
             $payment = new ThanhToan;
             $payment->setRawAttributes([
                 'ThanhToanID' => 1,
+                'MaGiaoDich' => 'TM-REFERENCE-1',
                 'DonHangID' => 1,
                 'SoTien' => 10000,
                 'PhuongThuc' => 'Tiền mặt',
@@ -81,7 +124,24 @@ class SchemaModuleCompatibilityTest extends TestCase
             );
 
             $this->assertCount(1, $badges[0]);
+            $this->assertStringNotContainsString('TM-REFERENCE-1', $html);
+            $this->assertStringContainsString('Tìm theo mã giao dịch', $html);
+            $this->assertDoesNotMatchRegularExpression('/<th[^>]*>\s*Mã giao dịch\s*<\/th>/u', $html);
+            preg_match('/<tbody>(.*?)<\/tbody>/s', $html, $tableBody);
+            $this->assertNotEmpty($tableBody);
+            $this->assertSame(8, substr_count($tableBody[1], '<td'));
         }
+    }
+
+    public function test_payment_list_empty_state_spans_the_remaining_columns(): void
+    {
+        $html = view('admin.payments.index', [
+            'payments' => new LengthAwarePaginator(collect(), 0, 10),
+            'methods' => [],
+            'statuses' => [],
+        ])->render();
+
+        $this->assertStringContainsString('colspan="8"', $html);
     }
 
     public function test_payment_detail_renders_paid_status_once(): void
@@ -147,6 +207,8 @@ class SchemaModuleCompatibilityTest extends TestCase
         $this->assertSame('BookingID', $notification->booking()->getForeignKeyName());
         $this->assertFalse($notification->isFillable('TinNhanID'));
         $this->assertFalse($notification->isFillable('BookingID'));
+        $notification->fill(['BookingID' => 99]);
+        $this->assertSame(34, $notification->BookingID);
     }
 
     private function customer(?string $mobileAvatar, ?string $accountAvatar): KhachHang

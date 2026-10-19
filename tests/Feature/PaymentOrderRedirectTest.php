@@ -14,6 +14,7 @@ use App\Models\User;
 use App\Services\InvoiceService;
 use App\Services\OrderService;
 use App\Services\PaymentService;
+use Illuminate\Database\QueryException;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -133,7 +134,7 @@ class PaymentOrderRedirectTest extends TestCase
         $response = $this->withoutMiddleware()->get(route('payments.create', ['order_id' => 37]));
 
         $response->assertOk()
-            ->assertSee('DH0037')
+            ->assertSee('DH00000037')
             ->assertSee('Khách thử nghiệm')
             ->assertSee('value="50000" min="0" step="1000" disabled', false)
             ->assertSee('name="order_id" disabled', false)
@@ -211,7 +212,7 @@ class PaymentOrderRedirectTest extends TestCase
         $response = $this->withoutMiddleware()->get(route('payments.create', ['order_id' => 38]));
 
         $response->assertOk()
-            ->assertSee('DH0038')
+            ->assertSee('DH00000038')
             ->assertDontSee('<select class="form-select" name="invoice_id"', false)
             ->assertDontSee('Đơn hàng chưa có hóa đơn');
     }
@@ -387,7 +388,7 @@ class PaymentOrderRedirectTest extends TestCase
         ]);
 
         $this->assertMatchesRegularExpression(
-            '/^TM_DH0051_\d{14}(?:_\d+)?$/',
+            '/^TM_DH00000051_\d{14}(?:_\d+)?$/',
             $payment->MaGiaoDich,
         );
         $this->assertSame(1, DB::table('ThanhToan')->where('MaGiaoDich', $payment->MaGiaoDich)->count());
@@ -804,6 +805,7 @@ class PaymentOrderRedirectTest extends TestCase
 
     public function test_invoice_update_failure_rolls_back_the_new_payment_and_paid_status(): void
     {
+        $this->actingAs((new User)->forceFill(['TaiKhoanID' => 1]));
         DB::table('DonHang')->insert([
             'DonHangID' => 56,
             'MaDonHang' => 'DH0056',
@@ -817,6 +819,7 @@ class PaymentOrderRedirectTest extends TestCase
             'TrangThai' => InvoiceStatus::Unpaid->value,
             'ThanhTien' => 25000,
         ]);
+        DB::statement("CREATE TRIGGER fail_invoice_audit BEFORE INSERT ON LichSuThayDoiHoaDon BEGIN SELECT RAISE(ABORT, 'isolated invoice audit failure'); END");
 
         try {
             app(PaymentService::class)->create([
@@ -826,7 +829,8 @@ class PaymentOrderRedirectTest extends TestCase
                 'status' => PaymentStatus::Paid->value,
             ]);
             $this->fail('The invoice audit failure should abort the transaction.');
-        } catch (\LogicException) {
+        } catch (QueryException $exception) {
+            $this->assertStringContainsString('isolated invoice audit failure', $exception->getMessage());
         }
 
         $this->assertSame(0, DB::table('ThanhToan')->where('DonHangID', 56)->count());

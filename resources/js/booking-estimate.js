@@ -8,10 +8,6 @@ if (panel) {
     const details = panel.querySelector('[data-estimate-details]');
     const itemBreakdown = panel.querySelector('[data-estimate-items]');
     const warning = panel.querySelector('[data-estimate-warning]');
-    const quoteButton = document.querySelector('#booking-quote-delivery');
-    const quoteStatus = document.querySelector('#booking-delivery-quote-status');
-    const quoteResult = document.querySelector('#booking-delivery-quote-result');
-    const recalculateInput = form.querySelector('[name="recalculate_delivery_fee"]');
     const itemsContainer = form.querySelector('#booking-items');
     const pricingOptions = JSON.parse(panel.dataset.pricingOptions);
     const services = JSON.parse(panel.dataset.serviceOptions);
@@ -33,9 +29,6 @@ if (panel) {
     let estimateSignature;
     let initialEstimateTimer;
     let initialEstimatePending = false;
-    let quoteController;
-    let quoteGeneration = 0;
-    let deliveryQuote;
 
     function roundMoney(value) {
         return Math.round((value + Number.EPSILON) * 100) / 100;
@@ -202,8 +195,8 @@ if (panel) {
             ))
             : 0;
         const pointsDiscount = roundMoney(pointsUsed * pointValue);
-        const pickupFee = deliveryQuote?.pickup_fee ?? Number(estimateData.PhiNhanDo);
-        const returnFee = deliveryQuote?.return_fee ?? Number(estimateData.PhiGiaoDo);
+        const pickupFee = Number(estimateData.PhiNhanDo);
+        const returnFee = Number(estimateData.PhiGiaoDo);
         const amountDue = roundMoney(
             Math.max(0, remaining - pointsDiscount) + pickupFee + returnFee,
         );
@@ -233,7 +226,7 @@ if (panel) {
             row.querySelector('.booking-weight').value,
         ]);
 
-        return JSON.stringify([rows, deliveryQuote]);
+        return JSON.stringify(rows);
     }
 
     function refreshLocalEstimate() {
@@ -328,120 +321,6 @@ if (panel) {
         }
     }
 
-    function changedDeliveryDetails() {
-        deliveryQuote = null;
-        quoteController?.abort();
-        quoteGeneration++;
-        quoteButton.disabled = false;
-        recalculateInput.value = '0';
-        quoteResult.hidden = true;
-        quoteStatus.textContent =
-            'Phí đang dùng là phí đã lưu từ Booking. Nhấn nút để tính lại theo thông tin hiện tại.';
-        refreshLocalEstimate();
-    }
-
-    quoteButton.addEventListener('click', async () => {
-        if (quoteButton.disabled) {
-            return;
-        }
-
-        const method = form.querySelector('[name="method"]');
-        const address = form.querySelector('[name="address"]');
-        const returnMethod = form.querySelector('[name="return_method"]');
-        const returnAddress = form.querySelector('[name="return_address"]');
-
-        if (method.value === 'Tại nhà' && !address.value.trim()) {
-            quoteStatus.textContent = 'Vui lòng nhập địa chỉ nhận đồ tại nhà.';
-            address.focus();
-            return;
-        }
-        if (returnMethod.value === 'Tại nhà' && !returnAddress.value.trim()) {
-            quoteStatus.textContent = 'Vui lòng nhập địa chỉ trả đồ tại nhà.';
-            returnAddress.focus();
-            return;
-        }
-
-        quoteButton.disabled = true;
-        quoteStatus.textContent = 'Đang tính phí giao nhận...';
-        quoteController?.abort();
-        const requestController = new AbortController();
-        quoteController = requestController;
-        const version = ++quoteGeneration;
-
-        try {
-            const response = await fetch(panel.dataset.deliveryQuote, {
-                method: 'POST',
-                credentials: 'same-origin',
-                headers: {
-                    Accept: 'application/json',
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                },
-                body: JSON.stringify({
-                    method: method.value,
-                    address: method.value === 'Tại nhà' ? address.value.trim() : null,
-                    return_method: returnMethod.value,
-                    return_address: returnMethod.value === 'Tại nhà' ? returnAddress.value.trim() : null,
-                }),
-                signal: requestController.signal,
-            });
-            const data = await response.json().catch(() => null);
-
-            if (version !== quoteGeneration) {
-                return;
-            }
-            if (!response.ok) {
-                const validationMessage = Object.values(data?.errors ?? {}).flat()[0];
-                throw Error(
-                    validationMessage
-                    || data?.message
-                    || `Máy chủ không thể tính phí giao nhận (HTTP ${response.status}). Vui lòng thử lại.`,
-                );
-            }
-            if (
-                !data
-                || !Number.isFinite(Number(data.pickup_fee))
-                || !Number.isFinite(Number(data.return_fee))
-                || !Number.isFinite(Number(data.total_fee))
-            ) {
-                throw Error('Máy chủ trả về dữ liệu phí giao nhận không hợp lệ. Vui lòng thử lại.');
-            }
-
-            deliveryQuote = {
-                pickup_fee: Number(data.pickup_fee),
-                return_fee: Number(data.return_fee),
-            };
-            recalculateInput.value = '1';
-            quoteResult.querySelector('[data-pickup-fee]').textContent = money(deliveryQuote.pickup_fee);
-            quoteResult.querySelector('[data-return-fee]').textContent = money(deliveryQuote.return_fee);
-            quoteResult.hidden = false;
-            quoteStatus.textContent = 'Đã báo giá theo địa chỉ hiện tại. Phí sẽ được máy chủ tính lại khi xác nhận.';
-            refreshLocalEstimate();
-        } catch (error) {
-            if (version === quoteGeneration) {
-                quoteStatus.textContent = error.name === 'AbortError'
-                    ? 'Yêu cầu tính phí đã bị hủy.'
-                    : error instanceof TypeError
-                        ? 'Không thể kết nối đến máy chủ tính phí giao nhận. Vui lòng thử lại.'
-                        : error.message;
-            }
-        } finally {
-            if (quoteController === requestController) {
-                quoteButton.disabled = false;
-            }
-        }
-    });
-
-    for (const field of [
-        form.querySelector('[name="method"]'),
-        form.querySelector('[name="address"]'),
-        form.querySelector('[name="return_method"]'),
-        form.querySelector('[name="return_address"]'),
-    ]) {
-        field.addEventListener('input', changedDeliveryDetails);
-        field.addEventListener('change', changedDeliveryDetails);
-    }
-
     form.addEventListener('input', refreshLocalEstimate);
     form.addEventListener('change', refreshLocalEstimate);
     itemsContainer.addEventListener('click', () => setTimeout(refreshLocalEstimate, 0));
@@ -449,14 +328,11 @@ if (panel) {
     observer.observe(itemsContainer, { childList: true });
     form.addEventListener('reset', () => {
         setTimeout(() => {
-            changedDeliveryDetails();
             refreshLocalEstimate();
         }, 0);
     });
     window.addEventListener('pagehide', () => {
         clearTimeout(initialEstimateTimer);
-        quoteGeneration++;
-        quoteController?.abort();
         observer.disconnect();
     });
     window.addEventListener('pageshow', event => {

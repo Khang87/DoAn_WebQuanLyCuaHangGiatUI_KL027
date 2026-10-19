@@ -178,24 +178,12 @@
                             <div class="form-text mt-2">Ưu đãi chỉ được kế thừa từ Booking; không thể thêm, đổi hoặc bỏ tại màn hình kiểm tra.</div>
                         </div>
                     </div>
-                    @if(config('giatui.booking_two_step'))
-                        <div class="col-12 form-check ms-3">
-                            <input class="form-check-input" type="checkbox" id="quality_difference" name="quality_difference" value="1" @checked(old('quality_difference'))>
-                            <label class="form-check-label" for="quality_difference">Có chênh lệch về tình trạng/chất lượng so với khách khai báo</label>
-                        </div>
-                    @endif
+                    <div class="col-12 form-check ms-3">
+                        <input class="form-check-input" type="checkbox" id="quality_difference" name="quality_difference" value="1" @checked(old('quality_difference'))>
+                        <label class="form-check-label" for="quality_difference">Có chênh lệch về tình trạng/chất lượng so với khách khai báo</label>
+                    </div>
                     <div class="col-12">
-                        <button type="button" class="btn btn-outline-primary" id="booking-quote-delivery">
-                            <i class="bi bi-geo-alt me-1"></i>Tính lại phí giao nhận
-                        </button>
-                        <div class="small mt-2" id="booking-delivery-quote-status" role="status" aria-live="polite">
-                            Phí đang dùng là phí đã lưu từ Booking. Nhấn nút sau khi thay đổi địa chỉ hoặc phương thức nếu muốn tính lại.
-                        </div>
-                        <div class="row g-2 small mt-1" id="booking-delivery-quote-result" hidden>
-                            <div class="col-md-6">Phí nhận đồ: <strong data-pickup-fee></strong></div>
-                            <div class="col-md-6">Phí giao đồ: <strong data-return-fee></strong></div>
-                        </div>
-                        <input type="hidden" name="recalculate_delivery_fee" value="0">
+                        <div class="small text-muted">Phí giao nhận được giữ theo thông tin đã lưu trên Booking; kiểm kê không gọi lại dịch vụ định tuyến.</div>
                     </div>
                 @endif
                 <div class="col-md-6"><label class="form-label">Ngày hẹn <span class="text-danger ms-1">*</span></label><input type="date" class="form-control booking-main-control @error('scheduled_date') is-invalid @enderror" name="scheduled_date" value="{{ old('scheduled_date', $booking->NgayHen?->format('Y-m-d')) }}" required>@error('scheduled_date')<div class="invalid-feedback">{{ $message }}</div>@enderror</div>
@@ -370,25 +358,25 @@
                 <div
                     class="card border-0 bg-light mt-3"
                     data-booking-estimate="{{ route('bookings.estimate', $booking) }}"
-                    data-delivery-quote="{{ route('bookings.delivery-fee-quote', $booking) }}"
                     data-pricing-options="{{ $pricingUnitOptions->toJson(JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) }}"
                     data-service-options="{{ $serviceOptions->toJson(JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) }}"
                     data-garment-options="{{ $garmentOptions->toJson(JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) }}"
                     data-minimum-weight="{{ config('giatui.khoi_luong_toi_thieu', 3.0) }}"
                 >
                     <div class="card-body">
-                        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
-                            <h6 class="mb-0">Tổng kết đơn hàng</h6>
-                            <div class="fw-bold fs-5 text-primary">Tổng thanh toán: <span data-estimate-total>Đang tính…</span></div>
-                        </div>
-                        <div data-estimate-details></div>
+                        <h6 class="mb-0">Tổng kết đơn hàng</h6>
                         <div class="table-responsive mt-3" data-estimate-items></div>
                         <div data-estimate-warning class="small text-danger mt-2" role="status" aria-live="polite"></div>
+                        <div class="mt-3" data-estimate-details></div>
                         <div class="form-text mt-2">Giá hiển thị là ước tính theo bảng giá hiện hành; giá, khuyến mãi, điểm và phí được máy chủ kiểm tra lại khi xác nhận.</div>
+                        <div class="border-top mt-3 pt-3 d-flex flex-wrap justify-content-between align-items-center gap-2">
+                            <span class="fw-bold">Tổng thanh toán</span>
+                            <span class="fw-bold fs-5 text-primary" data-estimate-total>Đang tính…</span>
+                        </div>
                     </div>
                 </div>
             @endif
-            <div class="d-flex justify-content-end gap-2 mt-4"><button type="reset" class="btn btn-outline-secondary">Khôi phục dữ liệu ban đầu</button><button type="submit" class="btn btn-primary">{{ $inspectionMode ? (config('giatui.booking_two_step') ? 'Xác nhận thông tin & tạo đơn' : 'Xác nhận & tạo đơn') : 'Cập nhật' }}</button></div>
+            <div class="d-flex justify-content-end gap-2 mt-4"><button type="submit" class="btn btn-primary">{{ $inspectionMode ? 'Xác nhận kiểm kê & tạo đơn' : 'Cập nhật' }}</button></div>
         </form>
     </div>
 </div>
@@ -399,7 +387,6 @@
         const returnMethod = document.getElementById('booking-return-method');
         const returnAddress = document.getElementById('booking-return-address');
         const address = document.querySelector('[name="address"]');
-        const form = document.getElementById('booking-edit-form');
         const itemsContainer = document.getElementById('booking-items');
         const addItemButton = document.getElementById('add-booking-item');
         const pricingUnitOptions = @json($pricingUnitOptions);
@@ -524,17 +511,6 @@
 
         method.addEventListener('change', updateAddressRequirement);
         returnMethod.addEventListener('change', updateAddressRequirement);
-        form.addEventListener('reset', function () {
-            setTimeout(function () {
-                updateAddressRequirement();
-                itemsContainer.querySelectorAll('.booking-item').forEach(function (item) {
-                    syncServiceOptions(item);
-                    syncGarmentOptions(item);
-                    syncUnitOptions(item);
-                    updateQuantityFields(item);
-                });
-            });
-        });
         itemsContainer.addEventListener('change', function (event) {
             const item = event.target.closest('.booking-item');
             if (event.target.matches('.booking-service-category')) {
@@ -589,7 +565,6 @@
             document.querySelector('[data-booking-row-status]').textContent = 'Đã thêm dòng mới. Hãy chọn dịch vụ và loại đồ.';
             template.querySelector('.booking-service-category').focus();
         });
-        form.addEventListener('reset', () => setTimeout(updateAddressRequirement, 0));
         updateAddressRequirement();
         itemsContainer.querySelectorAll('.booking-item').forEach(function (item) {
             const category = item.querySelector('.booking-service-category');

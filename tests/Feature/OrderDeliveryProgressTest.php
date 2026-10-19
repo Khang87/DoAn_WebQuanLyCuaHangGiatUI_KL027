@@ -39,6 +39,7 @@ class OrderDeliveryProgressTest extends TestCase
         });
         Schema::create('Booking', function (Blueprint $table): void {
             $table->increments('BookingID');
+            $table->string('TrangThai')->default('DaXacNhan');
             $table->string('HinhThucNhanDo')->nullable();
             $table->string('DiaChiNhan')->nullable();
             $table->string('HinhThucTraDo')->nullable();
@@ -184,6 +185,24 @@ class OrderDeliveryProgressTest extends TestCase
         app(OrderService::class)->updateStatus($order, OrderStatus::Delivered->value);
     }
 
+    public function test_booking_store_return_cannot_be_marked_delivered_through_direct_status_route(): void
+    {
+        DB::table('Booking')->insert([
+            'BookingID' => 1,
+            'TrangThai' => 'DaXacNhan',
+            'HinhThucTraDo' => 'Tại cửa hàng',
+        ]);
+        $this->createOrder(11, 1);
+        $this->actingAs($this->userWithStatusPermission());
+
+        $this->patchJson(route('staff.dashboard.update-order-status', 11), [
+            'status' => OrderStatus::Delivered->value,
+        ])->assertStatus(422);
+
+        $this->assertSame(OrderStatus::Washed->value, DB::table('DonHang')->where('DonHangID', 11)->value('TrangThai'));
+        $this->assertSame(0, GiaoNhan::where('DonHangID', 11)->count());
+    }
+
     public function test_home_return_cannot_be_marked_delivered_through_staff_status_route(): void
     {
         DB::table('Booking')->insert(['BookingID' => 1, 'HinhThucTraDo' => 'Tại nhà']);
@@ -321,16 +340,23 @@ class OrderDeliveryProgressTest extends TestCase
         $this->assertStringContainsString('Đã thanh toán', $html);
     }
 
-    public function test_paid_order_badge_uses_same_style_and_icon_as_delivered_badge(): void
+    public function test_order_status_badges_use_distinct_styles_for_each_operational_state(): void
     {
-        $this->assertSame(
-            OrderStatus::badgeClassFor(OrderStatus::Delivered),
-            OrderStatus::badgeClassFor(OrderStatus::Paid)
-        );
-        $this->assertSame(
-            OrderStatus::iconFor(OrderStatus::Delivered),
-            OrderStatus::iconFor(OrderStatus::Paid)
-        );
+        $expectedClasses = [
+            OrderStatus::Pending->value => 'bg-secondary-subtle text-secondary-emphasis border border-secondary',
+            OrderStatus::Received->value => 'bg-primary-subtle text-primary-emphasis border border-primary',
+            OrderStatus::Washing->value => 'bg-purple-subtle text-purple-emphasis border border-purple',
+            OrderStatus::Washed->value => 'bg-teal-subtle text-teal-emphasis border border-teal',
+            OrderStatus::Delivering->value => 'bg-warning-subtle text-warning-emphasis border border-warning',
+            OrderStatus::Delivered->value => 'bg-success-subtle text-success-emphasis border border-success',
+            OrderStatus::Paid->value => 'bg-info-subtle text-info-emphasis border border-info',
+            OrderStatus::Cancelled->value => 'bg-danger-subtle text-danger-emphasis border border-danger',
+        ];
+
+        foreach ($expectedClasses as $status => $expectedClass) {
+            $this->assertSame($expectedClass, OrderStatus::badgeClassFor($status));
+        }
+        $this->assertCount(count(OrderStatus::cases()), array_unique(array_values($expectedClasses)));
     }
 
     private function createOrder(int $id, ?int $bookingId = null): DonHang

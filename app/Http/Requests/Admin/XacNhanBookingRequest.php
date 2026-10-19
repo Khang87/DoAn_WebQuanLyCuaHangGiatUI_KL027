@@ -4,6 +4,7 @@ namespace App\Http\Requests\Admin;
 
 use App\Enums\BookingStatus;
 use App\Models\Booking;
+use App\Models\BookingGiaoNhan;
 use Illuminate\Validation\Validator;
 
 class XacNhanBookingRequest extends LuuBookingRequest
@@ -20,7 +21,6 @@ class XacNhanBookingRequest extends LuuBookingRequest
             'items.*.GhiChu' => ['nullable', 'string', 'max:160'],
             'DiemSuDung' => ['prohibited'],
             'use_points' => ['prohibited'],
-            'recalculate_delivery_fee' => ['sometimes', 'boolean'],
             'quality_difference' => ['sometimes', 'boolean'],
         ]);
     }
@@ -40,11 +40,13 @@ class XacNhanBookingRequest extends LuuBookingRequest
         $validator->after(function (Validator $validator): void {
             $routeBooking = $this->route('booking');
             $booking = $routeBooking instanceof Booking ? $routeBooking : Booking::query()->find($routeBooking);
-            $convertible = config('giatui.booking_two_step')
-                ? $booking?->statusEnum() === BookingStatus::Confirmed
-                : $booking?->isConvertibleToOrder();
-            if ($booking && ! $convertible && ! $booking->donHangs()->exists()) {
-                $validator->errors()->add('booking', 'Chỉ Booking chờ xác nhận mới có thể kiểm tra thực tế và tạo đơn.');
+            if ($booking && ! $booking->donHangs()->exists()) {
+                if ($booking->statusEnum() !== BookingStatus::Confirmed) {
+                    $validator->errors()->add('booking', 'Hãy xác nhận Booking trước khi kiểm kê và tạo đơn.');
+                } elseif (! BookingGiaoNhan::query()->where('BookingID', $booking->BookingID)
+                    ->where('LoaiGiaoNhan', 'NHAN_DO')->where('TrangThai', 'Đã nhận')->exists()) {
+                    $validator->errors()->add('booking', 'Hãy xác nhận đã nhận đồ thực tế trước khi kiểm kê và tạo đơn.');
+                }
             }
         });
     }

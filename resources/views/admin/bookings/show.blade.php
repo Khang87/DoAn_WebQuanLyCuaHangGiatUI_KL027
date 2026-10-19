@@ -13,27 +13,25 @@
     </x-slot:badge>
 </x-admin.detail.page-header>
 
+@php $order = $booking->donHangs->first() @endphp
+
 <div class="row g-4 align-items-start">
-    <div class="col-lg-7">
+    <div class="col-lg-8">
         <x-admin.detail.panel title="Thông tin lịch hẹn" icon="bi-calendar-check" :iconClass="'bg-primary-subtle text-primary'">
             <x-admin.detail.info-grid :columns="2">
                 <x-admin.detail.info-item label="Mã đặt lịch" :value="$booking->MaBooking ?: '—'" />
                 <x-admin.detail.info-item label="Trạng thái">
                     <x-admin.status-badge :status="$booking->TrangThai" :enum="\App\Enums\BookingStatus::class" :pill="false" />
                 </x-admin.detail.info-item>
-                <x-admin.detail.info-item label="Hình thức nhận đồ">
-                    <span class="badge bg-primary-subtle text-primary-emphasis border border-primary px-3 py-2 rounded-pill">
-                        <i class="bi {{ $booking->method_icon }} me-1"></i>{{ $booking->method_label }}
-                    </span>
-                </x-admin.detail.info-item>
+                <x-admin.detail.info-item label="Hình thức nhận đồ" :value="$booking->method_label" />
+                <x-admin.detail.info-item label="Địa chỉ nhận đồ" :value="$booking->DiaChiNhan ?: '—'" />
+                <x-admin.detail.info-item label="Hình thức trả đồ" :value="$booking->return_method_label" />
+                <x-admin.detail.info-item label="Địa chỉ trả đồ" :value="$booking->DiaChiTra ?: '—'" />
                 <x-admin.detail.info-item label="Nhân viên phụ trách" :value="$booking->nhanVien?->HoTen ?? 'Chưa phân công'" />
                 <x-admin.detail.info-item label="Nhân viên xác nhận" :value="$booking->nhanVienXacNhan?->HoTen ?? '—'" />
                 <x-admin.detail.info-item label="Thời gian xác nhận" :value="$booking->ThoiGianXacNhan?->format('d/m/Y H:i') ?? '—'" />
                 <x-admin.detail.info-item label="Ngày hẹn" :value="$booking->NgayHen?->format('d/m/Y')" />
                 <x-admin.detail.info-item label="Giờ hẹn" :value="$booking->GioHen?->format('H:i')" />
-                <x-admin.detail.info-item label="Hình thức trả đồ" :value="$booking->return_method_label" />
-                <x-admin.detail.info-item label="Địa chỉ trả đồ" :value="$booking->DiaChiTra ?: '—'" />
-                <x-admin.detail.info-item label="Địa chỉ nhận đồ" :value="$booking->DiaChiNhan ?: '—'" />
             </x-admin.detail.info-grid>
 
             <div class="mt-4">
@@ -64,9 +62,7 @@
                 </div>
             @endif
         </x-admin.detail.panel>
-    </div>
 
-    <div class="col-lg-5 d-flex flex-column">
         <x-admin.detail.panel title="Ước tính từ lịch đặt" icon="bi-calculator" :iconClass="'bg-info-subtle text-info'">
             @if($booking->KhuyenMaiID)
                 <div class="mb-3">Voucher: <strong>{{ $booking->khuyenMai?->MaKhuyenMai ?: 'Không tìm thấy mã' }}</strong>
@@ -91,6 +87,9 @@
             @endif
         </x-admin.detail.panel>
         @include('admin.bookings.mobile-summary')
+    </div>
+
+    <div class="col-lg-4">
         <x-admin.detail.panel title="Khách hàng" icon="bi-person" :iconClass="'bg-secondary-subtle text-secondary'">
             <x-admin.detail.info-grid :columns="1">
                 <x-admin.detail.info-item label="Họ và tên" :value="$booking->khachHang?->HoTen" />
@@ -107,39 +106,80 @@
             @endif
         </x-admin.detail.panel>
 
-        <x-admin.detail.panel title="Đơn hàng liên kết" icon="bi-receipt" :iconClass="'bg-success-subtle text-success'">
-            @php $order = $booking->donHangs->first() @endphp
-            @if($order)
-                <x-admin.detail.info-grid :columns="1">
-                    <x-admin.detail.info-item label="Mã đơn hàng">
-                        <a href="{{ route('orders.show', $order) }}" class="text-decoration-none">
-                            {{ $order->MaDonHang }}
-                        </a>
-                    </x-admin.detail.info-item>
-                    <x-admin.detail.info-item label="Trạng thái đơn">
-                        <x-admin.status-badge :status="$order->TrangThai" :enum="\App\Enums\OrderStatus::class" :pill="false" />
-                    </x-admin.detail.info-item>
-                    <x-admin.detail.info-item label="Tổng thanh toán">
-                        <x-admin.detail.money :value="$order->ThanhTien" class="fw-bold" />
-                    </x-admin.detail.info-item>
-                </x-admin.detail.info-grid>
-                <div class="detail-lock mt-3">
-                    <i class="bi bi-info-circle"></i>
-                    <span>Đơn hàng mới được tạo sau khi kiểm tra thực tế và có trạng thái Đã tiếp nhận. Đơn cũ đang Chờ tiếp nhận vẫn cần hoàn tất kiểm tra trên trang đơn hàng.</span>
+        <div class="card shadow-sm border-0 order-first">
+            <div class="card-header bg-transparent border-bottom d-flex align-items-center gap-2 py-3">
+                <div class="bg-light rounded p-2 d-inline-flex align-items-center justify-content-center">
+                    <i class="fas fa-sliders-h text-secondary"></i>
                 </div>
-            @else
-                <x-admin.detail.empty :message="config('giatui.booking_two_step') ? 'Booking chưa chuyển thành đơn hàng chính thức.' : 'Chưa có đơn — mở form kiểm tra thực tế để tiếp nhận Booking'" icon="bi-hourglass-split" />
-            @endif
-        </x-admin.detail.panel>
+                <h5 class="card-title mb-0 fw-bold">Thao tác</h5>
+            </div>
+            <div class="card-body d-flex flex-column gap-2">
+                @if($booking->statusEnum() === \App\Enums\BookingStatus::Pending)
+                @can('bookings.edit')
+                    <a href="{{ route('bookings.edit', $booking) }}" class="btn btn-primary w-100 py-2">
+                        <i class="fas fa-pencil-alt me-1"></i> Chỉnh sửa
+                    </a>
+                @endcan
+                @endif
 
-        @if(config('giatui.booking_two_step') && $booking->giaoNhanDuKiens->isNotEmpty())
-            <x-admin.detail.panel title="Phiếu nhận và phiếu trả từ Booking" icon="bi-truck" :iconClass="'bg-info-subtle text-info'">
+                @if(! $order && $booking->statusEnum() === \App\Enums\BookingStatus::Pending)
+                    @can('bookings.confirm')
+                        <form action="{{ route('bookings.approve', $booking) }}" method="POST">@csrf<button class="btn btn-success w-100 py-2" type="submit"><i class="bi bi-check-circle me-1"></i>Xác nhận Booking</button></form>
+                        <div class="pt-2 border-top">
+                            <x-admin.detail.confirm-form
+                                :action="route('bookings.cancel', $booking)"
+                                method="POST"
+                                title="Hủy đặt lịch?"
+                                text="Booking đang chờ sẽ được chuyển sang trạng thái Đã hủy. Bạn có muốn tiếp tục không?"
+                                label="Hủy đặt lịch"
+                                icon="bi bi-x-circle"
+                                variant="btn-outline-danger"
+                                size="py-2"
+                                block
+                            />
+                        </div>
+                    @endcan
+                @endif
+
+                <a href="{{ route('bookings.index') }}" class="btn btn-outline-secondary w-100 py-2 text-dark">
+                    <i class="fas fa-arrow-left me-1"></i> Quay lại danh sách
+                </a>
+            </div>
+        </div>
+
+        @if($booking->giaoNhanDuKiens->isNotEmpty())
+            <x-admin.detail.panel title="Phiếu nhận và kế hoạch trả từ Booking" icon="bi-truck" :iconClass="'bg-info-subtle text-info'">
                 @foreach($booking->giaoNhanDuKiens as $leg)
                     <div class="border rounded p-3 mb-2">
-                        <strong>{{ $leg->LoaiGiaoNhan === 'NHAN_DO' ? 'Phiếu nhận' : 'Phiếu trả' }}</strong>
+                        <strong>{{ $leg->LoaiGiaoNhan === 'NHAN_DO' ? 'Phiếu nhận đồ' : 'Kế hoạch trả đồ' }}</strong>
                         <span class="ms-2">{{ $leg->HinhThuc }}</span>
                         <span class="ms-2 text-muted">{{ $leg->TrangThai }}</span>
                         <div class="text-muted small">{{ $leg->DiaChi ?: 'Tại cửa hàng' }}</div>
+                        @if($leg->LoaiGiaoNhan === 'NHAN_DO')
+                            <div class="small text-muted mt-2">
+                                {{ $leg->HinhThuc === 'Tại nhà' ? 'Nhân viên đến nhận đồ tại địa chỉ trên.' : 'Khách mang đồ đến cửa hàng để nhân viên tiếp nhận.' }}
+                            </div>
+                            @if(! $order
+                                && $booking->statusEnum() === \App\Enums\BookingStatus::Confirmed
+                                && $leg->TrangThai !== \App\Enums\DeliveryStatus::Cancelled->dbValue())
+                                @can('bookings.confirm')
+                                    @if($leg->TrangThai === 'Đã nhận')
+                                        <a href="{{ route('bookings.inspection', $booking) }}" class="btn btn-outline-primary btn-sm mt-3">
+                                            <i class="bi bi-clipboard-check me-1"></i>Kiểm tra và tạo đơn
+                                        </a>
+                                    @else
+                                        <form action="{{ route('bookings.receive', $booking) }}" method="POST" class="mt-3">
+                                            @csrf
+                                            <button class="btn btn-primary btn-sm" type="submit">Xác nhận đã nhận đồ</button>
+                                        </form>
+                                    @endif
+                                @endcan
+                            @elseif($leg->TrangThai === \App\Enums\DeliveryStatus::Cancelled->dbValue())
+                                <div class="small text-muted mt-2">Phiếu đã hủy; không thể xác nhận nhận đồ.</div>
+                            @endif
+                        @else
+                            <div class="small text-muted mt-2">Thông tin kế hoạch từ Booking; đây chưa phải phiếu giao vận hành.</div>
+                        @endif
                         @if($leg->DonHangID && $leg->BookingKiemKeID === $booking->kiemKe?->BookingKiemKeID)
                             <div class="small mt-2">
                                 Đã đối soát từ phiếu nhận · kiểm kê phiên bản {{ $booking->kiemKe->PhienBan }} ·
@@ -156,91 +196,47 @@
                                     @endforeach
                                 </ul>
                             @endif
-                        @elseif($leg->LoaiGiaoNhan === 'GIAO_DO')
-                            <div class="small text-muted mt-2">Chờ nhánh Nhận hoàn tất kiểm kê và tạo đơn.</div>
                         @endif
                     </div>
                 @endforeach
             </x-admin.detail.panel>
         @endif
-
-        @if(config('giatui.booking_two_step') && $booking->kiemKe)
-            <x-admin.detail.panel title="Kiểm kê thực tế" icon="bi-clipboard-check" :iconClass="'bg-warning-subtle text-warning'">
-                <p class="mb-1">Phiên bản {{ $booking->kiemKe->PhienBan }} · {{ count($booking->kiemKe->DuLieuThucTe['items'] ?? []) }} dòng đồ thực tế</p>
-                <p class="mb-0">{{ $booking->kiemKe->CoChenhLech ? 'Có chênh lệch so với thông tin Booking; nhân viên đã đối soát.' : 'Không có chênh lệch.' }}</p>
-            </x-admin.detail.panel>
-        @endif
-
-        <div class="card shadow-sm border-0 order-first">
-            <div class="card-header bg-transparent border-bottom d-flex align-items-center gap-2 py-3">
-                <div class="bg-light rounded p-2 d-inline-flex align-items-center justify-content-center">
-                    <i class="fas fa-sliders-h text-secondary"></i>
-                </div>
-                <h5 class="card-title mb-0 fw-bold">Thao tác</h5>
-            </div>
-            <div class="card-body d-flex flex-column gap-2">
-                @if(! config('giatui.booking_two_step') || $booking->statusEnum() === \App\Enums\BookingStatus::Pending)
-                @can('bookings.edit')
-                    <a href="{{ route('bookings.edit', $booking) }}" class="btn btn-primary w-100 py-2">
-                        <i class="fas fa-pencil-alt me-1"></i> Chỉnh sửa
-                    </a>
-                @endcan
-                @endif
-
-                @php $order = $booking->donHangs->first() @endphp
-                @if($order)
-                    @can('orders.view')
-                    <a href="{{ route('orders.show', $order) }}" class="btn btn-outline-primary w-100 py-2">
-                        <i class="bi bi-receipt me-1"></i> Xem đơn {{ $order->MaDonHang }}
-                    </a>
-                    @endcan
-                @elseif(config('giatui.booking_two_step') && $booking->statusEnum() === \App\Enums\BookingStatus::Pending)
-                    @can('bookings.confirm')
-                        <form action="{{ route('bookings.approve', $booking) }}" method="POST">@csrf<button class="btn btn-primary w-100 py-2" type="submit">Xác nhận Booking</button></form>
-                        <form action="{{ route('bookings.cancel', $booking) }}" method="POST">@csrf<button class="btn btn-outline-danger w-100 py-2" type="submit">Hủy Booking</button></form>
-                    @endcan
-                @elseif($booking->statusEnum() === \App\Enums\BookingStatus::Pending)
-                    @can('bookings.confirm')
-                        <a href="{{ route('bookings.inspection', $booking) }}" class="btn btn-outline-primary py-2 w-100">
-                            <i class="bi bi-clipboard-check me-1"></i>Kiểm tra thực tế &amp; chuyển đổi
-                        </a>
-                    @endcan
-                @elseif(config('giatui.booking_two_step') && $booking->statusEnum() === \App\Enums\BookingStatus::Confirmed)
-                    @can('bookings.confirm')
-                        @if($booking->giaoNhanDuKiens->firstWhere('LoaiGiaoNhan', 'NHAN_DO')?->TrangThai !== 'Đã nhận')
-                            <form action="{{ route('bookings.receive', $booking) }}" method="POST">@csrf<button class="btn btn-primary w-100 py-2" type="submit">Ghi nhận đã nhận đồ</button></form>
-                        @else
-                        <a href="{{ route('bookings.inspection', $booking) }}" class="btn btn-outline-primary py-2 w-100">
-                            <i class="bi bi-clipboard-check me-1"></i>Đối chiếu, điều chỉnh &amp; tạo đơn
-                        </a>
-                        @endif
-                    @endcan
-                @elseif($booking->statusEnum() === \App\Enums\BookingStatus::Confirmed)
-                    <div class="alert alert-warning mb-0" role="alert">
-                        Booking đã được xác nhận nhưng chưa có đơn hàng. Vui lòng kiểm tra nhật ký hệ thống.
-                    </div>
-                @endif
-
-                @if(! $order)
-                    @can('bookings.delete')
-                        <x-admin.detail.confirm-form
-                            :action="route('bookings.destroy', $booking)"
-                            title="Xóa đặt lịch?"
-                            text="Hành động này không thể hoàn tác."
-                            label="Xóa đặt lịch"
-                            icon="bi-trash"
-                            variant="btn-outline-danger"
-                            size="py-2"
-                            block
-                        />
-                    @endcan
-                @endif
-
-                <a href="{{ route('bookings.index') }}" class="btn btn-outline-secondary w-100 py-2 text-dark">
-                    <i class="fas fa-arrow-left me-1"></i> Quay lại danh sách
-                </a>
-            </div>
-        </div>
     </div>
 </div>
+
+@if($order)
+    <div class="row g-4 align-items-start">
+        <div class="col-12">
+        <x-admin.detail.panel title="Đơn hàng liên kết" icon="bi-receipt" :iconClass="'bg-success-subtle text-success'">
+            <x-admin.detail.info-grid :columns="1">
+                <x-admin.detail.info-item label="Mã đơn hàng">
+                    <a href="{{ route('orders.show', $order) }}" class="text-decoration-none">
+                        {{ $order->MaDonHang }}
+                    </a>
+                </x-admin.detail.info-item>
+                <x-admin.detail.info-item label="Trạng thái đơn">
+                    <x-admin.status-badge :status="$order->TrangThai" :enum="\App\Enums\OrderStatus::class" :pill="false" />
+                </x-admin.detail.info-item>
+                <x-admin.detail.info-item label="Tổng thanh toán">
+                    <x-admin.detail.money :value="$order->ThanhTien" class="fw-bold" />
+                </x-admin.detail.info-item>
+            </x-admin.detail.info-grid>
+            @if($booking->kiemKe)
+                <div class="detail-lock mt-3" data-booking-inspection-summary>
+                    <i class="bi bi-clipboard-check"></i>
+                    <span>
+                        Đối soát kiểm kê phiên bản {{ $booking->kiemKe->PhienBan }} ·
+                        {{ count($booking->kiemKe->DuLieuThucTe['items'] ?? []) }} dòng đồ thực tế.
+                        {{ $booking->kiemKe->CoChenhLech ? 'Có chênh lệch so với thông tin Booking; nhân viên đã đối soát.' : 'Không có chênh lệch.' }}
+                    </span>
+                </div>
+            @endif
+            <div class="detail-lock mt-3">
+                <i class="bi bi-info-circle"></i>
+                <span>Đơn hàng mới được tạo sau khi kiểm tra thực tế và có trạng thái Đã tiếp nhận. Đơn cũ đang Chờ tiếp nhận vẫn cần hoàn tất kiểm tra trên trang đơn hàng.</span>
+            </div>
+        </x-admin.detail.panel>
+        </div>
+    </div>
+@endif
 @endsection
