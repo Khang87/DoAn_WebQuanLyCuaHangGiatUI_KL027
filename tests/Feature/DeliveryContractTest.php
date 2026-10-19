@@ -41,6 +41,8 @@ class DeliveryContractTest extends TestCase
         });
         Schema::create('Booking', function (Blueprint $table): void {
             $table->increments('BookingID');
+            $table->string('MaBooking')->default('DL-test');
+            $table->unsignedInteger('KhachHangID')->nullable();
             $table->string('TrangThai')->default('DaXacNhan');
             $table->string('HinhThucNhanDo')->nullable();
             $table->string('DiaChiNhan')->nullable();
@@ -48,15 +50,22 @@ class DeliveryContractTest extends TestCase
             $table->string('DiaChiTra')->nullable();
             $table->date('NgayHen')->nullable();
             $table->time('GioHen')->nullable();
+            $table->string('GhiChu')->nullable();
         });
         Schema::create('BookingGiaoNhan', function (Blueprint $table): void {
             $table->increments('BookingGiaoNhanID');
             $table->unsignedInteger('BookingID');
             $table->unsignedInteger('DonHangID')->nullable();
-            $table->string('LoaiGiaoNhan');
-            $table->string('HinhThuc');
+            $table->unsignedInteger('BookingKiemKeID')->nullable();
+            $table->string('LoaiGiaoNhan')->default('NHAN_DO');
+            $table->string('HinhThuc')->default('Tại cửa hàng');
             $table->string('DiaChi')->nullable();
+            $table->unsignedInteger('NhanVienID')->nullable();
+            $table->dateTime('ThoiGianDuKien')->nullable();
+            $table->dateTime('ThoiGianThucTe')->nullable();
             $table->decimal('PhiGiaoNhan', 12, 2)->default(0);
+            $table->string('TrangThai')->default('Chờ thực hiện');
+            $table->dateTime('NgayTao')->nullable();
         });
         Schema::create('KhachHang', function (Blueprint $table): void {
             $table->increments('KhachHangID');
@@ -72,14 +81,25 @@ class DeliveryContractTest extends TestCase
         Schema::create('TaiKhoan', function (Blueprint $table): void {
             $table->increments('TaiKhoanID');
             $table->unsignedInteger('NhanVienID')->nullable();
+            $table->string('TrangThai')->default('Hoạt động');
         });
         Schema::create('VaiTro', function (Blueprint $table): void {
             $table->increments('VaiTroID');
             $table->string('TenVaiTro');
+            $table->string('TrangThai')->default('Hoạt động');
         });
         Schema::create('TaiKhoan_VaiTro', function (Blueprint $table): void {
             $table->unsignedInteger('TaiKhoanID');
             $table->unsignedInteger('VaiTroID');
+        });
+        Schema::create('VaiTro_Quyen', function (Blueprint $table): void {
+            $table->unsignedInteger('VaiTroID');
+            $table->unsignedInteger('QuyenID');
+        });
+        Schema::create('Quyen', function (Blueprint $table): void {
+            $table->increments('QuyenID');
+            $table->string('MaQuyen');
+            $table->string('TrangThai')->default('Hoạt động');
         });
         Schema::create('GiaoNhan', function (Blueprint $table): void {
             $table->increments('GiaoNhanID');
@@ -133,7 +153,7 @@ class DeliveryContractTest extends TestCase
 
     protected function tearDown(): void
     {
-        foreach (['NhatKyHeThong', 'HoaDon', 'ThanhToan', 'BookingGiaoNhan', 'GiaoNhan', 'TaiKhoan_VaiTro', 'VaiTro', 'TaiKhoan', 'NhanVien', 'KhachHang', 'Booking', 'DonHang'] as $table) {
+        foreach (['NhatKyHeThong', 'HoaDon', 'ThanhToan', 'BookingGiaoNhan', 'GiaoNhan', 'VaiTro_Quyen', 'Quyen', 'TaiKhoan_VaiTro', 'VaiTro', 'TaiKhoan', 'NhanVien', 'KhachHang', 'Booking', 'DonHang'] as $table) {
             Schema::dropIfExists($table);
         }
         $this->travelBack();
@@ -272,9 +292,135 @@ class DeliveryContractTest extends TestCase
 
         $this->actingAs($manager)->withoutMiddleware()->get(route('deliveries.create'))
             ->assertOk()->assertSee('Nhân viên giao nhận')
+            ->assertSee('Chưa xác định được nhân viên mặc định')
             ->assertDontSee('Chủ cửa hàng mẫu')->assertDontSee('Quản lý mẫu');
         $this->postJson(route('deliveries.store'), $this->data(['employee_id' => 4]))
             ->assertUnprocessable()->assertJsonValidationErrors('employee_id');
+    }
+
+    public function test_create_form_defaults_to_linked_eligible_employee_and_supports_name_search(): void
+    {
+        DB::table('NhanVien')->where('NhanVienID', 1)->update(['HoTen' => 'Nhân viên giao nhận']);
+        $manager = Mockery::mock(User::class)->makePartial();
+        $manager->NhanVienID = 1;
+        $manager->shouldReceive('isManager')->andReturn(true);
+        view()->share('errors', new ViewErrorBag);
+
+        $this->actingAs($manager)->withoutMiddleware()->get(route('deliveries.create'))
+            ->assertOk()
+            ->assertSee('data-employee-search', false)
+            ->assertSee('delivery-employee-options', false)
+            ->assertSee('Nhân viên giao nhận (#1)', false)
+            ->assertSee('name="employee_id" value="1"', false)
+            ->assertDontSee('Chưa xác định được nhân viên mặc định');
+    }
+
+    public function test_booking_intake_documents_are_listed_and_open_without_an_order(): void
+    {
+        DB::table('KhachHang')->insert(['KhachHangID' => 2, 'HoTen' => 'Khách Booking', 'SoDienThoai' => '0900000000']);
+        DB::table('Booking')->insert([
+            'BookingID' => 2,
+            'MaBooking' => 'DL-BOOK-2',
+            'KhachHangID' => 2,
+            'TrangThai' => 'Đã xác nhận',
+            'HinhThucNhanDo' => 'Tại cửa hàng',
+            'HinhThucTraDo' => 'Tại cửa hàng',
+            'NgayHen' => '2026-10-08',
+        ]);
+        $documentId = DB::table('BookingGiaoNhan')->insertGetId([
+            'BookingID' => 2,
+            'LoaiGiaoNhan' => 'NHAN_DO',
+            'HinhThuc' => 'Tại cửa hàng',
+            'NhanVienID' => 1,
+            'TrangThai' => 'Chờ thực hiện',
+        ], 'BookingGiaoNhanID');
+        $manager = Mockery::mock(User::class)->makePartial();
+        $manager->shouldReceive('isManager')->andReturn(true);
+        view()->share('errors', new ViewErrorBag);
+
+        $this->actingAs($manager)->withoutMiddleware()->get(route('deliveries.index'))
+            ->assertOk()
+            ->assertSee('Phiếu giao nhận vận hành')
+            ->assertSee('Chứng từ nhận/trả từ Booking')
+            ->assertSee('DL-BOOK-2')
+            ->assertSee('Khách Booking')
+            ->assertSee('Chưa tạo đơn')
+            ->assertSee('Booking · Nhận đồ');
+
+        $this->get(route('deliveries.booking-documents.show', $documentId))
+            ->assertOk()
+            ->assertSee('Phiếu nhận đồ từ Booking')
+            ->assertSee('Chưa tạo đơn hàng')
+            ->assertSee('Không yêu cầu địa chỉ giao tận nhà');
+
+        DB::table('DonHang')->insert([
+            'DonHangID' => 2,
+            'MaDonHang' => 'DH-BOOK-2',
+            'BookingID' => 2,
+            'TrangThai' => OrderStatus::Received->value,
+        ]);
+        $this->get(route('deliveries.index'))
+            ->assertOk()
+            ->assertSee('DH-BOOK-2')
+            ->assertDontSee('Chưa tạo đơn');
+        $this->get(route('deliveries.booking-documents.show', $documentId))
+            ->assertOk()
+            ->assertSee('DH-BOOK-2')
+            ->assertSee('Đơn hàng đã được tạo từ kiểm kê')
+            ->assertDontSee('Kiểm tra và tạo đơn');
+    }
+
+    public function test_received_booking_document_filter_does_not_leak_into_operational_deliveries(): void
+    {
+        DB::table('BookingGiaoNhan')->insert([
+            'BookingID' => 1,
+            'DonHangID' => null,
+            'LoaiGiaoNhan' => 'NHAN_DO',
+            'HinhThuc' => 'Tại cửa hàng',
+            'TrangThai' => 'Đã nhận',
+        ]);
+
+        $this->assertSame(0, app(DeliveryService::class)->getAll(['status' => 'received'])->total());
+        $this->assertSame(1, app(DeliveryService::class)->getBookingDocuments(['status' => 'received'])->total());
+    }
+
+    public function test_picking_status_filter_targets_intake_documents_in_both_lists(): void
+    {
+        DB::table('GiaoNhan')->insert([
+            'DonHangID' => 1,
+            'NhanVienID' => 1,
+            'LoaiGiaoNhan' => 'NHAN_DO',
+            'HinhThuc' => 'Tại cửa hàng',
+            'TrangThai' => 'Đang thực hiện',
+        ]);
+        DB::table('BookingGiaoNhan')->insert([
+            'BookingID' => 1,
+            'LoaiGiaoNhan' => 'NHAN_DO',
+            'HinhThuc' => 'Tại cửa hàng',
+            'TrangThai' => 'Đang thực hiện',
+        ]);
+
+        $deliveries = app(DeliveryService::class)->getAll(['status' => 'picking']);
+        $bookingDocuments = app(DeliveryService::class)->getBookingDocuments(['status' => 'picking']);
+
+        $this->assertSame(1, $deliveries->total());
+        $this->assertSame(1, $bookingDocuments->total());
+        $this->assertSame('page', $deliveries->getPageName());
+        $this->assertSame('booking_page', $bookingDocuments->getPageName());
+    }
+
+    public function test_booking_document_detail_route_rejects_users_without_delivery_view_permission(): void
+    {
+        $user = new User;
+        $user->forceFill([
+            'TaiKhoanID' => 100,
+            'NhanVienID' => 1,
+            'TrangThai' => 'Hoạt động',
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('deliveries.booking-documents.show', 1))
+            ->assertForbidden();
     }
 
     public function test_pending_return_can_be_unscheduled_and_notes_edit_preserves_schedule_and_status(): void

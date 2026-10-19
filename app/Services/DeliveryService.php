@@ -38,12 +38,16 @@ class DeliveryService
         }
 
         if (! empty($filters['status'])) {
-            $status = DeliveryStatus::parse($filters['status']);
-            $query->where('TrangThai', $status->dbValue());
-            if ($status === DeliveryStatus::Picking) {
-                $query->where('LoaiGiaoNhan', 'NHAN_DO');
-            } elseif ($status === DeliveryStatus::Delivering) {
-                $query->where('LoaiGiaoNhan', 'GIAO_DO');
+            if ($filters['status'] === 'received') {
+                $query->whereRaw('1 = 0');
+            } else {
+                $status = DeliveryStatus::parse($filters['status']);
+                $query->where('TrangThai', $status->dbValue());
+                if ($status === DeliveryStatus::Picking) {
+                    $query->where('LoaiGiaoNhan', 'NHAN_DO');
+                } elseif ($status === DeliveryStatus::Delivering) {
+                    $query->where('LoaiGiaoNhan', 'GIAO_DO');
+                }
             }
         }
 
@@ -76,6 +80,103 @@ class DeliveryService
             ->orderBy($sortBy, $sortOrder)
             ->paginate(10)
             ->withQueryString();
+    }
+
+    public function getBookingDocuments(array $filters = []): LengthAwarePaginator
+    {
+        $query = BookingGiaoNhan::query()->with([
+            'booking:BookingID,MaBooking,KhachHangID,TrangThai,HinhThucNhanDo,HinhThucTraDo',
+            'booking.khachHang:KhachHangID,HoTen,SoDienThoai',
+            'booking.donHangs:DonHangID,MaDonHang,BookingID,KhachHangID',
+            'donHang:DonHangID,MaDonHang,KhachHangID',
+            'donHang.khachHang:KhachHangID,HoTen,SoDienThoai',
+            'nhanVien:NhanVienID,HoTen',
+        ]);
+
+        if (isset($filters['employee_id'])) {
+            $query->where('NhanVienID', $filters['employee_id']);
+        }
+
+        if (! empty($filters['customer_id'])) {
+            $query->whereHas('booking', fn ($bookingQuery) => $bookingQuery
+                ->where('KhachHangID', $filters['customer_id']));
+        }
+
+        if (! empty($filters['method'])) {
+            $method = match ($filters['method']) {
+                'nhan_do' => 'NHAN_DO',
+                'giao_do' => 'GIAO_DO',
+                default => $filters['method'],
+            };
+            $query->where('LoaiGiaoNhan', $method);
+        }
+
+        if (! empty($filters['status'])) {
+            if ($filters['status'] === 'received') {
+                $query->where('LoaiGiaoNhan', 'NHAN_DO')->where('TrangThai', 'Đã nhận');
+            } else {
+                $status = DeliveryStatus::parse($filters['status']);
+                $query->where(function ($statusQuery) use ($status): void {
+                    $statusQuery->where('TrangThai', $status->dbValue());
+                    if ($status === DeliveryStatus::Completed) {
+                        $statusQuery->orWhere(function ($receivedQuery): void {
+                            $receivedQuery->where('LoaiGiaoNhan', 'NHAN_DO')
+                                ->where('TrangThai', 'Đã nhận');
+                        });
+                    }
+                });
+                if ($status === DeliveryStatus::Picking) {
+                    $query->where('LoaiGiaoNhan', 'NHAN_DO');
+                } elseif ($status === DeliveryStatus::Delivering) {
+                    $query->where('LoaiGiaoNhan', 'GIAO_DO');
+                }
+            }
+        }
+
+        if (! empty($filters['search'])) {
+            $search = trim($filters['search']);
+            $numericPart = preg_replace('/[^0-9]/', '', $search);
+            $query->where(function ($searchQuery) use ($search, $numericPart): void {
+                $searchQuery->where('DiaChi', 'LIKE', "%{$search}%");
+                if ($numericPart !== '') {
+                    $searchQuery->orWhere('BookingGiaoNhanID', $numericPart)
+                        ->orWhere('BookingID', $numericPart)
+                        ->orWhere('DonHangID', $numericPart);
+                }
+                $searchQuery->orWhere('LoaiGiaoNhan', 'LIKE', "%{$search}%")
+                    ->orWhereHas('booking', function ($bookingQuery) use ($search): void {
+                        $bookingQuery->where('MaBooking', 'LIKE', "%{$search}%")
+                            ->orWhereHas('khachHang', fn ($customerQuery) => $customerQuery
+                                ->where('HoTen', 'LIKE', "%{$search}%")
+                                ->orWhere('SoDienThoai', 'LIKE', "%{$search}%"));
+                    })
+                    ->orWhereHas('donHang', fn ($orderQuery) => $orderQuery
+                        ->where('MaDonHang', 'LIKE', "%{$search}%"));
+            });
+        }
+
+        $sortBy = in_array($filters['sort_by'] ?? null, ['BookingGiaoNhanID', 'HinhThuc', 'TrangThai', 'ThoiGianDuKien'], true)
+            ? $filters['sort_by']
+            : 'ThoiGianDuKien';
+        $sortOrder = ($filters['sort_order'] ?? 'desc') === 'asc' ? 'asc' : 'desc';
+
+        return $query
+            ->orderBy($sortBy, $sortOrder)
+            ->orderBy('BookingGiaoNhanID', $sortOrder)
+            ->paginate(10, ['*'], 'booking_page')
+            ->withQueryString();
+    }
+
+    public function findBookingDocument(int $id): ?BookingGiaoNhan
+    {
+        return BookingGiaoNhan::query()
+            ->with([
+                'booking.khachHang',
+                'booking.donHangs',
+                'donHang.khachHang',
+                'nhanVien',
+            ])
+            ->find($id);
     }
 
     public function find(int $id): ?GiaoNhan

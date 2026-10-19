@@ -207,13 +207,7 @@
                 @endcan
                 @endif
 
-                @if($order)
-                    @can('orders.view')
-                    <a href="{{ route('orders.show', $order) }}" class="btn btn-outline-primary w-100 py-2">
-                        <i class="bi bi-receipt me-1"></i> Xem đơn {{ $order->MaDonHang }}
-                    </a>
-                    @endcan
-                @elseif($booking->statusEnum() === \App\Enums\BookingStatus::Pending)
+                @if(! $order && $booking->statusEnum() === \App\Enums\BookingStatus::Pending)
                     @can('bookings.confirm')
                         <form action="{{ route('bookings.approve', $booking) }}" method="POST">@csrf<button class="btn btn-primary w-100 py-2" type="submit">Xác nhận Booking</button></form>
                         <form action="{{ route('bookings.cancel', $booking) }}" method="POST">@csrf<button class="btn btn-outline-danger w-100 py-2" type="submit">Hủy Booking</button></form>

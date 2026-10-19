@@ -5,7 +5,7 @@
 
 @section('content')
 <div class="page-toolbar">
-    <p class="text-muted page-toolbar__desc">Kiểm tra đồ thực tế từ Booking trước khi xác nhận và tạo đơn Đã tiếp nhận.</p>
+    <p class="text-muted page-toolbar__desc">Theo dõi Booking từ khi xác nhận, nhận đồ thực tế đến khi kiểm kê và tạo đơn.</p>
 </div>
 
 <form action="{{ url()->current() }}" method="GET" class="row g-3 align-items-center mb-4">
@@ -66,20 +66,6 @@
                             @endcan
                             @can('bookings.edit')
                                 <a href="{{ route('bookings.edit', $booking) }}" class="btn btn-order-action edit" title="Sửa"><i class="bi bi-pencil"></i></a>
-                            @endcan
-                            @can('bookings.confirm')
-                                @if($booking->statusEnum() === \App\Enums\BookingStatus::Pending)
-                                    <a href="{{ route('bookings.inspection', $booking) }}" class="btn btn-order-action" title="Kiểm tra thực tế và chuyển đổi Booking">
-                                        <i class="bi bi-clipboard-check" aria-hidden="true"></i><span class="visually-hidden">Kiểm tra thực tế</span>
-                                    </a>
-                                @endif
-                            @endcan
-                            @can('bookings.edit')
-                                @if(! $booking->donHangs->first() && $booking->statusEnum() === \App\Enums\BookingStatus::Confirmed)
-                                    <span class="btn btn-order-action text-warning" aria-label="Thiếu đơn hàng" title="Booking đã xác nhận nhưng chưa có đơn hàng. Vui lòng kiểm tra nhật ký hệ thống."><i class="bi bi-exclamation-triangle"></i></span>
-                                @elseif($booking->donHangs->first())
-                                    <a href="{{ route('orders.show', $booking->donHangs->first()) }}" class="btn btn-order-action view" title="Xem đơn hàng {{ $booking->donHangs->first()->MaDonHang }}"><i class="bi bi-box-arrow-up-right"></i></a>
-                                @endif
                             @endcan
                             @can('bookings.delete')
                                 <form action="{{ route('bookings.destroy', $booking) }}" method="POST" class="d-inline" id="deleteBookingForm_{{ $booking->BookingID }}">

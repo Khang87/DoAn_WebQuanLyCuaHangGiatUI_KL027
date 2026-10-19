@@ -340,16 +340,23 @@ class OrderDeliveryProgressTest extends TestCase
         $this->assertStringContainsString('Đã thanh toán', $html);
     }
 
-    public function test_paid_order_badge_uses_same_style_and_icon_as_delivered_badge(): void
+    public function test_order_status_badges_use_distinct_styles_for_each_operational_state(): void
     {
-        $this->assertSame(
-            OrderStatus::badgeClassFor(OrderStatus::Delivered),
-            OrderStatus::badgeClassFor(OrderStatus::Paid)
-        );
-        $this->assertSame(
-            OrderStatus::iconFor(OrderStatus::Delivered),
-            OrderStatus::iconFor(OrderStatus::Paid)
-        );
+        $expectedClasses = [
+            OrderStatus::Pending->value => 'bg-secondary-subtle text-secondary-emphasis border border-secondary',
+            OrderStatus::Received->value => 'bg-primary-subtle text-primary-emphasis border border-primary',
+            OrderStatus::Washing->value => 'bg-purple-subtle text-purple-emphasis border border-purple',
+            OrderStatus::Washed->value => 'bg-teal-subtle text-teal-emphasis border border-teal',
+            OrderStatus::Delivering->value => 'bg-warning-subtle text-warning-emphasis border border-warning',
+            OrderStatus::Delivered->value => 'bg-success-subtle text-success-emphasis border border-success',
+            OrderStatus::Paid->value => 'bg-info-subtle text-info-emphasis border border-info',
+            OrderStatus::Cancelled->value => 'bg-danger-subtle text-danger-emphasis border border-danger',
+        ];
+
+        foreach ($expectedClasses as $status => $expectedClass) {
+            $this->assertSame($expectedClass, OrderStatus::badgeClassFor($status));
+        }
+        $this->assertCount(count(OrderStatus::cases()), array_unique(array_values($expectedClasses)));
     }
 
     private function createOrder(int $id, ?int $bookingId = null): DonHang

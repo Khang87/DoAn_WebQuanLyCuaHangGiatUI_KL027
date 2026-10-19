@@ -30,7 +30,7 @@ class GiaoNhanController extends Controller
     public function index(Request $request)
     {
         $user = $request->user();
-        $deliveries = $this->deliveryService->getAll([
+        $filters = [
             'employee_id' => $user && ! $user->isManager() ? ($user->NhanVienID ?: -1) : null,
             'search' => $request->input('search'),
             'customer_id' => $request->input('customer_id'),
@@ -38,14 +38,16 @@ class GiaoNhanController extends Controller
             'status' => $request->input('status'),
             'sort_by' => $request->input('sort_by'),
             'sort_order' => $request->input('sort_order'),
-        ]);
+        ];
+        $deliveries = $this->deliveryService->getAll($filters);
+        $bookingDocuments = $this->deliveryService->getBookingDocuments($filters);
 
         $customers = KhachHang::query()->orderBy('HoTen')->get(['KhachHangID', 'HoTen']);
         $employees = NhanVien::where('TrangThai', 'Hoạt động')
             ->orderBy('HoTen')
             ->get(['NhanVienID', 'HoTen']);
 
-        return view('admin.deliveries.index', compact('deliveries', 'customers', 'employees'));
+        return view('admin.deliveries.index', compact('deliveries', 'bookingDocuments', 'customers', 'employees'));
     }
 
     public function create()
@@ -55,7 +57,12 @@ class GiaoNhanController extends Controller
         $canAssignEmployee = ! $user || $user->isManager();
         $assignedEmployee = $canAssignEmployee ? null : $user->nhanVien;
         $customers = KhachHang::query()->orderBy('HoTen')->get(['KhachHangID', 'HoTen']);
-        $employees = $canAssignEmployee ? $this->assignableEmployees() : new Collection([$assignedEmployee]);
+        $employees = $this->assignableEmployees();
+        $defaultEmployeeId = old('employee_id', $user?->NhanVienID);
+        $selectedEmployee = $employees->firstWhere('NhanVienID', (int) $defaultEmployeeId);
+        if (! $canAssignEmployee) {
+            $selectedEmployee = $assignedEmployee;
+        }
         $selectedOrderId = request()->integer('order_id') ?: null;
         $selectedMethod = request()->input('method', 'nhan_do');
         $selectedFulfillment = request()->input('fulfillment', 'Tại nhà');
@@ -66,6 +73,7 @@ class GiaoNhanController extends Controller
         return view('admin.deliveries.create', compact(
             'customers',
             'employees',
+            'selectedEmployee',
             'canAssignEmployee',
             'assignedEmployee',
             'orders',
@@ -136,10 +144,15 @@ class GiaoNhanController extends Controller
         $selectedAddress = $selectedFulfillment === 'Tại nhà'
             ? ($order->booking?->DiaChiTra ?? $latestLeg?->DiaChi)
             : null;
+        $selectedEmployee = $employees->firstWhere(
+            'NhanVienID',
+            (int) old('employee_id', $user?->NhanVienID),
+        );
 
         return view('admin.deliveries.create', [
             'customers' => $customers,
             'employees' => $employees,
+            'selectedEmployee' => $selectedEmployee,
             'canAssignEmployee' => ! $user || $user->isManager(),
             'assignedEmployee' => $user && ! $user->isManager() ? $user->nhanVien : null,
             'orders' => $orders,
@@ -177,6 +190,25 @@ class GiaoNhanController extends Controller
         $this->restrictToOwnDelivery($delivery, auth()->user());
 
         return view('admin.deliveries.show', compact('delivery'));
+    }
+
+    public function showBookingDocument(int $bookingDelivery)
+    {
+        $bookingDocument = $this->deliveryService->findBookingDocument($bookingDelivery);
+        if (! $bookingDocument) {
+            abort(404);
+        }
+
+        $user = auth()->user();
+        if ($user && ! $user->isManager()) {
+            $this->requireActiveEmployeeForStaff($user);
+            abort_unless(
+                $user->NhanVienID && (int) $bookingDocument->NhanVienID === (int) $user->NhanVienID,
+                403,
+            );
+        }
+
+        return view('admin.deliveries.booking-document', compact('bookingDocument'));
     }
 
     public function advanceProgress(int $id): RedirectResponse

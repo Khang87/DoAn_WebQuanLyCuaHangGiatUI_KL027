@@ -5,6 +5,7 @@
 @php
     $orderOptions = $orders ?? \App\Models\DonHang::orderByDesc('NgayTao')->get();
     $employeeOptions = $employees ?? \App\Models\NhanVien::where('TrangThai', 'Hoạt động')->orderBy('HoTen')->get();
+    $selectedEmployee ??= null;
     $selectedOrderId ??= old('order_id');
     $selectedMethod ??= old('method', 'nhan_do');
     $selectedFulfillment ??= old('fulfillment', 'Tại nhà');
@@ -22,7 +23,23 @@
             <div class="col-md-6">
                 <label class="form-label" for="employee_id">Nhân viên phụ trách <span class="text-danger">*</span></label>
                 @if($canAssignEmployee ?? true)
-                    <select class="form-select" id="employee_id" name="employee_id" required><option value="">Chọn nhân viên</option>@foreach($employeeOptions as $employee)<option value="{{ $employee->NhanVienID }}" @selected(old('employee_id') == $employee->NhanVienID)>{{ $employee->HoTen }}</option>@endforeach</select>
+                    <input class="form-control" id="employee_search" name="employee_search" type="search"
+                           list="delivery-employee-options" autocomplete="off" data-employee-search
+                           value="{{ old('employee_search', $selectedEmployee ? $selectedEmployee->HoTen . ' (#' . $selectedEmployee->NhanVienID . ')' : '') }}"
+                           placeholder="Gõ tên để tìm nhân viên" aria-describedby="employee-help">
+                    <datalist id="delivery-employee-options">
+                        @foreach($employeeOptions as $employee)
+                            <option value="{{ $employee->HoTen }} (#{{ $employee->NhanVienID }})" data-employee-id="{{ $employee->NhanVienID }}"></option>
+                        @endforeach
+                    </datalist>
+                    <input type="hidden" id="employee_id" name="employee_id" value="{{ old('employee_id', $selectedEmployee?->NhanVienID) }}" data-employee-id>
+                    <div id="employee-help" class="form-text">
+                        @if($selectedEmployee)
+                            Đã chọn nhân viên đang đăng nhập hoặc nhân viên đã chọn. Hãy chọn một gợi ý hợp lệ.
+                        @else
+                            Chưa xác định được nhân viên mặc định; vui lòng chọn nhân viên từ danh sách gợi ý.
+                        @endif
+                    </div>
                 @else
                     <input class="form-control" id="employee_id" value="{{ $assignedEmployee->HoTen }}" readonly>
                     <input type="hidden" name="employee_id" value="{{ $assignedEmployee->NhanVienID }}">

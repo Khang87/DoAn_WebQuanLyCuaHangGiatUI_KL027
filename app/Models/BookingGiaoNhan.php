@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class BookingGiaoNhan extends Model
 {
@@ -28,18 +29,23 @@ class BookingGiaoNhan extends Model
         'NgayTao' => 'datetime',
     ];
 
-    public function booking()
+    public function booking(): BelongsTo
     {
         return $this->belongsTo(Booking::class, 'BookingID');
     }
 
-    public function donHang()
+    public function donHang(): BelongsTo
     {
         return $this->belongsTo(DonHang::class, 'DonHangID');
     }
 
-    public function kiemKe()
+    public function kiemKe(): BelongsTo
     {
         return $this->belongsTo(BookingKiemKe::class, 'BookingKiemKeID');
+    }
+
+    public function nhanVien(): BelongsTo
+    {
+        return $this->belongsTo(NhanVien::class, 'NhanVienID', 'NhanVienID');
     }
 }

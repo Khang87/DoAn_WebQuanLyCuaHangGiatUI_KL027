@@ -33,6 +33,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\ViewErrorBag;
 use Illuminate\Validation\ValidationException;
+use Mockery;
 use PDOException;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\Support\BookingInspectionFixture;
@@ -109,6 +110,50 @@ class BookingOrderConversionTest extends TestCase
         $this->assertSame(2, DB::table('BookingGiaoNhan')->where('BookingID', $booking->BookingID)->count());
         $this->assertDatabaseCount('DonHang', 0);
         $this->assertDatabaseCount('GiaoNhan', 0);
+    }
+
+    public function test_delivery_booking_document_guides_intake_through_inspection_and_stops_after_conversion(): void
+    {
+        $this->createInspectionCatalog();
+        $booking = $this->createBooking();
+        $user = Mockery::mock(User::class)->makePartial();
+        $user->forceFill([
+            'TaiKhoanID' => 1,
+            'NhanVienID' => 1,
+            'TrangThai' => 'Hoạt động',
+        ]);
+        $user->shouldReceive('isManager')->andReturn(true);
+        $user->shouldReceive('isOwner')->andReturn(true);
+        $user->shouldReceive('isActive')->andReturn(true);
+        $user->shouldReceive('canPermission')->andReturn(true);
+        $this->actingAs($user);
+        Gate::before(fn () => true);
+        $this->withoutMiddleware();
+        $this->bookingService->approve($booking);
+        $intake = BookingGiaoNhan::query()
+            ->where('BookingID', $booking->BookingID)
+            ->where('LoaiGiaoNhan', 'NHAN_DO')
+            ->firstOrFail();
+
+        $this->get(route('deliveries.booking-documents.show', $intake))
+            ->assertOk()
+            ->assertSee('Xác nhận đã nhận đồ')
+            ->assertDontSee('Kiểm tra và tạo đơn');
+
+        $this->bookingService->markReceived($booking);
+        $this->get(route('deliveries.booking-documents.show', $intake))
+            ->assertOk()
+            ->assertSee('Kiểm tra và tạo đơn');
+
+        $payload = $this->inspectionPayload($booking, 1);
+        $payload['items'] = $this->actualItems();
+        $this->bookingService->submitInspection($booking, $payload);
+
+        $this->assertSame(1, DonHang::where('BookingID', $booking->BookingID)->count());
+        $this->get(route('deliveries.booking-documents.show', $intake))
+            ->assertOk()
+            ->assertSee('Đơn hàng đã được tạo từ kiểm kê')
+            ->assertDontSee('Kiểm tra và tạo đơn');
     }
 
     public function test_inspection_and_conversion_require_an_approved_booking_and_received_intake(): void
@@ -1540,7 +1585,7 @@ class BookingOrderConversionTest extends TestCase
             [],
             $databaseError,
         );
-        $orderService = \Mockery::mock(OrderService::class);
+        $orderService = Mockery::mock(OrderService::class);
         $orderService->shouldReceive('createFromBooking')
             ->once()
             ->andThrow($queryException);
@@ -1551,7 +1596,7 @@ class BookingOrderConversionTest extends TestCase
         ));
         Log::shouldReceive('error')
             ->once()
-            ->with('Booking operation failed', \Mockery::on(
+            ->with('Booking operation failed', Mockery::on(
                 fn (array $context): bool => $context['booking_id'] === $booking->BookingID
                     && $context['operation'] === 'confirm'
                     && $context['sql_state'] === '42703'

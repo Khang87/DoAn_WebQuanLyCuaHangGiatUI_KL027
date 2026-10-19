@@ -225,6 +225,10 @@ Route::middleware(['auth', 'reject.customer'])->group(function () {
     Route::post('deliveries/{delivery}/advance-progress', [GiaoNhanController::class, 'advanceProgress'])
         ->middleware('permission:deliveries.edit')
         ->name('deliveries.advance-progress');
+    Route::get('deliveries/booking-documents/{bookingDelivery}', [GiaoNhanController::class, 'showBookingDocument'])
+        ->whereNumber('bookingDelivery')
+        ->middleware('permission:deliveries.view')
+        ->name('deliveries.booking-documents.show');
     Route::resource('deliveries', GiaoNhanController::class)
         ->middlewareFor(['index', 'show'], 'permission:deliveries.view')
         ->middlewareFor(['create', 'store'], 'permission:deliveries.create')

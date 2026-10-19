@@ -46,4 +46,17 @@
     fulfillment.form.addEventListener('reset', () => setTimeout(update, 0));
     prefillFromBooking();
     update();
+
+    const employeeSearch = document.querySelector('[data-employee-search]');
+    const employeeId = document.querySelector('[data-employee-id]');
+    const employeeOptions = document.getElementById('delivery-employee-options');
+    if (employeeSearch && employeeId && employeeOptions) {
+        const syncEmployeeId = () => {
+            const option = [...employeeOptions.options].find(item => item.value === employeeSearch.value);
+            employeeId.value = option?.dataset.employeeId || '';
+        };
+
+        employeeSearch.addEventListener('input', syncEmployeeId);
+        employeeSearch.addEventListener('change', syncEmployeeId);
+    }
 })();

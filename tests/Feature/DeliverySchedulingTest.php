@@ -125,8 +125,9 @@ class DeliverySchedulingTest extends TestCase
         $delivery->forceFill(['GiaoNhanID' => 1, 'LoaiGiaoNhan' => 'GIAO_DO', 'HinhThuc' => 'Tại cửa hàng']);
         $html = view('admin.deliveries.edit', ['delivery' => $delivery, 'orders' => collect(), 'employees' => collect(), 'errors' => new ViewErrorBag])->render();
         $this->assertStringContainsString('Loại giao nhận', $html);
-        $this->assertMatchesRegularExpression('/value="giao_do"\s+selected/', $html);
-        $this->assertMatchesRegularExpression('/value="Tại cửa hàng"\s+selected/', $html);
+        $this->assertMatchesRegularExpression('/<input type="hidden" name="method" value="giao_do">/', $html);
+        $this->assertMatchesRegularExpression('/id="method_display" value="Giao đồ" readonly/', $html);
+        $this->assertMatchesRegularExpression('/id="fulfillment_display" value="Tại cửa hàng" readonly/', $html);
         $this->assertStringContainsString('name="fulfillment"', $html);
     }
 

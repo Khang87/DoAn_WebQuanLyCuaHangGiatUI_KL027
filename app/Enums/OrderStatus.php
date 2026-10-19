@@ -43,11 +43,13 @@ enum OrderStatus: string
     public function badgeClass(): string
     {
         return match ($this) {
-            self::Pending => 'bg-warning-subtle text-warning-emphasis border border-warning',
-            self::Received, self::Washing => 'bg-primary-subtle text-primary-emphasis border border-primary-subtle fw-semibold',
-            self::Washed, self::Delivering => 'bg-info-subtle text-info-emphasis border border-info',
+            self::Pending => 'bg-secondary-subtle text-secondary-emphasis border border-secondary',
+            self::Received => 'bg-primary-subtle text-primary-emphasis border border-primary',
+            self::Washing => 'bg-purple-subtle text-purple-emphasis border border-purple',
+            self::Washed => 'bg-teal-subtle text-teal-emphasis border border-teal',
+            self::Delivering => 'bg-warning-subtle text-warning-emphasis border border-warning',
             self::Delivered => 'bg-success-subtle text-success-emphasis border border-success',
-            self::Paid => 'bg-success-subtle text-success-emphasis border border-success',
+            self::Paid => 'bg-info-subtle text-info-emphasis border border-info',
             self::Cancelled => 'bg-danger-subtle text-danger-emphasis border border-danger',
         };
     }
