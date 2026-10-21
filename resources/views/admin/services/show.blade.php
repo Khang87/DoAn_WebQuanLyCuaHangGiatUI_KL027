@@ -38,7 +38,7 @@
                                     <td>{{ number_format((float) $pricing->DonGia, 0, ',', '.') }} VNĐ</td>
                                     <td>{{ $pricing->NgayApDung?->format('d/m/Y') ?: '—' }}</td>
                                     <td>
-                                        <x-admin.status-badge :status="$pricing->TrangThai" :enum="\App\Enums\RecordStatus::class" :pill="false" />
+                                        <x-admin.status-badge :status="$pricing->TrangThai" :enum="\App\Enums\RecordStatus::class" />
                                     </td>
                                 </tr>
                             @endforeach
@@ -90,7 +90,7 @@
                 <x-admin.detail.info-item label="Thời gian dự kiến" :value="$service->ThoiGianDuKien ? $service->ThoiGianDuKien . ' phút' : 'Chưa thiết lập'" />
                 <x-admin.detail.info-item label="Ngày tạo" :value="$service->NgayTao?->format('d/m/Y H:i') ?: 'Chưa xác định'" />
                 <x-admin.detail.info-item label="Trạng thái">
-                    <x-admin.status-badge :status="$service->TrangThai" :enum="\App\Enums\RecordStatus::class" :pill="false" />
+                    <x-admin.status-badge :status="$service->TrangThai" :enum="\App\Enums\RecordStatus::class" />
                 </x-admin.detail.info-item>
             </x-admin.detail.info-grid>
 

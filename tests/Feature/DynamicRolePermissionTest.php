@@ -164,8 +164,31 @@ class DynamicRolePermissionTest extends TestCase
         $this->actingAs($owner)
             ->get(route('permissions.index'))
             ->assertOk()
+            ->assertSee('Đang hoạt động')
             ->assertDontSee('Thêm quyền')
             ->assertDontSee('Sửa quyền');
+    }
+
+    public function test_account_detail_uses_rounded_active_status_and_omits_activity_card(): void
+    {
+        $owner = $this->createAccount($this->createRole('Chủ cửa hàng'));
+        $account = $this->createAccount($this->createRole('Nhân viên'));
+
+        $this->actingAs($owner)
+            ->get(route('accounts.index'))
+            ->assertOk()
+            ->assertSee('Đang hoạt động')
+            ->assertSee('bg-success-subtle text-success-emphasis border border-success rounded-pill', false);
+
+        $this->actingAs($owner)
+            ->get(route('accounts.show', $account))
+            ->assertOk()
+            ->assertSee('Đang hoạt động')
+            ->assertSee('bg-success-subtle text-success-emphasis border border-success rounded-pill', false)
+            ->assertDontSee('Đơn hàng đã xử lý')
+            ->assertDontSee('Phiếu giao nhận')
+            ->assertDontSee('Cập nhật lần cuối')
+            ->assertDontSee('title="Hoạt động"', false);
     }
 
     public function test_account_creation_form_shows_only_the_profile_matching_the_selected_role(): void
@@ -436,7 +459,8 @@ class DynamicRolePermissionTest extends TestCase
             ->assertSee('Tài khoản đã được phân nhóm')
             ->assertSee('Kế toán')
             ->assertSee('Xem báo cáo')
-            ->assertSee('Xem hóa đơn');
+            ->assertSee('Xem hóa đơn')
+            ->assertSee('Đang hoạt động');
         $response->assertViewHas('metrics', [
             'roles' => 2,
             'permissions' => 2,

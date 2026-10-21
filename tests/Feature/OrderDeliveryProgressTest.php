@@ -4,12 +4,15 @@ namespace Tests\Feature;
 
 use App\Enums\OrderStatus;
 use App\Enums\PaymentStatus;
+use App\Models\DiemTichLuy;
 use App\Models\DonHang;
 use App\Models\GiaoNhan;
+use App\Models\KhachHang;
 use App\Models\User;
 use App\Services\DeliveryService;
 use App\Services\OrderService;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
@@ -338,6 +341,47 @@ class OrderDeliveryProgressTest extends TestCase
 
         $this->assertStringContainsString('Đã giao', $html);
         $this->assertStringContainsString('Đã thanh toán', $html);
+    }
+
+    public function test_customer_order_history_shows_operational_and_paid_badges_for_paid_order(): void
+    {
+        $this->createOrder(10);
+        DB::table('DonHang')->where('DonHangID', 10)->update([
+            'TrangThai' => OrderStatus::Paid->value,
+        ]);
+        DB::table('NhatKyHeThong')->insert([
+            'HanhDong' => 'Thay đổi trạng thái đơn hàng',
+            'BangDuLieu' => 'DonHang',
+            'BanGhiID' => 10,
+            'DuLieuCu' => json_encode(['TrangThai' => OrderStatus::Delivered->value]),
+            'DuLieuMoi' => json_encode(['TrangThai' => OrderStatus::Paid->value]),
+            'ThoiGian' => now(),
+        ]);
+        $order = DonHang::findOrFail(10);
+        $order->setRelation('statusChanges', $order->statusChanges()->get());
+        $order->setRelation('chiTietDonHangs', collect());
+
+        $customer = (new KhachHang)->forceFill([
+            'KhachHangID' => 1,
+            'HoTen' => 'Khách kiểm thử',
+            'TrangThai' => 'Hoạt động',
+        ]);
+        $customer->setRelation('diemTichLuy', (new DiemTichLuy)->forceFill([
+            'DiemHienTai' => 0,
+        ]));
+        $orders = new LengthAwarePaginator([$order], 1, 10);
+
+        $html = view('admin.customers.show', [
+            'customer' => $customer,
+            'orders' => $orders,
+            'totalSpent' => 0,
+            'orderCount' => 1,
+        ])->render();
+
+        $this->assertStringContainsString('Đã giao', $html);
+        $this->assertStringContainsString('Đã thanh toán', $html);
+        $this->assertStringContainsString('rounded-pill', $html);
+        $this->assertStringContainsString('Đang hoạt động', $html);
     }
 
     public function test_order_status_badges_use_distinct_styles_for_each_operational_state(): void

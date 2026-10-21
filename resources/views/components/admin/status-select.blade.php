@@ -32,6 +32,6 @@
         <option value="">{{ $placeholder }}</option>
     @endif
     @foreach($options as $value => $label)
-        <option value="{{ $value }}" @selected((string) $current === (string) $value)>{{ $label }}</option>
+        <option value="{{ $value }}" @selected((string) $current === (string) $value)>{{ trim((string) $label) }}</option>
     @endforeach
 </select>

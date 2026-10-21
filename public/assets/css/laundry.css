@@ -1263,6 +1263,10 @@ select.form-select-custom {
     cursor: pointer;
 }
 
+select.status-select-compact {
+    padding-left: 0.5rem !important;
+}
+
 select:focus:not(:disabled):not(.is-invalid),
 select.form-select:focus:not(:disabled):not(.is-invalid) {
     border-color: #3b82f6 !important;

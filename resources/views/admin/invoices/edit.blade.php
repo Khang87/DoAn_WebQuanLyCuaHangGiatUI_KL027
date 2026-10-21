@@ -23,15 +23,15 @@
                     <label class="form-label">Ngày lập <span class="text-danger ms-1">*</span></label>
                     <input type="date" class="form-control" name="invoice_date" value="{{ $invoice->NgayLap?->format('Y-m-d') ?? now()->toDateString() }}" required>
                 </div>
-                <div class="col-md-4">
+                <div class="col-md-6">
                     <label class="form-label">Tạm tính <span class="text-danger ms-1">*</span></label>
                     <input type="number" class="form-control" name="total_amount" value="{{ old('total_amount', (int) round((float) $invoice->TongTien)) }}" min="0" step="1000" required>
                 </div>
-                <div class="col-md-4">
+                <div class="col-md-6">
                     <label class="form-label">Giảm giá</label>
                     <input type="number" class="form-control" name="discount_amount" value="{{ old('discount_amount', (int) round((float) $invoice->GiamGia)) }}" min="0" step="1000">
                 </div>
-                <div class="col-md-4">
+                <div class="col-md-6">
                     <label class="form-label">Phí giao hàng</label>
                     <input type="number" class="form-control" name="delivery_fee" value="{{ old('delivery_fee', (int) round((float) $invoice->PhiGiaoHang)) }}" min="0" step="1000">
                 </div>
@@ -46,7 +46,7 @@
                             name="status"
                             :options="$invoiceStatusOptions"
                             :selected="$invoice->TrangThai"
-                            class="form-select @error('status') is-invalid @enderror"
+                            class="form-select status-select-compact @error('status') is-invalid @enderror"
                         />
                     @endif
                 </div>

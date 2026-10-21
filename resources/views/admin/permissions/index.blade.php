@@ -33,7 +33,14 @@
                         <td><code>{{ $permission->MaQuyen }}</code></td>
                         <td>{{ $permission->TenQuyen }}</td>
                         <td>{{ $permission->MoTa ?: '—' }}</td>
-                        <td><span class="badge {{ $permission->TrangThai === 'Hoạt động' ? 'bg-success-subtle text-success border' : 'bg-secondary-subtle text-secondary border' }}">{{ $permission->TrangThai }}</span></td>
+                        <td>
+                            <x-admin.status-badge
+                                :status="$permission->TrangThai"
+                                :enum="\App\Enums\RecordStatus::class"
+                                size="px-2 py-1 text-xs"
+                                :label="$permission->TrangThai === 'Hoạt động' ? 'Đang hoạt động' : $permission->TrangThai"
+                            />
+                        </td>
                     </tr>
                 @empty
                     <tr><td colspan="6" class="text-center text-muted py-4">Chưa có quyền hạn.</td></tr>

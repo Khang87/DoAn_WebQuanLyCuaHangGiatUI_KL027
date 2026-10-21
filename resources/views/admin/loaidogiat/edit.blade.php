@@ -44,7 +44,7 @@
                         name="TrangThai"
                         :options="\App\Enums\RecordStatus::databaseOptions()"
                         :selected="$category->TrangThai"
-                        class="form-select @error('TrangThai') is-invalid @enderror"
+                        class="form-select status-select-compact @error('TrangThai') is-invalid @enderror"
                     />
                     @error('TrangThai')
                         <div class="invalid-feedback">{{ $message }}</div>

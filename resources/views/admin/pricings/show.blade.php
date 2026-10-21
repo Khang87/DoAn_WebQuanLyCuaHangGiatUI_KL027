@@ -28,7 +28,7 @@
                 <x-admin.detail.info-item label="Ngày áp dụng" :value="$pricing->NgayApDung?->format('d/m/Y') ?: '—'" />
                 <x-admin.detail.info-item label="Ngày tạo" :value="$pricing->NgayTao?->format('d/m/Y H:i')" />
                 <x-admin.detail.info-item label="Trạng thái">
-                    <x-admin.status-badge :status="$pricing->TrangThai" :enum="\App\Enums\RecordStatus::class" :pill="false" />
+                    <x-admin.status-badge :status="$pricing->TrangThai" :enum="\App\Enums\RecordStatus::class" />
                 </x-admin.detail.info-item>
             </x-admin.detail.info-grid>
 

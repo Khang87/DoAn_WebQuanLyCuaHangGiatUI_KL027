@@ -56,7 +56,7 @@
                 <x-admin.detail.info-item label="Tên danh mục" :value="$category->TenDanhMuc" />
                 <x-admin.detail.info-item label="Số loại đồ" :value="$category->loaiDoGiats()->count()" />
                 <x-admin.detail.info-item label="Trạng thái">
-                    <x-admin.status-badge :status="$category->TrangThai" :enum="\App\Enums\RecordStatus::class" :pill="false" />
+                    <x-admin.status-badge :status="$category->TrangThai" :enum="\App\Enums\RecordStatus::class" />
                 </x-admin.detail.info-item>
             </x-admin.detail.info-grid>
             <div class="mt-4">

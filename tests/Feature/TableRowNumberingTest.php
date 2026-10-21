@@ -74,6 +74,18 @@ class TableRowNumberingTest extends TestCase
         $this->assertSame(0, $xpath->query('//table/thead/tr/th[normalize-space(.)="ID khách hàng"]')->length);
     }
 
+    public function test_status_select_trims_surrounding_whitespace_from_option_labels(): void
+    {
+        $html = view('components.admin.status-select', [
+            'name' => 'TrangThai',
+            'options' => ['Hoạt động' => " \tHoạt động \n"],
+            'selected' => 'Hoạt động',
+        ])->render();
+
+        $this->assertStringContainsString('>Hoạt động</option>', $html);
+        $this->assertStringNotContainsString('> Hoạt động ', $html);
+    }
+
     public function test_empty_tables_span_all_visible_columns_without_a_fake_row_number(): void
     {
         foreach ([['admin.loaidogiat.index', 'categories', 5], ['admin.customers.index', 'customers', 7], ['admin.orders.index', 'orders', 11]] as [$view, $name, $columns]) {

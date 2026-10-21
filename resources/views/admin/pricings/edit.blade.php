@@ -69,7 +69,7 @@
                 </div>
                 <div class="col-12 col-md-6">
                     <label class="form-label" for="TrangThai">Trạng thái <span class="text-danger ms-1">*</span></label>
-                    <x-admin.status-select name="TrangThai" id="TrangThai" :options="['Hoạt động' => 'Hoạt động', 'Hết hiệu lực' => 'Hết hiệu lực', 'Tạm ngưng' => 'Tạm ngưng']" :selected="old('TrangThai', $pricing->TrangThai)" class="form-select @error('TrangThai') is-invalid @enderror" required />
+                    <x-admin.status-select name="TrangThai" id="TrangThai" :options="['Hoạt động' => 'Hoạt động', 'Hết hiệu lực' => 'Hết hiệu lực', 'Tạm ngưng' => 'Tạm ngưng']" :selected="old('TrangThai', $pricing->TrangThai)" class="form-select status-select-compact @error('TrangThai') is-invalid @enderror" required />
                     @error('TrangThai')<div class="invalid-feedback">{{ $message }}</div>@enderror
                 </div>
             </div>

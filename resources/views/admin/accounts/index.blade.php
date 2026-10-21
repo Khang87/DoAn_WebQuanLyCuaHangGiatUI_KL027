@@ -121,9 +121,11 @@
                             @endforelse
                         </td>
                         <td>
-                            <span class="badge {{ $account->TrangThai === 'Hoạt động' ? 'bg-success-subtle text-success-emphasis border border-success' : 'bg-secondary-subtle text-secondary-emphasis border border-secondary' }}">
-                                {{ $account->TrangThai }}
-                            </span>
+                            <x-admin.status-badge
+                                :status="$account->TrangThai"
+                                :enum="\App\Enums\RecordStatus::class"
+                                :label="$account->TrangThai === 'Hoạt động' ? 'Đang hoạt động' : $account->TrangThai"
+                            />
                         </td>
                         <td>{{ $account->NgayTao?->format('d/m/Y') }}</td>
                         <td>

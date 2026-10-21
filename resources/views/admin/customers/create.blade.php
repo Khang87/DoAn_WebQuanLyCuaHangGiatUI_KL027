@@ -36,8 +36,6 @@
                     @error('SoDienThoai')
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
-                </div>
-                <div class="col-12">
                     <div class="form-text" id="customer-contact-help">Vui lòng nhập ít nhất một trong hai thông tin: số điện thoại hoặc email.</div>
                 </div>
                 <div class="col-md-6">

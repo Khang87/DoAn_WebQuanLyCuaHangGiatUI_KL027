@@ -53,7 +53,7 @@ class KhachHangController extends Controller
         return view('admin.customers.show', [
             'customer' => $customer,
             'orders' => $customer->donHangs()
-                ->with(['chiTietDonHangs.dichVu'])
+                ->with(['chiTietDonHangs.dichVu', 'hoaDons', 'statusChanges'])
                 ->orderByDesc('NgayTao')
                 ->paginate(10)
                 ->withQueryString(),
