@@ -19,6 +19,9 @@
     <!-- Bootstrap Icons -->
     <link rel="stylesheet" href="{{ asset('assets/libs/bootstrap-icons/bootstrap-icons.css') }}">
 
+    <!-- Flatpickr -->
+    <link rel="stylesheet" href="{{ asset('assets/libs/flatpickr/flatpickr.min.css') }}">
+
     <!-- FontAwesome 6 -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 
@@ -403,6 +406,8 @@
 
     <!-- Bootstrap JS -->
     <script defer src="{{ asset('assets/libs/bootstrap/js/bootstrap.bundle.min.js') }}"></script>
+    <script defer src="{{ asset('assets/libs/flatpickr/flatpickr.min.js') }}"></script>
+    <script defer src="{{ asset('assets/js/localized-date-inputs.js') }}?v={{ filemtime(public_path('assets/js/localized-date-inputs.js')) }}"></script>
 
     <!-- SweetAlert2 -->
     <script defer src="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.all.min.js"></script>

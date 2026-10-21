@@ -13,8 +13,8 @@ class PricingDateInputTest extends TestCase
     public function test_pricing_dates_are_normalized_from_day_month_year_before_validation(): void
     {
         $request = LuuBangGiaRequest::create('/pricings', 'POST', [
-            'NgayApDung_display' => '05-11-2026',
-            'NgayKetThuc_display' => '31-12-2026',
+            'NgayApDung_display' => '22/10/2026',
+            'NgayKetThuc_display' => '31/12/2026',
         ]);
         $request->setContainer(app());
         $request->setRedirector(app(Redirector::class));
@@ -23,7 +23,7 @@ class PricingDateInputTest extends TestCase
             $request->validateResolved();
             $this->fail('Missing required pricing fields should fail validation.');
         } catch (ValidationException) {
-            $this->assertSame('2026-11-05', $request->input('NgayApDung'));
+            $this->assertSame('2026-10-22', $request->input('NgayApDung'));
             $this->assertSame('2026-12-31', $request->input('NgayKetThuc'));
         }
     }
@@ -31,7 +31,7 @@ class PricingDateInputTest extends TestCase
     public function test_invalid_day_month_year_input_is_not_normalized_into_a_valid_date(): void
     {
         $request = LuuBangGiaRequest::create('/pricings', 'POST', [
-            'NgayApDung_display' => '31-02-2026',
+            'NgayApDung_display' => '31/02/2026',
         ]);
         $request->setContainer(app());
         $request->setRedirector(app(Redirector::class));
@@ -40,7 +40,7 @@ class PricingDateInputTest extends TestCase
             $request->validateResolved();
             $this->fail('Invalid dates should fail validation.');
         } catch (ValidationException $exception) {
-            $this->assertSame('31-02-2026', $request->input('NgayApDung'));
+            $this->assertSame('31/02/2026', $request->input('NgayApDung'));
             $this->assertArrayHasKey('NgayApDung', $exception->errors());
         }
     }
@@ -50,7 +50,7 @@ class PricingDateInputTest extends TestCase
         Carbon::setTestNow('2026-10-04 08:43:28');
 
         $request = LuuBangGiaRequest::create('/pricings', 'POST', [
-            'NgayApDung_display' => '03-10-2026',
+            'NgayApDung_display' => '03/10/2026',
         ]);
         $request->setContainer(app());
         $request->setRedirector(app(Redirector::class));
@@ -73,8 +73,8 @@ class PricingDateInputTest extends TestCase
         Carbon::setTestNow('2026-10-04 08:43:28');
 
         $request = LuuBangGiaRequest::create('/pricings', 'POST', [
-            'NgayApDung_display' => '04-10-2026',
-            'NgayKetThuc_display' => '05-10-2026',
+            'NgayApDung_display' => '04/10/2026',
+            'NgayKetThuc_display' => '05/10/2026',
         ]);
         $request->setContainer(app());
         $request->setRedirector(app(Redirector::class));

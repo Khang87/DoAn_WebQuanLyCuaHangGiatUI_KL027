@@ -252,7 +252,6 @@ Route::middleware(['auth', 'reject.customer'])->group(function () {
         ->middlewareFor(['index', 'show'], 'permission:bookings.view')
         ->middlewareFor(['edit', 'update'], 'permission:bookings.edit');
     Route::get('bookings/{booking}/inspection', [BookingController::class, 'inspection'])
-        ->middleware('permission:bookings.confirm')
         ->name('bookings.inspection');
     Route::get('osm/autocomplete', BookingAddressAutocompleteController::class)
         ->middleware(['permission:bookings.confirm', 'throttle:30,1'])
@@ -264,16 +263,16 @@ Route::middleware(['auth', 'reject.customer'])->group(function () {
         ->middleware('permission:bookings.confirm')->name('bookings.approve');
     Route::post('bookings/{booking}/cancel', [BookingController::class, 'cancelPending'])
         ->middleware('permission:bookings.confirm')->name('bookings.cancel');
-    Route::post('bookings/{booking}/receive', [BookingController::class, 'markReceived'])
-        ->middleware('permission:bookings.confirm')->name('bookings.receive');
     Route::post('bookings/{booking}/estimate', [BookingController::class, 'estimate'])
         ->whereNumber('booking')->middleware('permission:bookings.confirm')->name('bookings.estimate');
     Route::post('bookings/{booking}/delivery-fee-quote', [BookingController::class, 'quoteDeliveryFee'])
         ->whereNumber('booking')->middleware(['permission:bookings.confirm', 'throttle:20,1'])
         ->name('bookings.delivery-fee-quote');
     Route::post('bookings/{booking}/confirm', [BookingController::class, 'confirm'])
-        ->middleware('permission:bookings.confirm')
         ->name('bookings.confirm');
+    Route::post('bookings/{booking}/refuse-quote', [BookingController::class, 'refuseQuote'])
+        ->middleware('permission:bookings.confirm')
+        ->name('bookings.refuse-quote');
 
     Route::post('payments/bank-transfer', [ThanhToanController::class, 'startBankTransfer'])
         ->middleware(['permission:payments.create', 'throttle:20,1'])->name('payments.bank-transfer.start');

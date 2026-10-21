@@ -60,6 +60,7 @@
                         <th class="fw-bold text-dark">Mã khuyến mãi</th>
                         <th class="fw-bold text-dark">Giá trị giảm</th>
                         <th class="fw-bold text-dark">Hạn sử dụng</th>
+                        <th class="fw-bold text-dark">Số đơn liên kết</th>
                         <th class="fw-bold text-dark">Trạng thái</th>
                         <th class="fw-bold text-dark">Thao tác</th>
                     </tr>
@@ -78,9 +79,9 @@
                             <small class="text-muted">{{ $promotion->discountTypeLabel() }}</small>
                         </td>
                         <td>
-                            <div>{{ $promotion->usageLabel() }}</div>
-                            <small class="text-muted">Hết hạn: {{ $promotion->NgayKetThuc?->format('d/m/Y') ?: 'Không hạn' }}</small>
+                            {{ $promotion->NgayKetThuc?->format('d/m/Y') ?: 'Không hạn' }}
                         </td>
+                        <td>{{ number_format($promotion->usedCount) }} đơn</td>
                         <td>
                             @if($isExpired)
                                 <span class="badge bg-secondary-subtle text-secondary-emphasis border border-secondary px-3 py-2 rounded-pill"><i class="far fa-hourglass me-1"></i>Đã hết hạn</span>
@@ -107,7 +108,7 @@
                      </tr>
                      @empty
                     <tr>
-                        <td colspan="7" class="text-center text-muted py-4">Chưa có dữ liệu nào</td>
+                        <td colspan="8" class="text-center text-muted py-4">Chưa có dữ liệu nào</td>
                     </tr>
                     @endempty
                 </tbody>

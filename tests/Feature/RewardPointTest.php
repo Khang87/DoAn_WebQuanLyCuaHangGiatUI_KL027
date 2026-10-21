@@ -776,6 +776,10 @@ class RewardPointTest extends TestCase
     {
         $service = app(BookingService::class);
         $service->approve($booking);
+        DB::table('BookingGiaoNhan')
+            ->where('BookingID', $booking->BookingID)
+            ->where('LoaiGiaoNhan', 'NHAN_DO')
+            ->update(['NhanVienID' => 1]);
         $service->markReceived($booking);
 
         return $service->submitInspection($booking, [
@@ -786,6 +790,7 @@ class RewardPointTest extends TestCase
             'return_address' => $booking->DiaChiTra,
             'scheduled_date' => $booking->NgayHen->format('Y-m-d'),
             'scheduled_time' => $booking->GioHen->format('H:i'),
+            'customer_accepted' => '1',
             'notes' => $booking->GhiChu,
             'items' => $items,
         ]);

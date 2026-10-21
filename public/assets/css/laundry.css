@@ -639,6 +639,13 @@ body {
     color: #9ca3af !important;
 }
 
+.table-custom.category-table .category-actions-column {
+    width: 112px;
+    min-width: 112px;
+    white-space: nowrap;
+    vertical-align: middle;
+}
+
 .btn-outline-secondary:not(:disabled):not(.disabled):hover,
 .btn-outline-secondary:not(:disabled):not(.disabled):focus-visible {
     color: #ffffff !important;

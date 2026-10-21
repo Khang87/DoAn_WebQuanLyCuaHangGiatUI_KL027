@@ -34,7 +34,7 @@ class LuuThanhToanRequest extends FormRequest
             'amount' => ['required', 'numeric', 'gt:0'],
             'method' => ['required', 'in:cash,bank_transfer'],
             'invoice_id' => ['nullable', 'required_without:order_id', 'integer', 'exists:HoaDon,HoaDonID'],
-            'paid_at' => ['nullable', 'date'],
+            'paid_at' => ['nullable', 'date_format:Y-m-d\TH:i'],
             'status' => ['required', 'in:'.implode(',', PaymentStatus::values())],
             'transaction_code' => ['nullable', 'string', 'max:100', $transactionCodeRule],
         ];

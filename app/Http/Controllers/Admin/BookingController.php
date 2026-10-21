@@ -3,7 +3,9 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Enums\BookingStatus;
+use App\Enums\DeliveryStatus;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\BookingQuoteRefusalRequest;
 use App\Http\Requests\Admin\LuuBookingRequest;
 use App\Http\Requests\Admin\XacNhanBookingRequest;
 use App\Models\BangGia;
@@ -64,8 +66,9 @@ class BookingController extends Controller
 
         $employees = NhanVien::query()->orderBy('HoTen')->get(['NhanVienID', 'HoTen']);
         $bookingAmounts = $booking->chiTietBookings->isNotEmpty() ? $orders->estimateSavedBooking($booking) : null;
+        $canInspect = $this->bookingService->canInspect($booking);
 
-        return view('admin.bookings.show', compact('booking', 'employees', 'bookingAmounts'));
+        return view('admin.bookings.show', compact('booking', 'employees', 'bookingAmounts', 'canInspect'));
     }
 
     public function estimate(Request $request, int $booking, OrderService $orders): JsonResponse
@@ -98,7 +101,11 @@ class BookingController extends Controller
         $record = $this->bookingService->find($booking);
         abort_if(! $record, 404);
         abort_if($record->statusEnum() !== BookingStatus::Confirmed, 409);
-        abort_if($record->giaoNhanDuKiens->firstWhere('LoaiGiaoNhan', 'NHAN_DO')?->TrangThai !== 'Đã nhận', 409);
+        abort_unless(in_array(
+            $record->giaoNhanDuKiens->firstWhere('LoaiGiaoNhan', 'NHAN_DO')?->TrangThai,
+            [DeliveryStatus::Pending->dbValue(), DeliveryStatus::Picking->dbValue()],
+            true,
+        ), 409);
 
         $validated = $request->validate([
             'method' => ['required', 'in:Tại nhà,Tại cửa hàng'],
@@ -149,25 +156,6 @@ class BookingController extends Controller
         }
     }
 
-    public function markReceived(int $id)
-    {
-        $booking = $this->bookingService->find($id);
-        abort_if(! $booking, 404);
-
-        try {
-            $this->bookingService->markReceived($booking);
-
-            $destination = request()->user()?->canPermission('bookings.confirm')
-                ? 'bookings.inspection'
-                : 'bookings.show';
-
-            return redirect()->route($destination, $booking)
-                ->with('success', 'Đã ghi nhận nhận đồ thực tế. Có thể bắt đầu kiểm kê.');
-        } catch (ValidationException $e) {
-            return redirect()->route('bookings.show', $booking)->withErrors($e->errors());
-        }
-    }
-
     public function edit(int $id, bool $inspectionMode = false)
     {
         $booking = $this->bookingService->find($id);
@@ -179,18 +167,16 @@ class BookingController extends Controller
         if ($inspectionMode && $booking->donHangs->isNotEmpty()) {
             return redirect()->route('orders.show', $booking->donHangs->first());
         }
-        if ($inspectionMode && $booking->statusEnum() !== BookingStatus::Confirmed) {
-            return redirect()->route('bookings.show', $booking)->with('error', 'Booking chưa ở trạng thái cho phép kiểm kê.');
-        }
-        if ($inspectionMode
-            && $booking->giaoNhanDuKiens->firstWhere('LoaiGiaoNhan', 'NHAN_DO')?->TrangThai !== 'Đã nhận') {
-            return redirect()->route('bookings.show', $booking)->with('error', 'Hãy ghi nhận nhận đồ trước khi kiểm kê.');
+        if ($inspectionMode) {
+            try {
+                $this->bookingService->assertCanInspect($booking);
+            } catch (ValidationException $exception) {
+                $message = collect($exception->errors())->flatten()->first() ?? $exception->getMessage();
+
+                return redirect()->route('bookings.show', $booking)->with('error', $message);
+            }
         }
 
-        $authenticatedEmployee = NhanVien::query()
-            ->whereKey(request()->user()?->NhanVienID)
-            ->where('TrangThai', 'Hoạt động')
-            ->first(['NhanVienID', 'HoTen']);
         $serviceIds = $booking->chiTietBookings->pluck('DichVuID')->all();
         $garmentIds = $booking->chiTietBookings->pluck('LoaiDoGiatID')->all();
         $unitIds = $booking->chiTietBookings->pluck('DonViTinhID')->all();
@@ -234,7 +220,6 @@ class BookingController extends Controller
         return view('admin.bookings.edit', compact(
             'booking',
             'inspectionMode',
-            'authenticatedEmployee',
             'services',
             'serviceOptions',
             'serviceCategories',
@@ -308,6 +293,32 @@ class BookingController extends Controller
             $this->logBookingFailure($booking->BookingID, 'confirm', $e);
 
             return redirect()->route('bookings.index')->with('error', FriendlyError::message($e));
+        }
+    }
+
+    public function refuseQuote(BookingQuoteRefusalRequest $request, int $id)
+    {
+        $booking = $this->bookingService->find($id);
+
+        if (! $booking) {
+            abort(404);
+        }
+
+        try {
+            $this->bookingService->refuseQuote($booking, $request->validated());
+
+            return redirect()->route('bookings.show', $booking)
+                ->with('success', 'Đã hủy Booking theo yêu cầu từ chối báo giá. Không tạo đơn và không thu phí nhận đồ.');
+        } catch (ValidationException $exception) {
+            return redirect()->route('bookings.inspection', $booking)
+                ->withErrors($exception->errors())
+                ->withInput();
+        } catch (Throwable $exception) {
+            $this->logBookingFailure($booking->BookingID, 'refuse_quote', $exception);
+
+            return redirect()->route('bookings.inspection', $booking)
+                ->with('error', FriendlyError::message($exception))
+                ->withInput();
         }
     }
 

@@ -41,7 +41,7 @@
                         data-inbox-order="{{ $order->DonHangID }}" class="list-group-item list-group-item-action {{ $selectedOrder?->DonHangID === $order->DonHangID ? 'active' : '' }}">
                         <div class="d-flex justify-content-between gap-2">
                             <span class="fw-semibold text-truncate">{{ $order->khachHang?->HoTen ?: 'Khách hàng' }} @if($order->unread_count > 0)<span class="d-inline-block rounded-circle bg-danger ms-2" style="width:10px;height:10px" role="img" aria-label="Tin nhắn chưa đọc" data-unread-dot></span>@endif</span>
-                            <small>{{ $order->last_message_at ? \Carbon\Carbon::parse($order->last_message_at, 'UTC')->setTimezone(config('app.timezone'))->format('d-m-Y') : $order->NgayTao?->format('d-m-Y') }}</small>
+                            <small>{{ $order->last_message_at ? \Carbon\Carbon::parse($order->last_message_at, 'UTC')->setTimezone(config('app.timezone'))->format('d/m/Y') : $order->NgayTao?->format('d/m/Y') }}</small>
                         </div>
                         <small class="d-block">{{ $order->MaDonHang }}</small>
                         <small class="d-block message-inbox-preview">{{ $order->last_message_preview ?: 'Chưa có tin nhắn' }}</small>
@@ -57,7 +57,7 @@
                     <a class="list-group-item list-group-item-action {{ $selectedCustomer?->getKey() === $customer->getKey() ? 'active' : '' }}" href="{{ route('admin.messages.index', ['customer_id' => $customer->getKey(), 'q' => $search]) }}">
                         <div class="d-flex justify-content-between gap-2">
                             <span class="fw-semibold text-truncate">{{ $customer->name }}</span>
-                            <small>{{ $customer->last_message_at ? \Carbon\Carbon::parse($customer->last_message_at, 'UTC')->setTimezone(config('app.timezone'))->format('d-m-Y') : '' }}</small>
+                            <small>{{ $customer->last_message_at ? \Carbon\Carbon::parse($customer->last_message_at, 'UTC')->setTimezone(config('app.timezone'))->format('d/m/Y') : '' }}</small>
                         </div>
                         <small class="d-block">{{ $customer->khachHang?->SoDienThoai ?: 'Tư vấn khách hàng' }}</small>
                         <small class="d-block message-inbox-preview">{{ $customer->last_message_preview ?: 'Chưa có tin nhắn' }}</small>
@@ -109,7 +109,7 @@
                                     <div class="text-break">{{ $message->NoiDung }}</div>
                                 @endif
                                 <div class="small text-end {{ ($message->DaThuHoi ?? false) ? 'text-muted' : ($isMine ? 'text-white-50' : 'text-muted') }}">
-                                    {{ app(\App\Services\MessageService::class)->sentAt($message)?->format('d-m-Y H:i') }}
+                                    {{ app(\App\Services\MessageService::class)->sentAt($message)?->format('d/m/Y H:i') }}
                                 </div>
                                 @can('messages.create')
                                     <div class="message-actions" data-message-actions>

@@ -16,7 +16,7 @@ class LuuHoaDonRequest extends FormRequest
     {
         return [
             'order_id' => ['required', 'exists:DonHang,DonHangID'],
-            'invoice_date' => ['nullable', 'date'],
+            'invoice_date' => ['nullable', 'date_format:Y-m-d'],
             'total' => ['nullable', 'numeric', 'min:0'],
             'total_amount' => ['nullable', 'numeric', 'min:0'],
             'discount_amount' => ['nullable', 'numeric', 'min:0'],

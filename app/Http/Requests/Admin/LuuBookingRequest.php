@@ -25,7 +25,7 @@ class LuuBookingRequest extends FormRequest
             'return_method' => ['required', 'in:'.implode(',', ReturnMethod::values())],
             'return_address' => ['nullable', 'string', 'max:255', 'required_if:return_method,'.ReturnMethod::Home->value],
             'address' => ['nullable', 'string', 'max:255', 'required_if:method,'.ReceiveMethod::Home->value],
-            'scheduled_date' => ['required', 'date'],
+            'scheduled_date' => ['required', 'date_format:Y-m-d'],
             'scheduled_time' => ['required', 'date_format:H:i'],
             'notes' => ['nullable', 'string', 'max:500'],
             'status' => ['nullable', 'in:'.implode(',', BookingStatus::values())],

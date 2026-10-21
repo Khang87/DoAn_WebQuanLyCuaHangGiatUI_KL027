@@ -58,12 +58,12 @@
                 </div>
                 <div class="col-12 col-md-6">
                     <label class="form-label" for="NgayApDung_display">Ngày áp dụng <span class="text-danger ms-1">*</span></label>
-                    <input type="text" inputmode="numeric" placeholder="dd-mm-yyyy" autocomplete="off" data-date-picker data-min-date="today" class="form-control @error('NgayApDung') is-invalid @enderror" id="NgayApDung_display" name="NgayApDung_display" value="{{ old('NgayApDung_display', now()->format('d-m-Y')) }}" required>
+                    <input type="text" inputmode="numeric" placeholder="dd/MM/yyyy" autocomplete="off" data-date-picker data-min-date="today" class="form-control @error('NgayApDung') is-invalid @enderror" id="NgayApDung_display" name="NgayApDung_display" value="{{ old('NgayApDung_display', now()->format('d/m/Y')) }}" required>
                     @error('NgayApDung')<div class="invalid-feedback">{{ $message }}</div>@enderror
                 </div>
                 <div class="col-12 col-md-6">
                     <label class="form-label" for="NgayKetThuc_display">Ngày kết thúc</label>
-                    <input type="text" inputmode="numeric" placeholder="dd-mm-yyyy" autocomplete="off" data-date-picker class="form-control @error('NgayKetThuc') is-invalid @enderror" id="NgayKetThuc_display" name="NgayKetThuc_display" value="{{ old('NgayKetThuc_display') }}">
+                    <input type="text" inputmode="numeric" placeholder="dd/MM/yyyy" autocomplete="off" data-date-picker class="form-control @error('NgayKetThuc') is-invalid @enderror" id="NgayKetThuc_display" name="NgayKetThuc_display" value="{{ old('NgayKetThuc_display') }}">
                     @error('NgayKetThuc')<div class="invalid-feedback">{{ $message }}</div>@enderror
                 </div>
                 <div class="col-12 col-md-6">
@@ -84,7 +84,7 @@
     document.querySelectorAll('[data-date-picker]').forEach((input) => {
         flatpickr(input, {
             allowInput: true,
-            dateFormat: 'd-m-Y',
+            dateFormat: 'd/m/Y',
             minDate: input.dataset.minDate || null,
         });
     });

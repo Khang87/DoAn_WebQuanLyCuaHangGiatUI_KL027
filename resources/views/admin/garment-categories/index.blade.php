@@ -52,7 +52,7 @@
 <div class="card">
     <div class="card-body p-0">
         <div class="table-responsive">
-            <table class="table-custom mb-0">
+            <table class="table-custom category-table mb-0">
                 <thead>
                     <tr>
                         <th scope="col" class="fw-bold text-dark">STT</th>
@@ -60,7 +60,7 @@
                         <th class="fw-bold text-dark">Mô tả</th>
                         <th class="fw-bold text-dark">Ngày tạo</th>
                         <th class="fw-bold text-dark">Trạng thái</th>
-                        <th class="fw-bold text-dark">Thao tác</th>
+                        <th class="fw-bold text-dark category-actions-column">Thao tác</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -73,8 +73,8 @@
                             <td>
                                 <x-admin.status-badge :status="$category->TrangThai" :enum="\App\Enums\RecordStatus::class" />
                             </td>
-                            <td class="text-center">
-                                <div class="d-flex gap-2 justify-content-center">
+                            <td class="category-actions-column">
+                                <div class="d-flex align-items-center gap-2">
                                     @can('garment_categories.view')
                                         <a href="{{ route('garment-categories.show', $category) }}" class="btn btn-order-action view" title="Xem" aria-label="Xem">
                                             <i class="bi bi-eye"></i>

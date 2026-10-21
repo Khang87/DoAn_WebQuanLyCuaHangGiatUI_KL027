@@ -100,7 +100,7 @@
                         <div class="border-bottom pb-3">
                             <div class="d-flex justify-content-between gap-3">
                                 <strong>{{ $change->TruongThayDoi }}</strong>
-                                <small class="text-muted text-nowrap">{{ $change->ThoiGian?->format('d-m-Y H:i') }}</small>
+                                <small class="text-muted text-nowrap">{{ $change->ThoiGian?->format('d/m/Y H:i') }}</small>
                             </div>
                             <div class="small mt-1">
                                 <span class="text-muted">{{ $change->GiaTriCu ?? '—' }}</span>

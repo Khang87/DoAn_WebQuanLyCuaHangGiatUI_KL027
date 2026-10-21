@@ -14,9 +14,11 @@ class GiaoNhan extends Model
 
     public static $snakeAttributes = false;
 
+    public const CREATED_AT = 'NgayTao';
+
     protected $fillable = [
         'DonHangID', 'NhanVienID', 'LoaiGiaoNhan', 'HinhThuc', 'DiaChi',
-        'ThoiGianDuKien', 'ThoiGianThucTe', 'PhiGiaoNhan', 'TrangThai', 'GhiChu', 'GiaoNhanID'];
+        'ThoiGianDuKien', 'ThoiGianThucTe', 'PhiGiaoNhan', 'TrangThai', 'GhiChu', 'NgayTao', 'GiaoNhanID'];
 
     protected $casts = [
         'DonHangID' => 'integer',
@@ -24,6 +26,7 @@ class GiaoNhan extends Model
         'PhiGiaoNhan' => 'float',
         'ThoiGianDuKien' => 'datetime',
         'ThoiGianThucTe' => 'datetime',
+        'NgayTao' => 'datetime',
     ];
 
     public function donHang()

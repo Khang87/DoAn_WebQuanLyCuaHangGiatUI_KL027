@@ -236,9 +236,13 @@ class OrderService
             }
             $inspection = null;
             $legs = $booking->giaoNhanDuKiens()->lockForUpdate()->get()->keyBy('LoaiGiaoNhan');
-            if ($legs->count() !== 2 || $legs->get('NHAN_DO')?->TrangThai !== 'Đã nhận'
+            if ($legs->count() !== 2 || ! in_array($legs->get('NHAN_DO')?->TrangThai, [
+                DeliveryStatus::Picking->dbValue(),
+                DeliveryStatus::Completed->dbValue(),
+                'Đã nhận',
+            ], true)
                 || ! $legs->has('GIAO_DO')) {
-                throw ValidationException::withMessages(['booking' => 'Cần phiếu Nhận đã hoàn tất và phiếu kế hoạch trả trước khi tạo đơn.']);
+                throw ValidationException::withMessages(['booking' => 'Cần phiếu Nhận đang được xử lý hoặc đã hoàn tất và phiếu kế hoạch trả trước khi tạo đơn.']);
             }
             $inspection = BookingKiemKe::query()->where('BookingID', $booking->BookingID)->lockForUpdate()->first();
             $storedInspection = $inspection?->DuLieuThucTe;
@@ -360,7 +364,7 @@ class OrderService
                 if ($leg['type'] === 'GIAO_DO' || $leg['method'] !== $leg['home']) {
                     continue;
                 }
-                GiaoNhan::create([
+                $attributes = [
                     'DonHangID' => $order->DonHangID,
                     'NhanVienID' => $employeeId,
                     'HinhThuc' => $leg['method']->value,
@@ -372,7 +376,12 @@ class OrderService
                     'ThoiGianThucTe' => $booking->giaoNhanDuKiens()->where('LoaiGiaoNhan', 'NHAN_DO')->value('ThoiGianThucTe'),
                     'TrangThai' => DeliveryStatus::Completed->dbValue(),
                     'GhiChu' => $booking->GhiChu,
-                ]);
+                ];
+                if (Schema::hasColumn('GiaoNhan', 'NgayTao')) {
+                    $attributes['NgayTao'] = now();
+                }
+
+                GiaoNhan::create($attributes);
             }
 
             if ($inspection) {
@@ -780,7 +789,7 @@ class OrderService
                     continue;
                 }
 
-                GiaoNhan::create([
+                $attributes = [
                     'DonHangID' => $order->DonHangID,
                     // Để trống để quản lý giao nhận phân công người thực hiện.
                     'NhanVienID' => null,
@@ -791,7 +800,12 @@ class OrderService
                     'PhiGiaoNhan' => $leg['fee'],
                     'TrangThai' => DeliveryStatus::Pending->dbValue(),
                     'GhiChu' => 'Tự động tạo từ đơn hàng '.$order->MaDonHang,
-                ]);
+                ];
+                if (Schema::hasColumn('GiaoNhan', 'NgayTao')) {
+                    $attributes['NgayTao'] = now();
+                }
+
+                GiaoNhan::create($attributes);
             }
 
             $this->notificationService->notifyManagement(

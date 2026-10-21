@@ -14,6 +14,10 @@
 </x-admin.detail.page-header>
 
 @php $order = $booking->donHangs->first() @endphp
+@php
+    $intakeDocument = $booking->giaoNhanDuKiens->firstWhere('LoaiGiaoNhan', 'NHAN_DO');
+    $inspectionDecision = $booking->kiemKe?->DuLieuThucTe['_decision'] ?? [];
+@endphp
 
 <div class="row g-4 align-items-start">
     <div class="col-lg-8">
@@ -27,8 +31,8 @@
                 <x-admin.detail.info-item label="Hình thức trả đồ" :value="$booking->return_method_label" />
                 <x-admin.detail.info-item label="Địa chỉ nhận đồ" :value="$booking->DiaChiNhan ?: '—'" />
                 <x-admin.detail.info-item label="Địa chỉ trả đồ" :value="$booking->DiaChiTra ?: '—'" />
-                <x-admin.detail.info-item label="Nhân viên phụ trách" :value="$booking->nhanVien?->HoTen ?? 'Chưa phân công'" />
-                <x-admin.detail.info-item label="Nhân viên xác nhận" :value="$booking->nhanVienXacNhan?->HoTen ?? '—'" />
+                <x-admin.detail.info-item label="Nhân viên xác nhận Booking" :value="$booking->nhanVienXacNhan?->HoTen ?? '—'" />
+                <x-admin.detail.info-item label="Nhân viên nhận và kiểm kê" :value="$intakeDocument?->nhanVien?->HoTen ?? 'Chưa phân công'" />
                 <x-admin.detail.info-item label="Thời gian xác nhận" :value="$booking->ThoiGianXacNhan?->format('d/m/Y H:i') ?? '—'" />
                 <x-admin.detail.info-item label="Ngày hẹn" :value="$booking->NgayHen?->format('d/m/Y')" />
                 <x-admin.detail.info-item label="Giờ hẹn" :value="$booking->GioHen?->format('H:i')" />
@@ -159,23 +163,14 @@
                             <div class="small text-muted mt-2">
                                 {{ $leg->HinhThuc === 'Tại nhà' ? 'Nhân viên đến nhận đồ tại địa chỉ trên.' : 'Khách mang đồ đến cửa hàng để nhân viên tiếp nhận.' }}
                             </div>
-                            @if(! $order
-                                && $booking->statusEnum() === \App\Enums\BookingStatus::Confirmed
-                                && $leg->TrangThai !== \App\Enums\DeliveryStatus::Cancelled->dbValue())
-                                @can('bookings.confirm')
-                                    @if($leg->TrangThai === 'Đã nhận')
-                                        <a href="{{ route('bookings.inspection', $booking) }}" class="btn btn-outline-primary btn-sm mt-3">
-                                            <i class="bi bi-clipboard-check me-1"></i>Kiểm tra và tạo đơn
-                                        </a>
-                                    @else
-                                        <form action="{{ route('bookings.receive', $booking) }}" method="POST" class="mt-3">
-                                            @csrf
-                                            <button class="btn btn-primary btn-sm" type="submit">Xác nhận đã nhận đồ</button>
-                                        </form>
-                                    @endif
-                                @endcan
+                            @if($canInspect)
+                                <a href="{{ route('bookings.inspection', $booking) }}" class="btn btn-success btn-sm mt-3">
+                                    <i class="bi bi-clipboard-check me-1"></i>Kiểm tra và tạo đơn
+                                </a>
                             @elseif($leg->TrangThai === \App\Enums\DeliveryStatus::Cancelled->dbValue())
-                                <div class="small text-muted mt-2">Phiếu đã hủy; không thể xác nhận nhận đồ.</div>
+                                <div class="small text-muted mt-2">Phiếu đã hủy; không thể tiếp tục kiểm kê.</div>
+                            @elseif(! $leg->NhanVienID)
+                                <div class="small text-muted mt-2">Chưa phân công nhân viên nhận và kiểm kê.</div>
                             @endif
                         @else
                             <div class="small text-muted mt-2">Thông tin kế hoạch từ Booking; đây chưa phải phiếu giao vận hành.</div>
@@ -228,6 +223,14 @@
                         Đối soát kiểm kê phiên bản {{ $booking->kiemKe->PhienBan }} ·
                         {{ count($booking->kiemKe->DuLieuThucTe['items'] ?? []) }} dòng đồ thực tế.
                         {{ $booking->kiemKe->CoChenhLech ? 'Có chênh lệch so với thông tin Booking; nhân viên đã đối soát.' : 'Không có chênh lệch.' }}
+                        @if(! empty($inspectionDecision['employee_name']))
+                            Chốt bởi {{ $inspectionDecision['employee_name'] }}.
+                        @endif
+                        @if(array_key_exists('agreed_total', $inspectionDecision))
+                            Khách đã đồng ý tổng tiền {{ number_format((float) $inspectionDecision['agreed_total'], 0, ',', '.') }} VNĐ.
+                        @elseif(! empty($inspectionDecision['reason']))
+                            Khách từ chối: {{ $inspectionDecision['reason'] }}.
+                        @endif
                     </span>
                 </div>
             @endif
