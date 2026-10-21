@@ -615,6 +615,10 @@ class DeliveryContractTest extends TestCase
             ->assertSee(route('deliveries.edit', $pendingId), false)
             ->assertSee('class="btn btn-primary w-100 py-2"', false)
             ->assertSee('Chỉnh sửa')
+            ->assertSee('class="d-flex flex-column gap-2"', false)
+            ->assertSee('class="btn btn-outline-danger py-2 w-100"', false)
+            ->assertSee('Hủy lịch giao')
+            ->assertDontSee('btn-order-action delete', false)
             ->assertSee('action="'.route('deliveries.cancel-return', $pendingId).'"', false)
             ->assertSee('data-confirm-form', false)
             ->assertSee('method="POST"', false);
@@ -1095,6 +1099,13 @@ class DeliveryContractTest extends TestCase
         $this->assertSame('admin.deliveries.create', $response->name());
         $this->assertSame(1, $response->getData()['selectedOrderId']);
         $this->assertSame('giao_do', $response->getData()['selectedMethod']);
+        $this->assertTrue($response->getData()['lockDeliveryType']);
+        view()->share('errors', new ViewErrorBag);
+        $html = $response->render();
+        $this->assertMatchesRegularExpression('/<select[^>]*id="method"[^>]*disabled/', $html);
+        $this->assertMatchesRegularExpression('/<input type="hidden" name="method" value="giao_do">/', $html);
+        $this->assertStringContainsString('value="12 Nguyễn Huệ"', $html);
+        $this->assertDoesNotMatchRegularExpression('/id="address"[^>]*disabled/', $html);
         $this->assertSame(OrderStatus::Washed->value, $order->fresh()->TrangThai);
         $this->assertSame(0, GiaoNhan::count());
     }
@@ -1117,6 +1128,9 @@ class DeliveryContractTest extends TestCase
         $this->assertInstanceOf(View::class, $response);
         $this->assertSame('Tại cửa hàng', $response->getData()['selectedFulfillment']);
         $this->assertNull($response->getData()['selectedAddress']);
+        view()->share('errors', new ViewErrorBag);
+        $html = $response->render();
+        $this->assertMatchesRegularExpression('/<input[^>]*class="form-control delivery-locked-control bg-light text-muted"[^>]*id="address"[^>]*disabled/', $html);
         $this->assertSame(0, GiaoNhan::count());
     }
 

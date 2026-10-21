@@ -342,5 +342,9 @@ if (panel) {
         }
     });
 
-    loadInitialEstimate();
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', loadInitialEstimate, { once: true });
+    } else {
+        loadInitialEstimate();
+    }
 }

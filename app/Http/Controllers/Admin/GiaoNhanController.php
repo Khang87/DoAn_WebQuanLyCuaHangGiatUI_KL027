@@ -169,6 +169,7 @@ class GiaoNhanController extends Controller
             'selectedMethod' => 'giao_do',
             'selectedFulfillment' => $selectedFulfillment,
             'selectedAddress' => $selectedAddress,
+            'lockDeliveryType' => true,
             'statusOptions' => ['pending' => DeliveryStatus::Pending->label()],
         ]);
     }

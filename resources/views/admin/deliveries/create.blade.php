@@ -39,6 +39,14 @@
     .delivery-employee-option:focus-visible {
         box-shadow: inset 0 0 0 2px var(--bs-primary);
     }
+
+    .delivery-locked-control:disabled {
+        background-color: #f1f5f9 !important;
+        border-color: #cbd5e1 !important;
+        color: #64748b !important;
+        cursor: not-allowed;
+        opacity: 1;
+    }
 </style>
 @endpush
 @section('content')
@@ -52,6 +60,7 @@
     $selectedMethod ??= old('method', 'nhan_do');
     $selectedFulfillment ??= old('fulfillment', 'Tại nhà');
     $selectedAddress ??= old('address');
+    $lockDeliveryType ??= false;
     $statusOptions ??= \App\Enums\DeliveryStatus::options();
 @endphp
 <div class="card"><div class="card-body">
@@ -137,9 +146,9 @@
                     @endif
                 @endif
             </div>
-            <div class="col-12"><label class="form-label" for="method">Loại giao nhận <span class="text-danger ms-1">*</span></label><select class="form-select" id="method" name="method" required><option value="nhan_do" @selected($selectedMethod === 'nhan_do')>Nhận đồ</option><option value="giao_do" @selected($selectedMethod === 'giao_do')>Giao đồ</option></select></div>
+            <div class="col-12"><label class="form-label" for="method">Loại giao nhận <span class="text-danger ms-1">*</span></label><select class="form-select {{ $lockDeliveryType ? 'delivery-locked-control' : '' }}" id="method" name="method" required @disabled($lockDeliveryType)><option value="nhan_do" @selected($selectedMethod === 'nhan_do')>Nhận đồ</option><option value="giao_do" @selected($selectedMethod === 'giao_do')>Giao đồ</option></select>@if($lockDeliveryType)<input type="hidden" name="method" value="{{ $selectedMethod }}">@endif</div>
             <div class="col-12"><label class="form-label" for="fulfillment">Hình thức</label><select class="form-select" id="fulfillment" name="fulfillment" required><option value="Tại cửa hàng" @selected($selectedFulfillment === 'Tại cửa hàng')>Tại cửa hàng</option><option value="Tại nhà" @selected($selectedFulfillment === 'Tại nhà')>Tại nhà</option></select></div>
-            <div class="col-12"><label class="form-label" for="address">Địa chỉ (bắt buộc khi tại nhà)</label><input type="text" class="form-control" id="address" name="address" value="{{ $selectedAddress }}" placeholder="Nhập địa chỉ lấy/giao đồ" @required($selectedFulfillment === 'Tại nhà') @disabled($selectedFulfillment === 'Tại cửa hàng')></div>
+            <div class="col-12"><label class="form-label" for="address">Địa chỉ (bắt buộc khi tại nhà)</label><input type="text" class="form-control {{ $selectedFulfillment === 'Tại cửa hàng' ? 'delivery-locked-control bg-light text-muted' : '' }}" id="address" name="address" value="{{ $selectedAddress }}" placeholder="Nhập địa chỉ lấy/giao đồ" @required($selectedFulfillment === 'Tại nhà') @disabled($selectedFulfillment === 'Tại cửa hàng')></div>
             <div class="col-md-6"><label class="form-label" for="pickup_date">Ngày giao nhận</label><input type="date" class="form-control" id="pickup_date" name="pickup_date" aria-describedby="schedule-help" value="{{ old('pickup_date') }}">@error('pickup_date')<div class="text-danger small">{{ $message }}</div>@enderror</div>
             <div class="col-md-6"><label class="form-label" for="pickup_time">Giờ giao nhận</label><input type="time" class="form-control" id="pickup_time" name="pickup_time" aria-describedby="schedule-help" value="{{ old('pickup_time') }}">@error('pickup_time')<div class="text-danger small">{{ $message }}</div>@enderror</div>
             <div class="col-md-6"><label class="form-label" for="status">Trạng thái</label><x-admin.status-select name="status" id="status" :options="$statusOptions" selected="pending" class="form-select" /></div>

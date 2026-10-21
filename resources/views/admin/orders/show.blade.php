@@ -435,6 +435,46 @@
                 @endforeach
             </div>
         </x-admin.detail.panel>
+
+        <x-admin.detail.panel title="Thông tin giao nhận" icon="bi-truck" :iconClass="'bg-warning-subtle text-warning-emphasis'">
+            @if($order->giaoNhans->isNotEmpty())
+                @foreach($order->giaoNhans as $delivery)
+                    <div class="{{ $loop->first ? '' : 'border-top pt-3 mt-3' }}">
+                        <x-admin.detail.info-grid :columns="1">
+                            <x-admin.detail.info-item label="Loại giao nhận">
+                                <span class="badge bg-primary-subtle text-primary-emphasis border border-primary px-3 py-2 rounded-pill">
+                                    <i class="fas {{ $delivery->LoaiGiaoNhan === 'NHAN_DO' ? 'fa-box-open' : 'fa-truck' }} me-1"></i>
+                                    {{ $delivery->LoaiGiaoNhan === 'NHAN_DO' ? 'Nhận đồ' : 'Giao đồ' }}
+                                </span>
+                            </x-admin.detail.info-item>
+                            <x-admin.detail.info-item label="Hình thức" :value="$delivery->HinhThuc" />
+                            <x-admin.detail.info-item label="Trạng thái">
+                                <x-admin.status-badge :status="$delivery->TrangThai" :enum="\App\Enums\DeliveryStatus::class" />
+                            </x-admin.detail.info-item>
+                            <x-admin.detail.info-item label="Thời gian dự kiến" :value="$delivery->ThoiGianDuKien?->format('d/m/Y H:i')" />
+                            <x-admin.detail.info-item label="Địa chỉ" :value="$delivery->DiaChi ?: '—'" />
+                        </x-admin.detail.info-grid>
+
+                        @if($delivery->GhiChu)
+                            <div class="mt-3">
+                                <div class="detail-field__label mb-2">Ghi chú giao nhận</div>
+                                <div class="detail-text">{{ $delivery->GhiChu }}</div>
+                            </div>
+                        @endif
+
+                        @can('deliveries.view')
+                        <div class="mt-3">
+                            <a href="{{ route('deliveries.show', $delivery->GiaoNhanID) }}" class="btn btn-outline-secondary btn-sm w-100">
+                                <i class="bi bi-box-arrow-up-right me-1"></i>Chi tiết phiếu giao nhận
+                            </a>
+                        </div>
+                        @endcan
+                    </div>
+                @endforeach
+            @else
+                <x-admin.detail.empty message="Đơn hàng chưa có lịch giao nhận" icon="bi-truck" />
+            @endif
+        </x-admin.detail.panel>
     </div>
 
     {{-- ============ CỘT PHỤ (4/12) ============ --}}
@@ -502,46 +542,6 @@
                         <i class="fas fa-ticket me-1"></i>{{ $order->promotion->name }} ({{ $order->promotion->code }})
                     </span>
                 </div>
-            @endif
-        </x-admin.detail.panel>
-
-        <x-admin.detail.panel title="Thông tin giao nhận" icon="bi-truck" :iconClass="'bg-warning-subtle text-warning-emphasis'">
-            @if($order->giaoNhans->isNotEmpty())
-                @foreach($order->giaoNhans as $delivery)
-                    <div class="{{ $loop->first ? '' : 'border-top pt-3 mt-3' }}">
-                        <x-admin.detail.info-grid :columns="1">
-                            <x-admin.detail.info-item label="Loại giao nhận">
-                                <span class="badge bg-primary-subtle text-primary-emphasis border border-primary px-3 py-2 rounded-pill">
-                                    <i class="fas {{ $delivery->LoaiGiaoNhan === 'NHAN_DO' ? 'fa-box-open' : 'fa-truck' }} me-1"></i>
-                                    {{ $delivery->LoaiGiaoNhan === 'NHAN_DO' ? 'Nhận đồ' : 'Giao đồ' }}
-                                </span>
-                            </x-admin.detail.info-item>
-                            <x-admin.detail.info-item label="Hình thức" :value="$delivery->HinhThuc" />
-                            <x-admin.detail.info-item label="Trạng thái">
-                                <x-admin.status-badge :status="$delivery->TrangThai" :enum="\App\Enums\DeliveryStatus::class" />
-                            </x-admin.detail.info-item>
-                            <x-admin.detail.info-item label="Thời gian dự kiến" :value="$delivery->ThoiGianDuKien?->format('d/m/Y H:i')" />
-                            <x-admin.detail.info-item label="Địa chỉ" :value="$delivery->DiaChi ?: '—'" />
-                        </x-admin.detail.info-grid>
-
-                        @if($delivery->GhiChu)
-                            <div class="mt-3">
-                                <div class="detail-field__label mb-2">Ghi chú giao nhận</div>
-                                <div class="detail-text">{{ $delivery->GhiChu }}</div>
-                            </div>
-                        @endif
-
-                        @can('deliveries.view')
-                        <div class="mt-3">
-                            <a href="{{ route('deliveries.show', $delivery->GiaoNhanID) }}" class="btn btn-outline-secondary btn-sm w-100">
-                                <i class="bi bi-box-arrow-up-right me-1"></i>Chi tiết phiếu giao nhận
-                            </a>
-                        </div>
-                        @endcan
-                    </div>
-                @endforeach
-            @else
-                <x-admin.detail.empty message="Đơn hàng chưa có lịch giao nhận" icon="bi-truck" />
             @endif
         </x-admin.detail.panel>
 

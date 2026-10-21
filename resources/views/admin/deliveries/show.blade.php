@@ -221,7 +221,7 @@
                 </div>
                 <h5 class="card-title mb-0 fw-bold">Thao tác</h5>
             </div>
-            <div class="card-body d-flex flex-column gap-3">
+            <div class="card-body d-flex flex-column gap-2">
                 @if($progressAction)
                     @can('deliveries.edit')
                         <form action="{{ route('deliveries.advance-progress', $delivery) }}" method="POST">
@@ -252,9 +252,9 @@
                                 text="Phiếu được giữ lại làm lịch sử; đơn hàng và trạng thái thanh toán không thay đổi."
                                 label="Hủy lịch giao"
                                 icon="bi bi-x-circle"
-                                variant="btn-order-action delete"
-                                size=""
-                                iconOnly
+                                variant="btn-outline-danger"
+                                size="py-2"
+                                block
                             />
                         @endcan
                     @endif

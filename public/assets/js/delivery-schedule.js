@@ -34,6 +34,7 @@
         address.disabled = !address.required;
         address.classList.toggle('bg-light', address.disabled);
         address.classList.toggle('text-muted', address.disabled);
+        address.classList.toggle('delivery-locked-control', address.disabled);
         document.getElementById('schedule-help').textContent = required
             ? 'Chặng nhận đồ hoặc chặng đang thực hiện cần đủ ngày và giờ.'
             : 'Phiếu trả đang chờ có thể chưa đặt lịch. Khi đặt lịch, hãy nhập đủ ngày và giờ.';
