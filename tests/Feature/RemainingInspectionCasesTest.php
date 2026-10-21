@@ -62,6 +62,10 @@ class RemainingInspectionCasesTest extends TestCase
     {
         $service = app(BookingService::class);
         $service->approve($booking);
+        DB::table('BookingGiaoNhan')
+            ->where('BookingID', $booking->BookingID)
+            ->where('LoaiGiaoNhan', 'NHAN_DO')
+            ->update(['NhanVienID' => 1]);
         $service->markReceived($booking);
     }
 

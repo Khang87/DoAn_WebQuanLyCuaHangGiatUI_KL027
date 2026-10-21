@@ -102,8 +102,7 @@
                     </div>
                 </div>
             </section>
-            <div class="d-flex justify-content-end gap-2 mt-4">
-                <a href="{{ route('promotions.index') }}" class="btn btn-outline-secondary">Hủy</a>
+            <div class="d-flex justify-content-end mt-4">
                 <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg me-1"></i>Lưu khuyến mãi</button>
             </div>
         </form>

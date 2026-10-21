@@ -7,9 +7,14 @@
 @php
     $booking = $bookingDocument->booking;
     $isIntake = $bookingDocument->LoaiGiaoNhan === 'NHAN_DO';
-    $isReceived = $isIntake && $bookingDocument->TrangThai === 'Đã nhận';
     $isCancelled = $bookingDocument->TrangThai === \App\Enums\DeliveryStatus::Cancelled->dbValue();
     $order = $bookingDocument->donHang ?? $booking?->donHangs->first();
+    $inspection = $booking?->kiemKe;
+    $decision = $inspection?->DuLieuThucTe['_decision'] ?? [];
+    $decisionTimestamp = $decision['confirmed_at'] ?? $decision['decided_at'] ?? null;
+    $formattedDecisionTimestamp = $decisionTimestamp
+        ? \Illuminate\Support\Carbon::parse($decisionTimestamp)->timezone('Asia/Ho_Chi_Minh')->format('d/m/Y H:i:s')
+        : 'Chưa chốt kiểm kê';
 @endphp
 
 <x-admin.detail.page-header
@@ -17,7 +22,7 @@
     :subtitle="$displayCode . ($booking?->MaBooking ? ' · Đặt lịch ' . $booking->MaBooking : '')"
 >
     <x-slot:badge>
-        @if($isReceived)
+        @if($isIntake && $bookingDocument->TrangThai === 'Hoàn thành')
             <x-admin.status-badge
                 :status="\App\Enums\DeliveryStatus::Completed"
                 :enum="\App\Enums\DeliveryStatus::class"
@@ -40,9 +45,10 @@
                 <x-admin.detail.info-item label="Hình thức" :value="$bookingDocument->HinhThuc ?: '—'" />
                 <x-admin.detail.info-item label="Địa chỉ" :value="$bookingDocument->DiaChi ?: 'Không yêu cầu địa chỉ giao tận nhà'" />
                 <x-admin.detail.info-item label="Nhân viên phụ trách" :value="$bookingDocument->nhanVien?->HoTen ?: 'Chưa phân công'" />
+                <x-admin.detail.info-item label="Nhân viên xác nhận Booking" :value="$booking?->nhanVienXacNhan?->HoTen ?: '—'" />
                 <x-admin.detail.info-item label="Thời gian dự kiến" :value="$bookingDocument->ThoiGianDuKien?->format('d/m/Y H:i') ?: 'Chưa lên lịch'" />
                 <x-admin.detail.info-item label="Thời gian thực tế" :value="$bookingDocument->ThoiGianThucTe?->format('d/m/Y H:i') ?: 'Chưa ghi nhận'" />
-                <x-admin.detail.info-item label="Phí đã ghi nhận" :value="number_format((float) $bookingDocument->PhiGiaoNhan, 0, ',', '.') . ' VNĐ'" />
+                <x-admin.detail.info-item label="Phí dự kiến" :value="number_format((float) $bookingDocument->PhiGiaoNhan, 0, ',', '.') . ' VNĐ'" />
                 <x-admin.detail.info-item label="Đơn hàng liên kết">
                     @if($order)
                         @can('orders.view')
@@ -73,64 +79,72 @@
                     <x-admin.detail.info-item label="Ghi chú" :value="$booking->GhiChu ?: '—'" />
                 </x-admin.detail.info-grid>
                 @can('bookings.view')
-                    <a class="btn btn-outline-secondary btn-sm mt-3" href="{{ route('bookings.show', $booking) }}">
+                    <a class="btn btn-outline-primary btn-sm mt-3" href="{{ route('bookings.show', $booking) }}">
                         <i class="bi bi-box-arrow-up-right me-1"></i>Xem Booking
                     </a>
                 @endcan
+            </x-admin.detail.panel>
+        @endif
+
+        @if($inspection)
+            <x-admin.detail.panel title="Kết quả kiểm kê" icon="bi-clipboard-check" :iconClass="'bg-success-subtle text-success'">
+                <x-admin.detail.info-grid :columns="2">
+                    <x-admin.detail.info-item label="Nhân viên chốt kiểm kê" :value="$decision['employee_name'] ?? '—'" />
+                    <x-admin.detail.info-item label="Thời gian chốt" :value="$formattedDecisionTimestamp" />
+                    @if(array_key_exists('customer_accepted', $decision))
+                        <x-admin.detail.info-item label="Khách đồng ý báo giá">
+                            {{ $decision['customer_accepted'] ? 'Có' : 'Không' }}
+                        </x-admin.detail.info-item>
+                    @endif
+                    @if(array_key_exists('agreed_total', $decision))
+                        <x-admin.detail.info-item label="Tổng tiền khách đồng ý" :value="number_format((float) $decision['agreed_total'], 0, ',', '.') . ' VNĐ'" />
+                    @endif
+                    @if(array_key_exists('charged_total', $decision))
+                        <x-admin.detail.info-item label="Số tiền đã thu" :value="number_format((float) $decision['charged_total'], 0, ',', '.') . ' VNĐ'" />
+                    @endif
+                    @if(! empty($decision['reason']))
+                        <x-admin.detail.info-item label="Lý do khách từ chối" :value="$decision['reason']" />
+                    @endif
+                </x-admin.detail.info-grid>
             </x-admin.detail.panel>
         @endif
     </div>
 
     <div class="col-lg-4">
         <x-admin.detail.panel title="Thao tác" icon="bi-sliders" :iconClass="'bg-secondary-subtle text-secondary'">
-            @if($isIntake && $booking && $booking->statusEnum() === \App\Enums\BookingStatus::Confirmed && ! $order)
-                @if($isReceived)
-                    @can('bookings.confirm')
-                        <a href="{{ route('bookings.inspection', $booking) }}" class="btn btn-primary w-100">
-                            <i class="bi bi-clipboard-check me-1"></i>Kiểm tra và tạo đơn
-                        </a>
-                    @endcan
-                @elseif(! $isCancelled)
-                    @can('bookings.confirm')
-                        <form action="{{ route('bookings.receive', $booking) }}" method="POST">
-                            @csrf
-                            <button type="submit" class="btn btn-primary w-100">Xác nhận đã nhận đồ</button>
-                        </form>
-                    @endcan
-                    <p class="small text-muted mt-2 mb-0">
-                        @if($bookingDocument->HinhThuc === 'Tại nhà')
-                            Nhân viên ghi nhận tại đây sau khi đã lấy đồ thực tế từ khách.
-                        @else
-                            Ghi nhận sau khi khách đã mang đồ đến cửa hàng.
-                        @endif
-                    </p>
-                @else
-                    <p class="alert alert-danger mb-0">Phiếu nhận đồ đã hủy. Không thể xác nhận đã nhận đồ.</p>
-                @endif
+            <div class="d-flex flex-column gap-2">
+            @if($canInspect)
+                <a href="{{ route('bookings.inspection', $booking->BookingID) }}" class="btn btn-success w-100 py-2">
+                    <i class="bi bi-clipboard-check me-1"></i>Kiểm tra và tạo đơn
+                </a>
+                <p class="small text-muted mb-0">Việc hoàn tất nhận đồ và tạo đơn được ghi nhận cùng lúc sau khi khách đồng ý giá thực tế.</p>
             @elseif($order)
                 <p class="mb-0">Đơn hàng đã được tạo từ kiểm kê. Không thể tạo thêm đơn cho phiếu này.</p>
             @elseif(! $isIntake)
                 <p class="mb-0">Đây là phiếu trả đồ từ đặt lịch, không phải phiếu giao trả vận hành.</p>
+            @elseif($isCancelled)
+                <p class="alert alert-danger mb-0">Phiếu nhận đồ đã hủy. Không thể tiếp tục kiểm kê.</p>
             @else
-                <p class="mb-0">Phiếu chưa ở trạng thái cho phép ghi nhận hoặc kiểm kê.</p>
+                <p class="mb-0">Chỉ nhân viên được phân công mới có thể kiểm kê phiếu này.</p>
             @endif
 
             @if($canManageIntake)
                 @can('deliveries.edit')
                     <a href="{{ route('deliveries.booking-documents.edit', $bookingDocument) }}"
-                       class="btn btn-order-action edit mt-3" title="Sửa" aria-label="Sửa phiếu nhận đồ">
-                        <i class="bi bi-pencil"></i>
+                       class="btn btn-primary w-100 py-2" aria-label="Chỉnh sửa phiếu nhận đồ">
+                        <i class="bi bi-pencil me-1" aria-hidden="true"></i>Chỉnh sửa
                     </a>
                 @endcan
             @elseif($isCancelled)
-                <p class="small text-muted mt-3 mb-0">Phiếu đã được đánh dấu hủy trước đây; trạng thái Booking được quản lý riêng.</p>
+                <p class="small text-muted mb-0">Phiếu đã được đánh dấu hủy trước đây; trạng thái Booking được quản lý riêng.</p>
             @elseif($booking?->statusEnum() === \App\Enums\BookingStatus::Cancelled)
-                <p class="small text-muted mt-3 mb-0">Booking đã hủy. Phiếu được giữ lại để tra cứu lịch sử.</p>
+                <p class="small text-muted mb-0">Booking đã hủy. Phiếu được giữ lại để tra cứu lịch sử.</p>
             @endif
 
-            <a href="{{ route('deliveries.index') }}" class="btn btn-outline-secondary w-100 mt-3">
+            <a href="{{ route('deliveries.index') }}" class="btn btn-outline-secondary w-100">
                 <i class="bi bi-arrow-left me-1"></i>Quay lại danh sách giao nhận
             </a>
+            </div>
         </x-admin.detail.panel>
     </div>
 </div>

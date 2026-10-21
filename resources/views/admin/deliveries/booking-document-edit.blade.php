@@ -48,11 +48,19 @@
                     <div class="col-12">
                         <label class="form-label" for="employee_id">Nhân viên phụ trách</label>
                         @if($canAssignEmployee)
+                            @php
+                                $duplicateEmployeeNames = $employees
+                                    ->countBy(fn ($candidate) => mb_strtolower(trim((string) $candidate->HoTen)));
+                                $currentUserEmployeeId = (int) (auth()->user()?->NhanVienID ?? 0);
+                            @endphp
                             <select class="form-select" id="employee_id" name="employee_id" required>
                                 <option value="">Chọn nhân viên</option>
                                 @foreach($employees as $candidate)
                                     <option value="{{ $candidate->NhanVienID }}" @selected((string) old('employee_id', $bookingDocument->NhanVienID) === (string) $candidate->NhanVienID)>
-                                        {{ $candidate->HoTen }}{{ $candidate->ChucDanh ? ' · '.$candidate->ChucDanh : '' }}
+                                        @if((int) $candidate->NhanVienID === $currentUserEmployeeId)
+                                            Bản thân tôi —
+                                        @endif
+                                        {{ $candidate->HoTen }}{{ $candidate->ChucDanh ? ' · '.$candidate->ChucDanh : '' }}@if(($duplicateEmployeeNames[mb_strtolower(trim((string) $candidate->HoTen))] ?? 0) > 1) · {{ $candidate->SoDienThoai ?: ($candidate->Email ?: 'Mã NV '.$candidate->NhanVienID) }}@endif
                                     </option>
                                 @endforeach
                             </select>
@@ -85,7 +93,7 @@
                 </div>
 
                 <div class="d-flex justify-content-end mt-4">
-                    <button type="submit" class="btn btn-primary">Lưu thay đổi</button>
+                    <button type="submit" class="btn btn-success">Lưu thay đổi</button>
                 </div>
             </form>
         </div>

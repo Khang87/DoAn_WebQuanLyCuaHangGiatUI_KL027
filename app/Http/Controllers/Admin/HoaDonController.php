@@ -26,12 +26,17 @@ class HoaDonController extends Controller
 
     public function index(Request $request)
     {
+        $dateFilters = $request->validate([
+            'date_from' => ['nullable', 'date_format:Y-m-d'],
+            'date_to' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:date_from'],
+        ]);
+
         $invoices = $this->invoiceService->getAll([
             'search' => $request->input('search'),
             'order_id' => $request->input('order_id'),
             'status' => $request->input('status'),
-            'date_from' => $request->input('date_from'),
-            'date_to' => $request->input('date_to'),
+            'date_from' => $dateFilters['date_from'] ?? null,
+            'date_to' => $dateFilters['date_to'] ?? null,
         ]);
 
         $statuses = InvoiceStatus::options();

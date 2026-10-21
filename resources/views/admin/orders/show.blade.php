@@ -464,7 +464,7 @@
 
                         @can('deliveries.view')
                         <div class="mt-3">
-                            <a href="{{ route('deliveries.show', $delivery->GiaoNhanID) }}" class="btn btn-outline-secondary btn-sm w-100">
+                            <a href="{{ route('deliveries.show', $delivery->GiaoNhanID) }}" class="btn btn-outline-primary btn-sm w-100">
                                 <i class="bi bi-box-arrow-up-right me-1"></i>Chi tiết phiếu giao nhận
                             </a>
                         </div>

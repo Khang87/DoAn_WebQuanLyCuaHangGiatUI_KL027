@@ -248,7 +248,7 @@ class MessageController extends Controller
             'customer' => $order->khachHang?->HoTen ?: 'Khách hàng',
             'preview' => $order->last_message_preview,
             'unread' => (int) $order->unread_count > 0,
-            'date' => $order->last_message_at ? Carbon::parse($order->last_message_at, 'UTC')->setTimezone(config('app.timezone'))->format('d-m-Y') : $order->NgayTao?->format('d-m-Y'),
+            'date' => $order->last_message_at ? Carbon::parse($order->last_message_at, 'UTC')->setTimezone(config('app.timezone'))->format('d/m/Y') : $order->NgayTao?->format('d/m/Y'),
         ])->values()])->header('Cache-Control', 'private, no-store');
     }
 

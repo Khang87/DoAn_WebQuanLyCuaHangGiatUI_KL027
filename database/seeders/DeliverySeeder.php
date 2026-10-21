@@ -9,6 +9,7 @@ use App\Models\KhachHang;
 use App\Models\NhanVien;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Schema;
 
 /**
  * Sinh phiếu giao nhận trong `GiaoNhan` cho từng đơn hàng.
@@ -48,7 +49,7 @@ class DeliverySeeder extends Seeder
                 default => 'Chờ thực hiện',
             };
 
-            GiaoNhan::create([
+            $attributes = [
                 'DonHangID' => $order->DonHangID,
                 'NhanVienID' => $order->NhanVienID ?: ($staff->isNotEmpty() ? $staff->random()->NhanVienID : null),
                 'LoaiGiaoNhan' => $deliverToHome ? 'GIAO_DO' : 'NHAN_DO',
@@ -61,7 +62,13 @@ class DeliverySeeder extends Seeder
                 'PhiGiaoHang' => (float) $order->PhiGiaoHang,
                 'TrangThai' => $status,
                 'GhiChu' => null,
-            ]);
+            ];
+
+            if (Schema::hasColumn('GiaoNhan', 'NgayTao')) {
+                $attributes['NgayTao'] = now();
+            }
+
+            GiaoNhan::create($attributes);
 
             $created++;
         }

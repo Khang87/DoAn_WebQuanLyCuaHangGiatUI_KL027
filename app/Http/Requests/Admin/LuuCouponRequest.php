@@ -29,8 +29,8 @@ class LuuCouponRequest extends FormRequest
             'GiaTriDonToiThieu' => ['nullable', 'numeric', 'min:0'],
             'MucGiamToiDa' => ['nullable', 'numeric', 'min:0'],
             'DieuKienApDung' => ['nullable', 'string', 'max:500'],
-            'NgayBatDau' => ['required', 'date'],
-            'NgayKetThuc' => ['required', 'date', 'after_or_equal:NgayBatDau'],
+            'NgayBatDau' => ['required', 'date_format:Y-m-d'],
+            'NgayKetThuc' => ['required', 'date_format:Y-m-d', 'after_or_equal:NgayBatDau'],
             'TrangThai' => ['required', Rule::in(['Hoạt động', 'Tạm ngưng', 'Hết hạn'])],
         ];
     }

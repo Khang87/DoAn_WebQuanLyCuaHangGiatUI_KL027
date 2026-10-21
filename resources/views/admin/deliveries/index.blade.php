@@ -162,20 +162,6 @@
                                         @endif
                                     @endcan
 
-                                    @if($isBookingDocument
-                                        && $isIntake
-                                        && $delivery->status_key === 'received'
-                                        && $delivery->booking_status === \App\Enums\BookingStatus::Confirmed->value
-                                        && ! $delivery->order_id)
-                                        @can('bookings.confirm')
-                                            <a href="{{ route('bookings.inspection', $delivery->booking_id) }}"
-                                               class="btn btn-order-action edit" title="Kiểm tra và tạo đơn"
-                                               aria-label="Kiểm tra và tạo đơn cho {{ $delivery->booking_code }}">
-                                                <i class="bi bi-clipboard-check"></i>
-                                            </a>
-                                        @endcan
-                                    @endif
-
                                     @if($isMutableBookingIntake)
                                         @can('deliveries.edit')
                                             <a href="{{ route('deliveries.booking-documents.edit', $delivery->source_id) }}"

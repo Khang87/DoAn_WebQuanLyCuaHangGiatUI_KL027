@@ -13,6 +13,7 @@ use App\Models\DonHang;
 use App\Models\GiaoNhan;
 use App\Models\KhachHang;
 use App\Models\User;
+use App\Services\BookingService;
 use App\Services\DeliveryService;
 use App\Services\EmployeeAssignment;
 use App\Support\FriendlyError;
@@ -25,6 +26,7 @@ class GiaoNhanController extends Controller
 {
     public function __construct(
         private DeliveryService $deliveryService,
+        private BookingService $bookingService,
     ) {}
 
     public function index(Request $request)
@@ -222,8 +224,18 @@ class GiaoNhanController extends Controller
 
         $displayCode = 'BGN-'.$bookingDocument->BookingGiaoNhanID;
         $canManageIntake = $this->deliveryService->canManageBookingIntake($bookingDocument);
+        $isIntake = $bookingDocument->LoaiGiaoNhan === 'NHAN_DO';
+        $booking = $bookingDocument->booking;
+        $canInspect = $isIntake
+            && $booking !== null
+            && $this->bookingService->canInspect($booking);
 
-        return view('admin.deliveries.booking-document', compact('bookingDocument', 'displayCode', 'canManageIntake'));
+        return view('admin.deliveries.booking-document', compact(
+            'bookingDocument',
+            'displayCode',
+            'canManageIntake',
+            'canInspect',
+        ));
     }
 
     public function editBookingDocument(int $bookingDelivery)
@@ -239,9 +251,9 @@ class GiaoNhanController extends Controller
             'Phiếu nhận đồ không còn ở trạng thái có thể chỉnh sửa.',
         );
 
-        $canAssignEmployee = ! $user || $user->isManager();
+        $canAssignEmployee = EmployeeAssignment::canAssignBookingIntake($user);
         $employees = $canAssignEmployee
-            ? $this->assignableEmployees($bookingDocument->NhanVienID)
+            ? $this->bookingIntakeAssignableEmployees($user, $bookingDocument->NhanVienID)
             : new Collection([$bookingDocument->nhanVien]);
         $displayCode = 'BGN-'.$bookingDocument->BookingGiaoNhanID;
 
@@ -266,6 +278,9 @@ class GiaoNhanController extends Controller
             'Phiếu nhận đồ không còn ở trạng thái có thể chỉnh sửa.',
         );
 
+        $canAssignEmployee = EmployeeAssignment::canAssignBookingIntake($user);
+        abort_if($request->exists('employee_id') && ! $canAssignEmployee, 403);
+
         $rules = [
             'pickup_date' => ['nullable', 'date_format:Y-m-d', 'required_with:pickup_time'],
             'pickup_time' => ['nullable', 'date_format:H:i', 'required_with:pickup_date'],
@@ -275,11 +290,11 @@ class GiaoNhanController extends Controller
                 'max:255',
             ],
         ];
-        if (! $user || $user->isManager()) {
+        if ($canAssignEmployee && $user !== null) {
             $rules['employee_id'] = [
                 'required',
                 'integer',
-                EmployeeAssignment::rule($bookingDocument->NhanVienID),
+                EmployeeAssignment::bookingIntakeRule($user, $bookingDocument->NhanVienID),
             ];
         }
 
@@ -287,6 +302,7 @@ class GiaoNhanController extends Controller
             'employee_id.required' => 'Vui lòng chọn nhân viên phụ trách.',
             'employee_id.integer' => 'Nhân viên phụ trách không hợp lệ.',
             'employee_id.exists' => 'Vui lòng chọn nhân viên đang hoạt động.',
+            'employee_id.in' => 'Nhân viên được chọn không thuộc phạm vi phân công hợp lệ.',
             'pickup_date.required_with' => 'Ngày và giờ dự kiến phải được nhập cùng nhau.',
             'pickup_time.required_with' => 'Ngày và giờ dự kiến phải được nhập cùng nhau.',
             'address.required' => 'Vui lòng nhập địa chỉ nhận đồ tại nhà.',
@@ -476,6 +492,14 @@ class GiaoNhanController extends Controller
     private function assignableEmployees(?int $currentId = null): Collection
     {
         return EmployeeAssignment::deliveryCandidates($currentId)
+            ->orderBy('HoTen')
+            ->orderBy('NhanVienID')
+            ->get(['NhanVienID', 'HoTen', 'ChucDanh', 'SoDienThoai', 'Email', 'NgayVaoLam']);
+    }
+
+    private function bookingIntakeAssignableEmployees(User $user, ?int $currentId = null): Collection
+    {
+        return EmployeeAssignment::bookingIntakeCandidates($user, $currentId)
             ->orderBy('HoTen')
             ->orderBy('NhanVienID')
             ->get(['NhanVienID', 'HoTen', 'ChucDanh', 'SoDienThoai', 'Email', 'NgayVaoLam']);

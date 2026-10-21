@@ -7,6 +7,21 @@ use Illuminate\Validation\Rule;
 
 class LuuKhachHangRequest extends FormRequest
 {
+    protected function prepareForValidation(): void
+    {
+        $input = [];
+
+        foreach (['HoTen', 'Email', 'SoDienThoai'] as $field) {
+            $value = $this->input($field);
+
+            if (is_string($value)) {
+                $input[$field] = trim($value);
+            }
+        }
+
+        $this->merge($input);
+    }
+
     public function authorize(): bool
     {
         return true;
@@ -19,8 +34,20 @@ class LuuKhachHangRequest extends FormRequest
 
         return [
             'HoTen' => ['required', 'string', 'max:255'],
-            'Email' => ['nullable', ...($isCreating ? ['required_without:SoDienThoai'] : []), 'email', 'max:255', Rule::unique('KhachHang', 'Email')->ignore($id, 'KhachHangID')],
-            'SoDienThoai' => ['nullable', 'string', 'max:30', Rule::unique('KhachHang', 'SoDienThoai')->ignore($id, 'KhachHangID')],
+            'Email' => [
+                ...($isCreating ? ['required'] : ['nullable']),
+                'string',
+                'email',
+                'max:255',
+                Rule::unique('KhachHang', 'Email')->ignore($id, 'KhachHangID'),
+            ],
+            'SoDienThoai' => [
+                ...($isCreating ? ['required'] : ['nullable']),
+                'string',
+                'max:30',
+                'regex:/^0\d{9,10}$/',
+                Rule::unique('KhachHang', 'SoDienThoai')->ignore($id, 'KhachHangID'),
+            ],
             'DiaChi' => ['nullable', 'string', 'max:500'],
             'DiemHienTai' => ['nullable', 'integer', 'min:0'],
         ];
@@ -29,14 +56,16 @@ class LuuKhachHangRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'HoTen.required' => 'Họ tên là bắt buộc.',
+            'HoTen.required' => 'Vui lòng nhập họ tên khách hàng.',
             'HoTen.string' => 'Họ tên phải là chuỗi ký tự.',
             'HoTen.max' => 'Họ tên không được vượt quá 255 ký tự.',
-            'Email.required_without' => 'Vui lòng nhập số điện thoại hoặc email.',
-            'Email.email' => 'Định dạng email không hợp lệ.',
+            'Email.required' => 'Vui lòng nhập địa chỉ email.',
+            'Email.email' => 'Email không đúng định dạng.',
             'Email.unique' => 'Email này đã được đăng ký trước đó rồi.',
+            'SoDienThoai.required' => 'Vui lòng nhập số điện thoại.',
             'SoDienThoai.unique' => 'Số điện thoại này đã được đăng ký trước đó rồi.',
             'SoDienThoai.max' => 'Số điện thoại không được vượt quá 30 ký tự.',
+            'SoDienThoai.regex' => 'Số điện thoại không hợp lệ.',
             'DiaChi.max' => 'Địa chỉ không được vượt quá 500 ký tự.',
             'DiemHienTai.integer' => 'Điểm phải là số nguyên.',
             'DiemHienTai.min' => 'Điểm không được nhỏ hơn 0.',

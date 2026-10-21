@@ -69,6 +69,7 @@ trait BookingInspectionFixture
             'return_address' => $booking->DiaChiTra,
             'scheduled_date' => $booking->NgayHen->format('Y-m-d'),
             'scheduled_time' => $booking->GioHen->format('H:i'),
+            'customer_accepted' => '1',
             'items' => $this->inspectionItems($booking),
         ];
     }

@@ -12,6 +12,7 @@ use App\Models\BookingKiemKe;
 use App\Models\DonHang;
 use App\Models\KhachHang;
 use App\Models\KhuyenMai;
+use App\Models\NhanVien;
 use App\Models\NhatKyHeThong;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
@@ -92,6 +93,7 @@ class BookingService
                 'khuyenMai',
             ], [
                 'giaoNhanDuKiens', 'kiemKe',
+                'giaoNhanDuKiens.nhanVien',
                 'donHangs.chiTietDonHangs.dichVu',
                 'donHangs.chiTietDonHangs.loaiDoGiat',
                 'donHangs.chiTietDonHangs.donViTinh',
@@ -154,7 +156,6 @@ class BookingService
                     [
                         'HinhThuc' => $method,
                         'DiaChi' => $method === 'Tại nhà' ? $address : null,
-                        'NhanVienID' => $leg === 'NHAN_DO' ? $employeeId : null,
                         'ThoiGianDuKien' => $leg === 'NHAN_DO' ? $locked->NgayHen->format('Y-m-d').' '.$locked->GioHen->format('H:i:s') : null,
                         'PhiGiaoNhan' => $method === 'Tại nhà' ? $fee : 0,
                         'NgayTao' => now(),
@@ -193,16 +194,22 @@ class BookingService
         return DB::transaction(function () use ($booking): BookingGiaoNhan {
             $locked = Booking::query()->lockForUpdate()->findOrFail($booking->BookingID);
             if ($locked->TrangThai !== BookingStatus::Confirmed->value || $this->hasConvertedOrder($locked)) {
-                throw ValidationException::withMessages(['booking' => 'Chỉ Booking đã xác nhận và chưa có đơn mới được ghi nhận nhận đồ.']);
+                throw ValidationException::withMessages(['booking' => 'Chỉ Booking đã xác nhận và chưa có đơn mới được bắt đầu kiểm kê.']);
             }
             $employeeId = $this->requireAuthenticatedEmployeeId('booking', 'Cần nhân viên đang hoạt động để nhận đồ.');
             $leg = BookingGiaoNhan::query()->where('BookingID', $locked->BookingID)
                 ->where('LoaiGiaoNhan', 'NHAN_DO')->lockForUpdate()->firstOrFail();
             if ($leg->TrangThai === DeliveryStatus::Cancelled->dbValue()) {
-                throw ValidationException::withMessages(['booking' => 'Không thể xác nhận nhận đồ trên phiếu đã hủy.']);
+                throw ValidationException::withMessages(['booking' => 'Không thể bắt đầu kiểm kê trên phiếu đã hủy.']);
             }
-            if ($leg->TrangThai !== 'Đã nhận') {
-                $leg->update(['TrangThai' => 'Đã nhận', 'ThoiGianThucTe' => now(), 'NhanVienID' => $employeeId]);
+            if ($leg->NhanVienID === null || (int) $leg->NhanVienID !== $employeeId) {
+                throw ValidationException::withMessages(['booking' => 'Chỉ nhân viên được phân công mới có thể bắt đầu kiểm kê.']);
+            }
+            if ($leg->TrangThai === DeliveryStatus::Pending->dbValue()) {
+                $leg->update([
+                    'TrangThai' => DeliveryStatus::Picking->dbValue(),
+                    'ThoiGianThucTe' => null,
+                ]);
             }
 
             return $leg->fresh();
@@ -217,30 +224,73 @@ class BookingService
             if ($existing) {
                 return $existing;
             }
+            if (! in_array($data['customer_accepted'] ?? null, [true, 1, '1', 'yes', 'on'], true)) {
+                throw ValidationException::withMessages([
+                    'customer_accepted' => 'Cần xác nhận khách hàng đã đồng ý với kết quả kiểm kê và tổng tiền thực tế.',
+                ]);
+            }
             if ($locked->TrangThai !== BookingStatus::Confirmed->value) {
                 throw ValidationException::withMessages(['booking' => 'Hãy xác nhận Booking trước khi kiểm kê và tạo đơn.']);
             }
-            if (! BookingGiaoNhan::query()->where('BookingID', $locked->BookingID)
-                ->where('LoaiGiaoNhan', 'NHAN_DO')->where('TrangThai', 'Đã nhận')->exists()) {
-                throw ValidationException::withMessages(['booking' => 'Hãy ghi nhận đã nhận đồ trước khi kiểm kê.']);
-            }
-
-            $snapshot = $this->inspectionSnapshot($data);
-            $changed = $this->inspectionDiffersFromBooking($locked, $snapshot);
-            $inspection = BookingKiemKe::query()->where('BookingID', $locked->BookingID)->lockForUpdate()->first();
-            if (! $inspection || $inspection->DuLieuThucTe != $snapshot || $inspection->CoChenhLech !== $changed) {
-                BookingKiemKe::updateOrCreate(['BookingID' => $locked->BookingID], [
-                    'DuLieuThucTe' => $snapshot,
-                    'CoChenhLech' => $changed,
-                    'PhienBan' => ($inspection?->PhienBan ?? 0) + 1,
-                    'CapNhatLuc' => now(),
+            $employeeId = $this->requireAuthenticatedEmployeeId(
+                'booking',
+                'Tài khoản cần hồ sơ nhân viên đang hoạt động để kiểm kê.',
+            );
+            $intake = BookingGiaoNhan::query()
+                ->where('BookingID', $locked->BookingID)
+                ->where('LoaiGiaoNhan', 'NHAN_DO')
+                ->lockForUpdate()
+                ->firstOrFail();
+            $this->assertAssignedIntakeHandler($intake, $employeeId);
+            if (
+                ! in_array($intake->TrangThai, [
+                    DeliveryStatus::Pending->dbValue(),
+                    DeliveryStatus::Picking->dbValue(),
+                ], true)
+                || $intake->ThoiGianThucTe !== null
+                || $intake->DonHangID !== null
+                || $intake->BookingKiemKeID !== null
+                || BookingKiemKe::query()->where('BookingID', $locked->BookingID)->exists()
+            ) {
+                throw ValidationException::withMessages([
+                    'booking' => 'Phiếu nhận không còn ở trạng thái cho phép kiểm kê và chốt đơn.',
                 ]);
             }
+
+            $data = $this->useOriginalBookingDetails($locked, $data);
+            $data['items'] = $this->preserveBookingItemNotes($locked, $data['items']);
+            $snapshot = $this->inspectionSnapshot($data);
+            $changed = $this->inspectionDiffersFromBooking($locked, $snapshot);
+            $completedAt = now();
+            $inspection = BookingKiemKe::query()->create([
+                'BookingID' => $locked->BookingID,
+                'DuLieuThucTe' => $snapshot,
+                'CoChenhLech' => $changed,
+                'PhienBan' => 1,
+                'CapNhatLuc' => $completedAt,
+            ]);
+            $intake->update([
+                'TrangThai' => DeliveryStatus::Completed->dbValue(),
+                'ThoiGianThucTe' => $completedAt,
+                'BookingKiemKeID' => $inspection->BookingKiemKeID,
+            ]);
 
             $order = $this->inspectBookingAndCreateOrder(
                 $locked, null, $data['items'], 0, false, $data,
                 false, true,
             );
+
+            $decision = [
+                'customer_accepted' => true,
+                'agreed_total' => (float) $order->fresh()->ThanhTien,
+                'employee_id' => $employeeId,
+                'employee_name' => auth()->user()?->nhanVien?->HoTen,
+                'confirmed_at' => $completedAt->toISOString(),
+            ];
+            $inspection->update([
+                'DuLieuThucTe' => [...$snapshot, '_decision' => $decision],
+                'CapNhatLuc' => $completedAt,
+            ]);
 
             if ($changed) {
                 $accountId = $locked->khachHang?->taiKhoan?->TaiKhoanID;
@@ -262,6 +312,186 @@ class BookingService
         });
     }
 
+    public function canInspect(Booking $booking): bool
+    {
+        return $this->inspectionUnavailableReason($booking) === null;
+    }
+
+    public function assertCanInspect(Booking $booking): void
+    {
+        $reason = $this->inspectionUnavailableReason($booking);
+        if ($reason !== null) {
+            throw ValidationException::withMessages(['booking' => $reason]);
+        }
+    }
+
+    private function inspectionUnavailableReason(Booking $booking): ?string
+    {
+        if ($booking->TrangThai !== BookingStatus::Confirmed->value || $this->hasConvertedOrder($booking)) {
+            return 'Booking không còn ở trạng thái cho phép kiểm kê.';
+        }
+
+        $intake = BookingGiaoNhan::query()
+            ->where('BookingID', $booking->BookingID)
+            ->where('LoaiGiaoNhan', 'NHAN_DO')
+            ->first();
+
+        if (
+            ! $intake
+            || ! in_array($intake->TrangThai, [
+                DeliveryStatus::Pending->dbValue(),
+                DeliveryStatus::Picking->dbValue(),
+            ], true)
+            || $intake->ThoiGianThucTe !== null
+            || $intake->DonHangID !== null
+            || $intake->BookingKiemKeID !== null
+            || BookingKiemKe::query()->where('BookingID', $booking->BookingID)->exists()
+        ) {
+            return 'Phiếu nhận không còn ở trạng thái cho phép kiểm kê.';
+        }
+
+        $employeeId = auth()->user()?->NhanVienID;
+        if (! $employeeId || ! NhanVien::query()->whereKey($employeeId)->where('TrangThai', 'Hoạt động')->exists()) {
+            return 'Tài khoản cần hồ sơ nhân viên đang hoạt động để kiểm kê.';
+        }
+        if ($intake->NhanVienID === null || (int) $intake->NhanVienID !== (int) $employeeId) {
+            return 'Chỉ nhân viên được phân công mới có thể kiểm tra và xử lý phiếu nhận đồ.';
+        }
+
+        return null;
+    }
+
+    public function refuseQuote(Booking $booking, array $data): Booking
+    {
+        return DB::transaction(function () use ($booking, $data): Booking {
+            $locked = Booking::query()->lockForUpdate()->findOrFail($booking->BookingID);
+            if ($locked->TrangThai !== BookingStatus::Confirmed->value || $this->hasConvertedOrder($locked)) {
+                throw ValidationException::withMessages([
+                    'booking' => 'Chỉ Booking đã xác nhận, chưa tạo đơn mới có thể hủy do khách từ chối báo giá.',
+                ]);
+            }
+
+            $employeeId = $this->requireAuthenticatedEmployeeId(
+                'booking',
+                'Tài khoản cần hồ sơ nhân viên đang hoạt động để xử lý từ chối báo giá.',
+            );
+            $intake = BookingGiaoNhan::query()
+                ->where('BookingID', $locked->BookingID)
+                ->where('LoaiGiaoNhan', 'NHAN_DO')
+                ->lockForUpdate()
+                ->firstOrFail();
+            $this->assertAssignedIntakeHandler($intake, $employeeId);
+            if (
+                ! in_array($intake->TrangThai, [
+                    DeliveryStatus::Pending->dbValue(),
+                    DeliveryStatus::Picking->dbValue(),
+                ], true)
+                || $intake->ThoiGianThucTe !== null
+                || $intake->DonHangID !== null
+                || DonHang::query()->where('BookingID', $locked->BookingID)->exists()
+            ) {
+                throw ValidationException::withMessages([
+                    'booking' => 'Không thể hủy theo luồng từ chối báo giá sau khi đồ đã được tiếp nhận hoặc đã tạo đơn.',
+                ]);
+            }
+
+            $data = $this->useOriginalBookingDetails($locked, $data);
+            $data['items'] = $this->preserveBookingItemNotes($locked, $data['items']);
+            $snapshot = $this->inspectionSnapshot($data);
+            $changed = $this->inspectionDiffersFromBooking($locked, $snapshot);
+            $inspection = BookingKiemKe::query()
+                ->where('BookingID', $locked->BookingID)
+                ->lockForUpdate()
+                ->first();
+            $timestamp = now();
+            $reason = trim($data['rejection_reason']);
+            $previousSnapshots = $inspection?->DuLieuThucTe['_previous_versions'] ?? [];
+            if ($inspection !== null) {
+                $previousSnapshots[] = $inspection->DuLieuThucTe;
+            }
+            $snapshot['_decision'] = [
+                'customer_accepted' => false,
+                'reason' => $reason,
+                'employee_id' => $employeeId,
+                'employee_name' => auth()->user()?->nhanVien?->HoTen,
+                'decided_at' => $timestamp->toISOString(),
+                'charged_total' => 0,
+            ];
+            if ($previousSnapshots !== []) {
+                $snapshot['_previous_versions'] = $previousSnapshots;
+            }
+
+            if ($inspection === null) {
+                $inspection = BookingKiemKe::query()->create([
+                    'BookingID' => $locked->BookingID,
+                    'DuLieuThucTe' => $snapshot,
+                    'CoChenhLech' => $changed,
+                    'PhienBan' => 1,
+                    'CapNhatLuc' => $timestamp,
+                ]);
+            } else {
+                $inspection->update([
+                    'DuLieuThucTe' => $snapshot,
+                    'CoChenhLech' => $changed,
+                    'PhienBan' => $inspection->PhienBan + 1,
+                    'CapNhatLuc' => $timestamp,
+                ]);
+            }
+
+            $intake->update([
+                'TrangThai' => DeliveryStatus::Cancelled->dbValue(),
+                'BookingKiemKeID' => $inspection->BookingKiemKeID,
+            ]);
+            BookingGiaoNhan::query()
+                ->where('BookingID', $locked->BookingID)
+                ->where('LoaiGiaoNhan', 'GIAO_DO')
+                ->where('TrangThai', DeliveryStatus::Pending->dbValue())
+                ->whereNull('ThoiGianThucTe')
+                ->update(['TrangThai' => DeliveryStatus::Cancelled->dbValue()]);
+
+            $before = $this->bookingAuditSnapshot($locked);
+            $beforeItems = $this->bookingItemsAuditSnapshot($locked);
+            $this->releaseLegacyPoints($locked);
+            $locked->forceFill([
+                'TrangThai' => BookingStatus::Cancelled->value,
+                'NgayCapNhat' => $timestamp,
+            ])->saveQuietly();
+            $this->recordBookingAudit(
+                $locked,
+                $before,
+                $this->bookingAuditSnapshot($locked),
+                $beforeItems,
+                $beforeItems,
+                $reason,
+            );
+
+            return $locked->fresh(['giaoNhanDuKiens', 'kiemKe', 'donHangs']);
+        });
+    }
+
+    private function assertAssignedIntakeHandler(BookingGiaoNhan $intake, int $employeeId): void
+    {
+        if ($intake->NhanVienID === null || (int) $intake->NhanVienID !== $employeeId) {
+            throw ValidationException::withMessages([
+                'booking' => 'Chỉ nhân viên được phân công mới có thể kiểm tra và xử lý phiếu nhận đồ.',
+            ]);
+        }
+    }
+
+    private function useOriginalBookingDetails(Booking $booking, array $data): array
+    {
+        return array_replace($data, [
+            'customer_id' => $booking->KhachHangID,
+            'method' => $booking->HinhThucNhanDo,
+            'address' => $booking->DiaChiNhan,
+            'return_method' => $booking->HinhThucTraDo,
+            'return_address' => $booking->DiaChiTra,
+            'scheduled_date' => $booking->NgayHen?->format('Y-m-d'),
+            'scheduled_time' => $booking->GioHen?->format('H:i'),
+            'notes' => $booking->GhiChu,
+        ]);
+    }
+
     private function inspectionSnapshot(array $data): array
     {
         $fields = ['method', 'return_method', 'address', 'return_address', 'scheduled_date', 'scheduled_time', 'notes'];
@@ -269,15 +499,55 @@ class BookingService
             'DichVuID', 'LoaiDoGiatID', 'DonViTinhID', 'SoLuong', 'KhoiLuong', 'TinhTrangTruocKhiGiat', 'GhiChu',
         ])), $data['items']);
 
-        return ['items' => $items, 'booking' => array_intersect_key($data, array_flip($fields)),
-            'quality_difference' => (bool) ($data['quality_difference'] ?? false)];
+        return ['items' => $items, 'booking' => array_intersect_key($data, array_flip($fields))];
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $items
+     * @return array<int, array<string, mixed>>
+     */
+    private function preserveBookingItemNotes(Booking $booking, array $items): array
+    {
+        $noteQueues = [];
+        foreach ($booking->chiTietBookings()->orderBy('ChiTietBookingID')->get([
+            'DichVuID',
+            'LoaiDoGiatID',
+            'DonViTinhID',
+            'GhiChu',
+        ]) as $originalItem) {
+            $key = $this->bookingItemNoteKey($originalItem->getAttributes());
+            $noteQueues[$key][] = $originalItem->GhiChu;
+        }
+
+        foreach ($items as &$item) {
+            if (array_key_exists('GhiChu', $item)) {
+                continue;
+            }
+
+            $key = $this->bookingItemNoteKey($item);
+            if (isset($noteQueues[$key]) && $noteQueues[$key] !== []) {
+                $item['GhiChu'] = array_shift($noteQueues[$key]);
+            }
+        }
+        unset($item);
+
+        return $items;
+    }
+
+    /**
+     * @param  array<string, mixed>  $item
+     */
+    private function bookingItemNoteKey(array $item): string
+    {
+        return implode(':', [
+            (int) ($item['DichVuID'] ?? 0),
+            (int) ($item['LoaiDoGiatID'] ?? 0),
+            (int) ($item['DonViTinhID'] ?? 0),
+        ]);
     }
 
     private function inspectionDiffersFromBooking(Booking $booking, array $snapshot): bool
     {
-        if ($snapshot['quality_difference']) {
-            return true;
-        }
         $input = $snapshot['booking'];
         foreach (['method' => 'HinhThucNhanDo', 'return_method' => 'HinhThucTraDo'] as $key => $column) {
             if (($input[$key] ?? null) !== $booking->{$column}) {
@@ -303,17 +573,53 @@ class BookingService
         if ($declared->isEmpty()) {
             return false; // Khách chọn để nhân viên kiểm kê và nhập toàn bộ đồ thực tế.
         }
+        $hasDeclaredCondition = $declared->contains(
+            fn ($item): bool => trim((string) $item->getAttribute('TinhTrangTruocKhiGiat')) !== '',
+        );
         $itemKey = static fn (array $item): string => implode(':', [
             (int) ($item['DichVuID'] ?? 0), (int) ($item['LoaiDoGiatID'] ?? 0),
             (int) ($item['DonViTinhID'] ?? 0), (float) ($item['SoLuong'] ?? 0),
             (float) ($item['KhoiLuong'] ?? 0), trim((string) ($item['GhiChu'] ?? '')),
-        ]);
+        ]).($hasDeclaredCondition ? ':'.trim((string) ($item['TinhTrangTruocKhiGiat'] ?? '')) : '');
         $expected = $declared->map(fn ($item): string => $itemKey($item->only([
             'DichVuID', 'LoaiDoGiatID', 'DonViTinhID', 'SoLuong', 'KhoiLuong', 'GhiChu',
+            'TinhTrangTruocKhiGiat',
         ])))->sort()->values()->all();
         $actual = collect($snapshot['items'])->map($itemKey)->sort()->values()->all();
 
-        return $expected !== $actual;
+        if ($expected !== $actual) {
+            return true;
+        }
+
+        $priceTuples = collect($snapshot['items'])
+            ->map(fn (array $item): array => array_intersect_key($item, array_flip([
+                'DichVuID', 'LoaiDoGiatID', 'DonViTinhID',
+            ])))
+            ->unique(fn (array $tuple): string => implode(':', $tuple))
+            ->values()
+            ->all();
+        $currentPrices = $this->pricingService->getLatestPricingForTuples($priceTuples);
+        $priceKey = static fn (array $item, ?float $price): string => implode(':', [
+            (int) ($item['DichVuID'] ?? 0),
+            (int) ($item['LoaiDoGiatID'] ?? 0),
+            (int) ($item['DonViTinhID'] ?? 0),
+            $price === null ? 'missing' : number_format($price, 2, '.', ''),
+        ]);
+        $expectedPrices = $declared->map(fn ($item): string => $priceKey(
+            $item->getAttributes(),
+            (float) $item->DonGia,
+        ))->sort()->values()->all();
+        $actualPrices = collect($snapshot['items'])->map(function (array $item) use ($currentPrices, $priceKey): string {
+            $tupleKey = implode(':', [
+                (int) ($item['DichVuID'] ?? 0),
+                (int) ($item['LoaiDoGiatID'] ?? 0),
+                (int) ($item['DonViTinhID'] ?? 0),
+            ]);
+
+            return $priceKey($item, isset($currentPrices[$tupleKey]) ? (float) $currentPrices[$tupleKey]->DonGia : null);
+        })->sort()->values()->all();
+
+        return $expectedPrices !== $actualPrices;
     }
 
     public function update(Booking $booking, array $data): Booking
@@ -516,8 +822,13 @@ class BookingService
             }
 
             if (! BookingGiaoNhan::query()->where('BookingID', $lockedBooking->BookingID)
-                ->where('LoaiGiaoNhan', 'NHAN_DO')->where('TrangThai', 'Đã nhận')->exists()) {
-                throw ValidationException::withMessages(['booking' => 'Hãy ghi nhận đã nhận đồ trước khi kiểm kê và tạo đơn.']);
+                ->where('LoaiGiaoNhan', 'NHAN_DO')
+                ->whereIn('TrangThai', [
+                    DeliveryStatus::Picking->dbValue(),
+                    DeliveryStatus::Completed->dbValue(),
+                    'Đã nhận',
+                ])->exists()) {
+                throw ValidationException::withMessages(['booking' => 'Phiếu nhận chưa ở trạng thái cho phép kiểm kê và tạo đơn.']);
             }
 
             $inspection = BookingKiemKe::query()->where('BookingID', $lockedBooking->BookingID)->lockForUpdate()->first();
@@ -720,6 +1031,7 @@ class BookingService
         array $after,
         array $beforeItems,
         array $afterItems,
+        ?string $reason = null,
     ): void {
         $action = $before === []
             ? 'Tạo Booking'
@@ -734,7 +1046,7 @@ class BookingService
             'BanGhiID' => $booking->BookingID,
             'DuLieuCu' => ['Booking' => $before, 'ChiTietBooking' => $beforeItems],
             'DuLieuMoi' => ['Booking' => $after, 'ChiTietBooking' => $afterItems],
-            'LyDo' => null,
+            'LyDo' => $reason,
             'ThoiGian' => now(),
             'IPAddress' => request()->ip(),
             'UserAgent' => request()->userAgent(),

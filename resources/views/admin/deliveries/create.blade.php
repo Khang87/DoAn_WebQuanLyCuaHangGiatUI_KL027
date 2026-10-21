@@ -156,7 +156,12 @@
             <div class="col-12 form-text">Khi chọn đơn có Booking, hình thức, địa chỉ và lịch nhận (nếu có) sẽ được điền sẵn; bạn có thể điều chỉnh trước khi lưu.</div>
             <div class="col-12"><label class="form-label" for="notes">Ghi chú</label><textarea class="form-control" id="notes" name="notes" rows="3">{{ old('notes') }}</textarea></div>
         </div>
-        <div class="d-flex justify-content-end gap-2 mt-4"><a href="{{ route('deliveries.index') }}" class="btn btn-outline-secondary">Hủy</a><button type="submit" class="btn btn-primary"><i class="bi bi-check-lg me-1"></i>Lưu lịch giao nhận</button></div>
+        <div class="d-flex flex-wrap justify-content-end gap-2 mt-4">
+            @if(! $selectedOrderId)
+                <a href="{{ route('deliveries.index') }}" class="btn btn-outline-secondary">Quay lại</a>
+            @endif
+            <button type="submit" class="btn btn-success"><i class="bi bi-check-lg me-1"></i>Lưu lịch giao nhận</button>
+        </div>
     </form>
 </div></div>
 @endsection

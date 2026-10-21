@@ -10,8 +10,10 @@ use App\Models\BookingGiaoNhan;
 use App\Models\BookingKiemKe;
 use App\Models\DonHang;
 use App\Models\GiaoNhan;
+use App\Models\NhatKyHeThong;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
 
 class DeliveryService
@@ -87,6 +89,9 @@ class DeliveryService
 
     public function getUnifiedDeliveries(array $filters = []): LengthAwarePaginator
     {
+        $giaoNhanCreatedAtColumn = Schema::hasColumn('GiaoNhan', 'NgayTao') ? 'g.NgayTao' : null;
+        $bookingIntakeCreatedAtColumn = Schema::hasColumn('BookingGiaoNhan', 'NgayTao') ? 'bg.NgayTao' : null;
+
         $operationalRows = DB::table('GiaoNhan as g')
             ->leftJoin('DonHang as d', 'd.DonHangID', '=', 'g.DonHangID')
             ->leftJoin('Booking as b', 'b.BookingID', '=', 'd.BookingID')
@@ -111,6 +116,8 @@ class DeliveryService
                 'g.HinhThuc as fulfillment',
                 'g.DiaChi as address',
             ])
+            ->when($giaoNhanCreatedAtColumn !== null, fn ($query) => $query->addSelect([$giaoNhanCreatedAtColumn.' as created_at']))
+            ->when($giaoNhanCreatedAtColumn === null, fn ($query) => $query->selectRaw('NULL as created_at'))
             ->selectRaw('0 as intake_mutable')
             ->selectRaw("'GN-' || CAST(\"g\".\"GiaoNhanID\" AS TEXT) as source_code")
             ->selectRaw(
@@ -150,10 +157,12 @@ class DeliveryService
                 'bg.HinhThuc as fulfillment',
                 'bg.DiaChi as address',
             ])
+            ->when($bookingIntakeCreatedAtColumn !== null, fn ($query) => $query->addSelect([$bookingIntakeCreatedAtColumn.' as created_at']))
+            ->when($bookingIntakeCreatedAtColumn === null, fn ($query) => $query->selectRaw('NULL as created_at'))
             ->selectRaw(
                 "CASE
                     WHEN \"bg\".\"LoaiGiaoNhan\" = 'NHAN_DO'
-                        AND \"bg\".\"TrangThai\" = ?
+                        AND \"bg\".\"TrangThai\" IN (?, ?)
                         AND \"b\".\"TrangThai\" <> ?
                         AND \"bg\".\"ThoiGianThucTe\" IS NULL
                         AND \"bg\".\"DonHangID\" IS NULL
@@ -162,7 +171,11 @@ class DeliveryService
                         AND NOT EXISTS (SELECT 1 FROM \"DonHang\" AS \"bo\" WHERE \"bo\".\"BookingID\" = \"bg\".\"BookingID\")
                     THEN 1 ELSE 0
                 END as intake_mutable",
-                [DeliveryStatus::Pending->dbValue(), BookingStatus::Cancelled->value],
+                [
+                    DeliveryStatus::Pending->dbValue(),
+                    DeliveryStatus::Picking->dbValue(),
+                    BookingStatus::Cancelled->value,
+                ],
             )
             ->selectRaw("'BGN-' || CAST(\"bg\".\"BookingGiaoNhanID\" AS TEXT) as source_code")
             ->selectRaw(
@@ -230,9 +243,16 @@ class DeliveryService
 
         $sortOrder = ($filters['sort_order'] ?? 'desc') === 'asc' ? 'asc' : 'desc';
 
-        return $query
-            ->orderByRaw('CASE WHEN expected_at IS NULL THEN 1 ELSE 0 END ASC')
-            ->orderBy('expected_at', $sortOrder)
+        $useCreatedAtSorting = Schema::hasColumn('GiaoNhan', 'NgayTao') && Schema::hasColumn('BookingGiaoNhan', 'NgayTao');
+
+        $queryBuilder = $query
+            ->when($useCreatedAtSorting, fn ($builder) => $builder
+                ->orderByRaw('CASE WHEN created_at IS NULL THEN 1 ELSE 0 END ASC')
+                ->orderBy('created_at', $sortOrder), fn ($builder) => $builder
+                ->orderByRaw('CASE WHEN expected_at IS NULL THEN 1 ELSE 0 END ASC')
+                ->orderBy('expected_at', $sortOrder));
+
+        return $queryBuilder
             ->orderBy('source_type')
             ->orderBy('source_id')
             ->paginate(10)
@@ -329,7 +349,10 @@ class DeliveryService
         return BookingGiaoNhan::query()
             ->with([
                 'booking.khachHang',
+                'booking.nhanVienXacNhan',
                 'booking.donHangs',
+                'booking.kiemKe',
+                'booking.giaoNhanDuKiens.nhanVien',
                 'donHang.khachHang',
                 'nhanVien',
             ])
@@ -341,7 +364,10 @@ class DeliveryService
         if (
             $document->LoaiGiaoNhan !== 'NHAN_DO'
             || $document->booking?->statusEnum() === BookingStatus::Cancelled
-            || $document->TrangThai !== DeliveryStatus::Pending->dbValue()
+            || ! in_array($document->TrangThai, [
+                DeliveryStatus::Pending->dbValue(),
+                DeliveryStatus::Picking->dbValue(),
+            ], true)
             || $document->ThoiGianThucTe !== null
             || $document->DonHangID !== null
             || $document->BookingKiemKeID !== null
@@ -363,7 +389,12 @@ class DeliveryService
             $attributes = [];
 
             if (array_key_exists('employee_id', $data)) {
-                EmployeeAssignment::assertAssignable((int) $data['employee_id'], 'employee_id', $current->NhanVienID);
+                EmployeeAssignment::assertBookingIntakeAssignable(
+                    auth()->user(),
+                    isset($data['employee_id']) ? (int) $data['employee_id'] : null,
+                    'employee_id',
+                    $current->NhanVienID,
+                );
                 $attributes['NhanVienID'] = (int) $data['employee_id'];
             }
             if (array_key_exists('pickup_date', $data) || array_key_exists('pickup_time', $data)) {
@@ -376,7 +407,25 @@ class DeliveryService
             }
 
             if ($attributes !== []) {
+                $previousEmployeeId = $current->NhanVienID;
                 $current->update($attributes);
+                if (
+                    array_key_exists('NhanVienID', $attributes)
+                    && (int) $previousEmployeeId !== (int) $current->NhanVienID
+                ) {
+                    NhatKyHeThong::create([
+                        'TaiKhoanID' => auth()->id(),
+                        'HanhDong' => 'Phân công phiếu nhận Booking',
+                        'BangDuLieu' => 'BookingGiaoNhan',
+                        'BanGhiID' => $current->BookingGiaoNhanID,
+                        'DuLieuCu' => ['NhanVienID' => $previousEmployeeId],
+                        'DuLieuMoi' => ['NhanVienID' => $current->NhanVienID],
+                        'LyDo' => null,
+                        'ThoiGian' => now(),
+                        'IPAddress' => request()->ip(),
+                        'UserAgent' => request()->userAgent(),
+                    ]);
+                }
             }
 
             return $current->fresh(['booking', 'donHang', 'nhanVien']);
@@ -470,6 +519,9 @@ class DeliveryService
                 $attributes['PhiGiaoNhan'] = $returnPlan->PhiGiaoNhan;
             }
             $this->assertNoConflictingLeg($attributes);
+            if (Schema::hasColumn('GiaoNhan', 'NgayTao')) {
+                $attributes['NgayTao'] ??= now();
+            }
 
             return GiaoNhan::create($attributes);
         });

@@ -33,17 +33,17 @@ class LuuBangGiaRequest extends FormRequest
 
     private function normalizeDate(mixed $value): mixed
     {
-        if (! is_string($value) || ! preg_match('/^\d{2}-\d{2}-\d{4}$/', $value)) {
+        if (! is_string($value) || ! preg_match('/^\d{2}\/\d{2}\/\d{4}$/', $value)) {
             return $value;
         }
 
-        $date = DateTimeImmutable::createFromFormat('!d-m-Y', $value);
+        $date = DateTimeImmutable::createFromFormat('!d/m/Y', $value);
         $errors = DateTimeImmutable::getLastErrors();
 
         if (
             $date === false
             || ($errors !== false && ($errors['warning_count'] > 0 || $errors['error_count'] > 0))
-            || $date->format('d-m-Y') !== $value
+            || $date->format('d/m/Y') !== $value
         ) {
             return $value;
         }
@@ -60,7 +60,7 @@ class LuuBangGiaRequest extends FormRequest
             'DonGia' => ['required', 'numeric', 'min:0'],
             'NgayApDung' => [
                 'required',
-                'date',
+                'date_format:Y-m-d',
                 'after_or_equal:today',
                 function (string $attribute, mixed $value, \Closure $fail): void {
                     $endDate = $this->input('NgayKetThuc');
@@ -95,7 +95,7 @@ class LuuBangGiaRequest extends FormRequest
                     }
                 },
             ],
-            'NgayKetThuc' => ['nullable', 'date', 'after_or_equal:NgayApDung'],
+            'NgayKetThuc' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:NgayApDung'],
             'TrangThai' => [
                 'required',
                 Rule::in(['Hoạt động', 'Hết hiệu lực', 'Tạm ngưng']),

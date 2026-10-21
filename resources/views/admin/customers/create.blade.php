@@ -24,19 +24,19 @@
                     @enderror
                 </div>
                 <div class="col-md-6">
-                    <label class="form-label">Email <span class="text-muted small">(không bắt buộc nếu đã nhập số điện thoại)</span></label>
-                    <input type="email" class="form-control @error('Email') is-invalid @enderror" name="Email" value="{{ old('Email') }}" placeholder="Nhập email">
+                    <label class="form-label">Email <span class="text-danger ms-1">*</span></label>
+                    <input type="email" class="form-control @error('Email') is-invalid @enderror" name="Email" value="{{ old('Email') }}" placeholder="Nhập email" required>
                     @error('Email')
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
                 </div>
                 <div class="col-md-6">
-                    <label class="form-label">Số điện thoại <span class="text-muted small">(không bắt buộc nếu đã nhập email)</span></label>
-                    <input type="text" class="form-control @error('SoDienThoai') is-invalid @enderror" name="SoDienThoai" value="{{ old('SoDienThoai') }}" placeholder="Nhập số điện thoại">
+                    <label class="form-label">Số điện thoại <span class="text-danger ms-1">*</span></label>
+                    <input type="tel" class="form-control @error('SoDienThoai') is-invalid @enderror" name="SoDienThoai" value="{{ old('SoDienThoai') }}" placeholder="Nhập số điện thoại" pattern="0[0-9]{9,10}" maxlength="30" required>
                     @error('SoDienThoai')
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
-                    <div class="form-text" id="customer-contact-help">Vui lòng nhập ít nhất một trong hai thông tin: số điện thoại hoặc email.</div>
+                    <div class="form-text" id="customer-contact-help">Nhập số điện thoại gồm 10 hoặc 11 chữ số, bắt đầu bằng số 0.</div>
                 </div>
                 <div class="col-md-6">
                     <label class="form-label">Điểm tích lũy</label>
@@ -64,33 +64,3 @@
     </div>
 </div>
 @endsection
-
-@push('scripts')
-<script>
-    document.addEventListener('DOMContentLoaded', function () {
-        const form = document.getElementById('customer-create-form');
-        if (!form) {
-            return;
-        }
-
-        const email = form.elements.Email;
-        const phone = form.elements.SoDienThoai;
-        const message = 'Vui lòng nhập số điện thoại hoặc email.';
-        const updateContactValidity = function () {
-            const hasContact = email.value.trim() !== '' || phone.value.trim() !== '';
-            email.setCustomValidity(hasContact ? '' : message);
-            phone.setCustomValidity(hasContact ? '' : message);
-        };
-
-        email.addEventListener('input', updateContactValidity);
-        phone.addEventListener('input', updateContactValidity);
-        form.addEventListener('submit', function (event) {
-            updateContactValidity();
-            if (!form.checkValidity()) {
-                event.preventDefault();
-                form.reportValidity();
-            }
-        });
-    });
-</script>
-@endpush

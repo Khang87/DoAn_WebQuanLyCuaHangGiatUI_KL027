@@ -5,9 +5,11 @@ namespace Tests\Feature;
 use App\Enums\RecordStatus;
 use App\Models\DanhMucLoaiDoGiat;
 use App\Models\LoaiDoGiat;
+use App\Models\User;
 use App\Services\GarmentCategoryService;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
@@ -118,6 +120,51 @@ class GarmentCategoryManagementTest extends TestCase
         $this->assertStringContainsString('<th class="fw-bold text-dark">Ngày tạo</th>', $html);
         $this->assertStringContainsString('05/10/2026 16:40', $html);
         $this->assertStringContainsString('01/10/2026 08:15', $html);
+    }
+
+    public function test_category_list_matches_pricing_action_styles_and_keeps_confirmation_routes(): void
+    {
+        Gate::before(static fn (?User $user): bool => true);
+        $category = DanhMucLoaiDoGiat::query()->create([
+            'TenDanhMuc' => 'Danh mục có tên rất dài để kiểm tra bố cục',
+            'TrangThai' => 'Hoạt động',
+        ]);
+
+        $html = view('admin.garment-categories.index', [
+            'categories' => app(GarmentCategoryService::class)->getAll(),
+            'statuses' => RecordStatus::databaseOptions(),
+        ])->render();
+
+        $this->assertStringContainsString('table-custom category-table mb-0', $html);
+        $this->assertStringContainsString('category-actions-column', $html);
+        $this->assertStringContainsString('d-flex align-items-center gap-2', $html);
+        $this->assertStringContainsString('btn btn-order-action view', $html);
+        $this->assertStringContainsString('btn btn-order-action edit', $html);
+        $this->assertStringContainsString('btn btn-order-action delete', $html);
+        $this->assertStringNotContainsString('category-action--', $html);
+        $this->assertStringContainsString(route('garment-categories.show', $category), $html);
+        $this->assertStringContainsString(route('garment-categories.edit', $category), $html);
+        $this->assertStringContainsString(route('garment-categories.destroy', $category), $html);
+        $this->assertStringContainsString('data-confirm-form', $html);
+    }
+
+    public function test_category_action_column_keeps_its_width_when_actions_are_not_permitted(): void
+    {
+        Gate::before(static fn (?User $user): bool => false);
+        $category = DanhMucLoaiDoGiat::query()->create([
+            'TenDanhMuc' => 'Danh mục dài để kiểm tra nhóm thao tác không bị dịch chuyển',
+            'TrangThai' => 'Hoạt động',
+        ]);
+
+        $html = view('admin.garment-categories.index', [
+            'categories' => app(GarmentCategoryService::class)->getAll(),
+            'statuses' => RecordStatus::databaseOptions(),
+        ])->render();
+
+        $this->assertStringContainsString('class="category-actions-column"', $html);
+        $this->assertStringNotContainsString(route('garment-categories.show', $category), $html);
+        $this->assertStringNotContainsString(route('garment-categories.edit', $category), $html);
+        $this->assertStringNotContainsString(route('garment-categories.destroy', $category), $html);
     }
 
     public function test_category_in_use_is_suspended_instead_of_deleted(): void
