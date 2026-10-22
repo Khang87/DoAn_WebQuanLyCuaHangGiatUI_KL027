@@ -56,6 +56,7 @@ class BookingOrderConversionTest extends TestCase
         DB::purge('sqlite');
         $this->createSchema();
         (require database_path('migrations/2026_10_16_000001_create_booking_intake_documents.php'))->up();
+        (require database_path('migrations/2026_10_22_000001_create_staff_api_tokens_and_booking_drafts.php'))->up();
         config([
             'cache.default' => 'array',
             'services.osm.store_address' => 'Laundry test store',
@@ -66,7 +67,7 @@ class BookingOrderConversionTest extends TestCase
 
     protected function tearDown(): void
     {
-        foreach (['BookingKiemKe', 'BookingGiaoNhan', 'KhuyenMai', 'NhatKyHeThong', 'ChiTietBooking', 'ChiTietDonHang', 'GiaoNhan', 'HoaDon', 'ThanhToan', 'DiemTichLuy', 'DonHang', 'Booking', 'BangGia', 'DonViTinh', 'LoaiDoGiat', 'DanhMucLoaiDoGiat', 'DichVu', 'LoaiDichVu', 'NhanVien', 'ThongBao', 'TaiKhoan_VaiTro', 'VaiTro_Quyen', 'Quyen', 'VaiTro', 'TaiKhoan', 'KhachHang'] as $table) {
+        foreach (['StaffBookingDraft', 'StaffApiToken', 'BookingKiemKe', 'BookingGiaoNhan', 'KhuyenMai', 'NhatKyHeThong', 'ChiTietBooking', 'ChiTietDonHang', 'GiaoNhan', 'HoaDon', 'ThanhToan', 'DiemTichLuy', 'DonHang', 'Booking', 'BangGia', 'DonViTinh', 'LoaiDoGiat', 'DanhMucLoaiDoGiat', 'DichVu', 'LoaiDichVu', 'NhanVien', 'ThongBao', 'TaiKhoan_VaiTro', 'VaiTro_Quyen', 'Quyen', 'VaiTro', 'TaiKhoan', 'KhachHang'] as $table) {
             Schema::dropIfExists($table);
         }
 
@@ -607,6 +608,32 @@ class BookingOrderConversionTest extends TestCase
             $this->bookingService->submitInspection($booking, $payload)->DonHangID,
         );
         $this->assertSame(1, DB::table('ThongBao')->where('BookingID', $booking->BookingID)->count());
+    }
+
+    public function test_staff_saves_customer_visible_draft_before_verbal_consent_creates_one_order(): void
+    {
+        $this->createInspectionCatalog();
+        $booking = $this->createBooking();
+        $booking->chiTietBookings()->create([
+            'DichVuID' => 1, 'LoaiDoGiatID' => 2, 'DonViTinhID' => 3,
+            'SoLuong' => 2, 'DonGia' => 15000, 'ThanhTien' => 30000,
+        ]);
+        $this->actingAsBookingEmployee();
+        $this->prepareBookingForInspection($booking);
+        $draft = $this->inspectionPayload($booking, 1);
+        $draft['items'][0]['SoLuong'] = 3;
+
+        $this->bookingService->saveInspectionDraft($booking, $draft);
+        $this->assertDatabaseHas('StaffBookingDraft', ['BookingID' => $booking->BookingID, 'CoChenhLech' => true]);
+        $this->assertSame(3.0, (float) $booking->chiTietBookings()->value('SoLuong'));
+        $this->assertDatabaseCount('DonHang', 0);
+
+        $order = $this->bookingService->submitInspection($booking, [...$draft, 'customer_accepted' => true]);
+
+        $this->assertSame(3.0, (float) $order->chiTietDonHangs()->value('SoLuong'));
+        $this->assertDatabaseCount('DonHang', 1);
+        $this->assertDatabaseHas('BookingKiemKe', ['BookingID' => $booking->BookingID, 'CoChenhLech' => true]);
+        $this->assertDatabaseMissing('StaffBookingDraft', ['BookingID' => $booking->BookingID]);
     }
 
     public function test_two_step_item_note_adjustments_notify_customer(): void
