@@ -995,6 +995,15 @@ class DeliveryContractTest extends TestCase
             'ThoiGianDuKien' => '2026-10-10 09:00:00',
             'TrangThai' => 'Đang thực hiện',
         ]);
+        DB::table('GiaoNhan')->insert([
+            'DonHangID' => 2,
+            'NhanVienID' => 1,
+            'LoaiGiaoNhan' => 'NHAN_DO',
+            'HinhThuc' => 'Tại nhà',
+            'DiaChi' => 'Địa chỉ nhận trùng với phiếu Booking',
+            'ThoiGianDuKien' => '2026-10-09 09:00:00',
+            'TrangThai' => 'Hoàn thành',
+        ]);
 
         $service = app(DeliveryService::class);
         $searchResults = $service->getUnifiedDeliveries(['search' => 'Khách Tìm Chung']);

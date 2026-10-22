@@ -62,14 +62,10 @@ test('browser → HTTP → PostgreSQL business flows with real session, CSRF and
             assert.deepEqual(saved.estimate, before.estimate);
             assert.deepEqual(saved.legs, []);
         });
-        for (const [id, name, expected] of [['02','pickup',['NHAN_DO']], ['03','return',['GIAO_DO']], ['04','both',['GIAO_DO','NHAN_DO']]]) {
-            await t.test(`E2E-${id}: ${name} creates only matching home legs`, async () => {
+        for (const [id, name] of [['02','pickup'], ['03','return'], ['04','both']]) {
+            await t.test(`E2E-${id}: ${name} keeps delivery tasks on Booking`, async () => {
                 const {saved} = await inspect(name);
-                assert.deepEqual(saved.legs.map(l => l.LoaiGiaoNhan), expected);
-                for (const leg of saved.legs) {
-                    assert.equal(leg.DiaChi, leg.LoaiGiaoNhan === 'NHAN_DO' ? 'Local pickup' : 'Local return');
-                    assert.equal(leg.ThoiGianDuKien === null, leg.LoaiGiaoNhan === 'GIAO_DO');
-                }
+                assert.deepEqual(saved.legs, []);
             });
         }
         await t.test('E2E-05: authenticated HTTP replay preserves one Order, redemption and audit', async () => {

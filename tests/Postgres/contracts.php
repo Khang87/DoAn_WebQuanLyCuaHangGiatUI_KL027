@@ -67,12 +67,9 @@ try {
     foreach (['Tại cửa hàng', 'Tại nhà'] as $receive) {
         foreach (['Tại cửa hàng', 'Tại nhà'] as $return) {
             $order = app(BookingService::class)->inspectBookingAndCreateOrder(pgBooking($receive, $return), 1, pgItems());
-            $legs = array_filter([$receive === 'Tại nhà' ? 'NHAN_DO' : null, $return === 'Tại nhà' ? 'GIAO_DO' : null]);
-            $expected = array_values($legs);
-            sort($expected);
-            pgExpect($order->giaoNhans()->orderBy('LoaiGiaoNhan')->pluck('LoaiGiaoNhan')->all(), $expected, 'Only home legs created for '.$receive.'/'.$return);
+            pgExpect($order->giaoNhans()->orderBy('LoaiGiaoNhan')->pluck('LoaiGiaoNhan')->all(), [], 'Booking delivery legs are not duplicated for '.$receive.'/'.$return);
             if ($return === 'Tại nhà') {
-                pgExpect($order->giaoNhans()->where('LoaiGiaoNhan', 'GIAO_DO')->sole()->ThoiGianDuKien, null, 'Return schedule is nullable and independent');
+                pgExpect($order->booking->giaoNhanDuKiens()->where('LoaiGiaoNhan', 'GIAO_DO')->sole()->ThoiGianDuKien, null, 'Return schedule is nullable and independent');
             }
         }
     }

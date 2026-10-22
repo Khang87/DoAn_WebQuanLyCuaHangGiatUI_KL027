@@ -1529,7 +1529,8 @@ class BookingOrderConversionTest extends TestCase
         $order = DonHang::query()->where('BookingID', $booking->BookingID)->firstOrFail();
         $items = ChiTietDonHang::query()->where('DonHangID', $order->DonHangID)->orderBy('ChiTietDonHangID')->get();
         $item = $items->firstOrFail();
-        $delivery = GiaoNhan::query()->where('DonHangID', $order->DonHangID)->firstOrFail();
+        $delivery = BookingGiaoNhan::query()->where('BookingID', $booking->BookingID)
+            ->where('LoaiGiaoNhan', 'NHAN_DO')->firstOrFail();
 
         $this->assertCount(2, $items);
         $this->assertSame('DH'.str_pad((string) $order->DonHangID, 8, '0', STR_PAD_LEFT), $order->MaDonHang);
@@ -1546,6 +1547,7 @@ class BookingOrderConversionTest extends TestCase
         $this->assertSame('Tại nhà', $delivery->HinhThuc);
         $this->assertSame('12 Nguyễn Huệ', $delivery->DiaChi);
         $this->assertSame('2026-10-05 14:30:00', $delivery->ThoiGianDuKien->format('Y-m-d H:i:s'));
+        $this->assertSame(0, GiaoNhan::query()->where('DonHangID', $order->DonHangID)->count());
         $this->assertNull($order->NhanVienID);
         $this->assertSame(2, $booking->fresh()->NhanVienID);
         $this->assertSame(1, $booking->fresh()->NhanVienXacNhanID);
@@ -1700,7 +1702,7 @@ class BookingOrderConversionTest extends TestCase
         $this->assertSame(1, $booking->fresh()->NhanVienXacNhanID);
         $this->assertNotNull($booking->fresh()->ThoiGianXacNhan);
         $this->assertSame(1, DonHang::query()->where('BookingID', $booking->BookingID)->count());
-        $this->assertSame(1, GiaoNhan::query()->where('DonHangID', $order->DonHangID)->count());
+        $this->assertSame(0, GiaoNhan::query()->where('DonHangID', $order->DonHangID)->count());
 
         $this->post(route('bookings.confirm', $booking->BookingID), $this->inspectionPayload($booking, 999))
             ->assertRedirect(route('orders.show', $order));
@@ -3040,7 +3042,7 @@ class BookingOrderConversionTest extends TestCase
     }
 
     #[DataProvider('deliveryCombinations')]
-    public function test_inspection_creates_only_home_intake_delivery_legs(string $receive, string $return, array $types): void
+    public function test_inspection_keeps_delivery_legs_on_booking_without_duplicate_order_deliveries(string $receive, string $return, array $types): void
     {
         $this->createInspectionCatalog();
         $booking = $this->createBooking([
@@ -3067,19 +3069,9 @@ class BookingOrderConversionTest extends TestCase
         $this->assertSame($expectedPickupFee + $expectedReturnFee, (float) $order->PhiGiaoHang);
         $this->assertSame($expectedPickupFee, (float) $booking->fresh()->PickupDeliveryFee);
         $this->assertSame($expectedReturnFee, (float) $booking->fresh()->DeliveryFee);
-        $this->assertSame($expectedPickupFee, (float) $deliveries->sum('PhiGiaoNhan'));
-        foreach ($deliveries as $delivery) {
-            $this->assertSame(
-                $delivery->LoaiGiaoNhan === 'NHAN_DO' ? $expectedPickupFee : $expectedReturnFee,
-                (float) $delivery->PhiGiaoNhan,
-            );
-        }
-        foreach ($deliveries as $delivery) {
-            $this->assertSame($delivery->LoaiGiaoNhan === 'NHAN_DO' ? '12 Nguyễn Huệ' : '88 Lê Lợi', $delivery->DiaChi);
-            if ($delivery->LoaiGiaoNhan === 'GIAO_DO') {
-                $this->assertNull($delivery->ThoiGianDuKien);
-            }
-        }
+        $this->assertSame([], $deliveries->pluck('LoaiGiaoNhan')->all());
+        $this->assertSame(2, BookingGiaoNhan::query()->where('BookingID', $booking->BookingID)
+            ->where('DonHangID', $order->DonHangID)->count());
         $sameOrder = $this->bookingService->inspectBookingAndCreateOrder($booking->fresh(), 1, $items);
         $this->assertSame($order->DonHangID, $sameOrder->DonHangID);
         $this->assertSame(count($types), GiaoNhan::query()->count());
@@ -3091,8 +3083,8 @@ class BookingOrderConversionTest extends TestCase
         return [
             'TC-BK-RETURN-01' => ['Tại cửa hàng', 'Tại cửa hàng', []],
             'TC-BK-RETURN-02' => ['Tại cửa hàng', 'Tại nhà', []],
-            'TC-BK-RETURN-03' => ['Tại nhà', 'Tại cửa hàng', ['NHAN_DO']],
-            'TC-BK-RETURN-04' => ['Tại nhà', 'Tại nhà', ['NHAN_DO']],
+            'TC-BK-RETURN-03' => ['Tại nhà', 'Tại cửa hàng', []],
+            'TC-BK-RETURN-04' => ['Tại nhà', 'Tại nhà', []],
         ];
     }
 
@@ -3432,7 +3424,8 @@ class BookingOrderConversionTest extends TestCase
             'address' => 'Địa chỉ kiểm tra mới',
         ]);
         $this->assertSame(10, $order->KhachHangID);
-        $this->assertSame('12 Nguyễn Huệ', $order->giaoNhans()->where('LoaiGiaoNhan', 'NHAN_DO')->firstOrFail()->DiaChi);
+        $this->assertSame('12 Nguyễn Huệ', BookingGiaoNhan::query()->where('BookingID', $booking->BookingID)
+            ->where('LoaiGiaoNhan', 'NHAN_DO')->firstOrFail()->DiaChi);
     }
 
     public function test_standalone_conversion_rejects_booking_cancelled_since_snapshot(): void
@@ -3463,7 +3456,7 @@ class BookingOrderConversionTest extends TestCase
         $this->assertSame(63333.0, (float) $order->ThanhTien);
         $this->assertSame(22222.0, (float) $booking->fresh()->DeliveryFee);
         $this->assertSame(0, $order->giaoNhans()->where('LoaiGiaoNhan', 'GIAO_DO')->count());
-        $this->assertSame(11111.0, (float) $order->giaoNhans()->sum('PhiGiaoNhan'));
+        $this->assertSame(33333.0, (float) BookingGiaoNhan::query()->where('BookingID', $booking->BookingID)->sum('PhiGiaoNhan'));
         Http::assertNothingSent();
     }
 

@@ -18,7 +18,7 @@ $order = DonHang::where('BookingID', $booking->getKey())->sole();
 pgExpect($order->DiemSuDung, 200, 'One inspected redemption');
 pgExpect((int) DB::table('DiemTichLuy')->where('KhachHangID', 1)->value('DiemHienTai'), 300, 'Balance deducted once');
 pgExpect($order->chiTietDonHangs()->count(), 1, 'One actual detail line');
-pgExpect($order->giaoNhans()->count(), 2, 'One set of receive/return legs');
+pgExpect($order->giaoNhans()->count(), 0, 'Booking legs remain on BookingGiaoNhan without duplicate operational rows');
 pgExpect(NhatKyHeThong::where('BangDuLieu', 'Booking')->where('BanGhiID', $booking->getKey())->where('HanhDong', 'Xác nhận Booking')->count(), 1, 'One confirmation audit');
 
 $deliveryOrder = app(BookingService::class)->inspectBookingAndCreateOrder(pgBooking(), 1, pgItems());

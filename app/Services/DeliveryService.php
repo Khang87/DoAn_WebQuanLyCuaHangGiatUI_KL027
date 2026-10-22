@@ -134,6 +134,15 @@ class DeliveryService
             )
             ->selectRaw('NULL as booking_status');
 
+        // Older Booking conversions may contain a duplicate operational pickup.
+        $operationalRows->where(function ($query): void {
+            $query->where('g.LoaiGiaoNhan', '!=', 'NHAN_DO')
+                ->orWhereNotExists(fn ($duplicate) => $duplicate->selectRaw('1')
+                    ->from('BookingGiaoNhan as bg')
+                    ->whereColumn('bg.DonHangID', 'g.DonHangID')
+                    ->whereColumn('bg.LoaiGiaoNhan', 'g.LoaiGiaoNhan'));
+        });
+
         $bookingRows = DB::table('BookingGiaoNhan as bg')
             ->leftJoin('Booking as b', 'b.BookingID', '=', 'bg.BookingID')
             ->leftJoin('DonHang as d', 'd.DonHangID', '=', 'bg.DonHangID')

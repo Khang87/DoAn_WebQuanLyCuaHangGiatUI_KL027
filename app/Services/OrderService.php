@@ -345,45 +345,6 @@ class OrderService
                 ));
             }
 
-            foreach ([
-                [
-                    'method' => $booking->receiveMethodEnum(),
-                    'home' => ReceiveMethod::Home,
-                    'type' => 'NHAN_DO',
-                    'address' => $booking->DiaChiNhan,
-                    'fee' => $deliveryQuote['pickup_fee'],
-                ],
-                [
-                    'method' => $booking->returnMethodEnum(),
-                    'home' => ReturnMethod::Home,
-                    'type' => 'GIAO_DO',
-                    'address' => $booking->DiaChiTra,
-                    'fee' => $deliveryQuote['return_fee'],
-                ],
-            ] as $leg) {
-                if ($leg['type'] === 'GIAO_DO' || $leg['method'] !== $leg['home']) {
-                    continue;
-                }
-                $attributes = [
-                    'DonHangID' => $order->DonHangID,
-                    'NhanVienID' => $employeeId,
-                    'HinhThuc' => $leg['method']->value,
-                    'LoaiGiaoNhan' => $leg['type'],
-                    'DiaChi' => $leg['address'],
-                    'PhiGiaoNhan' => $leg['fee'],
-                    // NgayHen/GioHen is the receiving appointment, never the return schedule.
-                    'ThoiGianDuKien' => $booking->NgayHen->format('Y-m-d').' '.$booking->GioHen->format('H:i:s'),
-                    'ThoiGianThucTe' => $booking->giaoNhanDuKiens()->where('LoaiGiaoNhan', 'NHAN_DO')->value('ThoiGianThucTe'),
-                    'TrangThai' => DeliveryStatus::Completed->dbValue(),
-                    'GhiChu' => $booking->GhiChu,
-                ];
-                if (Schema::hasColumn('GiaoNhan', 'NgayTao')) {
-                    $attributes['NgayTao'] = now();
-                }
-
-                GiaoNhan::create($attributes);
-            }
-
             if ($inspection) {
                 foreach ([
                     'NHAN_DO' => [$booking->HinhThucNhanDo, $booking->DiaChiNhan, $deliveryQuote['pickup_fee']],
