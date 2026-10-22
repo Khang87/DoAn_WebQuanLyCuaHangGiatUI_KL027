@@ -11,6 +11,7 @@
 <x-admin.detail.page-header
     title="Chi tiết mặt hàng"
     :subtitle="$item->item_name"
+    backUrl="{{ route('order-items.index') }}"
 >
     <x-slot:badge>
         @if($isLocked)
@@ -93,10 +94,6 @@
                         block
                     />
                 @endunless
-
-                <a href="{{ route('order-items.index') }}" class="btn btn-outline-secondary w-100 py-2 text-dark">
-                    <i class="fas fa-arrow-left me-1"></i> Quay lại danh sách
-                </a>
             </div>
         </div>
 

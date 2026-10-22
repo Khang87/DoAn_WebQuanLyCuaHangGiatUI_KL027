@@ -153,6 +153,7 @@
 <x-admin.detail.page-header
     title="Đơn hàng {{ $order->code }}"
     :subtitle="$order->created_at?->format('d/m/Y H:i')"
+    backUrl="{{ route('orders.index') }}"
 >
     <x-slot:badge>
         <x-admin.order-status-badges
@@ -642,10 +643,6 @@
                         block
                     />
                 @endcan
-
-                <a href="{{ route('orders.index') }}" class="btn btn-outline-secondary w-100 py-2 text-dark">
-                    <i class="fas fa-arrow-left me-1" aria-hidden="true"></i> Quay lại danh sách
-                </a>
             </div>
         </div>
 

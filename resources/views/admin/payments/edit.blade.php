@@ -56,7 +56,7 @@
             </div>
             <div class="d-flex justify-content-end gap-2 mt-4">
                 <a href="{{ route('payments.index') }}" class="btn btn-outline-secondary">Hủy</a>
-                <button type="submit" class="btn btn-primary">Lưu thay đổi</button>
+                <button type="submit" class="btn btn-primary">Cập nhật</button>
             </div>
         </form>
     </div>

@@ -6,9 +6,6 @@
 @section('content')
 <div class="page-toolbar d-flex justify-content-between align-items-center mb-3">
     <p class="text-muted mb-0">Danh mục quyền do ứng dụng cấu hình. Gán các quyền có sẵn cho từng nhóm quyền tại trang Nhóm quyền.</p>
-    <div class="d-flex gap-2">
-        <a href="{{ route('roles.index') }}" class="btn btn-outline-secondary">Nhóm quyền</a>
-    </div>
 </div>
 
 <div class="card">

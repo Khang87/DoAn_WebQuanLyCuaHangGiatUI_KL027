@@ -7,6 +7,7 @@
 <x-admin.detail.page-header
     :title="'Khuyến mãi ' . $promotion->MaKhuyenMai"
     :subtitle="$promotion->TenKhuyenMai"
+    backUrl="{{ route('promotions.index') }}"
 >
     <x-slot:badge>
         <x-admin.status-badge
@@ -160,10 +161,6 @@
                         block
                     />
                 @endcan
-
-                <a href="{{ route('promotions.index') }}" class="btn btn-outline-secondary w-100 py-2 text-dark">
-                    <i class="fas fa-arrow-left me-1"></i>Quay lại danh sách
-                </a>
             </div>
         </div>
     </div>

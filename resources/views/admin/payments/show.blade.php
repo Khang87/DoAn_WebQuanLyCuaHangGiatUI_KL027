@@ -16,6 +16,7 @@
 <x-admin.detail.page-header
     title="Chi tiết thanh toán"
     :subtitle="$payment->getMethodLabel() . ' · ' . $payment->ThoiGian?->format('d/m/Y H:i')"
+    backUrl="{{ route('payments.index') }}"
 >
     <x-slot:badge>
         <x-admin.status-badge :status="$payment->TrangThai" :enum="\App\Enums\PaymentStatus::class" />
@@ -129,10 +130,6 @@
                         />
                     @endcan
                 @endif
-
-                <a href="{{ route('payments.index') }}" class="btn btn-outline-secondary w-100 py-2 text-dark">
-                    <i class="fas fa-arrow-left me-1"></i> Quay lại danh sách
-                </a>
             </div>
         </div>
     </div>

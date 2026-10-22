@@ -50,7 +50,7 @@
             </div>
             <div class="d-flex justify-content-end gap-2 mt-4">
                 <a href="{{ route('invoices.index') }}" class="btn btn-outline-secondary">Hủy</a>
-                <button type="submit" class="btn btn-primary">Lưu hóa đơn</button>
+                <button type="submit" class="btn btn-primary">Thêm mới</button>
             </div>
         </form>
     </div>

@@ -358,7 +358,7 @@
         chart: {
             type: 'area',
             height: 300,
-            fontFamily: 'Plus Jakarta Sans, sans-serif',
+            fontFamily: 'Open Sans, Arial, sans-serif',
             toolbar: { show: false }
         },
         colors: ['#3B82F6'],
@@ -410,7 +410,7 @@
         chart: {
             type: 'donut',
             height: 300,
-            fontFamily: 'Plus Jakarta Sans, sans-serif'
+            fontFamily: 'Open Sans, Arial, sans-serif'
         },
         colors: ['#F59E0B', '#3B82F6', '#22C55E', '#EF4444', '#8B5CF6', '#10B981'],
         labels: @json(collect($statusDistribution->keys()->all())->map(fn ($status) => \App\Enums\OrderStatus::labelFor($status))->all()),
@@ -452,7 +452,7 @@
         chart: {
             type: 'bar',
             height: 340,
-            fontFamily: 'Plus Jakarta Sans, sans-serif',
+            fontFamily: 'Open Sans, Arial, sans-serif',
             toolbar: { show: false }
         },
         colors: ['#1D4ED8', '#2563EB', '#3B82F6', '#60A5FA', '#93C5FD'],

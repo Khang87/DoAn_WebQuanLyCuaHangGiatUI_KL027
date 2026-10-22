@@ -69,7 +69,7 @@
             <div class="col-12 form-text" id="schedule-help" aria-live="polite">Phiếu trả đang chờ có thể chưa đặt lịch. Khi đặt lịch, hãy nhập đủ ngày và giờ.</div>
             <div class="col-12"><label class="form-label" for="notes">Ghi chú</label><textarea class="form-control" id="notes" name="notes" rows="3">{{ old('notes', $delivery->GhiChu) }}</textarea></div>
         </div>
-        <div class="d-flex justify-content-end mt-4"><button type="submit" class="btn btn-success">Lưu thay đổi</button></div>
+        <div class="d-flex justify-content-end mt-4"><button type="submit" class="btn btn-primary">Cập nhật</button></div>
     </form>
 </div></div></div>
 @endsection

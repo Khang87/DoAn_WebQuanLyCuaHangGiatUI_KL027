@@ -10,9 +10,6 @@
         <p class="text-muted mb-0">Xem quyền hạn và thành viên được phân vào từng nhóm.</p>
     </div>
     <div class="d-flex flex-wrap gap-2">
-        <a href="{{ route('permissions.index') }}" class="btn btn-outline-secondary">
-            <i class="bi bi-card-list me-1"></i>Danh mục quyền
-        </a>
         <a href="{{ route('roles.create') }}" class="btn btn-primary">
             <i class="bi bi-plus-lg me-1"></i>Thêm nhóm quyền
         </a>

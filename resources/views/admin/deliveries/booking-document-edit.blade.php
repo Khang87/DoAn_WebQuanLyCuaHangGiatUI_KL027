@@ -93,7 +93,7 @@
                 </div>
 
                 <div class="d-flex justify-content-end mt-4">
-                    <button type="submit" class="btn btn-success">Lưu thay đổi</button>
+                    <button type="submit" class="btn btn-primary">Cập nhật</button>
                 </div>
             </form>
         </div>

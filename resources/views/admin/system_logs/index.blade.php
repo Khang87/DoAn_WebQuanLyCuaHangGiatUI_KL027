@@ -154,7 +154,6 @@
                         <th>Tài khoản</th>
                         <th>Hành động</th>
                         <th>Bảng dữ liệu</th>
-                        <th>Bản ghi</th>
                         <th>Chi tiết</th>
                     </tr>
                 </thead>
@@ -176,21 +175,9 @@
                                 @else
                                     {{ $log->taiKhoan?->TenDangNhap ?: 'Tài khoản #'.$log->TaiKhoanID }}
                                 @endif
-                                @if($log->TaiKhoanID)
-                                    <span class="text-muted small d-block">#{{ $log->TaiKhoanID }}</span>
-                                @endif
                             </td>
                             <td>{{ $log->HanhDong }}</td>
                             <td><span class="badge bg-light text-dark border">{{ $log->BangDuLieu }}</span></td>
-                            <td>
-                                @if($log->BangDuLieu === 'DonHang' && $log->BanGhiID && auth()->user()?->can('orders.view'))
-                                    <a href="{{ route('orders.show', $log->BanGhiID) }}">#{{ $log->BanGhiID }}</a>
-                                @elseif($log->BangDuLieu === 'Booking' && $log->BanGhiID && auth()->user()?->can('bookings.view'))
-                                    <a href="{{ route('bookings.show', $log->BanGhiID) }}">#{{ $log->BanGhiID }}</a>
-                                @else
-                                    {{ $log->BanGhiID ? '#'.$log->BanGhiID : '—' }}
-                                @endif
-                            </td>
                             <td>
                                 @if($log->DuLieuCu || $log->DuLieuMoi || $log->LyDo)
                                     <details>
@@ -213,7 +200,7 @@
                             </td>
                         </tr>
                     @empty
-                        <tr><td colspan="7" class="text-center text-muted py-5">Chưa có nhật ký phù hợp với bộ lọc.</td></tr>
+                        <tr><td colspan="6" class="text-center text-muted py-5">Chưa có nhật ký phù hợp với bộ lọc.</td></tr>
                     @endforelse
                 </tbody>
             </table>

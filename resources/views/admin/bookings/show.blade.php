@@ -7,6 +7,7 @@
 <x-admin.detail.page-header
     title="Chi tiết lịch hẹn"
     :subtitle="$booking->method_label . ' ngày ' . ($booking->NgayHen?->format('d/m/Y') ?: '—')"
+    backUrl="{{ route('bookings.index') }}"
 >
     <x-slot:badge>
         <x-admin.status-badge :status="$booking->TrangThai" :enum="\App\Enums\BookingStatus::class" />
@@ -144,10 +145,6 @@
                         </div>
                     @endcan
                 @endif
-
-                <a href="{{ route('bookings.index') }}" class="btn btn-outline-secondary w-100 py-2 text-dark">
-                    <i class="fas fa-arrow-left me-1"></i> Quay lại danh sách
-                </a>
             </div>
         </div>
 

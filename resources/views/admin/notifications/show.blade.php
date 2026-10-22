@@ -28,6 +28,7 @@
 <x-admin.detail.page-header
     title="Chi tiết thông báo"
     :subtitle="$notification->ThoiGianGui?->format('d/m/Y H:i')"
+    backUrl="{{ route('notifications.index') }}"
 >
     <x-slot:badge>
         <span class="badge bg-primary-subtle text-primary-emphasis border border-primary px-3 py-2 rounded-pill">
@@ -88,9 +89,6 @@
                         </a>
                     @endif
                 @endcan
-                <a href="{{ route('notifications.index') }}" class="btn btn-outline-secondary w-100 py-2 text-dark">
-                    <i class="fas fa-arrow-left me-1" aria-hidden="true"></i> Quay lại danh sách
-                </a>
             </div>
         </div>
 

@@ -195,6 +195,18 @@
         width: 100%;
         margin-bottom: 0;
     }
+    /* Recent orders table: fixed layout so columns share width evenly instead
+       of one flexible column ballooning and leaving a large mid-table gap */
+    .recent-orders-table {
+        table-layout: fixed;
+        min-width: 1024px;
+    }
+    .recent-orders-table thead th,
+    .recent-orders-table tbody td {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
 </style>
 @endpush
 
@@ -452,17 +464,17 @@
             </div>
             <div class="card-body p-0">
                 <div class="table-responsive">
-                    <table class="table table-hover align-middle table-nowrap mb-0">
+                    <table class="table table-hover align-middle table-nowrap recent-orders-table mb-0">
                         <thead class="bg-light-subtle text-secondary fs-7 text-uppercase fw-semibold">
                             <tr>
-                                <th scope="col">STT</th>
-                                <th scope="col" style="width: 110px;" class="ps-3">Mã đơn</th>
-                                <th scope="col" style="width: 160px;">Khách hàng</th>
-                                <th scope="col">Dịch vụ</th>
-                                <th scope="col" style="width: 130px;" class="text-center">Trạng thái</th>
-                                <th scope="col" style="width: 140px;" class="text-end">Tổng tiền</th>
-                                <th scope="col" style="width: 140px;" class="text-center">Ngày tạo</th>
-                                <th scope="col" style="width: 80px;" class="text-center pe-3">Thao tác</th>
+                                <th scope="col" style="width: 48px;">STT</th>
+                                <th scope="col" style="width: 12%;" class="ps-3">Mã đơn</th>
+                                <th scope="col" style="width: 14%;">Khách hàng</th>
+                                <th scope="col" style="width: 29%;">Dịch vụ</th>
+                                <th scope="col" style="width: 12%;" class="text-center">Trạng thái</th>
+                                <th scope="col" style="width: 12%;" class="text-end">Tổng tiền</th>
+                                <th scope="col" style="width: 11%;" class="text-end">Ngày tạo</th>
+                                <th scope="col" style="width: 8%;" class="text-end pe-3">Thao tác</th>
                             </tr>
                         </thead>
                         <tbody class="fs-7">
@@ -472,21 +484,19 @@
                                 <td>{{ $loop->iteration }}</td>
                                 <td class="ps-3 fw-bold text-primary">{{ $order->code }}</td>
                                 <td class="fw-medium text-dark">{{ $order->customer?->name ?: '-' }}</td>
-                                <td class="text-secondary text-truncate" style="max-width: 250px;">{{ $order->items->pluck('service.name')->filter()->join(', ') ?: ($order->service?->name ?: '-') }}</td>
+                                <td class="text-secondary text-truncate">{{ $order->items->pluck('service.name')->filter()->join(', ') ?: ($order->service?->name ?: '-') }}</td>
                                 <td class="text-center">
                                     <div class="order-status-badges d-inline-flex align-items-center flex-nowrap gap-1 text-nowrap">
                                         <x-admin.order-status-badges :order="$order" :is-paid="$order->isPaid()" :is-receiving="false" compact />
                                     </div>
                                 </td>
                                 <td class="text-end fw-bold text-dark">{{ number_format($order->total_amount, 0, ',', '.') }} VNĐ</td>
-                                <td class="text-center">
+                                <td class="text-end">
                                     <div class="text-dark fw-medium">{{ $createdAt?->format('d/m/Y') ?? '-' }}</div>
                                     <small class="text-muted fs-8">{{ $createdAt?->format('H:i') ?? '' }}</small>
                                 </td>
-                                <td class="text-center pe-3">
-                                    <a href="{{ route('orders.show', $order) }}" class="btn btn-sm btn-light btn-active-light-primary btn-icon rounded-circle" title="Xem chi tiết">
-                                        <i class="bi bi-eye text-secondary"></i>
-                                    </a>
+                                <td class="text-end pe-3">
+                                    <a href="{{ route('orders.show', $order) }}" class="btn btn-order-action view" title="Xem chi tiết"><i class="bi bi-eye"></i></a>
                                 </td>
                             </tr>
                             @empty
@@ -549,7 +559,7 @@
                 chart: {
                     type: 'line',
                     height: 320,
-                    fontFamily: 'Plus Jakarta Sans, sans-serif',
+                    fontFamily: 'Open Sans, Arial, sans-serif',
                     toolbar: { show: false },
                     animations: { enabled: false },
                     zoom: { enabled: false },
@@ -607,7 +617,7 @@
                 chart: {
                     type: 'donut',
                     height: 320,
-                    fontFamily: 'Plus Jakarta Sans, sans-serif',
+                    fontFamily: 'Open Sans, Arial, sans-serif',
                     toolbar: { show: false },
                     animations: { enabled: false },
                 },

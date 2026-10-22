@@ -7,6 +7,7 @@
 <x-admin.detail.page-header
     title="Dịch vụ {{ $service->TenDichVu }}"
     :subtitle="$service->loaiDichVu?->TenLoaiDichVu"
+    backUrl="{{ route('services.index') }}"
 >
     <x-slot:badge>
         <x-admin.status-badge :status="$service->TrangThai" :enum="\App\Enums\RecordStatus::class" />
@@ -76,10 +77,6 @@
                         block
                     />
                 @endcan
-
-                <a href="{{ route('services.index') }}" class="btn btn-outline-secondary w-100 py-2 text-dark">
-                    <i class="fas fa-arrow-left me-1"></i> Quay lại danh sách
-                </a>
             </div>
         </div>
 

@@ -154,7 +154,6 @@
                 </div>
             </div>
             <div class="d-flex justify-content-end gap-2 mt-4">
-                <a href="{{ route('payments.index') }}" class="btn btn-outline-secondary">Quay lại</a>
                 <a href="{{ route('orders.index') }}" class="btn btn-success d-none" id="paymentBankComplete">Hoàn tất</a>
                 <button type="submit" class="btn btn-primary {{ $initialMethod === 'bank_transfer' ? 'd-none' : '' }}" id="paymentCashSubmit" @disabled($initialMethod === 'bank_transfer')>Xác nhận đã thu tiền</button>
             </div>
