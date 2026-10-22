@@ -36,6 +36,7 @@ Route::middleware('staff.api')->prefix('v1/staff')->group(function () {
     Route::post('auth/logout', [StaffMobileController::class, 'logout']);
     Route::get('orders', [StaffMobileController::class, 'orders']);
     Route::patch('orders/{id}/status', [StaffMobileController::class, 'updateOrderStatus']);
+    Route::post('orders/{id}/delivery-progress', [StaffMobileController::class, 'advanceDelivery']);
     Route::get('bookings', [StaffMobileController::class, 'bookings']);
     Route::get('bookings/{id}', [StaffMobileController::class, 'booking']);
     Route::post('bookings/{id}/estimate', [StaffMobileController::class, 'estimate']);
