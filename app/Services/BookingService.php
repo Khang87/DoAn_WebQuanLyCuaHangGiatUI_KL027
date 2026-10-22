@@ -9,11 +9,13 @@ use App\Models\BangGia;
 use App\Models\Booking;
 use App\Models\BookingGiaoNhan;
 use App\Models\BookingKiemKe;
+use App\Models\StaffBookingDraft;
 use App\Models\DonHang;
 use App\Models\KhachHang;
 use App\Models\KhuyenMai;
 use App\Models\NhanVien;
 use App\Models\NhatKyHeThong;
+use App\Services\DeliveryFeeService;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -258,9 +260,14 @@ class BookingService
             }
 
             $data = $this->useOriginalBookingDetails($locked, $data);
+            $draft = StaffBookingDraft::query()->whereKey($locked->BookingID)->lockForUpdate()->first();
+            if ($draft) {
+                $data = $draft->Payload;
+                $data['customer_accepted'] = true;
+            }
             $data['items'] = $this->preserveBookingItemNotes($locked, $data['items']);
             $snapshot = $this->inspectionSnapshot($data);
-            $changed = $this->inspectionDiffersFromBooking($locked, $snapshot);
+            $changed = $draft?->CoChenhLech ?? $this->inspectionDiffersFromBooking($locked, $snapshot);
             $completedAt = now();
             $inspection = BookingKiemKe::query()->create([
                 'BookingID' => $locked->BookingID,
@@ -292,7 +299,7 @@ class BookingService
                 'CapNhatLuc' => $completedAt,
             ]);
 
-            if ($changed) {
+            if ($changed && ! $draft) {
                 $accountId = $locked->khachHang?->taiKhoan?->TaiKhoanID;
                 if (! $accountId) {
                     throw ValidationException::withMessages(['booking' => 'Khách hàng chưa có tài khoản mobile để nhận thông báo điều chỉnh kiểm kê.']);
@@ -308,7 +315,75 @@ class BookingService
                 ], $locked);
             }
 
+            $draft?->delete();
+
             return $order;
+        });
+    }
+
+    public function saveInspectionDraft(Booking $booking, array $data): Booking
+    {
+        return DB::transaction(function () use ($booking, $data): Booking {
+            $locked = Booking::query()->lockForUpdate()->findOrFail($booking->BookingID);
+            if ($locked->TrangThai !== BookingStatus::Confirmed->value || $this->hasConvertedOrder($locked)) {
+                throw ValidationException::withMessages(['booking' => 'Booking không còn ở trạng thái cho phép lưu kết quả kiểm kê.']);
+            }
+            $employeeId = $this->requireAuthenticatedEmployeeId('booking', 'Cần nhân viên đang hoạt động để lưu kết quả kiểm kê.');
+            $intake = BookingGiaoNhan::query()->where('BookingID', $locked->BookingID)->where('LoaiGiaoNhan', 'NHAN_DO')->lockForUpdate()->firstOrFail();
+            $this->assertAssignedIntakeHandler($intake, $employeeId);
+            if (! in_array($intake->TrangThai, [DeliveryStatus::Pending->dbValue(), DeliveryStatus::Picking->dbValue()], true)
+                || $intake->ThoiGianThucTe !== null || $intake->DonHangID !== null || $intake->BookingKiemKeID !== null
+                || BookingKiemKe::query()->where('BookingID', $locked->BookingID)->exists()) {
+                throw ValidationException::withMessages(['booking' => 'Phiếu nhận không còn ở trạng thái cho phép lưu kiểm kê.']);
+            }
+
+            $data['customer_id'] = $locked->KhachHangID;
+            $data['items'] = $this->preserveBookingItemNotes($locked, $data['items']);
+            $feeChanged = $data['method'] !== $locked->HinhThucNhanDo
+                || ($data['address'] ?? null) !== $locked->DiaChiNhan
+                || $data['return_method'] !== $locked->HinhThucTraDo
+                || ($data['return_address'] ?? null) !== $locked->DiaChiTra;
+            $fees = $feeChanged ? app(DeliveryFeeService::class)->quote(
+                $data['method'], $data['address'] ?? null, $data['return_method'], $data['return_address'] ?? null,
+            ) : null;
+            $before = $this->bookingAuditSnapshot($locked);
+            $beforeItems = $this->bookingItemsAuditSnapshot($locked);
+            $locked->forceFill([
+                ...$this->mapRequestData($data),
+                ...($fees ? [
+                    'PickupDeliveryFee' => $fees['pickup_fee'], 'DeliveryFee' => $fees['return_fee'],
+                    'PickupDistanceMeters' => $fees['pickup_distance_meters'], 'DeliveryDistanceMeters' => $fees['return_distance_meters'],
+                ] : []),
+                'NgayCapNhat' => now(),
+            ])->saveQuietly();
+            if ($fees) {
+                foreach ([['NHAN_DO', 'method', 'address', 'pickup_fee'], ['GIAO_DO', 'return_method', 'return_address', 'return_fee']] as [$legType, $methodKey, $addressKey, $feeKey]) {
+                    BookingGiaoNhan::query()->where('BookingID', $locked->BookingID)->where('LoaiGiaoNhan', $legType)->update([
+                        'HinhThuc' => $data[$methodKey],
+                        'DiaChi' => $data[$methodKey] === 'Tại nhà' ? ($data[$addressKey] ?? null) : null,
+                        'PhiGiaoNhan' => $fees[$feeKey],
+                    ]);
+                }
+            }
+            if ($data['scheduled_date'] !== $locked->NgayHen?->format('Y-m-d')
+                || $data['scheduled_time'] !== substr((string) $locked->GioHen, 0, 5)) {
+                BookingGiaoNhan::query()->where('BookingID', $locked->BookingID)->where('LoaiGiaoNhan', 'NHAN_DO')
+                    ->update(['ThoiGianDuKien' => $data['scheduled_date'].' '.$data['scheduled_time']]);
+            }
+            $this->syncBookingItems($locked, $data['items']);
+            $locked->refresh();
+            $changed = $before !== $this->bookingAuditSnapshot($locked)
+                || $beforeItems !== $this->bookingItemsAuditSnapshot($locked);
+            $changed = $changed || (bool) StaffBookingDraft::query()->whereKey($locked->BookingID)->value('CoChenhLech');
+            if ($changed) {
+                $this->recordBookingAudit($locked, $before, $this->bookingAuditSnapshot($locked), $beforeItems, $this->bookingItemsAuditSnapshot($locked));
+            }
+            StaffBookingDraft::query()->updateOrCreate(
+                ['BookingID' => $locked->BookingID],
+                ['Payload' => $data, 'CoChenhLech' => $changed, 'CapNhatLuc' => now()],
+            );
+
+            return $locked->fresh(['khachHang', 'chiTietBookings.dichVu', 'chiTietBookings.loaiDoGiat', 'chiTietBookings.donViTinh']);
         });
     }
 

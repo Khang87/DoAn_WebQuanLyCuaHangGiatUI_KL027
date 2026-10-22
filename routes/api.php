@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\V1\KhachHangController;
 use App\Http\Controllers\Api\V1\KhuyenMaiController;
 use App\Http\Controllers\Api\V1\PasswordRecoveryController;
 use App\Http\Controllers\Api\V1\PaymentConfigController;
+use App\Http\Controllers\Api\V1\StaffMobileController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -28,6 +29,18 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
     Route::post('auth/forgot-password', [PasswordRecoveryController::class, 'forgot'])
         ->middleware('throttle:5,1')
         ->name('auth.forgot-password');
+    Route::post('staff/auth/login', [StaffMobileController::class, 'login'])->middleware('throttle:5,1');
+});
+
+Route::middleware('staff.api')->prefix('v1/staff')->group(function () {
+    Route::post('auth/logout', [StaffMobileController::class, 'logout']);
+    Route::get('orders', [StaffMobileController::class, 'orders']);
+    Route::patch('orders/{id}/status', [StaffMobileController::class, 'updateOrderStatus']);
+    Route::get('bookings', [StaffMobileController::class, 'bookings']);
+    Route::get('bookings/{id}', [StaffMobileController::class, 'booking']);
+    Route::post('bookings/{id}/estimate', [StaffMobileController::class, 'estimate']);
+    Route::post('bookings/{id}/draft', [StaffMobileController::class, 'draft']);
+    Route::post('bookings/{id}/confirm', [StaffMobileController::class, 'confirm']);
 });
 
 Route::middleware(['auth', 'reject.customer'])->prefix('v1')->name('api.v1.')->group(function () {
