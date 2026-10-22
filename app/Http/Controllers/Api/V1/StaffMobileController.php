@@ -257,6 +257,7 @@ class StaffMobileController extends ApiController
     {
         $draft = StaffBookingDraft::query()->find($booking->BookingID);
         $draftItems = array_values($draft?->Payload['items'] ?? []);
+        $appointmentTime = $booking->GioHen?->format('H:i');
         $items = $booking->chiTietBookings->values()->map(fn ($i, $index) => [
             'service_id' => $i->DichVuID, 'garment_id' => $i->LoaiDoGiatID, 'unit_id' => $i->DonViTinhID,
             'quantity' => $i->SoLuong === null ? null : (float) $i->SoLuong, 'weight' => $i->KhoiLuong === null ? null : (float) $i->KhoiLuong,
@@ -267,14 +268,15 @@ class StaffMobileController extends ApiController
         ])->values();
         $prices = BangGia::query()->where('TrangThai', 'Hoạt động')->with(['dichVu', 'loaiDoGiat', 'donViTinh'])->get()->map(fn ($p) => [
             'service_id' => $p->DichVuID, 'garment_id' => $p->LoaiDoGiatID, 'unit_id' => $p->DonViTinhID,
+            'unit_name' => $p->donViTinh?->TenDonViTinh, 'unit_symbol' => $p->donViTinh?->KyHieu,
             'unit_price' => (float) $p->DonGia, 'is_weight' => BangGia::isWeightUnit($p->donViTinh),
         ])->values();
         return [
             'id' => $booking->BookingID, 'code' => $booking->MaBooking, 'status' => $booking->TrangThai,
             'receive_method' => $booking->HinhThucNhanDo, 'receive_address' => $booking->DiaChiNhan,
             'return_method' => $booking->HinhThucTraDo, 'return_address' => $booking->DiaChiTra,
-            'appointment_date' => $booking->NgayHen?->format('Y-m-d'), 'appointment_time' => substr((string) $booking->GioHen, 0, 5),
-            'appointment' => $booking->NgayHen?->format('Y-m-d').' '.substr((string) $booking->GioHen, 0, 5),
+            'appointment_date' => $booking->NgayHen?->format('Y-m-d'), 'appointment_time' => $appointmentTime,
+            'appointment' => $booking->NgayHen?->format('Y-m-d').' '.($appointmentTime ?? ''),
             'note' => $booking->GhiChu, 'created_at' => $booking->NgayTao?->toIso8601String(),
             'pickup_fee' => (float) $booking->PickupDeliveryFee, 'return_fee' => (float) $booking->DeliveryFee,
             'customer' => ['id' => $booking->KhachHangID, 'name' => $booking->khachHang?->HoTen, 'phone' => $booking->khachHang?->SoDienThoai],
