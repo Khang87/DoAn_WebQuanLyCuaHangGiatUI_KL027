@@ -329,7 +329,7 @@ class OrderService
             $order = DonHang::create(array_merge([
                 'MaDonHang' => 'TMP'.Str::ulid(),
                 'KhachHangID' => $booking->KhachHangID,
-                'NhanVienID' => $employeeId,
+                'NhanVienID' => null,
                 'BookingID' => $booking->BookingID,
                 'TrangThai' => OrderStatus::Received->value,
                 'GhiChu' => $notes,

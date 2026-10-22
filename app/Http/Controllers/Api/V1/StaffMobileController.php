@@ -18,6 +18,7 @@ use App\Services\BookingService;
 use App\Services\DeliveryService;
 use App\Services\DeliveryFeeService;
 use App\Services\OrderService;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -65,12 +66,7 @@ class StaffMobileController extends ApiController
     public function orders(): JsonResponse
     {
         $employeeId = Auth::user()->NhanVienID;
-        $rows = DonHang::query()->where(function ($query) use ($employeeId): void {
-            $query->where('NhanVienID', $employeeId)
-                ->orWhereHas('giaoNhans', fn ($delivery) => $delivery->where('NhanVienID', $employeeId)->where('LoaiGiaoNhan', 'GIAO_DO'))
-                ->orWhereHas('booking.giaoNhanDuKiens', fn ($delivery) => $delivery->where('NhanVienID', $employeeId)->where('LoaiGiaoNhan', 'GIAO_DO'));
-        })
-            ->with([
+        $rows = $this->assignedOrdersForEmployee($employeeId)->with([
                 'booking',
                 'booking.giaoNhanDuKiens' => fn ($delivery) => $delivery->where('NhanVienID', $employeeId)->where('LoaiGiaoNhan', 'GIAO_DO')->where('HinhThuc', 'Tại nhà'),
                 'giaoNhans' => fn ($delivery) => $delivery->where('NhanVienID', $employeeId)->where('LoaiGiaoNhan', 'GIAO_DO')->where('HinhThuc', 'Tại nhà'),
@@ -105,11 +101,7 @@ class StaffMobileController extends ApiController
     {
         $data = $request->validate(['status' => ['required', 'string'], 'reason' => ['nullable', 'string', 'max:500']]);
         $employeeId = Auth::user()->NhanVienID;
-        $order = DonHang::query()->where(function ($query) use ($employeeId): void {
-            $query->where('NhanVienID', $employeeId)
-                ->orWhereHas('giaoNhans', fn ($delivery) => $delivery->where('NhanVienID', $employeeId)->where('LoaiGiaoNhan', 'GIAO_DO'))
-                ->orWhereHas('booking.giaoNhanDuKiens', fn ($delivery) => $delivery->where('NhanVienID', $employeeId)->where('LoaiGiaoNhan', 'GIAO_DO'));
-        })->findOrFail($id);
+        $order = $this->assignedOrdersForEmployee($employeeId)->findOrFail($id);
         if ((int) $order->NhanVienID !== (int) $employeeId
             && ! in_array($data['status'], ['Đang giao', 'Đã giao'], true)) {
             abort(403);
@@ -184,6 +176,23 @@ class StaffMobileController extends ApiController
             'delivery_status' => $status,
             'order_status' => $orderStatus,
         ]]);
+    }
+
+    private function assignedOrdersForEmployee(int $employeeId): Builder
+    {
+        return DonHang::query()->where(function ($query) use ($employeeId): void {
+            $query->where(function ($assignedOrder) use ($employeeId): void {
+                $assignedOrder->where('NhanVienID', $employeeId)
+                    ->where(function ($order) use ($employeeId): void {
+                        $order->whereNull('BookingID')
+                            ->orWhereDoesntHave('booking.giaoNhanDuKiens', fn ($delivery) => $delivery
+                                ->where('LoaiGiaoNhan', 'NHAN_DO')
+                                ->where('NhanVienID', $employeeId));
+                    });
+            })
+                ->orWhereHas('giaoNhans', fn ($delivery) => $delivery->where('NhanVienID', $employeeId)->where('LoaiGiaoNhan', 'GIAO_DO'))
+                ->orWhereHas('booking.giaoNhanDuKiens', fn ($delivery) => $delivery->where('NhanVienID', $employeeId)->where('LoaiGiaoNhan', 'GIAO_DO'));
+        });
     }
 
     public function booking(int $id): JsonResponse

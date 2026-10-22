@@ -1546,7 +1546,7 @@ class BookingOrderConversionTest extends TestCase
         $this->assertSame('Tại nhà', $delivery->HinhThuc);
         $this->assertSame('12 Nguyễn Huệ', $delivery->DiaChi);
         $this->assertSame('2026-10-05 14:30:00', $delivery->ThoiGianDuKien->format('Y-m-d H:i:s'));
-        $this->assertSame(1, $order->NhanVienID);
+        $this->assertNull($order->NhanVienID);
         $this->assertSame(2, $booking->fresh()->NhanVienID);
         $this->assertSame(1, $booking->fresh()->NhanVienXacNhanID);
         $this->assertSame(2, DB::table('ChiTietBooking')->where('BookingID', $booking->BookingID)->count());
@@ -1695,7 +1695,7 @@ class BookingOrderConversionTest extends TestCase
         $order = DonHang::query()->where('BookingID', $booking->BookingID)->firstOrFail();
         $response->assertRedirect(route('orders.show', $order));
         $this->assertSame(BookingStatus::Confirmed->value, $booking->fresh()->TrangThai);
-        $this->assertSame(1, $order->NhanVienID);
+        $this->assertNull($order->NhanVienID);
         $this->assertSame(1, $booking->fresh()->NhanVienID);
         $this->assertSame(1, $booking->fresh()->NhanVienXacNhanID);
         $this->assertNotNull($booking->fresh()->ThoiGianXacNhan);
