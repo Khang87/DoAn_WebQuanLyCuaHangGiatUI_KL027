@@ -51,7 +51,7 @@
     const employeePicker = document.querySelector('[data-employee-picker]');
     if (employeePicker) {
         const employeeSearch = employeePicker.querySelector('[data-employee-search]');
-        const employeeId = employeePicker.querySelector('[data-employee-id]');
+        const employeeId = employeePicker.querySelector('input[name="employee_id"][data-employee-id]');
         const selectedEmployeeSearch = employeePicker.querySelector('[data-selected-employee-search]');
         const dropdown = employeePicker.querySelector('[data-employee-dropdown]');
         const toggle = employeePicker.querySelector('[data-employee-toggle]');
