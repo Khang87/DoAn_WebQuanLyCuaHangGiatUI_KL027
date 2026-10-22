@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Tài khoản đăng nhập, ánh xạ tới bảng `TaiKhoan` của Supabase.
@@ -407,5 +408,18 @@ class User extends Authenticatable
     {
         $this->TrangThai = 'Hoạt động';
         $this->save();
+    }
+
+    public function issueStaffApiToken(): string
+    {
+        $token = bin2hex(random_bytes(32));
+        DB::table('StaffApiToken')->insert([
+            'TaiKhoanID' => $this->getKey(),
+            'TokenHash' => hash('sha256', $token),
+            'NgayHetHan' => now()->addDays(14),
+            'NgayTao' => now(),
+        ]);
+
+        return $token;
     }
 }
