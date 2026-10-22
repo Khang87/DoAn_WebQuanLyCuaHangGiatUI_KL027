@@ -10,6 +10,7 @@ use App\Models\BookingGiaoNhan;
 use App\Models\BookingKiemKe;
 use App\Models\DonHang;
 use App\Models\GiaoNhan;
+use App\Models\NhanVien;
 use App\Models\NhatKyHeThong;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
@@ -567,6 +568,50 @@ class DeliveryService
             };
 
             return $this->updateLocked($order, $current, ['status' => $nextStatus->value]);
+        });
+    }
+
+    public function advanceBookingDelivery(BookingGiaoNhan $delivery): BookingGiaoNhan
+    {
+        return DB::transaction(function () use ($delivery): BookingGiaoNhan {
+            $current = BookingGiaoNhan::query()->lockForUpdate()->findOrFail($delivery->getKey());
+            $booking = Booking::query()->lockForUpdate()->findOrFail($current->BookingID);
+            $order = DonHang::query()->lockForUpdate()->findOrFail($current->DonHangID);
+            DeliveryRules::assertMutableOrder($order);
+
+            if ($order->BookingID !== $booking->BookingID
+                || $current->LoaiGiaoNhan !== 'GIAO_DO'
+                || $current->HinhThuc !== 'Tại nhà'
+                || $booking->HinhThucTraDo !== $current->HinhThuc
+                || $current->NhanVienID === null
+                || ! NhanVien::query()->whereKey($current->NhanVienID)->where('TrangThai', 'Hoạt động')->exists()) {
+                throw ValidationException::withMessages(['delivery' => 'Phiếu giao đồ không còn hợp lệ hoặc không được phân công cho nhân viên đang hoạt động.']);
+            }
+
+            $status = DeliveryStatus::parseForLeg($current->TrangThai, $current->LoaiGiaoNhan);
+            if ($status === DeliveryStatus::Pending
+                && in_array($order->statusEnum(), [OrderStatus::Washed, OrderStatus::Delivering, OrderStatus::Paid], true)) {
+                $current->update(['TrangThai' => DeliveryStatus::Delivering->dbValue()]);
+                if ($order->statusEnum() !== OrderStatus::Delivering) {
+                    $order->update(['TrangThai' => OrderStatus::Delivering->value, 'NgayCapNhat' => now()]);
+                }
+            } elseif ($status === DeliveryStatus::Delivering
+                && in_array($order->statusEnum(), [OrderStatus::Delivering, OrderStatus::Delivered], true)) {
+                $current->update([
+                    'TrangThai' => DeliveryStatus::Completed->dbValue(),
+                    'ThoiGianThucTe' => now(),
+                ]);
+                if ($order->statusEnum() !== OrderStatus::Delivered) {
+                    $order->update(['TrangThai' => OrderStatus::Delivered->value, 'NgayCapNhat' => now()]);
+                }
+                if ($booking->statusEnum() !== BookingStatus::Completed) {
+                    $booking->update(['TrangThai' => BookingStatus::Completed->value]);
+                }
+            } else {
+                throw ValidationException::withMessages(['status' => 'Phiếu giao nhận không còn tiến độ nào cần xác nhận.']);
+            }
+
+            return $current->fresh();
         });
     }
 

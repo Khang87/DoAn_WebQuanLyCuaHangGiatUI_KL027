@@ -10,10 +10,12 @@ use App\Models\Booking;
 use App\Models\BookingGiaoNhan;
 use App\Models\DichVu;
 use App\Models\DonHang;
+use App\Models\GiaoNhan;
 use App\Models\LoaiDoGiat;
 use App\Models\StaffBookingDraft;
 use App\Models\User;
 use App\Services\BookingService;
+use App\Services\DeliveryService;
 use App\Services\DeliveryFeeService;
 use App\Services\OrderService;
 use Illuminate\Http\JsonResponse;
@@ -25,7 +27,7 @@ use Illuminate\Validation\ValidationException;
 
 class StaffMobileController extends ApiController
 {
-    public function __construct(private BookingService $bookings, private OrderService $orders) {}
+    public function __construct(private BookingService $bookings, private OrderService $orders, private DeliveryService $deliveries) {}
 
     public function login(Request $request): JsonResponse
     {
@@ -62,8 +64,18 @@ class StaffMobileController extends ApiController
 
     public function orders(): JsonResponse
     {
-        $rows = DonHang::query()->where('NhanVienID', Auth::user()->NhanVienID)
-            ->with(['booking', 'khachHang', 'khuyenMai', 'chiTietDonHangs.dichVu', 'chiTietDonHangs.loaiDoGiat', 'chiTietDonHangs.donViTinh'])
+        $employeeId = Auth::user()->NhanVienID;
+        $rows = DonHang::query()->where(function ($query) use ($employeeId): void {
+            $query->where('NhanVienID', $employeeId)
+                ->orWhereHas('giaoNhans', fn ($delivery) => $delivery->where('NhanVienID', $employeeId)->where('LoaiGiaoNhan', 'GIAO_DO'))
+                ->orWhereHas('booking.giaoNhanDuKiens', fn ($delivery) => $delivery->where('NhanVienID', $employeeId)->where('LoaiGiaoNhan', 'GIAO_DO'));
+        })
+            ->with([
+                'booking',
+                'booking.giaoNhanDuKiens' => fn ($delivery) => $delivery->where('NhanVienID', $employeeId)->where('LoaiGiaoNhan', 'GIAO_DO')->where('HinhThuc', 'Tại nhà'),
+                'giaoNhans' => fn ($delivery) => $delivery->where('NhanVienID', $employeeId)->where('LoaiGiaoNhan', 'GIAO_DO')->where('HinhThuc', 'Tại nhà'),
+                'khachHang', 'khuyenMai', 'chiTietDonHangs.dichVu', 'chiTietDonHangs.loaiDoGiat', 'chiTietDonHangs.donViTinh',
+            ])
             ->latest('NgayTao')->get();
         return response()->json(['data' => $rows->map(fn (DonHang $o) => [
             'DonHangID' => $o->DonHangID, 'BookingID' => $o->BookingID, 'MaDonHang' => $o->MaDonHang,
@@ -71,6 +83,8 @@ class StaffMobileController extends ApiController
             'TienGiamDoDiem' => $o->TienGiamDoDiem, 'TienGiamKhuyenMai' => $o->TienGiamKhuyenMai,
             'ThanhTien' => $o->ThanhTien, 'NgayTao' => $o->NgayTao?->toIso8601String(),
             'KhuyenMai' => $o->khuyenMai ? ['MaKhuyenMai' => $o->khuyenMai->MaKhuyenMai] : null,
+            'KhachHang' => $o->khachHang ? ['HoTen' => $o->khachHang->HoTen, 'SoDienThoai' => $o->khachHang->SoDienThoai] : null,
+            'CanConfirmDelivery' => $o->giaoNhans->isNotEmpty() || $o->booking?->giaoNhanDuKiens->isNotEmpty(),
             'Booking' => $o->booking ? [
                 'BookingID' => $o->booking->BookingID, 'MaBooking' => $o->booking->MaBooking,
                 'HinhThucNhanDo' => $o->booking->HinhThucNhanDo, 'HinhThucTraDo' => $o->booking->HinhThucTraDo,
@@ -90,9 +104,86 @@ class StaffMobileController extends ApiController
     public function updateOrderStatus(Request $request, int $id): JsonResponse
     {
         $data = $request->validate(['status' => ['required', 'string'], 'reason' => ['nullable', 'string', 'max:500']]);
-        $order = DonHang::query()->where('NhanVienID', Auth::user()->NhanVienID)->findOrFail($id);
+        $employeeId = Auth::user()->NhanVienID;
+        $order = DonHang::query()->where(function ($query) use ($employeeId): void {
+            $query->where('NhanVienID', $employeeId)
+                ->orWhereHas('giaoNhans', fn ($delivery) => $delivery->where('NhanVienID', $employeeId)->where('LoaiGiaoNhan', 'GIAO_DO'))
+                ->orWhereHas('booking.giaoNhanDuKiens', fn ($delivery) => $delivery->where('NhanVienID', $employeeId)->where('LoaiGiaoNhan', 'GIAO_DO'));
+        })->findOrFail($id);
+        if ((int) $order->NhanVienID !== (int) $employeeId
+            && ! in_array($data['status'], ['Đang giao', 'Đã giao'], true)) {
+            abort(403);
+        }
+        $homeDelivery = GiaoNhan::query()
+            ->where('DonHangID', $id)
+            ->where('NhanVienID', $employeeId)
+            ->where('LoaiGiaoNhan', 'GIAO_DO')
+            ->where('HinhThuc', 'Tại nhà')
+            ->first();
+        $bookingDelivery = BookingGiaoNhan::query()
+            ->where('DonHangID', $id)
+            ->where('NhanVienID', $employeeId)
+            ->where('LoaiGiaoNhan', 'GIAO_DO')
+            ->where('HinhThuc', 'Tại nhà')
+            ->first();
+        $hasHomeDelivery = GiaoNhan::query()->where('DonHangID', $id)->where('LoaiGiaoNhan', 'GIAO_DO')->where('HinhThuc', 'Tại nhà')->exists()
+            || BookingGiaoNhan::query()->where('DonHangID', $id)->where('LoaiGiaoNhan', 'GIAO_DO')->where('HinhThuc', 'Tại nhà')->exists();
+        if ($hasHomeDelivery && $data['status'] === 'Đã giao') {
+            throw ValidationException::withMessages(['status' => 'Hãy xác nhận giao đồ trong màn hình chi tiết giao nhận.']);
+        }
+        if ($hasHomeDelivery && $data['status'] === 'Đang giao') {
+            abort_unless($homeDelivery || $bookingDelivery, 403);
+            $deliveryStatus = DeliveryStatus::parseForLeg(
+                $homeDelivery?->TrangThai ?? $bookingDelivery?->TrangThai,
+                'GIAO_DO',
+            );
+            if ($order->TrangThai === 'Đang giao' && $deliveryStatus === DeliveryStatus::Delivering) {
+                return response()->json(['data' => ['id' => $order->DonHangID, 'status' => $order->TrangThai]]);
+            }
+            if ($order->TrangThai !== 'Hoàn thành giặt') {
+                throw ValidationException::withMessages(['status' => 'Đơn hàng chưa sẵn sàng để bắt đầu giao.']);
+            }
+            if ($homeDelivery) {
+                $this->deliveries->advanceProgress($homeDelivery);
+            } else {
+                $this->deliveries->advanceBookingDelivery($bookingDelivery);
+            }
+            return response()->json(['data' => [
+                'id' => $order->DonHangID,
+                'status' => DonHang::query()->whereKey($order->DonHangID)->value('TrangThai'),
+            ]]);
+        }
         $order = $this->orders->updateStatus($order, $data['status'], reason: $data['reason'] ?? null);
         return response()->json(['data' => ['id' => $order->DonHangID, 'status' => $order->TrangThai]]);
+    }
+
+    public function advanceDelivery(int $id): JsonResponse
+    {
+        $delivery = GiaoNhan::query()
+            ->where('DonHangID', $id)
+            ->where('NhanVienID', Auth::user()->NhanVienID)
+            ->where('LoaiGiaoNhan', 'GIAO_DO')
+            ->where('HinhThuc', 'Tại nhà')
+            ->first();
+        if ($delivery) {
+            $delivery = $this->deliveries->advanceProgress($delivery);
+            $status = DeliveryStatus::parseForLeg($delivery->TrangThai, $delivery->LoaiGiaoNhan)->value;
+            $orderStatus = $delivery->donHang()->value('TrangThai');
+        } else {
+            $bookingDelivery = BookingGiaoNhan::query()
+                ->where('DonHangID', $id)
+                ->where('NhanVienID', Auth::user()->NhanVienID)
+                ->where('LoaiGiaoNhan', 'GIAO_DO')
+                ->where('HinhThuc', 'Tại nhà')
+                ->firstOrFail();
+            $bookingDelivery = $this->deliveries->advanceBookingDelivery($bookingDelivery);
+            $status = DeliveryStatus::parseForLeg($bookingDelivery->TrangThai, $bookingDelivery->LoaiGiaoNhan)->value;
+            $orderStatus = DonHang::query()->whereKey($id)->value('TrangThai');
+        }
+        return response()->json(['data' => [
+            'delivery_status' => $status,
+            'order_status' => $orderStatus,
+        ]]);
     }
 
     public function booking(int $id): JsonResponse
