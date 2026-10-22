@@ -202,6 +202,14 @@ class DeliveryService
             )
             ->addSelect('b.TrangThai as booking_status');
 
+        // Once a Booking return slip is completed through an order delivery, show the order slip as the final record.
+        $bookingRows->whereNotExists(fn ($query) => $query->selectRaw('1')
+            ->from('GiaoNhan as g')
+            ->whereColumn('g.DonHangID', 'bg.DonHangID')
+            ->whereColumn('g.LoaiGiaoNhan', 'bg.LoaiGiaoNhan')
+            ->where('g.LoaiGiaoNhan', 'GIAO_DO')
+            ->where('g.TrangThai', DeliveryStatus::Completed->dbValue()));
+
         $rows = $operationalRows->unionAll($bookingRows);
         $query = DB::query()->fromSub($rows, 'delivery_rows');
 
@@ -753,6 +761,27 @@ class DeliveryService
         }
         $current->update($attributes);
         $targetStatus = DeliveryStatus::parseForLeg($current->TrangThai, $current->LoaiGiaoNhan);
+
+        if (
+            $current->LoaiGiaoNhan === 'GIAO_DO'
+            && $targetStatus === DeliveryStatus::Completed
+            && $order->BookingID !== null
+        ) {
+            $bookingReturnPlan = BookingGiaoNhan::query()
+                ->where('BookingID', $order->BookingID)
+                ->where('DonHangID', $order->DonHangID)
+                ->where('LoaiGiaoNhan', 'GIAO_DO')
+                ->lockForUpdate()
+                ->first();
+            $bookingReturnPlan?->update([
+                'NhanVienID' => $current->NhanVienID,
+                'HinhThuc' => $current->HinhThuc,
+                'DiaChi' => $current->DiaChi,
+                'ThoiGianDuKien' => $current->ThoiGianDuKien,
+                'ThoiGianThucTe' => $current->ThoiGianThucTe,
+                'TrangThai' => $current->TrangThai,
+            ]);
+        }
 
         if ($current->LoaiGiaoNhan === 'GIAO_DO' && $previousStatus !== $targetStatus) {
             if ($targetStatus === DeliveryStatus::Delivering) {
