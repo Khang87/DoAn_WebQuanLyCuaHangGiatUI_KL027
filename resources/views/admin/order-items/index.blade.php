@@ -14,7 +14,7 @@
 </div>
 <form action="{{ url()->current() }}" method="GET" class="row g-3 align-items-center mb-4">
     <div class="col-12">
-        <div class="input-group input-group-sm shadow-sm rounded-3 overflow-hidden">
+        <div class="input-group input-group-sm shadow-sm rounded-3 overflow-hidden filter-search">
             <span class="input-group-text bg-white border-end-0 ps-3">
                 <i class="fas fa-search text-muted"></i>
             </span>
@@ -28,13 +28,12 @@
         <div class="table-responsive">
             <table class="table table-hover mb-0">
                 <thead>
-                    <tr><th scope="col">STT</th><th>Mã mặt hàng</th><th>Đơn hàng</th><th>Mặt hàng</th><th>Loại</th><th>Đơn giá</th><th>SL</th><th>Thành tiền</th><th>Ghi chú</th><th>Thao tác</th></tr>
+                    <tr><th scope="col">STT</th><th>Đơn hàng</th><th>Mặt hàng</th><th>Loại</th><th>Đơn giá</th><th>SL</th><th>Thành tiền</th><th>Ghi chú</th><th>Thao tác</th></tr>
                 </thead>
                 <tbody>
                     @forelse($items as $item)
                     <tr>
                         <td>{{ $items->firstItem() + $loop->index }}</td>
-                        <td>{{ $item->code ?? 'CT' . str_pad($item->id, 4, '0', STR_PAD_LEFT) }}</td>
                         <td><span class="text-dark">{{ $item->order?->code }}</span></td>
                         <td><strong>{{ $item->item_name }}</strong></td>
                         <td>{{ $item->item_type }}</td>
@@ -59,7 +58,7 @@
                         </td>
                     </tr>
                     @empty
-                    <tr><td colspan="10" class="text-center text-muted py-4">Chưa có chi tiết</td></tr>
+                    <tr><td colspan="9" class="text-center text-muted py-4">Chưa có chi tiết</td></tr>
                     @endforelse
                 </tbody>
             </table>
@@ -67,32 +66,7 @@
     </div>
 </div>
 
-@if($items->hasPages())
-<nav class="mt-4">
-    <div class="d-flex justify-content-between align-items-center">
-        <div class="text-muted small">Hiển thị {{ $items->firstItem() }} - {{ $items->lastItem() }} của {{ $items->total() }} chi tiết</div>
-        <ul class="pagination mb-0">
-            @if ($items->onFirstPage())
-                <li class="page-item disabled"><span class="page-link"><i class="bi bi-chevron-left"></i></span></li>
-            @else
-                <li class="page-item"><a class="page-link" href="{{ $items->appends(request()->query())->url($items->currentPage() - 1) }}"><i class="bi bi-chevron-left"></i></a></li>
-            @endif
-            @foreach ($items->getUrlRange(max(1, $items->currentPage() - 2), min($items->lastPage(), $items->currentPage() + 2)) as $page => $url)
-                @if ($page == $items->currentPage())
-                    <li class="page-item active"><span class="page-link">{{ $page }}</span></li>
-                @else
-                    <li class="page-item"><a class="page-link" href="{{ $items->appends(request()->query())->url($page) }}">{{ $page }}</a></li>
-                @endif
-            @endforeach
-            @if ($items->onLastPage())
-                <li class="page-item disabled"><span class="page-link"><i class="bi bi-chevron-right"></i></span></li>
-            @else
-                <li class="page-item"><a class="page-link" href="{{ $items->appends(request()->query())->url($items->currentPage() + 1) }}"><i class="bi bi-chevron-right"></i></a></li>
-            @endif
-        </ul>
-    </div>
-</nav>
-@endif
+<x-admin.pagination :paginator="$items" label="chi tiết" />
 @endsection
 
 @push('scripts')

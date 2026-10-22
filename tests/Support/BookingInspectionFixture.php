@@ -69,6 +69,7 @@ trait BookingInspectionFixture
             'return_address' => $booking->DiaChiTra,
             'scheduled_date' => $booking->NgayHen->format('Y-m-d'),
             'scheduled_time' => $booking->GioHen->format('H:i'),
+            'customer_accepted' => '1',
             'items' => $this->inspectionItems($booking),
         ];
     }
@@ -120,11 +121,15 @@ trait BookingInspectionFixture
                 $snapshot['items'] ?? [['DichVuID' => 1, 'LoaiDoGiatID' => 2, 'DonViTinhID' => 2, 'SoLuong' => 1]],
             );
         }
-        $request = LuuDonHangRequest::create('/admin/orders/1', $method, array_merge([
+        $defaults = [
             'KhachHangID' => 9,
-            'NhanVienID' => 1,
             'TrangThai' => $method === 'POST' ? OrderStatus::Received->value : OrderStatus::Pending->value,
-        ], $snapshot));
+        ];
+        if ($method !== 'POST') {
+            $defaults['NhanVienID'] = 1;
+        }
+
+        $request = LuuDonHangRequest::create('/admin/orders/1', $method, array_merge($defaults, $snapshot));
         $request->setContainer($this->app);
         $request->setRedirector($this->app['redirect']);
         $request->validateResolved();
@@ -143,6 +148,25 @@ trait BookingInspectionFixture
         $this->actingAs($user);
     }
 
+    private function createManagementAccount(string $role = 'Quản lý'): int
+    {
+        $roleId = DB::table('VaiTro')->insertGetId([
+            'TenVaiTro' => $role,
+            'TrangThai' => 'Hoạt động',
+        ], 'VaiTroID');
+        $accountId = DB::table('TaiKhoan')->insertGetId([
+            'TenDangNhap' => strtolower(str_replace(' ', '-', $role)),
+            'TrangThai' => 'Hoạt động',
+        ], 'TaiKhoanID');
+
+        DB::table('TaiKhoan_VaiTro')->insert([
+            'TaiKhoanID' => $accountId,
+            'VaiTroID' => $roleId,
+        ]);
+
+        return $accountId;
+    }
+
     private function createSchema(): void
     {
         Schema::create('KhachHang', function (Blueprint $table): void {
@@ -158,6 +182,31 @@ trait BookingInspectionFixture
             $table->string('TenDangNhap');
             $table->string('SoDienThoai')->nullable();
             $table->string('Email')->nullable();
+            $table->string('TrangThai')->default('Hoạt động');
+        });
+
+        Schema::create('VaiTro', function (Blueprint $table): void {
+            $table->increments('VaiTroID');
+            $table->string('TenVaiTro');
+            $table->string('TrangThai')->default('Hoạt động');
+        });
+
+        Schema::create('TaiKhoan_VaiTro', function (Blueprint $table): void {
+            $table->unsignedInteger('TaiKhoanID');
+            $table->unsignedInteger('VaiTroID');
+            $table->primary(['TaiKhoanID', 'VaiTroID']);
+        });
+
+        Schema::create('ThongBao', function (Blueprint $table): void {
+            $table->increments('ThongBaoID');
+            $table->unsignedInteger('TaiKhoanID');
+            $table->unsignedInteger('DonHangID')->nullable();
+            $table->unsignedInteger('BookingID')->nullable();
+            $table->string('LoaiThongBao')->nullable();
+            $table->string('TieuDe');
+            $table->text('NoiDung');
+            $table->dateTime('ThoiGianGui');
+            $table->boolean('DaDoc')->default(false);
         });
 
         Schema::create('DichVu', function (Blueprint $table): void {
@@ -222,6 +271,11 @@ trait BookingInspectionFixture
             $table->unsignedInteger('NhanVienID')->nullable();
             $table->unsignedInteger('NhanVienXacNhanID')->nullable();
             $table->dateTime('ThoiGianXacNhan')->nullable();
+            $table->integer('DiemSuDung')->default(0);
+            $table->decimal('TienGiamDoDiem', 18, 2)->default(0);
+            $table->boolean('DiemDaTru')->default(false);
+            $table->unsignedInteger('KhuyenMaiID')->nullable();
+            $table->boolean('KhuyenMaiDaTru')->default(false);
         });
 
         Schema::create('ChiTietBooking', function (Blueprint $table): void {

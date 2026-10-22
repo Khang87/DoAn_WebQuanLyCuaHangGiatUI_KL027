@@ -68,11 +68,9 @@
         >
             <x-admin.detail.info-grid :columns="2">
                 <x-admin.detail.info-item label="Tên danh mục" :value="$category->TenLoaiDichVu" />
-                <x-admin.detail.info-item label="Danh mục ID" :value="$category->LoaiDichVuID" />
-                <x-admin.detail.info-item label="Mã danh mục" :value="'DV' . str_pad($category->LoaiDichVuID, 4, '0', STR_PAD_LEFT)" />
                 <x-admin.detail.info-item label="Số dịch vụ" :value="$category->dichVus()->count()" />
                 <x-admin.detail.info-item label="Trạng thái">
-                    <x-admin.status-badge :status="$category->TrangThai" :enum="\App\Enums\RecordStatus::class" :pill="false" />
+                    <x-admin.status-badge :status="$category->TrangThai" :enum="\App\Enums\RecordStatus::class" />
                 </x-admin.detail.info-item>
             </x-admin.detail.info-grid>
 

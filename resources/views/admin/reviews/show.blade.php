@@ -10,7 +10,7 @@
 @endphp
 
 <x-admin.detail.page-header
-    title="Đánh giá #{{ $review->id }}"
+    title="Chi tiết đánh giá"
     :subtitle="$review->customer?->name ?: $review->order?->customer?->name"
 >
     <x-slot:badge>
@@ -50,20 +50,19 @@
             <x-admin.detail.info-grid :columns="2">
                 <x-admin.detail.info-item label="Đơn hàng">
                     @if($review->DonHangID)
+                        @can('orders.view')
                         <a href="{{ route('orders.show', $review->DonHangID) }}" class="text-decoration-none">
                             {{ $review->donHang?->MaDonHang ?: 'Xem đơn hàng' }}
                         </a>
+                        @else
+                        {{ $review->donHang?->MaDonHang ?: '—' }}
+                        @endcan
                     @else
                         <span class="detail-empty-value">—</span>
                     @endif
                 </x-admin.detail.info-item>
-                <x-admin.detail.info-item label="Mã khách hàng">
-                    @if($review->KhachHangID)
-                        <span>KH{{ str_pad((string) $review->KhachHangID, 3, '0', STR_PAD_LEFT) }}</span>
-                        <small class="d-block text-muted">{{ $review->khachHang?->HoTen ?: '—' }}</small>
-                    @else
-                        <span class="detail-empty-value">—</span>
-                    @endif
+                <x-admin.detail.info-item label="Khách hàng">
+                    {{ $review->khachHang?->HoTen ?: '—' }}
                 </x-admin.detail.info-item>
                 <x-admin.detail.info-item label="Ngày đánh giá" :value="$review->created_at?->format('d/m/Y H:i')" />
                 <x-admin.detail.info-item label="Trạng thái">
@@ -95,6 +94,7 @@
                 <x-admin.detail.empty message="Chưa có phản hồi cho đánh giá này" icon="bi-reply" />
             @endif
 
+            @can('reviews.respond')
             <form action="{{ route('reviews.respond', $review) }}" method="POST" class="mt-3">
                 @csrf
                 @method('PATCH')
@@ -105,6 +105,7 @@
                     <i class="bi bi-send me-1"></i>Gửi phản hồi
                 </button>
             </form>
+            @endcan
         </x-admin.detail.panel>
 
         <div class="card shadow-sm border-0 order-first">

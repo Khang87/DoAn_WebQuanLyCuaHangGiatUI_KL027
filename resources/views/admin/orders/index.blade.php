@@ -15,7 +15,7 @@
 </div>
 <form action="{{ url()->current() }}" method="GET" class="row g-3 align-items-center mb-4">
     <div class="col-12 col-md-auto flex-grow-1">
-        <div class="input-group input-group-sm shadow-sm rounded-3 overflow-hidden">
+        <div class="input-group input-group-sm shadow-sm rounded-3 overflow-hidden filter-search">
             <span class="input-group-text bg-white border-end-0 ps-3">
                 <i class="fas fa-search text-muted"></i>
             </span>
@@ -59,7 +59,7 @@
                         <th class="fw-bold text-dark">Số lượng</th>
                         <th class="fw-bold text-dark">Ghi chú khách hàng</th>
                         <th class="fw-bold text-dark">Thành tiền</th>
-                        <th class="fw-bold text-dark">Trạng thái</th>
+                        <th class="fw-bold text-dark text-center">Trạng thái</th>
                         <th class="fw-bold text-dark">Ngày tạo</th>
                         <th class="fw-bold text-dark">Thao tác</th>
                     </tr>
@@ -92,8 +92,10 @@
                         </td>
                         <td><small class="text-muted">{{ $order->GhiChu ?: 'Không có ghi chú' }}</small></td>
                         <td class="text-dark">{{ number_format((float) $order->ThanhTien) }} đ</td>
-                        <td>
-                            <x-admin.status-badge :status="$order->TrangThai" :enum="\App\Enums\OrderStatus::class" />
+                        <td class="text-center">
+                            <div class="order-status-badges d-inline-flex align-items-center flex-nowrap gap-1 text-nowrap">
+                                <x-admin.order-status-badges :order="$order" :is-paid="$order->isPaid()" :is-receiving="false" compact />
+                            </div>
                         </td>
                         <td class="text-dark">{{ $order->NgayTao?->format('d/m/Y H:i') ?: '-' }}</td>
                         <td>
@@ -137,12 +139,7 @@
     </div>
 </div>
 
-@if($orders->hasPages())
-<nav class="mt-4 d-flex justify-content-between align-items-center">
-    <small class="text-muted">Hiển thị {{ $orders->firstItem() }} - {{ $orders->lastItem() }} của {{ $orders->total() }} đơn hàng</small>
-    {{ $orders->links('pagination::bootstrap-5') }}
-</nav>
-@endif
+<x-admin.pagination :paginator="$orders" label="đơn hàng" />
 @endsection
 
 @push('scripts')

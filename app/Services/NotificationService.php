@@ -2,10 +2,13 @@
 
 namespace App\Services;
 
+use App\Models\Booking;
 use App\Models\TaiKhoan;
 use App\Models\ThongBao;
+use App\Support\InternalCommunicationPolicy;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
+use InvalidArgumentException;
 
 class NotificationService
 {
@@ -67,11 +70,27 @@ class NotificationService
             ->find($id);
     }
 
-    public function create(array $data): ThongBao
+    public function create(array $data, ?Booking $booking = null): ThongBao
     {
+        if (array_key_exists('BookingID', $data)) {
+            throw new InvalidArgumentException('Booking links must be supplied through a persisted Booking model.');
+        }
+        if ($booking !== null && ! $booking->exists) {
+            throw new InvalidArgumentException('A notification can only link to a persisted Booking.');
+        }
+
         $data['ThoiGianGui'] = now();
 
-        return ThongBao::create($data);
+        $notification = new ThongBao;
+        $notification->fill($data);
+
+        if ($booking !== null) {
+            $notification->booking()->associate($booking);
+        }
+
+        $notification->save();
+
+        return $notification;
     }
 
     public function createForRecipient(string $recipient, array $data): int
@@ -81,7 +100,7 @@ class NotificationService
         if ($recipient === 'all_customers') {
             $query->whereHas('vaiTros', fn ($roleQuery) => $roleQuery->where('TenVaiTro', 'Khách hàng'));
         } elseif ($recipient === 'all_staff') {
-            $query->whereNotNull('NhanVienID')->whereNull('KhachHangID');
+            InternalCommunicationPolicy::scopeAccounts($query);
         } elseif ($recipient !== 'all') {
             $query->where('TaiKhoanID', (int) $recipient);
         }
@@ -113,8 +132,84 @@ class NotificationService
         return $createdCount;
     }
 
+    public function notifyManagement(
+        string $type,
+        string $title,
+        string $body,
+        ?int $orderId = null,
+        ?int $bookingId = null,
+        ?string $dedupeReference = null,
+    ): int {
+        if ($orderId === null && $bookingId === null) {
+            throw new InvalidArgumentException('A notification must be associated with an order or booking.');
+        }
+
+        if ($bookingId !== null && ($dedupeReference === null || $dedupeReference === '')) {
+            throw new InvalidArgumentException('A booking notification requires a deduplication reference.');
+        }
+
+        return DB::transaction(function () use ($type, $title, $body, $orderId, $bookingId, $dedupeReference): int {
+            $recipientQuery = TaiKhoan::query()->select('TaiKhoan.TaiKhoanID');
+            InternalCommunicationPolicy::scopeManagementAccounts($recipientQuery);
+            $recipientIds = $recipientQuery
+                ->distinct()
+                ->pluck('TaiKhoanID');
+
+            if ($recipientIds->isEmpty()) {
+                return 0;
+            }
+
+            $existingRecipientIds = DB::table('ThongBao')
+                ->whereIn('TaiKhoanID', $recipientIds)
+                ->where('LoaiThongBao', $type)
+                ->where(function ($query) use ($orderId, $bookingId, $dedupeReference): void {
+                    if ($orderId !== null) {
+                        $query->where('DonHangID', $orderId);
+                    }
+
+                    if ($bookingId !== null) {
+                        $query->orWhere('BookingID', $bookingId)
+                            ->orWhere(function ($bookingQuery) use ($dedupeReference): void {
+                                $bookingQuery->whereNull('DonHangID')
+                                    ->where('NoiDung', 'LIKE', "%{$dedupeReference}%");
+                            });
+                    }
+                })
+                ->pluck('TaiKhoanID')
+                ->all();
+
+            $existingRecipientIds = array_fill_keys(array_map('intval', $existingRecipientIds), true);
+            $notification = [
+                'DonHangID' => $orderId,
+                'BookingID' => $bookingId,
+                'LoaiThongBao' => $type,
+                'TieuDe' => $title,
+                'NoiDung' => $body,
+                'ThoiGianGui' => now()->toDateTimeString(),
+                'DaDoc' => false,
+            ];
+            $rows = $recipientIds
+                ->reject(fn ($recipientId): bool => isset($existingRecipientIds[(int) $recipientId]))
+                ->map(fn ($recipientId): array => [
+                    'TaiKhoanID' => $recipientId,
+                    ...$notification,
+                ])
+                ->all();
+
+            if ($rows !== []) {
+                DB::table('ThongBao')->insert($rows);
+            }
+
+            return count($rows);
+        });
+    }
+
     public function update(ThongBao $notification, array $data): ThongBao
     {
+        if (array_key_exists('BookingID', $data)) {
+            throw new InvalidArgumentException('Booking links cannot be changed through notification updates.');
+        }
+
         $notification->update($data);
 
         return $notification->fresh();

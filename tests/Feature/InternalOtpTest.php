@@ -8,7 +8,7 @@ use App\Models\VaiTro;
 use App\Services\DefaultNotificationPermission;
 use App\Services\InternalPasswordOtpService;
 use App\Services\NotificationService;
-use App\Services\ResendOtpMailer;
+use App\Services\OtpMailer;
 use App\Services\RoleService;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Cache;
@@ -68,6 +68,7 @@ class InternalOtpTest extends TestCase
             $t->increments('ThongBaoID');
             $t->integer('TaiKhoanID');
             $t->integer('DonHangID')->nullable();
+            $t->integer('BookingID')->nullable();
             $t->string('LoaiThongBao', 50)->nullable();
             $t->string('TieuDe');
             $t->text('NoiDung');
@@ -90,12 +91,12 @@ class InternalOtpTest extends TestCase
         $this->owner->vaiTros()->attach($ownerRole);
         $this->staff->vaiTros()->attach($staffRole);
         app(DefaultNotificationPermission::class)->backfill();
-        $mailer = \Mockery::mock(ResendOtpMailer::class);
+        $mailer = \Mockery::mock(OtpMailer::class);
         $mailer->shouldReceive('send')->with($this->staff->Email, \Mockery::type('string'), 10)
             ->andReturnUsing(function ($email, $otp) {
                 $this->otp = $otp;
             });
-        $this->app->instance(ResendOtpMailer::class, $mailer);
+        $this->app->instance(OtpMailer::class, $mailer);
     }
 
     private function issue(): void
@@ -174,9 +175,9 @@ class InternalOtpTest extends TestCase
 
     public function test_delivery_failure_rolls_back_notification_and_invalidates_code(): void
     {
-        $mailer = \Mockery::mock(ResendOtpMailer::class);
+        $mailer = \Mockery::mock(OtpMailer::class);
         $mailer->shouldReceive('send')->once()->andThrow(new \RuntimeException('provider error'));
-        $this->app->instance(ResendOtpMailer::class, $mailer);
+        $this->app->instance(OtpMailer::class, $mailer);
         $this->actingAs($this->owner)->post(route('accounts.reset-password', $this->staff))->assertSessionHas('error');
         $this->assertDatabaseCount('ThongBao', 0);
         $this->assertNull(Cache::store('array')->get(app(InternalPasswordOtpService::class)->key($this->staff->Email)));
@@ -237,12 +238,12 @@ class InternalOtpTest extends TestCase
         $this->assertSame(1, $role->quyens()->count());
     }
 
-    public function test_customer_group_can_access_personal_inbox(): void
+    public function test_customer_group_cannot_access_admin_inbox(): void
     {
         $role = app(RoleService::class)->createRole(['TenVaiTro' => 'Khách hàng']);
         $this->staff->vaiTros()->sync([$role->getKey()]);
         $this->staff->update(['NhanVienID' => null, 'KhachHangID' => 1]);
-        $this->actingAs($this->staff)->get(route('notifications.index'))->assertOk();
+        $this->actingAs($this->staff)->get(route('notifications.index'))->assertForbidden();
         $this->get(route('notifications.create'))->assertForbidden();
     }
 
@@ -255,6 +256,74 @@ class InternalOtpTest extends TestCase
         ]);
         $this->assertSame(2, $count);
         $this->assertDatabaseHas('ThongBao', ['TaiKhoanID' => $this->staff->getKey(), 'TieuDe' => 'Thông báo nội bộ']);
+    }
+
+    public function test_new_booking_and_order_notifications_target_management_without_duplicates(): void
+    {
+        $managerRole = VaiTro::create(['TenVaiTro' => 'Quản lý', 'TrangThai' => 'Hoạt động']);
+        $manager = User::create([
+            'TenDangNhap' => 'manager',
+            'Email' => 'manager@example.test',
+            'MatKhau' => Hash::make('OldPassword123'),
+            'NhanVienID' => 3,
+            'TrangThai' => 'Hoạt động',
+        ]);
+        $manager->vaiTros()->attach($managerRole);
+
+        $customerRole = VaiTro::create(['TenVaiTro' => 'Khách hàng', 'TrangThai' => 'Hoạt động']);
+        $customer = User::create([
+            'TenDangNhap' => 'customer',
+            'Email' => 'customer@example.test',
+            'MatKhau' => Hash::make('OldPassword123'),
+            'KhachHangID' => 1,
+            'TrangThai' => 'Hoạt động',
+        ]);
+        $customer->vaiTros()->attach($customerRole);
+
+        $notifications = app(NotificationService::class);
+        $bookingMessage = 'Khách hàng An vừa gửi yêu cầu BK-TEST.';
+        DB::table('ThongBao')->insert([
+            'TaiKhoanID' => $this->owner->getKey(),
+            'LoaiThongBao' => 'new_booking',
+            'TieuDe' => 'Có yêu cầu đặt giặt mới',
+            'NoiDung' => $bookingMessage,
+            'ThoiGianGui' => now(),
+            'DaDoc' => false,
+        ]);
+
+        $this->assertSame(1, $notifications->notifyManagement(
+            'new_booking',
+            'Có yêu cầu đặt giặt mới',
+            $bookingMessage,
+            bookingId: 42,
+            dedupeReference: 'BK-TEST',
+        ));
+        $this->assertSame(2, $notifications->notifyManagement(
+            'new_order',
+            'Có đơn hàng mới',
+            'Đơn hàng DH-TEST vừa được tạo.',
+            orderId: 7,
+        ));
+
+        $this->assertDatabaseCount('ThongBao', 4);
+        $this->assertDatabaseHas('ThongBao', [
+            'TaiKhoanID' => $manager->getKey(),
+            'LoaiThongBao' => 'new_booking',
+            'BookingID' => 42,
+        ]);
+        $this->assertDatabaseHas('ThongBao', [
+            'TaiKhoanID' => $manager->getKey(),
+            'LoaiThongBao' => 'new_order',
+            'DonHangID' => 7,
+        ]);
+        $this->assertDatabaseMissing('ThongBao', [
+            'TaiKhoanID' => $this->staff->getKey(),
+            'LoaiThongBao' => 'new_order',
+        ]);
+        $this->assertDatabaseMissing('ThongBao', [
+            'TaiKhoanID' => $customer->getKey(),
+            'LoaiThongBao' => 'new_order',
+        ]);
     }
 
     public function test_shared_email_and_inactive_targets_are_rejected_before_delivery(): void
@@ -289,14 +358,13 @@ class InternalOtpTest extends TestCase
             ->assertDontSee('<span>Tài khoản</span>', false);
     }
 
-    public function test_customers_with_default_permission_can_log_in_to_inbox_only(): void
+    public function test_customers_with_default_permission_cannot_log_in_to_admin_inbox(): void
     {
         $role = app(RoleService::class)->createRole(['TenVaiTro' => 'Khách hàng']);
         $this->staff->vaiTros()->sync([$role->getKey()]);
         $this->staff->update(['NhanVienID' => null, 'KhachHangID' => 1]);
         $this->post(route('login'), ['email' => $this->staff->Email, 'password' => 'OldPassword123'])
-            ->assertRedirect(route('notifications.index'));
-        $this->get(route('notifications.index'))->assertOk();
-        $this->get(route('orders.index'))->assertForbidden();
+            ->assertRedirect()->assertSessionHas('error');
+        $this->assertGuest();
     }
 }

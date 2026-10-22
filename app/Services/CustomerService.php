@@ -2,7 +2,10 @@
 
 namespace App\Services;
 
+use App\Enums\InvoiceStatus;
+use App\Enums\OrderStatus;
 use App\Models\DiemTichLuy;
+use App\Models\DonHang;
 use App\Models\KhachHang;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
@@ -92,24 +95,72 @@ class CustomerService
         return $customer->fresh();
     }
 
-    public function delete(KhachHang $customer): ?string
+    /**
+     * @return array{
+     *     message: string,
+     *     orders: list<array{id: int, code: string, status: string, payment_status: string}>,
+     *     accounts: list<array{id: int, email: string, username: string, provider: string}>
+     * }|null
+     */
+    public function delete(KhachHang $customer): ?array
     {
-        return DB::transaction(function () use ($customer): ?string {
+        return DB::transaction(function () use ($customer): ?array {
+            $orders = DonHang::query()
+                ->where('KhachHangID', $customer->getKey())
+                ->with(['hoaDons', 'statusChanges'])
+                ->orderBy('MaDonHang')
+                ->lockForUpdate()
+                ->get()
+                ->map(function (DonHang $order): array {
+                    $status = $order->operationalStatusEnum()->value;
+                    $invoiceStatus = $order->hoaDons->first()?->TrangThai;
+                    $paymentStatus = $order->statusEnum() === OrderStatus::Paid
+                        || $invoiceStatus === InvoiceStatus::Paid->value
+                        ? InvoiceStatus::Paid->value
+                        : ($invoiceStatus ?? InvoiceStatus::Unpaid->value);
+
+                    return [
+                        'id' => (int) $order->getKey(),
+                        'code' => (string) $order->getRawOriginal('MaDonHang'),
+                        'status' => $status,
+                        'payment_status' => (string) $paymentStatus,
+                    ];
+                })
+                ->filter(fn (array $order): bool => ! in_array($order['status'], [
+                    OrderStatus::Delivered->value,
+                    OrderStatus::Cancelled->value,
+                ], true) || ! in_array($order['payment_status'], [
+                    InvoiceStatus::Paid->value,
+                    InvoiceStatus::Cancelled->value,
+                ], true))
+                ->values()
+                ->all();
+
+            $accounts = DB::table('TaiKhoan')
+                ->where('KhachHangID', $customer->getKey())
+                ->orderBy('TaiKhoanID')
+                ->get(['TaiKhoanID', 'Email', 'TenDangNhap', 'UserAuthId'])
+                ->map(fn (object $account): array => [
+                    'id' => (int) $account->TaiKhoanID,
+                    'email' => (string) ($account->Email ?? ''),
+                    'username' => (string) ($account->TenDangNhap ?? ''),
+                    'provider' => filled($account->UserAuthId) ? 'Google' : 'Email/Mật khẩu',
+                ])
+                ->all();
+
             $relatedRecords = array_filter([
                 'đơn hàng' => $customer->donHangs()->count(),
                 'lịch hẹn' => $customer->bookings()->count(),
                 'đánh giá' => $customer->danhGia()->count(),
-                'tài khoản' => $customer->taiKhoan()->count(),
+                'tài khoản' => count($accounts),
             ]);
 
             if ($relatedRecords !== []) {
-                $details = [];
-
-                foreach ($relatedRecords as $recordType => $count) {
-                    $details[] = $count.' '.$recordType;
-                }
-
-                return 'Không thể xóa khách hàng vì còn dữ liệu liên quan: '.implode(', ', $details).'.';
+                return [
+                    'message' => 'Không thể xóa khách hàng vì dữ liệu lịch sử và tài khoản liên kết cần được giữ lại.',
+                    'orders' => $orders,
+                    'accounts' => $accounts,
+                ];
             }
 
             DiemTichLuy::query()
@@ -117,7 +168,11 @@ class CustomerService
                 ->delete();
 
             if (! $customer->delete()) {
-                return 'Không thể xóa khách hàng. Vui lòng thử lại.';
+                return [
+                    'message' => 'Không thể xóa khách hàng. Vui lòng thử lại.',
+                    'orders' => [],
+                    'accounts' => [],
+                ];
             }
 
             return null;

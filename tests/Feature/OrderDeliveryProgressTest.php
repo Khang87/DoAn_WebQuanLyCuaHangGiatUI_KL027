@@ -4,12 +4,15 @@ namespace Tests\Feature;
 
 use App\Enums\OrderStatus;
 use App\Enums\PaymentStatus;
+use App\Models\DiemTichLuy;
 use App\Models\DonHang;
 use App\Models\GiaoNhan;
+use App\Models\KhachHang;
 use App\Models\User;
 use App\Services\DeliveryService;
 use App\Services\OrderService;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
@@ -39,6 +42,7 @@ class OrderDeliveryProgressTest extends TestCase
         });
         Schema::create('Booking', function (Blueprint $table): void {
             $table->increments('BookingID');
+            $table->string('TrangThai')->default('DaXacNhan');
             $table->string('HinhThucNhanDo')->nullable();
             $table->string('DiaChiNhan')->nullable();
             $table->string('HinhThucTraDo')->nullable();
@@ -142,6 +146,39 @@ class OrderDeliveryProgressTest extends TestCase
         $this->assertSame(OrderStatus::Delivered->value, $updated->TrangThai);
     }
 
+    public function test_staff_dashboard_status_route_returns_a_status_that_remains_in_its_order_list(): void
+    {
+        $this->createOrder(9);
+        DB::table('DonHang')->where('DonHangID', 9)->update(['TrangThai' => OrderStatus::Received->value]);
+        $this->actingAs($this->userWithStatusPermission());
+
+        $this->patchJson(route('staff.dashboard.update-order-status', 9), [
+            'status' => OrderStatus::Washing->value,
+        ])->assertOk()->assertJson([
+            'success' => true,
+            'status' => OrderStatus::Washing->value,
+            'status_label' => OrderStatus::Washing->label(),
+        ]);
+
+        $this->assertSame(OrderStatus::Washing->value, DB::table('DonHang')->where('DonHangID', 9)->value('TrangThai'));
+    }
+
+    public function test_staff_dashboard_status_route_returns_a_status_that_removes_a_store_pickup_order_from_its_list(): void
+    {
+        $this->createOrder(10);
+        $this->actingAs($this->userWithStatusPermission());
+
+        $this->patchJson(route('staff.dashboard.update-order-status', 10), [
+            'status' => OrderStatus::Delivered->value,
+        ])->assertOk()->assertJson([
+            'success' => true,
+            'status' => OrderStatus::Delivered->value,
+            'status_label' => OrderStatus::Delivered->label(),
+        ]);
+
+        $this->assertSame(OrderStatus::Delivered->value, DB::table('DonHang')->where('DonHangID', 10)->value('TrangThai'));
+    }
+
     public function test_booking_for_home_return_requires_delivery_even_without_delivery_leg(): void
     {
         DB::table('Booking')->insert(['BookingID' => 1, 'HinhThucTraDo' => 'Tại nhà']);
@@ -149,6 +186,24 @@ class OrderDeliveryProgressTest extends TestCase
 
         $this->expectException(ValidationException::class);
         app(OrderService::class)->updateStatus($order, OrderStatus::Delivered->value);
+    }
+
+    public function test_booking_store_return_cannot_be_marked_delivered_through_direct_status_route(): void
+    {
+        DB::table('Booking')->insert([
+            'BookingID' => 1,
+            'TrangThai' => 'DaXacNhan',
+            'HinhThucTraDo' => 'Tại cửa hàng',
+        ]);
+        $this->createOrder(11, 1);
+        $this->actingAs($this->userWithStatusPermission());
+
+        $this->patchJson(route('staff.dashboard.update-order-status', 11), [
+            'status' => OrderStatus::Delivered->value,
+        ])->assertStatus(422);
+
+        $this->assertSame(OrderStatus::Washed->value, DB::table('DonHang')->where('DonHangID', 11)->value('TrangThai'));
+        $this->assertSame(0, GiaoNhan::where('DonHangID', 11)->count());
     }
 
     public function test_home_return_cannot_be_marked_delivered_through_staff_status_route(): void
@@ -234,7 +289,7 @@ class OrderDeliveryProgressTest extends TestCase
         $this->assertSame(2500, DB::table('DiemTichLuy')->where('KhachHangID', 1)->value('DiemHienTai'));
     }
 
-    public function test_order_detail_header_shows_paid_badge_only_once_for_legacy_paid_order(): void
+    public function test_order_detail_header_restores_delivered_badge_for_legacy_paid_order_without_history(): void
     {
         $order = new DonHang;
         $order->setRawAttributes([
@@ -249,6 +304,8 @@ class OrderDeliveryProgressTest extends TestCase
         ])->render();
 
         $this->assertSame(1, substr_count($html, 'Đã thanh toán'));
+        $this->assertSame(1, substr_count($html, 'Đã giao'));
+        $this->assertSame(OrderStatus::Delivered, $order->operationalStatusEnum());
 
         $order->setAttribute('TrangThai', OrderStatus::Washing->value);
         $html = view('components.admin.order-status-badges', [
@@ -259,6 +316,91 @@ class OrderDeliveryProgressTest extends TestCase
 
         $this->assertSame(1, substr_count($html, 'Đã thanh toán'));
         $this->assertSame(1, substr_count($html, 'Đang giặt'));
+    }
+
+    public function test_order_status_badges_show_last_operational_status_for_legacy_paid_order(): void
+    {
+        $this->createOrder(9);
+        DB::table('DonHang')->where('DonHangID', 9)->update([
+            'TrangThai' => OrderStatus::Paid->value,
+        ]);
+        DB::table('NhatKyHeThong')->insert([
+            'HanhDong' => 'Thay đổi trạng thái đơn hàng',
+            'BangDuLieu' => 'DonHang',
+            'BanGhiID' => 9,
+            'DuLieuCu' => json_encode(['TrangThai' => OrderStatus::Delivered->value]),
+            'DuLieuMoi' => json_encode(['TrangThai' => OrderStatus::Paid->value]),
+            'ThoiGian' => now(),
+        ]);
+
+        $html = view('components.admin.order-status-badges', [
+            'order' => DonHang::findOrFail(9),
+            'isPaid' => true,
+            'isReceiving' => false,
+        ])->render();
+
+        $this->assertStringContainsString('Đã giao', $html);
+        $this->assertStringContainsString('Đã thanh toán', $html);
+    }
+
+    public function test_customer_order_history_shows_operational_and_paid_badges_for_paid_order(): void
+    {
+        $this->createOrder(10);
+        DB::table('DonHang')->where('DonHangID', 10)->update([
+            'TrangThai' => OrderStatus::Paid->value,
+        ]);
+        DB::table('NhatKyHeThong')->insert([
+            'HanhDong' => 'Thay đổi trạng thái đơn hàng',
+            'BangDuLieu' => 'DonHang',
+            'BanGhiID' => 10,
+            'DuLieuCu' => json_encode(['TrangThai' => OrderStatus::Delivered->value]),
+            'DuLieuMoi' => json_encode(['TrangThai' => OrderStatus::Paid->value]),
+            'ThoiGian' => now(),
+        ]);
+        $order = DonHang::findOrFail(10);
+        $order->setRelation('statusChanges', $order->statusChanges()->get());
+        $order->setRelation('chiTietDonHangs', collect());
+
+        $customer = (new KhachHang)->forceFill([
+            'KhachHangID' => 1,
+            'HoTen' => 'Khách kiểm thử',
+            'TrangThai' => 'Hoạt động',
+        ]);
+        $customer->setRelation('diemTichLuy', (new DiemTichLuy)->forceFill([
+            'DiemHienTai' => 0,
+        ]));
+        $orders = new LengthAwarePaginator([$order], 1, 10);
+
+        $html = view('admin.customers.show', [
+            'customer' => $customer,
+            'orders' => $orders,
+            'totalSpent' => 0,
+            'orderCount' => 1,
+        ])->render();
+
+        $this->assertStringContainsString('Đã giao', $html);
+        $this->assertStringContainsString('Đã thanh toán', $html);
+        $this->assertStringContainsString('rounded-pill', $html);
+        $this->assertStringContainsString('Đang hoạt động', $html);
+    }
+
+    public function test_order_status_badges_use_distinct_styles_for_each_operational_state(): void
+    {
+        $expectedClasses = [
+            OrderStatus::Pending->value => 'bg-secondary-subtle text-secondary-emphasis border border-secondary',
+            OrderStatus::Received->value => 'bg-primary-subtle text-primary-emphasis border border-primary',
+            OrderStatus::Washing->value => 'bg-purple-subtle text-purple-emphasis border border-purple',
+            OrderStatus::Washed->value => 'bg-teal-subtle text-teal-emphasis border border-teal',
+            OrderStatus::Delivering->value => 'bg-warning-subtle text-warning-emphasis border border-warning',
+            OrderStatus::Delivered->value => 'bg-success-subtle text-success-emphasis border border-success',
+            OrderStatus::Paid->value => 'bg-info-subtle text-info-emphasis border border-info',
+            OrderStatus::Cancelled->value => 'bg-danger-subtle text-danger-emphasis border border-danger',
+        ];
+
+        foreach ($expectedClasses as $status => $expectedClass) {
+            $this->assertSame($expectedClass, OrderStatus::badgeClassFor($status));
+        }
+        $this->assertCount(count(OrderStatus::cases()), array_unique(array_values($expectedClasses)));
     }
 
     private function createOrder(int $id, ?int $bookingId = null): DonHang

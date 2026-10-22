@@ -25,5 +25,10 @@ docker exec "$schema_container" psql -X -A -t -U postgres -v ON_ERROR_STOP=1 \
     -f /checkout/database/schema/catalog-query.sql > "$schema_runtime/restored.json"
 python3 "$root/scripts/schema/compare.py" "$schema_runtime/restored.json"
 docker exec "$schema_container" psql -X -U postgres -v ON_ERROR_STOP=1 \
+    -f /checkout/database/sql/booking-two-step.sql \
+    -f /checkout/tests/Postgres/booking-two-step-security.sql > "$schema_runtime/booking-two-step.log"
+docker exec "$schema_container" psql -X -U postgres -v ON_ERROR_STOP=1 \
     -f /checkout/tests/Postgres/schema-security-contract.sql
+docker exec "$schema_container" psql -X -U postgres -v ON_ERROR_STOP=1 \
+    -f /checkout/tests/Postgres/internal-communication-notifications.sql
 echo 'PASS: sessions, profile/read-state column grants and private channel ACL boundaries'

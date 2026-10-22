@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Observers\HoaDonObserver;
 use App\Observers\OrderObserver;
 use App\Policies\UserPolicy;
+use App\Support\InternalCommunicationPolicy;
 use App\Support\PermissionRegistry;
 use Illuminate\Console\Events\CommandStarting;
 use Illuminate\Pagination\Paginator;
@@ -80,6 +81,10 @@ class AppServiceProvider extends ServiceProvider
 
             if (in_array($ability, self::RESERVED_ABILITIES, true)) {
                 return null;
+            }
+
+            if (InternalCommunicationPolicy::handles($ability)) {
+                return $user->canPermission($ability);
             }
 
             if ($user->isOwner()) {

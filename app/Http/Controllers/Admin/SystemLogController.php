@@ -18,8 +18,8 @@ class SystemLogController extends Controller
             'table' => ['nullable', 'string', 'max:100'],
             'action' => ['nullable', 'string', 'max:255'],
             'TaiKhoanID' => ['nullable', 'integer', 'min:1'],
-            'from' => ['nullable', 'date'],
-            'to' => ['nullable', 'date', 'after_or_equal:from'],
+            'from' => ['nullable', 'date_format:Y-m-d'],
+            'to' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:from'],
         ]);
 
         $query = NhatKyHeThong::query()->with('taiKhoan');

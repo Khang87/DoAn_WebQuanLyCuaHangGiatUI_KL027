@@ -26,6 +26,7 @@
                             </option>
                         @endforeach
                     </select>
+                    <div class="form-text">Chọn nhóm phân loại mà loại đồ giặt này thuộc về.</div>
                     @error('DanhMucID')
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
@@ -43,7 +44,7 @@
                         name="TrangThai"
                         :options="\App\Enums\RecordStatus::databaseOptions()"
                         :selected="$category->TrangThai"
-                        class="form-select @error('TrangThai') is-invalid @enderror"
+                        class="form-select status-select-compact @error('TrangThai') is-invalid @enderror"
                     />
                     @error('TrangThai')
                         <div class="invalid-feedback">{{ $message }}</div>
@@ -59,7 +60,6 @@
             </div>
 
             <div class="d-flex justify-content-end gap-2 mt-4">
-                <a href="{{ route('loaidogiat.index') }}" class="btn btn-outline-secondary">Hủy</a>
                 <button type="submit" class="btn btn-primary">
                     <i class="bi bi-check-lg me-1"></i>Cập nhật
                 </button>

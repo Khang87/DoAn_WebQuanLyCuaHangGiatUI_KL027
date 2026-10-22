@@ -80,9 +80,12 @@
                                 </span>
                             </div>
                             <div class="small mt-1">
-                                <span class="badge {{ $role->TrangThai === 'Hoạt động' ? 'bg-success-subtle text-success-emphasis' : 'bg-secondary-subtle text-secondary' }}">
-                                    {{ $role->TrangThai }}
-                                </span>
+                                <x-admin.status-badge
+                                    :status="$role->TrangThai"
+                                    :enum="\App\Enums\RecordStatus::class"
+                                    size="px-2 py-1 text-xs"
+                                    :label="$role->TrangThai === 'Hoạt động' ? 'Đang hoạt động' : $role->TrangThai"
+                                />
                             </div>
                         </div>
                         <div class="dropdown">

@@ -639,6 +639,20 @@ body {
     color: #9ca3af !important;
 }
 
+.table-custom.category-table .category-actions-column {
+    width: 112px;
+    min-width: 112px;
+    white-space: nowrap;
+    vertical-align: middle;
+}
+
+.btn-outline-secondary:not(:disabled):not(.disabled):hover,
+.btn-outline-secondary:not(:disabled):not(.disabled):focus-visible {
+    color: #ffffff !important;
+    background-color: #475569 !important;
+    border-color: #475569 !important;
+}
+
 .order-toolbar {
     display: flex;
     justify-content: space-between;
@@ -1176,6 +1190,32 @@ body {
     border-color: var(--border-light) !important;
 }
 
+/* Shared status badges keep semantic colors in tables, including the dashboard. */
+.table .status-badge.bg-primary-subtle,
+.table-custom .status-badge.bg-primary-subtle {
+    background-color: var(--bs-primary-bg-subtle) !important;
+}
+
+.table .status-badge.bg-info-subtle,
+.table-custom .status-badge.bg-info-subtle {
+    background-color: var(--bs-info-bg-subtle) !important;
+}
+
+.table .status-badge.border-primary,
+.table-custom .status-badge.border-primary {
+    border-color: var(--bs-primary) !important;
+}
+
+.table .status-badge.border-primary-subtle,
+.table-custom .status-badge.border-primary-subtle {
+    border-color: var(--bs-primary-border-subtle) !important;
+}
+
+.table .status-badge.border-info,
+.table-custom .status-badge.border-info {
+    border-color: var(--bs-info) !important;
+}
+
 /* Dữ liệu trong bảng chỉ hiển thị text thuần: không gạch dưới, không link.
    Rule giữ lại để mọi link nào lọt vào bảng cũng không bị gạch chân. */
 .table a:not(.badge):not(.btn),
@@ -1198,6 +1238,16 @@ select.form-select.filter-select {
     text-align: left !important;
 }
 
+.filter-search {
+    height: 40px;
+}
+
+.filter-search .input-group-text,
+.filter-search .form-control {
+    height: 100%;
+    font-size: 0.875rem;
+}
+
 select,
 select.form-select,
 select.form-select-sm,
@@ -1218,6 +1268,10 @@ select.form-select-custom {
     border-radius: 6px !important;
     appearance: none;
     cursor: pointer;
+}
+
+select.status-select-compact {
+    padding-left: 0.5rem !important;
 }
 
 select:focus:not(:disabled):not(.is-invalid),

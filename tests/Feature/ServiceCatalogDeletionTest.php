@@ -9,6 +9,7 @@ use App\Services\ServiceService;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\ViewErrorBag;
 use Tests\TestCase;
 
 class ServiceCatalogDeletionTest extends TestCase
@@ -84,6 +85,25 @@ class ServiceCatalogDeletionTest extends TestCase
 
         $this->assertFalse(app(ServiceService::class)->delete($service));
         $this->assertSame('Tạm ngưng', $service->fresh()->TrangThai);
+    }
+
+    public function test_service_edit_form_returns_to_service_detail_and_has_no_cancel_action(): void
+    {
+        $service = $this->createService($this->createCategory());
+        view()->share('errors', new ViewErrorBag);
+
+        $html = view('admin.services.edit', [
+            'service' => $service,
+            'categories' => LoaiDichVu::query()->get(),
+            'errors' => new ViewErrorBag,
+        ])->render();
+
+        $this->assertStringContainsString(route('services.show', $service), $html);
+        $this->assertSame(1, substr_count($html, 'Quay lại'));
+        $this->assertStringContainsString('Lưu thay đổi', $html);
+        $this->assertStringNotContainsString('>Hủy</a>', $html);
+        $this->assertStringContainsString(route('services.update', $service->getKey()), $html);
+        $this->assertStringContainsString('name="_method" value="PUT"', $html);
     }
 
     private function createCategory(): LoaiDichVu

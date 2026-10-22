@@ -15,7 +15,7 @@
 </div>
 <form action="{{ url()->current() }}" method="GET" class="row g-3 align-items-center mb-4">
     <div class="col-12 col-md-auto flex-grow-1">
-        <div class="input-group input-group-sm shadow-sm rounded-3 overflow-hidden">
+        <div class="input-group input-group-sm shadow-sm rounded-3 overflow-hidden filter-search">
             <span class="input-group-text bg-white border-end-0 ps-3">
                 <i class="fas fa-search text-muted"></i>
             </span>
@@ -118,10 +118,5 @@
     @endforelse
 </div>
 
-@if($services->hasPages())
-<div class="mt-4 d-flex justify-content-between align-items-center">
-    <small class="text-muted">Hiển thị {{ $services->firstItem() }} - {{ $services->lastItem() }} của {{ $services->total() }} dịch vụ</small>
-    {{ $services->links('pagination::bootstrap-5') }}
-</div>
-@endif
+<x-admin.pagination :paginator="$services" label="dịch vụ" />
 @endsection

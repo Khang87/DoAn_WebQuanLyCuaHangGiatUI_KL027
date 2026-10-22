@@ -5,13 +5,17 @@
 
 @section('content')
 @php
-    $deliveryCode = $delivery->MaGiaoNhan ?: 'GH' . str_pad($delivery->GiaoNhanID, 4, '0', STR_PAD_LEFT);
     $deliveryStatus = \App\Enums\DeliveryStatus::parseForLeg($delivery->TrangThai, $delivery->LoaiGiaoNhan);
     $activeDeliveryStatus = $delivery->LoaiGiaoNhan === 'NHAN_DO'
         ? \App\Enums\DeliveryStatus::Picking
         : \App\Enums\DeliveryStatus::Delivering;
     $deliveryProgressSteps = [
-        ['status' => \App\Enums\DeliveryStatus::Pending, 'label' => 'Chờ xác nhận'],
+        [
+            'status' => \App\Enums\DeliveryStatus::Pending,
+            'label' => $delivery->LoaiGiaoNhan === 'GIAO_DO' && $delivery->HinhThuc === 'Tại cửa hàng'
+                ? 'Chờ khách đến nhận tại cửa hàng'
+                : 'Chờ xác nhận',
+        ],
         ['status' => $activeDeliveryStatus, 'label' => $activeDeliveryStatus->label()],
         ['status' => \App\Enums\DeliveryStatus::Completed, 'label' => 'Hoàn thành'],
     ];
@@ -22,8 +26,12 @@
     };
     $progressAction = match ($deliveryStatus) {
         \App\Enums\DeliveryStatus::Pending => [
-            'label' => $delivery->LoaiGiaoNhan === 'NHAN_DO' ? 'Bắt đầu nhận đồ' : 'Bắt đầu giao đồ',
-            'icon' => $delivery->LoaiGiaoNhan === 'NHAN_DO' ? 'bi-box-arrow-in-down' : 'bi-truck',
+            'label' => $delivery->LoaiGiaoNhan === 'NHAN_DO'
+                ? 'Bắt đầu nhận đồ'
+                : ($delivery->HinhThuc === 'Tại cửa hàng' ? 'Xác nhận đã bàn giao' : 'Bắt đầu giao đồ'),
+            'icon' => $delivery->LoaiGiaoNhan === 'NHAN_DO'
+                ? 'bi-box-arrow-in-down'
+                : ($delivery->HinhThuc === 'Tại cửa hàng' ? 'bi-check-circle' : 'bi-truck'),
             'variant' => 'primary',
         ],
         \App\Enums\DeliveryStatus::Picking => [
@@ -92,8 +100,8 @@
 @endpush
 
 <x-admin.detail.page-header
-    title="Phiếu giao nhận {{ $deliveryCode }}"
-    :subtitle="($delivery->LoaiGiaoNhan === 'NHAN_DO' ? 'Nhận đồ' : 'Giao đồ') . ' · ' . ($delivery->ThoiGianDuKien?->format('d/m/Y') ?: 'Chưa hẹn ngày')"
+    title="Chi tiết phiếu giao nhận"
+    :subtitle="$displayCode . ' · ' . ($delivery->LoaiGiaoNhan === 'NHAN_DO' ? 'Nhận đồ' : 'Giao đồ') . ' · ' . ($delivery->ThoiGianDuKien?->format('d/m/Y') ?: 'Chưa hẹn ngày')"
 >
     <x-slot:badge>
         <x-admin.status-badge :status="\App\Enums\DeliveryStatus::parseForLeg($delivery->TrangThai, $delivery->LoaiGiaoNhan)" :enum="\App\Enums\DeliveryStatus::class" />
@@ -105,7 +113,7 @@
     <div class="col-lg-7">
         <x-admin.detail.panel title="Thông tin giao nhận" icon="bi-truck" :iconClass="'bg-primary-subtle text-primary'">
             <x-admin.detail.info-grid :columns="2">
-                <x-admin.detail.info-item label="Mã phiếu" :value="$deliveryCode" />
+                <x-admin.detail.info-item label="Mã phiếu" :value="$displayCode" />
                 <x-admin.detail.info-item label="Loại giao nhận">
                     <span class="badge bg-primary-subtle text-primary-emphasis border border-primary px-3 py-2 rounded-pill">
                         <i class="bi {{ $delivery->LoaiGiaoNhan === 'NHAN_DO' ? 'bi-box-arrow-in-down' : 'bi-truck' }} me-1"></i>{{ $delivery->LoaiGiaoNhan === 'NHAN_DO' ? 'Nhận đồ' : 'Giao đồ' }}
@@ -114,18 +122,23 @@
                 <x-admin.detail.info-item label="Hình thức" :value="$delivery->HinhThuc" />
                 <x-admin.detail.info-item label="Đơn hàng">
                     @if($delivery->donHang)
+                        @can('orders.view')
                         <a href="{{ route('orders.show', $delivery->donHang->DonHangID) }}" class="text-decoration-none">
                             {{ $delivery->donHang->MaDonHang }}
                         </a>
+                        @else
+                        {{ $delivery->donHang->MaDonHang }}
+                        @endcan
                     @else
                         <span class="detail-empty-value">—</span>
                     @endif
                 </x-admin.detail.info-item>
                 <x-admin.detail.info-item label="Trạng thái">
-                    <x-admin.status-badge :status="\App\Enums\DeliveryStatus::parseForLeg($delivery->TrangThai, $delivery->LoaiGiaoNhan)" :enum="\App\Enums\DeliveryStatus::class" :pill="false" />
+                    <x-admin.status-badge :status="\App\Enums\DeliveryStatus::parseForLeg($delivery->TrangThai, $delivery->LoaiGiaoNhan)" :enum="\App\Enums\DeliveryStatus::class" />
                 </x-admin.detail.info-item>
                 <x-admin.detail.info-item label="Ngày giao nhận" :value="$delivery->ThoiGianDuKien?->format('d/m/Y')" />
                 <x-admin.detail.info-item label="Giờ giao nhận" :value="$delivery->ThoiGianDuKien?->format('H:i')" />
+                <x-admin.detail.info-item label="Thời gian bàn giao thực tế" :value="$delivery->ThoiGianThucTe?->format('d/m/Y H:i') ?: 'Chưa hoàn tất'" />
                 <x-admin.detail.info-item label="Nhân viên phụ trách" :value="$delivery->nhanVien?->HoTen ?: 'Chưa phân công'" />
                 <x-admin.detail.info-item label="Ngày tạo" :value="$delivery->ThoiGianDuKien?->format('d/m/Y H:i')" />
             </x-admin.detail.info-grid>
@@ -136,12 +149,36 @@
             </div>
 
             @if($delivery->GhiChu)
+                @can('customers.view')
                 <div class="mt-3">
                     <div class="detail-field__label mb-2">Ghi chú</div>
                     <div class="detail-text">{{ $delivery->GhiChu }}</div>
                 </div>
+                @endcan
             @endif
         </x-admin.detail.panel>
+
+        @if(config('giatui.booking_two_step') && $delivery->LoaiGiaoNhan === 'GIAO_DO')
+            @php
+                $linkedBooking = $delivery->donHang?->booking;
+                $returnNote = $linkedBooking?->giaoNhanDuKiens->firstWhere('LoaiGiaoNhan', 'GIAO_DO');
+                $approvedInspection = $linkedBooking?->kiemKe;
+            @endphp
+            @if($returnNote?->DonHangID === $delivery->DonHangID
+                && $returnNote?->BookingKiemKeID === $approvedInspection?->BookingKiemKeID)
+                <x-admin.detail.panel title="Đồ trả từ phiếu nhận" icon="bi-clipboard-check" :iconClass="'bg-info-subtle text-info'">
+                    <p class="small text-muted mb-2">
+                        Đã đối soát theo Booking {{ $linkedBooking->MaBooking }} · kiểm kê phiên bản {{ $approvedInspection->PhienBan }}.
+                        @can('bookings.view')<a href="{{ route('bookings.show', $linkedBooking) }}">Xem Booking</a>@endcan
+                    </p>
+                    <ul class="small mb-0 ps-3" data-delivery-return-items>
+                        @foreach($delivery->donHang->chiTietDonHangs as $item)
+                            <li>{{ $item->item_name }} · {{ $item->KhoiLuong ?: $item->SoLuong }} {{ $item->unit }} · {{ $item->TinhTrangTruocKhiGiat }}</li>
+                        @endforeach
+                    </ul>
+                </x-admin.detail.panel>
+            @endif
+        @endif
 
         <x-admin.detail.panel title="Tiến độ giao nhận" icon="bi-clock-history" :iconClass="'bg-secondary-subtle text-secondary'">
             <div class="detail-timeline order-detail-timeline">
@@ -196,22 +233,36 @@
                     @endcan
                 @endif
 
-                <a href="{{ route('deliveries.edit', $delivery) }}" class="btn btn-primary w-100 py-2">
-                    <i class="fas fa-pencil-alt me-1"></i> Chỉnh sửa
-                </a>
+                <div class="d-flex flex-column gap-2">
+                    @if($delivery->LoaiGiaoNhan !== 'GIAO_DO' || $canEditReturnDelivery)
+                        @can('deliveries.edit')
+                            <a href="{{ route('deliveries.edit', $delivery) }}"
+                               class="btn btn-primary w-100 py-2">
+                                <i class="fas fa-pencil-alt me-1" aria-hidden="true"></i> Chỉnh sửa
+                            </a>
+                        @endcan
+                    @endif
 
-                @can('deliveries.delete')
-                    <x-admin.detail.confirm-form
-                        :action="route('deliveries.destroy', $delivery)"
-                        title="Xóa phiếu giao nhận?"
-                        text="Hành động này không thể hoàn tác."
-                        label="Xóa phiếu giao nhận"
-                        icon="bi-trash"
-                        variant="btn-outline-danger"
-                        size="py-2"
-                        block
-                    />
-                @endcan
+                    @if($delivery->LoaiGiaoNhan === 'GIAO_DO' && $canCancelReturnDelivery)
+                        @can('deliveries.delete')
+                            <x-admin.detail.confirm-form
+                                :action="route('deliveries.cancel-return', $delivery)"
+                                method="POST"
+                                title="Hủy lịch giao?"
+                                text="Phiếu được giữ lại làm lịch sử; đơn hàng và trạng thái thanh toán không thay đổi."
+                                label="Hủy lịch giao"
+                                icon="bi bi-x-circle"
+                                variant="btn-outline-danger"
+                                size="py-2"
+                                block
+                            />
+                        @endcan
+                    @endif
+                </div>
+
+                @if($delivery->LoaiGiaoNhan === 'GIAO_DO' && $deliveryStatus === \App\Enums\DeliveryStatus::Cancelled)
+                    <p class="small text-muted mb-0">Lịch giao đã hủy; phiếu chỉ còn để tra cứu lịch sử.</p>
+                @endif
 
                 <a href="{{ route('deliveries.index') }}" class="btn btn-outline-secondary w-100 py-2 text-dark">
                     <i class="fas fa-arrow-left me-1"></i> Quay lại danh sách

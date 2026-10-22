@@ -16,12 +16,27 @@
 @if(session('success'))
     <div class="alert alert-success">{{ session('success') }}</div>
 @endif
+@if(session('blocking_orders'))
+    <div class="alert alert-danger" role="alert">
+        <p class="mb-2">{{ session('error') }} Thông tin bên dưới gồm mã đơn, giai đoạn xử lý và tình trạng thanh toán:</p>
+        <ul class="mb-0">
+            @foreach(session('blocking_orders') as $order)
+                <li>
+                    <a href="{{ route('orders.show', $order['id']) }}">
+                        {{ $order['code'] }} ({{ $order['status'] }})
+                    </a>
+                    — {{ $order['payment_status'] }}
+                </li>
+            @endforeach
+        </ul>
+    </div>
+@endif
 @if($errors->any())
     <div class="alert alert-danger">{{ $errors->first() }}</div>
 @endif
 <form action="{{ url()->current() }}" method="GET" class="row g-3 align-items-center mb-4">
     <div class="col-12 col-md-auto flex-grow-1">
-        <div class="input-group input-group-sm shadow-sm rounded-3 overflow-hidden">
+        <div class="input-group input-group-sm shadow-sm rounded-3 overflow-hidden filter-search">
             <span class="input-group-text bg-white border-end-0 ps-3">
                 <i class="fas fa-search text-muted"></i>
             </span>
@@ -106,9 +121,11 @@
                             @endforelse
                         </td>
                         <td>
-                            <span class="badge {{ $account->TrangThai === 'Hoạt động' ? 'bg-success-subtle text-success-emphasis border border-success' : 'bg-secondary-subtle text-secondary-emphasis border border-secondary' }}">
-                                {{ $account->TrangThai }}
-                            </span>
+                            <x-admin.status-badge
+                                :status="$account->TrangThai"
+                                :enum="\App\Enums\RecordStatus::class"
+                                :label="$account->TrangThai === 'Hoạt động' ? 'Đang hoạt động' : $account->TrangThai"
+                            />
                         </td>
                         <td>{{ $account->NgayTao?->format('d/m/Y') }}</td>
                         <td>
@@ -147,11 +164,7 @@
     </div>
 </div>
 
-@if($accounts->hasPages())
-<div class="mt-3">
-    {{ $accounts->appends(request()->query())->links('pagination::bootstrap-5') }}
-</div>
-@endif
+<x-admin.pagination :paginator="$accounts" label="tài khoản" />
 
 @if($canManageRoles)
 <div class="modal fade" id="updateRoleModal" tabindex="-1" aria-labelledby="updateRoleModalLabel" aria-hidden="true">

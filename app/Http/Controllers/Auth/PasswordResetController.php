@@ -4,94 +4,100 @@ namespace App\Http\Controllers\Auth;
 
 use App\Exceptions\PasswordResetOtpException;
 use App\Http\Controllers\Controller;
-use App\Models\User;
 use App\Services\PasswordResetOtpService;
-use App\Services\RememberedLogin;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rules\Password;
 use Illuminate\View\View;
 
 class PasswordResetController extends Controller
 {
-    private const OTP_PREFIX = 'pwd_reset_';
-
-    public function showLinkRequestForm(): View
+    public function showLinkRequestForm(Request $request, PasswordResetOtpService $otpService): View
     {
-        return view('auth.passwords.email');
+        if ($request->boolean('change_email')) {
+            $request->session()->forget(['reset_email', 'password_reset_grant']);
+        }
+        $email = (string) $request->session()->get('reset_email', '');
+
+        return view('auth.passwords.email', [
+            'email' => $email,
+            'cooldownSeconds' => $email !== '' ? $otpService->cooldownSeconds($email) : 0,
+        ]);
     }
 
     public function sendResetOtp(Request $request, PasswordResetOtpService $otpService): RedirectResponse
     {
-        $validated = $request->validate([
-            'email' => ['required', 'email', 'max:150'],
-        ]);
+        $validated = $request->validate(['email' => ['required', 'email', 'max:150']]);
         $email = mb_strtolower(trim($validated['email']));
+        $request->session()->forget('password_reset_grant');
         try {
-            $otpService->send($email);
+            $otpService->send($email, (string) $request->ip());
         } catch (PasswordResetOtpException $exception) {
-            if ($exception->throttled) {
-                return redirect()->route('password.reset')->with('reset_email', $email)->with('error', $exception->getMessage());
-            }
-
             return redirect()->route('password.request')->withInput(['email' => $email])->with('error', $exception->getMessage());
         }
+        $request->session()->put('reset_email', $email);
 
-        return redirect()->route('password.reset')
-            ->with('reset_email', $email)
-            ->with('status', 'Nếu email đã đăng ký, mã OTP sẽ được gửi đến hộp thư và có hiệu lực trong 15 phút.');
+        return redirect()->route('password.request')
+            ->with('status', 'Mã OTP đã được gửi và có hiệu lực trong 15 phút.');
     }
 
-    public function showResetForm(Request $request): View
-    {
-        return view('auth.passwords.reset', [
-            'email' => (string) $request->session()->get('reset_email', $request->old('email', '')),
-        ]);
-    }
-
-    public function resetPassword(Request $request, RememberedLogin $rememberedLogin): RedirectResponse
+    public function verifyOtp(Request $request, PasswordResetOtpService $otpService): RedirectResponse
     {
         $validated = $request->validate([
             'email' => ['required', 'email', 'max:150'],
             'otp' => ['required', 'digits:6'],
-            'password' => ['required', 'string', 'min:8', 'confirmed'],
         ]);
         $email = mb_strtolower(trim($validated['email']));
-        $user = $this->findUserByEmail($email);
-        $cache = Cache::store(config('cache.auth_store'));
-        $storedOtp = $cache->get($this->otpKey($email));
+        $request->session()->put('reset_email', $email);
+        $request->session()->regenerate();
+        $token = $otpService->verify($email, $validated['otp'], $request->session()->getId());
+        if ($token === null) {
+            return redirect()->route('password.request')->with('error', 'Email hoặc mã OTP không đúng hoặc mã đã hết hạn.');
+        }
+        $request->session()->put('password_reset_grant', $token);
 
-        if (
-            ! $user
-            || ! is_string($storedOtp)
-            || ! hash_equals($storedOtp, hash('sha256', $validated['otp']))
-        ) {
-            return redirect()->route('password.reset')
-                ->withInput(['email' => $email])
-                ->with('error', 'Email hoặc mã OTP không đúng hoặc mã đã hết hạn.');
+        return redirect()->route('password.reset');
+    }
+
+    public function showResetForm(Request $request, PasswordResetOtpService $otpService): View|RedirectResponse
+    {
+        if (! $otpService->canReset($request->session()->get('password_reset_grant'), $request->session()->getId())) {
+            $request->session()->forget('password_reset_grant');
+
+            return redirect()->route('password.request')->with('error', 'Vui lòng xác thực OTP trước khi đặt mật khẩu mới.');
         }
 
-        $user->forceFill([
-            'MatKhau' => Hash::make($validated['password']),
-        ])->save();
-
-        $cache->forget($this->otpKey($email));
-        $rememberedLogin->revokeForUser($user);
-
-        return redirect()->route('login')
-            ->with('success', 'Mật khẩu đã được cập nhật. Vui lòng đăng nhập.');
+        return view('auth.passwords.new-password');
     }
 
-    private function findUserByEmail(string $email): ?User
+    public function resetPassword(Request $request, PasswordResetOtpService $otpService): RedirectResponse
     {
-        return User::query()
-            ->whereRaw('LOWER("Email") = ?', [mb_strtolower(trim($email))])
-            ->first();
-    }
+        $token = $request->session()->get('password_reset_grant');
+        if (! $otpService->canReset($token, $request->session()->getId())) {
+            $request->session()->forget('password_reset_grant');
 
-    private function otpKey(string $email): string
-    {
-        return self::OTP_PREFIX.mb_strtolower(trim($email));
+            return redirect()->route('password.request')->with('error', 'Phiên đặt lại mật khẩu không hợp lệ hoặc đã hết hạn. Vui lòng xác thực OTP lại.');
+        }
+        $validated = $request->validate([
+            'password' => ['required', 'string', 'confirmed', Password::min(8)->mixedCase()->numbers()->symbols()],
+        ], [
+            'password.min' => 'Mật khẩu phải có ít nhất 8 ký tự.',
+            'password.mixedCase' => 'Mật khẩu phải có cả chữ hoa và chữ thường.',
+            'password.numbers' => 'Mật khẩu phải có ít nhất một chữ số.',
+            'password.symbols' => 'Mật khẩu phải có ít nhất một ký tự đặc biệt.',
+        ]);
+        if ($otpService->passwordMatchesCurrent($token, $validated['password'], $request->session()->getId())) {
+            return back()->withErrors([
+                'password' => 'Mật khẩu mới phải khác mật khẩu hiện tại.',
+            ]);
+        }
+        if (! $otpService->reset($token, $validated['password'], $request->session()->getId())) {
+            $request->session()->forget('password_reset_grant');
+
+            return redirect()->route('password.request')->with('error', 'Phiên đặt lại mật khẩu không hợp lệ hoặc đã hết hạn. Vui lòng xác thực OTP lại.');
+        }
+        $request->session()->forget(['password_reset_grant', 'reset_email']);
+
+        return redirect()->route('login')->with('success', 'Mật khẩu đã được cập nhật. Vui lòng đăng nhập.');
     }
 }

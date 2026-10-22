@@ -17,15 +17,21 @@
     // Tính trước để tránh dấu ">" trong biểu thức thuộc tính của thẻ Blade.
     $hasPromotionDiscount = (float) $order->discount_by_promotion > 0;
     $hasPointsDiscount = (float) $order->discount_by_points > 0;
+    $operationalStatus = $order->operationalStatusEnum();
     $statusKeys = array_keys($statusFlow);
-    $currentStatusIndex = array_search($order->status, $statusKeys, true);
-    $isCancelled = $order->status === \App\Enums\OrderStatus::Cancelled->value;
-    $isReceiving = $order->status === \App\Enums\OrderStatus::Pending->value;
-    $currentStatusIsCompleted = \App\Enums\OrderStatus::parse($order->status)->isCompletedMilestone();
-    $nextProcessStatus = $order->statusEnum()->nextProcessStatus();
+    $currentStatusIndex = array_search($operationalStatus->value, $statusKeys, true);
+    $isCancelled = $operationalStatus === \App\Enums\OrderStatus::Cancelled;
+    $isReceiving = $operationalStatus === \App\Enums\OrderStatus::Pending;
+    $currentStatusIsCompleted = $operationalStatus->isCompletedMilestone();
+    $nextProcessStatus = $operationalStatus->nextProcessStatus();
     $requiresHomeDelivery = $order->requiresHomeDelivery();
-    if ($order->statusEnum() === \App\Enums\OrderStatus::Washed && ! $requiresHomeDelivery) {
-        $nextProcessStatus = \App\Enums\OrderStatus::Delivered;
+    $isBookingReturnOrder = $order->booking !== null;
+    $activeReturnDelivery = $order->giaoNhans
+        ->where('LoaiGiaoNhan', 'GIAO_DO')
+        ->sortByDesc('GiaoNhanID')
+        ->first(fn ($delivery) => \App\Enums\DeliveryStatus::parseForLeg($delivery->TrangThai, $delivery->LoaiGiaoNhan) !== \App\Enums\DeliveryStatus::Cancelled);
+    if ($operationalStatus === \App\Enums\OrderStatus::Washed && ! $requiresHomeDelivery) {
+        $nextProcessStatus = $isBookingReturnOrder ? null : \App\Enums\OrderStatus::Delivered;
     }
     $nextStatusAction = match ($nextProcessStatus) {
         \App\Enums\OrderStatus::Washing => [
@@ -54,6 +60,9 @@
         ],
         default => null,
     };
+    if ($isBookingReturnOrder && in_array($operationalStatus, [\App\Enums\OrderStatus::Washed, \App\Enums\OrderStatus::Delivering], true)) {
+        $nextStatusAction = null;
+    }
     $inspectionItems = old('items');
     if (! is_array($inspectionItems)) {
         $inspectionItems = $order->chiTietDonHangs->map(function ($item): array {
@@ -165,9 +174,13 @@
             <x-admin.detail.info-grid :columns="2">
                 <x-admin.detail.info-item label="Khách hàng">
                     @if($order->customer)
+                        @can('customers.view')
                         <a href="{{ route('customers.show', $order->customer->getKey()) }}" class="text-decoration-none">
                             {{ $order->customer->name }}
                         </a>
+                        @else
+                        {{ $order->customer->name }}
+                        @endcan
                     @else
                         <span class="detail-empty-value">Khách hàng đã bị xóa</span>
                     @endif
@@ -180,11 +193,15 @@
                 />
                 <x-admin.detail.info-item label="Nguồn đơn">
                     @if($order->booking)
+                        @can('bookings.view')
                         <a href="{{ route('bookings.show', $order->booking) }}" class="text-decoration-none">
                             <i class="bi bi-calendar-check me-1"></i>Lịch hẹn {{ $order->booking->code }}
                         </a>
+                        @else
+                        Lịch hẹn {{ $order->booking->code }}
+                        @endcan
                     @else
-                        <span class="detail-empty-value">Nhập trực tiếp</span>
+                        Nhập trực tiếp
                     @endif
                 </x-admin.detail.info-item>
                 <x-admin.detail.info-item
@@ -201,7 +218,7 @@
             @endif
         </x-admin.detail.panel>
 
-        <x-admin.detail.panel title="Chi tiết mặt hàng" icon="bi-list-check" :iconClass="'bg-info-subtle text-info'" flush>
+        <x-admin.detail.panel title="Chi tiết dịch vụ" icon="bi-list-check" :iconClass="'bg-info-subtle text-info'" flush>
             <x-slot:header>
                 <span class="text-muted small">{{ $order->chiTietDonHangs->count() }} mục</span>
             </x-slot:header>
@@ -396,7 +413,7 @@
                     @continue($key === \App\Enums\OrderStatus::Paid->value)
                     @continue($key === \App\Enums\OrderStatus::Delivering->value && ! $requiresHomeDelivery)
                     @php
-                        $isCurrentStatus = $key === $order->status;
+                        $isCurrentStatus = $key === $operationalStatus->value;
                         $isCompletedStatus = ! $isCancelled
                             && $currentStatusIndex !== false
                             && ($loop->index < $currentStatusIndex || ($isCurrentStatus && $currentStatusIsCompleted));
@@ -418,6 +435,46 @@
                 @endforeach
             </div>
         </x-admin.detail.panel>
+
+        <x-admin.detail.panel title="Thông tin giao nhận" icon="bi-truck" :iconClass="'bg-warning-subtle text-warning-emphasis'">
+            @if($order->giaoNhans->isNotEmpty())
+                @foreach($order->giaoNhans as $delivery)
+                    <div class="{{ $loop->first ? '' : 'border-top pt-3 mt-3' }}">
+                        <x-admin.detail.info-grid :columns="1">
+                            <x-admin.detail.info-item label="Loại giao nhận">
+                                <span class="badge bg-primary-subtle text-primary-emphasis border border-primary px-3 py-2 rounded-pill">
+                                    <i class="fas {{ $delivery->LoaiGiaoNhan === 'NHAN_DO' ? 'fa-box-open' : 'fa-truck' }} me-1"></i>
+                                    {{ $delivery->LoaiGiaoNhan === 'NHAN_DO' ? 'Nhận đồ' : 'Giao đồ' }}
+                                </span>
+                            </x-admin.detail.info-item>
+                            <x-admin.detail.info-item label="Hình thức" :value="$delivery->HinhThuc" />
+                            <x-admin.detail.info-item label="Trạng thái">
+                                <x-admin.status-badge :status="$delivery->TrangThai" :enum="\App\Enums\DeliveryStatus::class" />
+                            </x-admin.detail.info-item>
+                            <x-admin.detail.info-item label="Thời gian dự kiến" :value="$delivery->ThoiGianDuKien?->format('d/m/Y H:i')" />
+                            <x-admin.detail.info-item label="Địa chỉ" :value="$delivery->DiaChi ?: '—'" />
+                        </x-admin.detail.info-grid>
+
+                        @if($delivery->GhiChu)
+                            <div class="mt-3">
+                                <div class="detail-field__label mb-2">Ghi chú giao nhận</div>
+                                <div class="detail-text">{{ $delivery->GhiChu }}</div>
+                            </div>
+                        @endif
+
+                        @can('deliveries.view')
+                        <div class="mt-3">
+                            <a href="{{ route('deliveries.show', $delivery->GiaoNhanID) }}" class="btn btn-outline-primary btn-sm w-100">
+                                <i class="bi bi-box-arrow-up-right me-1"></i>Chi tiết phiếu giao nhận
+                            </a>
+                        </div>
+                        @endcan
+                    </div>
+                @endforeach
+            @else
+                <x-admin.detail.empty message="Đơn hàng chưa có lịch giao nhận" icon="bi-truck" />
+            @endif
+        </x-admin.detail.panel>
     </div>
 
     {{-- ============ CỘT PHỤ (4/12) ============ --}}
@@ -429,14 +486,14 @@
             </div>
             @if($hasPromotionDiscount)
                 <div class="d-flex justify-content-between align-items-center py-2">
-                    <span class="detail-summary__label">Tiền giảm voucher</span>
+                    <span class="detail-summary__label">Voucher giảm giá</span>
                     <x-admin.detail.money :value="$order->discount_by_promotion" :negative="true" class="text-success fw-semibold" />
                 </div>
             @endif
             @if($hasPointsDiscount)
                 <div class="d-flex justify-content-between align-items-start py-2">
                     <span class="detail-summary__label">
-                        Tiền giảm do điểm
+                        Giảm giá từ điểm tích lũy
                         @if($order->points_used > 0)
                             <small class="d-block">({{ number_format($order->points_used) }} điểm)</small>
                         @endif
@@ -488,44 +545,6 @@
             @endif
         </x-admin.detail.panel>
 
-        <x-admin.detail.panel title="Thông tin giao nhận" icon="bi-truck" :iconClass="'bg-warning-subtle text-warning-emphasis'">
-            @if($order->giaoNhans->isNotEmpty())
-                @foreach($order->giaoNhans as $delivery)
-                    <div class="{{ $loop->first ? '' : 'border-top pt-3 mt-3' }}">
-                        <x-admin.detail.info-grid :columns="1">
-                            <x-admin.detail.info-item label="Loại giao nhận">
-                                <span class="badge bg-primary-subtle text-primary-emphasis border border-primary px-3 py-2 rounded-pill">
-                                    <i class="fas {{ $delivery->LoaiGiaoNhan === 'NHAN_DO' ? 'fa-box-open' : 'fa-truck' }} me-1"></i>
-                                    {{ $delivery->LoaiGiaoNhan === 'NHAN_DO' ? 'Nhận đồ' : 'Giao đồ' }}
-                                </span>
-                            </x-admin.detail.info-item>
-                            <x-admin.detail.info-item label="Hình thức" :value="$delivery->HinhThuc" />
-                            <x-admin.detail.info-item label="Trạng thái">
-                                <x-admin.status-badge :status="$delivery->TrangThai" :enum="\App\Enums\DeliveryStatus::class" :pill="false" />
-                            </x-admin.detail.info-item>
-                            <x-admin.detail.info-item label="Thời gian dự kiến" :value="$delivery->ThoiGianDuKien?->format('d/m/Y H:i')" />
-                            <x-admin.detail.info-item label="Địa chỉ" :value="$delivery->DiaChi ?: '—'" />
-                        </x-admin.detail.info-grid>
-
-                        @if($delivery->GhiChu)
-                            <div class="mt-3">
-                                <div class="detail-field__label mb-2">Ghi chú giao nhận</div>
-                                <div class="detail-text">{{ $delivery->GhiChu }}</div>
-                            </div>
-                        @endif
-
-                        <div class="mt-3">
-                            <a href="{{ route('deliveries.show', $delivery->GiaoNhanID) }}" class="btn btn-outline-secondary btn-sm w-100">
-                                <i class="bi bi-box-arrow-up-right me-1"></i>Chi tiết phiếu giao nhận
-                            </a>
-                        </div>
-                    </div>
-                @endforeach
-            @else
-                <x-admin.detail.empty message="Đơn hàng chưa có lịch giao nhận" icon="bi-truck" />
-            @endif
-        </x-admin.detail.panel>
-
         <div class="card shadow-sm border-0 order-first">
             <div class="card-header bg-transparent border-bottom d-flex align-items-center gap-2 py-3">
                 <div class="bg-light rounded p-2 d-inline-flex align-items-center justify-content-center">
@@ -542,6 +561,22 @@
                             <i class="bi bi-credit-card me-1" aria-hidden="true"></i> Thanh toán
                         </a>
                     @endcan
+                @endif
+
+                @if($isBookingReturnOrder && in_array($operationalStatus, [\App\Enums\OrderStatus::Washed, \App\Enums\OrderStatus::Delivering], true))
+                    @if($activeReturnDelivery)
+                        @can('deliveries.view')
+                            <a href="{{ route('deliveries.show', $activeReturnDelivery) }}" class="btn btn-outline-primary w-100 py-2">
+                                <i class="bi bi-box-arrow-up-right me-1" aria-hidden="true"></i>Xem phiếu giao
+                            </a>
+                        @endcan
+                    @elseif($operationalStatus === \App\Enums\OrderStatus::Washed)
+                        @can('deliveries.create')
+                            <a href="{{ route('orders.delivery-assignment', $order) }}" class="btn btn-primary w-100 py-2">
+                                <i class="bi bi-truck me-1" aria-hidden="true"></i>Tạo phiếu giao
+                            </a>
+                        @endcan
+                    @endif
                 @endif
 
                 @if($nextStatusAction)
@@ -575,16 +610,18 @@
                     @endcan
                 @endif
 
-                @if(auth()->user()?->hasRole(['owner', 'manager', 'staff']))
+                    @can('messages.view')
                     <a href="{{ route('admin.messages.index', ['order_id' => $order->DonHangID]) }}" class="btn btn-outline-primary w-100 py-2">
                         <i class="bi bi-chat-dots me-1" aria-hidden="true"></i> Nhắn tin khách hàng
                     </a>
-                @endif
+                    @endcan
 
                 @if($order->hoaDons->isNotEmpty())
+                    @can('invoices.view')
                     <a href="{{ route('invoices.show', $order->hoaDons->first()->HoaDonID) }}" class="btn btn-outline-primary w-100 py-2">
                         <i class="fas fa-file-invoice me-1" aria-hidden="true"></i> Xem hóa đơn
                     </a>
+                    @endcan
                 @elseif(in_array($order->TrangThai, ['Hoàn thành giặt', 'Đang giao', 'Đã giao'], true))
                     @can('invoices.create')
                         <a href="{{ route('invoices.create', ['order_id' => $order->getKey()]) }}" class="btn btn-outline-primary w-100 py-2">

@@ -65,14 +65,14 @@
                 </div>
                 <div class="col-md-6">
                     <label class="form-label">Ngày bắt đầu <span class="text-danger">*</span></label>
-                    <input type="date" class="form-control @error('NgayBatDau') is-invalid @enderror" name="NgayBatDau" value="{{ old('NgayBatDau', $coupon->NgayBatDau) }}" required>
+                    <input type="date" class="form-control @error('NgayBatDau') is-invalid @enderror" name="NgayBatDau" value="{{ old('NgayBatDau', $coupon->NgayBatDau?->format('Y-m-d')) }}" required>
                     @error('NgayBatDau')
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
                 </div>
                 <div class="col-md-6">
                     <label class="form-label">Ngày kết thúc <span class="text-danger">*</span></label>
-                    <input type="date" class="form-control @error('NgayKetThuc') is-invalid @enderror" name="NgayKetThuc" value="{{ old('NgayKetThuc', $coupon->NgayKetThuc) }}" required>
+                    <input type="date" class="form-control @error('NgayKetThuc') is-invalid @enderror" name="NgayKetThuc" value="{{ old('NgayKetThuc', $coupon->NgayKetThuc?->format('Y-m-d')) }}" required>
                     @error('NgayKetThuc')
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror

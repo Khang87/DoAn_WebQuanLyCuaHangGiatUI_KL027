@@ -16,7 +16,7 @@
 @endphp
 
 <div class="invoice-print-heading">
-    <h1>HÓA ĐƠN {{ $invoice->MaHoaDon ?: '#'.$invoice->HoaDonID }}</h1>
+    <h1>HÓA ĐƠN {{ $invoice->MaHoaDon }}</h1>
     <div>Ngày lập: {{ $invoice->NgayLap?->format('d/m/Y') ?: now()->format('d/m/Y') }}</div>
     @if($customer?->HoTen)
         <div>Khách hàng: {{ $customer->HoTen }}</div>
@@ -27,7 +27,7 @@
 </div>
 
 <x-admin.detail.page-header
-    title="Hóa đơn {{ $invoice->MaHoaDon ?: '#' . $invoice->HoaDonID }}"
+    title="Hóa đơn {{ $invoice->MaHoaDon }}"
     :subtitle="$invoice->NgayLap?->format('d/m/Y')"
 >
     <x-slot:badge>
@@ -100,7 +100,7 @@
                         <div class="border-bottom pb-3">
                             <div class="d-flex justify-content-between gap-3">
                                 <strong>{{ $change->TruongThayDoi }}</strong>
-                                <small class="text-muted text-nowrap">{{ $change->ThoiGian?->format('d-m-Y H:i') }}</small>
+                                <small class="text-muted text-nowrap">{{ $change->ThoiGian?->format('d/m/Y H:i') }}</small>
                             </div>
                             <div class="small mt-1">
                                 <span class="text-muted">{{ $change->GiaTriCu ?? '—' }}</span>
@@ -163,9 +163,13 @@
                 <x-admin.detail.info-item label="Ngày lập" :value="$invoice->NgayLap?->format('d/m/Y') ?: now()->format('d/m/Y')" />
                 <x-admin.detail.info-item label="Đơn hàng">
                     @if($order)
+                        @can('orders.view')
                         <a href="{{ route('orders.show', $order->DonHangID) }}" class="text-decoration-none">
                             {{ $order->MaDonHang }}
                         </a>
+                        @else
+                        {{ $order->MaDonHang }}
+                        @endcan
                     @else
                         <span class="detail-empty-value">—</span>
                     @endif

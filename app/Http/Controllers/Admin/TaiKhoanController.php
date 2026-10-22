@@ -275,8 +275,10 @@ class TaiKhoanController extends Controller
             return redirect()->route('accounts.index')->with('error', FriendlyError::message($e));
         }
 
-        if ($result !== null) {
-            return redirect()->route('accounts.index')->with('error', $result);
+        if ($result['message'] !== null) {
+            return redirect()->route('accounts.index')
+                ->with('error', $result['message'])
+                ->with('blocking_orders', $result['orders']);
         }
 
         return redirect()->route('accounts.index')->with('success', 'Tài khoản đã được xóa.');

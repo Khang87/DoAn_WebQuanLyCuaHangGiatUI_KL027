@@ -474,7 +474,9 @@
                                 <td class="fw-medium text-dark">{{ $order->customer?->name ?: '-' }}</td>
                                 <td class="text-secondary text-truncate" style="max-width: 250px;">{{ $order->items->pluck('service.name')->filter()->join(', ') ?: ($order->service?->name ?: '-') }}</td>
                                 <td class="text-center">
-                                    <x-admin.status-badge :status="$order->status" :enum="\App\Enums\OrderStatus::class" />
+                                    <div class="order-status-badges d-inline-flex align-items-center flex-nowrap gap-1 text-nowrap">
+                                        <x-admin.order-status-badges :order="$order" :is-paid="$order->isPaid()" :is-receiving="false" compact />
+                                    </div>
                                 </td>
                                 <td class="text-end fw-bold text-dark">{{ number_format($order->total_amount, 0, ',', '.') }} VNĐ</td>
                                 <td class="text-center">
@@ -510,7 +512,7 @@
 <script src="{{ asset('assets/libs/apexcharts/apexcharts.min.js') }}"></script>
 <script>
     (function () {
-        const formatVnd = value => `${new Intl.NumberFormat('vi-VN').format(value || 0)} VNĐ`;
+        const formatCurrency = value => `${new Intl.NumberFormat('vi-VN').format(Number(value) || 0)} VNĐ`;
         const revenueLabels = @json($chartData['labels'] ?? []);
         const revenueValues = @json($chartData['revenue'] ?? []);
         const orderValues = @json($chartData['orders'] ?? []);
@@ -584,7 +586,7 @@
                 tooltip: {
                     shared: true,
                     y: {
-                        formatter: (value, { seriesIndex }) => seriesIndex === 0 ? formatVnd(value) : `${value} đơn`,
+                        formatter: (value, { seriesIndex }) => seriesIndex === 0 ? formatCurrency(value) : `${value} đơn`,
                     },
                 },
                 noData: { text: 'Chưa có dữ liệu trong khoảng thời gian này' },
@@ -622,10 +624,14 @@
                             size: '62%',
                             labels: {
                                 show: true,
+                                value: {
+                                    show: true,
+                                    formatter: value => formatCurrency(value),
+                                },
                                 total: {
                                     show: true,
                                     label: 'Doanh thu dịch vụ',
-                                    formatter: context => formatVnd(context.globals.seriesTotals.reduce((total, value) => total + value, 0)),
+                                    formatter: context => formatCurrency(context.globals.seriesTotals.reduce((total, value) => total + value, 0)),
                                 },
                             },
                         },
@@ -633,7 +639,7 @@
                 },
                 tooltip: {
                     y: {
-                        formatter: value => formatVnd(value),
+                        formatter: value => formatCurrency(value),
                     },
                 },
                 noData: { text: 'Chưa có dữ liệu dịch vụ trong khoảng thời gian này' },

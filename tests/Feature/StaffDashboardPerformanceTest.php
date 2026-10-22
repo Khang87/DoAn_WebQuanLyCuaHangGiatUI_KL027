@@ -54,6 +54,12 @@ class StaffDashboardPerformanceTest extends TestCase
         $this->assertSame(5, $data['washingCount']);
         $this->assertSame(9, $data['readyCount']);
         $this->assertCount(10, $data['processingOrders']);
+        $this->assertEqualsCanonicalizing([
+            OrderStatus::Pending->value,
+            OrderStatus::Received->value,
+            OrderStatus::Washing->value,
+            OrderStatus::Washed->value,
+        ], $data['processingOrders']->pluck('TrangThai')->unique()->values()->all());
     }
 
     public function test_empty_dashboard_kpis_are_integer_zero_with_one_aggregate(): void

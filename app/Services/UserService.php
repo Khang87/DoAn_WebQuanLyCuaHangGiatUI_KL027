@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use App\Enums\InvoiceStatus;
+use App\Enums\OrderStatus;
 use App\Models\LichSuThayDoiHoaDon;
 use App\Models\NhatKyHeThong;
 use App\Models\ThongBao;
@@ -139,51 +141,133 @@ class UserService
         });
     }
 
-    public function delete(User $user): ?string
+    /**
+     * @return array{
+     *     message: ?string,
+     *     orders: list<array{id: int, code: string, status: string, payment_status: string}>
+     * }
+     */
+    public function delete(User $user): array
     {
         if ((int) $user->getKey() === (int) auth()->id()) {
-            return 'Không thể xóa tài khoản đang đăng nhập.';
+            return ['message' => 'Không thể xóa tài khoản đang đăng nhập.', 'orders' => []];
         }
 
-        return DB::transaction(function () use ($user): ?string {
+        return DB::transaction(function () use ($user): array {
             $lockedUser = User::query()->lockForUpdate()->findOrFail($user->getKey());
-            $before = $this->accountAuditSnapshot($lockedUser);
+
+            if ($lockedUser->KhachHangID !== null) {
+                DB::table('KhachHang')
+                    ->where('KhachHangID', $lockedUser->KhachHangID)
+                    ->lockForUpdate()
+                    ->first();
+            }
+
+            if ($lockedUser->NhanVienID !== null) {
+                DB::table('NhanVien')
+                    ->where('NhanVienID', $lockedUser->NhanVienID)
+                    ->lockForUpdate()
+                    ->first();
+            }
+
+            $blockingOrders = DB::table('DonHang')
+                ->where(function ($query) use ($lockedUser): void {
+                    $hasProfile = false;
+
+                    if ($lockedUser->KhachHangID !== null) {
+                        $query->where('KhachHangID', $lockedUser->KhachHangID);
+                        $hasProfile = true;
+                    }
+
+                    if ($lockedUser->NhanVienID !== null) {
+                        $method = $hasProfile ? 'orWhere' : 'where';
+                        $query->{$method}('NhanVienID', $lockedUser->NhanVienID);
+                        $hasProfile = true;
+                    }
+
+                    if (! $hasProfile) {
+                        $query->whereRaw('1 = 0');
+                    }
+                })
+                ->where(function ($query): void {
+                    $query->where('TrangThai', '!=', OrderStatus::Cancelled->value)
+                        ->where(function ($incomplete): void {
+                            $incomplete->where('TrangThai', '!=', OrderStatus::Delivered->value)
+                                ->orWhereNotExists(function ($invoice): void {
+                                    $invoice->selectRaw('1')
+                                        ->from('HoaDon')
+                                        ->whereColumn('HoaDon.DonHangID', 'DonHang.DonHangID')
+                                        ->where('HoaDon.TrangThai', InvoiceStatus::Paid->value);
+                                });
+                        });
+                })
+                ->orderBy('MaDonHang')
+                ->addSelect([
+                    'paid_invoice_id' => DB::table('HoaDon')
+                        ->select('HoaDonID')
+                        ->whereColumn('HoaDon.DonHangID', 'DonHang.DonHangID')
+                        ->where('HoaDon.TrangThai', InvoiceStatus::Paid->value)
+                        ->limit(1),
+                ])
+                ->lockForUpdate()
+                ->get(['DonHangID', 'MaDonHang', 'TrangThai'])
+                ->map(fn (object $order): array => [
+                    'id' => (int) $order->DonHangID,
+                    'code' => (string) $order->MaDonHang,
+                    'status' => (string) $order->TrangThai,
+                    'payment_status' => $order->paid_invoice_id !== null
+                        ? InvoiceStatus::Paid->value
+                        : InvoiceStatus::Unpaid->value,
+                ])
+                ->all();
+
+            if ($blockingOrders !== []) {
+                return [
+                    'message' => 'Không thể xóa tài khoản vì còn đơn hàng chưa hoàn tất hoặc chưa thanh toán.',
+                    'orders' => $blockingOrders,
+                ];
+            }
+
             $userId = (int) $lockedUser->getKey();
-            $relatedRecords = [
-                'thông báo' => ThongBao::query()->where('TaiKhoanID', $userId)->count(),
-                'tin nhắn' => TinNhan::query()
+            $messageIds = TinNhan::query()
+                ->where(fn ($query) => $query
                     ->where('NguoiGuiID', $userId)
-                    ->orWhere('NguoiNhanID', $userId)
-                    ->count(),
-                'lịch sử thay đổi hóa đơn' => LichSuThayDoiHoaDon::query()
+                    ->orWhere('NguoiNhanID', $userId))
+                ->pluck('TinNhanID');
+
+            ThongBao::query()->where('TaiKhoanID', $userId)->delete();
+
+            DB::table('ThongBao')
+                ->whereIn('TinNhanID', $messageIds)
+                ->update(['TinNhanID' => null]);
+
+            DB::table('TinNhanAn')
+                ->where(fn ($query) => $query
                     ->where('TaiKhoanID', $userId)
-                    ->count(),
-                'nhật ký hệ thống' => NhatKyHeThong::query()
-                    ->where('TaiKhoanID', $userId)
-                    ->count(),
-            ];
-            $blockingRecords = [];
+                    ->orWhereIn('TinNhanID', $messageIds))
+                ->delete();
 
-            foreach ($relatedRecords as $label => $count) {
-                if ($count > 0) {
-                    $blockingRecords[] = "{$count} {$label}";
-                }
-            }
+            TinNhan::query()
+                ->where(fn ($query) => $query
+                    ->where('NguoiGuiID', $userId)
+                    ->orWhere('NguoiNhanID', $userId))
+                ->delete();
 
-            if ($blockingRecords !== []) {
-                return 'Không thể xóa cứng tài khoản vì còn dữ liệu liên quan: '
-                    .implode(', ', $blockingRecords)
-                    .'. Tài khoản được giữ nguyên.';
-            }
-
+            LichSuThayDoiHoaDon::query()->where('TaiKhoanID', $userId)->delete();
+            NhatKyHeThong::query()->where('TaiKhoanID', $userId)->delete();
+            DB::table('push_device_tokens')->where('TaiKhoanID', $userId)->delete();
             $lockedUser->vaiTros()->detach();
+
             $deleted = (bool) $lockedUser->delete();
 
             if ($deleted) {
-                $this->recordAccountAudit($lockedUser, 'Xóa tài khoản', $before, []);
+                $this->recordAccountAudit($lockedUser, 'Xóa tài khoản', [], []);
             }
 
-            return $deleted ? null : 'Không thể xóa tài khoản. Vui lòng thử lại.';
+            return [
+                'message' => $deleted ? null : 'Không thể xóa tài khoản. Vui lòng thử lại.',
+                'orders' => [],
+            ];
         });
     }
 

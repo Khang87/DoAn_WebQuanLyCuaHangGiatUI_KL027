@@ -5,6 +5,16 @@
 
 @push('styles')
 <style>
+    #booking-edit-form .booking-main-control {
+        height: 2.5rem;
+    }
+
+    #booking-edit-form .booking-address-suggestions {
+        max-height: 16rem;
+        overflow-y: auto;
+        z-index: 1080;
+    }
+
     #booking-edit-form .form-control:disabled,
     #booking-edit-form .form-select:disabled {
         background-color: #e9ecef !important;
@@ -23,6 +33,8 @@
     $customerName = $customer?->HoTen ?: $customerAccount?->TenDangNhap;
     $customerPhone = $customer?->SoDienThoai ?: $customerAccount?->SoDienThoai;
     $customerEmail = $customer?->Email ?: $customerAccount?->Email;
+    $intakeDocument = $booking->giaoNhanDuKiens->firstWhere('LoaiGiaoNhan', 'NHAN_DO');
+    $intakeEmployee = $intakeDocument?->nhanVien;
 @endphp
 <div class="card">
     <div class="card-body">
@@ -33,156 +45,382 @@
             @csrf @if(! $inspectionMode) @method('PUT') @endif
             <div class="row g-4">
                 <input type="hidden" name="customer_id" value="{{ $booking->KhachHangID }}">
-                <div class="col-md-4">
+                @if($inspectionMode)
+                    <div class="col-12">
+                        <div class="border rounded-3 p-3">
+                            <h6 class="mb-3">Thông tin khách hàng và tiếp nhận</h6>
+                            <div class="row g-3">
+                @endif
+                <div class="{{ $inspectionMode ? 'col-md-6' : 'col-md-4' }}">
                     <label class="form-label" for="booking-customer-name">Khách hàng</label>
-                    <input class="form-control bg-light text-muted" id="booking-customer-name" value="{{ $customerName ?: 'Không tìm thấy thông tin khách hàng' }}" disabled>
+                    <input class="form-control booking-main-control bg-light text-muted" id="booking-customer-name" value="{{ $customerName ?: 'Không tìm thấy thông tin khách hàng' }}" disabled>
                 </div>
-                <div class="col-md-4">
+                <div class="{{ $inspectionMode ? 'col-md-6' : 'col-md-4' }}">
                     <label class="form-label" for="booking-customer-phone">Số điện thoại</label>
-                    <input class="form-control bg-light text-muted" id="booking-customer-phone" value="{{ $customerPhone ?: '—' }}" disabled>
+                    <input class="form-control booking-main-control bg-light text-muted" id="booking-customer-phone" value="{{ $customerPhone ?: '—' }}" disabled>
                 </div>
-                <div class="col-md-4">
+                <div class="{{ $inspectionMode ? 'col-md-6' : 'col-md-4' }}">
                     <label class="form-label" for="booking-customer-email">Email</label>
-                    <input class="form-control bg-light text-muted" id="booking-customer-email" value="{{ $customerEmail ?: '—' }}" disabled>
+                    <input class="form-control booking-main-control bg-light text-muted" id="booking-customer-email" value="{{ $customerEmail ?: '—' }}" disabled>
                 </div>
                 <div class="col-md-6">
-                    <label class="form-label" for="booking-staff-id">
-                        Nhân viên phụ trách
-                        @if(! $responsibleEmployeeLocked)
-                            <span class="text-danger d-none" data-staff-required-indicator>*</span>
-                        @endif
+                    <label class="form-label" for="booking-staff-name">
+                        {{ $inspectionMode ? 'Nhân viên được phân công nhận và kiểm kê' : 'Nhân viên phụ trách hiện tại' }}
                     </label>
-                    @if($responsibleEmployeeLocked)
-                        <input type="hidden" name="staff_id" value="{{ $booking->NhanVienID }}">
-                    @endif
-                    <select
-                        class="form-select @error('staff_id') is-invalid @enderror"
-                        id="booking-staff-id"
-                        name="staff_id"
-                        @disabled($responsibleEmployeeLocked)
+                    <input
+                        type="text"
+                        class="form-control booking-main-control bg-light text-muted"
+                        id="booking-staff-name"
+                        value="{{ $inspectionMode
+                            ? ($intakeEmployee?->HoTen ?? 'Chưa phân công')
+                            : ($booking->nhanVien?->HoTen ?? 'Chưa phân công') }}"
+                        readonly
                     >
-                        <option value="">Chọn nhân viên phụ trách</option>
-                        @foreach($employees as $employee)
-                            <option
-                                value="{{ $employee->NhanVienID }}"
-                                @selected(($responsibleEmployeeLocked ? $booking->NhanVienID : old('staff_id', $booking->NhanVienID ?? '')) == $employee->NhanVienID)
-                            >{{ $employee->HoTen }}</option>
-                        @endforeach
-                    </select>
-                    @error('staff_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
-                    @if($responsibleEmployeeLocked)
-                        <div class="form-text">Nhân viên phụ trách đã được khóa vì Booking đã chuyển thành đơn hàng.</div>
+                    @if($inspectionMode)
+                        <div class="form-text">Người xác nhận Booking: {{ $booking->nhanVienXacNhan?->HoTen ?? '—' }}. Chỉ nhân viên được phân công hoặc người có thẩm quyền mới được chốt kiểm kê.</div>
+                    @else
+                        <div class="form-text">Thông tin này chỉ để xem; không thể đổi nhân viên phụ trách tại đây.</div>
                     @endif
                 </div>
-                <div class="col-md-6"><label class="form-label">Hình thức nhận đồ <span class="text-danger ms-1">*</span></label><select class="form-select @error('method') is-invalid @enderror" name="method" id="booking-method" required>@foreach(\App\Enums\ReceiveMethod::options() as $value => $label)<option value="{{ $value }}" @selected(old('method', $booking->HinhThucNhanDo) === $value)>{{ $label }}</option>@endforeach</select>@error('method')<div class="invalid-feedback">{{ $message }}</div>@enderror</div>
-                <div class="col-md-6"><label class="form-label">Địa chỉ nhận đồ</label><input type="text" class="form-control @error('address') is-invalid @enderror" name="address" value="{{ old('address', $booking->DiaChiNhan) }}" maxlength="255" @required(old('method', $booking->HinhThucNhanDo) === \App\Enums\ReceiveMethod::Home->value) @disabled(old('method', $booking->HinhThucNhanDo) !== \App\Enums\ReceiveMethod::Home->value)>@error('address')<div class="invalid-feedback">{{ $message }}</div>@enderror</div>
+                @if($inspectionMode)
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-12">
+                        <div class="border rounded-3 p-3">
+                            <h6 class="mb-3">Thông tin nhận và trả đồ từ Booking</h6>
+                            <div class="row g-3">
+                @endif
+                <div class="col-md-6"><label class="form-label">Hình thức nhận đồ <span class="text-danger ms-1">*</span></label><select class="form-select booking-main-control @error('method') is-invalid @enderror" name="method" id="booking-method" required @disabled($inspectionMode)>@foreach(\App\Enums\ReceiveMethod::options() as $value => $label)<option value="{{ $value }}" @selected(old('method', $booking->HinhThucNhanDo) === $value)>{{ $label }}</option>@endforeach</select>@if($inspectionMode)<input type="hidden" name="method" value="{{ $booking->HinhThucNhanDo }}">@endif @error('method')<div class="invalid-feedback">{{ $message }}</div>@enderror</div>
+                <div class="col-md-6">
+                    <label class="form-label" for="booking-pickup-address">Địa chỉ nhận đồ</label>
+                    <div class="position-relative">
+                        <input
+                            type="text"
+                            id="booking-pickup-address"
+                            class="form-control booking-main-control @error('address') is-invalid @enderror"
+                            name="address"
+                            value="{{ old('address', $booking->DiaChiNhan) }}"
+                            maxlength="255"
+                            @if($inspectionMode)
+                                data-address-autocomplete
+                                data-autocomplete-url="{{ route('bookings.address-autocomplete') }}"
+                                aria-autocomplete="list"
+                                aria-controls="booking-pickup-address-suggestions"
+                                aria-expanded="false"
+                                autocomplete="off"
+                            @endif
+                            @required(old('method', $booking->HinhThucNhanDo) === \App\Enums\ReceiveMethod::Home->value)
+                            @disabled(old('method', $booking->HinhThucNhanDo) !== \App\Enums\ReceiveMethod::Home->value)
+                            @readonly($inspectionMode)
+                        >
+                        @if($inspectionMode)
+                            <div id="booking-pickup-address-suggestions" class="list-group booking-address-suggestions position-absolute top-100 start-0 w-100 shadow d-none" role="listbox" aria-label="Gợi ý địa chỉ nhận đồ"></div>
+                            <div class="form-text" data-address-autocomplete-status role="status" aria-live="polite"></div>
+                        @endif
+                        @error('address')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                    </div>
+                </div>
                 <div class="col-md-6">
                     <label class="form-label" for="booking-return-method">Hình thức trả đồ <span class="text-danger">*</span></label>
-                    <select class="form-select @error('return_method') is-invalid @enderror" name="return_method" id="booking-return-method" required>
+                    <select class="form-select booking-main-control @error('return_method') is-invalid @enderror" name="return_method" id="booking-return-method" required @disabled($inspectionMode)>
                         <option value="">Chọn hình thức trả đồ</option>
                         @foreach(\App\Enums\ReturnMethod::options() as $value => $label)
                             <option value="{{ $value }}" @selected(old('return_method', $booking->HinhThucTraDo) === $value)>{{ $label }}</option>
                         @endforeach
                     </select>
+                    @if($inspectionMode)
+                        <input type="hidden" name="return_method" value="{{ $booking->HinhThucTraDo }}">
+                    @endif
                     @error('return_method')<div class="invalid-feedback">{{ $message }}</div>@enderror
                 </div>
                 <div class="col-md-6">
                     <label class="form-label" for="booking-return-address">Địa chỉ trả đồ</label>
-                    <input type="text" id="booking-return-address" class="form-control @error('return_address') is-invalid @enderror" name="return_address" value="{{ old('return_address', $booking->DiaChiTra) }}" maxlength="255" @required(old('return_method', $booking->HinhThucTraDo) === \App\Enums\ReturnMethod::Home->value) @disabled(old('return_method', $booking->HinhThucTraDo) !== \App\Enums\ReturnMethod::Home->value)>
-                    @error('return_address')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                    <div class="position-relative">
+                        <input
+                            type="text"
+                            id="booking-return-address"
+                            class="form-control booking-main-control @error('return_address') is-invalid @enderror"
+                            name="return_address"
+                            value="{{ old('return_address', $booking->DiaChiTra) }}"
+                            maxlength="255"
+                            @if($inspectionMode)
+                                data-address-autocomplete
+                                data-autocomplete-url="{{ route('bookings.address-autocomplete') }}"
+                                aria-autocomplete="list"
+                                aria-controls="booking-return-address-suggestions"
+                                aria-expanded="false"
+                                autocomplete="off"
+                            @endif
+                            @required(old('return_method', $booking->HinhThucTraDo) === \App\Enums\ReturnMethod::Home->value)
+                            @disabled(old('return_method', $booking->HinhThucTraDo) !== \App\Enums\ReturnMethod::Home->value)
+                            @readonly($inspectionMode)
+                        >
+                        @if($inspectionMode)
+                            <div id="booking-return-address-suggestions" class="list-group booking-address-suggestions position-absolute top-100 start-0 w-100 shadow d-none" role="listbox" aria-label="Gợi ý địa chỉ trả đồ"></div>
+                            <div class="form-text" data-address-autocomplete-status role="status" aria-live="polite"></div>
+                        @endif
+                        @error('return_address')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                    </div>
                 </div>
-                <div class="col-md-6"><label class="form-label">Ngày hẹn <span class="text-danger ms-1">*</span></label><input type="date" class="form-control @error('scheduled_date') is-invalid @enderror" name="scheduled_date" value="{{ old('scheduled_date', $booking->NgayHen?->format('Y-m-d')) }}" required>@error('scheduled_date')<div class="invalid-feedback">{{ $message }}</div>@enderror</div>
-                <div class="col-md-6"><label class="form-label">Giờ hẹn <span class="text-danger ms-1">*</span></label><input type="time" class="form-control @error('scheduled_time') is-invalid @enderror" name="scheduled_time" value="{{ old('scheduled_time', $booking->GioHen?->format('H:i')) }}" required>@error('scheduled_time')<div class="invalid-feedback">{{ $message }}</div>@enderror</div>
+                @if($inspectionMode)
+                            </div>
+                        </div>
+                    </div>
+                @endif
+                @if($inspectionMode)
+                    <div class="col-12">
+                        <div class="border rounded-3 p-3">
+                            <h6 class="mb-2">Ưu đãi từ Booking</h6>
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="form-label" for="booking-promotion">Mã giảm giá</label>
+                                    <input class="form-control booking-main-control" id="booking-promotion" value="{{ $booking->khuyenMai?->MaKhuyenMai ?: 'Không có mã giảm giá' }}" readonly>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label" for="booking-points">Điểm đã sử dụng</label>
+                                    <input class="form-control booking-main-control" id="booking-points" value="{{ number_format((int) $booking->DiemSuDung, 0, ',', '.') }} điểm ({{ number_format((float) $booking->TienGiamDoDiem, 0, ',', '.') }} VNĐ)" readonly>
+                                </div>
+                            </div>
+                            <div class="form-text mt-2">Ưu đãi chỉ được kế thừa từ Booking; không thể thêm, đổi hoặc bỏ tại màn hình kiểm tra.</div>
+                        </div>
+                    </div>
+                    <div class="col-12">
+                        <div class="small text-muted">Phí giao nhận được giữ theo thông tin đã lưu trên Booking; kiểm kê không gọi lại dịch vụ định tuyến.</div>
+                    </div>
+                @endif
+                <div class="col-md-6"><label class="form-label">Ngày hẹn <span class="text-danger ms-1">*</span></label><input type="date" class="form-control booking-main-control @error('scheduled_date') is-invalid @enderror" name="scheduled_date" value="{{ old('scheduled_date', $booking->NgayHen?->format('Y-m-d')) }}" required @readonly($inspectionMode)>@error('scheduled_date')<div class="invalid-feedback">{{ $message }}</div>@enderror</div>
+                <div class="col-md-6"><label class="form-label">Giờ hẹn <span class="text-danger ms-1">*</span></label><input type="time" class="form-control booking-main-control @error('scheduled_time') is-invalid @enderror" name="scheduled_time" value="{{ old('scheduled_time', $booking->GioHen?->format('H:i')) }}" required @readonly($inspectionMode)>@error('scheduled_time')<div class="invalid-feedback">{{ $message }}</div>@enderror</div>
+                @if(! $inspectionMode)
+                    <div class="col-md-6"><label class="form-label">Trạng thái</label><x-admin.status-select name="status" id="booking-status" :options="\App\Enums\BookingStatus::options()" :selected="old('status', $booking->TrangThai)" class="form-select booking-main-control @error('status') is-invalid @enderror" />@error('status')<div class="invalid-feedback">{{ $message }}</div>@enderror</div>
+                @endif
                 @if($errors->any())
                     <div class="col-12"><div class="alert alert-danger mb-0">@foreach($errors->all() as $message)<div>{{ $message }}</div>@endforeach</div></div>
                 @endif
-                <div class="col-12"><hr class="my-1"><div class="d-flex justify-content-between align-items-center"><div><h6 class="mb-1">{{ $inspectionMode ? 'Đồ và dịch vụ thực tế' : 'Dịch vụ dự kiến' }}</h6><small class="text-muted">Có thể thêm nhiều dòng. Đơn giá và thành tiền được tính lại từ bảng giá hiệu lực khi lưu.</small></div><button type="button" class="btn btn-outline-primary btn-sm" id="add-booking-item"><i class="bi bi-plus-lg me-1"></i>Thêm dòng</button></div></div>
+                @if(! $inspectionMode)
+                    <div class="col-12"><hr class="my-1"><div class="d-flex justify-content-between align-items-center"><div><h6 class="mb-1">Dịch vụ dự kiến</h6><small class="text-muted">Có thể thêm nhiều dòng. Đơn giá và thành tiền được tính lại từ bảng giá hiệu lực khi lưu.</small></div></div></div>
+                @endif
                 @php
-                    $bookingItems = old('items', $booking->chiTietBookings->map(fn ($item) => $item->only(['DichVuID', 'LoaiDoGiatID', 'DonViTinhID', 'SoLuong', 'KhoiLuong', 'GhiChu']))->all());
+                    $bookingItems = old('items', $booking->chiTietBookings->map(fn ($item) => $item->only(['DichVuID', 'LoaiDoGiatID', 'DonViTinhID', 'SoLuong', 'KhoiLuong', 'GhiChu', 'TinhTrangTruocKhiGiat']))->all());
                     if ($bookingItems === []) {
                         $bookingItems = [[]];
                     }
                 @endphp
-                <div class="col-12" id="booking-items">
-                    @foreach($bookingItems as $index => $item)
-                        @php
-                            $quantityValue = $item['SoLuong'] ?? '';
-                            if (is_numeric($quantityValue) && floor((float) $quantityValue) === (float) $quantityValue) {
-                                $quantityValue = (string) (int) $quantityValue;
-                            }
-                        @endphp
-                        @php
-                            $selectedService = $services->firstWhere('DichVuID', $item['DichVuID'] ?? null);
-                            $selectedCategoryId = $item['service_category_id'] ?? $selectedService?->LoaiDichVuID;
-                        @endphp
-                        <div class="booking-item border rounded p-3 mb-3">
-                            <div class="d-flex justify-content-between align-items-center mb-3"><strong>Dòng dịch vụ</strong><button type="button" class="btn btn-outline-danger btn-sm remove-booking-item">Xóa dòng</button></div>
-                            <div class="row g-3">
-                                <div class="col-md-3">
-                                    <label class="form-label">Danh mục dịch vụ</label>
-                                    <select class="form-select booking-service-category" name="items[{{ $index }}][service_category_id]">
-                                        <option value="">Chọn danh mục</option>
-                                        @foreach($serviceCategories as $category)
-                                            <option value="{{ $category->LoaiDichVuID }}" @selected((string) $selectedCategoryId === (string) $category->LoaiDichVuID)>{{ $category->TenLoaiDichVu }}</option>
-                                        @endforeach
-                                    </select>
-                                </div>
-                                <div class="col-md-3">
-                                    <label class="form-label">Dịch vụ</label>
-                                    <select class="form-select booking-service" name="items[{{ $index }}][DichVuID]">
-                                        <option value="">Chọn dịch vụ</option>
-                                        @foreach($services as $service)
-                                            <option value="{{ $service->DichVuID }}" @selected((string) ($item['DichVuID'] ?? '') === (string) $service->DichVuID)>{{ $service->TenDichVu }}</option>
-                                        @endforeach
-                                    </select>
-                                    <div class="form-text booking-service-empty d-none" aria-live="polite"></div>
-                                </div>
-                                <div class="col-md-3">
-                                    <label class="form-label">Loại đồ giặt</label>
-                                    <select class="form-select booking-garment" name="items[{{ $index }}][LoaiDoGiatID]">
-                                        <option value="">{{ ($item['DichVuID'] ?? '') ? 'Chọn loại đồ' : 'Chọn dịch vụ trước' }}</option>
-                                        @foreach($garments as $garment)
-                                            @if($pricingUnitOptions->contains(fn (array $option): bool => (string) $option['serviceId'] === (string) ($item['DichVuID'] ?? '') && (string) $option['garmentId'] === (string) $garment->LoaiDoGiatID))
-                                                <option value="{{ $garment->LoaiDoGiatID }}" @selected((string) ($item['LoaiDoGiatID'] ?? '') === (string) $garment->LoaiDoGiatID)>{{ $garment->TenLoaiDoGiat }}</option>
-                                            @endif
-                                        @endforeach
-                                    </select>
-                                </div>
-                                <div class="col-md-3"><label class="form-label">Đơn vị tính</label><select class="form-select booking-unit" name="items[{{ $index }}][DonViTinhID]"><option value="">Chọn đơn vị</option>@foreach($units as $unit)<option value="{{ $unit->DonViTinhID }}" data-unit="{{ $unit->KyHieu ?: $unit->TenDonViTinh }}" @selected((string) ($item['DonViTinhID'] ?? '') === (string) $unit->DonViTinhID)>{{ $unit->TenDonViTinh }}{{ $unit->KyHieu ? ' ('.$unit->KyHieu.')' : '' }}</option>@endforeach</select></div>
-                                <div class="col-md-6"><label class="form-label">Số lượng</label><input type="number" step="1" min="1" class="form-control booking-quantity" name="items[{{ $index }}][SoLuong]" value="{{ $quantityValue }}"></div>
-                                <div class="col-md-6"><label class="form-label">Khối lượng (kg)</label><input type="number" step="0.01" min="0.01" class="form-control booking-weight" name="items[{{ $index }}][KhoiLuong]" value="{{ $item['KhoiLuong'] ?? '' }}"></div>
-                                @if($inspectionMode)
-                                    <div class="col-12"><label class="form-label">Tình trạng trước khi giặt <span class="text-danger">*</span></label><textarea class="form-control" name="items[{{ $index }}][TinhTrangTruocKhiGiat]" rows="2" maxlength="320" placeholder="VD: ố màu, rách, bung chỉ..." required>{{ $item['TinhTrangTruocKhiGiat'] ?? '' }}</textarea></div>
-                                @endif
-                                <div class="col-12"><label class="form-label">Ghi chú dòng</label><input type="text" class="form-control" name="items[{{ $index }}][GhiChu]" value="{{ $item['GhiChu'] ?? '' }}" maxlength="{{ $inspectionMode ? 160 : 500 }}"></div>
-                            </div>
-                        </div>
-                    @endforeach
-                </div>
-                @if(! $inspectionMode)
-                <div class="col-md-6"><label class="form-label">Trạng thái</label><x-admin.status-select name="status" id="booking-status" :options="\App\Enums\BookingStatus::options()" :selected="old('status', $booking->TrangThai)" class="form-select @error('status') is-invalid @enderror" />@error('status')<div class="invalid-feedback">{{ $message }}</div>@enderror</div>
-                @else
+                @if($inspectionMode)
                     <div class="col-12">
-                        <input type="hidden" name="use_points" value="0">
-                        <div class="form-check form-switch">
-                            <input class="form-check-input" type="checkbox" role="switch" id="booking-use-points" name="use_points" value="1" @checked((bool) old('use_points', (int) $booking->DiemSuDung > 0))>
-                            <label class="form-check-label" for="booking-use-points">Dùng điểm tích lũy (tối đa theo tổng tiền thực tế)</label>
+                        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+                            <h6 class="mb-0">Mặt hàng từ Booking · kiểm tra và chỉnh nếu cần</h6>
+                            <button type="button" class="btn btn-sm btn-outline-primary" id="add-booking-item">
+                                <i class="bi bi-plus-lg me-1"></i>Thêm mặt hàng
+                            </button>
                         </div>
-                        <div class="form-text">Khách đang có {{ number_format($customer?->points() ?? 0) }} điểm. Điểm chỉ được trừ khi tạo đơn thành công.</div>
-                        <div class="alert alert-info mt-3 mb-0">Kiểm tra trực tiếp loại đồ, dịch vụ, số lượng/kg và tình trạng trước khi giặt. Khi xác nhận, đơn hàng được tạo ở trạng thái Đã tiếp nhận.</div>
+                        <div class="table-responsive">
+                            <table class="table table-bordered align-middle mb-2" id="booking-items-table">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th scope="col">STT</th>
+                                        <th scope="col">Danh mục dịch vụ</th>
+                                        <th scope="col">Dịch vụ</th>
+                                        <th scope="col">Loại đồ giặt</th>
+                                        <th scope="col">ĐVT</th>
+                                        <th scope="col">Số lượng</th>
+                                        <th scope="col">Khối lượng (kg)</th>
+                                        <th scope="col">Đơn giá</th>
+                                        <th scope="col">Thành tiền</th>
+                                        <th scope="col">Tình trạng trước khi giặt</th>
+                                        <th scope="col"></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="booking-items">
+                                    @foreach($bookingItems as $index => $item)
+                                        @php
+                                            $selectedService = $services->firstWhere('DichVuID', $item['DichVuID'] ?? null);
+                                            $selectedCategoryId = $item['service_category_id'] ?? $selectedService?->LoaiDichVuID;
+                                            $quantityValue = $item['SoLuong'] ?? '';
+                                            if (is_numeric($quantityValue) && floor((float) $quantityValue) === (float) $quantityValue) {
+                                                $quantityValue = (string) (int) $quantityValue;
+                                            }
+                                        @endphp
+                                        <tr class="booking-item">
+                                            <td data-row-number>{{ $loop->iteration }}</td>
+                                            <td>
+                                                <select class="form-select booking-service-category" name="items[{{ $index }}][service_category_id]" aria-label="Danh mục dịch vụ">
+                                                    <option value="">Danh mục</option>
+                                                    @foreach($serviceCategories as $category)
+                                                        <option value="{{ $category->LoaiDichVuID }}" @selected((string) $selectedCategoryId === (string) $category->LoaiDichVuID)>{{ $category->TenLoaiDichVu }}</option>
+                                                    @endforeach
+                                                </select>
+                                            </td>
+                                            <td>
+                                                <select class="form-select booking-service item-service" name="items[{{ $index }}][DichVuID]" aria-label="Dịch vụ">
+                                                    <option value="">Chọn dịch vụ</option>
+                                                    @foreach($services as $service)
+                                                        <option value="{{ $service->DichVuID }}" @selected((string) ($item['DichVuID'] ?? '') === (string) $service->DichVuID)>{{ $service->TenDichVu }}</option>
+                                                    @endforeach
+                                                </select>
+                                                <div class="form-text booking-service-empty d-none" aria-live="polite"></div>
+                                            </td>
+                                            <td>
+                                                <select class="form-select booking-garment item-garment" name="items[{{ $index }}][LoaiDoGiatID]" aria-label="Loại đồ giặt">
+                                                    <option value="">Chọn loại đồ</option>
+                                                    @foreach($garments as $garment)
+                                                        @if($pricingUnitOptions->contains(fn (array $option): bool => (string) $option['serviceId'] === (string) ($item['DichVuID'] ?? '') && (string) $option['garmentId'] === (string) $garment->LoaiDoGiatID))
+                                                            <option value="{{ $garment->LoaiDoGiatID }}" @selected((string) ($item['LoaiDoGiatID'] ?? '') === (string) $garment->LoaiDoGiatID)>{{ $garment->TenLoaiDoGiat }}</option>
+                                                        @endif
+                                                    @endforeach
+                                                </select>
+                                            </td>
+                                            <td>
+                                                <select class="form-select booking-unit item-unit-value" name="items[{{ $index }}][DonViTinhID]" aria-label="Đơn vị tính">
+                                                    <option value="">Chọn đơn vị</option>
+                                                    @foreach($units as $unit)
+                                                        <option value="{{ $unit->DonViTinhID }}" data-unit="{{ $unit->KyHieu ?: $unit->TenDonViTinh }}" @selected((string) ($item['DonViTinhID'] ?? '') === (string) $unit->DonViTinhID)>{{ $unit->KyHieu ?: $unit->TenDonViTinh }}</option>
+                                                    @endforeach
+                                                </select>
+                                                <div class="form-text text-danger booking-price-warning" data-price-warning role="status"></div>
+                                            </td>
+                                            <td><input type="number" step="1" min="1" class="form-control booking-quantity item-quantity" name="items[{{ $index }}][SoLuong]" value="{{ $quantityValue }}" aria-label="Số lượng"></td>
+                                            <td><input type="number" step="0.01" min="0.01" class="form-control booking-weight item-weight" name="items[{{ $index }}][KhoiLuong]" value="{{ $item['KhoiLuong'] ?? '' }}" aria-label="Khối lượng (kg)"></td>
+                                            <td><input type="text" class="form-control booking-item-price item-price text-end" value="—" readonly aria-label="Đơn giá"></td>
+                                            <td><input type="text" class="form-control booking-item-subtotal item-subtotal text-end" value="—" readonly aria-label="Thành tiền"></td>
+                                            <td><textarea class="form-control" name="items[{{ $index }}][TinhTrangTruocKhiGiat]" rows="2" maxlength="320" placeholder="VD: ố màu, rách, bung chỉ..." required>{{ $item['TinhTrangTruocKhiGiat'] ?? '' }}</textarea></td>
+                                            <td><button type="button" class="btn btn-sm btn-outline-danger remove-booking-item" aria-label="Xóa mặt hàng"><i class="bi bi-trash"></i></button></td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="form-text">Đơn giá và thành tiền là ước tính theo bảng giá hiệu lực hiện tại; máy chủ sẽ kiểm tra lại khi xác nhận.</div>
+                    </div>
+                @else
+                    <div class="col-12" id="booking-items">
+                        @foreach($bookingItems as $index => $item)
+                            @php
+                                $quantityValue = $item['SoLuong'] ?? '';
+                                if (is_numeric($quantityValue) && floor((float) $quantityValue) === (float) $quantityValue) {
+                                    $quantityValue = (string) (int) $quantityValue;
+                                }
+                            @endphp
+                            @php
+                                $selectedService = $services->firstWhere('DichVuID', $item['DichVuID'] ?? null);
+                                $selectedCategoryId = $item['service_category_id'] ?? $selectedService?->LoaiDichVuID;
+                            @endphp
+                            <div class="booking-item border rounded p-3 mb-3">
+                                <div class="d-flex justify-content-between align-items-center mb-3"><strong>Dòng dịch vụ</strong><button type="button" class="btn btn-outline-danger btn-sm remove-booking-item">Xóa dòng</button></div>
+                                <div class="row g-3">
+                                    <div class="col-md-3">
+                                        <label class="form-label">Danh mục dịch vụ</label>
+                                        <select class="form-select booking-service-category" name="items[{{ $index }}][service_category_id]">
+                                            <option value="">Chọn danh mục</option>
+                                            @foreach($serviceCategories as $category)
+                                                <option value="{{ $category->LoaiDichVuID }}" @selected((string) $selectedCategoryId === (string) $category->LoaiDichVuID)>{{ $category->TenLoaiDichVu }}</option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="form-label">Dịch vụ</label>
+                                        <select class="form-select booking-service" name="items[{{ $index }}][DichVuID]">
+                                            <option value="">Chọn dịch vụ</option>
+                                            @foreach($services as $service)
+                                                <option value="{{ $service->DichVuID }}" @selected((string) ($item['DichVuID'] ?? '') === (string) $service->DichVuID)>{{ $service->TenDichVu }}</option>
+                                            @endforeach
+                                        </select>
+                                        <div class="form-text booking-service-empty d-none" aria-live="polite"></div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="form-label">Loại đồ giặt</label>
+                                        <select class="form-select booking-garment" name="items[{{ $index }}][LoaiDoGiatID]">
+                                            <option value="">{{ ($item['DichVuID'] ?? '') ? 'Chọn loại đồ' : 'Chọn dịch vụ trước' }}</option>
+                                            @foreach($garments as $garment)
+                                                @if($pricingUnitOptions->contains(fn (array $option): bool => (string) $option['serviceId'] === (string) ($item['DichVuID'] ?? '') && (string) $option['garmentId'] === (string) $garment->LoaiDoGiatID))
+                                                    <option value="{{ $garment->LoaiDoGiatID }}" @selected((string) ($item['LoaiDoGiatID'] ?? '') === (string) $garment->LoaiDoGiatID)>{{ $garment->TenLoaiDoGiat }}</option>
+                                                @endif
+                                            @endforeach
+                                        </select>
+                                    </div>
+                                    <div class="col-md-3"><label class="form-label">Đơn vị tính</label><select class="form-select booking-unit" name="items[{{ $index }}][DonViTinhID]"><option value="">Chọn đơn vị</option>@foreach($units as $unit)<option value="{{ $unit->DonViTinhID }}" data-unit="{{ $unit->KyHieu ?: $unit->TenDonViTinh }}" @selected((string) ($item['DonViTinhID'] ?? '') === (string) $unit->DonViTinhID)>{{ $unit->TenDonViTinh }}{{ $unit->KyHieu ? ' ('.$unit->KyHieu.')' : '' }}</option>@endforeach</select></div>
+                                    <div class="col-md-6"><label class="form-label">Số lượng</label><input type="number" step="1" min="1" class="form-control booking-quantity" name="items[{{ $index }}][SoLuong]" value="{{ $quantityValue }}"></div>
+                                    <div class="col-md-6"><label class="form-label">Khối lượng (kg)</label><input type="number" step="0.01" min="0.01" class="form-control booking-weight" name="items[{{ $index }}][KhoiLuong]" value="{{ $item['KhoiLuong'] ?? '' }}"></div>
+                                    <div class="col-12"><label class="form-label">Ghi chú dòng</label><input type="text" class="form-control" name="items[{{ $index }}][GhiChu]" value="{{ $item['GhiChu'] ?? '' }}" maxlength="500"></div>
+                                </div>
+                            </div>
+                        @endforeach
+                        <button type="button" class="btn btn-outline-primary btn-sm" id="add-booking-item"><i class="bi bi-plus-lg me-1"></i>Thêm dòng dịch vụ</button>
                     </div>
                 @endif
-                <div class="col-12"><label class="form-label">Ghi chú</label><textarea class="form-control @error('notes') is-invalid @enderror" name="notes" rows="3" maxlength="500">{{ old('notes', $booking->GhiChu) }}</textarea>@error('notes')<div class="invalid-feedback">{{ $message }}</div>@enderror</div>
+                @if($inspectionMode)
+                    <div class="col-12">
+                        <div class="alert alert-info mb-0">Thông tin lịch hẹn ban đầu được giữ nguyên. Đối chiếu và cập nhật số lượng, khối lượng, loại đồ, dịch vụ và tình trạng theo thực tế; giá được tính lại bằng bảng giá hiện hành. Sau khi báo tổng tiền cho khách, chỉ tiếp tục khi khách đồng ý.</div>
+                    </div>
+                @endif
+                <div class="col-12">
+                    <label class="form-label">{{ $inspectionMode ? 'Ghi chú từ khách hàng' : 'Ghi chú' }}</label>
+                    <textarea class="form-control @error('notes') is-invalid @enderror" name="notes" rows="3" maxlength="500" @readonly($inspectionMode)>{{ old('notes', $booking->GhiChu) }}</textarea>
+                    @error('notes')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                </div>
             </div>
             @if($inspectionMode)
-                <div class="alert alert-info mt-3" data-booking-estimate="{{ route('bookings.estimate', $booking) }}">
-                    <strong>Tổng tiền ước tính: <span data-estimate-total>Đang tính…</span></strong>
-                    <div data-estimate-details class="small"></div>
-                    <div data-estimate-warning class="small text-danger" role="status"></div>
-                    <small>Ước tính từ bảng giá hiện tại. Giá, khuyến mãi và điểm được kiểm tra lại khi tạo đơn.</small>
+                <div
+                    class="card border-0 bg-light mt-3"
+                    data-booking-estimate="{{ route('bookings.estimate', $booking) }}"
+                    data-pricing-options="{{ $pricingUnitOptions->toJson(JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) }}"
+                    data-service-options="{{ $serviceOptions->toJson(JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) }}"
+                    data-garment-options="{{ $garmentOptions->toJson(JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) }}"
+                    data-minimum-weight="{{ config('giatui.khoi_luong_toi_thieu', 3.0) }}"
+                >
+                    <div class="card-body">
+                        <h6 class="mb-0">Tổng kết đơn hàng</h6>
+                        <div class="table-responsive mt-3" data-estimate-items></div>
+                        <div data-estimate-warning class="small text-danger mt-2" role="status" aria-live="polite"></div>
+                        <div class="mt-3" data-estimate-details></div>
+                        <div class="form-text mt-2">Giá hiển thị là ước tính theo bảng giá hiện hành; giá, khuyến mãi, điểm và phí được máy chủ kiểm tra lại khi xác nhận.</div>
+                        <div class="border-top mt-3 pt-3 d-flex flex-wrap justify-content-between align-items-center gap-2">
+                            <span class="fw-bold">Tổng thanh toán</span>
+                            <span class="fw-bold fs-5 text-primary" data-estimate-total>Đang tính…</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12">
+                    <div class="form-check border rounded-3 p-3">
+                        <input class="form-check-input ms-0 me-2" type="checkbox" id="customer_accepted" name="customer_accepted" value="1" required @checked(old('customer_accepted'))>
+                        <label class="form-check-label fw-semibold" for="customer_accepted">
+                            Tôi xác nhận đã thông báo kết quả kiểm kê và tổng tiền thực tế cho khách hàng, và khách hàng đã đồng ý.
+                        </label>
+                        <div class="form-text">Đây là ghi nhận của nhân viên, không phải chữ ký hay bằng chứng xác nhận độc lập từ khách.</div>
+                        @error('customer_accepted')<div class="text-danger small mt-2">{{ $message }}</div>@enderror
+                    </div>
                 </div>
             @endif
-            <div class="d-flex justify-content-end gap-2 mt-4"><button type="reset" class="btn btn-outline-secondary">Làm mới</button><button type="submit" class="btn btn-primary">{{ $inspectionMode ? 'Xác nhận & tạo đơn' : 'Cập nhật' }}</button></div>
+            <div class="d-flex flex-wrap justify-content-between gap-2 mt-4">
+            @if($inspectionMode)
+                <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#booking-refusal-modal">
+                    Khách từ chối — Hủy Booking
+                </button>
+            @endif
+            <button type="submit" class="btn btn-success ms-auto">{{ $inspectionMode ? 'Xác nhận nhận đồ và tạo đơn' : 'Cập nhật' }}</button>
+            </div>
+            @if($inspectionMode)
+            <div class="modal fade" id="booking-refusal-modal" tabindex="-1" aria-labelledby="booking-refusal-title" aria-hidden="true">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="booking-refusal-title">Xác nhận khách từ chối báo giá</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button>
+                        </div>
+                        <div class="modal-body">
+                            <p>Booking sẽ bị hủy, không tạo đơn hàng, không ghi nhận đã nhận đồ và không thu phí lấy đồ. Dữ liệu kiểm kê hiện tại và lý do từ chối sẽ được lưu để tra cứu.</p>
+                            <label class="form-label" for="rejection_reason">Lý do khách từ chối <span class="text-danger">*</span></label>
+                            <textarea class="form-control @error('rejection_reason') is-invalid @enderror" id="rejection_reason" name="rejection_reason" rows="3" maxlength="500" disabled>{{ old('rejection_reason') }}</textarea>
+                            @error('rejection_reason')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Quay lại kiểm kê</button>
+                            <button type="submit" class="btn btn-danger" formaction="{{ route('bookings.refuse-quote', $booking) }}" data-refusal-submit>Hủy Booking và lưu lý do</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            @endif
         </form>
     </div>
 </div>
@@ -190,19 +428,53 @@
     document.addEventListener('DOMContentLoaded', function () {
         const method = document.getElementById('booking-method');
         const inspectionMode = @json($inspectionMode);
+        const form = document.getElementById('booking-edit-form');
+        const customerAcceptance = document.getElementById('customer_accepted');
+        const refusalModal = document.getElementById('booking-refusal-modal');
+        const refusalReason = document.getElementById('rejection_reason');
         const returnMethod = document.getElementById('booking-return-method');
         const returnAddress = document.getElementById('booking-return-address');
         const address = document.querySelector('[name="address"]');
-        const status = document.getElementById('booking-status');
-        const staff = document.getElementById('booking-staff-id');
-        const staffRequiredIndicator = document.querySelector('[data-staff-required-indicator]');
-        const form = document.getElementById('booking-edit-form');
         const itemsContainer = document.getElementById('booking-items');
         const addItemButton = document.getElementById('add-booking-item');
         const pricingUnitOptions = @json($pricingUnitOptions);
         const services = @json($serviceOptions);
         const garments = @json($garmentOptions);
         let nextItemIndex = {{ count($bookingItems) }};
+
+        if (inspectionMode && refusalModal && refusalReason) {
+            refusalModal.addEventListener('show.bs.modal', function () {
+                refusalReason.disabled = false;
+                refusalReason.required = true;
+                customerAcceptance.required = false;
+            });
+            refusalModal.addEventListener('hidden.bs.modal', function () {
+                refusalReason.disabled = true;
+                refusalReason.required = false;
+                customerAcceptance.required = true;
+            });
+            form.addEventListener('input', function (event) {
+                if (event.target.name?.startsWith('items[')) {
+                    customerAcceptance.checked = false;
+                }
+            });
+            form.addEventListener('change', function (event) {
+                if (event.target.name?.startsWith('items[')) {
+                    customerAcceptance.checked = false;
+                }
+            });
+            form.querySelector('[data-refusal-submit]').addEventListener('click', function () {
+                refusalReason.disabled = false;
+                refusalReason.required = true;
+                customerAcceptance.required = false;
+            });
+            @if($errors->has('rejection_reason'))
+                bootstrap.Modal.getOrCreateInstance(refusalModal).show();
+                refusalReason.disabled = false;
+                refusalReason.required = true;
+                customerAcceptance.required = false;
+            @endif
+        }
 
         function updateAddressRequirement() {
             address.required = method.value === @json(\App\Enums\ReceiveMethod::Home->value);
@@ -212,16 +484,6 @@
                 field.classList.toggle('bg-light', field.disabled);
                 field.classList.toggle('text-muted', field.disabled);
             }
-        }
-
-        function updateStaffRequirement() {
-            if (staff.disabled) {
-                return;
-            }
-
-            const required = inspectionMode || status?.value === @json(\App\Enums\BookingStatus::Confirmed->value);
-            staff.required = required;
-            staffRequiredIndicator.classList.toggle('d-none', !required);
         }
 
         function syncServiceOptions(item, preserveSelection = true) {
@@ -331,19 +593,6 @@
 
         method.addEventListener('change', updateAddressRequirement);
         returnMethod.addEventListener('change', updateAddressRequirement);
-        status?.addEventListener('change', updateStaffRequirement);
-        form.addEventListener('reset', function () {
-            setTimeout(function () {
-                updateAddressRequirement();
-                updateStaffRequirement();
-                itemsContainer.querySelectorAll('.booking-item').forEach(function (item) {
-                    syncServiceOptions(item);
-                    syncGarmentOptions(item);
-                    syncUnitOptions(item);
-                    updateQuantityFields(item);
-                });
-            });
-        });
         itemsContainer.addEventListener('change', function (event) {
             const item = event.target.closest('.booking-item');
             if (event.target.matches('.booking-service-category')) {
@@ -398,9 +647,7 @@
             document.querySelector('[data-booking-row-status]').textContent = 'Đã thêm dòng mới. Hãy chọn dịch vụ và loại đồ.';
             template.querySelector('.booking-service-category').focus();
         });
-        form.addEventListener('reset', () => setTimeout(updateAddressRequirement, 0));
         updateAddressRequirement();
-        updateStaffRequirement();
         itemsContainer.querySelectorAll('.booking-item').forEach(function (item) {
             const category = item.querySelector('.booking-service-category');
             const selectedService = services.find(option =>
@@ -419,5 +666,8 @@
 @endsection
 
 @push('scripts')
-    @if($inspectionMode) @vite('resources/js/booking-estimate.js') @endif
+    @if($inspectionMode)
+        <script src="{{ asset('assets/js/order-item-pricing.js') }}"></script>
+        @vite('resources/js/booking-estimate.js')
+    @endif
 @endpush

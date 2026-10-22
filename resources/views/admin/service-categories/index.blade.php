@@ -15,11 +15,11 @@
 </div>
 <form action="{{ url()->current() }}" method="GET" class="row g-3 align-items-center mb-4">
     <div class="col-12 col-md-auto flex-grow-1">
-        <div class="input-group input-group-sm shadow-sm rounded-3 overflow-hidden">
+        <div class="input-group input-group-sm shadow-sm rounded-3 overflow-hidden filter-search">
             <span class="input-group-text bg-white border-end-0 ps-3">
                 <i class="fas fa-search text-muted"></i>
             </span>
-            <input type="text" name="search" class="form-control form-control-sm border-start-0 ps-2" placeholder="Tìm theo ID, tên danh mục..." value="{{ request('search') }}">
+            <input type="text" name="search" class="form-control form-control-sm border-start-0 ps-2" placeholder="Tìm theo tên danh mục..." value="{{ request('search') }}">
         </div>
     </div>
     <div class="col-12 col-sm-6 col-md-auto">
@@ -47,35 +47,33 @@
 <div class="card">
     <div class="card-body p-0">
         <div class="table-responsive">
-            <table class="table-custom mb-0">
+            <table class="table-custom category-table mb-0">
                 <thead>
                     <tr>
                         <th scope="col" class="fw-bold text-dark">STT</th>
-                        <th class="fw-bold text-dark">Mã danh mục</th>
                         <th class="fw-bold text-dark">Tên danh mục</th>
                         <th class="fw-bold text-dark">Mô tả</th>
                         <th class="fw-bold text-dark">Trạng thái</th>
-                        <th class="fw-bold text-dark">Thao tác</th>
+                        <th class="fw-bold text-dark category-actions-column">Thao tác</th>
                     </tr>
                 </thead>
                 <tbody>
                     @forelse($categories as $category)
                     @php $stt = $categories->firstItem() + $loop->index; @endphp
-                    <tr data-id="{{ $category->LoaiDichVuID }}">
+                    <tr>
                         <td>{{ $stt }}</td>
-                        <td>{{ 'DV' . str_pad($category->LoaiDichVuID, 4, '0', STR_PAD_LEFT) }}</td>
                         <td><strong>{{ $category->TenLoaiDichVu ?: '-' }}</strong></td>
                         <td>{{ \Illuminate\Support\Str::limit($category->MoTa, 50) ?: '-' }}</td>
                         <td>
                             <x-admin.status-badge :status="$category->TrangThai" :enum="\App\Enums\RecordStatus::class" />
                         </td>
-                        <td class="text-center">
-                            <div class="d-flex gap-2 justify-content-center">
+                        <td class="category-actions-column">
+                            <div class="d-flex align-items-center gap-2">
                                 @can('service_categories.view')
-                                    <a href="{{ route('service-categories.show', $category) }}" class="btn btn-order-action view" title="Xem"><i class="bi bi-eye"></i></a>
+                                    <a href="{{ route('service-categories.show', $category) }}" class="btn btn-order-action view" title="Xem" aria-label="Xem"><i class="bi bi-eye"></i></a>
                                 @endcan
                                 @can('service_categories.edit')
-                                    <a href="{{ route('service-categories.edit', $category) }}" class="btn btn-order-action edit" title="Sửa"><i class="bi bi-pencil"></i></a>
+                                    <a href="{{ route('service-categories.edit', $category) }}" class="btn btn-order-action edit" title="Sửa" aria-label="Sửa"><i class="bi bi-pencil"></i></a>
                                 @endcan
                                 @can('service_categories.delete')
                                     <x-admin.detail.confirm-form
@@ -94,7 +92,7 @@
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="6" class="text-center text-muted py-4">Chưa có dữ liệu nào</td>
+                        <td colspan="5" class="text-center text-muted py-4">Chưa có dữ liệu nào</td>
                     </tr>
                     @endempty
                 </tbody>
@@ -103,30 +101,5 @@
     </div>
 </div>
 
-@if($categories->hasPages())
-<nav class="mt-4">
-    <div class="d-flex justify-content-between align-items-center">
-        <div class="text-muted small">Hiển thị {{ $categories->firstItem() }} - {{ $categories->lastItem() }} của {{ $categories->total() }} danh mục</div>
-        <ul class="pagination mb-0">
-            @if ($categories->onFirstPage())
-                <li class="page-item disabled"><span class="page-link"><i class="bi bi-chevron-left"></i></span></li>
-            @else
-                <li class="page-item"><a class="page-link" href="{{ $categories->appends(request()->query())->url($categories->currentPage() - 1) }}"><i class="bi bi-chevron-left"></i></a></li>
-            @endif
-            @foreach ($categories->getUrlRange(max(1, $categories->currentPage() - 2), min($categories->lastPage(), $categories->currentPage() + 2)) as $page => $url)
-                @if ($page == $categories->currentPage())
-                    <li class="page-item active"><span class="page-link">{{ $page }}</span></li>
-                @else
-                    <li class="page-item"><a class="page-link" href="{{ $categories->appends(request()->query())->url($page) }}">{{ $page }}</a></li>
-                @endif
-            @endforeach
-            @if ($categories->onLastPage())
-                <li class="page-item disabled"><span class="page-link"><i class="bi bi-chevron-right"></i></span></li>
-            @else
-                <li class="page-item"><a class="page-link" href="{{ $categories->appends(request()->query())->url($categories->currentPage() + 1) }}"><i class="bi bi-chevron-right"></i></a></li>
-            @endif
-        </ul>
-    </div>
-</nav>
-@endif
+<x-admin.pagination :paginator="$categories" label="danh mục" />
 @endsection

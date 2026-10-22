@@ -9,13 +9,10 @@
     :subtitle="$promotion->TenKhuyenMai"
 >
     <x-slot:badge>
-        <span class="badge {{ $promotion->status_badge_class }} px-3 py-2 rounded-pill">
-            {{ $promotion->status_label }}
-        </span>
-        <span class="badge {{ $promotion->isValid() ? 'bg-success-subtle text-success-emphasis border border-success' : 'bg-secondary-subtle text-secondary-emphasis border border-secondary' }} px-3 py-2 rounded-pill">
-            <i class="bi {{ $promotion->isValid() ? 'bi-check-circle' : 'bi-x-circle' }} me-1"></i>
-            {{ $promotion->isValid() ? 'Đang áp dụng' : 'Không áp dụng' }}
-        </span>
+        <x-admin.status-badge
+            :status="$promotion->TrangThai"
+            :enum="\App\Enums\RecordStatus::class"
+        />
     </x-slot:badge>
 </x-admin.detail.page-header>
 
@@ -46,29 +43,20 @@
                     @if($promotion->MucGiamToiDa !== null)
                         <x-admin.detail.money :value="$promotion->MucGiamToiDa" />
                     @else
-                        <span class="detail-empty-value">Không giới hạn</span>
+                        <span class="text-dark">Không giới hạn</span>
                     @endif
                 </x-admin.detail.info-item>
                 <x-admin.detail.info-item label="Số lượt sử dụng" :value="$promotion->usageLabel()" />
                 <x-admin.detail.info-item label="Ngày bắt đầu" :value="$promotion->NgayBatDau?->format('d/m/Y')" />
                 <x-admin.detail.info-item label="Ngày kết thúc" :value="$promotion->NgayKetThuc?->format('d/m/Y')" />
                 <x-admin.detail.info-item label="Trạng thái">
-                    <span class="badge {{ $promotion->status_badge_class }} px-3 py-2 rounded-pill">
-                        {{ $promotion->status_label }}
-                    </span>
+                    <x-admin.status-badge
+                        :status="$promotion->TrangThai"
+                        :enum="\App\Enums\RecordStatus::class"
+                    />
                 </x-admin.detail.info-item>
             </x-admin.detail.info-grid>
 
-            <div class="mt-4">
-                <div class="detail-field__label mb-2">Điều kiện áp dụng</div>
-                @if($promotion->DieuKienApDung)
-                    <div class="detail-text">
-                        {{ $promotion->isFirstOrderOnly() ? 'Chỉ áp dụng cho đơn hàng đầu tiên' : $promotion->DieuKienApDung }}
-                    </div>
-                @else
-                    <span class="detail-empty-value">Không có điều kiện bổ sung</span>
-                @endif
-            </div>
         </x-admin.detail.panel>
 
         <x-admin.detail.panel title="Đơn hàng áp dụng khuyến mãi" icon="bi-receipt" :iconClass="'bg-info-subtle text-info'" flush>

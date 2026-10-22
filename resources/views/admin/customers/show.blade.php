@@ -6,10 +6,13 @@
 @section('content')
 <x-admin.detail.page-header
     title="Khách hàng {{ $customer->HoTen }}"
-    :subtitle="'ID ' . $customer->KhachHangID"
+    :subtitle="$customer->Email ?: ($customer->SoDienThoai ?: 'Thông tin khách hàng')"
 >
     <x-slot:badge>
-        <span class="badge bg-secondary-subtle text-secondary-emphasis border border-secondary">{{ $customer->TrangThai }}</span>
+        <x-admin.status-badge
+            :status="$customer->TrangThai"
+            :enum="\App\Enums\RecordStatus::class"
+        />
     </x-slot:badge>
 </x-admin.detail.page-header>
 
@@ -23,10 +26,9 @@
                 <h4 class="mb-1 text-dark fw-bold">{{ $customer->HoTen }}</h4>
             </div>
             <x-admin.detail.info-grid :columns="2">
-                <x-admin.detail.info-item label="ID khách hàng" :value="$customer->KhachHangID" />
                 <x-admin.detail.info-item label="Họ và tên" :value="$customer->HoTen" />
                 <x-admin.detail.info-item label="Email" :value="$customer->Email ?: '—'" />
-                <x-admin.detail.info-item label="Số điện thoại" :value="$customer->SoDienThoai" />
+                <x-admin.detail.info-item label="Số điện thoại" :value="$customer->SoDienThoai ?: '—'" />
                 <x-admin.detail.info-item label="Địa chỉ" :value="$customer->DiaChi ?: '—'" />
                 <x-admin.detail.info-item label="Ngày đăng ký" :value="$customer->NgayTao?->format('d/m/Y H:i')" />
                 <x-admin.detail.info-item label="Trạng thái" :value="$customer->TrangThai" />
@@ -48,7 +50,7 @@
                                 <th>Mã đơn</th>
                                 <th>Dịch vụ</th>
                                 <th class="text-end">Tổng tiền</th>
-                                <th>Trạng thái</th>
+                                <th class="text-center">Trạng thái</th>
                                 <th class="text-end">Ngày tạo</th>
                             </tr>
                         </thead>
@@ -60,8 +62,10 @@
                                     </td>
                                     <td>{{ $order->chiTietDonHangs->map(fn ($item) => $item->dichVu?->TenDichVu)->filter()->unique()->join(', ') ?: '—' }}</td>
                                     <td class="text-end"><x-admin.detail.money :value="$order->ThanhTien" /></td>
-                                    <td>
-                                        <x-admin.status-badge :status="$order->TrangThai" :enum="\App\Enums\OrderStatus::class" size="px-2 py-1" />
+                                    <td class="text-center">
+                                        <div class="order-status-badges d-inline-flex align-items-center justify-content-center flex-nowrap gap-1 text-nowrap w-100">
+                                            <x-admin.order-status-badges :order="$order" :is-paid="$order->isPaid()" :is-receiving="false" compact />
+                                        </div>
                                     </td>
                                     <td class="text-end">{{ $order->NgayTao?->format('d/m/Y') ?: '-' }}</td>
                                 </tr>

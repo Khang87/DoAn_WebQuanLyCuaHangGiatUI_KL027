@@ -4,7 +4,7 @@ namespace App\Observers;
 
 use App\Models\HoaDon;
 use App\Models\LichSuThayDoiHoaDon;
-use LogicException;
+use Illuminate\Support\Facades\Log;
 
 class HoaDonObserver
 {
@@ -29,7 +29,15 @@ class HoaDonObserver
 
         $accountId = auth()->id();
         if ($accountId === null) {
-            throw new LogicException('Cần có tài khoản đăng nhập để ghi lịch sử thay đổi hóa đơn.');
+            // Background updates (for example, a confirmed SePay webhook) have
+            // no logged-in user. The audit table requires TaiKhoanID, so record
+            // the system change in application logs instead of aborting payment.
+            Log::info('Invoice changed without an authenticated account; user audit row skipped.', [
+                'invoice_id' => $hoaDon->HoaDonID,
+                'fields' => array_values($changedFields),
+            ]);
+
+            return;
         }
 
         foreach ($changedFields as $column => $label) {

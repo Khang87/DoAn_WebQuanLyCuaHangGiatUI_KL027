@@ -13,6 +13,7 @@ use App\Models\KhachHang;
 use App\Models\User;
 use App\Services\BookingService;
 use App\Services\DeliveryFeeService;
+use App\Services\NotificationService;
 use App\Services\OrderService;
 use App\Services\PaymentService;
 use Illuminate\Database\Schema\Blueprint;
@@ -32,7 +33,12 @@ class RewardPointTest extends TestCase
         DB::purge('sqlite');
 
         $this->createSchema();
+        (require database_path('migrations/2026_10_16_000001_create_booking_intake_documents.php'))->up();
         $this->createCatalog();
+        $notificationService = Mockery::mock(NotificationService::class);
+        $notificationService->shouldReceive('notifyManagement')->byDefault()->andReturn(0);
+        $this->app->instance(NotificationService::class, $notificationService);
+        $this->actingAsBookingEmployee();
         $deliveryFeeService = Mockery::mock(DeliveryFeeService::class)->makePartial();
         $deliveryFeeService->shouldReceive('quote')->andReturnUsing(
             function (
@@ -60,6 +66,8 @@ class RewardPointTest extends TestCase
     protected function tearDown(): void
     {
         foreach ([
+            'BookingKiemKe',
+            'BookingGiaoNhan',
             'NhatKyHeThong',
             'ThongBao',
             'TinNhan',
@@ -121,9 +129,10 @@ class RewardPointTest extends TestCase
     {
         $customer = $this->createCustomer(1, 500);
         $booking = $this->createBooking($customer);
+        $booking->forceFill(['DiemSuDung' => 100])->saveQuietly();
         $this->actingAsBookingEmployee();
 
-        $order = app(BookingService::class)->inspectBookingAndCreateOrder($booking, 1, [array_merge($this->orderItem(), ['TinhTrangTruocKhiGiat' => 'Bình thường'])], 100);
+        $order = $this->createOrderThroughInspection($booking, [array_merge($this->orderItem(), ['TinhTrangTruocKhiGiat' => 'Bình thường'])]);
 
         $this->assertSame(100, $order->DiemSuDung);
         $this->assertSame(100.0, $order->TienGiamDoDiem);
@@ -131,13 +140,14 @@ class RewardPointTest extends TestCase
         $this->assertSame(400, $customer->fresh()->points());
     }
 
-    public function test_booking_conversion_can_redeem_all_available_points_when_enabled(): void
+    public function test_booking_conversion_uses_the_saved_mobile_point_selection(): void
     {
         $customer = $this->createCustomer(1, 500);
         $booking = $this->createBooking($customer);
+        $booking->forceFill(['DiemSuDung' => 500])->saveQuietly();
         $this->actingAsBookingEmployee();
 
-        $order = app(BookingService::class)->inspectBookingAndCreateOrder($booking, 1, [array_merge($this->orderItem(), ['TinhTrangTruocKhiGiat' => 'Bình thường'])], 0, true);
+        $order = $this->createOrderThroughInspection($booking, [array_merge($this->orderItem(), ['TinhTrangTruocKhiGiat' => 'Bình thường'])]);
 
         $this->assertSame(500, $order->DiemSuDung);
         $this->assertSame(500.0, $order->TienGiamDoDiem);
@@ -422,13 +432,17 @@ class RewardPointTest extends TestCase
         $booking = $this->createBooking($customer);
         $booking->forceFill(['DiemDaTru' => true, 'DiemSuDung' => 100, 'TienGiamDoDiem' => 100])->saveQuietly();
         $this->actingAsBookingEmployee();
-        $order = app(BookingService::class)->inspectBookingAndCreateOrder($booking, 1,
-            [array_merge($this->orderItem(), ['TinhTrangTruocKhiGiat' => 'Bình thường'])], 100);
+        $order = $this->createOrderThroughInspection($booking, [array_merge($this->orderItem(), ['TinhTrangTruocKhiGiat' => 'Bình thường'])]);
         $this->assertSame(400, $customer->fresh()->points());
         $this->assertSame(100, $order->DiemSuDung);
         $this->assertFalse($booking->fresh()->DiemDaTru);
-        app(BookingService::class)->inspectBookingAndCreateOrder($booking->fresh(), 1,
-            [array_merge($this->orderItem(), ['TinhTrangTruocKhiGiat' => 'Bình thường'])], 100);
+        $this->assertFalse($booking->fresh()->KhuyenMaiDaTru);
+        app(BookingService::class)->inspectBookingAndCreateOrder(
+            $booking->fresh(),
+            1,
+            [array_merge($this->orderItem(), ['TinhTrangTruocKhiGiat' => 'Bình thường'])],
+            100,
+        );
         $this->assertSame(400, $customer->fresh()->points());
     }
 
@@ -472,8 +486,7 @@ class RewardPointTest extends TestCase
             'DonGia' => 20000, 'NgayApDung' => today()->toDateString(), 'TrangThai' => 'Hoạt động',
         ]);
         $this->actingAsBookingEmployee();
-        $order = app(BookingService::class)->inspectBookingAndCreateOrder($booking, 1,
-            [array_merge($this->orderItem(), ['TinhTrangTruocKhiGiat' => 'Bình thường'])]);
+        $order = $this->createOrderThroughInspection($booking, [array_merge($this->orderItem(), ['TinhTrangTruocKhiGiat' => 'Bình thường'])]);
         $this->assertSame(20000.0, $order->TongTien);
         $this->assertSame(20000.0, $order->chiTietDonHangs()->first()->DonGia);
         $this->assertSame(10000.0, (float) $booking->chiTietBookings()->first()->DonGia);
@@ -570,11 +583,14 @@ class RewardPointTest extends TestCase
     {
         $customer = $this->createCustomer(1, 500);
         $booking = $this->createBooking($customer);
+        $booking->forceFill([
+            'HinhThucNhanDo' => 'Tại cửa hàng',
+            'DiaChiNhan' => 'Stale pickup address',
+            'HinhThucTraDo' => 'Tại cửa hàng',
+            'DiaChiTra' => 'Stale return address',
+        ])->saveQuietly();
         $this->actingAsBookingEmployee();
-        $order = app(BookingService::class)->inspectBookingAndCreateOrder($booking, 1, [$this->orderItem()], bookingData: [
-            'method' => 'Tại cửa hàng', 'address' => 'Stale pickup address',
-            'return_method' => 'Tại cửa hàng', 'return_address' => 'Stale return address',
-        ]);
+        $order = $this->createOrderThroughInspection($booking, [$this->orderItem()]);
         $this->assertNull($booking->fresh()->DiaChiNhan);
         $this->assertNull($booking->fresh()->DiaChiTra);
         $this->assertSame(0, $order->giaoNhans()->count());
@@ -642,15 +658,16 @@ class RewardPointTest extends TestCase
         $customer = $this->createCustomer(1, 500);
         $booking = $this->createBooking($customer);
         $this->reservedPromotion($booking);
+        $booking->forceFill(['DiemSuDung' => 500])->saveQuietly();
         $booking->forceFill(['HinhThucTraDo' => 'Tại nhà', 'DiaChiTra' => 'Return address', 'PickupDeliveryFee' => 1000, 'DeliveryFee' => 1000])->saveQuietly();
         $this->actingAsBookingEmployee();
-        $order = app(BookingService::class)->inspectBookingAndCreateOrder($booking, 1,
-            [array_merge($this->orderItem(), ['TinhTrangTruocKhiGiat' => 'Bình thường'])], 500);
+        $order = $this->createOrderThroughInspection($booking, [array_merge($this->orderItem(), ['TinhTrangTruocKhiGiat' => 'Bình thường'])]);
         $this->assertSame(9900.0, $order->TienGiamKhuyenMai);
         $this->assertSame(100, $order->DiemSuDung);
         $this->assertSame(2000.0, $order->PhiGiaoHang);
         $this->assertSame(2000.0, $order->ThanhTien);
         $this->assertSame(400, $customer->fresh()->points());
+        $this->assertFalse($booking->fresh()->KhuyenMaiDaTru);
     }
 
     public function test_expired_reserved_promotion_is_released_once_at_inspection(): void
@@ -661,7 +678,7 @@ class RewardPointTest extends TestCase
         $this->actingAsBookingEmployee();
         $service = app(BookingService::class);
         $items = [array_merge($this->orderItem(), ['TinhTrangTruocKhiGiat' => 'Bình thường'])];
-        $order = $service->inspectBookingAndCreateOrder($booking, 1, $items);
+        $order = $this->createOrderThroughInspection($booking, $items);
         $service->inspectBookingAndCreateOrder($booking->fresh(), 1, $items);
         $this->assertSame(0.0, $order->TienGiamKhuyenMai);
         $this->assertEquals(1, DB::table('KhuyenMai')->value('SoLuongSuDung'));
@@ -755,6 +772,30 @@ class RewardPointTest extends TestCase
         return $booking;
     }
 
+    private function createOrderThroughInspection(Booking $booking, array $items): DonHang
+    {
+        $service = app(BookingService::class);
+        $service->approve($booking);
+        DB::table('BookingGiaoNhan')
+            ->where('BookingID', $booking->BookingID)
+            ->where('LoaiGiaoNhan', 'NHAN_DO')
+            ->update(['NhanVienID' => 1]);
+        $service->markReceived($booking);
+
+        return $service->submitInspection($booking, [
+            'customer_id' => $booking->KhachHangID,
+            'method' => $booking->HinhThucNhanDo,
+            'address' => $booking->DiaChiNhan,
+            'return_method' => $booking->HinhThucTraDo,
+            'return_address' => $booking->DiaChiTra,
+            'scheduled_date' => $booking->NgayHen->format('Y-m-d'),
+            'scheduled_time' => $booking->GioHen->format('H:i'),
+            'customer_accepted' => '1',
+            'notes' => $booking->GhiChu,
+            'items' => $items,
+        ]);
+    }
+
     private function orderItem(): array
     {
         return [
@@ -843,10 +884,11 @@ class RewardPointTest extends TestCase
 
         Schema::create('DichVu', function (Blueprint $table): void {
             $table->increments('DichVuID');
+            $table->string('TenDichVu')->nullable();
         });
-
         Schema::create('LoaiDoGiat', function (Blueprint $table): void {
             $table->increments('LoaiDoGiatID');
+            $table->string('TenLoaiDoGiat')->nullable();
         });
 
         Schema::create('NhanVien', function (Blueprint $table): void {

@@ -3,9 +3,11 @@
 namespace Tests\Feature;
 
 use App\Models\User;
+use App\Services\MessageService;
 use App\Support\PermissionCache;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
@@ -24,9 +26,12 @@ class SupportMessagesTest extends TestCase
             $t->string('TrangThai')->default('Hoạt động');
         });
         foreach (['KhachHang' => 'KhachHangID', 'NhanVien' => 'NhanVienID'] as $name => $id) {
-            Schema::create($name, function (Blueprint $t) use ($id): void {
+            Schema::create($name, function (Blueprint $t) use ($id, $name): void {
                 $t->increments($id);
                 $t->string('HoTen');
+                if ($name === 'KhachHang') {
+                    $t->string('SoDienThoai')->nullable();
+                }
                 $t->string('TrangThai')->default('Hoạt động');
             });
         }
@@ -58,6 +63,9 @@ class SupportMessagesTest extends TestCase
             $t->integer('NguoiGuiID');
             $t->integer('NguoiNhanID');
             $t->text('NoiDung');
+            $t->text('NoiDungMaHoa')->nullable();
+            $t->text('NoiDungNonce')->nullable();
+            $t->integer('MaHoaPhienBan')->nullable();
             $t->dateTime('ThoiGianGui')->nullable();
             $t->string('TrangThai')->default('Đã gửi');
         });
@@ -98,6 +106,45 @@ class SupportMessagesTest extends TestCase
         ], 'TinNhanID');
     }
 
+    public function test_encrypted_support_message_is_decrypted_for_the_staff_view(): void
+    {
+        $key = random_bytes(32);
+        $nonce = random_bytes(12);
+        $tag = '';
+        $cipherText = openssl_encrypt(
+            'Cửa hàng sẽ phản hồi sớm.',
+            'aes-256-gcm',
+            $key,
+            OPENSSL_RAW_DATA,
+            $nonce,
+            $tag,
+        );
+        $this->assertIsString($cipherText);
+        DB::table('TinNhan')->insert([
+            'NguoiGuiID' => 2,
+            'NguoiNhanID' => 1,
+            'NoiDung' => '',
+            'NoiDungMaHoa' => base64_encode($cipherText.$tag),
+            'NoiDungNonce' => base64_encode($nonce),
+            'MaHoaPhienBan' => 1,
+        ]);
+        config([
+            'services.supabase.project_url' => 'https://example.supabase.co',
+            'services.supabase.service_role_key' => 'test-service-role-key',
+        ]);
+        Http::fake([
+            'https://example.supabase.co/rest/v1/rpc/get_chat_encryption_key' => Http::response(
+                json_encode(base64_encode($key), JSON_THROW_ON_ERROR),
+                200,
+                ['Content-Type' => 'application/json'],
+            ),
+        ]);
+
+        $this->actingAs(User::findOrFail(1))->getJson('/admin/messages/support/2/updates')
+            ->assertOk()
+            ->assertJsonPath('messages.0.content', 'Cửa hàng sẽ phản hồi sớm.');
+    }
+
     public function test_order_inbox_promotes_old_order_and_read_receipt_is_scoped_and_persistent(): void
     {
         DB::table('DonHang')->where('DonHangID', 1)->update(['NgayTao' => '2026-10-01 00:00:00', 'MaDonHang' => 'DH1']);
@@ -120,6 +167,29 @@ class SupportMessagesTest extends TestCase
         $this->getJson('/admin/messages/inbox')->assertJsonPath('orders.0.unread', false)->assertJsonPath('orders.1.unread', true);
         $this->message(2, 1, 1);
         $this->getJson('/admin/messages/inbox')->assertJsonPath('orders.0.unread', true);
+    }
+
+    public function test_inbox_search_and_previews_stay_with_their_conversations(): void
+    {
+        DB::table('KhachHang')->where('KhachHangID', 1)->update(['SoDienThoai' => '0901111222']);
+        DB::table('DonHang')->where('DonHangID', 1)->update(['MaDonHang' => 'DH-AN', 'KhachHangID' => 1]);
+        DB::table('DonHang')->insert(['DonHangID' => 2, 'MaDonHang' => 'DH-BINH', 'KhachHangID' => 2]);
+        DB::table('TinNhan')->insert([
+            ['NguoiGuiID' => 2, 'NguoiNhanID' => 1, 'DonHangID' => 1, 'NoiDung' => 'Tin đơn An', 'ThoiGianGui' => '2026-10-09 12:00:00'],
+            ['NguoiGuiID' => 3, 'NguoiNhanID' => 1, 'DonHangID' => 2, 'NoiDung' => 'Tin đơn Bình', 'ThoiGianGui' => '2026-10-09 13:00:00'],
+            ['NguoiGuiID' => 2, 'NguoiNhanID' => 1, 'DonHangID' => null, 'NoiDung' => 'Tư vấn An', 'ThoiGianGui' => '2026-10-09 14:00:00'],
+        ]);
+
+        $service = app(MessageService::class);
+        $orders = $service->getOrders('0901111222');
+        $this->assertSame(1, $orders->total());
+        $this->assertSame('Tin đơn An', $orders->first()->last_message_preview);
+        $this->assertSame(1, $service->getOrders('dh-an')->total());
+
+        $customers = $service->supportCustomers('Nguyễn An');
+        $this->assertSame(1, $customers->total());
+        $this->assertSame('Tư vấn An', $customers->first()->last_message_preview);
+        $this->assertSame(1, $service->supportCustomers('0901111222')->total());
     }
 
     public function test_opening_recent_window_clears_older_unread_history_without_touching_later_arrivals(): void
@@ -147,7 +217,7 @@ class SupportMessagesTest extends TestCase
         $this->assertDatabaseHas('TinNhan', ['TinNhanID' => $new, 'TrangThai' => 'Đã gửi']);
         $this->postJson('/admin/messages/read', ['order_id' => 999, 'message_ids' => [$new]])->assertNotFound();
         $this->postJson('/admin/messages/read', ['order_id' => 1, 'customer_id' => 2, 'message_ids' => [$new]])->assertUnprocessable();
-        DB::table('VaiTro_Quyen')->delete();
+        DB::table('TaiKhoan_VaiTro')->delete();
         PermissionCache::forgetAll();
         $this->postJson('/admin/messages/read', $body)->assertForbidden();
         $this->getJson('/admin/messages/inbox')->assertForbidden();
@@ -169,11 +239,56 @@ class SupportMessagesTest extends TestCase
 
     public function test_staff_can_send_support_message_without_an_order(): void
     {
+        $key = random_bytes(32);
+        config([
+            'services.supabase.project_url' => 'https://example.supabase.co',
+            'services.supabase.service_role_key' => 'test-service-role-key',
+        ]);
+        Http::fake([
+            'https://example.supabase.co/rest/v1/rpc/get_chat_encryption_key' => Http::response(
+                json_encode(base64_encode($key), JSON_THROW_ON_ERROR),
+                200,
+                ['Content-Type' => 'application/json'],
+            ),
+        ]);
+
         $this->actingAs(User::findOrFail(1))->post('/admin/messages', ['customer_id' => 2, 'content' => '  Cửa hàng xin chào  '])
             ->assertRedirect()->assertSessionMissing('success');
-        $this->assertDatabaseHas('TinNhan', [
-            'NguoiGuiID' => 1, 'NguoiNhanID' => 2, 'DonHangID' => null, 'NoiDung' => 'Cửa hàng xin chào',
+        $message = DB::table('TinNhan')->where('NguoiGuiID', 1)->first();
+        $this->assertSame(2, $message->NguoiNhanID);
+        $this->assertNull($message->DonHangID);
+        $this->assertSame('', $message->NoiDung);
+        $this->assertNotSame('Cửa hàng xin chào', $message->NoiDungMaHoa);
+        $this->assertSame(1, (int) $message->MaHoaPhienBan);
+        $this->assertNotNull(base64_decode($message->NoiDungNonce, true));
+
+        $this->getJson('/admin/messages/support/2/updates')
+            ->assertOk()
+            ->assertJsonPath('messages.0.content', 'Cửa hàng xin chào');
+
+        Http::assertSent(fn ($request): bool => $request->url() === 'https://example.supabase.co/rest/v1/rpc/get_chat_encryption_key'
+            && $request->hasHeader('apikey', 'test-service-role-key')
+            && $request->hasHeader('Authorization', 'Bearer test-service-role-key'));
+    }
+
+    public function test_support_message_is_not_saved_when_encryption_key_is_unavailable(): void
+    {
+        config([
+            'services.supabase.project_url' => 'https://example.supabase.co',
+            'services.supabase.service_role_key' => 'test-service-role-key',
         ]);
+        Http::fake([
+            'https://example.supabase.co/rest/v1/rpc/get_chat_encryption_key' => Http::response('null', 200, [
+                'Content-Type' => 'application/json',
+            ]),
+        ]);
+
+        $this->actingAs(User::findOrFail(1))
+            ->postJson('/admin/messages', ['customer_id' => 2, 'content' => 'Không được lưu thuần'])
+            ->assertStatus(503)
+            ->assertJsonPath('message', 'Chưa thể mã hóa tin nhắn. Vui lòng thử lại sau.');
+
+        $this->assertDatabaseCount('TinNhan', 0);
     }
 
     public function test_support_history_is_bounded_and_keeps_latest_messages_in_stable_order(): void
@@ -209,7 +324,7 @@ class SupportMessagesTest extends TestCase
         $this->postJson('/admin/messages', ['customer_id' => 2, 'content' => 'Hello'])->assertUnauthorized();
         $this->actingAs(User::findOrFail(2))->getJson('/admin/messages/support/3/updates')->assertForbidden();
         $this->postJson('/admin/messages', ['customer_id' => 3, 'content' => 'Hello'])->assertForbidden();
-        DB::table('VaiTro_Quyen')->where('VaiTroID', 1)->delete();
+        DB::table('TaiKhoan_VaiTro')->where('VaiTroID', 1)->delete();
         $this->actingAs(User::findOrFail(1))->getJson('/admin/messages/support/2/updates')->assertForbidden();
         $this->postJson('/admin/messages', ['customer_id' => 2, 'content' => 'Hello'])->assertForbidden();
     }

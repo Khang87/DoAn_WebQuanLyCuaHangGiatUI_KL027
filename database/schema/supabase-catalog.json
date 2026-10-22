@@ -5423,6 +5423,207 @@
     },
     {
       "acl": [
+        "supabase_admin=arwdDxtm/supabase_admin",
+        "=arwdDxtm/supabase_admin"
+      ],
+      "rls": false,
+      "kind": "r",
+      "name": "_http_response",
+      "owner": "supabase_admin",
+      "schema": "net",
+      "columns": [
+        {
+          "acl": null,
+          "name": "id",
+          "type": "bigint",
+          "comment": null,
+          "default": null,
+          "identity": "",
+          "not_null": false,
+          "collation": null,
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "status_code",
+          "type": "integer",
+          "comment": null,
+          "default": null,
+          "identity": "",
+          "not_null": false,
+          "collation": null,
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "content_type",
+          "type": "text",
+          "comment": null,
+          "default": null,
+          "identity": "",
+          "not_null": false,
+          "collation": null,
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "headers",
+          "type": "jsonb",
+          "comment": null,
+          "default": null,
+          "identity": "",
+          "not_null": false,
+          "collation": null,
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "content",
+          "type": "text",
+          "comment": null,
+          "default": null,
+          "identity": "",
+          "not_null": false,
+          "collation": null,
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "timed_out",
+          "type": "boolean",
+          "comment": null,
+          "default": null,
+          "identity": "",
+          "not_null": false,
+          "collation": null,
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "error_msg",
+          "type": "text",
+          "comment": null,
+          "default": null,
+          "identity": "",
+          "not_null": false,
+          "collation": null,
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "created",
+          "type": "timestamp with time zone",
+          "comment": null,
+          "default": "now()",
+          "identity": "",
+          "not_null": true,
+          "collation": null,
+          "generated": ""
+        }
+      ],
+      "comment": null,
+      "indexes": [
+        {
+          "name": "_http_response_created_idx",
+          "valid": true,
+          "definition": "CREATE INDEX _http_response_created_idx ON net._http_response USING btree (created)",
+          "constraint_backed": false
+        }
+      ],
+      "options": null,
+      "force_rls": false,
+      "constraints": null,
+      "view_definition": null,
+      "replica_identity": "d"
+    },
+    {
+      "acl": [
+        "supabase_admin=arwdDxtm/supabase_admin",
+        "=arwdDxtm/supabase_admin"
+      ],
+      "rls": false,
+      "kind": "r",
+      "name": "http_request_queue",
+      "owner": "supabase_admin",
+      "schema": "net",
+      "columns": [
+        {
+          "acl": null,
+          "name": "id",
+          "type": "bigint",
+          "comment": null,
+          "default": "nextval('net.http_request_queue_id_seq'::regclass)",
+          "identity": "",
+          "not_null": true,
+          "collation": null,
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "method",
+          "type": "net.http_method",
+          "comment": null,
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "collation": null,
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "url",
+          "type": "text",
+          "comment": null,
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "collation": null,
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "headers",
+          "type": "jsonb",
+          "comment": null,
+          "default": null,
+          "identity": "",
+          "not_null": false,
+          "collation": null,
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "body",
+          "type": "bytea",
+          "comment": null,
+          "default": null,
+          "identity": "",
+          "not_null": false,
+          "collation": null,
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "timeout_milliseconds",
+          "type": "integer",
+          "comment": null,
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "collation": null,
+          "generated": ""
+        }
+      ],
+      "comment": null,
+      "indexes": null,
+      "options": null,
+      "force_rls": false,
+      "constraints": null,
+      "view_definition": null,
+      "replica_identity": "d"
+    },
+    {
+      "acl": [
         "postgres=arwdDxtm/postgres"
       ],
       "rls": true,
@@ -6603,6 +6804,17 @@
           "default": "'Hiển thị'::character varying",
           "identity": "",
           "not_null": true,
+          "collation": null,
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "shop_response",
+          "type": "text",
+          "comment": null,
+          "default": null,
+          "identity": "",
+          "not_null": false,
           "collation": null,
           "generated": ""
         }
@@ -9540,6 +9752,39 @@
           "not_null": true,
           "collation": null,
           "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "NoiDungMaHoa",
+          "type": "text",
+          "comment": null,
+          "default": null,
+          "identity": "",
+          "not_null": false,
+          "collation": null,
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "NoiDungNonce",
+          "type": "text",
+          "comment": null,
+          "default": null,
+          "identity": "",
+          "not_null": false,
+          "collation": null,
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "MaHoaPhienBan",
+          "type": "smallint",
+          "comment": null,
+          "default": null,
+          "identity": "",
+          "not_null": false,
+          "collation": null,
+          "generated": ""
         }
       ],
       "comment": null,
@@ -9578,6 +9823,82 @@
           "name": "TinNhan_pkey",
           "type": "p",
           "definition": "PRIMARY KEY (\"TinNhanID\")"
+        }
+      ],
+      "view_definition": null,
+      "replica_identity": "d"
+    },
+    {
+      "acl": [
+        "postgres=arwdDxtm/postgres",
+        "service_role=arwdDxtm/postgres"
+      ],
+      "rls": true,
+      "kind": "r",
+      "name": "TinNhanAn",
+      "owner": "postgres",
+      "schema": "public",
+      "columns": [
+        {
+          "acl": null,
+          "name": "TaiKhoanID",
+          "type": "integer",
+          "comment": null,
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "collation": null,
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "TinNhanID",
+          "type": "integer",
+          "comment": null,
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "collation": null,
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "ThoiGianAn",
+          "type": "timestamp without time zone",
+          "comment": null,
+          "default": "timezone('utc'::text, now())",
+          "identity": "",
+          "not_null": true,
+          "collation": null,
+          "generated": ""
+        }
+      ],
+      "comment": null,
+      "indexes": [
+        {
+          "name": "TinNhanAn_pkey",
+          "valid": true,
+          "definition": "CREATE UNIQUE INDEX \"TinNhanAn_pkey\" ON public.\"TinNhanAn\" USING btree (\"TaiKhoanID\", \"TinNhanID\")",
+          "constraint_backed": true
+        }
+      ],
+      "options": null,
+      "force_rls": false,
+      "constraints": [
+        {
+          "name": "TinNhanAn_TaiKhoanID_fkey",
+          "type": "f",
+          "definition": "FOREIGN KEY (\"TaiKhoanID\") REFERENCES \"TaiKhoan\"(\"TaiKhoanID\") ON DELETE CASCADE"
+        },
+        {
+          "name": "TinNhanAn_TinNhanID_fkey",
+          "type": "f",
+          "definition": "FOREIGN KEY (\"TinNhanID\") REFERENCES \"TinNhan\"(\"TinNhanID\") ON DELETE CASCADE"
+        },
+        {
+          "name": "TinNhanAn_pkey",
+          "type": "p",
+          "definition": "PRIMARY KEY (\"TaiKhoanID\", \"TinNhanID\")"
         }
       ],
       "view_definition": null,
@@ -11093,6 +11414,93 @@
     {
       "acl": [
         "postgres=arwdDxtm/postgres",
+        "service_role=arwdDxtm/postgres"
+      ],
+      "rls": true,
+      "kind": "r",
+      "name": "push_device_tokens",
+      "owner": "postgres",
+      "schema": "public",
+      "columns": [
+        {
+          "acl": null,
+          "name": "token",
+          "type": "text",
+          "comment": null,
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "collation": null,
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "TaiKhoanID",
+          "type": "integer",
+          "comment": null,
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "collation": null,
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "platform",
+          "type": "text",
+          "comment": null,
+          "default": "'android'::text",
+          "identity": "",
+          "not_null": true,
+          "collation": null,
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "comment": null,
+          "default": "now()",
+          "identity": "",
+          "not_null": true,
+          "collation": null,
+          "generated": ""
+        }
+      ],
+      "comment": null,
+      "indexes": [
+        {
+          "name": "push_device_tokens_pkey",
+          "valid": true,
+          "definition": "CREATE UNIQUE INDEX push_device_tokens_pkey ON public.push_device_tokens USING btree (token)",
+          "constraint_backed": true
+        }
+      ],
+      "options": null,
+      "force_rls": false,
+      "constraints": [
+        {
+          "name": "push_device_tokens_TaiKhoanID_fkey",
+          "type": "f",
+          "definition": "FOREIGN KEY (\"TaiKhoanID\") REFERENCES \"TaiKhoan\"(\"TaiKhoanID\") ON DELETE CASCADE"
+        },
+        {
+          "name": "push_device_tokens_pkey",
+          "type": "p",
+          "definition": "PRIMARY KEY (token)"
+        },
+        {
+          "name": "push_device_tokens_platform_check",
+          "type": "c",
+          "definition": "CHECK (platform = ANY (ARRAY['android'::text, 'ios'::text]))"
+        }
+      ],
+      "view_definition": null,
+      "replica_identity": "d"
+    },
+    {
+      "acl": [
+        "postgres=arwdDxtm/postgres",
         "service_role=arwdDxtm/postgres",
         "authenticated=r/postgres"
       ],
@@ -12081,7 +12489,7 @@
       ],
       "rls": false,
       "kind": "r",
-      "name": "messages_2026_10_07",
+      "name": "messages_2026_10_15",
       "owner": "supabase_realtime_admin",
       "schema": "realtime",
       "columns": [
@@ -12199,15 +12607,15 @@
       "comment": null,
       "indexes": [
         {
-          "name": "messages_2026_10_07_inserted_at_topic_idx",
+          "name": "messages_2026_10_15_inserted_at_topic_idx",
           "valid": true,
-          "definition": "CREATE INDEX messages_2026_10_07_inserted_at_topic_idx ON realtime.messages_2026_10_07 USING btree (inserted_at DESC, topic) WHERE ((extension = 'broadcast'::text) AND (private IS TRUE))",
+          "definition": "CREATE INDEX messages_2026_10_15_inserted_at_topic_idx ON realtime.messages_2026_10_15 USING btree (inserted_at DESC, topic) WHERE ((extension = 'broadcast'::text) AND (private IS TRUE))",
           "constraint_backed": false
         },
         {
-          "name": "messages_2026_10_07_pkey",
+          "name": "messages_2026_10_15_pkey",
           "valid": true,
-          "definition": "CREATE UNIQUE INDEX messages_2026_10_07_pkey ON realtime.messages_2026_10_07 USING btree (id, inserted_at)",
+          "definition": "CREATE UNIQUE INDEX messages_2026_10_15_pkey ON realtime.messages_2026_10_15 USING btree (id, inserted_at)",
           "constraint_backed": true
         }
       ],
@@ -12215,7 +12623,7 @@
       "force_rls": false,
       "constraints": [
         {
-          "name": "messages_2026_10_07_pkey",
+          "name": "messages_2026_10_15_pkey",
           "type": "p",
           "definition": "PRIMARY KEY (id, inserted_at)"
         },
@@ -12236,7 +12644,7 @@
       ],
       "rls": false,
       "kind": "r",
-      "name": "messages_2026_10_08",
+      "name": "messages_2026_10_16",
       "owner": "supabase_realtime_admin",
       "schema": "realtime",
       "columns": [
@@ -12354,15 +12762,15 @@
       "comment": null,
       "indexes": [
         {
-          "name": "messages_2026_10_08_inserted_at_topic_idx",
+          "name": "messages_2026_10_16_inserted_at_topic_idx",
           "valid": true,
-          "definition": "CREATE INDEX messages_2026_10_08_inserted_at_topic_idx ON realtime.messages_2026_10_08 USING btree (inserted_at DESC, topic) WHERE ((extension = 'broadcast'::text) AND (private IS TRUE))",
+          "definition": "CREATE INDEX messages_2026_10_16_inserted_at_topic_idx ON realtime.messages_2026_10_16 USING btree (inserted_at DESC, topic) WHERE ((extension = 'broadcast'::text) AND (private IS TRUE))",
           "constraint_backed": false
         },
         {
-          "name": "messages_2026_10_08_pkey",
+          "name": "messages_2026_10_16_pkey",
           "valid": true,
-          "definition": "CREATE UNIQUE INDEX messages_2026_10_08_pkey ON realtime.messages_2026_10_08 USING btree (id, inserted_at)",
+          "definition": "CREATE UNIQUE INDEX messages_2026_10_16_pkey ON realtime.messages_2026_10_16 USING btree (id, inserted_at)",
           "constraint_backed": true
         }
       ],
@@ -12370,7 +12778,7 @@
       "force_rls": false,
       "constraints": [
         {
-          "name": "messages_2026_10_08_pkey",
+          "name": "messages_2026_10_16_pkey",
           "type": "p",
           "definition": "PRIMARY KEY (id, inserted_at)"
         },
@@ -12391,7 +12799,7 @@
       ],
       "rls": false,
       "kind": "r",
-      "name": "messages_2026_10_09",
+      "name": "messages_2026_10_17",
       "owner": "supabase_realtime_admin",
       "schema": "realtime",
       "columns": [
@@ -12509,15 +12917,15 @@
       "comment": null,
       "indexes": [
         {
-          "name": "messages_2026_10_09_inserted_at_topic_idx",
+          "name": "messages_2026_10_17_inserted_at_topic_idx",
           "valid": true,
-          "definition": "CREATE INDEX messages_2026_10_09_inserted_at_topic_idx ON realtime.messages_2026_10_09 USING btree (inserted_at DESC, topic) WHERE ((extension = 'broadcast'::text) AND (private IS TRUE))",
+          "definition": "CREATE INDEX messages_2026_10_17_inserted_at_topic_idx ON realtime.messages_2026_10_17 USING btree (inserted_at DESC, topic) WHERE ((extension = 'broadcast'::text) AND (private IS TRUE))",
           "constraint_backed": false
         },
         {
-          "name": "messages_2026_10_09_pkey",
+          "name": "messages_2026_10_17_pkey",
           "valid": true,
-          "definition": "CREATE UNIQUE INDEX messages_2026_10_09_pkey ON realtime.messages_2026_10_09 USING btree (id, inserted_at)",
+          "definition": "CREATE UNIQUE INDEX messages_2026_10_17_pkey ON realtime.messages_2026_10_17 USING btree (id, inserted_at)",
           "constraint_backed": true
         }
       ],
@@ -12525,7 +12933,7 @@
       "force_rls": false,
       "constraints": [
         {
-          "name": "messages_2026_10_09_pkey",
+          "name": "messages_2026_10_17_pkey",
           "type": "p",
           "definition": "PRIMARY KEY (id, inserted_at)"
         },
@@ -12546,7 +12954,7 @@
       ],
       "rls": false,
       "kind": "r",
-      "name": "messages_2026_10_10",
+      "name": "messages_2026_10_18",
       "owner": "supabase_realtime_admin",
       "schema": "realtime",
       "columns": [
@@ -12664,15 +13072,15 @@
       "comment": null,
       "indexes": [
         {
-          "name": "messages_2026_10_10_inserted_at_topic_idx",
+          "name": "messages_2026_10_18_inserted_at_topic_idx",
           "valid": true,
-          "definition": "CREATE INDEX messages_2026_10_10_inserted_at_topic_idx ON realtime.messages_2026_10_10 USING btree (inserted_at DESC, topic) WHERE ((extension = 'broadcast'::text) AND (private IS TRUE))",
+          "definition": "CREATE INDEX messages_2026_10_18_inserted_at_topic_idx ON realtime.messages_2026_10_18 USING btree (inserted_at DESC, topic) WHERE ((extension = 'broadcast'::text) AND (private IS TRUE))",
           "constraint_backed": false
         },
         {
-          "name": "messages_2026_10_10_pkey",
+          "name": "messages_2026_10_18_pkey",
           "valid": true,
-          "definition": "CREATE UNIQUE INDEX messages_2026_10_10_pkey ON realtime.messages_2026_10_10 USING btree (id, inserted_at)",
+          "definition": "CREATE UNIQUE INDEX messages_2026_10_18_pkey ON realtime.messages_2026_10_18 USING btree (id, inserted_at)",
           "constraint_backed": true
         }
       ],
@@ -12680,7 +13088,7 @@
       "force_rls": false,
       "constraints": [
         {
-          "name": "messages_2026_10_10_pkey",
+          "name": "messages_2026_10_18_pkey",
           "type": "p",
           "definition": "PRIMARY KEY (id, inserted_at)"
         },
@@ -12701,7 +13109,7 @@
       ],
       "rls": false,
       "kind": "r",
-      "name": "messages_2026_10_11",
+      "name": "messages_2026_10_19",
       "owner": "supabase_realtime_admin",
       "schema": "realtime",
       "columns": [
@@ -12819,15 +13227,15 @@
       "comment": null,
       "indexes": [
         {
-          "name": "messages_2026_10_11_inserted_at_topic_idx",
+          "name": "messages_2026_10_19_inserted_at_topic_idx",
           "valid": true,
-          "definition": "CREATE INDEX messages_2026_10_11_inserted_at_topic_idx ON realtime.messages_2026_10_11 USING btree (inserted_at DESC, topic) WHERE ((extension = 'broadcast'::text) AND (private IS TRUE))",
+          "definition": "CREATE INDEX messages_2026_10_19_inserted_at_topic_idx ON realtime.messages_2026_10_19 USING btree (inserted_at DESC, topic) WHERE ((extension = 'broadcast'::text) AND (private IS TRUE))",
           "constraint_backed": false
         },
         {
-          "name": "messages_2026_10_11_pkey",
+          "name": "messages_2026_10_19_pkey",
           "valid": true,
-          "definition": "CREATE UNIQUE INDEX messages_2026_10_11_pkey ON realtime.messages_2026_10_11 USING btree (id, inserted_at)",
+          "definition": "CREATE UNIQUE INDEX messages_2026_10_19_pkey ON realtime.messages_2026_10_19 USING btree (id, inserted_at)",
           "constraint_backed": true
         }
       ],
@@ -12835,7 +13243,7 @@
       "force_rls": false,
       "constraints": [
         {
-          "name": "messages_2026_10_11_pkey",
+          "name": "messages_2026_10_19_pkey",
           "type": "p",
           "definition": "PRIMARY KEY (id, inserted_at)"
         },
@@ -12856,7 +13264,7 @@
       ],
       "rls": false,
       "kind": "r",
-      "name": "messages_2026_10_12",
+      "name": "messages_2026_10_20",
       "owner": "supabase_realtime_admin",
       "schema": "realtime",
       "columns": [
@@ -12974,15 +13382,15 @@
       "comment": null,
       "indexes": [
         {
-          "name": "messages_2026_10_12_inserted_at_topic_idx",
+          "name": "messages_2026_10_20_inserted_at_topic_idx",
           "valid": true,
-          "definition": "CREATE INDEX messages_2026_10_12_inserted_at_topic_idx ON realtime.messages_2026_10_12 USING btree (inserted_at DESC, topic) WHERE ((extension = 'broadcast'::text) AND (private IS TRUE))",
+          "definition": "CREATE INDEX messages_2026_10_20_inserted_at_topic_idx ON realtime.messages_2026_10_20 USING btree (inserted_at DESC, topic) WHERE ((extension = 'broadcast'::text) AND (private IS TRUE))",
           "constraint_backed": false
         },
         {
-          "name": "messages_2026_10_12_pkey",
+          "name": "messages_2026_10_20_pkey",
           "valid": true,
-          "definition": "CREATE UNIQUE INDEX messages_2026_10_12_pkey ON realtime.messages_2026_10_12 USING btree (id, inserted_at)",
+          "definition": "CREATE UNIQUE INDEX messages_2026_10_20_pkey ON realtime.messages_2026_10_20 USING btree (id, inserted_at)",
           "constraint_backed": true
         }
       ],
@@ -12990,7 +13398,7 @@
       "force_rls": false,
       "constraints": [
         {
-          "name": "messages_2026_10_12_pkey",
+          "name": "messages_2026_10_20_pkey",
           "type": "p",
           "definition": "PRIMARY KEY (id, inserted_at)"
         },
@@ -13011,7 +13419,7 @@
       ],
       "rls": false,
       "kind": "r",
-      "name": "messages_2026_10_13",
+      "name": "messages_2026_10_21",
       "owner": "supabase_realtime_admin",
       "schema": "realtime",
       "columns": [
@@ -13129,15 +13537,15 @@
       "comment": null,
       "indexes": [
         {
-          "name": "messages_2026_10_13_inserted_at_topic_idx",
+          "name": "messages_2026_10_21_inserted_at_topic_idx",
           "valid": true,
-          "definition": "CREATE INDEX messages_2026_10_13_inserted_at_topic_idx ON realtime.messages_2026_10_13 USING btree (inserted_at DESC, topic) WHERE ((extension = 'broadcast'::text) AND (private IS TRUE))",
+          "definition": "CREATE INDEX messages_2026_10_21_inserted_at_topic_idx ON realtime.messages_2026_10_21 USING btree (inserted_at DESC, topic) WHERE ((extension = 'broadcast'::text) AND (private IS TRUE))",
           "constraint_backed": false
         },
         {
-          "name": "messages_2026_10_13_pkey",
+          "name": "messages_2026_10_21_pkey",
           "valid": true,
-          "definition": "CREATE UNIQUE INDEX messages_2026_10_13_pkey ON realtime.messages_2026_10_13 USING btree (id, inserted_at)",
+          "definition": "CREATE UNIQUE INDEX messages_2026_10_21_pkey ON realtime.messages_2026_10_21 USING btree (id, inserted_at)",
           "constraint_backed": true
         }
       ],
@@ -13145,7 +13553,7 @@
       "force_rls": false,
       "constraints": [
         {
-          "name": "messages_2026_10_13_pkey",
+          "name": "messages_2026_10_21_pkey",
           "type": "p",
           "definition": "PRIMARY KEY (id, inserted_at)"
         },
@@ -13371,8 +13779,8 @@
       "acl": [
         "supabase_storage_admin=a*r*w*d*D*x*t*m*/supabase_storage_admin",
         "service_role=arwdDxtm/supabase_storage_admin",
-        "authenticated=arwdDxtm/supabase_storage_admin",
-        "anon=arwdDxtm/supabase_storage_admin",
+        "authenticated=arwd/supabase_storage_admin",
+        "anon=arwd/supabase_storage_admin",
         "postgres=a*r*w*d*D*x*t*m*/supabase_storage_admin"
       ],
       "rls": true,
@@ -13597,8 +14005,8 @@
       "acl": [
         "supabase_storage_admin=arwdDxtm/supabase_storage_admin",
         "service_role=arwdDxtm/supabase_storage_admin",
-        "authenticated=arwdDxtm/supabase_storage_admin",
-        "anon=arwdDxtm/supabase_storage_admin"
+        "authenticated=arwd/supabase_storage_admin",
+        "anon=arwd/supabase_storage_admin"
       ],
       "rls": true,
       "kind": "r",
@@ -13715,8 +14123,8 @@
       "acl": [
         "supabase_storage_admin=arwdDxtm/supabase_storage_admin",
         "service_role=r/supabase_storage_admin",
-        "authenticated=r/supabase_storage_admin",
-        "anon=r/supabase_storage_admin"
+        "anon=r/supabase_storage_admin",
+        "authenticated=r/supabase_storage_admin"
       ],
       "rls": true,
       "kind": "r",
@@ -13879,8 +14287,8 @@
       "acl": [
         "supabase_storage_admin=a*r*w*d*D*x*t*m*/supabase_storage_admin",
         "service_role=arwdDxtm/supabase_storage_admin",
-        "authenticated=arwdDxtm/supabase_storage_admin",
-        "anon=arwdDxtm/supabase_storage_admin",
+        "authenticated=arwd/supabase_storage_admin",
+        "anon=arwd/supabase_storage_admin",
         "postgres=a*r*w*d*D*x*t*m*/supabase_storage_admin"
       ],
       "rls": true,
@@ -14438,8 +14846,8 @@
       "acl": [
         "supabase_storage_admin=arwdDxtm/supabase_storage_admin",
         "service_role=r/supabase_storage_admin",
-        "authenticated=r/supabase_storage_admin",
-        "anon=r/supabase_storage_admin"
+        "anon=r/supabase_storage_admin",
+        "authenticated=r/supabase_storage_admin"
       ],
       "rls": true,
       "kind": "r",
@@ -14984,8 +15392,22 @@
     },
     {
       "acl": [
+        "supabase_admin=UC/supabase_admin",
+        "=U/supabase_admin",
+        "supabase_functions_admin=U/supabase_admin",
+        "postgres=U/supabase_admin",
+        "anon=U/supabase_admin",
+        "authenticated=U/supabase_admin",
+        "service_role=U/supabase_admin"
+      ],
+      "name": "net",
+      "owner": "supabase_admin"
+    },
+    {
+      "acl": [
         "postgres=UC/postgres",
-        "authenticated=U/postgres"
+        "authenticated=U/postgres",
+        "anon=U/postgres"
       ],
       "name": "private",
       "owner": "postgres"
@@ -15557,11 +15979,20 @@
     },
     {
       "acl": null,
+      "name": "apply_booking_points_to_order",
+      "owner": "postgres",
+      "schema": "private",
+      "comment": null,
+      "definition": "CREATE OR REPLACE FUNCTION private.apply_booking_points_to_order()\n RETURNS trigger\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO ''\nAS $function$\nDECLARE\n  booking_points integer;\n  booking_discount numeric(18,2);\nBEGIN\n  IF NEW.\"BookingID\" IS NULL THEN\n    RETURN NEW;\n  END IF;\n\n  SELECT \"DiemSuDung\", \"TienGiamDoDiem\"\n  INTO booking_points, booking_discount\n  FROM public.\"Booking\"\n  WHERE \"BookingID\" = NEW.\"BookingID\";\n\n  IF FOUND THEN\n    NEW.\"DiemSuDung\" := booking_points;\n    NEW.\"TienGiamDoDiem\" := booking_discount;\n    NEW.\"ThanhTien\" := greatest(\n      NEW.\"TongTien\" + NEW.\"PhiGiaoHang\"\n        - greatest(NEW.\"TienGiamKhuyenMai\", 0)\n        - greatest(NEW.\"TienGiamDoDiem\", 0),\n      0\n    );\n  END IF;\n\n  RETURN NEW;\nEND;\n$function$\n",
+      "identity_args": ""
+    },
+    {
+      "acl": null,
       "name": "apply_booking_promotion_to_order",
       "owner": "postgres",
       "schema": "private",
       "comment": null,
-      "definition": "CREATE OR REPLACE FUNCTION private.apply_booking_promotion_to_order()\n RETURNS trigger\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO ''\nAS $function$\nDECLARE\n  booking_row public.\"Booking\"%ROWTYPE;\n  promotion public.\"KhuyenMai\"%ROWTYPE;\n  discount_amount numeric(18,2);\nBEGIN\n  IF TG_OP='UPDATE' AND OLD.\"TongTien\" IS NOT DISTINCT FROM NEW.\"TongTien\" AND OLD.\"TienGiamDoDiem\" IS NOT DISTINCT FROM NEW.\"TienGiamDoDiem\" AND OLD.\"PhiGiaoHang\" IS NOT DISTINCT FROM NEW.\"PhiGiaoHang\" AND OLD.\"KhuyenMaiID\" IS NOT DISTINCT FROM NEW.\"KhuyenMaiID\" THEN RETURN NEW; END IF;\n  IF NEW.\"BookingID\" IS NULL THEN\n    RETURN NEW;\n  END IF;\n  SELECT *\n  INTO booking_row\n  FROM public.\"Booking\"\n  WHERE \"BookingID\" = NEW.\"BookingID\";\n  IF NOT FOUND OR booking_row.\"KhuyenMaiID\" IS NULL THEN\n    RETURN NEW;\n  END IF;\n  SELECT *\n  INTO promotion\n  FROM public.\"KhuyenMai\"\n  WHERE \"KhuyenMaiID\" = booking_row.\"KhuyenMaiID\";\n  IF NOT FOUND THEN\n    RETURN NEW;\n  END IF;\n  IF promotion.\"TrangThai\"<>'Hoạt động' OR promotion.\"NgayBatDau\">current_date OR promotion.\"NgayKetThuc\"<current_date\n     OR (promotion.\"GiaTriDonToiThieu\" IS NOT NULL AND NEW.\"TongTien\"<promotion.\"GiaTriDonToiThieu\")\n     OR ((lower(coalesce(promotion.\"DieuKienApDung\",'')) LIKE '%first_order_only%' OR lower(coalesce(promotion.\"DieuKienApDung\",'')) LIKE '%don hang dau tien%' OR lower(coalesce(promotion.\"DieuKienApDung\",'')) LIKE '%đơn hàng đầu tiên%') AND EXISTS(SELECT 1 FROM public.\"DonHang\" WHERE \"KhachHangID\"=NEW.\"KhachHangID\" AND \"DonHangID\"<>NEW.\"DonHangID\")) THEN\n    IF booking_row.\"KhuyenMaiDaTru\" THEN\n      UPDATE public.\"KhuyenMai\"\n      SET \"SoLuongSuDung\" = \"SoLuongSuDung\" + 1\n      WHERE \"KhuyenMaiID\" = booking_row.\"KhuyenMaiID\"\n        AND \"SoLuongSuDung\" IS NOT NULL;\n    END IF;\n    UPDATE public.\"Booking\"\n    SET \"KhuyenMaiID\" = NULL,\n        \"KhuyenMaiDaTru\" = false\n    WHERE \"BookingID\" = NEW.\"BookingID\";\n    NEW.\"KhuyenMaiID\" := NULL;\n    NEW.\"TienGiamKhuyenMai\" := 0;\n    NEW.\"ThanhTien\" := greatest(\n      NEW.\"TongTien\" + NEW.\"PhiGiaoHang\" - NEW.\"TienGiamDoDiem\",\n      0\n    );\n    RETURN NEW;\n  END IF;\n  discount_amount := CASE\n    WHEN promotion.\"LoaiKhuyenMai\" = 'Phần trăm'\n      THEN NEW.\"TongTien\" * promotion.\"GiaTriGiam\" / 100\n    ELSE promotion.\"GiaTriGiam\"\n  END;\n  IF promotion.\"MucGiamToiDa\" IS NOT NULL THEN\n    discount_amount := least(discount_amount, promotion.\"MucGiamToiDa\");\n  END IF;\n  NEW.\"KhuyenMaiID\" := booking_row.\"KhuyenMaiID\";\n  NEW.\"TienGiamKhuyenMai\" := greatest(least(discount_amount, NEW.\"TongTien\"), 0);\n  NEW.\"ThanhTien\" := greatest(\n    NEW.\"TongTien\" + NEW.\"PhiGiaoHang\" - NEW.\"TienGiamDoDiem\" - NEW.\"TienGiamKhuyenMai\",\n    0\n  );\n  RETURN NEW;\nEND;\n$function$\n",
+      "definition": "CREATE OR REPLACE FUNCTION private.apply_booking_promotion_to_order()\n RETURNS trigger\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO ''\nAS $function$\nDECLARE\n  booking_row public.\"Booking\"%ROWTYPE;\n  promotion public.\"KhuyenMai\"%ROWTYPE;\n  discount_amount numeric(18,2);\nBEGIN\n  IF NEW.\"BookingID\" IS NULL THEN\n    RETURN NEW;\n  END IF;\n\n  SELECT *\n  INTO booking_row\n  FROM public.\"Booking\"\n  WHERE \"BookingID\" = NEW.\"BookingID\";\n\n  IF NOT FOUND OR booking_row.\"KhuyenMaiID\" IS NULL THEN\n    RETURN NEW;\n  END IF;\n\n  SELECT *\n  INTO promotion\n  FROM public.\"KhuyenMai\"\n  WHERE \"KhuyenMaiID\" = booking_row.\"KhuyenMaiID\";\n\n  IF NOT FOUND THEN\n    RETURN NEW;\n  END IF;\n\n  IF promotion.\"GiaTriDonToiThieu\" IS NOT NULL\n     AND NEW.\"TongTien\" < promotion.\"GiaTriDonToiThieu\" THEN\n    IF booking_row.\"KhuyenMaiDaTru\" THEN\n      UPDATE public.\"KhuyenMai\"\n      SET \"SoLuongSuDung\" = \"SoLuongSuDung\" + 1\n      WHERE \"KhuyenMaiID\" = booking_row.\"KhuyenMaiID\"\n        AND \"SoLuongSuDung\" IS NOT NULL;\n    END IF;\n\n    UPDATE public.\"Booking\"\n    SET \"KhuyenMaiID\" = NULL,\n        \"KhuyenMaiDaTru\" = false\n    WHERE \"BookingID\" = NEW.\"BookingID\";\n    NEW.\"KhuyenMaiID\" := NULL;\n    NEW.\"TienGiamKhuyenMai\" := 0;\n    NEW.\"ThanhTien\" := greatest(\n      NEW.\"TongTien\" + NEW.\"PhiGiaoHang\"\n        - greatest(NEW.\"TienGiamDoDiem\", 0),\n      0\n    );\n    RETURN NEW;\n  END IF;\n\n  discount_amount := CASE\n    WHEN promotion.\"LoaiKhuyenMai\" = 'Phần trăm'\n      THEN NEW.\"TongTien\" * promotion.\"GiaTriGiam\" / 100\n    ELSE promotion.\"GiaTriGiam\"\n  END;\n\n  IF promotion.\"MucGiamToiDa\" IS NOT NULL THEN\n    discount_amount := least(discount_amount, promotion.\"MucGiamToiDa\");\n  END IF;\n\n  NEW.\"KhuyenMaiID\" := booking_row.\"KhuyenMaiID\";\n  NEW.\"TienGiamKhuyenMai\" := greatest(\n    least(discount_amount, NEW.\"TongTien\"),\n    0\n  );\n  NEW.\"ThanhTien\" := greatest(\n    NEW.\"TongTien\" + NEW.\"PhiGiaoHang\"\n      - NEW.\"TienGiamKhuyenMai\"\n      - greatest(NEW.\"TienGiamDoDiem\", 0),\n    0\n  );\n  RETURN NEW;\nEND;\n$function$\n",
       "identity_args": ""
     },
     {
@@ -15670,6 +16101,43 @@
     },
     {
       "acl": [
+        "postgres=X/postgres"
+      ],
+      "name": "dispatch_push_notification",
+      "owner": "postgres",
+      "schema": "private",
+      "comment": null,
+      "definition": "CREATE OR REPLACE FUNCTION private.dispatch_push_notification()\n RETURNS trigger\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO ''\nAS $function$\nDECLARE\n  webhook_secret text;\nBEGIN\n  SELECT decrypted_secret\n  INTO webhook_secret\n  FROM vault.decrypted_secrets\n  WHERE name = 'push_webhook_secret'\n  LIMIT 1;\n\n  IF webhook_secret IS NULL OR webhook_secret = '' THEN\n    RETURN NEW;\n  END IF;\n\n  PERFORM net.http_post(\n    url := 'https://osnblefzulmsuthhuswl.supabase.co/functions/v1/push-notification',\n    headers := jsonb_build_object(\n      'Content-Type', 'application/json',\n      'x-push-webhook-secret', webhook_secret\n    ),\n    body := jsonb_build_object('record', jsonb_build_object(\n      'ThongBaoID', NEW.\"ThongBaoID\",\n      'TaiKhoanID', NEW.\"TaiKhoanID\",\n      'TieuDe', NEW.\"TieuDe\",\n      'NoiDung', NEW.\"NoiDung\",\n      'LoaiThongBao', NEW.\"LoaiThongBao\",\n      'DonHangID', NEW.\"DonHangID\"\n    ))\n  );\n\n  RETURN NEW;\nEND;\n$function$\n",
+      "identity_args": ""
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "anon=X/postgres",
+        "authenticated=X/postgres"
+      ],
+      "name": "get_service_public_reviews",
+      "owner": "postgres",
+      "schema": "private",
+      "comment": null,
+      "definition": "CREATE OR REPLACE FUNCTION private.get_service_public_reviews(p_service_id integer, p_filter text DEFAULT 'all'::text, p_offset integer DEFAULT 0, p_limit integer DEFAULT 10)\n RETURNS TABLE(review_id integer, service_id integer, service_name text, rating integer, comment text, shop_response text, reviewed_at timestamp without time zone, service_count integer, service_names text[])\n LANGUAGE plpgsql\n STABLE SECURITY DEFINER\n SET search_path TO ''\nAS $function$\nbegin\n  if p_filter not in ('all', 'single', 'mixed') then\n    return;\n  end if;\n\n  return query\n  with order_services as (\n    select distinct ct.\"DonHangID\", dv.\"DichVuID\", dv.\"TenDichVu\"\n    from public.\"ChiTietDonHang\" as ct\n    join public.\"DichVu\" as dv on dv.\"DichVuID\" = ct.\"DichVuID\"\n  ),\n  service_stats as (\n    select os.\"DonHangID\",\n      count(*)::integer as service_count,\n      array_agg(os.\"TenDichVu\"::text order by os.\"TenDichVu\") as service_names\n    from order_services as os\n    group by os.\"DonHangID\"\n  )\n  select dg.\"DanhGiaID\",\n    os.\"DichVuID\",\n    os.\"TenDichVu\"::text,\n    dg.\"SoSao\",\n    dg.\"BinhLuan\"::text,\n    dg.shop_response,\n    dg.\"NgayDanhGia\",\n    stats.service_count,\n    stats.service_names\n  from public.\"DanhGia\" as dg\n  join order_services as os on os.\"DonHangID\" = dg.\"DonHangID\"\n  join service_stats as stats on stats.\"DonHangID\" = dg.\"DonHangID\"\n  where dg.\"TrangThai\" = 'Hiển thị'\n    and os.\"DichVuID\" = p_service_id\n    and (p_filter = 'all'\n      or (p_filter = 'single' and stats.service_count = 1)\n      or (p_filter = 'mixed' and stats.service_count > 1))\n  order by dg.\"NgayDanhGia\" desc, dg.\"DanhGiaID\" desc\n  offset greatest(coalesce(p_offset, 0), 0)\n  limit least(greatest(coalesce(p_limit, 10), 1), 1000);\nend;\n$function$\n",
+      "identity_args": "p_service_id integer, p_filter text, p_offset integer, p_limit integer"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "anon=X/postgres",
+        "authenticated=X/postgres"
+      ],
+      "name": "get_service_reviews_v2",
+      "owner": "postgres",
+      "schema": "private",
+      "comment": null,
+      "definition": "CREATE OR REPLACE FUNCTION private.get_service_reviews_v2(p_service_id integer, p_filter text DEFAULT 'all'::text, p_offset integer DEFAULT 0, p_limit integer DEFAULT 10)\n RETURNS TABLE(review_id integer, service_id integer, service_name text, rating integer, comment text, shop_response text, reviewed_at timestamp without time zone, service_count integer, service_names text[], order_code text, customer_name text)\n LANGUAGE plpgsql\n STABLE SECURITY DEFINER\n SET search_path TO ''\nAS $function$\nbegin\n  if p_filter not in ('all', 'single', 'mixed') then\n    return;\n  end if;\n\n  return query\n  with order_services as (\n    select distinct ct.\"DonHangID\", dv.\"DichVuID\", dv.\"TenDichVu\"\n    from public.\"ChiTietDonHang\" as ct\n    join public.\"DichVu\" as dv on dv.\"DichVuID\" = ct.\"DichVuID\"\n  ),\n  service_stats as (\n    select os.\"DonHangID\",\n      count(*)::integer as service_count,\n      array_agg(os.\"TenDichVu\"::text order by os.\"TenDichVu\") as service_names\n    from order_services as os\n    group by os.\"DonHangID\"\n  )\n  select dg.\"DanhGiaID\",\n    os.\"DichVuID\",\n    os.\"TenDichVu\"::text,\n    dg.\"SoSao\",\n    dg.\"BinhLuan\"::text,\n    dg.shop_response,\n    dg.\"NgayDanhGia\",\n    stats.service_count,\n    stats.service_names,\n    dh.\"MaDonHang\"::text,\n    nullif(btrim(kh.\"HoTen\"), '')\n  from public.\"DanhGia\" as dg\n  join public.\"DonHang\" as dh on dh.\"DonHangID\" = dg.\"DonHangID\"\n  left join public.\"KhachHang\" as kh\n    on kh.\"KhachHangID\" = coalesce(dg.\"KhachHangID\", dh.\"KhachHangID\")\n  join order_services as os on os.\"DonHangID\" = dg.\"DonHangID\"\n  join service_stats as stats on stats.\"DonHangID\" = dg.\"DonHangID\"\n  where dg.\"TrangThai\" = 'Hiển thị'\n    and os.\"DichVuID\" = p_service_id\n    and (p_filter = 'all'\n      or (p_filter = 'single' and stats.service_count = 1)\n      or (p_filter = 'mixed' and stats.service_count > 1))\n  order by dg.\"NgayDanhGia\" desc, dg.\"DanhGiaID\" desc\n  offset greatest(coalesce(p_offset, 0), 0)\n  limit least(greatest(coalesce(p_limit, 10), 1), 1000);\nend;\n$function$\n",
+      "identity_args": "p_service_id integer, p_filter text, p_offset integer, p_limit integer"
+    },
+    {
+      "acl": [
         "postgres=X/postgres",
         "authenticated=X/postgres"
       ],
@@ -15758,12 +16226,14 @@
       "identity_args": ""
     },
     {
-      "acl": null,
+      "acl": [
+        "postgres=X/postgres"
+      ],
       "name": "notify_customers_new_promotion",
       "owner": "postgres",
       "schema": "private",
       "comment": null,
-      "definition": "CREATE OR REPLACE FUNCTION private.notify_customers_new_promotion()\n RETURNS trigger\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO ''\nAS $function$\nBEGIN\n  IF NEW.\"TrangThai\" = 'Hoạt động'\n     AND NEW.\"NgayBatDau\" <= CURRENT_DATE\n     AND NEW.\"NgayKetThuc\" >= CURRENT_DATE THEN\n    INSERT INTO public.\"ThongBao\" (\n      \"TaiKhoanID\", \"TieuDe\", \"NoiDung\", \"ThoiGianGui\", \"DaDoc\", \"DonHangID\", \"LoaiThongBao\"\n    )\n    SELECT\n      account.\"TaiKhoanID\"::integer,\n      'Có khuyến mãi mới'::varchar,\n      ('Khuyến mãi ' || NEW.\"TenKhuyenMai\" || ' (' || NEW.\"MaKhuyenMai\" || ') đã sẵn sàng để sử dụng.')::varchar,\n      now()::timestamp,\n      false,\n      NULL::integer,\n      'promotion'::varchar\n    FROM public.\"TaiKhoan\" AS account\n    JOIN public.\"KhachHang\" AS customer\n      ON customer.\"KhachHangID\" = account.\"KhachHangID\"\n    WHERE account.\"TrangThai\" = 'Hoạt động'\n      AND customer.\"TrangThai\" = 'Hoạt động';\n  END IF;\n\n  RETURN NEW;\nEND;\n$function$\n",
+      "definition": "CREATE OR REPLACE FUNCTION private.notify_customers_new_promotion()\n RETURNS trigger\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO ''\nAS $function$\nDECLARE\n  promotion_is_available boolean;\n  promotion_was_available boolean := false;\n  discount_label text;\n  notification_title text;\n  notification_message text;\nBEGIN\n  promotion_is_available := NEW.\"TrangThai\" = 'Hoạt động'\n    AND NEW.\"NgayBatDau\" <= current_date\n    AND NEW.\"NgayKetThuc\" >= current_date\n    AND (NEW.\"SoLuongSuDung\" IS NULL OR NEW.\"SoLuongSuDung\" > 0);\n\n  IF TG_OP = 'UPDATE' THEN\n    promotion_was_available := OLD.\"TrangThai\" = 'Hoạt động'\n      AND OLD.\"NgayBatDau\" <= current_date\n      AND OLD.\"NgayKetThuc\" >= current_date\n      AND (OLD.\"SoLuongSuDung\" IS NULL OR OLD.\"SoLuongSuDung\" > 0);\n  END IF;\n\n  IF NOT promotion_is_available OR promotion_was_available THEN\n    RETURN NEW;\n  END IF;\n\n  discount_label := CASE\n    WHEN NEW.\"LoaiKhuyenMai\" = 'Phần trăm'\n      THEN trim(to_char(NEW.\"GiaTriGiam\", 'FM999999990.##')) || '%'\n    ELSE trim(to_char(NEW.\"GiaTriGiam\", 'FM999999990.##')) || 'đ'\n  END;\n\n  notification_title := left('Ưu đãi mới: ' || NEW.\"TenKhuyenMai\", 200);\n  notification_message := left(\n    'Mã ' || NEW.\"MaKhuyenMai\" || ' giảm ' || discount_label || '.' ||\n      CASE\n        WHEN NEW.\"GiaTriDonToiThieu\" IS NOT NULL\n          THEN ' Đơn tối thiểu ' ||\n            trim(to_char(NEW.\"GiaTriDonToiThieu\", 'FM999999999999990.##')) || 'đ.'\n        ELSE ''\n      END ||\n      CASE\n        WHEN nullif(btrim(NEW.\"DieuKienApDung\"), '') IS NOT NULL\n          THEN ' ' || btrim(NEW.\"DieuKienApDung\") || '.'\n        ELSE ''\n      END ||\n      ' Có hiệu lực đến ' || to_char(NEW.\"NgayKetThuc\", 'DD/MM/YYYY') || '.',\n    1000\n  );\n\n  INSERT INTO public.\"ThongBao\" (\n    \"TaiKhoanID\", \"TieuDe\", \"NoiDung\", \"LoaiThongBao\"\n  )\n  SELECT account.\"TaiKhoanID\", notification_title, notification_message,\n         'new_promotion'\n  FROM public.\"TaiKhoan\" AS account\n  WHERE account.\"TrangThai\" = 'Hoạt động'\n    AND account.\"KhachHangID\" IS NOT NULL\n    AND EXISTS (\n      SELECT 1\n      FROM public.\"TaiKhoan_VaiTro\" AS account_role\n      JOIN public.\"VaiTro\" AS role\n        ON role.\"VaiTroID\" = account_role.\"VaiTroID\"\n      WHERE account_role.\"TaiKhoanID\" = account.\"TaiKhoanID\"\n        AND role.\"TenVaiTro\" = 'Khách hàng'\n        AND role.\"TrangThai\" = 'Hoạt động'\n    );\n\n  RETURN NEW;\nEND;\n$function$\n",
       "identity_args": ""
     },
     {
@@ -15786,6 +16256,17 @@
       "schema": "private",
       "comment": null,
       "definition": "CREATE OR REPLACE FUNCTION private.record_order_status_change()\n RETURNS trigger\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO ''\nAS $function$\r\nBEGIN\r\n\tIF TG_OP = 'INSERT' THEN\r\n\t\tINSERT INTO public.donhang_trangthai (\r\n\t\t\tdonhangid,\r\n\t\t\ttaikhoanid,\r\n\t\t\ttrangthaicu,\r\n\t\t\ttrangthaimoi\r\n\t\t) VALUES (\r\n\t\t\tNEW.donhangid,\r\n\t\t\t(SELECT private.current_account_id()),\r\n\t\t\tNULL,\r\n\t\t\tNEW.trangthai\r\n\t\t);\r\n\tELSIF OLD.trangthai IS DISTINCT FROM NEW.trangthai THEN\r\n\t\tINSERT INTO public.donhang_trangthai (\r\n\t\t\tdonhangid,\r\n\t\t\ttaikhoanid,\r\n\t\t\ttrangthaicu,\r\n\t\t\ttrangthaimoi\r\n\t\t) VALUES (\r\n\t\t\tNEW.donhangid,\r\n\t\t\t(SELECT private.current_account_id()),\r\n\t\t\tOLD.trangthai,\r\n\t\t\tNEW.trangthai\r\n\t\t);\r\n\tEND IF;\r\n\r\n\tRETURN NEW;\r\nEND;\r\n$function$\n",
+      "identity_args": ""
+    },
+    {
+      "acl": [
+        "postgres=X/postgres"
+      ],
+      "name": "sync_booking_delivery_fee_to_order",
+      "owner": "postgres",
+      "schema": "private",
+      "comment": null,
+      "definition": "CREATE OR REPLACE FUNCTION private.sync_booking_delivery_fee_to_order()\n RETURNS trigger\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO ''\nAS $function$\nDECLARE\n  total_delivery_fee numeric(12, 2);\nBEGIN\n  total_delivery_fee := coalesce(NEW.\"PickupDeliveryFee\", 0)\n    + coalesce(NEW.\"DeliveryFee\", 0);\n\n  UPDATE public.\"DonHang\"\n  SET \"PhiGiaoHang\" = total_delivery_fee,\n      \"ThanhTien\" = greatest(\n        \"TongTien\" + total_delivery_fee\n          - least(\n            \"TongTien\",\n            greatest(\"TienGiamKhuyenMai\", 0)\n          )\n          - greatest(\"TienGiamDoDiem\", 0),\n        0\n      )\n  WHERE \"BookingID\" = NEW.\"BookingID\";\n\n  RETURN NEW;\nEND;\n$function$\n",
       "identity_args": ""
     },
     {
@@ -15865,6 +16346,18 @@
     {
       "acl": [
         "postgres=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "name": "get_chat_encryption_key",
+      "owner": "postgres",
+      "schema": "public",
+      "comment": null,
+      "definition": "CREATE OR REPLACE FUNCTION public.get_chat_encryption_key()\n RETURNS text\n LANGUAGE sql\n STABLE SECURITY DEFINER\n SET search_path TO ''\nAS $function$\n  SELECT CASE\n    WHEN current_setting('request.jwt.claims', true)::jsonb ->> 'role' = 'service_role'\n    THEN (SELECT decrypted_secret FROM vault.decrypted_secrets WHERE name = 'chat_message_aes_key' LIMIT 1)\n    ELSE NULL\n  END;\n$function$\n",
+      "identity_args": ""
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
         "service_role=X/postgres",
         "authenticated=X/postgres"
       ],
@@ -15890,6 +16383,19 @@
     {
       "acl": [
         "postgres=X/postgres",
+        "service_role=X/postgres",
+        "authenticated=X/postgres"
+      ],
+      "name": "get_customer_history_page",
+      "owner": "postgres",
+      "schema": "public",
+      "comment": null,
+      "definition": "CREATE OR REPLACE FUNCTION public.get_customer_history_page(p_status text, p_offset integer DEFAULT 0, p_limit integer DEFAULT 20)\n RETURNS jsonb\n LANGUAGE sql\n STABLE\n SET search_path TO 'public', 'pg_temp'\nAS $function$\n  WITH history_rows AS (\n    SELECT\n      'order'::text AS source,\n      order_row.\"DonHangID\"::bigint AS record_id,\n      order_row.\"NgayTao\" AS created_at,\n      CASE\n        WHEN order_row.\"TrangThai\" = 'Đã hủy' THEN 'cancelled'\n        WHEN order_row.\"TrangThai\" IN ('Đã giao', 'Đã thanh toán', 'Hoàn thành')\n          THEN 'completed'\n        ELSE 'processing'\n      END AS status_group\n    FROM public.\"DonHang\" AS order_row\n    UNION ALL\n    SELECT\n      'booking'::text AS source,\n      booking_row.\"BookingID\"::bigint AS record_id,\n      booking_row.\"NgayTao\" AS created_at,\n      CASE\n        WHEN booking_row.\"TrangThai\" IN ('DaHuy', 'Đã hủy') THEN 'cancelled'\n        WHEN booking_row.\"TrangThai\" IN ('HoanThanh', 'DaGiao', 'Hoàn thành', 'Đã giao')\n          THEN 'completed'\n        ELSE 'processing'\n      END AS status_group\n    FROM public.\"Booking\" AS booking_row\n    WHERE NOT EXISTS (\n      SELECT 1\n      FROM public.\"DonHang\" AS linked_order\n      WHERE linked_order.\"BookingID\" = booking_row.\"BookingID\"\n    )\n  ),\n  filtered_rows AS (\n    SELECT source, record_id, created_at\n    FROM history_rows\n    WHERE status_group = p_status\n  ),\n  page_rows AS (\n    SELECT source, record_id, created_at\n    FROM filtered_rows\n    ORDER BY created_at DESC, source, record_id DESC\n    OFFSET greatest(coalesce(p_offset, 0), 0)\n    LIMIT greatest(1, least(coalesce(p_limit, 20), 100))\n  )\n  SELECT jsonb_build_object(\n    'total_count', (SELECT count(*) FROM filtered_rows),\n    'items', coalesce(\n      (\n        SELECT jsonb_agg(\n          jsonb_build_object('source', page.source, 'record_id', page.record_id)\n          ORDER BY page.created_at DESC, page.source, page.record_id DESC\n        )\n        FROM page_rows AS page\n      ),\n      '[]'::jsonb\n    )\n  );\n$function$\n",
+      "identity_args": "p_status text, p_offset integer, p_limit integer"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
         "authenticated=X/postgres"
       ],
       "name": "get_customer_loyalty",
@@ -15898,6 +16404,19 @@
       "comment": null,
       "definition": "CREATE OR REPLACE FUNCTION public.get_customer_loyalty()\n RETURNS jsonb\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO ''\nAS $function$\r\nDECLARE\r\n  customer_id bigint := (SELECT private.current_customer_id());\r\n  current_points integer;\r\n  active_vouchers jsonb;\r\nBEGIN\r\n  IF customer_id IS NULL THEN\r\n    RAISE EXCEPTION 'An active customer account is required';\r\n  END IF;\r\n\r\n  SELECT coalesce(points.\"DiemHienTai\", 0)\r\n  INTO current_points\r\n  FROM public.\"DiemTichLuy\" AS points\r\n  WHERE points.\"KhachHangID\" = customer_id;\r\n\r\n  SELECT coalesce(\r\n    jsonb_agg(\r\n      jsonb_build_object(\r\n        'khuyenmaiid', promotion.\"KhuyenMaiID\",\r\n        'makhuyenmai', promotion.\"MaKhuyenMai\",\r\n        'tenkhuyenmai', promotion.\"TenKhuyenMai\",\r\n        'loaikhuyenmai', promotion.\"LoaiKhuyenMai\",\r\n        'giatrigiam', promotion.\"GiaTriGiam\",\r\n        'giatridontoithieu', promotion.\"GiaTriDonToiThieu\",\r\n        'mucgiamtoida', promotion.\"MucGiamToiDa\",\r\n        'dieukienapdung', promotion.\"DieuKienApDung\"\r\n      )\r\n      ORDER BY promotion.\"NgayKetThuc\"\r\n    ),\r\n    '[]'::jsonb\r\n  )\r\n  INTO active_vouchers\r\n  FROM public.\"KhuyenMai\" AS promotion\r\n  WHERE promotion.\"TrangThai\" = 'Hoạt động'\r\n    AND promotion.\"NgayBatDau\" <= current_date\r\n    AND promotion.\"NgayKetThuc\" >= current_date\r\n    AND (\r\n      promotion.\"SoLuongSuDung\" IS NULL\r\n      OR promotion.\"SoLuongSuDung\" > 0\r\n    )\r\n    AND NOT EXISTS (\r\n      SELECT 1\r\n      FROM public.\"Booking\" AS booking\r\n      WHERE booking.\"KhachHangID\" = customer_id\r\n        AND booking.\"KhuyenMaiID\" = promotion.\"KhuyenMaiID\"\r\n        AND booking.\"TrangThai\" <> 'DaHuy'\r\n    );\r\n\r\n  RETURN jsonb_build_object(\r\n    'points', coalesce(current_points, 0),\r\n    'vouchers', active_vouchers\r\n  );\r\nEND;\r\n$function$\n",
       "identity_args": ""
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres",
+        "authenticated=X/postgres"
+      ],
+      "name": "get_hidden_chat_message_ids",
+      "owner": "postgres",
+      "schema": "public",
+      "comment": null,
+      "definition": "CREATE OR REPLACE FUNCTION public.get_hidden_chat_message_ids(p_peer_account_id integer, p_order_id integer DEFAULT NULL::integer)\n RETURNS TABLE(\"TinNhanID\" integer)\n LANGUAGE sql\n STABLE SECURITY DEFINER\n SET search_path TO ''\nAS $function$\n  SELECT hidden.\"TinNhanID\"\n  FROM public.\"TinNhanAn\" AS hidden\n  JOIN public.\"TinNhan\" AS message ON message.\"TinNhanID\" = hidden.\"TinNhanID\"\n  WHERE auth.uid() IS NOT NULL\n    AND hidden.\"TaiKhoanID\" = private.current_account_id()\n    AND message.\"DonHangID\" IS NOT DISTINCT FROM p_order_id\n    AND (\n      p_order_id IS NOT NULL\n      OR message.\"NguoiGuiID\" = p_peer_account_id\n      OR message.\"NguoiNhanID\" = p_peer_account_id\n    );\n$function$\n",
+      "identity_args": "p_peer_account_id integer, p_order_id integer"
     },
     {
       "acl": [
@@ -15915,13 +16434,41 @@
       "acl": [
         "postgres=X/postgres",
         "service_role=X/postgres",
+        "anon=X/postgres",
+        "authenticated=X/postgres"
+      ],
+      "name": "get_service_public_reviews",
+      "owner": "postgres",
+      "schema": "public",
+      "comment": null,
+      "definition": "CREATE OR REPLACE FUNCTION public.get_service_public_reviews(p_service_id integer, p_filter text DEFAULT 'all'::text, p_offset integer DEFAULT 0, p_limit integer DEFAULT 10)\n RETURNS TABLE(review_id integer, service_id integer, service_name text, rating integer, comment text, shop_response text, reviewed_at timestamp without time zone, service_count integer, service_names text[])\n LANGUAGE sql\n STABLE\n SET search_path TO ''\nAS $function$\n  select *\n  from private.get_service_public_reviews(p_service_id, p_filter, p_offset, p_limit);\n$function$\n",
+      "identity_args": "p_service_id integer, p_filter text, p_offset integer, p_limit integer"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres",
+        "anon=X/postgres",
+        "authenticated=X/postgres"
+      ],
+      "name": "get_service_reviews_v2",
+      "owner": "postgres",
+      "schema": "public",
+      "comment": null,
+      "definition": "CREATE OR REPLACE FUNCTION public.get_service_reviews_v2(p_service_id integer, p_filter text DEFAULT 'all'::text, p_offset integer DEFAULT 0, p_limit integer DEFAULT 10)\n RETURNS TABLE(review_id integer, service_id integer, service_name text, rating integer, comment text, shop_response text, reviewed_at timestamp without time zone, service_count integer, service_names text[], order_code text, customer_name text)\n LANGUAGE sql\n STABLE\n SET search_path TO ''\nAS $function$\n  select *\n  from private.get_service_reviews_v2(p_service_id, p_filter, p_offset, p_limit);\n$function$\n",
+      "identity_args": "p_service_id integer, p_filter text, p_offset integer, p_limit integer"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres",
         "authenticated=X/postgres"
       ],
       "name": "get_staff_chat_inbox",
       "owner": "postgres",
       "schema": "public",
       "comment": null,
-      "definition": "CREATE OR REPLACE FUNCTION public.get_staff_chat_inbox()\n RETURNS TABLE(customer_account_id integer, customer_name text, customer_avatar_url text, order_id integer, order_number text, last_message text, last_message_at timestamp without time zone, last_sender_account_id integer, unread_count bigint)\n LANGUAGE sql\n STABLE SECURITY DEFINER\n SET search_path TO ''\nAS $function$\n  WITH conversations AS (\n    SELECT DISTINCT ON (\n      CASE WHEN sender.\"KhachHangID\" IS NOT NULL THEN sender.\"TaiKhoanID\" ELSE recipient.\"TaiKhoanID\" END,\n      m.\"DonHangID\"\n    )\n      CASE WHEN sender.\"KhachHangID\" IS NOT NULL THEN sender.\"TaiKhoanID\" ELSE recipient.\"TaiKhoanID\" END AS customer_account_id,\n      m.\"DonHangID\" AS order_id,\n      m.\"NoiDung\" AS last_message,\n      m.\"ThoiGianGui\" AS last_message_at,\n      m.\"NguoiGuiID\" AS last_sender_account_id\n    FROM public.\"TinNhan\" AS m\n    JOIN public.\"TaiKhoan\" AS sender ON sender.\"TaiKhoanID\" = m.\"NguoiGuiID\"\n    JOIN public.\"TaiKhoan\" AS recipient ON recipient.\"TaiKhoanID\" = m.\"NguoiNhanID\"\n    WHERE sender.\"KhachHangID\" IS NOT NULL OR recipient.\"KhachHangID\" IS NOT NULL\n    ORDER BY\n      CASE WHEN sender.\"KhachHangID\" IS NOT NULL THEN sender.\"TaiKhoanID\" ELSE recipient.\"TaiKhoanID\" END,\n      m.\"DonHangID\", m.\"ThoiGianGui\" DESC, m.\"TinNhanID\" DESC\n  )\n  SELECT c.customer_account_id,\n    coalesce(k.\"HoTen\", a.\"TenDangNhap\", 'Khách hàng')::text,\n    coalesce(k.\"AvatarUrl\", a.\"AvatarURL\")::text,\n    c.order_id, d.\"MaDonHang\"::text, c.last_message, c.last_message_at, c.last_sender_account_id,\n    (\n      SELECT count(*)\n      FROM public.\"TinNhan\" AS m\n      JOIN public.\"TaiKhoan\" AS sender ON sender.\"TaiKhoanID\" = m.\"NguoiGuiID\"\n      WHERE sender.\"KhachHangID\" IS NOT NULL\n        AND m.\"NguoiGuiID\" = c.customer_account_id\n        AND m.\"DonHangID\" IS NOT DISTINCT FROM c.order_id\n        AND m.\"TrangThai\" IN ('Đã gửi', 'Đã nhận')\n    )\n  FROM conversations AS c\n  JOIN public.\"TaiKhoan\" AS a ON a.\"TaiKhoanID\" = c.customer_account_id\n  LEFT JOIN public.\"KhachHang\" AS k ON k.\"KhachHangID\" = a.\"KhachHangID\"\n  LEFT JOIN public.\"DonHang\" AS d ON d.\"DonHangID\" = c.order_id\n  WHERE auth.uid() IS NOT NULL AND private.is_messaging_staff()\n  ORDER BY c.last_message_at DESC;\n$function$\n",
+      "definition": "CREATE OR REPLACE FUNCTION public.get_staff_chat_inbox()\n RETURNS TABLE(customer_account_id integer, customer_name text, customer_avatar_url text, order_id integer, order_number text, last_message text, last_message_at timestamp without time zone, last_sender_account_id integer, unread_count bigint)\n LANGUAGE sql\n STABLE SECURITY DEFINER\n SET search_path TO ''\nAS $function$\n  WITH conversations AS (\n    SELECT DISTINCT ON (\n      CASE WHEN sender.\"KhachHangID\" IS NOT NULL THEN sender.\"TaiKhoanID\" ELSE recipient.\"TaiKhoanID\" END,\n      m.\"DonHangID\"\n    )\n      CASE WHEN sender.\"KhachHangID\" IS NOT NULL THEN sender.\"TaiKhoanID\" ELSE recipient.\"TaiKhoanID\" END AS customer_account_id,\n      m.\"DonHangID\" AS order_id, m.\"ThoiGianGui\" AS last_message_at, m.\"NguoiGuiID\" AS last_sender_account_id\n    FROM public.\"TinNhan\" AS m\n    JOIN public.\"TaiKhoan\" AS sender ON sender.\"TaiKhoanID\" = m.\"NguoiGuiID\"\n    JOIN public.\"TaiKhoan\" AS recipient ON recipient.\"TaiKhoanID\" = m.\"NguoiNhanID\"\n    WHERE sender.\"KhachHangID\" IS NOT NULL OR recipient.\"KhachHangID\" IS NOT NULL\n    ORDER BY CASE WHEN sender.\"KhachHangID\" IS NOT NULL THEN sender.\"TaiKhoanID\" ELSE recipient.\"TaiKhoanID\" END,\n      m.\"DonHangID\", m.\"ThoiGianGui\" DESC, m.\"TinNhanID\" DESC\n  )\n  SELECT c.customer_account_id, coalesce(k.\"HoTen\", a.\"TenDangNhap\", 'Khách hàng')::text,\n    coalesce(k.\"AvatarUrl\", a.\"AvatarURL\")::text, c.order_id, d.\"MaDonHang\"::text,\n    'Bạn có tin nhắn mới.'::text, c.last_message_at, c.last_sender_account_id,\n    (SELECT count(*) FROM public.\"TinNhan\" AS m\n      JOIN public.\"TaiKhoan\" AS sender ON sender.\"TaiKhoanID\" = m.\"NguoiGuiID\"\n      WHERE sender.\"KhachHangID\" IS NOT NULL AND m.\"NguoiGuiID\" = c.customer_account_id\n        AND m.\"DonHangID\" IS NOT DISTINCT FROM c.order_id AND m.\"TrangThai\" IN ('Đã gửi', 'Đã nhận'))\n  FROM conversations AS c\n  JOIN public.\"TaiKhoan\" AS a ON a.\"TaiKhoanID\" = c.customer_account_id\n  LEFT JOIN public.\"KhachHang\" AS k ON k.\"KhachHangID\" = a.\"KhachHangID\"\n  LEFT JOIN public.\"DonHang\" AS d ON d.\"DonHangID\" = c.order_id\n  WHERE auth.uid() IS NOT NULL AND private.is_messaging_staff()\n  ORDER BY c.last_message_at DESC;\n$function$\n",
       "identity_args": ""
     },
     {
@@ -15936,6 +16483,19 @@
       "comment": null,
       "definition": "CREATE OR REPLACE FUNCTION public.get_support_chat_recipient()\n RETURNS integer\n LANGUAGE sql\n STABLE SECURITY DEFINER\n SET search_path TO ''\nAS $function$\n  SELECT CASE\n    WHEN auth.uid() IS NOT NULL\n      AND private.current_account_id() IS NOT NULL\n      AND NOT private.is_messaging_staff()\n    THEN private.default_support_account_id()\n    ELSE NULL\n  END;\n$function$\n",
       "identity_args": ""
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres",
+        "authenticated=X/postgres"
+      ],
+      "name": "hide_chat_message",
+      "owner": "postgres",
+      "schema": "public",
+      "comment": null,
+      "definition": "CREATE OR REPLACE FUNCTION public.hide_chat_message(p_message_id integer)\n RETURNS boolean\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO ''\nAS $function$\nDECLARE\n  account_id integer;\nBEGIN\n  IF auth.uid() IS NULL THEN RETURN false; END IF;\n  account_id := private.current_account_id();\n  IF account_id IS NULL OR NOT EXISTS (\n    SELECT 1 FROM public.\"TinNhan\" AS message\n    WHERE message.\"TinNhanID\" = p_message_id\n      AND (\n        message.\"NguoiGuiID\" = account_id\n        OR message.\"NguoiNhanID\" = account_id\n        OR (message.\"DonHangID\" IS NOT NULL\n          AND private.is_messaging_staff()\n          AND private.can_access_order(message.\"DonHangID\"::bigint))\n      )\n  ) THEN\n    RETURN false;\n  END IF;\n\n  INSERT INTO public.\"TinNhanAn\" (\"TaiKhoanID\", \"TinNhanID\")\n  VALUES (account_id, p_message_id)\n  ON CONFLICT DO NOTHING;\n  RETURN true;\nEND\n$function$\n",
+      "identity_args": "p_message_id integer"
     },
     {
       "acl": [
@@ -15965,6 +16525,19 @@
     },
     {
       "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres",
+        "authenticated=X/postgres"
+      ],
+      "name": "migrate_chat_message_encrypted",
+      "owner": "postgres",
+      "schema": "public",
+      "comment": null,
+      "definition": "CREATE OR REPLACE FUNCTION public.migrate_chat_message_encrypted(p_message_id integer, p_ciphertext text, p_nonce text)\n RETURNS boolean\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO ''\nAS $function$\nDECLARE changed integer;\nBEGIN\n  IF auth.uid() IS NULL OR p_ciphertext IS NULL OR char_length(p_ciphertext) NOT BETWEEN 1 AND 12000\n     OR p_nonce IS NULL OR char_length(p_nonce) <> 16 THEN\n    RETURN false;\n  END IF;\n  UPDATE public.\"TinNhan\" AS m\n  SET \"NoiDung\" = '', \"NoiDungMaHoa\" = p_ciphertext, \"NoiDungNonce\" = p_nonce, \"MaHoaPhienBan\" = 1\n  WHERE m.\"TinNhanID\" = p_message_id AND m.\"NoiDungMaHoa\" IS NULL\n    AND (\n      private.current_account_id() IN (m.\"NguoiGuiID\", m.\"NguoiNhanID\")\n      OR EXISTS (\n        SELECT 1 FROM public.\"TaiKhoan\" AS participant\n        JOIN public.\"TaiKhoan\" AS current_account ON current_account.\"TaiKhoanID\" = private.current_account_id()\n        WHERE participant.\"TaiKhoanID\" IN (m.\"NguoiGuiID\", m.\"NguoiNhanID\")\n          AND current_account.\"KhachHangID\" IS NOT NULL\n          AND participant.\"KhachHangID\" = current_account.\"KhachHangID\"\n      )\n      OR (m.\"DonHangID\" IS NOT NULL AND private.is_messaging_staff()\n          AND private.can_access_order(m.\"DonHangID\"::bigint))\n    );\n  GET DIAGNOSTICS changed = ROW_COUNT;\n  RETURN changed = 1;\nEND\n$function$\n",
+      "identity_args": "p_message_id integer, p_ciphertext text, p_nonce text"
+    },
+    {
+      "acl": [
         "=X/postgres",
         "postgres=X/postgres",
         "service_role=X/postgres"
@@ -15973,8 +16546,20 @@
       "owner": "postgres",
       "schema": "public",
       "comment": null,
-      "definition": "CREATE OR REPLACE FUNCTION public.notify_customer_of_store_message()\n RETURNS trigger\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO ''\nAS $function$\nDECLARE\n  recipient_customer_id integer;\n  sender_is_staff boolean;\n  recipient_is_staff boolean;\nBEGIN\n  SELECT a.\"KhachHangID\" INTO recipient_customer_id\n  FROM public.\"TaiKhoan\" AS a\n  WHERE a.\"TaiKhoanID\" = NEW.\"NguoiNhanID\" AND a.\"TrangThai\" = 'Hoạt động';\n\n  SELECT EXISTS (\n    SELECT 1 FROM public.\"TaiKhoan\" AS a\n    JOIN public.\"TaiKhoan_VaiTro\" AS av ON av.\"TaiKhoanID\" = a.\"TaiKhoanID\"\n    JOIN public.\"VaiTro\" AS r ON r.\"VaiTroID\" = av.\"VaiTroID\"\n    WHERE a.\"TaiKhoanID\" = NEW.\"NguoiGuiID\"\n      AND a.\"NhanVienID\" IS NOT NULL AND a.\"TrangThai\" = 'Hoạt động'\n      AND r.\"TrangThai\" = 'Hoạt động'\n      AND (r.\"TenVaiTro\" IN ('Nhân viên', 'Chủ cửa hàng') OR r.\"TenVaiTro\" LIKE 'Quản lý%')\n  ) INTO sender_is_staff;\n\n  IF recipient_customer_id IS NOT NULL THEN\n    INSERT INTO public.\"ThongBao\" (\n      \"TaiKhoanID\", \"DonHangID\", \"TinNhanID\", \"LoaiThongBao\",\n      \"TieuDe\", \"NoiDung\", \"ThoiGianGui\", \"DaDoc\"\n    )\n    SELECT customer_account.\"TaiKhoanID\", NEW.\"DonHangID\", NEW.\"TinNhanID\",\n      'new_message',\n      CASE WHEN sender_is_staff THEN 'Tin nhắn mới từ cửa hàng' ELSE 'Tin nhắn mới' END,\n      left(CASE WHEN sender_is_staff THEN 'Cửa hàng: ' ELSE 'Tin nhắn: ' END || NEW.\"NoiDung\", 1000),\n      timezone('utc', now())::timestamp, false\n    FROM public.\"TaiKhoan\" AS customer_account\n    WHERE customer_account.\"KhachHangID\" = recipient_customer_id\n      AND customer_account.\"TrangThai\" = 'Hoạt động'\n      AND customer_account.\"TaiKhoanID\" <> NEW.\"NguoiGuiID\"\n      AND (NEW.\"DonHangID\" IS NULL OR EXISTS (\n        SELECT 1 FROM public.\"DonHang\" AS d\n        WHERE d.\"DonHangID\" = NEW.\"DonHangID\" AND d.\"KhachHangID\" = recipient_customer_id\n      ))\n      AND NOT EXISTS (\n        SELECT 1 FROM public.\"ThongBao\" AS existing\n        WHERE existing.\"TaiKhoanID\" = customer_account.\"TaiKhoanID\"\n          AND existing.\"TinNhanID\" = NEW.\"TinNhanID\"\n          AND existing.\"LoaiThongBao\" = 'new_message'\n      );\n  ELSE\n    SELECT EXISTS (\n      SELECT 1 FROM public.\"TaiKhoan\" AS a\n      JOIN public.\"TaiKhoan_VaiTro\" AS av ON av.\"TaiKhoanID\" = a.\"TaiKhoanID\"\n      JOIN public.\"VaiTro\" AS r ON r.\"VaiTroID\" = av.\"VaiTroID\"\n      WHERE a.\"TaiKhoanID\" = NEW.\"NguoiNhanID\"\n        AND a.\"NhanVienID\" IS NOT NULL AND a.\"TrangThai\" = 'Hoạt động'\n        AND r.\"TrangThai\" = 'Hoạt động'\n        AND (r.\"TenVaiTro\" IN ('Nhân viên', 'Chủ cửa hàng') OR r.\"TenVaiTro\" LIKE 'Quản lý%')\n    ) INTO recipient_is_staff;\n    IF recipient_is_staff THEN\n      INSERT INTO public.\"ThongBao\" (\n        \"TaiKhoanID\", \"DonHangID\", \"TinNhanID\", \"LoaiThongBao\",\n        \"TieuDe\", \"NoiDung\", \"ThoiGianGui\", \"DaDoc\"\n      ) VALUES (\n        NEW.\"NguoiNhanID\", NEW.\"DonHangID\", NEW.\"TinNhanID\", 'new_message',\n        'Tin nhắn mới từ khách hàng', left('Khách hàng: ' || NEW.\"NoiDung\", 1000),\n        timezone('utc', now())::timestamp, false\n      );\n    END IF;\n  END IF;\n  RETURN NEW;\nEND\n$function$\n",
+      "definition": "CREATE OR REPLACE FUNCTION public.notify_customer_of_store_message()\n RETURNS trigger\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO ''\nAS $function$\nDECLARE recipient_customer_id integer; sender_is_staff boolean;\nBEGIN\n  SELECT a.\"KhachHangID\" INTO recipient_customer_id FROM public.\"TaiKhoan\" AS a\n  WHERE a.\"TaiKhoanID\" = NEW.\"NguoiNhanID\" AND a.\"TrangThai\" = 'Hoạt động';\n  SELECT EXISTS (\n    SELECT 1 FROM public.\"TaiKhoan\" AS sender\n    WHERE sender.\"TaiKhoanID\" = NEW.\"NguoiGuiID\"\n      AND sender.\"TrangThai\" = 'Hoạt động'\n      AND EXISTS (\n      SELECT 1 FROM public.\"TaiKhoan_VaiTro\" AS internal_link\n      JOIN public.\"VaiTro\" AS internal_role ON internal_role.\"VaiTroID\" = internal_link.\"VaiTroID\"\n      WHERE internal_link.\"TaiKhoanID\" = sender.\"TaiKhoanID\"\n        AND internal_role.\"TrangThai\" = 'Hoạt động'\n    )\n    AND NOT EXISTS (\n      SELECT 1 FROM public.\"TaiKhoan_VaiTro\" AS customer_link\n      JOIN public.\"VaiTro\" AS customer_role ON customer_role.\"VaiTroID\" = customer_link.\"VaiTroID\"\n      WHERE customer_link.\"TaiKhoanID\" = sender.\"TaiKhoanID\"\n        AND customer_role.\"TrangThai\" = 'Hoạt động'\n        AND lower(btrim(customer_role.\"TenVaiTro\")) IN ('khách hàng', 'khach hang', 'khachhang', 'khach-hang', 'customer', 'client')\n    )\n  ) INTO sender_is_staff;\n  IF recipient_customer_id IS NOT NULL THEN\n    INSERT INTO public.\"ThongBao\" (\n      \"TaiKhoanID\", \"DonHangID\", \"TinNhanID\", \"LoaiThongBao\", \"TieuDe\", \"NoiDung\", \"ThoiGianGui\", \"DaDoc\"\n    )\n    SELECT customer_account.\"TaiKhoanID\", NEW.\"DonHangID\", NEW.\"TinNhanID\", 'new_message',\n      CASE WHEN sender_is_staff THEN 'Tin nhắn mới từ cửa hàng' ELSE 'Tin nhắn mới' END,\n      'Bạn có tin nhắn mới.', timezone('utc', now())::timestamp, false\n    FROM public.\"TaiKhoan\" AS customer_account\n    WHERE customer_account.\"KhachHangID\" = recipient_customer_id\n      AND customer_account.\"TrangThai\" = 'Hoạt động'\n      AND customer_account.\"TaiKhoanID\" <> NEW.\"NguoiGuiID\"\n      AND (NEW.\"DonHangID\" IS NULL OR EXISTS (\n        SELECT 1 FROM public.\"DonHang\" AS d\n        WHERE d.\"DonHangID\" = NEW.\"DonHangID\" AND d.\"KhachHangID\" = recipient_customer_id\n      ))\n      AND NOT EXISTS (\n        SELECT 1 FROM public.\"ThongBao\" AS existing\n        WHERE existing.\"TaiKhoanID\" = customer_account.\"TaiKhoanID\"\n          AND existing.\"TinNhanID\" = NEW.\"TinNhanID\" AND existing.\"LoaiThongBao\" = 'new_message'\n      );\n  ELSE\n    IF EXISTS (\n      SELECT 1 FROM public.\"TaiKhoan\" AS recipient\n      WHERE recipient.\"TaiKhoanID\" = NEW.\"NguoiNhanID\"\n        AND recipient.\"TrangThai\" = 'Hoạt động'\n        AND EXISTS (\n      SELECT 1 FROM public.\"TaiKhoan_VaiTro\" AS internal_link\n      JOIN public.\"VaiTro\" AS internal_role ON internal_role.\"VaiTroID\" = internal_link.\"VaiTroID\"\n      WHERE internal_link.\"TaiKhoanID\" = recipient.\"TaiKhoanID\"\n        AND internal_role.\"TrangThai\" = 'Hoạt động'\n    )\n    AND NOT EXISTS (\n      SELECT 1 FROM public.\"TaiKhoan_VaiTro\" AS customer_link\n      JOIN public.\"VaiTro\" AS customer_role ON customer_role.\"VaiTroID\" = customer_link.\"VaiTroID\"\n      WHERE customer_link.\"TaiKhoanID\" = recipient.\"TaiKhoanID\"\n        AND customer_role.\"TrangThai\" = 'Hoạt động'\n        AND lower(btrim(customer_role.\"TenVaiTro\")) IN ('khách hàng', 'khach hang', 'khachhang', 'khach-hang', 'customer', 'client')\n    )\n    ) AND EXISTS (\n      SELECT 1 FROM public.\"TaiKhoan\" AS sender\n      WHERE sender.\"TaiKhoanID\" = NEW.\"NguoiGuiID\"\n        AND sender.\"KhachHangID\" IS NOT NULL\n        AND sender.\"NhanVienID\" IS NULL\n    ) THEN\n      INSERT INTO public.\"ThongBao\" (\n        \"TaiKhoanID\", \"DonHangID\", \"TinNhanID\", \"LoaiThongBao\",\n        \"TieuDe\", \"NoiDung\", \"ThoiGianGui\", \"DaDoc\"\n      )\n      SELECT staff.\"TaiKhoanID\", NEW.\"DonHangID\", NEW.\"TinNhanID\",\n        'new_message', 'Tin nhắn mới từ khách hàng', 'Bạn có tin nhắn mới.',\n        timezone('utc', now())::timestamp, false\n      FROM public.\"TaiKhoan\" AS staff\n      WHERE staff.\"TrangThai\" = 'Hoạt động'\n        AND EXISTS (\n      SELECT 1 FROM public.\"TaiKhoan_VaiTro\" AS internal_link\n      JOIN public.\"VaiTro\" AS internal_role ON internal_role.\"VaiTroID\" = internal_link.\"VaiTroID\"\n      WHERE internal_link.\"TaiKhoanID\" = staff.\"TaiKhoanID\"\n        AND internal_role.\"TrangThai\" = 'Hoạt động'\n    )\n    AND NOT EXISTS (\n      SELECT 1 FROM public.\"TaiKhoan_VaiTro\" AS customer_link\n      JOIN public.\"VaiTro\" AS customer_role ON customer_role.\"VaiTroID\" = customer_link.\"VaiTroID\"\n      WHERE customer_link.\"TaiKhoanID\" = staff.\"TaiKhoanID\"\n        AND customer_role.\"TrangThai\" = 'Hoạt động'\n        AND lower(btrim(customer_role.\"TenVaiTro\")) IN ('khách hàng', 'khach hang', 'khachhang', 'khach-hang', 'customer', 'client')\n    );\n    END IF;\n  END IF;\n  RETURN NEW;\nEND\n$function$\n",
       "identity_args": ""
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "name": "notify_staff_new_booking",
+      "owner": "postgres",
+      "schema": "public",
+      "comment": null,
+      "definition": "CREATE OR REPLACE FUNCTION public.notify_staff_new_booking(p_bookingid bigint, p_booking_number text, p_customer_name text)\n RETURNS void\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO ''\nAS $function$\nBEGIN\n  INSERT INTO public.\"ThongBao\" (\n    \"TaiKhoanID\", \"TieuDe\", \"NoiDung\", \"ThoiGianGui\", \"DaDoc\", \"DonHangID\", \"LoaiThongBao\"\n  )\n  SELECT DISTINCT\n    account_role.\"TaiKhoanID\"::integer,\n    'Có yêu cầu đặt giặt mới'::varchar,\n    ('Khách hàng ' || coalesce(nullif(btrim(p_customer_name), ''), 'Khách hàng') ||\n      ' vừa gửi yêu cầu ' || coalesce(nullif(btrim(p_booking_number), ''), '#' || p_bookingid::text) || '.')::varchar,\n    now()::timestamp,\n    false,\n    NULL::integer,\n    'new_booking'::varchar\n  FROM public.\"TaiKhoan_VaiTro\" AS account_role\n  JOIN public.\"VaiTro\" AS role\n    ON role.\"VaiTroID\" = account_role.\"VaiTroID\"\n  JOIN public.\"TaiKhoan\" AS account\n    ON account.\"TaiKhoanID\" = account_role.\"TaiKhoanID\"\n  WHERE EXISTS (\n      SELECT 1 FROM public.\"TaiKhoan_VaiTro\" AS internal_link\n      JOIN public.\"VaiTro\" AS internal_role ON internal_role.\"VaiTroID\" = internal_link.\"VaiTroID\"\n      WHERE internal_link.\"TaiKhoanID\" = account.\"TaiKhoanID\"\n        AND internal_role.\"TrangThai\" = 'Hoạt động'\n    )\n    AND NOT EXISTS (\n      SELECT 1 FROM public.\"TaiKhoan_VaiTro\" AS customer_link\n      JOIN public.\"VaiTro\" AS customer_role ON customer_role.\"VaiTroID\" = customer_link.\"VaiTroID\"\n      WHERE customer_link.\"TaiKhoanID\" = account.\"TaiKhoanID\"\n        AND customer_role.\"TrangThai\" = 'Hoạt động'\n        AND lower(btrim(customer_role.\"TenVaiTro\")) IN ('khách hàng', 'khach hang', 'khachhang', 'khach-hang', 'customer', 'client')\n    )\n    AND role.\"TrangThai\" = 'Hoạt động'\n    AND account.\"TrangThai\" = 'Hoạt động'\n    AND NOT EXISTS (\n      SELECT 1\n      FROM public.\"ThongBao\" AS notification\n      WHERE notification.\"TaiKhoanID\" = account_role.\"TaiKhoanID\"\n        AND notification.\"LoaiThongBao\" = 'new_booking'\n        AND notification.\"DonHangID\" IS NULL\n        AND notification.\"NoiDung\" LIKE '%' || coalesce(nullif(btrim(p_booking_number), ''), '#' || p_bookingid::text) || '%'\n    );\nEND;\n$function$\n",
+      "identity_args": "p_bookingid bigint, p_booking_number text, p_customer_name text"
     },
     {
       "acl": [
@@ -15982,12 +16567,25 @@
         "service_role=X/postgres",
         "authenticated=X/postgres"
       ],
-      "name": "notify_staff_new_booking",
+      "name": "recall_chat_message",
       "owner": "postgres",
       "schema": "public",
       "comment": null,
-      "definition": "CREATE OR REPLACE FUNCTION public.notify_staff_new_booking(p_bookingid bigint, p_booking_number text, p_customer_name text)\n RETURNS void\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO ''\nAS $function$\nBEGIN\n  INSERT INTO public.\"ThongBao\" (\n    \"TaiKhoanID\", \"TieuDe\", \"NoiDung\", \"ThoiGianGui\", \"DaDoc\", \"DonHangID\", \"LoaiThongBao\"\n  )\n  SELECT DISTINCT\n    account_role.\"TaiKhoanID\"::integer,\n    'Có yêu cầu đặt giặt mới'::varchar,\n    ('Khách hàng ' || coalesce(nullif(btrim(p_customer_name), ''), 'Khách hàng') ||\n      ' vừa gửi yêu cầu ' || coalesce(nullif(btrim(p_booking_number), ''), '#' || p_bookingid::text) || '.')::varchar,\n    now()::timestamp,\n    false,\n    NULL::integer,\n    'new_booking'::varchar\n  FROM public.\"TaiKhoan_VaiTro\" AS account_role\n  JOIN public.\"VaiTro\" AS role\n    ON role.\"VaiTroID\" = account_role.\"VaiTroID\"\n  JOIN public.\"TaiKhoan\" AS account\n    ON account.\"TaiKhoanID\" = account_role.\"TaiKhoanID\"\n  WHERE role.\"TenVaiTro\" IN ('Nhân viên', 'Quản lý', 'Chủ cửa hàng')\n    AND role.\"TrangThai\" = 'Hoạt động'\n    AND account.\"TrangThai\" = 'Hoạt động'\n    AND NOT EXISTS (\n      SELECT 1\n      FROM public.\"ThongBao\" AS notification\n      WHERE notification.\"TaiKhoanID\" = account_role.\"TaiKhoanID\"\n        AND notification.\"LoaiThongBao\" = 'new_booking'\n        AND notification.\"DonHangID\" IS NULL\n        AND notification.\"NoiDung\" LIKE '%' || coalesce(nullif(btrim(p_booking_number), ''), '#' || p_bookingid::text) || '%'\n    );\nEND;\n$function$\n",
-      "identity_args": "p_bookingid bigint, p_booking_number text, p_customer_name text"
+      "definition": "CREATE OR REPLACE FUNCTION public.recall_chat_message(p_message_id integer)\n RETURNS boolean\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO ''\nAS $function$\nDECLARE\n  deleted_count integer;\nBEGIN\n  IF auth.uid() IS NULL THEN RETURN false; END IF;\n\n  DELETE FROM public.\"TinNhan\" AS message\n  WHERE message.\"TinNhanID\" = p_message_id\n    AND message.\"NguoiGuiID\" = private.current_account_id();\n  GET DIAGNOSTICS deleted_count = ROW_COUNT;\n  RETURN deleted_count = 1;\nEND\n$function$\n",
+      "identity_args": "p_message_id integer"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres",
+        "authenticated=X/postgres"
+      ],
+      "name": "register_push_device_token",
+      "owner": "postgres",
+      "schema": "public",
+      "comment": null,
+      "definition": "CREATE OR REPLACE FUNCTION public.register_push_device_token(p_token text)\n RETURNS void\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO ''\nAS $function$\nDECLARE\n  account_id bigint;\nBEGIN\n  IF auth.uid() IS NULL OR p_token IS NULL OR length(p_token) < 20 THEN\n    RAISE EXCEPTION 'A signed-in user and valid device token are required';\n  END IF;\n\n  account_id := private.current_account_id();\n  IF account_id IS NULL THEN\n    RAISE EXCEPTION 'No active application account is associated with this user';\n  END IF;\n\n  -- A device token belongs to one account at a time. Reassignment also cleans\n  -- up tokens left behind by an interrupted sign-out.\n  DELETE FROM public.push_device_tokens WHERE token = p_token;\n  INSERT INTO public.push_device_tokens (token, \"TaiKhoanID\", platform, updated_at)\n  VALUES (p_token, account_id::integer, 'android', now());\nEND;\n$function$\n",
+      "identity_args": "p_token text"
     },
     {
       "acl": [
@@ -16016,8 +16614,7 @@
     {
       "acl": [
         "postgres=X/postgres",
-        "service_role=X/postgres",
-        "authenticated=X/postgres"
+        "service_role=X/postgres"
       ],
       "name": "send_chat_message",
       "owner": "postgres",
@@ -16025,6 +16622,19 @@
       "comment": null,
       "definition": "CREATE OR REPLACE FUNCTION public.send_chat_message(p_recipient_account_id integer, p_content text, p_order_id integer DEFAULT NULL::integer)\n RETURNS SETOF \"TinNhan\"\n LANGUAGE sql\n SECURITY DEFINER\n SET search_path TO ''\nAS $function$\n  INSERT INTO public.\"TinNhan\"\n    (\"NguoiGuiID\", \"NguoiNhanID\", \"DonHangID\", \"NoiDung\", \"ThoiGianGui\", \"TrangThai\")\n  SELECT sender.\"TaiKhoanID\", recipient.\"TaiKhoanID\", p_order_id, btrim(p_content),\n    timezone('utc', now())::timestamp, 'Đã gửi'\n  FROM public.\"TaiKhoan\" AS sender\n  JOIN public.\"TaiKhoan\" AS recipient ON recipient.\"TaiKhoanID\" = p_recipient_account_id\n  WHERE auth.uid() IS NOT NULL\n    AND sender.\"TaiKhoanID\" = private.current_account_id()\n    AND sender.\"TrangThai\" = 'Hoạt động'\n    AND recipient.\"TrangThai\" = 'Hoạt động'\n    AND nullif(btrim(p_content), '') IS NOT NULL\n    AND char_length(btrim(p_content)) <= 1000\n    AND (\n      (\n        NOT private.is_messaging_staff()\n        AND sender.\"KhachHangID\" IS NOT NULL\n        AND recipient.\"TaiKhoanID\" = private.default_support_account_id()\n        AND (\n          p_order_id IS NULL\n          OR (\n            (SELECT private.can_access_order(p_order_id::bigint))\n            AND EXISTS (\n              SELECT 1 FROM public.\"DonHang\" d\n              WHERE d.\"DonHangID\" = p_order_id\n                AND d.\"KhachHangID\" = sender.\"KhachHangID\"\n            )\n          )\n        )\n      )\n      OR (\n        private.is_messaging_staff()\n        AND recipient.\"KhachHangID\" IS NOT NULL\n        AND (\n          p_order_id IS NULL\n          OR EXISTS (\n            SELECT 1 FROM public.\"DonHang\" d\n            WHERE d.\"DonHangID\" = p_order_id\n              AND d.\"KhachHangID\" = recipient.\"KhachHangID\"\n          )\n        )\n      )\n    )\n  RETURNING *;\n$function$\n",
       "identity_args": "p_recipient_account_id integer, p_content text, p_order_id integer"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres",
+        "authenticated=X/postgres"
+      ],
+      "name": "send_chat_message_encrypted",
+      "owner": "postgres",
+      "schema": "public",
+      "comment": null,
+      "definition": "CREATE OR REPLACE FUNCTION public.send_chat_message_encrypted(p_recipient_account_id integer, p_ciphertext text, p_nonce text, p_order_id integer DEFAULT NULL::integer)\n RETURNS SETOF \"TinNhan\"\n LANGUAGE sql\n SECURITY DEFINER\n SET search_path TO ''\nAS $function$\n  INSERT INTO public.\"TinNhan\" (\n    \"NguoiGuiID\", \"NguoiNhanID\", \"DonHangID\", \"NoiDung\", \"ThoiGianGui\", \"TrangThai\",\n    \"NoiDungMaHoa\", \"NoiDungNonce\", \"MaHoaPhienBan\"\n  )\n  SELECT sender.\"TaiKhoanID\", recipient.\"TaiKhoanID\", p_order_id, '',\n    timezone('utc', now())::timestamp, 'Đã gửi', p_ciphertext, p_nonce, 1\n  FROM public.\"TaiKhoan\" AS sender\n  JOIN public.\"TaiKhoan\" AS recipient ON recipient.\"TaiKhoanID\" = p_recipient_account_id\n  WHERE auth.uid() IS NOT NULL\n    AND sender.\"TaiKhoanID\" = private.current_account_id()\n    AND sender.\"TrangThai\" = 'Hoạt động' AND recipient.\"TrangThai\" = 'Hoạt động'\n    AND p_ciphertext IS NOT NULL AND char_length(p_ciphertext) BETWEEN 1 AND 12000\n    AND p_nonce IS NOT NULL AND char_length(p_nonce) = 16\n    AND (\n      (NOT private.is_messaging_staff() AND sender.\"KhachHangID\" IS NOT NULL\n        AND recipient.\"TaiKhoanID\" = private.default_support_account_id()\n        AND (p_order_id IS NULL OR (\n          (SELECT private.can_access_order(p_order_id::bigint))\n          AND EXISTS (SELECT 1 FROM public.\"DonHang\" d\n            WHERE d.\"DonHangID\" = p_order_id AND d.\"KhachHangID\" = sender.\"KhachHangID\")\n        )))\n      OR (private.is_messaging_staff() AND recipient.\"KhachHangID\" IS NOT NULL\n        AND (p_order_id IS NULL OR EXISTS (SELECT 1 FROM public.\"DonHang\" d\n          WHERE d.\"DonHangID\" = p_order_id AND d.\"KhachHangID\" = recipient.\"KhachHangID\")))\n    )\n  RETURNING *;\n$function$\n",
+      "identity_args": "p_recipient_account_id integer, p_ciphertext text, p_nonce text, p_order_id integer"
     },
     {
       "acl": [
@@ -16049,7 +16659,7 @@
       "owner": "postgres",
       "schema": "public",
       "comment": null,
-      "definition": "CREATE OR REPLACE FUNCTION public.submit_laundry_booking_request(p_items jsonb, p_hinhthucnhando text, p_diachinhan text, p_ngayhen date, p_giohen time without time zone, p_ghichu text, p_idempotency_key uuid, p_use_points boolean, p_makhuyenmai text DEFAULT NULL::text)\n RETURNS jsonb\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO ''\nAS $function$\r\nDECLARE\r\n  booking_result jsonb;\r\nBEGIN\r\n  IF p_items IS NULL THEN\r\n    booking_result := public.submit_laundry_booking_without_details(\r\n      p_hinhthucnhando,\r\n      p_diachinhan,\r\n      p_ngayhen,\r\n      p_giohen,\r\n      p_ghichu,\r\n      p_idempotency_key\r\n    );\r\n  ELSIF coalesce(p_use_points, false) THEN\r\n    booking_result := public.submit_laundry_order_cart_with_points(\r\n      p_items,\r\n      p_hinhthucnhando,\r\n      p_diachinhan,\r\n      p_ngayhen,\r\n      p_giohen,\r\n      p_ghichu,\r\n      p_idempotency_key,\r\n      true\r\n    );\r\n  ELSE\r\n    booking_result := public.submit_laundry_order_cart(\r\n      p_items,\r\n      p_hinhthucnhando,\r\n      p_diachinhan,\r\n      p_ngayhen,\r\n      p_giohen,\r\n      p_ghichu,\r\n      p_idempotency_key\r\n    );\r\n  END IF;\r\n\r\n  IF nullif(btrim(p_makhuyenmai), '') IS NOT NULL THEN\r\n    PERFORM public.set_booking_promotion(\r\n      (booking_result->>'bookingid')::bigint,\r\n      p_makhuyenmai\r\n    );\r\n  END IF;\r\n\r\n  RETURN booking_result;\r\nEND;\r\n$function$\n",
+      "definition": "CREATE OR REPLACE FUNCTION public.submit_laundry_booking_request(p_items jsonb, p_hinhthucnhando text, p_diachinhan text, p_ngayhen date, p_giohen time without time zone, p_ghichu text, p_idempotency_key uuid, p_use_points boolean, p_makhuyenmai text DEFAULT NULL::text)\n RETURNS jsonb\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO ''\nAS $function$\nDECLARE\n  booking_result jsonb;\n  booking_id bigint;\nBEGIN\n  IF p_items IS NULL THEN\n    booking_result := public.submit_laundry_booking_without_details(\n      p_hinhthucnhando,\n      p_diachinhan,\n      p_ngayhen,\n      p_giohen,\n      p_ghichu,\n      p_idempotency_key\n    );\n  ELSE\n    -- Create the booking and service lines first, but defer point redemption.\n    booking_result := public.submit_laundry_order_cart(\n      p_items,\n      p_hinhthucnhando,\n      p_diachinhan,\n      p_ngayhen,\n      p_giohen,\n      p_ghichu,\n      p_idempotency_key\n    );\n  END IF;\n\n  booking_id := (booking_result->>'bookingid')::bigint;\n\n  IF nullif(btrim(p_makhuyenmai), '') IS NOT NULL THEN\n    PERFORM public.set_booking_promotion(booking_id, p_makhuyenmai);\n  END IF;\n\n  IF p_items IS NOT NULL AND coalesce(p_use_points, false) THEN\n    -- This RPC finds the already-created booking by idempotency key and now\n    -- sees the reserved promotion when calculating redeemable points.\n    booking_result := public.submit_laundry_order_cart_with_points(\n      p_items,\n      p_hinhthucnhando,\n      p_diachinhan,\n      p_ngayhen,\n      p_giohen,\n      p_ghichu,\n      p_idempotency_key,\n      true\n    );\n  END IF;\n\n  RETURN booking_result;\nEND;\n$function$\n",
       "identity_args": "p_items jsonb, p_hinhthucnhando text, p_diachinhan text, p_ngayhen date, p_giohen time without time zone, p_ghichu text, p_idempotency_key uuid, p_use_points boolean, p_makhuyenmai text"
     },
     {
@@ -16075,7 +16685,7 @@
       "owner": "postgres",
       "schema": "public",
       "comment": null,
-      "definition": "CREATE OR REPLACE FUNCTION public.submit_laundry_booking_with_delivery(p_items jsonb, p_hinhthucnhando text, p_hinhthucgiaodo text, p_diachinhan text, p_ngayhen date, p_giohen time without time zone, p_ghichu text, p_idempotency_key uuid, p_use_points boolean, p_phuongthucthanhtoan text, p_makhuyenmai text DEFAULT NULL::text, p_diachigiao text DEFAULT NULL::text, p_delivery_fee_quote_id uuid DEFAULT NULL::uuid)\n RETURNS jsonb\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO ''\nAS $function$\r\nDECLARE\r\n  booking_result jsonb;\r\n  customer_id bigint := (SELECT private.current_customer_id());\r\n  current_user_id uuid := (SELECT auth.uid());\r\n  booking_id bigint;\r\n  quote_row public.delivery_fee_quotes%ROWTYPE;\r\n  pickup_distance integer := 0;\r\n  delivery_distance integer := 0;\r\n  pickup_fee numeric(12, 2) := 0;\r\n  delivery_fee numeric(12, 2) := 0;\r\n  total_delivery_fee numeric(12, 2) := 0;\r\n  pickup_address text;\r\n  delivery_address text;\r\nBEGIN\r\n  IF current_user_id IS NULL OR customer_id IS NULL THEN\r\n    RAISE EXCEPTION 'An active customer account is required';\r\n  END IF;\r\n  IF p_hinhthucnhando NOT IN ('Tại cửa hàng', 'Tại nhà')\r\n     OR p_hinhthucgiaodo NOT IN ('Tại cửa hàng', 'Tại nhà') THEN\r\n    RAISE EXCEPTION 'Unsupported delivery method';\r\n  END IF;\r\n  IF p_hinhthucnhando = 'Tại nhà'\r\n     AND nullif(btrim(COALESCE(p_diachinhan, '')), '') IS NULL THEN\r\n    RAISE EXCEPTION 'Pickup address is required';\r\n  END IF;\r\n  IF p_hinhthucgiaodo = 'Tại nhà'\r\n     AND nullif(btrim(COALESCE(p_diachigiao, '')), '') IS NULL THEN\r\n    RAISE EXCEPTION 'Delivery address is required';\r\n  END IF;\r\n\r\n  pickup_address := CASE WHEN p_hinhthucnhando = 'Tại nhà'\r\n    THEN nullif(btrim(p_diachinhan), '') ELSE NULL END;\r\n  delivery_address := CASE WHEN p_hinhthucgiaodo = 'Tại nhà'\r\n    THEN nullif(btrim(p_diachigiao), '') ELSE NULL END;\r\n\r\n  IF pickup_address IS NOT NULL OR delivery_address IS NOT NULL THEN\r\n    IF p_delivery_fee_quote_id IS NULL THEN\r\n      RAISE EXCEPTION 'A current delivery fee quote is required';\r\n    END IF;\r\n\r\n    SELECT * INTO quote_row\r\n    FROM public.delivery_fee_quotes\r\n    WHERE id = p_delivery_fee_quote_id\r\n    FOR UPDATE;\r\n\r\n    IF NOT FOUND\r\n       OR quote_row.auth_user_id <> current_user_id\r\n       OR (\r\n         pickup_address IS NULL\r\n         AND quote_row.pickup_address_hash IS NOT NULL\r\n       )\r\n       OR (\r\n         pickup_address IS NOT NULL\r\n         AND quote_row.pickup_address_hash IS DISTINCT FROM\r\n           encode(extensions.digest(convert_to(btrim(pickup_address), 'UTF8'), 'sha256'), 'hex')\r\n       )\r\n       OR (\r\n         delivery_address IS NULL\r\n         AND quote_row.delivery_address_hash IS NOT NULL\r\n       )\r\n       OR (\r\n         delivery_address IS NOT NULL\r\n         AND quote_row.delivery_address_hash IS DISTINCT FROM\r\n           encode(extensions.digest(convert_to(btrim(delivery_address), 'UTF8'), 'sha256'), 'hex')\r\n       )\r\n       OR (\r\n         quote_row.expires_at <= now()\r\n         AND quote_row.consumed_booking_id IS NULL\r\n       ) THEN\r\n      RAISE EXCEPTION 'Delivery fee quote is invalid or expired';\r\n    END IF;\r\n\r\n    IF quote_row.consumed_booking_id IS NOT NULL AND NOT EXISTS (\r\n      SELECT 1 FROM public.\"Booking\"\r\n      WHERE \"BookingID\" = quote_row.consumed_booking_id\r\n        AND \"KhachHangID\" = customer_id\r\n        AND \"IdempotencyKey\" = p_idempotency_key\r\n    ) THEN\r\n      RAISE EXCEPTION 'Delivery fee quote has already been used';\r\n    END IF;\r\n\r\n    pickup_distance := CASE WHEN pickup_address IS NOT NULL\r\n      THEN quote_row.pickup_distance_meters ELSE 0 END;\r\n    delivery_distance := CASE WHEN delivery_address IS NOT NULL\r\n      THEN quote_row.delivery_distance_meters ELSE 0 END;\r\n\r\n    -- First 3,000 meters are free on each leg. Each additional meter costs\r\n    -- 5 VND; round the fee up to the next 1,000 VND.\r\n    pickup_fee := ceil(greatest(pickup_distance - 3000, 0)::numeric * 5 / 1000) * 1000;\r\n    delivery_fee := ceil(greatest(delivery_distance - 3000, 0)::numeric * 5 / 1000) * 1000;\r\n  ELSIF p_delivery_fee_quote_id IS NOT NULL THEN\r\n    RAISE EXCEPTION 'A delivery fee quote was supplied without a home delivery leg';\r\n  END IF;\r\n\r\n  booking_result := public.submit_laundry_booking_request(\r\n    p_items => p_items,\r\n    p_hinhthucnhando => p_hinhthucnhando,\r\n    p_diachinhan => p_diachinhan,\r\n    p_ngayhen => p_ngayhen,\r\n    p_giohen => p_giohen,\r\n    p_ghichu => p_ghichu,\r\n    p_idempotency_key => p_idempotency_key,\r\n    p_use_points => p_use_points,\r\n    p_phuongthucthanhtoan => p_phuongthucthanhtoan,\r\n    p_makhuyenmai => p_makhuyenmai\r\n  );\r\n\r\n  booking_id := (booking_result->>'bookingid')::bigint;\r\n  IF p_delivery_fee_quote_id IS NOT NULL\r\n     AND quote_row.consumed_booking_id IS NOT NULL\r\n     AND quote_row.consumed_booking_id <> booking_id THEN\r\n    RAISE EXCEPTION 'Delivery fee quote has already been used';\r\n  END IF;\r\n  total_delivery_fee := pickup_fee + delivery_fee;\r\n\r\n  UPDATE public.\"Booking\"\r\n  SET \"HinhThucGiaoDo\" = p_hinhthucgiaodo,\r\n      \"DiaChiGiao\" = delivery_address,\r\n      \"PickupDistanceMeters\" = pickup_distance,\r\n      \"PickupDeliveryFee\" = pickup_fee,\r\n      \"DeliveryDistanceMeters\" = delivery_distance,\r\n      \"DeliveryFee\" = delivery_fee\r\n  WHERE \"BookingID\" = booking_id\r\n    AND \"KhachHangID\" = customer_id;\r\n\r\n  IF NOT FOUND THEN\r\n    RAISE EXCEPTION 'Booking not found for current customer';\r\n  END IF;\r\n\r\n  IF p_delivery_fee_quote_id IS NOT NULL THEN\r\n    UPDATE public.delivery_fee_quotes\r\n    SET consumed_booking_id = booking_id\r\n    WHERE id = p_delivery_fee_quote_id;\r\n  END IF;\r\n\r\n  IF EXISTS (\r\n    SELECT 1 FROM information_schema.columns\r\n    WHERE table_schema = 'public' AND table_name = 'Booking'\r\n      AND column_name = 'HinhThucTraDo'\r\n  ) THEN\r\n    EXECUTE 'UPDATE public.\"Booking\" SET \"HinhThucTraDo\" = $1 WHERE \"BookingID\" = $2'\r\n      USING p_hinhthucgiaodo, booking_id;\r\n  END IF;\r\n  IF EXISTS (\r\n    SELECT 1 FROM information_schema.columns\r\n    WHERE table_schema = 'public' AND table_name = 'Booking'\r\n      AND column_name = 'DiaChiTra'\r\n  ) THEN\r\n    EXECUTE 'UPDATE public.\"Booking\" SET \"DiaChiTra\" = $1 WHERE \"BookingID\" = $2'\r\n      USING delivery_address, booking_id;\r\n  END IF;\r\n\r\n  RETURN booking_result || jsonb_build_object(\r\n    'pickupdistancemeters', pickup_distance,\r\n    'pickupdeliveryfee', pickup_fee,\r\n    'deliverydistancemeters', delivery_distance,\r\n    'deliveryfee', delivery_fee,\r\n    'totaldeliveryfee', total_delivery_fee\r\n  );\r\nEND;\r\n$function$\n",
+      "definition": "CREATE OR REPLACE FUNCTION public.submit_laundry_booking_with_delivery(p_items jsonb, p_hinhthucnhando text, p_hinhthucgiaodo text, p_diachinhan text, p_ngayhen date, p_giohen time without time zone, p_ghichu text, p_idempotency_key uuid, p_use_points boolean, p_phuongthucthanhtoan text, p_makhuyenmai text DEFAULT NULL::text, p_diachigiao text DEFAULT NULL::text, p_delivery_fee_quote_id uuid DEFAULT NULL::uuid)\n RETURNS jsonb\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO ''\nAS $function$\nDECLARE\n  booking_result jsonb;\n  customer_id bigint := (SELECT private.current_customer_id());\n  current_user_id uuid := (SELECT auth.uid());\n  booking_id bigint;\n  quote_row public.delivery_fee_quotes%ROWTYPE;\n  pickup_distance integer := 0;\n  delivery_distance integer := 0;\n  pickup_fee numeric(12, 2) := 0;\n  delivery_fee numeric(12, 2) := 0;\n  total_delivery_fee numeric(12, 2) := 0;\n  pickup_address text;\n  delivery_address text;\nBEGIN\n  IF current_user_id IS NULL OR customer_id IS NULL THEN\n    RAISE EXCEPTION 'An active customer account is required';\n  END IF;\n  IF p_hinhthucnhando NOT IN ('Tại cửa hàng', 'Tại nhà')\n     OR p_hinhthucgiaodo NOT IN ('Tại cửa hàng', 'Tại nhà') THEN\n    RAISE EXCEPTION 'Unsupported delivery method';\n  END IF;\n  IF p_hinhthucnhando = 'Tại nhà'\n     AND nullif(btrim(COALESCE(p_diachinhan, '')), '') IS NULL THEN\n    RAISE EXCEPTION 'Pickup address is required';\n  END IF;\n  IF p_hinhthucgiaodo = 'Tại nhà'\n     AND nullif(btrim(COALESCE(p_diachigiao, '')), '') IS NULL THEN\n    RAISE EXCEPTION 'Delivery address is required';\n  END IF;\n\n  pickup_address := CASE WHEN p_hinhthucnhando = 'Tại nhà'\n    THEN nullif(btrim(p_diachinhan), '') ELSE NULL END;\n  delivery_address := CASE WHEN p_hinhthucgiaodo = 'Tại nhà'\n    THEN nullif(btrim(p_diachigiao), '') ELSE NULL END;\n\n  IF pickup_address IS NOT NULL OR delivery_address IS NOT NULL THEN\n    IF p_delivery_fee_quote_id IS NULL THEN\n      RAISE EXCEPTION 'A current delivery fee quote is required';\n    END IF;\n\n    SELECT * INTO quote_row\n    FROM public.delivery_fee_quotes\n    WHERE id = p_delivery_fee_quote_id\n    FOR UPDATE;\n\n    IF NOT FOUND\n       OR quote_row.auth_user_id <> current_user_id\n       OR (\n         pickup_address IS NULL\n         AND quote_row.pickup_address_hash IS NOT NULL\n       )\n       OR (\n         pickup_address IS NOT NULL\n         AND quote_row.pickup_address_hash IS DISTINCT FROM\n           encode(extensions.digest(convert_to(btrim(pickup_address), 'UTF8'), 'sha256'), 'hex')\n       )\n       OR (\n         delivery_address IS NULL\n         AND quote_row.delivery_address_hash IS NOT NULL\n       )\n       OR (\n         delivery_address IS NOT NULL\n         AND quote_row.delivery_address_hash IS DISTINCT FROM\n           encode(extensions.digest(convert_to(btrim(delivery_address), 'UTF8'), 'sha256'), 'hex')\n       )\n       OR (\n         quote_row.expires_at <= now()\n         AND quote_row.consumed_booking_id IS NULL\n       ) THEN\n      RAISE EXCEPTION 'Delivery fee quote is invalid or expired';\n    END IF;\n\n    IF quote_row.consumed_booking_id IS NOT NULL AND NOT EXISTS (\n      SELECT 1 FROM public.\"Booking\"\n      WHERE \"BookingID\" = quote_row.consumed_booking_id\n        AND \"KhachHangID\" = customer_id\n        AND \"IdempotencyKey\" = p_idempotency_key\n    ) THEN\n      RAISE EXCEPTION 'Delivery fee quote has already been used';\n    END IF;\n\n    pickup_distance := CASE WHEN pickup_address IS NOT NULL\n      THEN quote_row.pickup_distance_meters ELSE 0 END;\n    delivery_distance := CASE WHEN delivery_address IS NOT NULL\n      THEN quote_row.delivery_distance_meters ELSE 0 END;\n\n    -- First 3,000 meters are free on each leg. Each additional meter costs\n    -- 5 VND; round the fee up to the next 1,000 VND.\n    pickup_fee := ceil(greatest(pickup_distance - 3000, 0)::numeric * 5 / 1000) * 1000;\n    delivery_fee := ceil(greatest(delivery_distance - 3000, 0)::numeric * 5 / 1000) * 1000;\n  ELSIF p_delivery_fee_quote_id IS NOT NULL THEN\n    RAISE EXCEPTION 'A delivery fee quote was supplied without a home delivery leg';\n  END IF;\n\n  -- Defer point redemption until the verified fee has been stored.\n  booking_result := public.submit_laundry_booking_request(\n    p_items => p_items,\n    p_hinhthucnhando => p_hinhthucnhando,\n    p_diachinhan => p_diachinhan,\n    p_ngayhen => p_ngayhen,\n    p_giohen => p_giohen,\n    p_ghichu => p_ghichu,\n    p_idempotency_key => p_idempotency_key,\n    p_use_points => false,\n    p_phuongthucthanhtoan => p_phuongthucthanhtoan,\n    p_makhuyenmai => p_makhuyenmai\n  );\n\n  booking_id := (booking_result->>'bookingid')::bigint;\n  IF p_delivery_fee_quote_id IS NOT NULL\n     AND quote_row.consumed_booking_id IS NOT NULL\n     AND quote_row.consumed_booking_id <> booking_id THEN\n    RAISE EXCEPTION 'Delivery fee quote has already been used';\n  END IF;\n  total_delivery_fee := pickup_fee + delivery_fee;\n\n  UPDATE public.\"Booking\"\n  SET \"HinhThucGiaoDo\" = p_hinhthucgiaodo,\n      \"DiaChiGiao\" = delivery_address,\n      \"PickupDistanceMeters\" = pickup_distance,\n      \"PickupDeliveryFee\" = pickup_fee,\n      \"DeliveryDistanceMeters\" = delivery_distance,\n      \"DeliveryFee\" = delivery_fee\n  WHERE \"BookingID\" = booking_id\n    AND \"KhachHangID\" = customer_id;\n\n  IF NOT FOUND THEN\n    RAISE EXCEPTION 'Booking not found for current customer';\n  END IF;\n\n  IF p_delivery_fee_quote_id IS NOT NULL THEN\n    UPDATE public.delivery_fee_quotes\n    SET consumed_booking_id = booking_id\n    WHERE id = p_delivery_fee_quote_id;\n  END IF;\n\n  IF EXISTS (\n    SELECT 1 FROM information_schema.columns\n    WHERE table_schema = 'public' AND table_name = 'Booking'\n      AND column_name = 'HinhThucTraDo'\n  ) THEN\n    EXECUTE 'UPDATE public.\"Booking\" SET \"HinhThucTraDo\" = $1 WHERE \"BookingID\" = $2'\n      USING p_hinhthucgiaodo, booking_id;\n  END IF;\n  IF EXISTS (\n    SELECT 1 FROM information_schema.columns\n    WHERE table_schema = 'public' AND table_name = 'Booking'\n      AND column_name = 'DiaChiTra'\n  ) THEN\n    EXECUTE 'UPDATE public.\"Booking\" SET \"DiaChiTra\" = $1 WHERE \"BookingID\" = $2'\n      USING delivery_address, booking_id;\n  END IF;\n\n  IF p_items IS NOT NULL AND coalesce(p_use_points, false) THEN\n    booking_result := public.submit_laundry_order_cart_with_points(\n      p_items,\n      p_hinhthucnhando,\n      p_diachinhan,\n      p_ngayhen,\n      p_giohen,\n      p_ghichu,\n      p_idempotency_key,\n      true\n    );\n  END IF;\n\n  RETURN booking_result || jsonb_build_object(\n    'pickupdistancemeters', pickup_distance,\n    'pickupdeliveryfee', pickup_fee,\n    'deliverydistancemeters', delivery_distance,\n    'deliveryfee', delivery_fee,\n    'totaldeliveryfee', total_delivery_fee\n  );\nEND;\n$function$\n",
       "identity_args": "p_items jsonb, p_hinhthucnhando text, p_hinhthucgiaodo text, p_diachinhan text, p_ngayhen date, p_giohen time without time zone, p_ghichu text, p_idempotency_key uuid, p_use_points boolean, p_phuongthucthanhtoan text, p_makhuyenmai text, p_diachigiao text, p_delivery_fee_quote_id uuid"
     },
     {
@@ -16128,7 +16738,7 @@
       "owner": "postgres",
       "schema": "public",
       "comment": null,
-      "definition": "CREATE OR REPLACE FUNCTION public.submit_laundry_order_cart_with_points(p_items jsonb, p_hinhthucnhando text, p_diachinhan text, p_ngayhen date, p_giohen time without time zone, p_ghichu text, p_idempotency_key uuid, p_use_points boolean DEFAULT false)\n RETURNS jsonb\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO ''\nAS $function$\nDECLARE\n result jsonb; booking_row public.\"Booking\"%ROWTYPE;\n customer_id bigint:=private.current_customer_id(); available_points integer; requested_points integer; total_amount numeric;\nBEGIN\n result:=public.submit_laundry_order_cart(p_items,p_hinhthucnhando,p_diachinhan,p_ngayhen,p_giohen,p_ghichu,p_idempotency_key);\n SELECT * INTO booking_row FROM public.\"Booking\" WHERE \"BookingID\"=(result->>'bookingid')::bigint AND \"KhachHangID\"=customer_id FOR UPDATE;\n SELECT coalesce(\"DiemHienTai\",0) INTO available_points FROM public.\"DiemTichLuy\" WHERE \"KhachHangID\"=customer_id;\n available_points:=coalesce(available_points,0);total_amount:=(result->>'thanhtien')::numeric;\n -- Preserve an old reservation on replay. New bookings store intent only.\n IF booking_row.\"TrangThai\"='ChoTiepNhan' AND NOT booking_row.\"DiemDaTru\" THEN\n  requested_points:=CASE WHEN coalesce(p_use_points,false) THEN least(available_points::numeric,floor(total_amount))::integer ELSE 0 END;\n  UPDATE public.\"Booking\" SET \"DiemSuDung\"=requested_points,\"TienGiamDoDiem\"=requested_points,\"DiemDaTru\"=false WHERE \"BookingID\"=booking_row.\"BookingID\" RETURNING * INTO booking_row;\n END IF;\n RETURN result||jsonb_build_object('diemsudung',booking_row.\"DiemSuDung\",'tiengiamdodiem',booking_row.\"TienGiamDoDiem\",'thanhtoan',greatest(total_amount-booking_row.\"TienGiamDoDiem\",0),'diemconlai',available_points,'diemdadatru',booking_row.\"DiemDaTru\");\nEND;\n$function$\n",
+      "definition": "CREATE OR REPLACE FUNCTION public.submit_laundry_order_cart_with_points(p_items jsonb, p_hinhthucnhando text, p_diachinhan text, p_ngayhen date, p_giohen time without time zone, p_ghichu text, p_idempotency_key uuid, p_use_points boolean DEFAULT false)\n RETURNS jsonb\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO ''\nAS $function$\nDECLARE\n  customer_id bigint := (SELECT private.current_customer_id());\n  booking_result jsonb;\n  booking_id bigint;\n  booking_row public.\"Booking\"%ROWTYPE;\n  promotion public.\"KhuyenMai\"%ROWTYPE;\n  available_points integer := 0;\n  points_to_use integer := 0;\n  points_discount numeric(18,2) := 0;\n  promotion_discount numeric(18,2) := 0;\n  total_amount numeric(18,2) := 0;\n  total_delivery_fee numeric(12,2) := 0;\n  remaining_points integer := 0;\nBEGIN\n  IF customer_id IS NULL THEN\n    RAISE EXCEPTION 'Authentication required';\n  END IF;\n\n  booking_result := public.submit_laundry_order_cart(\n    p_items,\n    p_hinhthucnhando,\n    p_diachinhan,\n    p_ngayhen,\n    p_giohen,\n    p_ghichu,\n    p_idempotency_key\n  );\n  booking_id := (booking_result->>'bookingid')::bigint;\n\n  SELECT *\n  INTO booking_row\n  FROM public.\"Booking\"\n  WHERE \"BookingID\" = booking_id\n    AND \"KhachHangID\" = customer_id\n  FOR UPDATE;\n\n  IF NOT FOUND THEN\n    RAISE EXCEPTION 'Booking not found';\n  END IF;\n\n  SELECT COALESCE(SUM(\"ThanhTien\"), 0)\n  INTO total_amount\n  FROM public.\"ChiTietBooking\"\n  WHERE \"BookingID\" = booking_id;\n\n  total_delivery_fee := coalesce(booking_row.\"PickupDeliveryFee\", 0)\n    + coalesce(booking_row.\"DeliveryFee\", 0);\n\n  IF booking_row.\"KhuyenMaiID\" IS NOT NULL THEN\n    SELECT *\n    INTO promotion\n    FROM public.\"KhuyenMai\"\n    WHERE \"KhuyenMaiID\" = booking_row.\"KhuyenMaiID\";\n\n    IF FOUND\n       AND promotion.\"TrangThai\" = 'Hoạt động'\n       AND promotion.\"NgayBatDau\" <= current_date\n       AND promotion.\"NgayKetThuc\" >= current_date\n       AND (\n         promotion.\"GiaTriDonToiThieu\" IS NULL\n         OR total_amount >= promotion.\"GiaTriDonToiThieu\"\n       ) THEN\n      promotion_discount := CASE\n        WHEN promotion.\"LoaiKhuyenMai\" = 'Phần trăm'\n          THEN total_amount * promotion.\"GiaTriGiam\" / 100\n        ELSE promotion.\"GiaTriGiam\"\n      END;\n      IF promotion.\"MucGiamToiDa\" IS NOT NULL THEN\n        promotion_discount := least(\n          promotion_discount,\n          promotion.\"MucGiamToiDa\"\n        );\n      END IF;\n      promotion_discount := greatest(\n        least(promotion_discount, total_amount),\n        0\n      );\n    END IF;\n  END IF;\n\n  IF NOT booking_row.\"DiemDaTru\" THEN\n    IF coalesce(p_use_points, false) THEN\n      SELECT \"DiemHienTai\"\n      INTO available_points\n      FROM public.\"DiemTichLuy\"\n      WHERE \"KhachHangID\" = customer_id\n      FOR UPDATE;\n\n      IF FOUND THEN\n        points_to_use := least(\n          available_points::numeric,\n          floor(greatest(\n            total_amount - promotion_discount + total_delivery_fee,\n            0\n          ))\n        )::integer;\n        points_discount := points_to_use;\n\n        IF points_to_use > 0 THEN\n          UPDATE public.\"DiemTichLuy\"\n          SET\n            \"DiemHienTai\" = \"DiemHienTai\" - points_to_use,\n            \"NgayCapNhat\" = now()\n          WHERE \"KhachHangID\" = customer_id;\n        END IF;\n      END IF;\n    END IF;\n\n    UPDATE public.\"Booking\"\n    SET\n      \"DiemSuDung\" = points_to_use,\n      \"TienGiamDoDiem\" = points_discount,\n      \"DiemDaTru\" = true\n    WHERE \"BookingID\" = booking_id;\n  ELSE\n    points_to_use := booking_row.\"DiemSuDung\";\n    points_discount := booking_row.\"TienGiamDoDiem\";\n  END IF;\n\n  SELECT COALESCE(\"DiemHienTai\", 0)\n  INTO remaining_points\n  FROM public.\"DiemTichLuy\"\n  WHERE \"KhachHangID\" = customer_id;\n  remaining_points := COALESCE(remaining_points, 0);\n\n  RETURN booking_result || jsonb_build_object(\n    'thanhtien', total_amount,\n    'diemsudung', points_to_use,\n    'tiengiamdodiem', points_discount,\n    'tiengiamkhuyenmai', promotion_discount,\n    'thanhtoan', greatest(\n      total_amount + total_delivery_fee\n        - points_discount - promotion_discount,\n      0\n    ),\n    'diemconlai', remaining_points\n  );\nEND;\n$function$\n",
       "identity_args": "p_items jsonb, p_hinhthucnhando text, p_diachinhan text, p_ngayhen date, p_giohen time without time zone, p_ghichu text, p_idempotency_key uuid, p_use_points boolean"
     },
     {
@@ -16156,6 +16766,19 @@
       "comment": null,
       "definition": "CREATE OR REPLACE FUNCTION public.transition_laundry_order(p_donhangid bigint, p_trangthaimoi text, p_lydo text DEFAULT NULL::text)\n RETURNS void\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO ''\nAS $function$\nDECLARE\n  order_record public.\"DonHang\"%ROWTYPE;\n  valid_transition boolean := false;\n  current_employee bigint := (SELECT private.current_employee_id());\n  current_account bigint := (\n    SELECT \"TaiKhoanID\"\n    FROM public.\"TaiKhoan\"\n    WHERE \"UserAuthId\" = (SELECT auth.uid())\n    LIMIT 1\n  );\n  customer_account_id bigint;\nBEGIN\n  IF (SELECT auth.uid()) IS NULL\n     OR NOT (SELECT private.is_staff())\n     OR (\n       current_employee IS NULL\n       AND NOT (SELECT private.has_role('Quản lý'))\n       AND NOT (SELECT private.has_role('Chủ cửa hàng'))\n     ) THEN\n    RAISE EXCEPTION 'An active staff account is required';\n  END IF;\n  SELECT *\n  INTO order_record\n  FROM public.\"DonHang\"\n  WHERE \"DonHangID\" = p_donhangid\n  FOR UPDATE;\n  IF NOT FOUND THEN\n    RAISE EXCEPTION 'Order not found';\n  END IF;\n  IF p_trangthaimoi=order_record.\"TrangThai\" THEN RETURN; END IF;\n  valid_transition := CASE order_record.\"TrangThai\"\n    WHEN 'Chờ tiếp nhận' THEN p_trangthaimoi = 'Đã hủy'\n    WHEN 'Đã tiếp nhận' THEN p_trangthaimoi IN ('Đang giặt', 'Đã hủy')\n    WHEN 'Đang giặt' THEN p_trangthaimoi = 'Hoàn thành giặt'\n    WHEN 'Hoàn thành giặt' THEN p_trangthaimoi IN ('Đang giao', 'Đã giao')\n    WHEN 'Đang giao' THEN p_trangthaimoi = 'Đã giao'\n    ELSE false\n  END;\n  IF NOT valid_transition THEN\n    RAISE EXCEPTION 'Invalid order status transition: % -> %',\n      order_record.\"TrangThai\", p_trangthaimoi;\n  END IF;\n  IF p_trangthaimoi = 'Đã hủy' AND nullif(btrim(p_lydo), '') IS NULL THEN\n    RAISE EXCEPTION 'A cancellation reason is required';\n  END IF;\n  IF p_trangthaimoi='Đã hủy' AND EXISTS (SELECT 1 FROM public.\"ThanhToan\" WHERE \"DonHangID\"=p_donhangid AND \"TrangThai\"='Thành công') THEN RAISE EXCEPTION 'Collected payments must be refunded before cancellation'; END IF;\n  UPDATE public.\"DonHang\"\n  SET \"TrangThai\" = p_trangthaimoi,\n      \"NgayCapNhat\" = now()\n  WHERE \"DonHangID\" = p_donhangid;\n  INSERT INTO public.\"NhatKyHeThong\" (\n    \"TaiKhoanID\", \"HanhDong\", \"BangDuLieu\", \"BanGhiID\",\n    \"DuLieuCu\", \"DuLieuMoi\", \"LyDo\", \"ThoiGian\"\n  ) VALUES (\n    current_account,\n    'Thay đổi trạng thái đơn hàng',\n    'DonHang',\n    p_donhangid,\n    jsonb_build_object('TrangThai', order_record.\"TrangThai\"),\n    jsonb_build_object('TrangThai', p_trangthaimoi),\n    nullif(left(btrim(p_lydo), 500), ''),\n    now()\n  );\n  customer_account_id := private.account_id_for_customer(order_record.\"KhachHangID\");\n  IF customer_account_id IS NOT NULL THEN\n    INSERT INTO public.\"ThongBao\" (\n      \"TaiKhoanID\", \"TieuDe\", \"NoiDung\", \"ThoiGianGui\", \"DaDoc\", \"DonHangID\", \"LoaiThongBao\"\n    ) VALUES (\n      customer_account_id,\n      CASE WHEN p_trangthaimoi = 'Đã hủy'\n        THEN 'Đơn hàng đã bị hủy'\n        ELSE 'Cập nhật trạng thái đơn hàng'\n      END,\n      'Đơn hàng ' || order_record.\"MaDonHang\" || ' đã chuyển sang trạng thái: ' || p_trangthaimoi || '.',\n      now(),\n      false,\n      p_donhangid,\n      CASE WHEN p_trangthaimoi = 'Đã hủy' THEN 'order_cancelled' ELSE 'status_update' END\n    );\n  END IF;\nEND;\n$function$\n",
       "identity_args": "p_donhangid bigint, p_trangthaimoi text, p_lydo text"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres",
+        "authenticated=X/postgres"
+      ],
+      "name": "unregister_push_device_token",
+      "owner": "postgres",
+      "schema": "public",
+      "comment": null,
+      "definition": "CREATE OR REPLACE FUNCTION public.unregister_push_device_token(p_token text)\n RETURNS void\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO ''\nAS $function$\nDECLARE\n  account_id bigint;\nBEGIN\n  IF auth.uid() IS NULL OR p_token IS NULL THEN\n    RETURN;\n  END IF;\n\n  account_id := private.current_account_id();\n  IF account_id IS NOT NULL THEN\n    DELETE FROM public.push_device_tokens\n    WHERE token = p_token AND \"TaiKhoanID\" = account_id::integer;\n  END IF;\nEND;\n$function$\n",
+      "identity_args": "p_token text"
     },
     {
       "acl": [
@@ -16207,6 +16830,14 @@
       "schema": "public",
       "enabled": "O",
       "definition": "CREATE TRIGGER notify_customer_booking_deleted AFTER DELETE ON \"Booking\" FOR EACH ROW EXECUTE FUNCTION private.notify_customer_booking_deleted()",
+      "function_schema": "private"
+    },
+    {
+      "name": "sync_booking_delivery_fee_to_order",
+      "table": "Booking",
+      "schema": "public",
+      "enabled": "O",
+      "definition": "CREATE TRIGGER sync_booking_delivery_fee_to_order AFTER UPDATE OF \"PickupDeliveryFee\", \"DeliveryFee\" ON \"Booking\" FOR EACH ROW WHEN (old.\"PickupDeliveryFee\" IS DISTINCT FROM new.\"PickupDeliveryFee\" OR old.\"DeliveryFee\" IS DISTINCT FROM new.\"DeliveryFee\") EXECUTE FUNCTION private.sync_booking_delivery_fee_to_order()",
       "function_schema": "private"
     },
     {
@@ -16262,7 +16893,15 @@
       "table": "KhuyenMai",
       "schema": "public",
       "enabled": "O",
-      "definition": "CREATE TRIGGER notify_customers_new_promotion AFTER INSERT ON \"KhuyenMai\" FOR EACH ROW EXECUTE FUNCTION private.notify_customers_new_promotion()",
+      "definition": "CREATE TRIGGER notify_customers_new_promotion AFTER INSERT OR UPDATE OF \"TrangThai\", \"NgayBatDau\", \"NgayKetThuc\", \"SoLuongSuDung\" ON \"KhuyenMai\" FOR EACH ROW EXECUTE FUNCTION private.notify_customers_new_promotion()",
+      "function_schema": "private"
+    },
+    {
+      "name": "dispatch_push_notification_after_insert",
+      "table": "ThongBao",
+      "schema": "public",
+      "enabled": "O",
+      "definition": "CREATE TRIGGER dispatch_push_notification_after_insert AFTER INSERT ON \"ThongBao\" FOR EACH ROW EXECUTE FUNCTION private.dispatch_push_notification()",
       "function_schema": "private"
     },
     {
@@ -16870,6 +17509,11 @@
   ],
   "extensions": [
     {
+      "name": "pg_net",
+      "schema": "extensions",
+      "version": "0.20.4"
+    },
+    {
       "name": "pg_stat_statements",
       "schema": "extensions",
       "version": "1.11"
@@ -16900,7 +17544,7 @@
       "version": "1.1"
     }
   ],
-  "captured_at": "2026-10-10T04:35:46.294758+00:00",
+  "captured_at": "2026-10-18T10:00:00.826138+00:00",
   "default_acl": [
     {
       "acl": [
@@ -16996,7 +17640,10 @@
             "DonHangID",
             "NoiDung",
             "ThoiGianGui",
-            "TrangThai"
+            "TrangThai",
+            "NoiDungMaHoa",
+            "NoiDungNonce",
+            "MaHoaPhienBan"
           ],
           "rowfilter": null,
           "tablename": "TinNhan",
@@ -17027,7 +17674,7 @@
             "skip_broadcast"
           ],
           "rowfilter": null,
-          "tablename": "messages_2026_10_07",
+          "tablename": "messages_2026_10_15",
           "schemaname": "realtime"
         },
         {
@@ -17045,7 +17692,7 @@
             "skip_broadcast"
           ],
           "rowfilter": null,
-          "tablename": "messages_2026_10_08",
+          "tablename": "messages_2026_10_16",
           "schemaname": "realtime"
         },
         {
@@ -17063,7 +17710,7 @@
             "skip_broadcast"
           ],
           "rowfilter": null,
-          "tablename": "messages_2026_10_09",
+          "tablename": "messages_2026_10_17",
           "schemaname": "realtime"
         },
         {
@@ -17081,7 +17728,7 @@
             "skip_broadcast"
           ],
           "rowfilter": null,
-          "tablename": "messages_2026_10_10",
+          "tablename": "messages_2026_10_18",
           "schemaname": "realtime"
         },
         {
@@ -17099,7 +17746,7 @@
             "skip_broadcast"
           ],
           "rowfilter": null,
-          "tablename": "messages_2026_10_11",
+          "tablename": "messages_2026_10_19",
           "schemaname": "realtime"
         },
         {
@@ -17117,7 +17764,7 @@
             "skip_broadcast"
           ],
           "rowfilter": null,
-          "tablename": "messages_2026_10_12",
+          "tablename": "messages_2026_10_20",
           "schemaname": "realtime"
         },
         {
@@ -17135,7 +17782,7 @@
             "skip_broadcast"
           ],
           "rowfilter": null,
-          "tablename": "messages_2026_10_13",
+          "tablename": "messages_2026_10_21",
           "schemaname": "realtime"
         }
       ],

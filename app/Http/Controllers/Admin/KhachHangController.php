@@ -53,7 +53,7 @@ class KhachHangController extends Controller
         return view('admin.customers.show', [
             'customer' => $customer,
             'orders' => $customer->donHangs()
-                ->with(['chiTietDonHangs.dichVu'])
+                ->with(['chiTietDonHangs.dichVu', 'hoaDons', 'statusChanges'])
                 ->orderByDesc('NgayTao')
                 ->paginate(10)
                 ->withQueryString(),
@@ -102,7 +102,19 @@ class KhachHangController extends Controller
             $error = $this->customerService->delete($customer);
 
             if ($error !== null) {
-                return redirect()->route('customers.index')->with('error', $error);
+                $orders = array_map(
+                    fn (array $order): array => $order + ['url' => route('orders.show', $order['id'])],
+                    $error['orders'],
+                );
+                $accounts = array_map(
+                    fn (array $account): array => $account + ['url' => route('accounts.show', $account['id'])],
+                    $error['accounts'],
+                );
+
+                return redirect()->route('customers.index')
+                    ->with('error', $error['message'])
+                    ->with('customer_blocking_orders', $orders)
+                    ->with('customer_linked_accounts', $accounts);
             }
 
             return redirect()->route('customers.index')->with('success', 'Khách hàng đã được xóa.');

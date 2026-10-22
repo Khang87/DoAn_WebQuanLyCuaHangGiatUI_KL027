@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\BangGiaController;
+use App\Http\Controllers\Admin\BookingAddressAutocompleteController;
 use App\Http\Controllers\Admin\BookingController;
 use App\Http\Controllers\Admin\ChiTietDonHangController;
 use App\Http\Controllers\Admin\CouponController;
@@ -24,11 +25,13 @@ use App\Http\Controllers\Admin\TaiKhoanController;
 use App\Http\Controllers\Admin\ThanhToanController;
 use App\Http\Controllers\Admin\ThongBaoController;
 use App\Http\Controllers\Admin\VaiTroController;
+use App\Http\Controllers\Api\V1\PaymentConfigController;
+use App\Http\Controllers\Api\V1\SePayController;
 use App\Http\Controllers\Auth\InternalPasswordResetController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\PasswordResetController;
-use App\Http\Controllers\Api\V1\BeePayController;
 use App\Http\Controllers\Staff\DashboardController as StaffDashboardController;
+use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -43,24 +46,27 @@ use Illuminate\Support\Facades\Route;
 */
 
 // Authentication Routes
-// Fallback endpoints for hosts that do not dispatch Laravel API routes correctly.
-Route::get('/payment-config', [BeePayController::class, 'config'])->name('mobile.payment-config');
-Route::post('/api/v1/webhooks/beepay', [BeePayController::class, 'webhook'])
+// Fallback payment configuration endpoint for hosts that do not dispatch API routes.
+Route::get('/payment-config', PaymentConfigController::class)->name('mobile.payment-config');
+Route::post('/api/v1/webhooks/sepay', [SePayController::class, 'webhook'])
     ->middleware('throttle:120,1')
-    ->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\PreventRequestForgery::class])
-    ->name('mobile.beepay-webhook-fallback');
-Route::post('/beepay-webhook', [BeePayController::class, 'webhook'])
+    ->withoutMiddleware([PreventRequestForgery::class])
+    ->name('mobile.sepay-webhook-fallback');
+// Keep the payment callback outside /api because Vercel has a dedicated
+// /api/* rewrite that has returned 404 for this callback in production.
+Route::post('/sepay-webhook', [SePayController::class, 'webhook'])
     ->middleware('throttle:120,1')
-    ->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\PreventRequestForgery::class])
-    ->name('beepay.webhook');
+    ->withoutMiddleware([PreventRequestForgery::class])
+    ->name('mobile.sepay-webhook');
 
 Route::get('/login', [LoginController::class, 'showLoginForm'])->name('login');
 Route::post('/login', [LoginController::class, 'login']);
 Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
 Route::get('/forgot-password', [PasswordResetController::class, 'showLinkRequestForm'])->name('password.request');
-Route::post('/forgot-password', [PasswordResetController::class, 'sendResetOtp'])->name('password.email');
+Route::post('/forgot-password', [PasswordResetController::class, 'sendResetOtp'])->middleware('throttle:5,1,password-otp-send:')->name('password.email');
+Route::post('/forgot-password/verify', [PasswordResetController::class, 'verifyOtp'])->middleware('throttle:10,1,password-otp-verify:')->name('password.verify');
 Route::get('/reset-password', [PasswordResetController::class, 'showResetForm'])->name('password.reset');
-Route::post('/reset-password', [PasswordResetController::class, 'resetPassword'])->name('password.update');
+Route::post('/reset-password', [PasswordResetController::class, 'resetPassword'])->middleware('throttle:10,1,password-reset:')->name('password.update');
 
 Route::get('/internal/reset-password', [InternalPasswordResetController::class, 'show'])->name('internal-password.reset');
 Route::post('/internal/reset-password', [InternalPasswordResetController::class, 'update'])->middleware('throttle:10,1')->name('internal-password.update');
@@ -84,8 +90,22 @@ Route::middleware(['auth', 'reject.customer'])->group(function () {
             ['admin.dashboard', 'dashboard.view'],
             ['orders.index', 'orders.view'],
             ['customers.index', 'customers.view'],
+            ['admin.messages.index', 'messages.view'],
+            ['service-categories.index', 'service_categories.view'],
+            ['services.index', 'services.view'],
+            ['garment-categories.index', 'garment_categories.view'],
+            ['pricings.index', 'pricings.view'],
+            ['deliveries.index', 'deliveries.view'],
+            ['reviews.index', 'reviews.view'],
+            ['bookings.index', 'bookings.view'],
+            ['payments.index', 'payments.view'],
+            ['invoices.index', 'invoices.view'],
+            ['promotions.index', 'promotions.view'],
             ['reports.index', 'reports.view'],
+            ['accounts.index', 'accounts.view'],
             ['notifications.index', 'notifications.view'],
+            ['admin.system-logs.index', 'system_logs.view'],
+            ['roles.index', 'roles.manage'],
         ] as [$route, $permission]) {
             if ($user->canPermission($permission)) {
                 return redirect()->route($route);
@@ -126,10 +146,14 @@ Route::middleware(['auth', 'reject.customer'])->group(function () {
     Route::post('/admin/messages', [MessageController::class, 'store'])
         ->middleware('permission:messages.create')
         ->name('admin.messages.store');
+    Route::post('/admin/messages/image-upload-url', [MessageController::class, 'imageUploadUrl'])
+        ->middleware('permission:messages.create')->name('admin.messages.image-upload-url');
     Route::post('/admin/messages/{message}/hide', [MessageController::class, 'hide'])
         ->whereNumber('message')->middleware('permission:messages.create')->name('admin.messages.hide');
     Route::post('/admin/messages/{message}/recall', [MessageController::class, 'recall'])
         ->whereNumber('message')->middleware('permission:messages.create')->name('admin.messages.recall');
+    Route::patch('/admin/messages/{message}/edit', [MessageController::class, 'edit'])
+        ->whereNumber('message')->middleware('permission:messages.create')->name('admin.messages.edit');
 
     Route::get('/staff/dashboard', [StaffDashboardController::class, 'index'])
         ->middleware('permission:dashboard.view')
@@ -201,6 +225,22 @@ Route::middleware(['auth', 'reject.customer'])->group(function () {
     Route::post('deliveries/{delivery}/advance-progress', [GiaoNhanController::class, 'advanceProgress'])
         ->middleware('permission:deliveries.edit')
         ->name('deliveries.advance-progress');
+    Route::post('deliveries/{delivery}/cancel-return', [GiaoNhanController::class, 'cancelReturnDelivery'])
+        ->whereNumber('delivery')
+        ->middleware('permission:deliveries.delete')
+        ->name('deliveries.cancel-return');
+    Route::get('deliveries/booking-documents/{bookingDelivery}', [GiaoNhanController::class, 'showBookingDocument'])
+        ->whereNumber('bookingDelivery')
+        ->middleware('permission:deliveries.view')
+        ->name('deliveries.booking-documents.show');
+    Route::get('deliveries/booking-documents/{bookingDelivery}/edit', [GiaoNhanController::class, 'editBookingDocument'])
+        ->whereNumber('bookingDelivery')
+        ->middleware('permission:deliveries.edit')
+        ->name('deliveries.booking-documents.edit');
+    Route::put('deliveries/booking-documents/{bookingDelivery}', [GiaoNhanController::class, 'updateBookingDocument'])
+        ->whereNumber('bookingDelivery')
+        ->middleware('permission:deliveries.edit')
+        ->name('deliveries.booking-documents.update');
     Route::resource('deliveries', GiaoNhanController::class)
         ->middlewareFor(['index', 'show'], 'permission:deliveries.view')
         ->middlewareFor(['create', 'store'], 'permission:deliveries.create')
@@ -208,19 +248,36 @@ Route::middleware(['auth', 'reject.customer'])->group(function () {
         ->middlewareFor('destroy', 'permission:deliveries.delete');
 
     // Booking Management (Staff & Admin)
-    Route::resource('bookings', BookingController::class)->except(['create', 'store'])
+    Route::resource('bookings', BookingController::class)->except(['create', 'store', 'destroy'])
         ->middlewareFor(['index', 'show'], 'permission:bookings.view')
-        ->middlewareFor(['edit', 'update'], 'permission:bookings.edit')
-        ->middlewareFor('destroy', 'permission:bookings.delete');
+        ->middlewareFor(['edit', 'update'], 'permission:bookings.edit');
     Route::get('bookings/{booking}/inspection', [BookingController::class, 'inspection'])
-        ->middleware('permission:bookings.confirm')
         ->name('bookings.inspection');
+    Route::get('osm/autocomplete', BookingAddressAutocompleteController::class)
+        ->middleware(['permission:bookings.confirm', 'throttle:30,1'])
+        ->name('bookings.address-autocomplete');
+    Route::get('api/osm/autocomplete', BookingAddressAutocompleteController::class)
+        ->middleware(['permission:bookings.confirm', 'throttle:30,1'])
+        ->name('bookings.address-autocomplete-api');
+    Route::post('bookings/{booking}/approve', [BookingController::class, 'approve'])
+        ->middleware('permission:bookings.confirm')->name('bookings.approve');
+    Route::post('bookings/{booking}/cancel', [BookingController::class, 'cancelPending'])
+        ->middleware('permission:bookings.confirm')->name('bookings.cancel');
     Route::post('bookings/{booking}/estimate', [BookingController::class, 'estimate'])
         ->whereNumber('booking')->middleware('permission:bookings.confirm')->name('bookings.estimate');
+    Route::post('bookings/{booking}/delivery-fee-quote', [BookingController::class, 'quoteDeliveryFee'])
+        ->whereNumber('booking')->middleware(['permission:bookings.confirm', 'throttle:20,1'])
+        ->name('bookings.delivery-fee-quote');
     Route::post('bookings/{booking}/confirm', [BookingController::class, 'confirm'])
-        ->middleware('permission:bookings.confirm')
         ->name('bookings.confirm');
+    Route::post('bookings/{booking}/refuse-quote', [BookingController::class, 'refuseQuote'])
+        ->middleware('permission:bookings.confirm')
+        ->name('bookings.refuse-quote');
 
+    Route::post('payments/bank-transfer', [ThanhToanController::class, 'startBankTransfer'])
+        ->middleware(['permission:payments.create', 'throttle:20,1'])->name('payments.bank-transfer.start');
+    Route::get('payments/bank-transfer/status', [ThanhToanController::class, 'bankTransferStatus'])
+        ->middleware('permission:payments.create')->name('payments.bank-transfer.status');
     Route::resource('payments', ThanhToanController::class)
         ->middlewareFor(['index', 'show'], 'permission:payments.view')
         ->middlewareFor(['create', 'store'], 'permission:payments.create')
@@ -354,7 +411,7 @@ Route::get('/', function () {
     return redirect()->route('login');
 });
 
-// Personal inbox is available to every role, including customers.
+// Admin inbox: defaults for internal roles; customer accounts are excluded.
 Route::middleware(['auth', 'permission:notifications.view'])->group(function () {
     Route::get('notifications', [ThongBaoController::class, 'index'])->name('notifications.index');
     Route::get('notifications/updates', [ThongBaoController::class, 'updates'])->name('notifications.updates');

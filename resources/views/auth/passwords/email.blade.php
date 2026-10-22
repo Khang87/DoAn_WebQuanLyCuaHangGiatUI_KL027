@@ -15,7 +15,8 @@
             <div class="login-logo">
                 <i class="bi bi-shield-lock" style="font-size: 3rem; color: var(--primary-blue);"></i>
                 <h1>Quên mật khẩu?</h1>
-                <p>Nhập email tài khoản để tạo mã OTP đặt lại mật khẩu.</p>
+                <p class="mb-2">Bước 1/2 · Nhập email và xác thực OTP</p>
+                <p>Nhập email tài khoản đang hoạt động, sau đó xác nhận mã gồm 6 chữ số.</p>
             </div>
 
             @if(session('status'))
@@ -37,21 +38,45 @@
                         type="email"
                         id="email"
                         name="email"
-                        value="{{ old('email') }}"
+                        value="{{ $email ?: old('email') }}"
                         maxlength="150"
                         autocomplete="email"
                         required
-                        autofocus
+                        @if($email !== '') readonly @else autofocus @endif
                     >
                     @error('email')<div class="invalid-feedback">{{ $message }}</div>@enderror
                 </div>
-                <button class="btn btn-primary w-100" type="submit">Tạo mã OTP</button>
+                @if($email !== '')
+                    <button class="btn btn-outline-primary w-100" type="submit" data-otp-resend data-cooldown-seconds="{{ $cooldownSeconds }}" @disabled($cooldownSeconds > 0)>
+                        {{ $cooldownSeconds > 0 ? 'Gửi lại mã ('.$cooldownSeconds.'s)' : 'Gửi lại mã OTP' }}
+                    </button>
+                    <noscript><p class="small text-muted mt-2">Sau 60 giây, tải lại trang để gửi mã mới.</p></noscript>
+                @else
+                    <button class="btn btn-primary w-100" type="submit">Gửi mã OTP</button>
+                @endif
             </form>
+
+            @if($email !== '')
+                <p class="small text-muted mt-3">Mã OTP có hiệu lực trong 15 phút. Hãy kiểm tra hộp thư và thư rác.</p>
+                <form method="POST" action="{{ route('password.verify') }}">
+                    @csrf
+                    <input type="hidden" name="email" value="{{ $email }}">
+                    <div class="mb-3">
+                        <label class="form-label" for="otp">Mã OTP</label>
+                        <input class="form-control @error('otp') is-invalid @enderror" type="text" id="otp" name="otp" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="one-time-code" required autofocus aria-describedby="otp-help">
+                        <div id="otp-help" class="form-text">Nhập 6 chữ số trong email mới nhất.</div>
+                        @error('otp')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                    </div>
+                    <button class="btn btn-primary w-100" type="submit">Xác nhận</button>
+                </form>
+                <div class="text-center mt-3"><a href="{{ route('password.request', ['change_email' => 1]) }}">Đổi email</a></div>
+            @endif
 
             <div class="text-center mt-3">
                 <a href="{{ route('login') }}">Quay lại đăng nhập</a>
             </div>
         </div>
     </div>
+    @vite('resources/js/password-reset.js')
 </body>
 </html>

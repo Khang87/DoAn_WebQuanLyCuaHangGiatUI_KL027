@@ -48,17 +48,8 @@
                     <x-admin.status-badge
                         :status="$account->deleted_at ? 'inactive' : 'active'"
                         :enum="\App\Enums\RecordStatus::class"
-                        :pill="false"
                     />
                 </x-admin.detail.info-item>
-            </x-admin.detail.info-grid>
-        </x-admin.detail.panel>
-
-        <x-admin.detail.panel title="Hoạt động" icon="bi-activity" :iconClass="'bg-secondary-subtle text-secondary'">
-            <x-admin.detail.info-grid :columns="1">
-                <x-admin.detail.info-item label="Đơn hàng đã xử lý" :value="number_format($account->orders?->count() ?? 0)" />
-                <x-admin.detail.info-item label="Phiếu giao nhận" :value="number_format($account->deliveries?->count() ?? 0)" />
-                <x-admin.detail.info-item label="Cập nhật lần cuối" :value="$account->updated_at?->format('d/m/Y H:i')" />
             </x-admin.detail.info-grid>
         </x-admin.detail.panel>
     </div>

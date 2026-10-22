@@ -59,22 +59,21 @@
                 </div>
                 <div class="col-12 col-md-6">
                     <label class="form-label" for="NgayApDung_display">Ngày áp dụng <span class="text-danger ms-1">*</span></label>
-                    <input type="text" inputmode="numeric" placeholder="dd-mm-yyyy" autocomplete="off" data-date-picker data-min-date="today" class="form-control @error('NgayApDung') is-invalid @enderror" id="NgayApDung_display" name="NgayApDung_display" value="{{ old('NgayApDung_display', $pricing->NgayApDung?->format('d-m-Y')) }}" required>
+                    <input type="text" inputmode="numeric" placeholder="dd/MM/yyyy" autocomplete="off" data-date-picker data-min-date="today" class="form-control @error('NgayApDung') is-invalid @enderror" id="NgayApDung_display" name="NgayApDung_display" value="{{ old('NgayApDung_display', $pricing->NgayApDung?->format('d/m/Y')) }}" required>
                     @error('NgayApDung')<div class="invalid-feedback">{{ $message }}</div>@enderror
                 </div>
                 <div class="col-12 col-md-6">
                     <label class="form-label" for="NgayKetThuc_display">Ngày kết thúc</label>
-                    <input type="text" inputmode="numeric" placeholder="dd-mm-yyyy" autocomplete="off" data-date-picker class="form-control @error('NgayKetThuc') is-invalid @enderror" id="NgayKetThuc_display" name="NgayKetThuc_display" value="{{ old('NgayKetThuc_display', $pricing->NgayKetThuc?->format('d-m-Y')) }}">
+                    <input type="text" inputmode="numeric" placeholder="dd/MM/yyyy" autocomplete="off" data-date-picker class="form-control @error('NgayKetThuc') is-invalid @enderror" id="NgayKetThuc_display" name="NgayKetThuc_display" value="{{ old('NgayKetThuc_display', $pricing->NgayKetThuc?->format('d/m/Y')) }}">
                     @error('NgayKetThuc')<div class="invalid-feedback">{{ $message }}</div>@enderror
                 </div>
                 <div class="col-12 col-md-6">
                     <label class="form-label" for="TrangThai">Trạng thái <span class="text-danger ms-1">*</span></label>
-                    <x-admin.status-select name="TrangThai" id="TrangThai" :options="['Hoạt động' => 'Hoạt động', 'Hết hiệu lực' => 'Hết hiệu lực', 'Tạm ngưng' => 'Tạm ngưng']" :selected="old('TrangThai', $pricing->TrangThai)" class="form-select @error('TrangThai') is-invalid @enderror" required />
+                    <x-admin.status-select name="TrangThai" id="TrangThai" :options="['Hoạt động' => 'Hoạt động', 'Hết hiệu lực' => 'Hết hiệu lực', 'Tạm ngưng' => 'Tạm ngưng']" :selected="old('TrangThai', $pricing->TrangThai)" class="form-select status-select-compact @error('TrangThai') is-invalid @enderror" required />
                     @error('TrangThai')<div class="invalid-feedback">{{ $message }}</div>@enderror
                 </div>
             </div>
             <div class="d-flex flex-wrap justify-content-end gap-2 mt-4 pt-3 border-top">
-                <a href="{{ route('pricings.index') }}" class="btn btn-outline-secondary">Hủy</a>
                 <button type="submit" class="btn btn-primary"><i class="bi bi-save me-1"></i>Lưu thay đổi</button>
             </div>
         </form>
@@ -86,7 +85,7 @@
     document.querySelectorAll('[data-date-picker]').forEach((input) => {
         flatpickr(input, {
             allowInput: true,
-            dateFormat: 'd-m-Y',
+            dateFormat: 'd/m/Y',
             minDate: input.dataset.minDate || null,
         });
     });

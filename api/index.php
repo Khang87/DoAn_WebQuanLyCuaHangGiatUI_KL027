@@ -1,7 +1,7 @@
 <?php
 
 // Vercel invokes this function for every Laravel path. Preserve the original
-// route so /api/v1/payment-config and the BeePay webhook reach Laravel.
+// route so /api/v1/payment-config and payment webhooks reach Laravel.
 if (isset($_GET['__vercel_path'])) {
     $path = '/'.ltrim((string) $_GET['__vercel_path'], '/');
     unset($_GET['__vercel_path']);

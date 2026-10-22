@@ -11,6 +11,7 @@
 @section('page-title', $editing ? $role->TenVaiTro : 'Thêm nhóm quyền')
 
 @section('content')
+<div class="alert alert-info">Mọi nhóm nội bộ được mặc định xem/gửi tin nhắn khách hàng và xem thông báo, kể cả nhóm mới. Nhóm Khách hàng/Customer/Client không dùng các tính năng này trên trang quản trị.</div>
 <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
     <div>
         <h2 class="h5 mb-1">{{ $editing ? 'Chi tiết và quản lý nhóm quyền' : 'Tạo nhóm quyền mới' }}</h2>
@@ -118,14 +119,17 @@
                                             @php
                                                 $permissionId = (int) $permission->getKey();
                                                 $isOwnerOnly = in_array($permission->MaQuyen, $ownerOnly ?? [], true);
-                                                $isDefault = $permission->MaQuyen === \App\Services\DefaultNotificationPermission::CODE;
-                                                $isChecked = $isDefault || $assignedPermissionIds->contains($permissionId);
+                                                $isCustomerGroup = \App\Support\InternalCommunicationPolicy::isCustomerRole($role->TenVaiTro);
+                                                $isDefault = ! $isCustomerGroup && in_array($permission->MaQuyen, ['MESSAGES_VIEW', 'MESSAGES_CREATE', 'NOTIFICATION_VIEW', 'NOTIFICATIONS_VIEW'], true);
+                                                $isExcluded = $isCustomerGroup && \App\Support\InternalCommunicationPolicy::handles(strtolower(str_replace('_', '.', $permission->MaQuyen)));
+                                                $isMobileNotification = $isExcluded && in_array($permission->MaQuyen, ['NOTIFICATION_VIEW', 'NOTIFICATIONS_VIEW'], true);
+                                                $isChecked = $isDefault || ($assignedPermissionIds->contains($permissionId) && (! $isExcluded || $isMobileNotification));
                                             @endphp
                                             <label class="d-flex align-items-start gap-2 py-2 {{ ! $loop->last ? 'border-bottom' : '' }}">
                                                 <input class="form-check-input mt-1 flex-shrink-0" type="checkbox"
                                                        name="permission_ids[]" value="{{ $permissionId }}"
                                                        @checked($isChecked)
-                                                       @disabled($isDefault || $isOwnerOnly || $role->TrangThai !== 'Hoạt động')>
+                                                       @disabled($isDefault || $isExcluded || $isOwnerOnly || $role->TrangThai !== 'Hoạt động')>
                                                 <span class="min-w-0">
                                                     <span class="d-block fw-medium">{{ $permission->TenQuyen }}</span>
                                                     <span class="small text-muted"><code>{{ $permission->MaQuyen }}</code></span>
@@ -133,7 +137,10 @@
                                                         <span class="d-block small text-muted">{{ $permission->MoTa }}</span>
                                                     @endif
                                                     @if($isDefault)
-                                                        <span class="badge bg-primary-subtle text-primary mt-1">Mặc định cho mọi nhóm</span>
+                                                        <span class="badge bg-primary-subtle text-primary mt-1">Mặc định cho nhóm nội bộ</span>
+                                                    @endif
+                                                    @if($isExcluded)
+                                                        <span class="badge bg-secondary-subtle text-secondary mt-1">{{ $isMobileNotification ? 'Chỉ dành cho mobile; bị chặn trên quản trị' : 'Khách hàng không dùng trên quản trị' }}</span>
                                                     @endif
                                                     @if($isOwnerOnly)
                                                         <span class="badge bg-warning-subtle text-warning-emphasis mt-1">Chỉ Chủ cửa hàng</span>

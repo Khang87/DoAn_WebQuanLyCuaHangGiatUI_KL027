@@ -14,6 +14,7 @@ use App\Models\User;
 use App\Services\InvoiceService;
 use App\Services\OrderService;
 use App\Services\PaymentService;
+use Illuminate\Database\QueryException;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -133,7 +134,7 @@ class PaymentOrderRedirectTest extends TestCase
         $response = $this->withoutMiddleware()->get(route('payments.create', ['order_id' => 37]));
 
         $response->assertOk()
-            ->assertSee('DH0037')
+            ->assertSee('DH00000037')
             ->assertSee('Khách thử nghiệm')
             ->assertSee('value="50000" min="0" step="1000" disabled', false)
             ->assertSee('name="order_id" disabled', false)
@@ -152,6 +153,53 @@ class PaymentOrderRedirectTest extends TestCase
             ->assertDontSee('Số tiền thanh toán <span class="text-danger', false);
     }
 
+    public function test_web_qr_waits_for_authenticated_bank_confirmation_and_cannot_be_saved_manually(): void
+    {
+        DB::table('DonHang')->insert([
+            'DonHangID' => 37, 'MaDonHang' => 'DH00000037',
+            'TrangThai' => OrderStatus::Received->value, 'ThanhTien' => 50000,
+        ]);
+        DB::table('HoaDon')->insert([
+            'HoaDonID' => 19, 'DonHangID' => 37, 'MaHoaDon' => 'HD00000037',
+            'TrangThai' => InvoiceStatus::Unpaid->value, 'ThanhTien' => 50000,
+        ]);
+
+        $this->withoutMiddleware()->postJson(route('payments.bank-transfer.start'), ['order_id' => 37, 'invoice_id' => 19])
+            ->assertOk()->assertJsonPath('reference', 'DH00000037')->assertJsonPath('amount', 50000);
+        $this->postJson(route('payments.bank-transfer.start'), ['order_id' => 37, 'invoice_id' => 19])->assertOk();
+        $this->assertSame(1, DB::table('ThanhToan')->where('DonHangID', 37)->count());
+        $this->assertSame(PaymentStatus::Pending->value, DB::table('ThanhToan')->where('DonHangID', 37)->value('TrangThai'));
+        $this->getJson(route('payments.bank-transfer.status', ['order_id' => 37]))->assertOk()->assertJsonPath('paid', false);
+
+        $pendingId = DB::table('ThanhToan')->where('DonHangID', 37)->value('ThanhToanID');
+        $this->putJson(route('payments.update', $pendingId), [
+            'order_id' => 37, 'invoice_id' => 19, 'amount' => 50000,
+            'method' => 'bank_transfer', 'status' => PaymentStatus::Paid->value,
+        ])->assertUnprocessable()->assertJsonValidationErrors('status');
+
+        $this->postJson(route('payments.store'), [
+            'order_id' => 37, 'invoice_id' => 19, 'amount' => 50000,
+            'method' => 'bank_transfer', 'status' => PaymentStatus::Paid->value,
+        ])->assertUnprocessable()->assertJsonValidationErrors('method');
+        $this->assertSame(0, DB::table('ThanhToan')->where('DonHangID', 37)
+            ->where('TrangThai', PaymentStatus::Paid->value)->count());
+
+        config()->set('services.sepay.webhook_api_key', 'test-bank-key');
+        config()->set('services.vietqr.account_number', '123456789');
+        $payload = [
+            'id' => 123, 'code' => 'DH00000037', 'transferType' => 'in',
+            'transferAmount' => 50000, 'accountNumber' => '123456789',
+        ];
+        $this->postJson(route('mobile.sepay-webhook'), $payload)->assertUnauthorized();
+        $this->withHeader('Authorization', 'Apikey test-bank-key')
+            ->postJson(route('mobile.sepay-webhook'), $payload)->assertOk()->assertJsonPath('success', true);
+
+        $this->getJson(route('payments.bank-transfer.status', ['order_id' => 37]))
+            ->assertOk()->assertJsonPath('paid', true)->assertJsonPath('transaction_code', 'SEPAY-123');
+        $this->assertSame(1, DB::table('ThanhToan')->where('DonHangID', 37)->count());
+        $this->assertSame(InvoiceStatus::Paid->value, DB::table('HoaDon')->where('HoaDonID', 19)->value('TrangThai'));
+    }
+
     public function test_invoice_field_is_hidden_when_the_selected_order_has_no_invoice(): void
     {
         DB::table('DonHang')->insert([
@@ -164,7 +212,7 @@ class PaymentOrderRedirectTest extends TestCase
         $response = $this->withoutMiddleware()->get(route('payments.create', ['order_id' => 38]));
 
         $response->assertOk()
-            ->assertSee('DH0038')
+            ->assertSee('DH00000038')
             ->assertDontSee('<select class="form-select" name="invoice_id"', false)
             ->assertDontSee('Đơn hàng chưa có hóa đơn');
     }
@@ -175,6 +223,40 @@ class PaymentOrderRedirectTest extends TestCase
 
         $response->assertRedirect(route('orders.index'))
             ->assertSessionHas('error', 'Không tìm thấy đơn hàng cần thanh toán.');
+    }
+
+    public function test_invoice_search_uses_only_columns_present_in_the_invoice_schema(): void
+    {
+        $this->assertFalse(Schema::hasColumn('HoaDon', 'GhiChu'));
+
+        DB::table('KhachHang')->insert([
+            'KhachHangID' => 3,
+            'HoTen' => 'Khách thử nghiệm',
+        ]);
+        DB::table('DonHang')->insert([
+            'DonHangID' => 37,
+            'MaDonHang' => 'DH0037',
+            'KhachHangID' => 3,
+            'TrangThai' => OrderStatus::Delivered->value,
+        ]);
+        DB::table('HoaDon')->insert([
+            'HoaDonID' => 19,
+            'DonHangID' => 37,
+            'MaHoaDon' => 'HD0037',
+            'TrangThai' => InvoiceStatus::Unpaid->value,
+            'ThanhTien' => 50000,
+        ]);
+
+        $invoiceService = app(InvoiceService::class);
+
+        $this->assertSame(
+            [19],
+            $invoiceService->getAll(['search' => '37'])->getCollection()->pluck('HoaDonID')->all(),
+        );
+        $this->assertSame(
+            [19],
+            $invoiceService->getAll(['search' => 'Khách thử nghiệm'])->getCollection()->pluck('HoaDonID')->all(),
+        );
     }
 
     public function test_paid_or_cancelled_orders_cannot_be_opened_for_payment(): void
@@ -306,7 +388,7 @@ class PaymentOrderRedirectTest extends TestCase
         ]);
 
         $this->assertMatchesRegularExpression(
-            '/^TM_DH0051_\d{14}(?:_\d+)?$/',
+            '/^TM_DH00000051_\d{14}(?:_\d+)?$/',
             $payment->MaGiaoDich,
         );
         $this->assertSame(1, DB::table('ThanhToan')->where('MaGiaoDich', $payment->MaGiaoDich)->count());
@@ -723,6 +805,7 @@ class PaymentOrderRedirectTest extends TestCase
 
     public function test_invoice_update_failure_rolls_back_the_new_payment_and_paid_status(): void
     {
+        $this->actingAs((new User)->forceFill(['TaiKhoanID' => 1]));
         DB::table('DonHang')->insert([
             'DonHangID' => 56,
             'MaDonHang' => 'DH0056',
@@ -736,6 +819,7 @@ class PaymentOrderRedirectTest extends TestCase
             'TrangThai' => InvoiceStatus::Unpaid->value,
             'ThanhTien' => 25000,
         ]);
+        DB::statement("CREATE TRIGGER fail_invoice_audit BEFORE INSERT ON LichSuThayDoiHoaDon BEGIN SELECT RAISE(ABORT, 'isolated invoice audit failure'); END");
 
         try {
             app(PaymentService::class)->create([
@@ -745,7 +829,8 @@ class PaymentOrderRedirectTest extends TestCase
                 'status' => PaymentStatus::Paid->value,
             ]);
             $this->fail('The invoice audit failure should abort the transaction.');
-        } catch (\LogicException) {
+        } catch (QueryException $exception) {
+            $this->assertStringContainsString('isolated invoice audit failure', $exception->getMessage());
         }
 
         $this->assertSame(0, DB::table('ThanhToan')->where('DonHangID', 56)->count());

@@ -1,0 +1,57 @@
+[1mdiff --git a/resources/views/admin/customers/index.blade.php b/resources/views/admin/customers/index.blade.php[m
+[1mindex c8bd65a..7ff0cdf 100644[m
+[1m--- a/resources/views/admin/customers/index.blade.php[m
+[1m+++ b/resources/views/admin/customers/index.blade.php[m
+[36m@@ -15,15 +15,15 @@[m
+ </div>[m
+ <form method="GET" action="{{ url()->current() }}" class="row g-3 align-items-center mb-4">[m
+     <div class="col-12 col-md-auto flex-grow-1">[m
+[31m-        <div class="input-group input-group-sm shadow-sm rounded-3 overflow-hidden">[m
+[31m-            <span class="input-group-text bg-white border-end-0 ps-3">[m
+[32m+[m[32m        <div class="input-group input-group-sm shadow-sm rounded-3 overflow-hidden align-items-center" style="height: 40px;">[m
+[32m+[m[32m            <span class="input-group-text bg-white border-end-0 ps-3" style="height: 100%; border-color: #d1d5db;">[m
+                 <i class="fas fa-search text-muted"></i>[m
+             </span>[m
+[31m-            <input type="text" name="search" class="form-control form-control-sm border-start-0 ps-2" placeholder="Tìm kiếm khách hàng..." value="{{ request('search') }}">[m
+[32m+[m[32m            <input type="text" name="search" class="form-control form-control-sm border-start-0 ps-2" placeholder="Tìm kiếm khách hàng..." value="{{ request('search') }}" style="height: 100%; border-color: #d1d5db; font-size: 0.875rem;">[m
+         </div>[m
+     </div>[m
+     <div class="col-12 col-sm-6 col-md-auto">[m
+[31m-        <select name="sort" class="form-select form-select-sm filter-select shadow-sm rounded-3" onchange="this.form.submit()">[m
+[32m+[m[32m        <select name="sort" class="form-select form-select-sm filter-select shadow-sm rounded-3" onchange="this.form.submit()" style="height: 40px;">[m
+             <option value="latest" @selected(request('sort', 'latest') === 'latest')>Mới nhất</option>[m
+             <option value="oldest" @selected(request('sort') === 'oldest')>Cũ nhất</option>[m
+             <option value="id_asc" @selected(request('sort') === 'id_asc')>ID khách hàng tăng dần</option>[m
+[36m@@ -42,7 +42,7 @@[m
+             <table class="table-custom mb-0">[m
+                 <thead>[m
+                     <tr>[m
+[31m-                        <th class="fw-bold text-dark">ID khách hàng</th>[m
+[32m+[m[32m                        <th class="fw-bold text-dark">STT</th>[m
+                         <th class="fw-bold text-dark">Khách hàng</th>[m
+                         <th class="fw-bold text-dark">Email</th>[m
+                         <th class="fw-bold text-dark">Số điện thoại</th>[m
+[36m@@ -57,7 +57,7 @@[m
+                 <tbody>[m
+                     @forelse($customers as $customer)[m
+                     <tr>[m
+[31m-                        <td class="text-dark">{{ $customer->KhachHangID }}</td>[m
+[32m+[m[32m                        <td class="text-dark text-center fw-semibold">{{ $loop->iteration }}</td>[m
+                         <td>[m
+                             <div class="fw-semibold text-dark">{{ $customer->HoTen }}</div>[m
+                             <small class="text-muted">{{ $customer->SoDienThoai ?: 'Chưa có số điện thoại' }}</small>[m
+[1mdiff --git a/resources/views/admin/customers/show.blade.php b/resources/views/admin/customers/show.blade.php[m
+[1mindex dfade81..058d323 100644[m
+[1m--- a/resources/views/admin/customers/show.blade.php[m
+[1m+++ b/resources/views/admin/customers/show.blade.php[m
+[36m@@ -6,7 +6,7 @@[m
+ @section('content')[m
+ <x-admin.detail.page-header[m
+     title="Khách hàng {{ $customer->HoTen }}"[m
+[31m-    :subtitle="'ID ' . $customer->KhachHangID"[m
+[32m+[m[32m    :subtitle="$customer->Email ?: ($customer->SoDienThoai ?: 'Thông tin khách hàng')"[m
+ >[m
+     <x-slot:badge>[m
+         <span class="badge bg-secondary-subtle text-secondary-emphasis border border-secondary">{{ $customer->TrangThai }}</span>[m
+[36m@@ -23,10 +23,9 @@[m
+                 <h4 class="mb-1 text-dark fw-b

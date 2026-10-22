@@ -13,29 +13,30 @@
             </a>
         </div>
 
-        <form action="{{ route('customers.store') }}" method="POST">
+        <form action="{{ route('customers.store') }}" method="POST" id="customer-create-form">
             @csrf
             <div class="row g-4">
                 <div class="col-md-6">
                     <label class="form-label">Họ tên <span class="text-danger ms-1">*</span></label>
-                    <input type="text" class="form-control @error('HoTen') is-invalid @enderror" name="HoTen" placeholder="Nhập họ tên" required>
+                    <input type="text" class="form-control @error('HoTen') is-invalid @enderror" name="HoTen" value="{{ old('HoTen') }}" placeholder="Nhập họ tên" required>
                     @error('HoTen')
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
                 </div>
                 <div class="col-md-6">
-                    <label class="form-label">Email</label>
-                    <input type="email" class="form-control @error('Email') is-invalid @enderror" name="Email" placeholder="Nhập email">
+                    <label class="form-label">Email <span class="text-danger ms-1">*</span></label>
+                    <input type="email" class="form-control @error('Email') is-invalid @enderror" name="Email" value="{{ old('Email') }}" placeholder="Nhập email" required>
                     @error('Email')
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
                 </div>
                 <div class="col-md-6">
-                    <label class="form-label">Số điện thoại</label>
-                    <input type="text" class="form-control @error('SoDienThoai') is-invalid @enderror" name="SoDienThoai" placeholder="Nhập số điện thoại">
+                    <label class="form-label">Số điện thoại <span class="text-danger ms-1">*</span></label>
+                    <input type="tel" class="form-control @error('SoDienThoai') is-invalid @enderror" name="SoDienThoai" value="{{ old('SoDienThoai') }}" placeholder="Nhập số điện thoại" pattern="0[0-9]{9,10}" maxlength="30" required>
                     @error('SoDienThoai')
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
+                    <div class="form-text" id="customer-contact-help">Nhập số điện thoại gồm 10 hoặc 11 chữ số, bắt đầu bằng số 0.</div>
                 </div>
                 <div class="col-md-6">
                     <label class="form-label">Điểm tích lũy</label>

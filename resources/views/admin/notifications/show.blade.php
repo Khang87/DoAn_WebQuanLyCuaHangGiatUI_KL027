@@ -26,7 +26,7 @@
 @endphp
 
 <x-admin.detail.page-header
-    title="Thông báo #{{ $notification->ThongBaoID }}"
+    title="Chi tiết thông báo"
     :subtitle="$notification->ThoiGianGui?->format('d/m/Y H:i')"
 >
     <x-slot:badge>
@@ -51,9 +51,13 @@
                 <x-admin.detail.info-item label="Loại thông báo" :value="$typeLabels[$type] ?? 'Thông báo'" />
                 <x-admin.detail.info-item label="Đơn hàng liên quan">
                     @if($notification->donHang)
+                        @can('orders.view')
                         <a href="{{ route('orders.show', $notification->donHang->DonHangID) }}" class="text-decoration-none">
                             {{ $notification->donHang->MaDonHang }}
                         </a>
+                        @else
+                        {{ $notification->donHang->MaDonHang }}
+                        @endcan
                     @else
                         <span class="detail-empty-value">—</span>
                     @endif

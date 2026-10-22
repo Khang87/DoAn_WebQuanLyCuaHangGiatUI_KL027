@@ -19,11 +19,14 @@
     <!-- Bootstrap Icons -->
     <link rel="stylesheet" href="{{ asset('assets/libs/bootstrap-icons/bootstrap-icons.css') }}">
 
+    <!-- Flatpickr -->
+    <link rel="stylesheet" href="{{ asset('assets/libs/flatpickr/flatpickr.min.css') }}">
+
     <!-- FontAwesome 6 -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 
     <!-- Custom CSS -->
-    <link rel="stylesheet" href="{{ asset('assets/css/laundry.css') }}">
+    <link rel="stylesheet" href="{{ asset('assets/css/laundry.css') }}?v={{ filemtime(public_path('assets/css/laundry.css')) }}">
 
     @stack('styles')
 </head>
@@ -46,6 +49,7 @@
         <!-- Navigation Menu -->
         <div class="flex-grow-1 overflow-y-auto">
             <!-- Menu chính -->
+            @can('dashboard.view')
             <div class="sidebar-menu-section">
                 <div class="sidebar-menu-title">Menu chính</div>
                 <ul class="sidebar-menu-list">
@@ -57,8 +61,10 @@
                     </li>
                 </ul>
             </div>
+            @endcan
 
             <!-- Quan ly - Chung (Staff & Admin) -->
+            @if($authUser?->canAny(['customers.view', 'orders.view', 'messages.view', 'service_categories.view', 'services.view', 'garment_categories.view', 'pricings.view']))
             <div class="sidebar-menu-section">
                 <div class="sidebar-menu-title">Quản lý</div>
                 <ul class="sidebar-menu-list">
@@ -126,8 +132,10 @@
                     @endcan
                 </ul>
             </div>
+            @endif
 
 <!-- Giao nhan & Thanh toan (Staff & Admin) -->
+            @if($authUser?->canAny(['deliveries.view', 'reviews.view', 'bookings.view', 'payments.view', 'invoices.view']))
             <div class="sidebar-menu-section">
                 <div class="sidebar-menu-title">Giao nhận & Thanh toán</div>
                 <ul class="sidebar-menu-list">
@@ -173,6 +181,7 @@
                     @endcan
                 </ul>
             </div>
+            @endif
 
 @if(auth()->user()?->can('promotions.view') || auth()->user()?->can('reports.view'))
             <!-- Khuyen mai & Bao cao (Chi quan ly) -->
@@ -200,6 +209,7 @@
             @endif
 
             <!-- Hệ thống: mỗi module kiểm tra quyền riêng. -->
+            @if($authUser?->canAny(['accounts.view', 'notifications.view', 'system_logs.view', 'roles.manage']))
             <div class="sidebar-menu-section">
                 <div class="sidebar-menu-title">Hệ thống</div>
                 <ul class="sidebar-menu-list">
@@ -219,14 +229,14 @@
                         </a>
                     </li>
                     @endcan
-                    @if(auth()->user()?->isOwner())
+                    @can('system_logs.view')
                         <li class="sidebar-menu-item">
                             <a href="{{ route('admin.system-logs.index') }}" class="sidebar-menu-link {{ request()->routeIs('admin.system-logs.*') ? 'active' : '' }}">
                                 <i class="bi bi-journal-text"></i>
                                 <span>Nhật ký hệ thống</span>
                             </a>
                         </li>
-                    @endif
+                    @endcan
                     @can('roles.manage')
                     <li class="sidebar-menu-item">
                         <a href="{{ route('roles.index') }}" class="sidebar-menu-link {{ request()->routeIs('roles.*') ? 'active' : '' }}">
@@ -243,6 +253,7 @@
                     @endcan
                 </ul>
             </div>
+            @endif
         </div>
 
         <!-- Sidebar Profile -->
@@ -269,6 +280,7 @@
 
             <div class="navbar-actions">
                 <!-- Notifications -->
+            @can('notifications.view')
             @php
                 $authUser = auth()->user();
                 $dropdownNotifications = $authUser
@@ -319,6 +331,7 @@
             </div>
 
                 <span class="visually-hidden" data-notification-status role="status"></span>
+            @endcan
                 <!-- Quick Actions -->
                 @if(auth()->check() && (auth()->user()->can('orders.create') || auth()->user()->can('customers.create') || auth()->user()->can('invoices.create') || auth()->user()->can('services.create') || auth()->user()->can('promotions.create') || auth()->user()->can('deliveries.create')))
                 <div class="dropdown">
@@ -393,12 +406,14 @@
 
     <!-- Bootstrap JS -->
     <script defer src="{{ asset('assets/libs/bootstrap/js/bootstrap.bundle.min.js') }}"></script>
+    <script defer src="{{ asset('assets/libs/flatpickr/flatpickr.min.js') }}"></script>
+    <script defer src="{{ asset('assets/js/localized-date-inputs.js') }}?v={{ filemtime(public_path('assets/js/localized-date-inputs.js')) }}"></script>
 
     <!-- SweetAlert2 -->
     <script defer src="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.all.min.js"></script>
 
     <!-- Flash Messages -->
-    @if(session('success') || session('error'))
+    @if(session('success') || (session('error') && ! session()->has('blocking_orders') && ! session()->has('customer_blocking_orders')))
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             @if(session('success'))

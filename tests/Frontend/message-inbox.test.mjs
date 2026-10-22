@@ -14,12 +14,14 @@ function harness() {
     const reply=async(orders,status=200)=>{calls.at(-1).resolve({status,ok:status===200,json:async()=>({orders})});await settle();};
     return {inbox,events,timers,calls,document,settle,reply};
 }
-const order=(id,unread)=>({id,number:`DH${id}`,customer:'<img onerror=alert(1)>',date:'10-10-2026',unread});
+const order=(id,unread)=>({id,number:`DH${id}`,customer:'<img onerror=alert(1)>',date:'10-10-2026',preview:'Tin nhắn mới <script>',unread});
 test('latest order moves first, unread dot clears and text stays escaped without replacing document',async()=>{
     const h=harness();await h.reply([order(1,true),order(2,false)]);
     assert.equal(h.inbox.children[0].dataset.inboxOrder,'1');
     assert.equal(h.inbox.children[0].children[0].children[0].children.length,1);
-    assert.equal(h.inbox.children[0].children[1].textContent,order(1,true).customer);
+    assert.equal(h.inbox.children[0].children[0].children[0].textContent,order(1,true).customer);
+    assert.equal(h.inbox.children[0].children[1].textContent,'DH1');
+    assert.equal(h.inbox.children[0].children[2].textContent,'Tin nhắn mới <script>');
     h.events['message-inbox-changed']();await h.reply([order(2,true),order(1,false)]);
     assert.equal(h.inbox.children[0].dataset.inboxOrder,'2');
     assert.equal(h.inbox.children[1].children[0].children[0].children.length,0);

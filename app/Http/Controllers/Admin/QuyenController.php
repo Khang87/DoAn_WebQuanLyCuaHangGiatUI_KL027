@@ -17,7 +17,7 @@ class QuyenController extends Controller
     {
         Gate::authorize('roles.manage');
 
-        $permissions = $this->roleService->getAllPermissions()->loadCount('vaiTros');
+        $permissions = $this->roleService->getAllPermissions();
 
         return view('admin.permissions.index', compact('permissions'));
     }

@@ -1,5 +1,11 @@
 # Sky Laundry
 
+## Luồng Booking giai đoạn 1
+
+Đặc tả: [booking-intake-two-step.md](docs/specs/booking-intake-two-step.md). Nhân viên xác nhận lịch để lập chứng từ nhận và kế hoạch trả; việc xác nhận chưa tạo đơn hàng. Sau khi ghi nhận nhận đồ thực tế, nhân viên kiểm kê các mặt hàng, tình trạng và thông tin giao nhận rồi xác nhận để tạo đơn ở trạng thái Đã tiếp nhận. Đơn được tạo tối đa một lần cho mỗi Booking. Nếu kiểm kê khác thông tin Booking, hệ thống thông báo cho khách. Hai chứng từ Booking được liên kết với đơn và bản kiểm kê; kế hoạch trả không phải phiếu giao vận hành. Phí giao nhận đã lưu không được tự tính lại trong lúc kiểm kê.
+
+Luồng này yêu cầu các bảng `BookingGiaoNhan` và `BookingKiemKe` theo migration `2026_10_16_000001_create_booking_intake_documents.php` phải có sẵn trên cơ sở dữ liệu của môi trường triển khai. `BOOKING_TWO_STEP` không bật/tắt các bước Booking giai đoạn 1; cấu hình này vẫn được giữ nguyên cho những chỗ dùng hiện tại trong luồng giao nhận.
+
 Sky Laundry là hệ thống quản lý cửa hàng giặt ủi, hỗ trợ quy trình vận hành cho Chủ cửa hàng, Quản lý, Nhân viên và Khách hàng. Ứng dụng gồm giao diện web Laravel và API JSON phiên bản hóa, sử dụng cơ sở dữ liệu PostgreSQL trên Supabase theo cấu trúc hiện có.
 
 Tin nhắn khách hàng: danh sách đơn tự cập nhật mỗi 3 giây khi trang đang mở; cuộc trò chuyện có tin mới lên đầu. Chấm đỏ biểu thị tin khách gửi chưa đọc. Mở cuộc trò chuyện sẽ ghi nhận đã đọc đến mốc tin đã tải, đồng bộ trạng thái với mobile và giữ nguyên tin có ID lớn hơn mốc đó. Nội dung cuộc trò chuyện tiếp tục dùng Supabase Realtime, với API Laravel dự phòng.
@@ -54,7 +60,7 @@ Tin nhắn khách hàng: danh sách đơn tự cập nhật mỗi 3 giây khi tr
 - Chỉ tạo phiếu `NHAN_DO` khi nhận tại nhà và `GIAO_DO` khi trả tại nhà. Nếu cả hai tại cửa hàng thì không tạo phiếu. Phiếu nhận dùng `NgayHen`/`GioHen`; phiếu trả chưa có lịch thì để `ThoiGianDuKien` NULL, không sao chép thời gian nhận làm thời gian trả.
 - Việc tạo đơn, chi tiết, phiếu, trừ điểm và xác nhận/audit Booking nằm trong cùng transaction. Khóa Booking và trả về đơn hiện hữu khi gửi lại giúp tránh tạo đơn hoặc trừ điểm trùng. Audit ghi cả `HinhThucTraDo` và `DiaChiTra`, bao gồm các lần sửa thông thường.
 - Booking cũ đọc hình thức trả từ `HinhThucGiaoDo` nếu `HinhThucTraDo` trống; chỉ khi cả hai thiếu thì hiển thị “Chưa bổ sung” và nhân viên phải chọn trước khi chuyển đổi. Đơn cũ đang `Chờ tiếp nhận` tiếp tục dùng bước kiểm tra trên trang đơn hàng; bản sửa không tự chuyển trạng thái các đơn cũ.
-- Admin cấp OTP nội bộ qua `InternalPasswordOtpService`: mã 6 số, TTL **10 phút**, cùng mã qua email Resend và `ThongBao` riêng của người nhận; cache Redis lưu hash. Gửi lại sau 60 giây, tối đa 5 lần sai, dùng một lần. Mật khẩu chỉ đổi khi người nhận hoàn tất `/internal/reset-password`. Luồng tự yêu cầu tại `/forgot-password` và `/reset-password` dùng `PasswordResetOtpService` riêng, TTL 15 phút; hai luồng không dùng chung mã.
+- Admin cấp OTP nội bộ qua `InternalPasswordOtpService`: mã 6 số, TTL **10 phút**, cùng mã qua email Resend và `ThongBao` riêng của người nhận; cache Redis lưu hash. Gửi lại sau 60 giây, tối đa 5 lần sai, dùng một lần. Mật khẩu chỉ đổi khi người nhận hoàn tất `/internal/reset-password`. Luồng tự yêu cầu dùng `PasswordResetOtpService` riêng: bước 1 `/forgot-password` nhập email, gửi/xác thực OTP (TTL **15 phút**, gửi lại sau **60 giây** với countdown, tối đa 5 lần sai/mã); bước 2 `/reset-password` chỉ nhập mật khẩu mới và xác nhận sau khi OTP hợp lệ. Quyền reset gắn với phiên đã xác thực, hiệu lực 15 phút sau xác nhận, dùng một lần; gửi lại mã hoặc đổi mật khẩu làm mất hiệu lực. Backend giới hạn gửi/xác nhận theo IP và email; hai luồng công khai/nội bộ không dùng chung mã.
 - `TaiKhoan::$fillable` được bổ sung `AvatarURL`. Luồng upload avatar hiện hành được giữ nguyên.
 - `schema.sql` giữ các cột legacy `HinhThucGiaoDo`/`DiaChiGiao` đang được RPC mobile sử dụng. Catalog Live đã được đối chiếu chỉ đọc; không thực thi toàn bộ snapshot hoặc seeder trên Live.
 
@@ -70,7 +76,7 @@ Thông tin phiên bản được đối chiếu từ các tệp cấu hình ph�
 
 ## Triển khai production
 
-- Domain production: [https://do-an-web-quan-ly-cua-hang-giat-ui.vercel.app](https://do-an-web-quan-ly-cua-hang-giat-ui.vercel.app).
+- Domain production: [https://sky-laundry.vercel.app](https://sky-laundry.vercel.app).
 - Kiểm tra công khai ngày 06/10/2026: `/login` trả HTTP 200; `/profile` yêu cầu đăng nhập và chuyển về trang đăng nhập.
 - Ảnh đại diện dùng biến môi trường `SUPABASE_AVATAR_BUCKET`; Bucket ID chính xác là `avatars` (phân biệt chữ hoa/thường). Cấu hình Laravel giữ nguyên casing thay vì tự chuyển sang chữ hoa.
 - Trên production, bucket `avatars` đã được xác nhận; sau deploy `2776f72`, kiểm thử ảnh PNG 1×1 hoàn tất: xin signed URL, upload Storage, xác minh object và lưu URL hồ sơ đều thành công (HTTP 200), ảnh vẫn hiển thị sau khi tải lại trang. Ảnh đại diện cũ của tài khoản test được thay bằng ảnh thử theo xác nhận của người dùng; không thay đổi schema, migration hay cấu hình bucket. Xem [TESTCASES.md](./TESTCASES.md).
@@ -444,7 +450,7 @@ Admin có `accounts.reset_password` cấp OTP cho tài khoản nội bộ đang 
 
 Người nhận đổi mật khẩu tại `/internal/reset-password`; thành công xóa mã/notification, thu hồi remembered-login token và đăng xuất phiên hiện tại nếu đang đăng nhập. Không khẳng định thu hồi mọi phiên trên thiết bị khác. Tài khoản bị khóa, thay email hoặc không còn nội bộ không dùng được mã đã cấp. `/forgot-password` là luồng tự yêu cầu riêng với thời hạn 15 phút.
 
-`NOTIFICATION_VIEW` cho phép mọi nhóm, kể cả khách hàng và nhóm tùy chỉnh, đọc/đánh dấu thông báo của chính mình. Owner cũng không đọc hay sửa OTP người khác; tham số người nhận từ request không mở quyền đọc chéo. Nhóm chỉ có quyền mặc định đăng nhập vào hộp thư thay vì dashboard; quyền tạo/sửa/xóa thông báo vẫn cần cấp riêng.
+`messages.view`, `messages.create` và `notifications.view` được cấp mặc định trên web cho mọi nhóm nội bộ đang hoạt động, kể cả nhóm tùy chỉnh tạo mới, không cần gán quyền thủ công. Nhóm Khách hàng/Customer/Client bị chặn chat và thông báo quản trị ở cả UI và API, kể cả khi có quyền gán tay hoặc mang thêm nhóm nội bộ. Dữ liệu thông báo và quyền khách hàng trên mobile được giữ nguyên. Mỗi người nội bộ chỉ đọc/đánh dấu thông báo của chính mình. Owner cũng không đọc hay sửa OTP người khác; tham số người nhận từ request không mở quyền đọc chéo. Nhóm chỉ có quyền mặc định đăng nhập vào hộp thư thay vì dashboard; quyền tạo/sửa/xóa thông báo vẫn cần cấp riêng.
 
 Triển khai cần `INTERNAL_OTP_CACHE_STORE=redis` và Resend đã cấu hình. Lệnh `php artisan notifications:grant-default` backfill quyền cho nhóm hiện có, chạy lại không tạo liên kết trùng. Nhóm mới được gán mặc định trong transaction; cả ba luồng chỉnh quyền giữ quyền này. Scheduler mỗi phút dọn notification OTP hết hạn; global scope vẫn ẩn mã hết hạn dù scheduler chưa chạy. README chỉ hướng dẫn, không xác nhận backfill/scheduler đã chạy trên production.
 

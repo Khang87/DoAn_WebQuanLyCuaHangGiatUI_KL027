@@ -51,29 +51,44 @@ class TableRowNumberingTest extends TestCase
 
     public function test_collection_rows_are_contiguous_even_when_keys_have_gaps(): void
     {
-        $permissions = collect([4 => (object) ['MaQuyen' => 'ORDERS_VIEW', 'TenQuyen' => 'Xem', 'MoTa' => null, 'vai_tros_count' => 0, 'TrangThai' => 'Hoạt động'],
-            19 => (object) ['MaQuyen' => 'ORDERS_EDIT', 'TenQuyen' => 'Sửa', 'MoTa' => null, 'vai_tros_count' => 0, 'TrangThai' => 'Hoạt động']]);
+        $permissions = collect([4 => (object) ['MaQuyen' => 'ORDERS_VIEW', 'TenQuyen' => 'Xem', 'MoTa' => null, 'TrangThai' => 'Hoạt động'],
+            19 => (object) ['MaQuyen' => 'ORDERS_EDIT', 'TenQuyen' => 'Sửa', 'MoTa' => null, 'TrangThai' => 'Hoạt động']]);
         $xpath = $this->table('admin.permissions.index', compact('permissions'));
         $this->assertSame('1', trim($xpath->query('//table/tbody/tr[1]/td[1]')->item(0)->textContent));
         $this->assertSame('2', trim($xpath->query('//table/tbody/tr[2]/td[1]')->item(0)->textContent));
+        $this->assertSame(6, $xpath->query('//table/thead/tr/th')->length);
+        $this->assertSame(0, $xpath->query('//table/thead/tr/th[normalize-space(.)="Nhóm được cấp"]')->length);
     }
 
-    public function test_customer_ids_remain_the_first_column_without_row_numbers(): void
+    public function test_customer_list_uses_contiguous_row_numbers_instead_of_internal_ids(): void
     {
         $rows = collect([42, 900])->map(fn (int $id) => (new KhachHang)->forceFill([
             'KhachHangID' => $id, 'HoTen' => 'Khách '.$id,
         ])->setRelation('diemTichLuy', null));
         $customers = new LengthAwarePaginator($rows, 12, 10, 2, ['path' => '/customers']);
         $xpath = $this->table('admin.customers.index', compact('customers'));
-        $this->assertSame('ID khách hàng', trim($xpath->query('//table/thead/tr/th[1]')->item(0)->textContent));
-        $this->assertSame(0, $xpath->query('//table/thead/tr/th[normalize-space(.)="STT"]')->length);
-        $this->assertSame('42', trim($xpath->query('//table/tbody/tr[1]/td[1]')->item(0)->textContent));
-        $this->assertSame('900', trim($xpath->query('//table/tbody/tr[2]/td[1]')->item(0)->textContent));
+        $this->assertSame('STT', trim($xpath->query('//table/thead/tr/th[1]')->item(0)->textContent));
+        $this->assertSame(1, $xpath->query('//table/thead/tr/th[normalize-space(.)="STT"]')->length);
+        $this->assertSame('11', trim($xpath->query('//table/tbody/tr[1]/td[1]')->item(0)->textContent));
+        $this->assertSame('12', trim($xpath->query('//table/tbody/tr[2]/td[1]')->item(0)->textContent));
+        $this->assertSame(0, $xpath->query('//table/thead/tr/th[normalize-space(.)="ID khách hàng"]')->length);
+    }
+
+    public function test_status_select_trims_surrounding_whitespace_from_option_labels(): void
+    {
+        $html = view('components.admin.status-select', [
+            'name' => 'TrangThai',
+            'options' => ['Hoạt động' => " \tHoạt động \n"],
+            'selected' => 'Hoạt động',
+        ])->render();
+
+        $this->assertStringContainsString('>Hoạt động</option>', $html);
+        $this->assertStringNotContainsString('> Hoạt động ', $html);
     }
 
     public function test_empty_tables_span_all_visible_columns_without_a_fake_row_number(): void
     {
-        foreach ([['admin.loaidogiat.index', 'categories', 5], ['admin.customers.index', 'customers', 8], ['admin.orders.index', 'orders', 11]] as [$view, $name, $columns]) {
+        foreach ([['admin.loaidogiat.index', 'categories', 5], ['admin.customers.index', 'customers', 7], ['admin.orders.index', 'orders', 11]] as [$view, $name, $columns]) {
             $xpath = $this->table($view, [$name => new LengthAwarePaginator([], 0, 10), 'statusFlow' => []]);
             $this->assertSame($columns, $xpath->query('//table/thead/tr/th')->length);
             $cell = $xpath->query('//table/tbody/tr/td')->item(0);

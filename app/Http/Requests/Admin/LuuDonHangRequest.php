@@ -60,12 +60,14 @@ class LuuDonHangRequest extends FormRequest
         return [
             'MaDonHang' => ['nullable', 'string', 'max:30', Rule::unique('DonHang', 'MaDonHang')->ignore($id, 'DonHangID')],
             'KhachHangID' => ['required', 'integer', 'exists:KhachHang,KhachHangID'],
-            'NhanVienID' => ['required', 'integer', EmployeeAssignment::rule($currentOrder?->NhanVienID)],
+            'NhanVienID' => $isCreating
+                ? ['sometimes', 'integer']
+                : ['required', 'integer', EmployeeAssignment::rule($currentOrder?->NhanVienID)],
             'BookingID' => $isCreating ? ['prohibited'] : ['nullable', 'integer', 'exists:Booking,BookingID'],
             'KhuyenMaiID' => ['prohibited'],
             'promotion_code' => ['prohibited'],
-            'DiemSuDung' => ['nullable', 'integer', 'min:0'],
-            'use_points' => ['nullable', 'boolean'],
+            'DiemSuDung' => $isCreating ? ['nullable', 'integer', 'min:0'] : ['prohibited'],
+            'use_points' => $isCreating ? ['nullable', 'boolean'] : ['prohibited'],
 
             // Phương thức nhận/trả đồ của đơn tạo trực tiếp trên website.
             'HinhThucNhanDo' => [
@@ -150,7 +152,6 @@ class LuuDonHangRequest extends FormRequest
         return [
             'KhachHangID.required' => 'Khách hàng là bắt buộc.',
             'KhachHangID.exists' => 'Khách hàng không tồn tại.',
-            'NhanVienID.required' => 'Vui lòng chọn nhân viên phụ trách.',
             'NhanVienID.exists' => 'Vui lòng chọn nhân viên đang hoạt động.',
             'KhuyenMaiID.prohibited' => 'Voucher chỉ được kế thừa từ Booking, không thể thêm hoặc đổi trên đơn web.',
             'promotion_code.prohibited' => 'Voucher chỉ được kế thừa từ Booking, không thể thêm hoặc đổi trên đơn web.',

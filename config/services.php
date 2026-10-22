@@ -8,7 +8,7 @@ return [
     |--------------------------------------------------------------------------
     |
     | This file is for storing the credentials for third party services such
-    | as Resend, Postmark, AWS, and more. This file provides the de facto
+    | as Postmark, AWS, and more. This file provides the de facto
     | location for this type of information, allowing packages to have
     | a conventional file to locate the various service credentials.
     |
@@ -16,12 +16,6 @@ return [
 
     'postmark' => [
         'key' => env('POSTMARK_API_KEY'),
-    ],
-
-    'resend' => [
-        'key' => env('RESEND_API_KEY'),
-        'from' => env('RESEND_FROM_EMAIL', 'onboarding@resend.dev'),
-        'sandbox_to' => env('RESEND_SANDBOX_TO_EMAIL'),
     ],
 
     'ses' => [
@@ -52,9 +46,12 @@ return [
         'account_name' => env('VIETQR_ACCOUNT_NAME'),
     ],
 
-    'beepay' => [
-        'webhook_secret' => env('BEEPAY_WEBHOOK_SECRET'),
-        'payment_prefix' => 'DH',
+    'payments' => [
+        'payment_prefix' => env('PAYMENT_REFERENCE_PREFIX', 'DH'),
+    ],
+
+    'sepay' => [
+        'webhook_api_key' => env('SEPAY_WEBHOOK_API_KEY'),
     ],
 
     'google_routes' => [

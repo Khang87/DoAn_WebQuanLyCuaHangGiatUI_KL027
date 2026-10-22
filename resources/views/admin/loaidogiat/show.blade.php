@@ -6,7 +6,6 @@
 @section('content')
 <x-admin.detail.page-header
     :title="$category->TenLoaiDoGiat"
-    :subtitle="'Mã loại đồ giặt: '.$category->LoaiDoGiatID"
 >
     <x-slot:badge>
         <x-admin.status-badge :status="$category->TrangThai" :enum="\App\Enums\RecordStatus::class" />
@@ -40,7 +39,7 @@
                                     <td>{{ $pricing->donViTinh?->TenDonViTinh ?? '—' }}</td>
                                     <td>{{ number_format((float) $pricing->DonGia, 0, ',', '.') }} đ</td>
                                     <td>{{ $pricing->NgayApDung?->format('d/m/Y') ?? '—' }}</td>
-                                    <td>{{ $pricing->TrangThai }}</td>
+                                    <td><x-admin.status-badge :status="$pricing->TrangThai" :enum="\App\Enums\RecordStatus::class" size="px-2 py-1" /></td>
                                 </tr>
                             @empty
                                 <tr>
@@ -101,9 +100,6 @@
             </div>
             <div class="card-body">
                 <dl class="row mb-0">
-                    <dt class="col-sm-4">Mã loại đồ giặt</dt>
-                    <dd class="col-sm-8">{{ $category->LoaiDoGiatID }}</dd>
-
                     <dt class="col-sm-4">Trạng thái</dt>
                     <dd class="col-sm-8">
                         <x-admin.status-badge :status="$category->TrangThai" :enum="\App\Enums\RecordStatus::class" />

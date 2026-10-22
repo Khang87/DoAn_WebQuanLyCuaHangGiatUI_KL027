@@ -98,7 +98,8 @@ enum DeliveryStatus: string
 
         return match (mb_strtolower(trim((string) $value))) {
             'pending', 'chờ thực hiện' => self::Pending,
-            'picking', 'delivering', 'đang thực hiện' => self::Delivering,
+            'picking' => self::Picking,
+            'delivering', 'đang thực hiện' => self::Delivering,
             'completed', 'hoàn thành' => self::Completed,
             'cancelled', 'đã hủy' => self::Cancelled,
             default => self::tryFrom(mb_strtolower(trim((string) $value))) ?? $default,

@@ -7,6 +7,7 @@ use App\Enums\OrderStatus;
 use App\Http\Middleware\EnsureUserHasPermission;
 use App\Http\Middleware\RejectCustomerRole;
 use App\Http\Middleware\RestoreRememberedLogin;
+use App\Models\Booking;
 use App\Models\ChiTietDonHang;
 use App\Models\DonHang;
 use App\Models\User;
@@ -32,6 +33,7 @@ class RemainingInspectionCasesTest extends TestCase
         config(['database.default' => 'sqlite', 'database.connections.sqlite.database' => ':memory:']);
         DB::purge('sqlite');
         $this->createSchema();
+        (require database_path('migrations/2026_10_16_000001_create_booking_intake_documents.php'))->up();
         $this->createRequestCatalog();
         $this->actingAsBookingEmployee();
         $this->withoutMiddleware([Authenticate::class, EnsureUserHasPermission::class, RejectCustomerRole::class, RestoreRememberedLogin::class]);
@@ -45,7 +47,7 @@ class RemainingInspectionCasesTest extends TestCase
     protected function tearDown(): void
     {
         $this->travelBack();
-        foreach (['KhuyenMai', 'NhatKyHeThong', 'ChiTietBooking', 'ChiTietDonHang', 'GiaoNhan', 'HoaDon', 'ThanhToan', 'DiemTichLuy', 'DonHang', 'Booking', 'BangGia', 'DonViTinh', 'LoaiDoGiat', 'DanhMucLoaiDoGiat', 'DichVu', 'LoaiDichVu', 'NhanVien', 'TaiKhoan', 'KhachHang'] as $table) {
+        foreach (['BookingKiemKe', 'BookingGiaoNhan', 'KhuyenMai', 'NhatKyHeThong', 'ChiTietBooking', 'ChiTietDonHang', 'GiaoNhan', 'HoaDon', 'ThanhToan', 'DiemTichLuy', 'DonHang', 'Booking', 'BangGia', 'DonViTinh', 'LoaiDoGiat', 'DanhMucLoaiDoGiat', 'DichVu', 'LoaiDichVu', 'NhanVien', 'TaiKhoan', 'KhachHang'] as $table) {
             Schema::dropIfExists($table);
         }
         parent::tearDown();
@@ -54,6 +56,17 @@ class RemainingInspectionCasesTest extends TestCase
     private function row(array $changes = []): array
     {
         return array_merge(['DichVuID' => 1, 'LoaiDoGiatID' => 2, 'DonViTinhID' => 2, 'SoLuong' => 2, 'TinhTrangTruocKhiGiat' => 'Áo bẩn', 'DonGia' => 1], $changes);
+    }
+
+    private function prepareBookingForInspection(Booking $booking): void
+    {
+        $service = app(BookingService::class);
+        $service->approve($booking);
+        DB::table('BookingGiaoNhan')
+            ->where('BookingID', $booking->BookingID)
+            ->where('LoaiGiaoNhan', 'NHAN_DO')
+            ->update(['NhanVienID' => 1]);
+        $service->markReceived($booking);
     }
 
     private function snapshot(): array
@@ -88,6 +101,7 @@ class RemainingInspectionCasesTest extends TestCase
         $this->post(route('orders.store'), ['KhachHangID' => 9, 'NhanVienID' => 1, 'TrangThai' => OrderStatus::Received->value, 'items' => $items])->assertSessionHasErrors($field);
         $this->assertSame($before, $this->snapshot());
         $booking = $this->createBooking(['HinhThucNhanDo' => 'Tại cửa hàng']);
+        $this->prepareBookingForInspection($booking);
         $payload = $this->inspectionPayload($booking, 1);
         $payload['items'] = $items;
         $before = $this->snapshot();
@@ -100,6 +114,7 @@ class RemainingInspectionCasesTest extends TestCase
         $row = $this->row(['TinhTrangTruocKhiGiat' => str_repeat('a', 320)]);
         $this->post(route('orders.store'), ['KhachHangID' => 9, 'NhanVienID' => 1, 'TrangThai' => OrderStatus::Received->value, 'items' => [$row]])->assertSessionHasNoErrors();
         $booking = $this->createBooking(['HinhThucNhanDo' => 'Tại cửa hàng']);
+        $this->prepareBookingForInspection($booking);
         $payload = $this->inspectionPayload($booking, 1);
         $payload['items'] = [$row];
         $this->post(route('bookings.confirm', $booking), $payload)->assertSessionHasNoErrors();
@@ -113,16 +128,45 @@ class RemainingInspectionCasesTest extends TestCase
 
     public static function employees(): array
     {
-        return ['84 active' => ['Hoạt động', 1, true], '85 locked' => ['Khóa', 1, false], '86 inactive' => ['Ngừng hoạt động', 1, false], '87 missing' => ['Hoạt động', 999, false], '87 wrong type' => ['Hoạt động', 'abc', false], '88 null' => ['Hoạt động', null, false], '88 empty' => ['Hoạt động', '', false]];
+        return [
+            '84 active authenticated employee overrides client ID' => ['Hoạt động', 999, true],
+            '85 locked authenticated employee' => ['Khóa', 1, false],
+            '86 inactive authenticated employee' => ['Ngừng hoạt động', 1, false],
+        ];
+    }
+
+    public static function malformedEmployeeIds(): array
+    {
+        return [
+            'non-numeric value' => ['abc'],
+            'null value' => [null],
+            'empty value' => [''],
+        ];
+    }
+
+    #[DataProvider('malformedEmployeeIds')]
+    public function test_order_creation_rejects_malformed_client_employee_id(mixed $id): void
+    {
+        $before = $this->snapshot();
+        $response = $this->post(route('orders.store'), [
+            'KhachHangID' => 9,
+            'NhanVienID' => $id,
+            'TrangThai' => OrderStatus::Received->value,
+            'items' => [$this->row()],
+        ]);
+
+        $response->assertSessionHasErrors('NhanVienID');
+        $this->assertSame($before, $this->snapshot());
     }
 
     #[DataProvider('employees')]
     public function test_assignment_checked_by_both_requests_and_direct_services(string $status, mixed $id, bool $valid): void
     {
-        DB::table('NhanVien')->where('NhanVienID', 1)->update(['TrangThai' => $status]);
         $data = ['KhachHangID' => 9, 'NhanVienID' => $id, 'TrangThai' => OrderStatus::Received->value, 'items' => [$this->row()]];
         $booking = $this->createBooking(['HinhThucNhanDo' => 'Tại cửa hàng']);
         $payload = $this->inspectionPayload($booking, 1);
+        $this->prepareBookingForInspection($booking);
+        DB::table('NhanVien')->where('NhanVienID', 1)->update(['TrangThai' => $status]);
         $payload['staff_id'] = $id;
         $payload['items'] = [$this->row()];
         foreach ([fn () => $this->post(route('orders.store'), $data), fn () => $this->post(route('bookings.confirm', $booking), $payload)] as $request) {
@@ -136,14 +180,19 @@ class RemainingInspectionCasesTest extends TestCase
         }
         if ($valid) {
             $this->assertSame(2, DonHang::count());
+            $this->assertSame([1, 1], DonHang::query()->orderBy('DonHangID')->pluck('NhanVienID')->all());
             app(OrderService::class)->create($data);
             $newBooking = $this->createBooking(['HinhThucNhanDo' => 'Tại cửa hàng']);
-            app(BookingService::class)->inspectBookingAndCreateOrder($newBooking, 1, [$this->row()]);
+            $this->prepareBookingForInspection($newBooking);
+            $inspection = $this->inspectionPayload($newBooking, 1);
+            $inspection['items'] = [$this->row()];
+            app(BookingService::class)->submitInspection($newBooking, $inspection);
             $this->assertSame(4, DonHang::count());
+            $this->assertSame([1, 1, 1, 1], DonHang::query()->orderBy('DonHangID')->pluck('NhanVienID')->all());
 
             return;
         }
-        foreach ([fn () => app(OrderService::class)->create($data), fn () => app(BookingService::class)->inspectBookingAndCreateOrder($booking, is_numeric($id) ? (int) $id : 0, [$this->row()])] as $operation) {
+        foreach ([fn () => app(OrderService::class)->create($data), fn () => app(BookingService::class)->submitInspection($booking, $payload)] as $operation) {
             $before = $this->snapshot();
             try {
                 $operation();

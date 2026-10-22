@@ -15,11 +15,11 @@
 
 <form action="{{ url()->current() }}" method="GET" class="row g-3 align-items-center mb-4">
     <div class="col-12 col-md-auto flex-grow-1">
-        <div class="input-group input-group-sm shadow-sm rounded-3 overflow-hidden">
+        <div class="input-group input-group-sm shadow-sm rounded-3 overflow-hidden filter-search">
             <span class="input-group-text bg-white border-end-0 ps-3">
                 <i class="fas fa-search text-muted"></i>
             </span>
-            <input type="text" name="search" class="form-control form-control-sm border-start-0 ps-2" placeholder="Tìm theo ID, mã thanh toán, tên khách..." value="{{ request('search') }}">
+            <input type="text" name="search" class="form-control form-control-sm border-start-0 ps-2" placeholder="Tìm theo mã giao dịch, tên khách..." value="{{ request('search') }}">
         </div>
     </div>
     <div class="col-12 col-sm-6 col-md-auto">
@@ -61,7 +61,6 @@
                 <thead>
                     <tr>
                         <th scope="col">STT</th>
-                        <th class="fw-semibold text-dark">Mã thanh toán</th>
                         <th class="fw-semibold text-dark">Mã đơn hàng</th>
                         <th class="fw-semibold text-dark">Khách hàng</th>
                         <th class="fw-semibold text-dark">Số tiền</th>
@@ -75,8 +74,7 @@
                     @forelse($payments as $payment)
                     <tr>
                         <td>{{ $payments->firstItem() + $loop->index }}</td>
-                        <td><strong>TT{{ $payment->ThanhToanID }}</strong></td>
-                        <td><span class="text-dark">{{ $payment->donHang?->MaDonHang ?: $payment->DonHangID }}</span></td>
+                        <td><span class="text-dark">{{ $payment->donHang?->MaDonHang ?: '—' }}</span></td>
                         <td>
                             @php($customerAccount = $payment->donHang?->khachHang?->taiKhoan)
                             <div class="d-flex align-items-center">
@@ -119,7 +117,7 @@
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="9" class="text-center text-muted py-4">Chưa có dữ liệu nào</td>
+                        <td colspan="8" class="text-center text-muted py-4">Chưa có dữ liệu nào</td>
                     </tr>
                     @endempty
                 </tbody>
@@ -128,32 +126,7 @@
     </div>
 </div>
 
-@if($payments->hasPages())
-<nav class="mt-4">
-    <div class="d-flex justify-content-between align-items-center">
-        <div class="text-muted small">Hiển thị {{ $payments->firstItem() }} - {{ $payments->lastItem() }} của {{ $payments->total() }} thanh toán</div>
-        <ul class="pagination mb-0">
-            @if ($payments->onFirstPage())
-                <li class="page-item disabled"><span class="page-link"><i class="bi bi-chevron-left"></i></span></li>
-            @else
-                <li class="page-item"><a class="page-link" href="{{ $payments->appends(request()->query())->url($payments->currentPage() - 1) }}"><i class="bi bi-chevron-left"></i></a></li>
-            @endif
-            @foreach ($payments->getUrlRange(max(1, $payments->currentPage() - 2), min($payments->lastPage(), $payments->currentPage() + 2)) as $page => $url)
-                @if ($page == $payments->currentPage())
-                    <li class="page-item active"><span class="page-link">{{ $page }}</span></li>
-                @else
-                    <li class="page-item"><a class="page-link" href="{{ $payments->appends(request()->query())->url($page) }}">{{ $page }}</a></li>
-                @endif
-            @endforeach
-            @if ($payments->onLastPage())
-                <li class="page-item disabled"><span class="page-link"><i class="bi bi-chevron-right"></i></span></li>
-            @else
-                <li class="page-item"><a class="page-link" href="{{ $payments->appends(request()->query())->url($payments->currentPage() + 1) }}"><i class="bi bi-chevron-right"></i></a></li>
-            @endif
-        </ul>
-    </div>
-</nav>
-@endif
+<x-admin.pagination :paginator="$payments" label="thanh toán" />
 @endsection
 
 @push('scripts')

@@ -183,9 +183,9 @@
                             <td>{{ $log->HanhDong }}</td>
                             <td><span class="badge bg-light text-dark border">{{ $log->BangDuLieu }}</span></td>
                             <td>
-                                @if($log->BangDuLieu === 'DonHang' && $log->BanGhiID)
+                                @if($log->BangDuLieu === 'DonHang' && $log->BanGhiID && auth()->user()?->can('orders.view'))
                                     <a href="{{ route('orders.show', $log->BanGhiID) }}">#{{ $log->BanGhiID }}</a>
-                                @elseif($log->BangDuLieu === 'Booking' && $log->BanGhiID)
+                                @elseif($log->BangDuLieu === 'Booking' && $log->BanGhiID && auth()->user()?->can('bookings.view'))
                                     <a href="{{ route('bookings.show', $log->BanGhiID) }}">#{{ $log->BanGhiID }}</a>
                                 @else
                                     {{ $log->BanGhiID ? '#'.$log->BanGhiID : '—' }}
@@ -219,8 +219,7 @@
             </table>
         </div>
     </div>
-    @if($logs->hasPages())
-        <div class="card-footer bg-white">{{ $logs->links() }}</div>
-    @endif
 </div>
+
+<x-admin.pagination :paginator="$logs" label="nhật ký" />
 @endsection
