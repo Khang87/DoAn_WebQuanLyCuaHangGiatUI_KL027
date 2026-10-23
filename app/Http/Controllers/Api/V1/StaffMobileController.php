@@ -250,6 +250,14 @@ class StaffMobileController extends ApiController
         return response()->json(['data' => ['order_id' => $order->DonHangID, 'order_code' => $order->MaDonHang]]);
     }
 
+    public function refuseQuote(Request $request, int $id): JsonResponse
+    {
+        $data = $this->validatedInspection($request, includeRejectionReason: true);
+        $booking = $this->bookings->refuseQuote($this->assignedBooking($id), $data);
+
+        return response()->json(['data' => ['id' => $booking->BookingID, 'status' => $booking->TrangThai]]);
+    }
+
     private function assignedBooking(int $id): Booking
     {
         $booking = $this->bookings->find($id);
@@ -261,9 +269,9 @@ class StaffMobileController extends ApiController
         return $booking;
     }
 
-    private function validatedInspection(Request $request): array
+    private function validatedInspection(Request $request, bool $includeRejectionReason = false): array
     {
-        return $request->validate([
+        $rules = [
             'method' => ['required', 'in:Tại nhà,Tại cửa hàng'],
             'address' => ['nullable', 'required_if:method,Tại nhà', 'string', 'max:255'],
             'return_method' => ['required', 'in:Tại nhà,Tại cửa hàng'],
@@ -275,7 +283,11 @@ class StaffMobileController extends ApiController
             'items.*.DonViTinhID' => ['required', 'integer'], 'items.*.SoLuong' => ['nullable', 'numeric', 'min:1'],
             'items.*.KhoiLuong' => ['nullable', 'numeric', 'gt:0'],
             'items.*.TinhTrangTruocKhiGiat' => ['required', 'string', 'max:320'], 'items.*.GhiChu' => ['nullable', 'string', 'max:500'],
-        ]);
+        ];
+        if ($includeRejectionReason) {
+            $rules['rejection_reason'] = ['required', 'string', 'max:500'];
+        }
+        return $request->validate($rules);
     }
 
     private function bookingData(Booking $booking, bool $includeCatalog = true): array

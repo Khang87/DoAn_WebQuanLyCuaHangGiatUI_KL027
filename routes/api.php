@@ -43,6 +43,7 @@ Route::middleware('staff.api')->prefix('v1/staff')->group(function () {
     Route::post('bookings/{id}/estimate', [StaffMobileController::class, 'estimate']);
     Route::post('bookings/{id}/draft', [StaffMobileController::class, 'draft']);
     Route::post('bookings/{id}/confirm', [StaffMobileController::class, 'confirm']);
+    Route::post('bookings/{id}/refuse-quote', [StaffMobileController::class, 'refuseQuote']);
 });
 
 Route::middleware(['auth', 'reject.customer'])->prefix('v1')->name('api.v1.')->group(function () {
