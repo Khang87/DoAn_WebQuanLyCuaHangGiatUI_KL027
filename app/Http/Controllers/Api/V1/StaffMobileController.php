@@ -64,6 +64,21 @@ class StaffMobileController extends ApiController
         return response()->json(['data' => $rows]);
     }
 
+    public function bookingHistory(): JsonResponse
+    {
+        $employeeId = Auth::user()->NhanVienID;
+        $rows = Booking::query()
+            ->whereHas('giaoNhanDuKiens', fn ($q) => $q
+                ->where('LoaiGiaoNhan', 'NHAN_DO')
+                ->where('NhanVienID', $employeeId)
+                ->where('TrangThai', DeliveryStatus::Completed->dbValue())
+                ->whereNotNull('BookingKiemKeID'))
+            ->with(['khachHang', 'chiTietBookings.dichVu', 'chiTietBookings.loaiDoGiat', 'chiTietBookings.donViTinh', 'giaoNhanDuKiens'])
+            ->latest('NgayTao')->get()->map(fn (Booking $b) => $this->bookingData($b, false));
+
+        return response()->json(['data' => $rows]);
+    }
+
     public function orders(): JsonResponse
     {
         $employeeId = Auth::user()->NhanVienID;
@@ -263,9 +278,9 @@ class StaffMobileController extends ApiController
         ]);
     }
 
-    private function bookingData(Booking $booking): array
+    private function bookingData(Booking $booking, bool $includeCatalog = true): array
     {
-        $draft = StaffBookingDraft::query()->find($booking->BookingID);
+        $draft = $includeCatalog ? StaffBookingDraft::query()->find($booking->BookingID) : null;
         $draftItems = array_values($draft?->Payload['items'] ?? []);
         $appointmentTime = $booking->GioHen?->format('H:i');
         $items = $booking->chiTietBookings->values()->map(fn ($i, $index) => [
@@ -279,42 +294,61 @@ class StaffMobileController extends ApiController
         $existingTuples = $items->mapWithKeys(fn ($item) => [implode(':', [
             $item['service_id'], $item['garment_id'], $item['unit_id'],
         ]) => true]);
-        foreach ($booking->requestedServices as $requestedService) {
-            $tuple = implode(':', [
-                $requestedService->DichVuID, $requestedService->LoaiDoGiatID, $requestedService->DonViTinhID,
-            ]);
-            if ($existingTuples->has($tuple)) {
-                continue;
+        if ($includeCatalog) {
+            foreach ($booking->requestedServices as $requestedService) {
+                $tuple = implode(':', [
+                    $requestedService->DichVuID, $requestedService->LoaiDoGiatID, $requestedService->DonViTinhID,
+                ]);
+                if ($existingTuples->has($tuple)) {
+                    continue;
+                }
+                $isWeight = $requestedService->donViTinh?->isWeightUnit() ?? false;
+                $items->push([
+                    'service_id' => $requestedService->DichVuID,
+                    'garment_id' => $requestedService->LoaiDoGiatID,
+                    'unit_id' => $requestedService->DonViTinhID,
+                    'quantity' => $isWeight ? null : 0,
+                    'weight' => $isWeight ? 0 : null,
+                    'unit_price' => null,
+                    'subtotal' => null,
+                    'service_name' => $requestedService->dichVu?->TenDichVu,
+                    'garment_name' => $requestedService->loaiDoGiat?->TenLoaiDoGiat,
+                    'unit_name' => $requestedService->donViTinh?->KyHieu ?: $requestedService->donViTinh?->TenDonViTinh,
+                    'condition' => '',
+                    'note' => '',
+                ]);
+                $existingTuples->put($tuple, true);
             }
-            $isWeight = $requestedService->donViTinh?->isWeightUnit() ?? false;
-            $items->push([
-                'service_id' => $requestedService->DichVuID,
-                'garment_id' => $requestedService->LoaiDoGiatID,
-                'unit_id' => $requestedService->DonViTinhID,
-                'quantity' => $isWeight ? null : 0,
-                'weight' => $isWeight ? 0 : null,
-                'unit_price' => null,
-                'subtotal' => null,
-                'service_name' => $requestedService->dichVu?->TenDichVu,
-                'garment_name' => $requestedService->loaiDoGiat?->TenLoaiDoGiat,
-                'unit_name' => $requestedService->donViTinh?->KyHieu ?: $requestedService->donViTinh?->TenDonViTinh,
-                'condition' => '',
-                'note' => '',
-            ]);
-            $existingTuples->put($tuple, true);
         }
-        $selectedServiceIds = $booking->chiTietBookings->pluck('DichVuID')
-            ->merge($booking->requestedServices->pluck('DichVuID'))->unique()->values();
-        $selectedGarmentIds = $booking->chiTietBookings->pluck('LoaiDoGiatID')
-            ->merge($booking->requestedServices->pluck('LoaiDoGiatID'))->unique()->values();
-        $selectedCategoryIds = $booking->chiTietBookings->map(fn ($item) => $item->dichVu?->LoaiDichVuID)
-            ->merge($booking->requestedServices->map(fn ($item) => $item->dichVu?->LoaiDichVuID))
-            ->filter()->unique()->values();
-        $prices = BangGia::query()->where('TrangThai', 'Hoạt động')->with(['dichVu', 'loaiDoGiat', 'donViTinh'])->get()->map(fn ($p) => [
-            'service_id' => $p->DichVuID, 'garment_id' => $p->LoaiDoGiatID, 'unit_id' => $p->DonViTinhID,
-            'unit_name' => $p->donViTinh?->TenDonViTinh, 'unit_symbol' => $p->donViTinh?->KyHieu,
-            'unit_price' => (float) $p->DonGia, 'is_weight' => BangGia::isWeightUnit($p->donViTinh),
-        ])->values();
+        $catalog = null;
+        if ($includeCatalog) {
+            $selectedServiceIds = $booking->chiTietBookings->pluck('DichVuID')
+                ->merge($booking->requestedServices->pluck('DichVuID'))->unique()->values();
+            $selectedGarmentIds = $booking->chiTietBookings->pluck('LoaiDoGiatID')
+                ->merge($booking->requestedServices->pluck('LoaiDoGiatID'))->unique()->values();
+            $selectedCategoryIds = $booking->chiTietBookings->map(fn ($item) => $item->dichVu?->LoaiDichVuID)
+                ->merge($booking->requestedServices->map(fn ($item) => $item->dichVu?->LoaiDichVuID))
+                ->filter()->unique()->values();
+            $prices = BangGia::query()->where('TrangThai', 'Hoạt động')->with(['dichVu', 'loaiDoGiat', 'donViTinh'])->get()->map(fn ($p) => [
+                'service_id' => $p->DichVuID, 'garment_id' => $p->LoaiDoGiatID, 'unit_id' => $p->DonViTinhID,
+                'unit_name' => $p->donViTinh?->TenDonViTinh, 'unit_symbol' => $p->donViTinh?->KyHieu,
+                'unit_price' => (float) $p->DonGia, 'is_weight' => BangGia::isWeightUnit($p->donViTinh),
+            ])->values();
+            $catalog = [
+                'prices' => $prices,
+                'services' => DichVu::query()
+                    ->where(fn ($query) => $query->where('TrangThai', 'Hoạt động')->orWhereIn('DichVuID', $selectedServiceIds))
+                    ->get(['DichVuID', 'TenDichVu', 'LoaiDichVuID'])
+                    ->map(fn ($x) => ['id' => $x->DichVuID, 'name' => $x->TenDichVu, 'category_id' => $x->LoaiDichVuID]),
+                'categories' => DB::table('LoaiDichVu')
+                    ->where(fn ($query) => $query->where('TrangThai', 'Hoạt động')->orWhereIn('LoaiDichVuID', $selectedCategoryIds))
+                    ->get()->map(fn ($x) => ['id' => $x->LoaiDichVuID, 'name' => $x->TenLoaiDichVu]),
+                'garments' => LoaiDoGiat::query()
+                    ->where(fn ($query) => $query->where('TrangThai', 'Hoạt động')->orWhereIn('LoaiDoGiatID', $selectedGarmentIds))
+                    ->get(['LoaiDoGiatID', 'TenLoaiDoGiat'])
+                    ->map(fn ($x) => ['id' => $x->LoaiDoGiatID, 'name' => $x->TenLoaiDoGiat]),
+            ];
+        }
         return [
             'id' => $booking->BookingID, 'code' => $booking->MaBooking, 'status' => $booking->TrangThai,
             'receive_method' => $booking->HinhThucNhanDo, 'receive_address' => $booking->DiaChiNhan,
@@ -325,18 +359,8 @@ class StaffMobileController extends ApiController
             'pickup_fee' => (float) $booking->PickupDeliveryFee, 'return_fee' => (float) $booking->DeliveryFee,
             'customer' => ['id' => $booking->KhachHangID, 'name' => $booking->khachHang?->HoTen, 'phone' => $booking->khachHang?->SoDienThoai],
             'items' => $items, 'inspection_draft_saved' => $draft !== null,
-            'available_points' => $booking->khachHang?->points() ?? 0,
-            'catalog' => ['prices' => $prices,
-                'services' => DichVu::query()
-                    ->where(fn ($query) => $query->where('TrangThai', 'Hoạt động')->orWhereIn('DichVuID', $selectedServiceIds))
-                    ->get(['DichVuID', 'TenDichVu', 'LoaiDichVuID'])
-                    ->map(fn ($x) => ['id' => $x->DichVuID, 'name' => $x->TenDichVu, 'category_id' => $x->LoaiDichVuID]),
-                'categories' => DB::table('LoaiDichVu')
-                    ->where(fn ($query) => $query->where('TrangThai', 'Hoạt động')->orWhereIn('LoaiDichVuID', $selectedCategoryIds))
-                    ->get()->map(fn ($x) => ['id' => $x->LoaiDichVuID, 'name' => $x->TenLoaiDichVu]),
-                'garments' => LoaiDoGiat::query()
-                    ->where(fn ($query) => $query->where('TrangThai', 'Hoạt động')->orWhereIn('LoaiDoGiatID', $selectedGarmentIds))
-                    ->get()->map(fn ($x) => ['id' => $x->LoaiDoGiatID, 'name' => $x->TenLoaiDoGiat])],
+            ...($includeCatalog ? ['available_points' => $booking->khachHang?->points() ?? 0] : []),
+            ...($catalog === null ? [] : ['catalog' => $catalog]),
         ];
     }
 }
