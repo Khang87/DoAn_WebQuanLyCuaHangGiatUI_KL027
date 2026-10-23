@@ -49,30 +49,8 @@
             </x-admin.detail.info-grid>
 
             <div class="mt-4">
-                @if($booking->requestedServices->isNotEmpty() || $legacyRequestedServices->isNotEmpty())
-                    <div class="detail-field__label mb-2">Dịch vụ khách yêu cầu · chờ kiểm tra số lượng/khối lượng</div>
-                    <div class="alert alert-info">
-                        @if($booking->requestedServices->isNotEmpty())
-                            <ul class="mb-0">
-                                @foreach($booking->requestedServices as $requestedService)
-                                    <li>
-                                        {{ $requestedService->dichVu?->TenDichVu ?? 'Dịch vụ không còn tồn tại' }}
-                                        · {{ $requestedService->loaiDoGiat?->TenLoaiDoGiat ?? 'Loại đồ không còn tồn tại' }}
-                                        (đơn vị dự kiến {{ $requestedService->donViTinh?->KyHieu ?: $requestedService->donViTinh?->TenDonViTinh ?: 'chưa rõ' }})
-                                    </li>
-                                @endforeach
-                            </ul>
-                        @else
-                            <ul class="mb-0">
-                                @foreach($legacyRequestedServices as $legacyRequest)
-                                    <li>{{ $legacyRequest }} <span class="text-muted">(yêu cầu cũ lưu trong ghi chú)</span></li>
-                                @endforeach
-                            </ul>
-                        @endif
-                    </div>
-                @endif
-                <div class="detail-field__label mb-2">Dịch vụ dự kiến</div>
-                @forelse($booking->chiTietBookings as $item)
+                <div class="detail-field__label mb-2">Dịch vụ khách đã chọn ({{ $booking->chiTietBookings->count() + $booking->requestedServices->count() + ($booking->requestedServices->isEmpty() ? $legacyRequestedServices->count() : 0) }} mục)</div>
+                @foreach($booking->chiTietBookings as $item)
                     <div class="border rounded p-3 mb-2">
                         <div class="d-flex justify-content-between gap-3">
                             <strong>{{ $item->dichVu?->TenDichVu ?? 'Dịch vụ không còn tồn tại' }} · {{ $item->loaiDoGiat?->TenLoaiDoGiat ?? 'Loại đồ không còn tồn tại' }}</strong>
@@ -86,9 +64,33 @@
                             <div class="text-muted small mt-1">{{ $item->GhiChu }}</div>
                         @endif
                     </div>
-                @empty
-                    <div class="text-muted">Chưa có dịch vụ dự kiến.</div>
-                @endforelse
+                @endforeach
+                @foreach($booking->requestedServices as $requestedService)
+                    <div class="border rounded p-3 mb-2">
+                        <div class="d-flex justify-content-between gap-3">
+                            <strong>{{ $requestedService->dichVu?->TenDichVu ?? 'Dịch vụ không còn tồn tại' }} · {{ $requestedService->loaiDoGiat?->TenLoaiDoGiat ?? 'Loại đồ không còn tồn tại' }}</strong>
+                            <strong class="text-muted">Chờ kiểm tra</strong>
+                        </div>
+                        <div class="text-muted small mt-1">
+                            Đơn vị dự kiến {{ $requestedService->donViTinh?->KyHieu ?: $requestedService->donViTinh?->TenDonViTinh ?: 'chưa rõ' }}
+                            · Chờ kiểm tra số lượng/khối lượng, chưa báo giá
+                        </div>
+                    </div>
+                @endforeach
+                @if($booking->requestedServices->isEmpty())
+                    @foreach($legacyRequestedServices as $legacyRequest)
+                        <div class="border rounded p-3 mb-2">
+                            <div class="d-flex justify-content-between gap-3">
+                                <strong>{{ $legacyRequest }}</strong>
+                                <strong class="text-muted">Chờ kiểm tra</strong>
+                            </div>
+                            <div class="text-muted small mt-1">Yêu cầu cũ lưu trong ghi chú · Chờ kiểm tra số lượng/khối lượng, chưa báo giá</div>
+                        </div>
+                    @endforeach
+                @endif
+                @if($booking->chiTietBookings->isEmpty() && $booking->requestedServices->isEmpty() && $legacyRequestedServices->isEmpty())
+                    <div class="text-muted">Chưa có dịch vụ khách chọn.</div>
+                @endif
             </div>
 
             @if(trim($visibleBookingNotes) !== '')
