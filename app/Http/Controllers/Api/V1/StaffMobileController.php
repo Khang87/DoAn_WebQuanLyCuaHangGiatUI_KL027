@@ -58,7 +58,8 @@ class StaffMobileController extends ApiController
         $rows = Booking::query()->where('TrangThai', BookingStatus::Confirmed->value)->where('HinhThucNhanDo', 'Tại nhà')
             ->whereHas('giaoNhanDuKiens', fn ($q) => $q->where('LoaiGiaoNhan', 'NHAN_DO')->where('NhanVienID', $employeeId)
                 ->whereIn('TrangThai', [DeliveryStatus::Pending->dbValue(), DeliveryStatus::Picking->dbValue()]))
-            ->with(['khachHang', 'chiTietBookings.dichVu', 'chiTietBookings.loaiDoGiat', 'chiTietBookings.donViTinh', 'giaoNhanDuKiens'])
+            ->with(['khachHang', 'chiTietBookings.dichVu', 'chiTietBookings.loaiDoGiat', 'chiTietBookings.donViTinh',
+                'requestedServices.dichVu', 'requestedServices.loaiDoGiat', 'requestedServices.donViTinh', 'giaoNhanDuKiens'])
             ->latest('NgayTao')->get()->map(fn (Booking $b) => $this->bookingData($b));
         return response()->json(['data' => $rows]);
     }
@@ -275,6 +276,40 @@ class StaffMobileController extends ApiController
             'unit_name' => $i->donViTinh?->KyHieu ?: $i->donViTinh?->TenDonViTinh,
             'condition' => $draftItems[$index]['TinhTrangTruocKhiGiat'] ?? '', 'note' => $i->GhiChu,
         ])->values();
+        $existingTuples = $items->mapWithKeys(fn ($item) => [implode(':', [
+            $item['service_id'], $item['garment_id'], $item['unit_id'],
+        ]) => true]);
+        foreach ($booking->requestedServices as $requestedService) {
+            $tuple = implode(':', [
+                $requestedService->DichVuID, $requestedService->LoaiDoGiatID, $requestedService->DonViTinhID,
+            ]);
+            if ($existingTuples->has($tuple)) {
+                continue;
+            }
+            $isWeight = $requestedService->donViTinh?->isWeightUnit() ?? false;
+            $items->push([
+                'service_id' => $requestedService->DichVuID,
+                'garment_id' => $requestedService->LoaiDoGiatID,
+                'unit_id' => $requestedService->DonViTinhID,
+                'quantity' => $isWeight ? null : 0,
+                'weight' => $isWeight ? 0 : null,
+                'unit_price' => null,
+                'subtotal' => null,
+                'service_name' => $requestedService->dichVu?->TenDichVu,
+                'garment_name' => $requestedService->loaiDoGiat?->TenLoaiDoGiat,
+                'unit_name' => $requestedService->donViTinh?->KyHieu ?: $requestedService->donViTinh?->TenDonViTinh,
+                'condition' => '',
+                'note' => '',
+            ]);
+            $existingTuples->put($tuple, true);
+        }
+        $selectedServiceIds = $booking->chiTietBookings->pluck('DichVuID')
+            ->merge($booking->requestedServices->pluck('DichVuID'))->unique()->values();
+        $selectedGarmentIds = $booking->chiTietBookings->pluck('LoaiDoGiatID')
+            ->merge($booking->requestedServices->pluck('LoaiDoGiatID'))->unique()->values();
+        $selectedCategoryIds = $booking->chiTietBookings->map(fn ($item) => $item->dichVu?->LoaiDichVuID)
+            ->merge($booking->requestedServices->map(fn ($item) => $item->dichVu?->LoaiDichVuID))
+            ->filter()->unique()->values();
         $prices = BangGia::query()->where('TrangThai', 'Hoạt động')->with(['dichVu', 'loaiDoGiat', 'donViTinh'])->get()->map(fn ($p) => [
             'service_id' => $p->DichVuID, 'garment_id' => $p->LoaiDoGiatID, 'unit_id' => $p->DonViTinhID,
             'unit_name' => $p->donViTinh?->TenDonViTinh, 'unit_symbol' => $p->donViTinh?->KyHieu,
@@ -292,9 +327,16 @@ class StaffMobileController extends ApiController
             'items' => $items, 'inspection_draft_saved' => $draft !== null,
             'available_points' => $booking->khachHang?->points() ?? 0,
             'catalog' => ['prices' => $prices,
-                'services' => DichVu::query()->where('TrangThai', 'Hoạt động')->get(['DichVuID', 'TenDichVu', 'LoaiDichVuID'])->map(fn ($x) => ['id' => $x->DichVuID, 'name' => $x->TenDichVu, 'category_id' => $x->LoaiDichVuID]),
-                'categories' => DB::table('LoaiDichVu')->where('TrangThai', 'Hoạt động')->get()->map(fn ($x) => ['id' => $x->LoaiDichVuID, 'name' => $x->TenLoaiDichVu]),
-                'garments' => LoaiDoGiat::query()->where('TrangThai', 'Hoạt động')->get()->map(fn ($x) => ['id' => $x->LoaiDoGiatID, 'name' => $x->TenLoaiDoGiat])],
+                'services' => DichVu::query()
+                    ->where(fn ($query) => $query->where('TrangThai', 'Hoạt động')->orWhereIn('DichVuID', $selectedServiceIds))
+                    ->get(['DichVuID', 'TenDichVu', 'LoaiDichVuID'])
+                    ->map(fn ($x) => ['id' => $x->DichVuID, 'name' => $x->TenDichVu, 'category_id' => $x->LoaiDichVuID]),
+                'categories' => DB::table('LoaiDichVu')
+                    ->where(fn ($query) => $query->where('TrangThai', 'Hoạt động')->orWhereIn('LoaiDichVuID', $selectedCategoryIds))
+                    ->get()->map(fn ($x) => ['id' => $x->LoaiDichVuID, 'name' => $x->TenLoaiDichVu]),
+                'garments' => LoaiDoGiat::query()
+                    ->where(fn ($query) => $query->where('TrangThai', 'Hoạt động')->orWhereIn('LoaiDoGiatID', $selectedGarmentIds))
+                    ->get()->map(fn ($x) => ['id' => $x->LoaiDoGiatID, 'name' => $x->TenLoaiDoGiat])],
         ];
     }
 }
