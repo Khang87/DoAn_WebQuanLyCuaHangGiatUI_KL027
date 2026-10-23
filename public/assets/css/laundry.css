@@ -392,8 +392,34 @@ body {
     background-color: var(--card-bg);
     border: 1px solid var(--border-light);
     border-radius: var(--radius-lg);
+    /* Đồng bộ biến radius của Bootstrap: mặc định Bootstrap tính inner radius
+       từ --bs-border-radius (6px - 1px = 5px), lệch với 12px của card khiến
+       góc header/footer bị đứt viền. Phải set biến, không chỉ border-radius. */
+    --bs-card-border-radius: var(--radius-lg);
+    --bs-card-inner-border-radius: calc(var(--radius-lg) - 1px);
     box-shadow: var(--shadow-sm);
     margin-bottom: 24px;
+}
+
+/* Bảng tràn trọn card-body dạng p-0: bo góc khớp với card.
+   - Card có header phía trên: bảng chỉ bo 2 góc dưới.
+   - Card không có header (bảng là phần tử đầu tiên): bo cả 4 góc, tránh
+     góc vuông của thead chạm vào viền bo của card. */
+.card > .card-body.p-0 > .table-responsive {
+    border-radius: 0 0 calc(var(--radius-lg) - 1px) calc(var(--radius-lg) - 1px);
+}
+
+.card > .card-body.p-0:first-child > .table-responsive {
+    border-radius: calc(var(--radius-lg) - 1px);
+}
+
+/* Cột STT đầu bảng: đủ rộng cho số thứ tự, không xuống dòng, đồng nhất
+   trên mọi bảng danh sách (mọi bảng .table/.table-custom đều mở đầu bằng STT). */
+.table > thead > tr > th:first-child,
+.table-custom > thead > tr > th:first-child {
+    width: 64px;
+    min-width: 64px;
+    white-space: nowrap;
 }
 
 .card-header {

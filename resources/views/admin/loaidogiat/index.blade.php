@@ -60,15 +60,15 @@
                         <td>
                             <div class="d-flex gap-2">
                                 @can('garment_categories.view')
-                                    <a href="{{ route('loaidogiat.show', $category->LoaiDoGiatID) }}" class="btn btn-outline-secondary btn-sm" title="Xem"><i class="bi bi-eye"></i></a>
+                                    <a href="{{ route('loaidogiat.show', $category->LoaiDoGiatID) }}" class="btn btn-order-action view" title="Xem"><i class="bi bi-eye"></i></a>
                                 @endcan
                                 @can('garment_categories.edit')
-                                    <a href="{{ route('loaidogiat.edit', $category->LoaiDoGiatID) }}" class="btn btn-outline-secondary btn-sm" title="Sửa"><i class="bi bi-pencil"></i></a>
+                                    <a href="{{ route('loaidogiat.edit', $category->LoaiDoGiatID) }}" class="btn btn-order-action edit" title="Sửa"><i class="bi bi-pencil"></i></a>
                                 @endcan
                                 @can('garment_categories.delete')
                                     <form action="{{ route('loaidogiat.destroy', $category->LoaiDoGiatID) }}" method="POST" class="d-inline" id="deleteCategoryForm_{{ $category->LoaiDoGiatID }}">
                                         @csrf @method('DELETE')
-                                        <button type="submit" class="btn btn-outline-secondary btn-sm" title="Xóa"><i class="bi bi-trash"></i></button>
+                                        <button type="submit" class="btn btn-order-action delete" title="Xóa"><i class="bi bi-trash"></i></button>
                                     </form>
                                 @endcan
                             </div>

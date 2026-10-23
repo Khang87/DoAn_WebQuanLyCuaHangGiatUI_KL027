@@ -66,6 +66,34 @@
                             @can('bookings.edit')
                                 <a href="{{ route('bookings.edit', $booking) }}" class="btn btn-order-action edit" title="Sửa"><i class="bi bi-pencil"></i></a>
                             @endcan
+                            @if($booking->statusEnum() === \App\Enums\BookingStatus::Pending && $booking->donHangs->isEmpty())
+                                @can('bookings.confirm')
+                                    <x-admin.detail.confirm-form
+                                        :action="route('bookings.approve', $booking)"
+                                        method="POST"
+                                        title="Xác nhận Booking?"
+                                        text="Booking sẽ chuyển sang trạng thái Đã xác nhận để tiếp tục phân công nhận đồ."
+                                        label="Xác nhận Booking"
+                                        icon="bi bi-check2-circle"
+                                        variant="btn-order-action"
+                                        size=""
+                                        :iconOnly="true"
+                                        color="#16a34a"
+                                        :iconName="'question'"
+                                    />
+                                    <x-admin.detail.confirm-form
+                                        :action="route('bookings.cancel', $booking)"
+                                        method="POST"
+                                        title="Hủy đặt lịch?"
+                                        text="Booking đang chờ sẽ được chuyển sang trạng thái Đã hủy. Bạn có muốn tiếp tục không?"
+                                        label="Hủy đặt lịch"
+                                        icon="bi bi-x-circle"
+                                        variant="btn-order-action delete"
+                                        size=""
+                                        :iconOnly="true"
+                                    />
+                                @endcan
+                            @endif
                         </div></td>
                     </tr>
                 @empty

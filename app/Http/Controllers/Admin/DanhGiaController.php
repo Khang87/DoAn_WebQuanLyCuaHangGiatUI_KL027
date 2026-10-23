@@ -87,7 +87,7 @@ class DanhGiaController extends Controller
                 $request->validated()['shop_response'],
             );
 
-            return redirect()->route('reviews.show', $review)->with('success', 'Phản hồi đã được gửi.');
+            return redirect()->route('reviews.show', ['review' => $review, 'respond' => 1])->with('success', 'Phản hồi đã được gửi.');
         } catch (\Exception $e) {
             return redirect()->route('reviews.show', $review)->with('error', FriendlyError::message($e))->withInput();
         }

@@ -142,9 +142,16 @@ class ThanhToanController extends Controller
             $data['paid_at'] = now();
             $payment = $this->paymentService->create($data);
 
+            $order = DonHang::find($request->input('order_id'));
+            if ($order) {
+                return redirect()->route('orders.show', $order)->with('success', 'Thanh toán đã được tạo thành công.');
+            }
+
             return redirect()->route('payments.show', $payment)->with('success', 'Thanh toán đã được tạo thành công.');
         } catch (\Exception $e) {
-            return redirect()->route('payments.create')->with('error', FriendlyError::message($e))->withInput();
+            $createParams = $request->filled('order_id') ? ['order_id' => $request->input('order_id')] : [];
+
+            return redirect()->route('payments.create', $createParams)->with('error', FriendlyError::message($e))->withInput();
         }
     }
 

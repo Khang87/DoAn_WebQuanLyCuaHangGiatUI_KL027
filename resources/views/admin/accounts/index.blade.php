@@ -87,7 +87,7 @@
                         <th class="fw-bold text-dark">Vai trò hiện tại</th>
                         <th class="fw-bold text-dark">Trạng thái</th>
                         <th class="fw-bold text-dark">Ngày tạo</th>
-                        <th class="fw-bold text-dark">Hành động</th>
+                        <th class="fw-bold text-dark">Thao tác</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -149,6 +149,54 @@
                                         data-account-roles="{{ $account->vaiTros->pluck('VaiTroID')->implode(',') }}"
                                         data-update-url="{{ route('accounts.update-role', $account->getKey()) }}"
                                     ><i class="bi bi-shield-lock"></i></button>
+                                @endif
+                                @if($account->NhanVienID && ! $account->KhachHangID && $account->TrangThai === 'Hoạt động')
+                                    @can('accounts.reset_password')
+                                        <x-admin.detail.confirm-form
+                                            :action="route('accounts.reset-password', $account->getKey())"
+                                            method="POST"
+                                            title="Gửi mã đặt lại mật khẩu?"
+                                            text="Gửi OTP qua email và thông báo riêng. Mã có hiệu lực trong 10 phút để người dùng tự đặt mật khẩu mới."
+                                            label="Gửi mã đặt lại mật khẩu"
+                                            icon="bi-key"
+                                            variant="btn-order-action"
+                                            size=""
+                                            :iconOnly="true"
+                                            color="#f59e0b"
+                                            :iconName="'question'"
+                                        />
+                                    @endcan
+                                @endif
+                                @if($account->getKey() !== auth()->id())
+                                    @can('accounts.edit')
+                                        <x-admin.detail.confirm-form
+                                            :action="route('accounts.toggle-status', $account->getKey())"
+                                            method="POST"
+                                            title="{{ $account->deleted_at ? 'Kích hoạt' : 'Tạm ngưng' }} tài khoản này?"
+                                            text="Tài khoản sẽ {{ $account->deleted_at ? 'được kích hoạt trở lại' : 'bị tạm ngưng' }}."
+                                            label="{{ $account->deleted_at ? 'Kích hoạt' : 'Tạm ngưng' }}"
+                                            :icon="$account->deleted_at ? 'bi-unlock' : 'bi-lock'"
+                                            variant="btn-order-action"
+                                            size=""
+                                            :iconOnly="true"
+                                            color="#2563eb"
+                                            :iconName="'question'"
+                                        />
+                                    @endcan
+                                @endif
+                                @if(! $account->deleted_at)
+                                    @can('accounts.delete')
+                                        <x-admin.detail.confirm-form
+                                            :action="route('accounts.destroy', $account->getKey())"
+                                            title="Xóa tài khoản?"
+                                            text="Hành động này không thể hoàn tác."
+                                            label="Xóa tài khoản"
+                                            icon="bi-trash"
+                                            variant="btn-order-action delete"
+                                            size=""
+                                            :iconOnly="true"
+                                        />
+                                    @endcan
                                 @endif
                             </div>
                         </td>

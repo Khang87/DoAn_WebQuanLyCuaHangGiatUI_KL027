@@ -53,33 +53,6 @@
     </div>
 
     <div class="col-lg-4 d-flex flex-column">
-        <div class="card shadow-sm border-0 order-first">
-            <div class="card-header bg-transparent border-bottom d-flex align-items-center gap-2 py-3">
-                <div class="bg-light rounded p-2 d-inline-flex align-items-center justify-content-center">
-                    <i class="fas fa-sliders-h text-secondary"></i>
-                </div>
-                <h5 class="card-title mb-0 fw-bold">Thao tác</h5>
-            </div>
-            <div class="card-body d-flex flex-column gap-2">
-                <a href="{{ route('services.edit', $service) }}" class="btn btn-primary w-100 py-2">
-                    <i class="fas fa-pencil-alt me-1"></i> Chỉnh sửa dịch vụ
-                </a>
-
-                @can('services.delete')
-                    <x-admin.detail.confirm-form
-                        :action="route('services.destroy', $service)"
-                        title="Xóa dịch vụ?"
-                        text="Nếu dịch vụ đã được sử dụng trong bảng giá, đơn hàng hoặc lịch hẹn, dịch vụ sẽ chuyển sang trạng thái tạm ngưng."
-                        label="Xóa dịch vụ"
-                        icon="bi-trash"
-                        variant="btn-outline-danger"
-                        size="py-2"
-                        block
-                    />
-                @endcan
-            </div>
-        </div>
-
         <x-admin.detail.panel title="Thông tin dịch vụ" icon="bi bi-water" iconClass="bg-info text-white">
             <x-admin.detail.info-grid :columns="2">
                 <x-admin.detail.info-item label="Tên dịch vụ" :value="$service->TenDichVu" />

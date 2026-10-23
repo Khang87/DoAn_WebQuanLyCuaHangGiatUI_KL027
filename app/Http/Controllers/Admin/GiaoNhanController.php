@@ -389,7 +389,7 @@ class GiaoNhanController extends Controller
         try {
             $this->deliveryService->update($delivery, $request->validated());
 
-            return redirect()->route('deliveries.index')->with('success', 'Giao nhận đã được cập nhật.');
+            return redirect()->route('deliveries.show', $delivery)->with('success', 'Giao nhận đã được cập nhật.');
         } catch (ValidationException $e) {
             throw $e;
         } catch (SettledOrderException $e) {

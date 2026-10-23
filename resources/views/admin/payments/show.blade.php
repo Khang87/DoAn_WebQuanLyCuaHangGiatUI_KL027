@@ -8,7 +8,6 @@
     $isLocked = $payment->isLocked();
     $isOwner = auth()->user()?->isOwner() ?? false;
     $isFinanciallyFinal = $payment->isFinanciallyFinal();
-    $canManageSettled = ! $isFinanciallyFinal && (! $isLocked || $isOwner);
     $order = $payment->donHang;
     $invoice = $order?->hoaDons?->first();
 @endphp
@@ -87,7 +86,7 @@
                     @endif
                 </x-admin.detail.info-item>
                 <x-admin.detail.info-item label="Hóa đơn">
-                    @if($invoice)
+                    @if($invoice?->isPaid())
                         @can('invoices.view')
                         <a href="{{ route('invoices.show', $invoice->HoaDonID) }}" class="text-decoration-none">
                             {{ $invoice->MaHoaDon ?: 'Xem hóa đơn' }}
@@ -95,43 +94,14 @@
                         @else
                         {{ $invoice->MaHoaDon ?: 'Hóa đơn' }}
                         @endcan
+                    @elseif($invoice)
+                        {{ $invoice->MaHoaDon ?: 'Hóa đơn' }} <span class="text-muted">(chờ thanh toán)</span>
                     @else
                         <span class="detail-empty-value">Chưa liên kết</span>
                     @endif
                 </x-admin.detail.info-item>
             </x-admin.detail.info-grid>
         </x-admin.detail.panel>
-
-        <div class="card shadow-sm border-0 order-first">
-            <div class="card-header bg-transparent border-bottom d-flex align-items-center gap-2 py-3">
-                <div class="bg-light rounded p-2 d-inline-flex align-items-center justify-content-center">
-                    <i class="fas fa-sliders-h text-secondary"></i>
-                </div>
-                <h5 class="card-title mb-0 fw-bold">Thao tác</h5>
-            </div>
-            <div class="card-body d-flex flex-column gap-2">
-                @if($canManageSettled && auth()->user()?->can('payments.edit'))
-                    <a href="{{ route('payments.edit', $payment->ThanhToanID) }}" class="btn btn-primary w-100 py-2">
-                        <i class="fas fa-pencil-alt me-1"></i> Chỉnh sửa
-                    </a>
-                @endif
-
-                @if($canManageSettled)
-                    @can('payments.delete')
-                        <x-admin.detail.confirm-form
-                            :action="route('payments.destroy', $payment->ThanhToanID)"
-                            title="Xóa phiếu thanh toán?"
-                            text="Hành động này không thể hoàn tác."
-                            label="Xóa phiếu thanh toán"
-                            icon="bi-trash"
-                            variant="btn-outline-danger"
-                            size="py-2"
-                            block
-                        />
-                    @endcan
-                @endif
-            </div>
-        </div>
     </div>
 </div>
 @endsection

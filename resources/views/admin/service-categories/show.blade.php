@@ -15,8 +15,7 @@
 </x-admin.detail.page-header>
 
 <div class="row g-4 align-items-start">
-    {{-- ============ CỘT CHÍNH (8/12) ============ --}}
-    <div class="col-lg-8">
+    <div class="col-12">
         <x-admin.detail.panel title="Dịch vụ trong danh mục" icon="bi-list-check" :iconClass="'bg-secondary-subtle text-secondary'" flush>
             <x-slot:header>
                 <span class="text-muted small">{{ $services->total() }} dịch vụ</span>
@@ -80,43 +79,6 @@
                 <div class="detail-text">{{ $category->MoTa ?: 'Chưa có mô tả.' }}</div>
             </div>
         </x-admin.detail.panel>
-    </div>
-
-    {{-- ============ CỘT PHỤ (4/12) ============ --}}
-    <div class="col-lg-4 d-flex flex-column">
-        <div class="card shadow-sm border-0 order-first">
-            <div class="card-header bg-transparent border-bottom d-flex align-items-center gap-2 py-3">
-                <div class="bg-light rounded p-2 d-inline-flex align-items-center justify-content-center">
-                    <i class="fas fa-sliders-h text-secondary"></i>
-                </div>
-                <h5 class="card-title mb-0 fw-bold">Thao tác</h5>
-            </div>
-            <div class="card-body d-flex flex-column gap-2">
-                <a href="{{ route('service-categories.edit', $category->LoaiDichVuID) }}" class="btn btn-primary w-100 py-2">
-                    <i class="fas fa-pencil-alt me-1"></i> Chỉnh sửa
-                </a>
-
-                @can('services.create')
-                    <a href="{{ route('services.create') }}" class="btn btn-outline-primary w-100 py-2">
-                        <i class="fas fa-plus me-1"></i> Thêm dịch vụ
-                    </a>
-                @endcan
-
-                @can('service_categories.delete')
-                    <x-admin.detail.confirm-form
-                        :action="route('service-categories.destroy', $category->LoaiDichVuID)"
-                        title="Xóa danh mục dịch vụ?"
-                        text="Danh mục chưa được dịch vụ sử dụng sẽ bị xóa; nếu đang được sử dụng, danh mục sẽ chuyển sang trạng thái tạm ngưng."
-                        label="Xóa danh mục dịch vụ"
-                        icon="bi-trash"
-                        variant="btn-outline-danger"
-                        size="py-2"
-                        block
-                    />
-                @endcan
-            </div>
-        </div>
-
     </div>
 </div>
 @endsection

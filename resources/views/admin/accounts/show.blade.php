@@ -33,7 +33,7 @@
 @endif
 
 <div class="row g-4 align-items-start">
-    <div class="col-lg-7">
+    <div class="col-12">
         <x-admin.detail.panel title="Thông tin tài khoản" icon="bi-person-badge" :iconClass="'bg-primary-subtle text-primary'">
             <x-admin.detail.info-grid :columns="2">
                 <x-admin.detail.info-item label="Họ và tên" :value="$account->name" />
@@ -53,71 +53,6 @@
                 </x-admin.detail.info-item>
             </x-admin.detail.info-grid>
         </x-admin.detail.panel>
-    </div>
-
-    <div class="col-lg-5 d-flex flex-column">
-        <div class="card shadow-sm border-0 sticky-top order-first" style="top: 20px;">
-            <div class="card-header bg-transparent border-bottom d-flex align-items-center gap-2 py-3">
-                <div class="bg-light rounded p-2 d-inline-flex align-items-center justify-content-center">
-                    <i class="fas fa-sliders-h text-secondary"></i>
-                </div>
-                <h5 class="card-title mb-0 fw-bold">Thao tác</h5>
-            </div>
-            <div class="card-body d-flex flex-column gap-2">
-                @can('accounts.edit')
-                    <a href="{{ route('accounts.edit', $account->getKey()) }}" class="btn btn-primary w-100 py-2">
-                        <i class="fas fa-pencil-alt me-1"></i> Chỉnh sửa
-                    </a>
-                @endcan
-
-        @can('accounts.reset_password')
-        @if($account->NhanVienID && ! $account->KhachHangID && $account->TrangThai === 'Hoạt động')
-            <x-admin.detail.confirm-form
-                :action="route('accounts.reset-password', $account->getKey())"
-                method="POST"
-                title="Gửi mã đặt lại mật khẩu?"
-                text="Gửi OTP qua email và thông báo riêng. Mã có hiệu lực trong 10 phút để người dùng tự đặt mật khẩu mới."
-                label="Gửi mã đặt lại mật khẩu"
-                icon="bi-key"
-                variant="btn-outline-primary"
-                color="#f59e0b"
-                size="py-2"
-                block
-                :iconName="'question'"
-            />
-        @endif
-        @endcan
-
-        @if($account->getKey() !== auth()->id())
-            <x-admin.detail.confirm-form
-                :action="route('accounts.toggle-status', $account->getKey())"
-                method="POST"
-                title="{{ $account->deleted_at ? 'Kích hoạt' : 'Tạm ngưng' }} tài khoản này?"
-                text="Tài khoản sẽ {{ $account->deleted_at ? 'được kích hoạt trở lại' : 'bị tạm ngưng' }}."
-                label="{{ $account->deleted_at ? 'Kích hoạt' : 'Tạm ngưng' }}"
-                :icon="$account->deleted_at ? 'bi-unlock' : 'bi-lock'"
-                variant="btn-outline-primary"
-                color="#2563eb"
-                size="py-2"
-                block
-                :iconName="'question'"
-            />
-        @endif
-
-        @can('accounts.delete')
-            <x-admin.detail.confirm-form
-                :action="route('accounts.destroy', $account->getKey())"
-                title="Xóa tài khoản?"
-                text="Hành động này không thể hoàn tác."
-                label="Xóa tài khoản"
-                icon="bi-trash"
-                variant="btn-outline-danger"
-                size="py-2"
-                block
-            />
-        @endcan
-            </div>
-        </div>
     </div>
 </div>
 @endsection

@@ -10,7 +10,7 @@
             <i class="bi bi-plus-lg"></i>Thêm hóa đơn
         </a>
     @endcan
-    <p class="text-muted page-toolbar__desc">Quản lý hóa đơn và biên nhận của khách hàng.</p>
+    <p class="text-muted page-toolbar__desc">Danh sách chỉ hiển thị hóa đơn đã thanh toán. Hóa đơn còn chờ thu được theo dõi và thu tiền tại trang Đơn hàng.</p>
 </div>
 
 <form action="{{ url()->current() }}" method="GET" class="row g-3 align-items-center mb-4">
@@ -21,16 +21,6 @@
             </span>
             <input type="text" name="search" class="form-control form-control-sm border-start-0 ps-2" placeholder="Tìm kiếm..." value="{{ request('search') }}">
         </div>
-    </div>
-    <div class="col-12 col-sm-6 col-md-auto">
-        <x-admin.status-select
-            name="status"
-            id="filter-status"
-            :options="$statuses ?? \App\Enums\InvoiceStatus::options()"
-            placeholder="Tất cả trạng thái"
-            class="form-select form-select-sm filter-select shadow-sm rounded-3"
-            submit
-        />
     </div>
     <div class="col-12 col-sm-6 col-md-auto">
         <input type="date" name="date_from" class="form-control form-control-sm shadow-sm rounded-3 filter-date" value="{{ request('date_from') }}" placeholder="Từ ngày">
@@ -87,17 +77,7 @@
                                 @can('invoices.view')
                                     <a href="{{ route('invoices.show', $invoice) }}" class="btn btn-order-action view" title="Xem"><i class="bi bi-eye"></i></a>
                                 @endcan
-                                @if(! $invoice->isPaid())
-                                    @can('invoices.edit')
-                                        <a href="{{ route('invoices.edit', $invoice) }}" class="btn btn-order-action edit" title="Sửa"><i class="bi bi-pencil"></i></a>
-                                    @endcan
-                                    @can('invoices.delete')
-                                        <form action="{{ route('invoices.destroy', $invoice) }}" method="POST" class="d-inline" id="deleteInvoiceForm_{{ $invoice->HoaDonID }}">
-                                            @csrf @method('DELETE')
-                                            <button type="submit" class="btn btn-order-action delete" title="Xóa"><i class="bi bi-trash"></i></button>
-                                        </form>
-                                    @endcan
-                                @elseif(auth()->user()?->canPermission('invoices.edit_paid'))
+                                @if(auth()->user()?->canPermission('invoices.edit_paid'))
                                     @can('invoices.edit')
                                         <a href="{{ route('invoices.edit', $invoice) }}" class="btn btn-order-action edit" title="Sửa hóa đơn đã thanh toán (Chủ cửa hàng)"><i class="bi bi-pencil"></i></a>
                                     @endcan
@@ -116,37 +96,3 @@
 
 <x-admin.pagination :paginator="$invoices" label="hóa đơn" />
 @endsection
-
-@push('scripts')
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        document.querySelectorAll('[id^="deleteInvoiceForm_"]').forEach(function(form) {
-            form.addEventListener('submit', function(e) {
-                e.preventDefault();
-                
-                if (typeof Swal === 'undefined') {
-                    if (confirm('Bạn có chắc muốn xóa?')) {
-                        form.submit();
-                    }
-                    return;
-                }
-                
-                Swal.fire({
-                    title: 'Xóa hóa đơn?',
-                    text: 'Hành động này không thể hoàn tác.',
-                    icon: 'warning',
-                    showCancelButton: true,
-                    confirmButtonColor: '#dc2626',
-                    cancelButtonColor: '#64748b',
-                    confirmButtonText: 'Xóa',
-                    cancelButtonText: 'Hủy'
-                }).then((result) => {
-                    if (result.isConfirmed) {
-                        form.submit();
-                    }
-                });
-            });
-        });
-    });
-</script>
-@endpush

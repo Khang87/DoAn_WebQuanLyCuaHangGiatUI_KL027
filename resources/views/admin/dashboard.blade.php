@@ -237,7 +237,7 @@
 <!-- ===== Top Services ===== -->
 @can('services.view')
 <div class="row g-4 mb-4">
-    <div class="col-12 col-xl-6">
+    <div class="col-12">
         <div class="card h-100">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <h5 class="card-title mb-0">Top dịch vụ được đặt nhiều nhất</h5>
@@ -451,7 +451,7 @@
         }],
         chart: {
             type: 'bar',
-            height: 340,
+            height: 320,
             fontFamily: 'Open Sans, Arial, sans-serif',
             toolbar: { show: false }
         },
@@ -473,6 +473,7 @@
         xaxis: {
             categories: @json($topServices->pluck('name')),
             labels: { style: { colors: '#64748B', fontSize: '12px' } },
+            min: 0,
             max: function(max) {
                 return Math.max(5, max + Math.max(2, Math.ceil(max * 0.4)));
             }
@@ -480,7 +481,7 @@
         yaxis: {
             labels: {
                 style: { colors: '#334155', fontSize: '13px', fontWeight: 600 },
-                maxWidth: 320
+                maxWidth: 120
             }
         },
         legend: { show: false },

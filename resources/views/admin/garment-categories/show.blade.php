@@ -15,7 +15,7 @@
 </x-admin.detail.page-header>
 
 <div class="row g-4 align-items-start">
-    <div class="col-lg-8">
+    <div class="col-12">
         <x-admin.detail.panel title="Loại đồ trong danh mục" icon="bi-list-check" :iconClass="'bg-secondary-subtle text-secondary'" flush>
             <x-slot:header>
                 <span class="text-muted small">{{ $garments->total() }} loại đồ</span>
@@ -65,41 +65,6 @@
                 <div class="detail-text">{{ $category->MoTa ?: 'Chưa có mô tả.' }}</div>
             </div>
         </x-admin.detail.panel>
-    </div>
-
-    <div class="col-lg-4 d-flex flex-column">
-        <div class="card shadow-sm border-0 order-first">
-            <div class="card-header bg-transparent border-bottom d-flex align-items-center gap-2 py-3">
-                <div class="bg-light rounded p-2 d-inline-flex align-items-center justify-content-center">
-                    <i class="fas fa-sliders-h text-secondary"></i>
-                </div>
-                <h5 class="card-title mb-0 fw-bold">Thao tác</h5>
-            </div>
-            <div class="card-body d-flex flex-column gap-2">
-                @can('garment_categories.edit')
-                    <a href="{{ route('garment-categories.edit', $category) }}" class="btn btn-primary w-100 py-2">
-                        <i class="fas fa-pencil-alt me-1"></i>Chỉnh sửa
-                    </a>
-                @endcan
-                @can('garment_categories.create')
-                    <a href="{{ route('loaidogiat.create') }}" class="btn btn-outline-primary w-100 py-2">
-                        <i class="fas fa-plus me-1"></i>Thêm loại đồ giặt
-                    </a>
-                @endcan
-                @can('garment_categories.delete')
-                    <x-admin.detail.confirm-form
-                        :action="route('garment-categories.destroy', $category)"
-                        title="Xóa danh mục loại đồ giặt?"
-                        text="Danh mục còn loại đồ giặt liên quan sẽ được chuyển sang trạng thái tạm ngưng."
-                        label="Xóa danh mục"
-                        icon="bi-trash"
-                        variant="btn-outline-danger"
-                        size="py-2"
-                        block
-                    />
-                @endcan
-            </div>
-        </div>
     </div>
 </div>
 @endsection

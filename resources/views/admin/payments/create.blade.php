@@ -26,7 +26,7 @@
     <div class="card-body">
         <div class="d-flex justify-content-between align-items-center mb-4">
             <h5 class="mb-0">Thông tin thanh toán</h5>
-            <a href="{{ route('payments.index') }}" class="btn btn-outline-secondary btn-sm">
+            <a href="{{ $preselectedOrder ? route('orders.show', $preselectedOrder) : route('payments.index') }}" class="btn btn-outline-secondary btn-sm">
                 <i class="bi bi-arrow-left me-1"></i>Quay lại
             </a>
         </div>
@@ -154,7 +154,7 @@
                 </div>
             </div>
             <div class="d-flex justify-content-end gap-2 mt-4">
-                <a href="{{ route('orders.index') }}" class="btn btn-success d-none" id="paymentBankComplete">Hoàn tất</a>
+                <a href="{{ $preselectedOrder ? route('orders.show', $preselectedOrder) : route('orders.index') }}" class="btn btn-success d-none" id="paymentBankComplete">Hoàn tất</a>
                 <button type="submit" class="btn btn-primary {{ $initialMethod === 'bank_transfer' ? 'd-none' : '' }}" id="paymentCashSubmit" @disabled($initialMethod === 'bank_transfer')>Xác nhận đã thu tiền</button>
             </div>
         </form>

@@ -43,12 +43,23 @@
                         <td>{{ $item->notes ?: '-' }}</td>
                         <td>
                             <div class="d-flex gap-2">
+                                @can('orders.view')
+                                    <a href="{{ route('order-items.show', $item) }}" class="btn btn-order-action view" title="Xem"><i class="bi bi-eye"></i></a>
+                                @endcan
                                 @if(! $item->order?->isLocked())
-                                    <a href="{{ route('order-items.edit', $item) }}" class="btn btn-sm btn-outline-warning">Sửa</a>
-                                    <form action="{{ route('order-items.destroy', $item) }}" method="POST" class="d-inline" id="deleteOrderItemForm_{{ $item->getKey() }}">
-                                        @csrf @method('DELETE')
-                                        <button type="submit" class="btn btn-sm btn-outline-danger">Xóa</button>
-                                    </form>
+                                    @can('orders.edit')
+                                        <a href="{{ route('order-items.edit', $item) }}" class="btn btn-order-action edit" title="Sửa"><i class="bi bi-pencil"></i></a>
+                                        <x-admin.detail.confirm-form
+                                            :action="route('order-items.destroy', $item)"
+                                            title="Xóa chi tiết đơn hàng?"
+                                            text="Hành động này không thể hoàn tác."
+                                            label="Xóa chi tiết đơn hàng"
+                                            icon="bi-trash"
+                                            variant="btn-order-action delete"
+                                            size=""
+                                            :iconOnly="true"
+                                        />
+                                    @endcan
                                 @else
                                     <span class="badge bg-secondary-subtle text-secondary-emphasis border border-secondary px-3 py-2 rounded-pill" title="Đơn hàng đã quyết toán nên không thể sửa hoặc xóa">
                                         <i class="bi bi-lock me-1"></i>Đã quyết toán
@@ -68,37 +79,3 @@
 
 <x-admin.pagination :paginator="$items" label="chi tiết" />
 @endsection
-
-@push('scripts')
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        document.querySelectorAll('[id^="deleteOrderItemForm_"]').forEach(function(form) {
-            form.addEventListener('submit', function(e) {
-                e.preventDefault();
-
-                if (typeof Swal === 'undefined') {
-                    if (confirm('Xóa?')) {
-                        form.submit();
-                    }
-                    return;
-                }
-
-                Swal.fire({
-                    title: 'Xóa chi tiết đơn hàng?',
-                    text: 'Hành động này không thể hoàn tác.',
-                    icon: 'warning',
-                    showCancelButton: true,
-                    confirmButtonColor: '#dc2626',
-                    cancelButtonColor: '#64748b',
-                    confirmButtonText: 'Xóa',
-                    cancelButtonText: 'Hủy'
-                }).then((result) => {
-                    if (result.isConfirmed) {
-                        form.submit();
-                    }
-                });
-            });
-        });
-    });
-</script>
-@endpush
