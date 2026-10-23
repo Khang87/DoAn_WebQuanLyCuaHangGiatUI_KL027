@@ -93,7 +93,7 @@
                         <x-admin.status-select
                             name="TrangThai"
                             id="TrangThai"
-                            :options="['Hoạt động' => 'Hoạt động', 'Tạm ngưng' => 'Tạm ngưng', 'Hết hạn' => 'Hết hạn']"
+                            :options="\App\Models\KhuyenMai::statusOptions()"
                             :selected="old('TrangThai', 'Hoạt động')"
                             class="form-select @error('TrangThai') is-invalid @enderror"
                             required

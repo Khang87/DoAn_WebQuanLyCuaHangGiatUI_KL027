@@ -174,7 +174,7 @@ class LuuDonHangRequest extends FormRequest
             'items.*.KhoiLuong.min' => 'Khối lượng không được nhỏ hơn 0.',
 
             'HinhThucNhanDo.required' => 'Vui lòng chọn phương thức nhận đồ.',
-            'HinhThucTraDo.required' => 'Vui lòng chọn phương thức trả đồ.',
+            'HinhThucTraDo.required' => 'Vui lòng chọn hình thức giao.',
             'DiaChiNhan.required_if' => 'Vui lòng nhập địa chỉ lấy đồ tại nhà.',
             'DiaChiTra.required_if' => 'Vui lòng nhập địa chỉ giao đồ sạch.',
 

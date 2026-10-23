@@ -2,9 +2,9 @@
 
 namespace App\Http\Controllers\Admin;
 
-use App\Enums\RecordStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\LuuKhuyenMaiRequest;
+use App\Models\KhuyenMai;
 use App\Services\PromotionService;
 use App\Support\FriendlyError;
 use Illuminate\Http\Request;
@@ -23,7 +23,7 @@ class KhuyenMaiController extends Controller
             'sort' => $request->input('sort'),
         ]);
 
-        $statuses = RecordStatus::databaseOptions();
+        $statuses = KhuyenMai::statusOptions();
 
         return view('admin.promotions.index', compact('promotions', 'statuses'));
     }

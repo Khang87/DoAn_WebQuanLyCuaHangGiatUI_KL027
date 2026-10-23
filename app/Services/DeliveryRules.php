@@ -106,7 +106,7 @@ class DeliveryRules
 
             if (! $returnMethodMatches) {
                 throw ValidationException::withMessages([
-                    'method' => 'Hình thức phiếu giao đồ phải khớp với phương thức trả đã xác nhận.',
+                    'method' => 'Hình thức phiếu giao đồ phải khớp với hình thức giao đã xác nhận.',
                 ]);
             }
             if (! $current && $target !== DeliveryStatus::Pending) {

@@ -131,9 +131,9 @@
                     </div>
                 </div>
                 <div class="col-md-6">
-                    <label class="form-label" for="booking-return-method">Hình thức trả đồ <span class="text-danger">*</span></label>
+                    <label class="form-label" for="booking-return-method">Hình thức giao <span class="text-danger">*</span></label>
                     <select class="form-select booking-main-control @error('return_method') is-invalid @enderror" name="return_method" id="booking-return-method" required @disabled($inspectionMode)>
-                        <option value="">Chọn hình thức trả đồ</option>
+                        <option value="">Chọn hình thức giao</option>
                         @foreach(\App\Enums\ReturnMethod::options() as $value => $label)
                             <option value="{{ $value }}" @selected(old('return_method', $booking->HinhThucTraDo) === $value)>{{ $label }}</option>
                         @endforeach

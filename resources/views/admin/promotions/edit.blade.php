@@ -94,7 +94,7 @@
                         <x-admin.status-select
                             name="TrangThai"
                             id="TrangThai"
-                            :options="['Hoạt động' => 'Hoạt động', 'Tạm ngưng' => 'Tạm ngưng', 'Hết hạn' => 'Hết hạn']"
+                            :options="\App\Models\KhuyenMai::statusOptions()"
                             :selected="old('TrangThai', $promotion->TrangThai)"
                             class="form-select @error('TrangThai') is-invalid @enderror"
                             required
@@ -103,8 +103,7 @@
                     </div>
                 </div>
             </section>
-            <div class="d-flex justify-content-end gap-2 mt-4">
-                <a href="{{ route('promotions.index') }}" class="btn btn-outline-secondary">Hủy</a>
+            <div class="d-flex justify-content-end mt-4">
                 <button type="submit" class="btn btn-primary">Cập nhật</button>
             </div>
         </form>

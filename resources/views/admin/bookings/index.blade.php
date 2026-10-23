@@ -35,7 +35,7 @@
     </div>
     <div class="col-12 col-sm-6 col-md-auto">
         <select name="return_method" class="form-select form-select-sm filter-select shadow-sm rounded-3" onchange="this.form.submit()">
-            <option value="">Tất cả hình thức trả</option>
+            <option value="">Tất cả hình thức giao</option>
             @foreach(\App\Enums\ReturnMethod::options() as $value => $label)
                 <option value="{{ $value }}" @selected(request('return_method') === $value)>{{ $label }}</option>
             @endforeach

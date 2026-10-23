@@ -11,23 +11,21 @@
     <p class="text-muted page-toolbar__desc">Xem và phản hồi các đánh giá của khách hàng về chất lượng dịch vụ.</p>
 </div>
 <div class="card border-0 shadow-sm mb-4">
-    <div class="card-body p-4 d-flex flex-wrap align-items-center gap-4">
-        <div>
-            <div class="small text-muted mb-1 fw-medium">Điểm đánh giá trung bình</div>
-            <div class="d-flex flex-wrap align-items-center gap-3">
-                <span class="display-5 fw-bold text-warning">{{ number_format($averageValue, 1) }}</span>
-                <span class="fs-5 text-warning" aria-label="{{ $averageValue }} trên 5 sao">
-                    @for($star = 1; $star <= 5; $star++)
-                        @if ($star <= $roundedAverage)
-                            <i class="fas fa-star text-warning"></i>
-                        @else
-                            <i class="far fa-star text-black-50 opacity-25"></i>
-                        @endif
-                    @endfor
-                </span>
-            </div>
+    <div class="card-body p-4">
+        <div class="small text-muted mb-1 fw-medium">Điểm đánh giá trung bình</div>
+        <div class="d-flex flex-wrap align-items-center gap-3">
+            <span class="display-5 fw-bold text-warning">{{ number_format($averageValue, 1) }}</span>
+            <span class="fs-5 text-warning text-nowrap" aria-label="{{ $averageValue }} trên 5 sao">
+                @for($star = 1; $star <= 5; $star++)
+                    @if ($star <= $roundedAverage)
+                        <i class="fas fa-star text-warning"></i>
+                    @else
+                        <i class="far fa-star text-black-50 opacity-25"></i>
+                    @endif
+                @endfor
+            </span>
+            <div class="text-secondary small text-nowrap">Tổng <strong>{{ number_format($totalCount) }}</strong> đánh giá</div>
         </div>
-        <div class="text-secondary small">Tổng <strong>{{ number_format($totalCount) }}</strong> đánh giá</div>
     </div>
 </div>
 

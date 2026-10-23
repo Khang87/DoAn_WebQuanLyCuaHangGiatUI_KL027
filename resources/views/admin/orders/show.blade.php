@@ -375,12 +375,13 @@
                 <x-admin.detail.empty message="Đơn hàng chưa có mặt hàng nào" icon="bi-bag" />
                 @else
                     <div class="table-responsive">
-                        <table class="table table-hover detail-table">
+                        <table class="table table-hover detail-table detail-table--wrap">
                             <thead>
                                 <tr>
                                     <th scope="col">STT</th>
                                     <th>Dịch vụ</th>
                                     <th>Loại đồ giặt</th>
+                                    <th>Đơn vị tính</th>
                                     <th class="text-end">Đơn giá</th>
                                     <th class="text-end">Số lượng / Khối lượng</th>
                                     <th class="text-end">Thành tiền</th>
@@ -393,6 +394,7 @@
                                         <td>{{ $loop->iteration }}</td>
                                         <td class="fw-semibold">{{ $item->dichVu?->TenDichVu ?: '—' }}</td>
                                         <td>{{ $item->loaiDoGiat?->TenLoaiDoGiat ?: '—' }}</td>
+                                        <td>{{ $item->donViTinh?->KyHieu ?? $item->donViTinh?->TenDonViTinh ?? '—' }}</td>
                                         <td class="text-end"><x-admin.detail.money :value="$item->DonGia" /></td>
                                         <td class="text-end">
                                             {{ format_quantity_weight($item->SoLuong, $item->KhoiLuong) ?: '—' }}

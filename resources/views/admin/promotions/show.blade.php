@@ -10,10 +10,7 @@
     backUrl="{{ route('promotions.index') }}"
 >
     <x-slot:badge>
-        <x-admin.status-badge
-            :status="$promotion->TrangThai"
-            :enum="\App\Enums\RecordStatus::class"
-        />
+        <x-admin.promotion-status-badge :promotion="$promotion" />
     </x-slot:badge>
 </x-admin.detail.page-header>
 
@@ -51,10 +48,7 @@
                 <x-admin.detail.info-item label="Ngày bắt đầu" :value="$promotion->NgayBatDau?->format('d/m/Y')" />
                 <x-admin.detail.info-item label="Ngày kết thúc" :value="$promotion->NgayKetThuc?->format('d/m/Y')" />
                 <x-admin.detail.info-item label="Trạng thái">
-                    <x-admin.status-badge
-                        :status="$promotion->TrangThai"
-                        :enum="\App\Enums\RecordStatus::class"
-                    />
+                    <x-admin.promotion-status-badge :promotion="$promotion" />
                 </x-admin.detail.info-item>
             </x-admin.detail.info-grid>
 

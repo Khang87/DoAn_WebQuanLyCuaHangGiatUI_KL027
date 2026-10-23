@@ -17,7 +17,6 @@
 @php $order = $booking->donHangs->first() @endphp
 @php
     $intakeDocument = $booking->giaoNhanDuKiens->firstWhere('LoaiGiaoNhan', 'NHAN_DO');
-    $inspectionDecision = $booking->kiemKe?->DuLieuThucTe['_decision'] ?? [];
     $legacyRequestPrefix = 'Khách chọn dịch vụ chưa rõ số lượng: ';
     $bookingNoteLines = preg_split('/\r\n|\r|\n/', (string) ($booking->GhiChu ?? ''));
     $legacyRequestedServices = collect($bookingNoteLines)
@@ -38,7 +37,7 @@
                     <x-admin.status-badge :status="$booking->TrangThai" :enum="\App\Enums\BookingStatus::class" />
                 </x-admin.detail.info-item>
                 <x-admin.detail.info-item label="Hình thức nhận đồ" :value="$booking->method_label" />
-                <x-admin.detail.info-item label="Hình thức trả đồ" :value="$booking->return_method_label" />
+                <x-admin.detail.info-item label="Hình thức giao" :value="$booking->return_method_label" />
                 <x-admin.detail.info-item label="Địa chỉ nhận đồ" :value="$booking->DiaChiNhan ?: '—'" />
                 <x-admin.detail.info-item label="Địa chỉ trả đồ" :value="$booking->DiaChiTra ?: '—'" />
                 <x-admin.detail.info-item label="Nhân viên xác nhận Booking" :value="$booking->nhanVienXacNhan?->HoTen ?? '—'" />
@@ -134,14 +133,6 @@
                 <x-admin.detail.info-item label="Số điện thoại" :value="$booking->khachHang?->SoDienThoai" />
                 <x-admin.detail.info-item label="Ngày tạo" :value="$booking->NgayTao?->format('d/m/Y H:i')" />
             </x-admin.detail.info-grid>
-
-            @if($booking->khachHang)
-                <div class="mt-3">
-                    <a href="{{ route('customers.show', $booking->khachHang->KhachHangID) }}" class="btn btn-outline-secondary btn-sm w-100">
-                        <i class="bi bi-box-arrow-up-right me-1"></i>Hồ sơ khách hàng
-                    </a>
-                </div>
-            @endif
         </x-admin.detail.panel>
 
         @if($booking->giaoNhanDuKiens->isNotEmpty())
@@ -209,28 +200,6 @@
                     <x-admin.detail.money :value="$order->ThanhTien" class="fw-bold" />
                 </x-admin.detail.info-item>
             </x-admin.detail.info-grid>
-            @if($booking->kiemKe)
-                <div class="detail-lock mt-3" data-booking-inspection-summary>
-                    <i class="bi bi-clipboard-check"></i>
-                    <span>
-                        Đối soát kiểm kê phiên bản {{ $booking->kiemKe->PhienBan }} ·
-                        {{ count($booking->kiemKe->DuLieuThucTe['items'] ?? []) }} dòng đồ thực tế.
-                        {{ $booking->kiemKe->CoChenhLech ? 'Có chênh lệch so với thông tin Booking; nhân viên đã đối soát.' : 'Không có chênh lệch.' }}
-                        @if(! empty($inspectionDecision['employee_name']))
-                            Chốt bởi {{ $inspectionDecision['employee_name'] }}.
-                        @endif
-                        @if(array_key_exists('agreed_total', $inspectionDecision))
-                            Khách đã đồng ý tổng tiền {{ number_format((float) $inspectionDecision['agreed_total'], 0, ',', '.') }} VNĐ.
-                        @elseif(! empty($inspectionDecision['reason']))
-                            Khách từ chối: {{ $inspectionDecision['reason'] }}.
-                        @endif
-                    </span>
-                </div>
-            @endif
-            <div class="detail-lock mt-3">
-                <i class="bi bi-info-circle"></i>
-                <span>Đơn hàng mới được tạo sau khi kiểm tra thực tế và có trạng thái Đã tiếp nhận. Đơn cũ đang Chờ tiếp nhận vẫn cần hoàn tất kiểm tra trên trang đơn hàng.</span>
-            </div>
         </x-admin.detail.panel>
         </div>
     </div>

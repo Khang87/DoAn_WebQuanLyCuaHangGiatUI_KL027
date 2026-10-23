@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\RecordStatus;
 use Illuminate\Database\Eloquent\Model;
 
 class KhuyenMai extends Model
@@ -11,6 +12,9 @@ class KhuyenMai extends Model
 
     /** Giảm theo số tiền cố định. */
     public const DISCOUNT_FIXED = 'Tiền mặt';
+
+    /** Trạng thái hết hạn: lưu trong DB hoặc suy ra từ `NgayKetThuc`. */
+    public const STATUS_EXPIRED = 'Hết hạn';
 
     protected $table = 'KhuyenMai';
 
@@ -77,6 +81,25 @@ class KhuyenMai extends Model
         return $this->isValid();
     }
 
+    /**
+     * Chương trình có còn chạy được không, tính cả hạn dùng.
+     */
+    public function isExpired(): bool
+    {
+        return $this->TrangThai === self::STATUS_EXPIRED
+            || ($this->NgayKetThuc !== null && $this->NgayKetThuc->endOfDay() < today());
+    }
+
+    /**
+     * Trạng thái chọn được ở form và ở dropdown lọc bảng danh sách. Có "Hết hạn"
+     * vì cột "Trạng thái" suy ra hạn dùng từ `NgayKetThuc`, không chỉ đọc DB.
+     *
+     * @return array<string, string>
+     */
+    public static function statusOptions(): array
+    {
+        return RecordStatus::databaseOptions() + [self::STATUS_EXPIRED => self::STATUS_EXPIRED];
+    }
     /**
      * Tìm khuyến mãi theo mã (không phân biệt hoa thường).
      */

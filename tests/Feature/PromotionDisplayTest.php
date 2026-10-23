@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\KhuyenMai;
 use App\Services\PromotionService;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
@@ -58,7 +59,7 @@ class PromotionDisplayTest extends TestCase
         $this->assertStringContainsString('href="'.route('promotions.index').'" class="btn btn-outline-secondary btn-sm"', $html);
         $this->assertStringContainsString('Quay lại', $html);
         $this->assertStringContainsString('type="submit" class="btn btn-primary"', $html);
-        $this->assertStringContainsString('Lưu khuyến mãi', $html);
+        $this->assertStringContainsString('Thêm mới', $html);
         $this->assertStringNotContainsString('class="btn btn-outline-secondary">Hủy</a>', $html);
     }
 
@@ -101,7 +102,7 @@ class PromotionDisplayTest extends TestCase
 
         $this->assertSame(2, $promotions->getCollection()->firstWhere('KhuyenMaiID', 1)->usedCount);
         $this->assertStringContainsString('<th class="fw-bold text-dark">Hạn sử dụng</th>', $html);
-        $this->assertStringContainsString('<th class="fw-bold text-dark">Số đơn liên kết</th>', $html);
+        $this->assertStringContainsString('<th class="fw-bold text-dark">Số lượng đã sử dụng</th>', $html);
         $this->assertStringContainsString('31/10/2026', $html);
         $this->assertStringContainsString('Không hạn', $html);
         $this->assertStringContainsString('2 đơn', $html);
@@ -113,5 +114,72 @@ class PromotionDisplayTest extends TestCase
             'statuses' => ['Hoạt động' => 'Hoạt động'],
         ])->render();
         $this->assertStringContainsString('colspan="8"', $emptyHtml);
+    }
+
+    public function test_status_filter_covers_every_state_the_status_column_can_show(): void
+    {
+        DB::table('KhuyenMai')->insert([
+            [
+                'KhuyenMaiID' => 1,
+                'MaKhuyenMai' => 'RUNNING',
+                'TenKhuyenMai' => 'Còn chạy',
+                'LoaiKhuyenMai' => 'Phần trăm',
+                'GiaTriGiam' => 10,
+                'NgayBatDau' => today()->subDays(5)->toDateString(),
+                'NgayKetThuc' => today()->addDays(10)->toDateString(),
+                'TrangThai' => 'Hoạt động',
+            ],
+            [
+                'KhuyenMaiID' => 2,
+                'MaKhuyenMai' => 'PASSED',
+                'TenKhuyenMai' => 'Qua hạn dùng',
+                'LoaiKhuyenMai' => 'Phần trăm',
+                'GiaTriGiam' => 10,
+                'NgayBatDau' => today()->subDays(20)->toDateString(),
+                'NgayKetThuc' => today()->subDay()->toDateString(),
+                'TrangThai' => 'Hoạt động',
+            ],
+            [
+                'KhuyenMaiID' => 3,
+                'MaKhuyenMai' => 'MARKED',
+                'TenKhuyenMai' => 'Đánh dấu hết hạn',
+                'LoaiKhuyenMai' => 'Tiền mặt',
+                'GiaTriGiam' => 500,
+                'NgayBatDau' => today()->subDays(20)->toDateString(),
+                'NgayKetThuc' => null,
+                'TrangThai' => 'Hết hạn',
+            ],
+            [
+                'KhuyenMaiID' => 4,
+                'MaKhuyenMai' => 'PAUSED',
+                'TenKhuyenMai' => 'Đang tạm ngưng',
+                'LoaiKhuyenMai' => 'Tiền mặt',
+                'GiaTriGiam' => 500,
+                'NgayBatDau' => today()->subDays(5)->toDateString(),
+                'NgayKetThuc' => null,
+                'TrangThai' => 'Tạm ngưng',
+            ],
+        ]);
+
+        $this->assertSame(['Hoạt động', 'Tạm ngưng', 'Hết hạn'], array_keys(KhuyenMai::statusOptions()));
+        $this->assertSame(
+            [3, 2],
+            app(PromotionService::class)->getAll(['status' => 'Hết hạn'])->getCollection()->pluck('KhuyenMaiID')->values()->all()
+        );
+        $this->assertSame(
+            [1],
+            app(PromotionService::class)->getAll(['status' => 'Hoạt động'])->getCollection()->pluck('KhuyenMaiID')->values()->all()
+        );
+
+        $html = view('admin.promotions.index', [
+            'promotions' => app(PromotionService::class)->getAll(),
+            'statuses' => KhuyenMai::statusOptions(),
+        ])->render();
+
+        $this->assertStringContainsString('<option value="Hết hạn" ', $html);
+        $this->assertStringContainsString('Còn chạy', $html);
+        $this->assertStringContainsString('Đánh dấu hết hạn', $html);
+        $this->assertStringNotContainsString('Đã hết hạn', $html);
+        $this->assertSame(2, substr_count($html, 'fa-hourglass'));
     }
 }

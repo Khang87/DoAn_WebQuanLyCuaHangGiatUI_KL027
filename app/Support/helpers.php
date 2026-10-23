@@ -72,14 +72,15 @@ if (! function_exists('format_weight_display')) {
 
 if (! function_exists('format_quantity_weight')) {
     /**
-     * Định dạng số món và khối lượng cho cùng một dòng chi tiết.
+     * Định dạng số lượng và khối lượng cho cùng một dòng chi tiết.
+     * Chỉ in ra con số (và "kg" cho khối lượng); đơn vị tính do cột riêng hiển thị.
      */
     function format_quantity_weight(float|int|string|null $quantity, float|int|string|null $weight): string
     {
         $parts = [];
 
         if ($quantity !== null && $quantity !== '') {
-            $parts[] = format_quantity($quantity).' món';
+            $parts[] = format_quantity($quantity);
         }
 
         if ($weight !== null && $weight !== '' && (float) $weight > 0) {

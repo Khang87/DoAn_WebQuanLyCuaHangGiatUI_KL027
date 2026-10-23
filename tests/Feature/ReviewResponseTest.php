@@ -73,7 +73,7 @@ class ReviewResponseTest extends TestCase
     {
         $this->from(route('reviews.show', 3))
             ->patch(route('reviews.respond', 3), ['shop_response' => 'Cảm ơn bạn đã góp ý.'])
-            ->assertRedirect(route('reviews.show', 3))
+            ->assertRedirect(route('reviews.show', ['review' => 3, 'respond' => 1]))
             ->assertSessionHas('success', 'Phản hồi đã được gửi.');
 
         $reloadedReview = DanhGia::query()->findOrFail(3);
@@ -90,7 +90,7 @@ class ReviewResponseTest extends TestCase
 
         $this->from(route('reviews.show', 3))
             ->patch(route('reviews.respond', 3), ['shop_response' => 'Nội dung đã chỉnh sửa.'])
-            ->assertRedirect(route('reviews.show', 3))
+            ->assertRedirect(route('reviews.show', ['review' => 3, 'respond' => 1]))
             ->assertSessionHas('success');
 
         $reloadedReview = app(ReviewService::class)->find(3);

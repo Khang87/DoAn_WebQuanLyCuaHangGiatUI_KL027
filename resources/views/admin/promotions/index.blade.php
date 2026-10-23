@@ -26,7 +26,7 @@
         <x-admin.status-select
             name="status"
             id="filter-status"
-            :options="$statuses ?? \App\Enums\RecordStatus::databaseOptions()"
+            :options="$statuses ?? \App\Models\KhuyenMai::statusOptions()"
             placeholder="Tất cả trạng thái"
             class="form-select form-select-sm filter-select shadow-sm rounded-3"
             submit
@@ -60,16 +60,13 @@
                         <th class="fw-bold text-dark">Mã khuyến mãi</th>
                         <th class="fw-bold text-dark">Giá trị giảm</th>
                         <th class="fw-bold text-dark">Hạn sử dụng</th>
-                        <th class="fw-bold text-dark">Số đơn liên kết</th>
+                        <th class="fw-bold text-dark">Số lượng đã sử dụng</th>
                         <th class="fw-bold text-dark">Trạng thái</th>
                         <th class="fw-bold text-dark">Thao tác</th>
                     </tr>
                 </thead>
                 <tbody>
                     @forelse($promotions as $promotion)
-                    @php
-                        $isExpired = $promotion->NgayKetThuc && $promotion->NgayKetThuc->lt(today());
-                    @endphp
                     <tr>
                         <td>{{ $promotions->firstItem() + $loop->index }}</td>
                         <td><strong>{{ $promotion->TenKhuyenMai ?: '-' }}</strong></td>
@@ -83,11 +80,7 @@
                         </td>
                         <td>{{ number_format($promotion->usedCount) }} đơn</td>
                         <td>
-                            @if($isExpired)
-                                <span class="badge bg-secondary-subtle text-secondary-emphasis border border-secondary px-3 py-2 rounded-pill"><i class="far fa-hourglass me-1"></i>Đã hết hạn</span>
-                            @else
-                                <x-admin.status-badge :status="$promotion->TrangThai" :enum="\App\Enums\RecordStatus::class" />
-                            @endif
+                            <x-admin.promotion-status-badge :promotion="$promotion" />
                         </td>
                         <td>
                             <div class="d-flex gap-2">

@@ -1763,6 +1763,12 @@ select option:hover {
     font-weight: 700;
 }
 
+/* Bảng chi tiết nhiều cột (đơn hàng có 8 cột): cho phép xuống dòng ở phần đầu
+   bảng để bảng khớp chiều rộng card thay vì bắt người dùng cuộn ngang. */
+.detail-table--wrap thead th {
+    white-space: normal;
+}
+
 /* 5. Số tiền ---------------------------------------------------------- */
 .detail-money {
     font-variant-numeric: tabular-nums;

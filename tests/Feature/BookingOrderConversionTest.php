@@ -195,8 +195,7 @@ class BookingOrderConversionTest extends TestCase
         $bookingResponse = $this->get(route('bookings.show', $booking))
             ->assertOk()
             ->assertDontSee('Kiểm kê thực tế')
-            ->assertSee('data-booking-inspection-summary', false)
-            ->assertSee('Đối soát kiểm kê phiên bản 1')
+            ->assertDontSee('Đối soát kiểm kê phiên bản')
             ->assertSee('Đơn hàng liên kết')
             ->assertSee('Phiếu nhận và kế hoạch trả từ Booking');
         $bookingResponse->assertSeeInOrder([

@@ -150,16 +150,17 @@ class ActionButtonIconStyleTest extends TestCase
         );
 
         // Nút loại trừ thực sự phải tồn tại trong view, nếu không loại trừ này vô nghĩa.
-        // Nút Xóa màu đỏ nằm ở các bảng danh sách (index).
-        $indexViews = '';
-        foreach (glob(resource_path('views/admin/*/index.blade.php')) as $view) {
-            $indexViews .= (string) File::get($view);
+        // Bảng danh sách đã chuyển sang icon trung tính (.btn-order-action), nên nút
+        // đỏ/cam còn nằm ở các trang chi tiết và form (orders/show, roles/form...).
+        $adminViews = '';
+        foreach (File::allFiles(resource_path('views/admin')) as $view) {
+            $adminViews .= (string) File::get($view->getPathname());
         }
 
         $this->assertStringContainsString(
             'btn-outline-danger',
-            $indexViews,
-            'Không còn nút Xóa màu đỏ nào trong bảng danh sách'
+            $adminViews,
+            'Không còn nút Xóa màu đỏ nào trong giao diện admin'
         );
 
         // Nút xoá dòng mặt hàng nằm trong bảng mặt hàng của form đơn hàng.

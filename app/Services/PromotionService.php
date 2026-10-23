@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\KhuyenMai;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
@@ -28,7 +29,7 @@ class PromotionService
         }
 
         if (! empty($filters['status'])) {
-            $query->where('TrangThai', $filters['status']);
+            $this->applyStatusFilter($query, $filters['status']);
         }
 
         $sortMap = [
@@ -47,6 +48,32 @@ class PromotionService
         [$sortBy, $sortOrder] = $sortMap[$sort] ?? ['KhuyenMaiID', 'desc'];
 
         return $query->orderBy($sortBy, $sortOrder)->paginate(10)->withQueryString();
+    }
+
+    /**
+     * Lọc theo trạng thái mà bảng danh sách thực sự hiển thị: "Hết hạn" bao gồm
+     * cả mã lưu sẵn trạng thái này và chương trình đã quá `NgayKetThuc`.
+     *
+     * @param  Builder<KhuyenMai>  $query
+     */
+    private function applyStatusFilter(Builder $query, string $status): void
+    {
+        $today = today()->toDateString();
+
+        if ($status === KhuyenMai::STATUS_EXPIRED) {
+            $query->where(function (Builder $q) use ($today): void {
+                $q->where('TrangThai', KhuyenMai::STATUS_EXPIRED)
+                    ->orWhere(fn (Builder $inner) => $inner->whereNotNull('NgayKetThuc')
+                        ->whereDate('NgayKetThuc', '<', $today));
+            });
+
+            return;
+        }
+
+        // "Chưa hết hạn" = trạng thái lưu khớp lọc và hạn dùng chưa qua.
+        $query->where('TrangThai', $status)
+            ->where(fn (Builder $q) => $q->whereNull('NgayKetThuc')
+                ->orWhereDate('NgayKetThuc', '>=', $today));
     }
 
     public function find(int $id): ?KhuyenMai
