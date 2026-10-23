@@ -122,11 +122,8 @@ if (panel) {
                 (isWeightUnit && (!Number.isFinite(parsedWeight) || parsedWeight <= 0))
                 || (!isWeightUnit && (!Number.isInteger(parsedQuantity) || parsedQuantity < 1))
             ) {
-                rowWarnings.push(isWeightUnit
-                    ? 'Nhập khối lượng lớn hơn 0 kg để tính thành tiền.'
-                    : 'Nhập số lượng nguyên dương để tính thành tiền.');
                 priceInput.value = money(price.price);
-                subtotalInput.value = '—';
+                subtotalInput.value = 'Chờ kiểm tra';
                 continue;
             }
 
@@ -230,6 +227,7 @@ if (panel) {
     }
 
     function refreshLocalEstimate() {
+        calculateCurrentItems();
         if (!estimateData) {
             if (initialEstimatePending) {
                 return;
@@ -253,6 +251,7 @@ if (panel) {
             return;
         }
 
+        calculateCurrentItems();
         initialEstimatePending = true;
         const items = [...itemsContainer.querySelectorAll('.booking-item')].map(row => {
             const item = {};
@@ -268,7 +267,8 @@ if (panel) {
             }
 
             return item;
-        });
+        }).filter(item => item.DichVuID && item.LoaiDoGiatID && item.DonViTinhID
+            && (Number(item.SoLuong) > 0 || Number(item.KhoiLuong) > 0));
 
         total.textContent = 'Đang tính…';
         warning.textContent = '';

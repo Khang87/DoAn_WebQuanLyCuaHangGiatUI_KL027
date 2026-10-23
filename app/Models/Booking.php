@@ -96,6 +96,11 @@ class Booking extends Model
         return $this->hasMany(ChiTietBooking::class, 'BookingID', 'BookingID');
     }
 
+    public function requestedServices(): HasMany
+    {
+        return $this->hasMany(BookingYeuCauDichVu::class, 'BookingID', 'BookingID');
+    }
+
     public function khuyenMai(): BelongsTo
     {
         return $this->belongsTo(KhuyenMai::class, 'KhuyenMaiID', 'KhuyenMaiID');

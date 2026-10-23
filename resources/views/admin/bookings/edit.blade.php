@@ -35,6 +35,15 @@
     $customerEmail = $customer?->Email ?: $customerAccount?->Email;
     $intakeDocument = $booking->giaoNhanDuKiens->firstWhere('LoaiGiaoNhan', 'NHAN_DO');
     $intakeEmployee = $intakeDocument?->nhanVien;
+    $legacyRequestPrefix = 'Khách chọn dịch vụ chưa rõ số lượng: ';
+    $bookingNoteLines = preg_split('/\r\n|\r|\n/', (string) ($booking->GhiChu ?? ''));
+    $legacyRequestedServices = collect($bookingNoteLines)
+        ->filter(fn ($line) => str_starts_with($line, $legacyRequestPrefix))
+        ->map(fn ($line) => rtrim(substr($line, strlen($legacyRequestPrefix)), '.'))
+        ->values();
+    $visibleBookingNotes = collect($bookingNoteLines)
+        ->reject(fn ($line) => str_starts_with($line, $legacyRequestPrefix))
+        ->implode("\n");
 @endphp
 <div class="card">
     <div class="card-body">
@@ -202,11 +211,61 @@
                 @endif
                 @php
                     $bookingItems = old('items', $booking->chiTietBookings->map(fn ($item) => $item->only(['DichVuID', 'LoaiDoGiatID', 'DonViTinhID', 'SoLuong', 'KhoiLuong', 'GhiChu', 'TinhTrangTruocKhiGiat']))->all());
+                    if ($inspectionMode && old('items') === null) {
+                        $existingTuples = collect($bookingItems)->mapWithKeys(fn ($item) => [implode(':', [
+                            $item['DichVuID'] ?? '', $item['LoaiDoGiatID'] ?? '', $item['DonViTinhID'] ?? '',
+                        ]) => true]);
+                        foreach ($booking->requestedServices as $requestedService) {
+                            $tuple = implode(':', [
+                                $requestedService->DichVuID,
+                                $requestedService->LoaiDoGiatID,
+                                $requestedService->DonViTinhID,
+                            ]);
+                            if ($existingTuples->has($tuple)) {
+                                continue;
+                            }
+                            $isWeightUnit = $requestedService->donViTinh?->isWeightUnit() ?? false;
+                            $bookingItems[] = [
+                                'DichVuID' => $requestedService->DichVuID,
+                                'service_category_id' => $requestedService->dichVu?->LoaiDichVuID,
+                                'LoaiDoGiatID' => $requestedService->LoaiDoGiatID,
+                                'DonViTinhID' => $requestedService->DonViTinhID,
+                                'SoLuong' => $isWeightUnit ? '' : '0',
+                                'KhoiLuong' => $isWeightUnit ? '0' : '',
+                            ];
+                            $existingTuples->put($tuple, true);
+                        }
+                    }
                     if ($bookingItems === []) {
                         $bookingItems = [[]];
                     }
                 @endphp
                 @if($inspectionMode)
+                    @if($booking->requestedServices->isNotEmpty() || $legacyRequestedServices->isNotEmpty())
+                        <div class="col-12">
+                            <div class="alert alert-info mb-2">
+                                <strong>Dịch vụ khách yêu cầu · đã thêm vào bảng kiểm kê bên dưới</strong>
+                                <div class="small mt-1">Các dòng chưa biết số lượng/khối lượng bắt đầu từ 0. Nhân viên kiểm tra thực tế rồi cập nhật trước khi báo giá.</div>
+                                @if($booking->requestedServices->isNotEmpty())
+                                    <ul class="mb-0 mt-2">
+                                        @foreach($booking->requestedServices as $requestedService)
+                                            <li>
+                                                {{ $requestedService->dichVu?->TenDichVu ?? 'Dịch vụ không còn tồn tại' }}
+                                                · {{ $requestedService->loaiDoGiat?->TenLoaiDoGiat ?? 'Loại đồ không còn tồn tại' }}
+                                                (đơn vị dự kiến {{ $requestedService->donViTinh?->KyHieu ?: $requestedService->donViTinh?->TenDonViTinh ?: 'chưa rõ' }})
+                                            </li>
+                                        @endforeach
+                                    </ul>
+                                @else
+                                    <ul class="mb-0 mt-2">
+                                        @foreach($legacyRequestedServices as $legacyRequest)
+                                            <li>{{ $legacyRequest }} <span class="text-muted">(yêu cầu cũ lưu trong ghi chú)</span></li>
+                                        @endforeach
+                                    </ul>
+                                @endif
+                            </div>
+                        </div>
+                    @endif
                     <div class="col-12">
                         <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
                             <h6 class="mb-0">Mặt hàng từ Booking · kiểm tra và chỉnh nếu cần</h6>
@@ -236,6 +295,17 @@
                                         @php
                                             $selectedService = $services->firstWhere('DichVuID', $item['DichVuID'] ?? null);
                                             $selectedCategoryId = $item['service_category_id'] ?? $selectedService?->LoaiDichVuID;
+                                            $selectedPricing = $pricingUnitOptions->first(fn (array $option): bool => (string) $option['serviceId'] === (string) ($item['DichVuID'] ?? '') && (string) $option['garmentId'] === (string) ($item['LoaiDoGiatID'] ?? '') && (string) $option['unitId'] === (string) ($item['DonViTinhID'] ?? ''));
+                                            $isWeightPricing = $selectedPricing && \App\Models\BangGia::isWeightUnit($selectedPricing['unit']);
+                                            $measuredAmount = $isWeightPricing ? ($item['KhoiLuong'] ?? null) : ($item['SoLuong'] ?? null);
+                                            $estimatedSubtotal = $selectedPricing && is_numeric($measuredAmount) && (float) $measuredAmount > 0
+                                                ? app(\App\Services\TinhTienGiatUiService::class)->tinhThanhTienChiTiet([
+                                                    'DonGia' => $selectedPricing['price'],
+                                                    'KyHieu' => $selectedPricing['unit'],
+                                                    'SoLuong' => $isWeightPricing ? 0 : $item['SoLuong'],
+                                                    'KhoiLuong' => $isWeightPricing ? $item['KhoiLuong'] : 0,
+                                                ])
+                                                : null;
                                             $quantityValue = $item['SoLuong'] ?? '';
                                             if (is_numeric($quantityValue) && floor((float) $quantityValue) === (float) $quantityValue) {
                                                 $quantityValue = (string) (int) $quantityValue;
@@ -279,10 +349,10 @@
                                                 </select>
                                                 <div class="form-text text-danger booking-price-warning" data-price-warning role="status"></div>
                                             </td>
-                                            <td><input type="number" step="1" min="1" class="form-control booking-quantity item-quantity" name="items[{{ $index }}][SoLuong]" value="{{ $quantityValue }}" aria-label="Số lượng"></td>
-                                            <td><input type="number" step="0.01" min="0.01" class="form-control booking-weight item-weight" name="items[{{ $index }}][KhoiLuong]" value="{{ $item['KhoiLuong'] ?? '' }}" aria-label="Khối lượng (kg)"></td>
-                                            <td><input type="text" class="form-control booking-item-price item-price text-end" value="—" readonly aria-label="Đơn giá"></td>
-                                            <td><input type="text" class="form-control booking-item-subtotal item-subtotal text-end" value="—" readonly aria-label="Thành tiền"></td>
+                                            <td><input type="number" step="1" min="{{ $inspectionMode ? '0' : '1' }}" class="form-control booking-quantity item-quantity" name="items[{{ $index }}][SoLuong]" value="{{ $quantityValue }}" aria-label="Số lượng"></td>
+                                            <td><input type="number" step="0.01" min="{{ $inspectionMode ? '0' : '0.01' }}" class="form-control booking-weight item-weight" name="items[{{ $index }}][KhoiLuong]" value="{{ $item['KhoiLuong'] ?? '' }}" aria-label="Khối lượng (kg)"></td>
+                                            <td><input type="text" class="form-control booking-item-price item-price text-end" value="{{ $selectedPricing ? number_format((float) $selectedPricing['price'], 0, ',', '.').' VNĐ' : '—' }}" readonly aria-label="Đơn giá"></td>
+                                            <td><input type="text" class="form-control booking-item-subtotal item-subtotal text-end" value="{{ $estimatedSubtotal !== null ? number_format($estimatedSubtotal, 0, ',', '.').' VNĐ' : ($selectedPricing ? 'Chờ kiểm tra' : '—') }}" readonly aria-label="Thành tiền"></td>
                                             <td><textarea class="form-control" name="items[{{ $index }}][TinhTrangTruocKhiGiat]" rows="2" maxlength="320" placeholder="VD: ố màu, rách, bung chỉ..." required>{{ $item['TinhTrangTruocKhiGiat'] ?? '' }}</textarea></td>
                                             <td><button type="button" class="btn btn-sm btn-outline-danger remove-booking-item" aria-label="Xóa mặt hàng"><i class="bi bi-trash"></i></button></td>
                                         </tr>
@@ -355,7 +425,8 @@
                 @endif
                 <div class="col-12">
                     <label class="form-label">{{ $inspectionMode ? 'Ghi chú từ khách hàng' : 'Ghi chú' }}</label>
-                    <textarea class="form-control @error('notes') is-invalid @enderror" name="notes" rows="3" maxlength="500" @readonly($inspectionMode)>{{ old('notes', $booking->GhiChu) }}</textarea>
+                    <textarea class="form-control @error('notes') is-invalid @enderror" @unless($inspectionMode) name="notes" @endunless rows="3" maxlength="500" @readonly($inspectionMode)>{{ $inspectionMode ? $visibleBookingNotes : old('notes', $booking->GhiChu) }}</textarea>
+                    @if($inspectionMode)<input type="hidden" name="notes" value="{{ old('notes', $booking->GhiChu) }}">@endif
                     @error('notes')<div class="invalid-feedback">{{ $message }}</div>@enderror
                 </div>
             </div>
@@ -384,7 +455,7 @@
                     <div class="form-check border rounded-3 p-3">
                         <input class="form-check-input ms-0 me-2" type="checkbox" id="customer_accepted" name="customer_accepted" value="1" required @checked(old('customer_accepted'))>
                         <label class="form-check-label fw-semibold" for="customer_accepted">
-                            Tôi xác nhận đã thông báo kết quả kiểm kê và tổng tiền thực tế cho khách hàng, và khách hàng đã đồng ý.
+                            Tôi xác nhận đã báo kết quả kiểm kê và tổng tiền thực tế trực tiếp cho khách hàng, và khách đã đồng ý bằng lời.
                         </label>
                         <div class="form-text">Đây là ghi nhận của nhân viên, không phải chữ ký hay bằng chứng xác nhận độc lập từ khách.</div>
                         @error('customer_accepted')<div class="text-danger small mt-2">{{ $message }}</div>@enderror

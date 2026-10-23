@@ -76,7 +76,7 @@ class BookingController extends Controller
         $record = $this->bookingService->find($booking);
         abort_if(! $record, 404);
         $validated = $request->validate([
-            'items' => ['required', 'array', 'min:1', 'max:100'],
+            'items' => ['present', 'array', 'max:100'],
             'items.*.DichVuID' => ['required', 'integer', 'min:1'],
             'items.*.LoaiDoGiatID' => ['required', 'integer', 'min:1'],
             'items.*.DonViTinhID' => ['required', 'integer', 'min:1'],
@@ -177,9 +177,15 @@ class BookingController extends Controller
             }
         }
 
-        $serviceIds = $booking->chiTietBookings->pluck('DichVuID')->all();
-        $garmentIds = $booking->chiTietBookings->pluck('LoaiDoGiatID')->all();
-        $unitIds = $booking->chiTietBookings->pluck('DonViTinhID')->all();
+        $serviceIds = $booking->chiTietBookings->pluck('DichVuID')
+            ->merge($inspectionMode ? $booking->requestedServices->pluck('DichVuID') : [])
+            ->unique()->all();
+        $garmentIds = $booking->chiTietBookings->pluck('LoaiDoGiatID')
+            ->merge($inspectionMode ? $booking->requestedServices->pluck('LoaiDoGiatID') : [])
+            ->unique()->all();
+        $unitIds = $booking->chiTietBookings->pluck('DonViTinhID')
+            ->merge($inspectionMode ? $booking->requestedServices->pluck('DonViTinhID') : [])
+            ->unique()->all();
         $services = DichVu::query()
             ->where(fn ($query) => $query->where('TrangThai', 'Hoạt động')->orWhereIn('DichVuID', $serviceIds))
             ->orderBy('TenDichVu')

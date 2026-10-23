@@ -18,6 +18,15 @@
 @php
     $intakeDocument = $booking->giaoNhanDuKiens->firstWhere('LoaiGiaoNhan', 'NHAN_DO');
     $inspectionDecision = $booking->kiemKe?->DuLieuThucTe['_decision'] ?? [];
+    $legacyRequestPrefix = 'Khách chọn dịch vụ chưa rõ số lượng: ';
+    $bookingNoteLines = preg_split('/\r\n|\r|\n/', (string) ($booking->GhiChu ?? ''));
+    $legacyRequestedServices = collect($bookingNoteLines)
+        ->filter(fn ($line) => str_starts_with($line, $legacyRequestPrefix))
+        ->map(fn ($line) => rtrim(substr($line, strlen($legacyRequestPrefix)), '.'))
+        ->values();
+    $visibleBookingNotes = collect($bookingNoteLines)
+        ->reject(fn ($line) => str_starts_with($line, $legacyRequestPrefix))
+        ->implode("\n");
 @endphp
 
 <div class="row g-4 align-items-start">
@@ -40,6 +49,28 @@
             </x-admin.detail.info-grid>
 
             <div class="mt-4">
+                @if($booking->requestedServices->isNotEmpty() || $legacyRequestedServices->isNotEmpty())
+                    <div class="detail-field__label mb-2">Dịch vụ khách yêu cầu · chờ kiểm tra số lượng/khối lượng</div>
+                    <div class="alert alert-info">
+                        @if($booking->requestedServices->isNotEmpty())
+                            <ul class="mb-0">
+                                @foreach($booking->requestedServices as $requestedService)
+                                    <li>
+                                        {{ $requestedService->dichVu?->TenDichVu ?? 'Dịch vụ không còn tồn tại' }}
+                                        · {{ $requestedService->loaiDoGiat?->TenLoaiDoGiat ?? 'Loại đồ không còn tồn tại' }}
+                                        (đơn vị dự kiến {{ $requestedService->donViTinh?->KyHieu ?: $requestedService->donViTinh?->TenDonViTinh ?: 'chưa rõ' }})
+                                    </li>
+                                @endforeach
+                            </ul>
+                        @else
+                            <ul class="mb-0">
+                                @foreach($legacyRequestedServices as $legacyRequest)
+                                    <li>{{ $legacyRequest }} <span class="text-muted">(yêu cầu cũ lưu trong ghi chú)</span></li>
+                                @endforeach
+                            </ul>
+                        @endif
+                    </div>
+                @endif
                 <div class="detail-field__label mb-2">Dịch vụ dự kiến</div>
                 @forelse($booking->chiTietBookings as $item)
                     <div class="border rounded p-3 mb-2">
@@ -60,10 +91,10 @@
                 @endforelse
             </div>
 
-            @if($booking->GhiChu)
+            @if(trim($visibleBookingNotes) !== '')
                 <div class="mt-4">
                     <div class="detail-field__label mb-2">Ghi chú</div>
-                    <div class="detail-text">{{ $booking->GhiChu }}</div>
+                    <div class="detail-text">{{ $visibleBookingNotes }}</div>
                 </div>
             @endif
         </x-admin.detail.panel>
