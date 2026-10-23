@@ -144,43 +144,6 @@
             @endif
         </x-admin.detail.panel>
 
-        <div class="card shadow-sm border-0 order-first">
-            <div class="card-header bg-transparent border-bottom d-flex align-items-center gap-2 py-3">
-                <div class="bg-light rounded p-2 d-inline-flex align-items-center justify-content-center">
-                    <i class="fas fa-sliders-h text-secondary"></i>
-                </div>
-                <h5 class="card-title mb-0 fw-bold">Thao tác</h5>
-            </div>
-            <div class="card-body d-flex flex-column gap-2">
-                @if($booking->statusEnum() === \App\Enums\BookingStatus::Pending)
-                @can('bookings.edit')
-                    <a href="{{ route('bookings.edit', $booking) }}" class="btn btn-primary w-100 py-2">
-                        <i class="fas fa-pencil-alt me-1"></i> Chỉnh sửa
-                    </a>
-                @endcan
-                @endif
-
-                @if(! $order && $booking->statusEnum() === \App\Enums\BookingStatus::Pending)
-                    @can('bookings.confirm')
-                        <form action="{{ route('bookings.approve', $booking) }}" method="POST">@csrf<button class="btn btn-success w-100 py-2" type="submit"><i class="bi bi-check-circle me-1"></i>Xác nhận Booking</button></form>
-                        <div class="pt-2 border-top">
-                            <x-admin.detail.confirm-form
-                                :action="route('bookings.cancel', $booking)"
-                                method="POST"
-                                title="Hủy đặt lịch?"
-                                text="Booking đang chờ sẽ được chuyển sang trạng thái Đã hủy. Bạn có muốn tiếp tục không?"
-                                label="Hủy đặt lịch"
-                                icon="bi bi-x-circle"
-                                variant="btn-outline-danger"
-                                size="py-2"
-                                block
-                            />
-                        </div>
-                    @endcan
-                @endif
-            </div>
-        </div>
-
         @if($booking->giaoNhanDuKiens->isNotEmpty())
             <x-admin.detail.panel title="Phiếu nhận và kế hoạch trả từ Booking" icon="bi-truck" :iconClass="'bg-info-subtle text-info'">
                 @foreach($booking->giaoNhanDuKiens as $leg)

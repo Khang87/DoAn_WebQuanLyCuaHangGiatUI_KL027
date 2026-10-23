@@ -5,6 +5,16 @@
 
 @push('styles')
     <style>
+        summary.system-log-detail-toggle {
+            display: inline-flex;
+            list-style: none;
+            cursor: pointer;
+        }
+
+        summary.system-log-detail-toggle::-webkit-details-marker {
+            display: none;
+        }
+
         .system-log-filter-actions {
             display: flex;
             align-items: center;
@@ -94,7 +104,7 @@
                 <select id="table" name="table" class="form-select">
                     <option value="">Tất cả bảng</option>
                     @foreach($tables as $table)
-                        <option value="{{ $table }}" @selected(($filters['table'] ?? '') === $table)>{{ $table }}</option>
+                        <option value="{{ $table }}" @selected(($filters['table'] ?? '') === $table)>{{ \App\Models\NhatKyHeThong::labelForBang($table) }}</option>
                     @endforeach
                 </select>
             </div>
@@ -150,11 +160,11 @@
                 <thead class="table-light">
                     <tr>
                         <th scope="col">STT</th>
-                        <th>Thời gian</th>
-                        <th>Tài khoản</th>
+                        <th style="width: 150px;">Thời gian</th>
+                        <th style="width: 190px;">Tài khoản</th>
                         <th>Hành động</th>
-                        <th>Bảng dữ liệu</th>
-                        <th>Chi tiết</th>
+                        <th style="width: 160px;">Bảng dữ liệu</th>
+                        <th style="width: 110px;">Chi tiết</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -177,11 +187,13 @@
                                 @endif
                             </td>
                             <td>{{ $log->HanhDong }}</td>
-                            <td><span class="badge bg-light text-dark border">{{ $log->BangDuLieu }}</span></td>
+                            <td><span class="badge bg-light text-dark border">{{ $log->BangDuLieuLabel }}</span></td>
                             <td>
                                 @if($log->DuLieuCu || $log->DuLieuMoi || $log->LyDo)
                                     <details>
-                                        <summary class="text-primary">Xem</summary>
+                                        <summary class="system-log-detail-toggle btn-order-action view" title="Xem" aria-label="Xem chi tiết">
+                                            <i class="bi bi-eye"></i>
+                                        </summary>
                                         @if($log->LyDo)
                                             <p class="small mt-2 mb-1">{{ $log->LyDo }}</p>
                                         @endif

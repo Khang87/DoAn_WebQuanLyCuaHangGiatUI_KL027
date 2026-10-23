@@ -6,7 +6,7 @@
     <div class="card-body">
         <div class="d-flex justify-content-between align-items-center mb-4">
             <h5 class="mb-0">Sửa hóa đơn</h5>
-            <a href="{{ route('invoices.index') }}" class="btn btn-outline-secondary btn-sm">
+            <a href="{{ $backUrl ?? route('invoices.index') }}" class="btn btn-outline-secondary btn-sm">
                 <i class="bi bi-arrow-left me-1"></i>Quay lại
             </a>
         </div>

@@ -126,7 +126,22 @@
                                     <a href="{{ route('reviews.show', $review) }}" class="btn btn-order-action view" title="Xem"><i class="bi bi-eye"></i></a>
                                 @endcan
                                 @can('reviews.respond')
-                                    <a href="{{ route('reviews.show', $review) }}#phan-hoi" class="btn btn-order-action edit" title="Phản hồi"><i class="bi bi-reply"></i></a>
+                                    <a href="{{ route('reviews.show', ['review' => $review, 'respond' => 1]) }}#phan-hoi" class="btn btn-order-action edit" title="Phản hồi"><i class="bi bi-pencil"></i></a>
+                                @endcan
+                                @can('reviews.toggle')
+                                    <x-admin.detail.confirm-form
+                                        :action="route('reviews.toggle', $review)"
+                                        method="PATCH"
+                                        title="{{ $review->status === 'hidden' ? 'Hiện' : 'Ẩn' }} đánh giá này?"
+                                        text="Trạng thái hiển thị của đánh giá sẽ thay đổi."
+                                        label="{{ $review->status === 'hidden' ? 'Hiện đánh giá' : 'Ẩn đánh giá' }}"
+                                        :icon="$review->status === 'hidden' ? 'bi-eye' : 'bi-eye-slash'"
+                                        variant="btn-order-action"
+                                        size=""
+                                        :iconOnly="true"
+                                        color="#64748b"
+                                        :iconName="'question'"
+                                    />
                                 @endcan
                             </div>
                         </td>

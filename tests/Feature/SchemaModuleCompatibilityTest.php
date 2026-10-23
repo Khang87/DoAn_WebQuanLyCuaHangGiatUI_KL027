@@ -32,6 +32,7 @@ class SchemaModuleCompatibilityTest extends TestCase
         ]);
         $booking->setRelation('khachHang', null);
         $booking->setRelation('nhanVien', null);
+        $booking->setRelation('donHangs', collect());
 
         $html = view('admin.bookings.index', [
             'bookings' => new LengthAwarePaginator(collect([$booking]), 1, 10),

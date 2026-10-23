@@ -211,21 +211,6 @@
                 <button type="button" class="btn btn-outline-primary w-100 py-2" onclick="window.print()">
                     <i class="fas fa-print me-1"></i> In hóa đơn
                 </button>
-
-                @if(! $isPaid)
-                    @can('invoices.delete')
-                        <x-admin.detail.confirm-form
-                            :action="route('invoices.destroy', $invoice->HoaDonID)"
-                            title="Xóa hóa đơn?"
-                            text="Hóa đơn thuộc đơn đã quyết toán chỉ có thể xóa theo quyền quản lý."
-                            label="Xóa hóa đơn"
-                            icon="bi-trash"
-                            variant="btn-outline-danger"
-                            size="py-2"
-                            block
-                        />
-                    @endcan
-                @endif
             </div>
         </div>
     </div>

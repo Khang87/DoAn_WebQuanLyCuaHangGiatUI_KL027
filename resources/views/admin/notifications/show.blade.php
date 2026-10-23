@@ -69,35 +69,25 @@
 
     {{-- ============ CỘT PHỤ (4/12) ============ --}}
     <div class="col-lg-5 d-flex flex-column">
-        <div class="card shadow-sm border-0 order-first">
-            <div class="card-header bg-transparent border-bottom d-flex align-items-center gap-2 py-3">
-                <div class="bg-light rounded p-2 d-inline-flex align-items-center justify-content-center">
-                    <i class="fas fa-sliders-h text-secondary"></i>
-                </div>
-                <h5 class="card-title mb-0 fw-bold">Thao tác</h5>
-            </div>
-            <div class="card-body d-flex flex-column gap-2">
-                @can('messages.view')
-                    @if($isCustomerMessage)
-                        <a
-                            href="{{ $notification->tinNhan->DonHangID
-                                ? route('admin.messages.index', ['order_id' => $notification->tinNhan->DonHangID])
-                                : route('admin.messages.index', ['customer_id' => $messageSender->TaiKhoanID]) }}"
-                            class="btn btn-outline-primary w-100 py-2"
-                        >
-                            <i class="bi bi-chat-dots me-1" aria-hidden="true"></i> Nhắn tin khách hàng
-                        </a>
-                    @endif
-                @endcan
-            </div>
-        </div>
-
         <x-admin.detail.panel title="Thông tin gửi" icon="bi-clock-history" :iconClass="'bg-secondary-subtle text-secondary'">
             <x-admin.detail.info-grid :columns="1">
                 <x-admin.detail.info-item label="Người nhận" :value="$notification->taiKhoan?->HoTen ?? $notification->taiKhoan?->TenDangNhap ?? 'Tất cả nhân viên'" />
                 <x-admin.detail.info-item label="Thời điểm gửi" :value="$notification->ThoiGianGui?->format('d/m/Y H:i')" />
                 <x-admin.detail.info-item label="Thời điểm đọc" :value="$notification->DaDoc ? $notification->ThoiGianGui?->format('d/m/Y H:i') : '—'" />
             </x-admin.detail.info-grid>
+
+            @can('messages.view')
+                @if($isCustomerMessage)
+                    <a
+                        href="{{ $notification->tinNhan->DonHangID
+                            ? route('admin.messages.index', ['order_id' => $notification->tinNhan->DonHangID])
+                            : route('admin.messages.index', ['customer_id' => $messageSender->TaiKhoanID]) }}"
+                        class="btn btn-outline-primary w-100 py-2 mt-3"
+                    >
+                        <i class="bi bi-chat-dots me-1" aria-hidden="true"></i> Nhắn tin khách hàng
+                    </a>
+                @endif
+            @endcan
         </x-admin.detail.panel>
     </div>
 </div>

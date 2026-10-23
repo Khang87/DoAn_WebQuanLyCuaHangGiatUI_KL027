@@ -134,35 +134,6 @@
                 </x-admin.detail.info-item>
             </x-admin.detail.info-grid>
         </x-admin.detail.panel>
-
-        <div class="card shadow-sm border-0 order-first">
-            <div class="card-header bg-transparent border-bottom d-flex align-items-center gap-2 py-3">
-                <div class="bg-light rounded p-2 d-inline-flex align-items-center justify-content-center">
-                    <i class="fas fa-sliders-h text-secondary"></i>
-                </div>
-                <h5 class="card-title mb-0 fw-bold">Thao tác</h5>
-            </div>
-            <div class="card-body d-flex flex-column gap-2">
-                @can('promotions.edit')
-                    <a href="{{ route('promotions.edit', $promotion->KhuyenMaiID) }}" class="btn btn-primary w-100 py-2">
-                        <i class="fas fa-pencil-alt me-1"></i>Chỉnh sửa
-                    </a>
-                @endcan
-
-                @can('promotions.delete')
-                    <x-admin.detail.confirm-form
-                        :action="route('promotions.destroy', $promotion->KhuyenMaiID)"
-                        title="Xóa chương trình khuyến mãi?"
-                        text="Chương trình đã được dùng sẽ chuyển sang trạng thái tạm ngưng."
-                        label="Xóa chương trình khuyến mãi"
-                        icon="bi-trash"
-                        variant="btn-outline-danger"
-                        size="py-2"
-                        block
-                    />
-                @endcan
-            </div>
-        </div>
     </div>
 </div>
 @endsection

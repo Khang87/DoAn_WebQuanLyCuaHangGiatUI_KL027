@@ -6,7 +6,7 @@
 @section('content')
 @php
     $reviewStatus = $review->status ?? 'visible';
-    $isHidden = $reviewStatus === 'hidden';
+    $isResponding = request()->boolean('respond');
 @endphp
 
 <x-admin.detail.page-header
@@ -30,8 +30,7 @@
 </x-admin.detail.page-header>
 
 <div class="row g-4 align-items-start">
-    {{-- ============ CỘT CHÍNH (7/12) ============ --}}
-    <div class="col-lg-7">
+    <div class="{{ $isResponding ? 'col-lg-7' : 'col-12' }}">
         <x-admin.detail.panel title="Nội dung đánh giá" icon="bi-chat-quote" :iconClass="'bg-warning-subtle text-warning-emphasis'">
             <div class="d-flex justify-content-between align-items-center mb-3">
                 <div class="fs-4 text-warning">
@@ -65,7 +64,7 @@
                 <x-admin.detail.info-item label="Khách hàng">
                     {{ $review->khachHang?->HoTen ?: '—' }}
                 </x-admin.detail.info-item>
-                <x-admin.detail.info-item label="Ngày đánh giá" :value="$review->created_at?->format('d/m/Y H:i')" />
+                <x-admin.detail.info-item label="Ngày đánh giá" :value="$review->NgayDanhGia?->format('d/m/Y H:i')" />
                 <x-admin.detail.info-item label="Trạng thái">
                     <x-admin.status-badge :status="$reviewStatus" :enum="\App\Enums\ReviewStatus::class" :pill="false" />
                 </x-admin.detail.info-item>
@@ -85,12 +84,12 @@
         </x-admin.detail.panel>
     </div>
 
-    {{-- ============ CỘT PHỤ (5/12) ============ --}}
+    @if($isResponding)
     <div class="col-lg-5 d-flex flex-column">
         <x-admin.detail.panel title="Phản hồi từ cửa hàng" icon="bi-reply" :iconClass="'bg-success-subtle text-success'" id="phan-hoi">
             @if($review->shop_response)
                 <div class="detail-text mb-2">{{ $review->shop_response }}</div>
-                <div class="detail-field__label">Đã phản hồi lúc {{ $review->reviewed_at?->format('d/m/Y H:i') }}</div>
+                <div class="detail-field__label">Cửa hàng đã gửi phản hồi</div>
             @else
                 <x-admin.detail.empty message="Chưa có phản hồi cho đánh giá này" icon="bi-reply" />
             @endif
@@ -108,31 +107,7 @@
             </form>
             @endcan
         </x-admin.detail.panel>
-
-        <div class="card shadow-sm border-0 order-first">
-            <div class="card-header bg-transparent border-bottom d-flex align-items-center gap-2 py-3">
-                <div class="bg-light rounded p-2 d-inline-flex align-items-center justify-content-center">
-                    <i class="fas fa-sliders-h text-secondary"></i>
-                </div>
-                <h5 class="card-title mb-0 fw-bold">Thao tác</h5>
-            </div>
-            <div class="card-body d-flex flex-column gap-2">
-                @can('reviews.toggle')
-                    <x-admin.detail.confirm-form
-                        :action="route('reviews.toggle', $review)"
-                        method="PATCH"
-                        title="{{ $isHidden ? 'Hiện' : 'Ẩn' }} đánh giá này?"
-                        text="Trạng thái hiển thị của đánh giá sẽ thay đổi."
-                        label="{{ $isHidden ? 'Hiện đánh giá' : 'Ẩn đánh giá' }}"
-                        :icon="$isHidden ? 'bi-eye' : 'bi-eye-slash'"
-                        variant="btn-outline-primary"
-                        color="#64748b"
-                        :iconName="'question'"
-                        :block="true"
-                    />
-                @endcan
-            </div>
-        </div>
     </div>
+    @endif
 </div>
 @endsection

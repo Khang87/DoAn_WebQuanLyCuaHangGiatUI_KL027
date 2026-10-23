@@ -617,11 +617,34 @@
                     </a>
                     @endcan
 
-                @if($order->hoaDons->isNotEmpty())
+                @php($orderInvoice = $order->hoaDons->first())
+                @if($orderInvoice?->isPaid())
                     @can('invoices.view')
-                    <a href="{{ route('invoices.show', $order->hoaDons->first()->HoaDonID) }}" class="btn btn-outline-primary w-100 py-2">
-                        <i class="fas fa-file-invoice me-1" aria-hidden="true"></i> Xem hóa đơn
+                    <a href="{{ route('invoices.show', $orderInvoice->HoaDonID) }}" class="btn btn-outline-primary w-100 py-2">
+                        <i class="fas fa-file-invoice me-1" aria-hidden="true"></i> Xem hóa đơn {{ $orderInvoice->MaHoaDon }}
                     </a>
+                    @endcan
+                @elseif($orderInvoice)
+                    <div class="small text-muted">
+                        <i class="bi bi-hourglass-split me-1" aria-hidden="true"></i>
+                        Hóa đơn {{ $orderInvoice->MaHoaDon }} đang chờ thanh toán; thu tiền xong hóa đơn mới hiển thị.
+                    </div>
+                    @can('invoices.edit')
+                        <a href="{{ route('invoices.edit', $orderInvoice->HoaDonID) }}" class="btn btn-outline-primary w-100 py-2">
+                            <i class="fas fa-pencil-alt me-1" aria-hidden="true"></i> Sửa hóa đơn chờ thu
+                        </a>
+                    @endcan
+                    @can('invoices.delete')
+                        <x-admin.detail.confirm-form
+                            :action="route('invoices.destroy', $orderInvoice->HoaDonID)"
+                            title="Xóa hóa đơn chờ thu?"
+                            text="Hóa đơn {{ $orderInvoice->MaHoaDon }} chưa thu tiền nên vẫn có thể xóa."
+                            label="Xóa hóa đơn chờ thu"
+                            icon="bi-trash"
+                            variant="btn-outline-danger"
+                            size="py-2"
+                            block
+                        />
                     @endcan
                 @elseif(in_array($order->TrangThai, ['Hoàn thành giặt', 'Đang giao', 'Đã giao'], true))
                     @can('invoices.create')

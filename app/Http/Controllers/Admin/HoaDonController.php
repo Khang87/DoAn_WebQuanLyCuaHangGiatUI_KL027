@@ -9,6 +9,7 @@ use App\Http\Controllers\Concerns\RejectsSettledRecords;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\LuuHoaDonRequest;
 use App\Models\DonHang;
+use App\Models\HoaDon;
 use App\Services\InvoiceService;
 use App\Support\FriendlyError;
 use Illuminate\Http\Request;
@@ -31,17 +32,17 @@ class HoaDonController extends Controller
             'date_to' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:date_from'],
         ]);
 
+        // Hóa đơn chỉ được "xuất" sau khi thu tiền, nên module Hóa đơn chỉ liệt kê
+        // hóa đơn đã thanh toán. Hóa đơn chờ thu theo dõi và thu tại trang Đơn hàng.
         $invoices = $this->invoiceService->getAll([
             'search' => $request->input('search'),
             'order_id' => $request->input('order_id'),
-            'status' => $request->input('status'),
+            'status' => InvoiceStatus::Paid->value,
             'date_from' => $dateFilters['date_from'] ?? null,
             'date_to' => $dateFilters['date_to'] ?? null,
         ]);
 
-        $statuses = InvoiceStatus::options();
-
-        return view('admin.invoices.index', compact('invoices', 'statuses'));
+        return view('admin.invoices.index', compact('invoices'));
     }
 
     public function create(Request $request)
@@ -59,14 +60,22 @@ class HoaDonController extends Controller
         try {
             $invoice = $this->invoiceService->create($request->validated());
 
-            return redirect()->route('invoices.show', $invoice)->with('success', 'Hóa đơn đã được tạo thành công.');
+            $order = DonHang::find($request->input('order_id'));
+            if ($order) {
+                return redirect()->route('orders.show', $order)->with('success', 'Hóa đơn đã được tạo thành công.');
+            }
+
+            return redirect()->route('invoices.index')
+                ->with('success', 'Hóa đơn '.$invoice->MaHoaDon.' đã được lập và chờ thu tiền; thu xong mới hiển thị ở danh sách Hóa đơn.');
         } catch (SettledOrderException $e) {
             // Không tạo được hoá đơn thứ hai cho đơn đã quyết toán là quy tắc
             // kế toán, áp dụng với MỌI vai trò kể cả Chủ cửa hàng, nên vẫn
             // trả về redirect kèm thông báo thay vì 403.
             return $this->rejectSettled($request, $e->getMessage(), route('invoices.index'));
         } catch (\Exception $e) {
-            return redirect()->route('invoices.create')->with('error', FriendlyError::message($e))->withInput();
+            $createParams = $request->filled('order_id') ? ['order_id' => $request->input('order_id')] : [];
+
+            return redirect()->route('invoices.create', $createParams)->with('error', FriendlyError::message($e))->withInput();
         }
     }
 
@@ -76,6 +85,11 @@ class HoaDonController extends Controller
 
         if (! $invoice) {
             abort(404);
+        }
+
+        if (! $invoice->isPaid()) {
+            return redirect()->route('invoices.index')
+                ->with('error', 'Hóa đơn '.$invoice->MaHoaDon.' chưa thanh toán nên chưa hiển thị. Thu tiền xong hóa đơn mới xuất hiện ở danh sách.');
         }
 
         $totalPaid = (float) ($invoice->donHang?->thanhToans
@@ -96,6 +110,19 @@ class HoaDonController extends Controller
         return auth()->user()?->canPermission('invoices.edit_paid') ?? false;
     }
 
+    /**
+     * Hóa đơn chờ thu không nằm trong danh sách Hóa đơn nên điểm quay lại hợp lý
+     * là trang Đơn hàng của nó (nếu tài khoản này xem được đơn hàng).
+     */
+    private function returnUrlFor(HoaDon $invoice): string
+    {
+        if ($invoice->DonHangID && (auth()->user()?->canPermission('orders.view') ?? false)) {
+            return route('orders.show', $invoice->DonHangID);
+        }
+
+        return route('invoices.index');
+    }
+
     public function edit(Request $request, int|string $id)
     {
         $invoice = $this->invoiceService->find($id);
@@ -113,8 +140,9 @@ class HoaDonController extends Controller
         }
 
         $orders = DonHang::where('TrangThai', '!=', 'Đã hủy')->orderBy('NgayTao', 'desc')->get();
+        $backUrl = $this->returnUrlFor($invoice);
 
-        return view('admin.invoices.edit', compact('invoice', 'orders'));
+        return view('admin.invoices.edit', compact('invoice', 'orders', 'backUrl'));
     }
 
     public function update(LuuHoaDonRequest $request, int|string $id)
@@ -128,7 +156,9 @@ class HoaDonController extends Controller
         try {
             $this->invoiceService->update($invoice, $request->validated());
 
-            return redirect()->route('invoices.index')->with('success', 'Hóa đơn đã được cập nhật.');
+            $saved = $this->invoiceService->find($invoice->getKey()) ?? $invoice;
+
+            return redirect()->to($this->returnUrlFor($saved))->with('success', 'Hóa đơn đã được cập nhật.');
         } catch (SettledOrderException $e) {
             return $this->denySettled($request, $e->getMessage(), route('invoices.show', $invoice));
         } catch (\Exception $e) {
@@ -147,7 +177,7 @@ class HoaDonController extends Controller
         try {
             $this->invoiceService->delete($invoice);
 
-            return redirect()->route('invoices.index')->with('success', 'Hóa đơn đã được xóa.');
+            return redirect()->to($this->returnUrlFor($invoice))->with('success', 'Hóa đơn đã được xóa.');
         } catch (SettledOrderException $e) {
             return $this->denySettled($request, $e->getMessage(), route('invoices.index'));
         } catch (\Exception $e) {
@@ -200,7 +230,7 @@ class HoaDonController extends Controller
                 (float) $invoice->GiamGia,
                 (float) $invoice->PhiGiaoHang,
                 (float) $invoice->ThanhTien,
-                $invoice->getStatusLabel(),
+                InvoiceStatus::labelFor($invoice->TrangThai),
             ]], null, 'A'.$row);
             $row++;
         }

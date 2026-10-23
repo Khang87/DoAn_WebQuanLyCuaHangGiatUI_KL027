@@ -66,19 +66,22 @@
                         <td class="text-dark">{{ $customer->DiaChi ?: '-' }}</td>
                         <td class="text-dark">{{ number_format((int) ($customer->diemTichLuy?->DiemHienTai ?? 0)) }} điểm</td>
                         <td class="text-dark">{{ $customer->NgayTao?->format('d/m/Y') ?: '-' }}</td>
-                        @if(auth()->user()?->canAny(['customers.view', 'customers.edit', 'customers.delete']))
+                        @if(auth()->user()?->canAny(['customers.view', 'customers.edit', 'customers.delete', 'orders.create']))
                         <td>
                             <div class="d-flex gap-2">
                                 @can('customers.view')
-                                <a href="{{ route('customers.show', $customer->KhachHangID) }}" class="btn btn-outline-secondary btn-sm" title="Xem"><i class="bi bi-eye"></i></a>
+                                <a href="{{ route('customers.show', $customer->KhachHangID) }}" class="btn btn-order-action view" title="Xem"><i class="bi bi-eye"></i></a>
                                 @endcan
                                 @can('customers.edit')
-                                <a href="{{ route('customers.edit', $customer->KhachHangID) }}" class="btn btn-outline-secondary btn-sm" title="Sửa"><i class="bi bi-pencil"></i></a>
+                                <a href="{{ route('customers.edit', $customer->KhachHangID) }}" class="btn btn-order-action edit" title="Sửa"><i class="bi bi-pencil"></i></a>
+                                @endcan
+                                @can('orders.create')
+                                <a href="{{ route('orders.create', ['customer_id' => $customer->KhachHangID]) }}" class="btn btn-order-action" title="Tạo đơn hàng"><i class="bi bi-bag-plus"></i></a>
                                 @endcan
                                 @can('customers.delete')
                                 <form action="{{ route('customers.destroy', $customer->KhachHangID) }}" method="POST" class="d-inline" id="deleteCustomerForm_{{ $customer->KhachHangID }}">
                                     @csrf @method('DELETE')
-                                    <button type="submit" class="btn btn-outline-secondary btn-sm" title="Xóa"><i class="bi bi-trash"></i></button>
+                                    <button type="submit" class="btn btn-order-action delete" title="Xóa"><i class="bi bi-trash"></i></button>
                                 </form>
                                 @endcan
                             </div>
@@ -87,7 +90,7 @@
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="{{ auth()->user()?->canAny(['customers.view', 'customers.edit', 'customers.delete']) ? 8 : 7 }}" class="text-center text-muted py-4">Chưa có khách hàng nào</td>
+                        <td colspan="{{ auth()->user()?->canAny(['customers.view', 'customers.edit', 'customers.delete', 'orders.create']) ? 8 : 7 }}" class="text-center text-muted py-4">Chưa có khách hàng nào</td>
                     </tr>
                     @endforelse
                 </tbody>
