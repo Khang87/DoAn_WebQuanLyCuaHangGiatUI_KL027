@@ -283,6 +283,13 @@ class ReportsServiceTest extends TestCase
             ->assertSee('formatter: value => formatCurrency(value)', false);
     }
 
+    public function test_service_composition_chart_keeps_percentage_labels_for_small_slices(): void
+    {
+        $this->actingAs($this->reportOwner())->get('/reports')
+            ->assertOk()
+            ->assertSee('minAngleToShowLabel: 0', false);
+    }
+
     public function test_reports_page_renders_with_all_supported_date_filters(): void
     {
         $this->actingAs($this->reportOwner());

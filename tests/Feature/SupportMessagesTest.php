@@ -106,6 +106,56 @@ class SupportMessagesTest extends TestCase
         ], 'TinNhanID');
     }
 
+    public function test_unread_count_includes_all_incoming_order_and_support_messages_without_marking_them_read(): void
+    {
+        Http::fake();
+        $this->message(2, 1, 1);
+        $this->message(2, 1, 1);
+        $received = $this->message(3, 1);
+        DB::table('TinNhan')->where('TinNhanID', $received)->update(['TrangThai' => 'Đã nhận']);
+        $read = $this->message(2, 1);
+        DB::table('TinNhan')->where('TinNhanID', $read)->update(['TrangThai' => 'Đã đọc']);
+        $this->message(1, 2, 1);
+        $this->message(1, 1);
+        $this->message(2, 3);
+        DB::table('TaiKhoan')->insert(['TaiKhoanID' => 4, 'TenDangNhap' => 'Staff2', 'NhanVienID' => 1]);
+        DB::table('TaiKhoan_VaiTro')->insert(['TaiKhoanID' => 4, 'VaiTroID' => 1]);
+        $this->message(2, 4);
+        $before = DB::table('TinNhan')->orderBy('TinNhanID')->get()->toJson();
+        $this->actingAs(User::findOrFail(1));
+
+        foreach (['', '?q=missing&page=99'] as $query) {
+            $this->getJson('/admin/messages/unread-count'.$query)
+                ->assertOk()->assertExactJson(['unread_count' => 4])
+                ->assertHeader('Cache-Control', 'no-store, private');
+        }
+
+        $this->assertSame($before, DB::table('TinNhan')->orderBy('TinNhanID')->get()->toJson());
+        Http::assertNothingSent();
+    }
+
+    public function test_unread_count_returns_zero_and_excludes_inactive_recipients(): void
+    {
+        Http::fake();
+        $this->actingAs(User::findOrFail(1));
+        $this->getJson('/admin/messages/unread-count')->assertOk()->assertExactJson(['unread_count' => 0]);
+        DB::table('TaiKhoan')->insert(['TaiKhoanID' => 4, 'TenDangNhap' => 'LockedStaff', 'NhanVienID' => 1, 'TrangThai' => 'Khóa']);
+        DB::table('TaiKhoan_VaiTro')->insert(['TaiKhoanID' => 4, 'VaiTroID' => 1]);
+        $this->message(2, 4);
+        $this->getJson('/admin/messages/unread-count')->assertOk()->assertExactJson(['unread_count' => 0]);
+        Http::assertNothingSent();
+    }
+
+    public function test_unread_count_requires_staff_permission_and_only_accepts_get(): void
+    {
+        $this->getJson('/admin/messages/unread-count')->assertUnauthorized();
+        $this->actingAs(User::findOrFail(2))->getJson('/admin/messages/unread-count')->assertForbidden();
+        $this->actingAs(User::findOrFail(1))->postJson('/admin/messages/unread-count')->assertStatus(405);
+        DB::table('TaiKhoan_VaiTro')->where('TaiKhoanID', 1)->delete();
+        PermissionCache::forgetAll();
+        $this->getJson('/admin/messages/unread-count')->assertForbidden();
+    }
+
     public function test_encrypted_support_message_is_decrypted_for_the_staff_view(): void
     {
         $key = random_bytes(32);

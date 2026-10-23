@@ -133,6 +133,8 @@ Route::middleware(['auth', 'reject.customer'])->group(function () {
         ->name('admin.messages.index');
     Route::get('/admin/messages/inbox', [MessageController::class, 'inbox'])
         ->middleware('permission:messages.view')->name('admin.messages.inbox');
+    Route::get('/admin/messages/unread-count', [MessageController::class, 'unreadCount'])
+        ->middleware('permission:messages.view')->name('admin.messages.unread-count');
     Route::post('/admin/messages/read', [MessageController::class, 'read'])
         ->middleware('permission:messages.view')->name('admin.messages.read');
     Route::get('/admin/messages/{order}/updates', [MessageController::class, 'orderUpdates'])

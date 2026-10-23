@@ -1248,6 +1248,63 @@ class BookingOrderConversionTest extends TestCase
             ->assertDontSee('name="DiemSuDung"', false);
     }
 
+    #[DataProvider('orderPaymentSummaryCases')]
+    public function test_order_show_displays_saved_delivery_fee_in_payment_summary(int $fee, int $promotionDiscount, int $pointsDiscount, int $total): void
+    {
+        DB::table('KhachHang')->insert(['KhachHangID' => 9]);
+        $order = DonHang::query()->create([
+            'MaDonHang' => 'DH-PAYMENT-SUMMARY',
+            'KhachHangID' => 9,
+            'TrangThai' => OrderStatus::Received->value,
+            'TongTien' => 700000,
+            'PhiGiaoHang' => $fee,
+            'TienGiamKhuyenMai' => $promotionDiscount,
+            'TienGiamDoDiem' => $pointsDiscount,
+            'DiemSuDung' => $pointsDiscount,
+            'ThanhTien' => $total,
+        ]);
+        $user = Mockery::mock(User::class)->makePartial();
+        $user->forceFill(['TaiKhoanID' => 1, 'NhanVienID' => 1, 'TrangThai' => 'Hoạt động']);
+        $user->shouldReceive('isManager')->andReturn(true);
+        $user->shouldReceive('isOwner')->andReturn(true);
+        $user->shouldReceive('isActive')->andReturn(true);
+        $user->shouldReceive('canPermission')->andReturn(true);
+        $this->actingAs($user);
+        Gate::before(fn () => true);
+        $this->withoutMiddleware();
+
+        $response = $this->get(route('orders.show', $order))->assertOk();
+        $response->assertSeeTextInOrder([
+            'Tạm tính',
+            '700,000 VNĐ',
+            'Phí giao nhận',
+            number_format($fee).' VNĐ',
+            'Tổng thanh toán',
+            number_format($total).' VNĐ',
+        ]);
+
+        if ($promotionDiscount > 0) {
+            $response->assertSeeText('Voucher giảm giá')->assertSeeText('-'.number_format($promotionDiscount).' VNĐ');
+        } else {
+            $response->assertDontSeeText('Voucher giảm giá');
+        }
+
+        if ($pointsDiscount > 0) {
+            $response->assertSeeText('Giảm giá từ điểm tích lũy')->assertSeeText('-'.number_format($pointsDiscount).' VNĐ');
+        } else {
+            $response->assertDontSeeText('Giảm giá từ điểm tích lũy');
+        }
+    }
+
+    public static function orderPaymentSummaryCases(): array
+    {
+        return [
+            'delivery fee without discounts' => [14000, 0, 0, 714000],
+            'no delivery fee' => [0, 0, 0, 700000],
+            'delivery fee with discounts' => [14000, 70000, 10000, 634000],
+        ];
+    }
+
     public function test_order_edit_displays_saved_rewards_without_edit_controls(): void
     {
         $this->createInspectionCatalog();

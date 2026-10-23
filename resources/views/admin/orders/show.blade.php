@@ -487,6 +487,10 @@
                 <span class="detail-summary__label">Tạm tính</span>
                 <x-admin.detail.money :value="$order->subtotal" class="fw-semibold" />
             </div>
+            <div class="d-flex justify-content-between align-items-center py-2">
+                <span class="detail-summary__label">Phí giao nhận</span>
+                <x-admin.detail.money :value="$order->PhiGiaoHang" class="fw-semibold" />
+            </div>
             @if($hasPromotionDiscount)
                 <div class="d-flex justify-content-between align-items-center py-2">
                     <span class="detail-summary__label">Voucher giảm giá</span>

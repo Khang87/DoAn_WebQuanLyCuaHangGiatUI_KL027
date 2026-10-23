@@ -10,8 +10,8 @@ function harness(read=false) {
     const element=()=>({dataset:{},style:{},children:[],append(child){this.children.push(child);},replaceChildren(fragment){this.children=fragment?.children||[];},addEventListener(){},querySelector(){return null;},querySelectorAll(){return [];},scrollTop:0,scrollHeight:10,clientHeight:10});
     const conversation=element();conversation.dataset={orderId:'7',messageUpdates:'/updates'};if(read)conversation.dataset.messageRead='/read';
     const status={textContent:''}, input={value:'draft',disabled:false};
-    const form=element();form.querySelectorAll=()=>[input];
-    const document={hidden:false,querySelector:s=>s==='[data-message-updates]'?conversation:s==='[data-message-status]'?status:s==='[data-message-form]'?form:s==='meta[name="csrf-token"]'?{content:''}:{dataset:{},querySelectorAll:()=>[input]},createElement:element,createDocumentFragment:element,addEventListener:(name,fn)=>{documentEvents[name]=fn;}};
+    const form=element();form.querySelectorAll=selector=>selector==='textarea, button'?[input]:[];
+    const document={hidden:false,querySelector:s=>s==='[data-message-updates]'?conversation:s==='[data-message-status]'?status:s==='[data-message-form]'?form:s==='meta[name="csrf-token"]'?{content:''}:null,createElement:element,createDocumentFragment:element,addEventListener:(name,fn)=>{documentEvents[name]=fn;}};
     const navigator={onLine:true};
     const context={Event,document,navigator,window:{dispatchEvent:()=>{},addEventListener:(name,fn)=>{events[name]=fn;}},AbortController,fetch:(url,options)=>new Promise((resolve,reject)=>{calls.push({resolve,reject,options});options.signal.addEventListener('abort',()=>reject(Error('aborted')));}),setTimeout:(fn,ms)=>{timers.set(++clock,{fn,ms});return clock;},clearTimeout:id=>timers.delete(id)};
     vm.runInNewContext(source,context);
@@ -32,6 +32,24 @@ test('snapshot renders text, preserves draft and avoids duplicate messages',asyn
 test('message timestamps render in Vietnam time regardless of browser timezone',async()=>{
     const h=harness();await h.respond(200,[timestampedMessage]);
     assert.equal(h.conversation.children[0].children[0].children[2].textContent,'09-10-2026 10:27');
+});
+for (const [name, isMine, recalled, expectedClass] of [
+    ['outgoing', true, false, 'text-white'],
+    ['incoming', false, false, 'text-muted'],
+    ['recalled outgoing', true, true, 'text-muted'],
+    ['recalled incoming', false, true, 'text-muted'],
+]) test(`${name} sender and timestamp use ${expectedClass}, never text-white-50`, async () => {
+    const h = harness();
+    await h.respond(200, [{...timestampedMessage, is_mine: isMine, recalled}]);
+    const [sender, , time] = h.conversation.children[0].children[0].children;
+    assert.equal(sender.textContent, timestampedMessage.sender_name);
+    assert.equal(time.textContent, '09-10-2026 10:27');
+    for (const metadata of [sender, time]) {
+        const classes = metadata.className.split(/\s+/);
+        assert.ok(classes.includes(expectedClass), `${metadata.className} must include ${expectedClass}`);
+        assert.ok(!classes.includes('text-white-50'));
+        assert.ok(!classes.includes(expectedClass === 'text-white' ? 'text-muted' : 'text-white'));
+    }
 });
 test('requests never overlap and pause while hidden, then resume',async()=>{
     const h=harness();h.events.online();assert.equal(h.calls.length,1);

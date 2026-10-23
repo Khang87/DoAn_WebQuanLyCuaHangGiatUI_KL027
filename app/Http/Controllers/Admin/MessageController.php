@@ -236,6 +236,12 @@ class MessageController extends Controller
         abort_unless($message->DonHangID === null && in_array((int) $customer->getKey(), [(int) $message->NguoiGuiID, (int) $message->NguoiNhanID], true), 404);
     }
 
+    public function unreadCount(): JsonResponse
+    {
+        return response()->json(['unread_count' => $this->messageService->unreadCount()])
+            ->header('Cache-Control', 'private, no-store');
+    }
+
     public function inbox(Request $request): JsonResponse
     {
         $validated = $request->validate([

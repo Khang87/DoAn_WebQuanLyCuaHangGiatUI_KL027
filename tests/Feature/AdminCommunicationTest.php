@@ -435,6 +435,43 @@ class AdminCommunicationTest extends TestCase
         }
     }
 
+    public function test_chat_uses_compact_send_button_contrasting_metadata_and_header_message_badge(): void
+    {
+        $staff = $this->createAccount('chat-staff');
+        $this->assignRole($staff, 'Owner');
+        $customer = $this->createAccount('chat-customer', 1);
+        KhachHang::query()->create(['KhachHangID' => 1, 'HoTen' => 'Khách thử nghiệm']);
+        $message = TinNhan::query()->create([
+            'NguoiGuiID' => $staff->getKey(),
+            'NguoiNhanID' => $customer->getKey(),
+            'NoiDung' => 'Cửa hàng xin chào',
+            'TrangThai' => 'Đã gửi',
+        ]);
+        config([
+            'services.supabase.project_url' => 'https://example.supabase.co',
+            'services.supabase.service_role_key' => 'test-service-role-key',
+        ]);
+        Http::fake([
+            'https://example.supabase.co/functions/v1/chat-encryption' => Http::response([
+                'messages' => [['TinNhanID' => $message->getKey(), 'NoiDung' => 'Cửa hàng xin chào']],
+            ]),
+        ]);
+
+        $this->actingAs($staff)->get(route('admin.messages.index', ['customer_id' => $customer->getKey()]))
+            ->assertOk()
+            ->assertSee('Cửa hàng xin chào')
+            ->assertSee('class="small text-white"', false)
+            ->assertSee('class="small text-end text-white"', false)
+            ->assertDontSee('text-white-50', false)
+            ->assertSee('btn-primary btn-sm align-self-end flex-shrink-0 text-nowrap px-3 py-2', false)
+            ->assertSee('data-message-unread="'.route('admin.messages.unread-count').'"', false)
+            ->assertSee('data-message-unread-count', false);
+
+        $this->get(route('admin.system-logs.index'))->assertOk()
+            ->assertSee('data-message-unread', false);
+        $this->assertSame('Đã gửi', $message->fresh()->TrangThai);
+    }
+
     public function test_notification_bell_shows_unread_dot_and_item_opens_its_detail(): void
     {
         $staff = $this->createAccount('notification-staff');
@@ -644,6 +681,7 @@ class AdminCommunicationTest extends TestCase
             $html = view('admin.messages.index')->render();
             $this->assertStringNotContainsString('data-message-inbox', $html);
             $this->assertStringNotContainsString('data-message-form', $html);
+            $this->assertStringNotContainsString('data-message-unread', $html);
             $this->assertStringNotContainsString('notification-bell-toggle', $html);
             $this->assertStringNotContainsString('data-notification-updates', $html);
         }

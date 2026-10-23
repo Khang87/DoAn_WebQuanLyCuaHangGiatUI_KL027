@@ -345,7 +345,7 @@
                 <span>Cơ cấu dịch vụ</span>
             </div>
             <div class="card-body p-3">
-                <div class="chart-container" style="position: relative; height: 320px; width: 100%;">
+                <div class="chart-container" style="position: relative; height: 380px; width: 100%;">
                     @if(array_sum($compositionData['revenue'] ?? []) > 0)
                     <div id="compositionChart"></div>
                     @else
@@ -616,7 +616,7 @@
                 labels: compositionLabels,
                 chart: {
                     type: 'donut',
-                    height: 320,
+                    height: 380,
                     fontFamily: 'Open Sans, Arial, sans-serif',
                     toolbar: { show: false },
                     animations: { enabled: false },
@@ -626,10 +626,12 @@
                 dataLabels: {
                     enabled: true,
                     formatter: (percentage, { seriesIndex }) => `${percentage.toFixed(1)}%`,
+                    style: { fontSize: '10px' },
                 },
                 legend: { show: false },
                 plotOptions: {
                     pie: {
+                        dataLabels: { minAngleToShowLabel: 0, offset: 8 },
                         donut: {
                             size: '62%',
                             labels: {

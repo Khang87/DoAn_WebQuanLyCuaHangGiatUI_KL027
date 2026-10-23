@@ -101,3 +101,59 @@ if (inbox) {
     window.addEventListener('pageshow', event => { if (event.persisted) { disposed = false; resume(); } });
     void sync();
 }
+
+const messageLink = document.querySelector('[data-message-unread]');
+if (messageLink) {
+    const badge = messageLink.querySelector('[data-message-unread-count]');
+    let timer, controller, pending = false, stopped = false, disposed = false, delay = 15000;
+
+    async function sync() {
+        if (pending || stopped || disposed || document.hidden || !navigator.onLine) return;
+        clearTimeout(timer);
+        pending = true;
+        controller = new AbortController();
+        const deadline = setTimeout(() => controller.abort(), 30000);
+        try {
+            const response = await fetch(messageLink.dataset.messageUnread, {
+                credentials: 'same-origin', cache: 'no-store', headers: { Accept: 'application/json' }, signal: controller.signal,
+            });
+            if ([401, 403, 404].includes(response.status)) {
+                stopped = true;
+                badge.hidden = true;
+                messageLink.hidden = true;
+                return;
+            }
+            if (!response.ok) throw new Error('Message count sync failed');
+            const data = await response.json();
+            if (!Number.isSafeInteger(data.unread_count) || data.unread_count < 0) throw new Error('Invalid message count');
+            if (document.hidden || disposed) return;
+            badge.hidden = data.unread_count === 0;
+            badge.textContent = data.unread_count > 99 ? '99+' : String(data.unread_count);
+            const label = `Tin nhắn khách hàng, ${data.unread_count} tin chưa đọc`;
+            messageLink.setAttribute('aria-label', label);
+            messageLink.setAttribute('title', label);
+            delay = 15000;
+        } catch {
+            delay = Math.min(delay * 2, 120000);
+        } finally {
+            clearTimeout(deadline);
+            pending = false;
+            controller = null;
+            if (!stopped && !disposed && !document.hidden && navigator.onLine) timer = setTimeout(sync, delay);
+        }
+    }
+
+    function resume() {
+        clearTimeout(timer);
+        if (document.hidden || !navigator.onLine) controller?.abort();
+        else { delay = 15000; void sync(); }
+    }
+
+    document.addEventListener('visibilitychange', resume);
+    window.addEventListener('online', resume);
+    window.addEventListener('offline', resume);
+    window.addEventListener('message-inbox-changed', () => { void sync(); });
+    window.addEventListener('pagehide', () => { disposed = true; clearTimeout(timer); controller?.abort(); });
+    window.addEventListener('pageshow', event => { if (event.persisted) { disposed = false; resume(); } });
+    void sync();
+}

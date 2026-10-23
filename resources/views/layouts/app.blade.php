@@ -279,6 +279,14 @@
             </div>
 
             <div class="navbar-actions">
+                @can('messages.view')
+                    <a href="{{ route('admin.messages.index') }}" class="navbar-action-btn"
+                        data-message-unread="{{ route('admin.messages.unread-count') }}"
+                        aria-label="Tin nhắn khách hàng" title="Tin nhắn khách hàng">
+                        <i class="bi bi-chat-dots" aria-hidden="true"></i>
+                        <span class="navbar-message-count" data-message-unread-count aria-hidden="true" hidden></span>
+                    </a>
+                @endcan
                 <!-- Notifications -->
             @can('notifications.view')
             @php
@@ -464,6 +472,9 @@
 
     @can('notifications.view')
         @vite('resources/js/notification-updates.js')
+    @endcan
+    @can('messages.view')
+        @vite('resources/js/message-inbox.js')
     @endcan
     @stack('scripts')
 </body>

@@ -63,6 +63,11 @@ class MessageService
         return $page;
     }
 
+    public function unreadCount(): int
+    {
+        return $this->unreadIncoming()->count();
+    }
+
     private function unreadIncoming(): Builder
     {
         return TinNhan::query()->whereIn('TrangThai', ['Đã gửi', 'Đã nhận'])
