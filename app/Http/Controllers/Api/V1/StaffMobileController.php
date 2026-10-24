@@ -12,6 +12,7 @@ use App\Models\DichVu;
 use App\Models\DonHang;
 use App\Models\GiaoNhan;
 use App\Models\LoaiDoGiat;
+use App\Models\KhuyenMai;
 use App\Models\StaffBookingDraft;
 use App\Models\User;
 use App\Services\BookingService;
@@ -230,7 +231,13 @@ class StaffMobileController extends ApiController
                 'PickupDistanceMeters' => $fees['pickup_distance_meters'], 'DeliveryDistanceMeters' => $fees['return_distance_meters'],
             ])->syncOriginal();
         }
-        return response()->json(['data' => $this->orders->estimateBooking($booking, $data['items'])]);
+        $promotionId = $data['promotion_id'] ?? null;
+        if ($promotionId !== null && ! $this->customerCanUsePromotion($booking, (int) $promotionId)) {
+            throw ValidationException::withMessages(['promotion_id' => 'Mã giảm giá không còn khả dụng cho khách hàng này.']);
+        }
+        return response()->json(['data' => $this->orders->estimateBookingWithRewards(
+            $booking, $data['items'], $promotionId, (int) ($data['points_used'] ?? 0), true,
+        )]);
     }
 
     public function draft(Request $request, int $id): JsonResponse
@@ -284,6 +291,8 @@ class StaffMobileController extends ApiController
             'items.*.DonViTinhID' => ['required', 'integer'], 'items.*.SoLuong' => ['nullable', 'numeric', 'min:1'],
             'items.*.KhoiLuong' => ['nullable', 'numeric', 'gt:0'],
             'items.*.TinhTrangTruocKhiGiat' => ['required', 'string', 'max:320'], 'items.*.GhiChu' => ['nullable', 'string', 'max:500'],
+            'promotion_id' => ['nullable', 'integer', 'min:1'],
+            'points_used' => ['nullable', 'integer', 'min:0'],
         ];
         if ($includeRejectionReason) {
             $rules['rejection_reason'] = ['required', 'string', 'max:500'];
@@ -294,6 +303,7 @@ class StaffMobileController extends ApiController
     private function bookingData(Booking $booking, bool $includeCatalog = true): array
     {
         $draft = $includeCatalog ? StaffBookingDraft::query()->find($booking->BookingID) : null;
+        $draftPayload = $draft?->Payload ?? [];
         $draftItems = array_values($draft?->Payload['items'] ?? []);
         $appointmentTime = $booking->GioHen?->format('H:i');
         $items = $booking->chiTietBookings->values()->map(fn ($i, $index) => [
@@ -372,8 +382,48 @@ class StaffMobileController extends ApiController
             'pickup_fee' => (float) $booking->PickupDeliveryFee, 'return_fee' => (float) $booking->DeliveryFee,
             'customer' => ['id' => $booking->KhachHangID, 'name' => $booking->khachHang?->HoTen, 'phone' => $booking->khachHang?->SoDienThoai],
             'items' => $items, 'inspection_draft_saved' => $draft !== null,
-            ...($includeCatalog ? ['available_points' => $booking->khachHang?->points() ?? 0] : []),
+            ...($includeCatalog ? [
+                'available_points' => ($booking->khachHang?->points() ?? 0)
+                    + ($booking->DiemDaTru ? (int) $booking->DiemSuDung : 0),
+                'available_vouchers' => KhuyenMai::query()->where('TrangThai', 'Hoạt động')
+                    ->whereDate('NgayBatDau', '<=', today())->whereDate('NgayKetThuc', '>=', today())
+                    ->where(fn ($query) => $query->whereNull('SoLuongSuDung')->orWhere('SoLuongSuDung', '>', 0))
+                    ->where(function ($query) use ($booking): void {
+                        $query->whereNotExists(fn ($used) => $used->selectRaw('1')->from('Booking as used_booking')
+                            ->whereColumn('used_booking.KhuyenMaiID', 'KhuyenMai.KhuyenMaiID')
+                            ->where('used_booking.KhachHangID', $booking->KhachHangID)
+                            ->where('used_booking.TrangThai', '<>', BookingStatus::Cancelled->value)
+                            ->where('used_booking.BookingID', '<>', $booking->BookingID));
+                        if ($booking->KhuyenMaiID) $query->orWhere('KhuyenMaiID', $booking->KhuyenMaiID);
+                    })
+                    ->orderBy('NgayKetThuc')->get(['KhuyenMaiID', 'MaKhuyenMai', 'TenKhuyenMai', 'LoaiKhuyenMai', 'GiaTriGiam', 'NgayKetThuc', 'GiaTriDonToiThieu', 'MucGiamToiDa', 'DieuKienApDung'])
+                    ->map(fn (KhuyenMai $promotion) => [
+                        'id' => $promotion->KhuyenMaiID, 'code' => $promotion->MaKhuyenMai,
+                        'title' => $promotion->TenKhuyenMai, 'type' => $promotion->LoaiKhuyenMai,
+                        'value' => $promotion->GiaTriGiam, 'expires_at' => $promotion->NgayKetThuc?->toDateString(),
+                        'minimum' => $promotion->GiaTriDonToiThieu, 'maximum' => $promotion->MucGiamToiDa,
+                        'condition' => $promotion->DieuKienApDung,
+                    ])->values(),
+                'selected_promotion_id' => array_key_exists('promotion_id', $draftPayload)
+                    ? $draftPayload['promotion_id'] : $booking->KhuyenMaiID,
+                'selected_points' => (int) ($draftPayload['points_used'] ?? $booking->DiemSuDung),
+            ] : []),
             ...($catalog === null ? [] : ['catalog' => $catalog]),
         ];
+    }
+
+    private function customerCanUsePromotion(Booking $booking, int $promotionId): bool
+    {
+        return KhuyenMai::query()->whereKey($promotionId)->where('TrangThai', 'Hoạt động')
+            ->whereDate('NgayBatDau', '<=', today())->whereDate('NgayKetThuc', '>=', today())
+            ->where(fn ($query) => $query->whereNull('SoLuongSuDung')->orWhere('SoLuongSuDung', '>', 0))
+            ->where(function ($query) use ($booking, $promotionId): void {
+                $query->where('KhuyenMaiID', $booking->KhuyenMaiID)
+                    ->orWhereNotExists(fn ($used) => $used->selectRaw('1')->from('Booking as used_booking')
+                        ->whereColumn('used_booking.KhuyenMaiID', 'KhuyenMai.KhuyenMaiID')
+                        ->where('used_booking.KhachHangID', $booking->KhachHangID)
+                        ->where('used_booking.TrangThai', '<>', BookingStatus::Cancelled->value)
+                        ->where('used_booking.BookingID', '<>', $booking->BookingID));
+            })->whereKey($promotionId)->exists();
     }
 }

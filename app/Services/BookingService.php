@@ -270,6 +270,49 @@ class BookingService
                 $data['customer_accepted'] = true;
             }
             CatalogAvailability::assertItemsAvailable($data['items'], $locked);
+            $promotionId = array_key_exists('promotion_id', $data)
+                ? ($data['promotion_id'] === null ? null : (int) $data['promotion_id'])
+                : ($locked->KhuyenMaiID === null ? null : (int) $locked->KhuyenMaiID);
+            $pointsUsed = (int) ($data['points_used'] ?? $locked->DiemSuDung ?? 0);
+            $estimate = $this->orderService->estimateBookingWithRewards($locked, $data['items'], $promotionId, $pointsUsed, true);
+            if ($promotionId !== null && $estimate['promotion_warning'] !== null) {
+                throw ValidationException::withMessages(['promotion_id' => $estimate['promotion_warning']]);
+            }
+            if ($pointsUsed > (int) $estimate['available_points']) {
+                throw ValidationException::withMessages(['points_used' => 'Số dư điểm đã thay đổi. Vui lòng tính lại giá.']);
+            }
+            $previousPromotionId = $locked->KhuyenMaiID === null ? null : (int) $locked->KhuyenMaiID;
+            $previousPromotionReserved = (bool) $locked->KhuyenMaiDaTru;
+            if ($previousPromotionId !== $promotionId && $previousPromotionReserved) {
+                KhuyenMai::whereKey($previousPromotionId)->whereNotNull('SoLuongSuDung')->increment('SoLuongSuDung');
+            }
+            $promotionReserved = $previousPromotionId === $promotionId && $previousPromotionReserved;
+            if ($promotionId !== null && ! $promotionReserved) {
+                $promotion = KhuyenMai::query()->whereKey($promotionId)->lockForUpdate()->first();
+                if (! $promotion || ! $promotion->isValid()
+                    || Booking::query()->where('KhachHangID', $locked->KhachHangID)
+                        ->where('KhuyenMaiID', $promotionId)->where('TrangThai', '<>', BookingStatus::Cancelled->value)
+                        ->where('BookingID', '<>', $locked->BookingID)->exists()) {
+                    throw ValidationException::withMessages(['promotion_id' => 'Mã giảm giá vừa hết hạn hoặc đã được dùng cho lịch đặt khác.']);
+                }
+                if ($promotion->SoLuongSuDung !== null) {
+                    $affected = KhuyenMai::query()->whereKey($promotionId)->where('SoLuongSuDung', '>', 0)
+                        ->decrement('SoLuongSuDung');
+                    if ($affected !== 1) {
+                        throw ValidationException::withMessages(['promotion_id' => 'Mã giảm giá vừa hết lượt sử dụng.']);
+                    }
+                    $promotionReserved = true;
+                }
+            }
+            if ($locked->DiemDaTru && (int) $locked->DiemSuDung > 0) {
+                KhachHang::find($locked->KhachHangID)?->addPoints((int) $locked->DiemSuDung);
+            }
+            $locked->forceFill([
+                'KhuyenMaiID' => $promotionId,
+                'KhuyenMaiDaTru' => $promotionReserved,
+                'DiemSuDung' => $pointsUsed,
+                'DiemDaTru' => false,
+            ])->saveQuietly();
             $data['items'] = $this->preserveBookingItemNotes($locked, $data['items']);
             $snapshot = $this->inspectionSnapshot($data);
             $changed = $draft?->CoChenhLech ?? $this->inspectionDiffersFromBooking($locked, $snapshot);
@@ -288,8 +331,7 @@ class BookingService
             ]);
 
             $order = $this->inspectBookingAndCreateOrder(
-                $locked, null, $data['items'], 0, false, $data,
-                false, true,
+                $locked, null, $data['items'], $pointsUsed, false, $data, false, false, true,
             );
 
             $decision = [
@@ -885,8 +927,9 @@ class BookingService
         array $bookingData = [],
         bool $recalculateDeliveryFee = false,
         bool $useSavedBookingPoints = false,
+        bool $requirePromotion = false,
     ): DonHang {
-        return DB::transaction(function () use ($booking, $items, $pointsUsed, $useAllAvailablePoints, $bookingData, $recalculateDeliveryFee, $useSavedBookingPoints): DonHang {
+        return DB::transaction(function () use ($booking, $items, $pointsUsed, $useAllAvailablePoints, $bookingData, $recalculateDeliveryFee, $useSavedBookingPoints, $requirePromotion): DonHang {
             $lockedBooking = Booking::query()->lockForUpdate()->findOrFail($booking->BookingID);
             $employeeId = $this->requireAuthenticatedEmployeeId(
                 'booking',
@@ -938,7 +981,7 @@ class BookingService
                     + ($lockedBooking->getAttribute('DiemDaTru') ? (int) $lockedBooking->getAttribute('DiemSuDung') : 0);
             }
 
-            $order = $this->orderService->createFromBooking($lockedBooking, $items, $employeeId, $pointsUsed);
+            $order = $this->orderService->createFromBooking($lockedBooking, $items, $employeeId, $pointsUsed, $requirePromotion);
             $this->recordBookingAudit(
                 $lockedBooking, $before, $this->bookingAuditSnapshot($lockedBooking),
                 $beforeItems, $this->bookingItemsAuditSnapshot($lockedBooking),

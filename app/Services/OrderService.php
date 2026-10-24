@@ -116,6 +116,11 @@ class OrderService
     /** Read-only inspection preview; conversion still rechecks prices under a lock. */
     public function estimateBooking(Booking $booking, array $items): array
     {
+        return $this->estimateBookingWithRewards($booking, $items, null, null, false);
+    }
+
+    public function estimateBookingWithRewards(Booking $booking, array $items, ?int $promotionId, ?int $requestedPoints, bool $overrideRewards): array
+    {
         [$snapshots, $subtotal] = $this->buildItems($items, [], $booking);
         $serviceNames = DichVu::query()
             ->whereIn('DichVuID', array_column($snapshots, 'DichVuID'))
@@ -145,7 +150,13 @@ class OrderService
         }, $snapshots);
 
         return [
-            ...$this->calculateBookingEstimate($booking, $subtotal, (int) $booking->DiemSuDung),
+            ...$this->calculateBookingEstimate(
+                $booking,
+                $subtotal,
+                $overrideRewards ? ($requestedPoints ?? 0) : (int) $booking->DiemSuDung,
+                $promotionId,
+                $overrideRewards,
+            ),
             'items' => $lineItems,
         ];
     }
@@ -157,16 +168,18 @@ class OrderService
     }
 
     /** A null points request means use all available points in the inspection preview. */
-    private function calculateBookingEstimate(Booking $booking, float $subtotal, ?int $requestedPoints): array
+    private function calculateBookingEstimate(Booking $booking, float $subtotal, ?int $requestedPoints, ?int $promotionId = null, bool $overridePromotion = false): array
     {
         $customer = $booking->relationLoaded('khachHang')
             ? $booking->getRelation('khachHang')
             : KhachHang::find($booking->KhachHangID);
         $availablePoints = ($customer?->points() ?? 0)
             + ($booking->DiemDaTru ? (int) $booking->DiemSuDung : 0);
-        $promotion = $booking->khuyenMai;
+        $promotion = $overridePromotion
+            ? ($promotionId === null ? null : KhuyenMai::find($promotionId))
+            : $booking->khuyenMai;
         $warning = $promotion?->rejectionReasonForCustomer($customer, $subtotal);
-        if ($booking->KhuyenMaiID && ! $promotion) {
+        if (! $overridePromotion && $booking->KhuyenMaiID && ! $promotion) {
             $warning = 'Không tìm thấy khuyến mãi của lịch đặt. Vui lòng kiểm tra trước khi xác nhận.';
         }
         $promotionContext = null;
@@ -215,9 +228,9 @@ class OrderService
      *
      * @param  array<int, array<string, mixed>>  $items
      */
-    public function createFromBooking(Booking $booking, array $items, int $employeeId, int $pointsUsed = 0): DonHang
+    public function createFromBooking(Booking $booking, array $items, int $employeeId, int $pointsUsed = 0, bool $requirePromotion = false): DonHang
     {
-        return DB::transaction(function () use ($booking, $items, $employeeId, $pointsUsed): DonHang {
+        return DB::transaction(function () use ($booking, $items, $employeeId, $pointsUsed, $requirePromotion): DonHang {
             $callerBooking = $booking;
             $inspectionChanges = array_intersect_key($booking->getDirty(), array_flip([
                 'HinhThucNhanDo', 'DiaChiNhan', 'HinhThucTraDo', 'DiaChiTra', 'HinhThucGiaoDo', 'DiaChiGiao', 'NgayHen', 'GioHen', 'GhiChu',
@@ -301,6 +314,11 @@ class OrderService
             $promotion = $booking->getAttribute('KhuyenMaiID')
                 ? $this->applyPromotionConditions(KhuyenMai::find($booking->getAttribute('KhuyenMaiID')), $customer, $total)
                 : null;
+            if ($requirePromotion && $booking->getAttribute('KhuyenMaiID') && $promotion === null) {
+                throw ValidationException::withMessages([
+                    'promotion_id' => $this->promotionRejection ?? 'Mã giảm giá không còn áp dụng được. Vui lòng tính lại giá.',
+                ]);
+            }
             if ($promotion === null && $booking->getAttribute('KhuyenMaiID')) {
                 if ($booking->getAttribute('KhuyenMaiDaTru')) {
                     KhuyenMai::whereKey($booking->getAttribute('KhuyenMaiID'))->whereNotNull('SoLuongSuDung')->increment('SoLuongSuDung');
