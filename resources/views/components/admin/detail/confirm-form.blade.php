@@ -11,14 +11,17 @@
     'iconOnly' => false,
     'color' => '#dc2626',
     'iconName' => 'warning',
+    'hidden' => [],
 ])
 
 {{--
     Nút hành động có hộp thoại xác nhận, dùng chung cho cả nút trong bảng lẫn
-    nút ở trang chi tiết. Trước đây mỗi view tự chép một đoạn script SweetAlert
-    riêng nên dễ lệch nhau; giờ toàn bộ logic nằm ở đúng một chỗ.
+    nút hành động duy nhất ở góc dưới form chi tiết. Trước đây mỗi view tự chép
+    một đoạn script SweetAlert riêng nên dễ lệch nhau; giờ toàn bộ logic nằm ở
+    đúng một chỗ.
 
-    :block=true  -> nút chiếm hết bề ngang (dùng trong cột phụ "Thao tác").
+    :block=true  -> nút chiếm hết bề ngang (dùng ở góc dưới form chi tiết).
+    :hidden=[...] -> cặp key => value thành các input hidden của form.
 --}}
 <form action="{{ $action }}" method="POST" data-confirm-form
       data-confirm-title="{{ $title }}"
@@ -31,7 +34,9 @@
     @if(strtoupper($method) !== 'POST')
         @method(strtoupper($method))
     @endif
-    {{ $hidden ?? '' }}
+    @foreach($hidden as $field => $value)
+        <input type="hidden" name="{{ $field }}" value="{{ $value }}">
+    @endforeach
     <button type="submit" class="btn {{ $variant }} {{ $size }} {{ $block ? 'w-100' : '' }}" @if($iconOnly) title="{{ $label }}" aria-label="{{ $label }}" @endif>
         <i class="{{ $icon }} {{ $iconOnly ? '' : 'me-1' }}"></i>@unless($iconOnly){{ $slot->isEmpty() ? $label : $slot }}@endunless
     </button>

@@ -585,6 +585,12 @@ class OrderService
             'khachHang.taiKhoan:TaiKhoanID,KhachHangID,AvatarURL',
             'chiTietDonHangs.dichVu',
             'statusChanges',
+            // Cột "Thao tác" của danh sách dựng toàn bộ nút từ trạng thái đơn,
+            // nên ba quan hệ dưới đây phải load sẵn theo lô, không được lazy
+            // load từng dòng.
+            'booking',
+            'giaoNhans',
+            'hoaDons',
         ])
             ->orderBy($sortBy, $sortOrder)
             ->paginate(10)

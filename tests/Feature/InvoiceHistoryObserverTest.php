@@ -231,14 +231,20 @@ class InvoiceHistoryObserverTest extends TestCase
 
     public function test_order_view_omits_pending_invoice_controls_and_preserves_existing_invoice_guard(): void
     {
-        $source = file_get_contents(resource_path('views/admin/orders/show.blade.php'));
+        $detailSource = file_get_contents(resource_path('views/admin/orders/show.blade.php'));
+        $listSource = file_get_contents(resource_path('views/admin/orders/index.blade.php'));
 
-        $this->assertStringNotContainsString('đang chờ thanh toán; thu tiền xong hóa đơn mới hiển thị.', $source);
-        $this->assertStringNotContainsString('Sửa hóa đơn chờ thu', $source);
-        $this->assertStringNotContainsString('Xóa hóa đơn chờ thu', $source);
-        $this->assertStringContainsString('@elseif(! $orderInvoice && in_array($order->TrangThai,', $source);
-        $this->assertStringContainsString("route('payments.create', ['order_id' => \$order->getKey()])", $source);
-        $this->assertStringContainsString('@if($orderInvoice?->isPaid())', $source);
+        $this->assertStringNotContainsString('đang chờ thanh toán; thu tiền xong hóa đơn mới hiển thị.', $detailSource);
+        $this->assertStringNotContainsString('Sửa hóa đơn chờ thu', $detailSource);
+        $this->assertStringNotContainsString('Xóa hóa đơn chờ thu', $detailSource);
+
+        //Nút hóa đơn/thanh toán đã dời ra cột "Thao tác" của danh sách, màn chi
+        //tiết không còn khối thao tác nào nữa.
+        $this->assertStringNotContainsString("route('payments.create', ['order_id' => \$order->getKey()])", $detailSource);
+        $this->assertStringNotContainsString('@if($orderInvoice?->isPaid())', $detailSource);
+        $this->assertStringContainsString('@elseif(! $orderInvoice && in_array($order->TrangThai,', $listSource);
+        $this->assertStringContainsString("route('payments.create', ['order_id' => \$order->getKey()])", $listSource);
+        $this->assertStringContainsString('@if($orderInvoice?->isPaid())', $listSource);
     }
 
     private function createInvoice(): HoaDon

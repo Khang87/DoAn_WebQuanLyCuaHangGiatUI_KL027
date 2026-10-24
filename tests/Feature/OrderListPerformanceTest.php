@@ -71,6 +71,14 @@ class OrderListPerformanceTest extends TestCase
             $t->decimal('KhoiLuong');
         });
         Schema::create('Booking', fn (Blueprint $t) => $t->increments('BookingID'));
+        Schema::create('GiaoNhan', function (Blueprint $t): void {
+            $t->increments('GiaoNhanID');
+            $t->integer('DonHangID');
+            $t->integer('NhanVienID')->nullable();
+            $t->string('LoaiGiaoNhan');
+            $t->string('HinhThuc')->nullable();
+            $t->string('TrangThai')->nullable();
+        });
         DB::table('Booking')->insert(['BookingID' => 1]);
         foreach (['HoaDon' => 'HoaDonID', 'ThanhToan' => 'ThanhToanID'] as $name => $id) {
             Schema::create($name, function (Blueprint $t) use ($id): void {
@@ -81,7 +89,7 @@ class OrderListPerformanceTest extends TestCase
         }
     }
 
-    public function test_populated_list_keeps_display_values_and_settled_lock_with_seven_queries(): void
+    public function test_populated_list_keeps_display_values_and_settled_lock_with_ten_queries(): void
     {
         $this->seedOrder(1, OrderStatus::Paid);
         DB::table('HoaDon')->insert(['DonHangID' => 1, 'TrangThai' => InvoiceStatus::Paid->value]);
@@ -100,7 +108,7 @@ class OrderListPerformanceTest extends TestCase
 
         try {
             $page = app(OrderService::class)->getAll();
-            $this->assertCount(7, $connection->getQueryLog(), 'Pagination, orders, customers, accounts, details, services and status changes.');
+            $this->assertCount(10, $connection->getQueryLog(), 'Pagination, orders, customers, accounts, details, services, status changes, booking, delivery legs and invoices.');
             $order = $page->first();
             $this->assertSame('List fixture', $order->khachHang->HoTen);
             $this->assertTrue($order->khachHang->relationLoaded('taiKhoan'));
@@ -119,12 +127,12 @@ class OrderListPerformanceTest extends TestCase
             $this->assertCount(1, $order->statusChanges);
             $this->assertSame(OrderStatus::Received, $order->operationalStatusEnum());
             $this->assertSame(1, $page->total());
-            $this->assertCount(7, $connection->getQueryLog(), 'Reading display values and avatars must not lazy load.');
+            $this->assertCount(10, $connection->getQueryLog(), 'Reading display values and avatars must not lazy load.');
 
             $html = view('admin.orders.index', ['orders' => $page])->render();
             $this->assertStringContainsString('src="https://example.test/avatars/customer-1.jpg"', $html);
             $this->assertStringContainsString('DH-01', $html);
-            $this->assertCount(7, $connection->getQueryLog(), 'Rendering the orders view must not add queries.');
+            $this->assertCount(10, $connection->getQueryLog(), 'Rendering the orders view must not add queries.');
         } finally {
             $connection->disableQueryLog();
             $connection->flushQueryLog();
@@ -164,7 +172,7 @@ class OrderListPerformanceTest extends TestCase
 
         try {
             $page = app(OrderService::class)->getAll(['sort' => 'code_asc']);
-            $this->assertCount(7, $connection->getQueryLog(), 'A full page with distinct customers must use the same seven queries.');
+            $this->assertCount(10, $connection->getQueryLog(), 'A full page with distinct customers must use the same ten queries.');
             $this->assertSame(10, $page->total());
             $this->assertCount(10, $page);
             $this->assertCount(5, $page->pluck('KhachHangID')->unique());
@@ -192,7 +200,7 @@ class OrderListPerformanceTest extends TestCase
                 $this->assertSame($order->DonHangID === 1, $order->isPaid());
                 $this->assertSame(in_array($order->DonHangID, [1, 2], true), $order->isLocked());
             }
-            $this->assertCount(7, $connection->getQueryLog(), 'Avatar access and payment checks must not add per-order queries.');
+            $this->assertCount(10, $connection->getQueryLog(), 'Avatar access and payment checks must not add per-order queries.');
 
             $html = view('admin.orders.index', ['orders' => $page])->render();
             for ($customerId = 1; $customerId <= 4; $customerId++) {
@@ -200,7 +208,7 @@ class OrderListPerformanceTest extends TestCase
             }
             $this->assertSame(2, substr_count($html, 'aria-label="Ảnh đại diện của Customer 5"'));
             $this->assertSame(8, substr_count($html, 'alt="" class="w-100 h-100 avatar-cover"'));
-            $this->assertCount(7, $connection->getQueryLog(), 'Rendering every customer, including missing accounts, must not add queries.');
+            $this->assertCount(10, $connection->getQueryLog(), 'Rendering every customer, including missing accounts, must not add queries.');
         } finally {
             $connection->disableQueryLog();
             $connection->flushQueryLog();

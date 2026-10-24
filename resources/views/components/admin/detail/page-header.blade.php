@@ -8,8 +8,10 @@
     Thanh tiêu đề chuẩn của MỌI trang chi tiết trong Admin Panel.
 
     Tiêu đề + badge trạng thái (slot `badge`) + mô tả phụ, kèm nút "Quay lại"
-    góc phải trên cùng khi truyền `backUrl`. Các hành động khác (Chỉnh sửa,
-    Xóa, In, ...) vẫn nằm trong Card "Thao tác" ở cột phụ.
+    góc phải trên cùng khi truyền `backUrl`. Trang chi tiết chỉ hiển thị thông
+    tin: mọi hành động (Sửa, Xóa, In, Đổi trạng thái, ...) nằm ở cột "Thao tác"
+    của danh sách ngoài bảng; nếu hành động cần nhập liệu thì danh sách mở đúng
+    form đó qua `?action=...` và form chỉ có một nút ở góc dưới.
 
     Cách dùng:
         <x-admin.detail.page-header

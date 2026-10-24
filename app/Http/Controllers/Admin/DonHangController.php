@@ -20,6 +20,7 @@ use App\Services\DeliveryFeeService;
 use App\Services\OrderService;
 use App\Services\PricingService;
 use App\Support\FriendlyError;
+use App\Support\OrderWorkflow;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -125,6 +126,7 @@ class DonHangController extends Controller
 
         if (
             $order->statusEnum() === OrderStatus::Pending
+            && request()->query('action') === OrderWorkflow::INTENT_RECEIVING
             && auth()->user()?->can('orders.edit')
         ) {
             $existingItems = $order->chiTietDonHangs;
@@ -193,11 +195,11 @@ class DonHangController extends Controller
                 'Đã lưu kiểm tra thực tế và hoàn tất tiếp nhận đơn hàng '.$order->MaDonHang.'.',
             );
         } catch (ValidationException $exception) {
-            return redirect()->route('orders.show', $order)
+            return redirect()->route('orders.show', [$order, 'action' => OrderWorkflow::INTENT_RECEIVING])
                 ->withErrors($exception->errors())
                 ->withInput();
         } catch (Throwable $exception) {
-            return redirect()->route('orders.show', $order)
+            return redirect()->route('orders.show', [$order, 'action' => OrderWorkflow::INTENT_RECEIVING])
                 ->with('error', FriendlyError::message($exception))
                 ->withInput();
         }

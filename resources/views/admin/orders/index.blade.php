@@ -100,11 +100,102 @@
                         </td>
                         <td class="text-dark">{{ $order->NgayTao?->format('d/m/Y H:i') ?: '-' }}</td>
                         <td>
-                            <div class="d-flex gap-2">
-                                @php($canManageSettled = ! $order->isLocked() || auth()->user()?->isOwner())
+                            @php
+                                $canManageSettled = ! $order->isLocked() || auth()->user()?->isOwner();
+                                $operationalStatus = $order->operationalStatusEnum();
+                                $nextOrderAction = $canManageSettled
+                                    ? \App\Support\OrderWorkflow::nextAction($order)
+                                    : null;
+                                $orderInvoice = $order->hoaDons->first();
+                                $isBookingReturnFlow = $order->booking !== null
+                                    && in_array($operationalStatus, [\App\Enums\OrderStatus::Washed, \App\Enums\OrderStatus::Delivering], true);
+                                $returnDelivery = $isBookingReturnFlow
+                                    ? \App\Support\OrderWorkflow::activeReturnDelivery($order)
+                                    : null;
+                            @endphp
+                            <div class="d-flex flex-wrap gap-2">
                                 @can('orders.view')
                                     <a href="{{ route('orders.show', $order) }}" class="btn btn-order-action view" title="Xem"><i class="bi bi-eye"></i></a>
                                 @endcan
+                                @if($canManageSettled && $operationalStatus === \App\Enums\OrderStatus::Pending)
+                                    @can('orders.edit')
+                                        <a href="{{ \App\Support\OrderWorkflow::receivingUrl($order) }}"
+                                           class="btn btn-order-action"
+                                           title="Kiểm tra và tiếp nhận"
+                                           aria-label="Kiểm tra và tiếp nhận đơn {{ $order->MaDonHang }}">
+                                            <i class="bi bi-box-arrow-in-down" aria-hidden="true"></i>
+                                        </a>
+                                    @endcan
+                                @endif
+                                @if($nextOrderAction && $nextOrderAction['kind'] === 'delivery')
+                                    @if($order->hasActiveReturnDelivery()
+                                        ? auth()->user()?->canPermission('deliveries.edit')
+                                        : auth()->user()?->canPermission('deliveries.create'))
+                                        <a href="{{ route('orders.delivery-assignment', $order) }}"
+                                           class="btn btn-order-action"
+                                           title="{{ $nextOrderAction['label'] }}"
+                                           aria-label="{{ $nextOrderAction['label'] }} đơn {{ $order->MaDonHang }}">
+                                            <i class="bi {{ $nextOrderAction['icon'] }}" aria-hidden="true"></i>
+                                        </a>
+                                    @endif
+                                @elseif($nextOrderAction)
+                                    @can('orders.update_status')
+                                        <x-admin.detail.confirm-form
+                                            :action="route('orders.update-status', $order)"
+                                            method="PATCH"
+                                            :title="$nextOrderAction['label'].'?'"
+                                            :text="'Trạng thái đơn '. $order->MaDonHang .' sẽ chuyển sang '. $nextOrderAction['status']->label() .'.'"
+                                            :label="$nextOrderAction['label']"
+                                            :icon="$nextOrderAction['icon']"
+                                            variant="btn-order-action"
+                                            size=""
+                                            iconOnly
+                                            :hidden="['TrangThai' => $nextOrderAction['status']->value]"
+                                            color="#2563eb"
+                                            iconName="question"
+                                        />
+                                    @endcan
+                                @endif
+                                @if($isBookingReturnFlow)
+                                    @if($returnDelivery)
+                                        @can('deliveries.view')
+                                            <a href="{{ route('deliveries.show', $returnDelivery) }}"
+                                               class="btn btn-order-action"
+                                               title="Xem phiếu giao"
+                                               aria-label="Xem phiếu giao của đơn {{ $order->MaDonHang }}">
+                                                <i class="bi bi-box-arrow-up-right" aria-hidden="true"></i>
+                                            </a>
+                                        @endcan
+                                    @elseif($operationalStatus === \App\Enums\OrderStatus::Washed)
+                                        @can('deliveries.create')
+                                            <a href="{{ route('orders.delivery-assignment', $order) }}"
+                                               class="btn btn-order-action"
+                                               title="Tạo phiếu giao"
+                                               aria-label="Tạo phiếu giao cho đơn {{ $order->MaDonHang }}">
+                                                <i class="bi bi-truck" aria-hidden="true"></i>
+                                            </a>
+                                        @endcan
+                                    @endif
+                                @endif
+                                @if($orderInvoice?->isPaid())
+                                    @can('invoices.view')
+                                        <a href="{{ route('invoices.show', $orderInvoice->HoaDonID) }}"
+                                           class="btn btn-order-action"
+                                           title="Xem hóa đơn {{ $orderInvoice->MaHoaDon }}"
+                                           aria-label="Xem hóa đơn {{ $orderInvoice->MaHoaDon }}">
+                                            <i class="bi bi-file-earmark-text" aria-hidden="true"></i>
+                                        </a>
+                                    @endcan
+                                @elseif(! $orderInvoice && in_array($order->TrangThai, ['Hoàn thành giặt', 'Đang giao', 'Đã giao'], true))
+                                    @can('invoices.create')
+                                        <a href="{{ route('invoices.create', ['order_id' => $order->getKey()]) }}"
+                                           class="btn btn-order-action"
+                                           title="Tạo hóa đơn"
+                                           aria-label="Tạo hóa đơn cho đơn {{ $order->MaDonHang }}">
+                                            <i class="bi bi-file-earmark-plus" aria-hidden="true"></i>
+                                        </a>
+                                    @endcan
+                                @endif
                                 @if(! $order->isLocked() && $order->TrangThai !== \App\Enums\OrderStatus::Cancelled->value)
                                     @can('payments.create')
                                         <a href="{{ route('payments.create', ['order_id' => $order->getKey()]) }}"
@@ -119,6 +210,26 @@
                                 @if($canManageSettled)
                                     @can('orders.edit')
                                         <a href="{{ route('orders.edit', $order) }}" class="btn btn-order-action edit" title="Sửa"><i class="bi bi-pencil"></i></a>
+                                    @endcan
+                                    @can('messages.view')
+                                        <a href="{{ route('admin.messages.index', ['order_id' => $order->DonHangID]) }}"
+                                           class="btn btn-order-action"
+                                           title="Nhắn tin khách hàng"
+                                           aria-label="Nhắn tin khách hàng của đơn {{ $order->MaDonHang }}">
+                                            <i class="bi bi-chat-dots" aria-hidden="true"></i>
+                                        </a>
+                                    @endcan
+                                    @can('orders.delete')
+                                        <x-admin.detail.confirm-form
+                                            :action="route('orders.destroy', $order)"
+                                            title="Xóa đơn hàng?"
+                                            text="Đơn hàng đã quyết toán chỉ có thể xóa theo quyền chủ cửa hàng."
+                                            label="Xóa đơn hàng"
+                                            icon="bi-trash"
+                                            variant="btn-order-action delete"
+                                            size=""
+                                            iconOnly
+                                        />
                                     @endcan
                                 @endif
                                 @if($order->isLocked() && ! auth()->user()?->isOwner())

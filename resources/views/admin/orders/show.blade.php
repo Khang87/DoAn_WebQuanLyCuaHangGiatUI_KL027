@@ -12,7 +12,6 @@
     $unpaidInvoice = $order->hoaDons
         ->first(fn ($invoice) => $invoice->TrangThai === \App\Enums\InvoiceStatus::Unpaid->value);
     $isOwner = auth()->user()?->isOwner() ?? false;
-    $canEdit = ! $isPaid || $isOwner;
 
     // Tính trước để tránh dấu ">" trong biểu thức thuộc tính của thẻ Blade.
     $hasPromotionDiscount = (float) $order->discount_by_promotion > 0;
@@ -23,46 +22,12 @@
     $isCancelled = $operationalStatus === \App\Enums\OrderStatus::Cancelled;
     $isReceiving = $operationalStatus === \App\Enums\OrderStatus::Pending;
     $currentStatusIsCompleted = $operationalStatus->isCompletedMilestone();
-    $nextProcessStatus = $operationalStatus->nextProcessStatus();
     $requiresHomeDelivery = $order->requiresHomeDelivery();
-    $isBookingReturnOrder = $order->booking !== null;
-    $activeReturnDelivery = $order->giaoNhans
-        ->where('LoaiGiaoNhan', 'GIAO_DO')
-        ->sortByDesc('GiaoNhanID')
-        ->first(fn ($delivery) => \App\Enums\DeliveryStatus::parseForLeg($delivery->TrangThai, $delivery->LoaiGiaoNhan) !== \App\Enums\DeliveryStatus::Cancelled);
-    if ($operationalStatus === \App\Enums\OrderStatus::Washed && ! $requiresHomeDelivery) {
-        $nextProcessStatus = $isBookingReturnOrder ? null : \App\Enums\OrderStatus::Delivered;
-    }
-    $nextStatusAction = match ($nextProcessStatus) {
-        \App\Enums\OrderStatus::Washing => [
-            'status' => \App\Enums\OrderStatus::Washing,
-            'label' => 'Bắt đầu giặt',
-            'icon' => 'bi-play-circle',
-            'variant' => 'primary',
-        ],
-        \App\Enums\OrderStatus::Washed => [
-            'status' => \App\Enums\OrderStatus::Washed,
-            'label' => 'Hoàn thành giặt',
-            'icon' => 'bi-check2-circle',
-            'variant' => 'success',
-        ],
-        \App\Enums\OrderStatus::Delivering => [
-            'status' => \App\Enums\OrderStatus::Delivering,
-            'label' => 'Bắt đầu giao hàng',
-            'icon' => 'bi-truck',
-            'variant' => 'primary',
-        ],
-        \App\Enums\OrderStatus::Delivered => [
-            'status' => \App\Enums\OrderStatus::Delivered,
-            'label' => $requiresHomeDelivery ? 'Xác nhận đã giao' : 'Xác nhận khách đã nhận tại cửa hàng',
-            'icon' => 'bi-box-seam',
-            'variant' => 'success',
-        ],
-        default => null,
-    };
-    if ($isBookingReturnOrder && in_array($operationalStatus, [\App\Enums\OrderStatus::Washed, \App\Enums\OrderStatus::Delivering], true)) {
-        $nextStatusAction = null;
-    }
+    // Toàn bộ nút hành động của đơn nằm ở cột "Thao tác" của danh sách. Trang
+    // chi tiết chỉ mở thêm form tiếp nhận khi nút "Kiểm tra và tiếp nhận" ở
+    // ngoài được bấm, vì form này phải nhập số lượng và tình trạng từng món.
+    $isReceivingInspection = $isReceiving
+        && request()->query('action') === \App\Support\OrderWorkflow::INTENT_RECEIVING;
     $inspectionItems = old('items');
     if (! is_array($inspectionItems)) {
         $inspectionItems = $order->chiTietDonHangs->map(function ($item): array {
@@ -224,7 +189,7 @@
                 <span class="text-muted small">{{ $order->chiTietDonHangs->count() }} mục</span>
             </x-slot:header>
 
-            @if($isReceiving && auth()->user()?->can('orders.edit'))
+            @if($isReceivingInspection && auth()->user()?->can('orders.edit'))
                 <form action="{{ route('orders.complete-receiving', $order) }}" method="POST" id="receivingInspectionForm">
                     @csrf
                     <div class="alert alert-warning mx-3 mt-3 mb-0" role="status">
@@ -368,7 +333,7 @@
             @else
                 @if($isReceiving)
                     <div class="alert alert-warning mx-3 mt-3 mb-0" role="status">
-                        Đơn hàng đang chờ kiểm tra và tiếp nhận thực tế.
+                        Đơn hàng đang chờ kiểm tra và tiếp nhận thực tế. Bấm nút "Kiểm tra và tiếp nhận" ở cột Thao tác trong danh sách đơn hàng để nhập số lượng và tình trạng từng mặt hàng.
                     </div>
                 @endif
                 @if($order->chiTietDonHangs->isEmpty())
@@ -551,107 +516,6 @@
                 </div>
             @endif
         </x-admin.detail.panel>
-
-        <div class="card shadow-sm border-0 order-first">
-            <div class="card-header bg-transparent border-bottom d-flex align-items-center gap-2 py-3">
-                <div class="bg-light rounded p-2 d-inline-flex align-items-center justify-content-center">
-                    <i class="fas fa-sliders-h text-secondary"></i>
-                </div>
-                <h5 class="card-title mb-0 fw-bold">Thao tác</h5>
-            </div>
-            <div class="card-body d-flex flex-column gap-2">
-                @if(! $isPaid && ! $isReceiving && $order->TrangThai !== \App\Enums\OrderStatus::Cancelled->value)
-                    @can('payments.create')
-                        <a href="{{ route('payments.create', ['order_id' => $order->getKey()]) }}"
-                           class="btn btn-success w-100 py-2"
-                           data-payment-link>
-                            <i class="bi bi-credit-card me-1" aria-hidden="true"></i> Thanh toán
-                        </a>
-                    @endcan
-                @endif
-
-                @if($isBookingReturnOrder && in_array($operationalStatus, [\App\Enums\OrderStatus::Washed, \App\Enums\OrderStatus::Delivering], true))
-                    @if($activeReturnDelivery)
-                        @can('deliveries.view')
-                            <a href="{{ route('deliveries.show', $activeReturnDelivery) }}" class="btn btn-outline-primary w-100 py-2">
-                                <i class="bi bi-box-arrow-up-right me-1" aria-hidden="true"></i>Xem phiếu giao
-                            </a>
-                        @endcan
-                    @elseif($operationalStatus === \App\Enums\OrderStatus::Washed)
-                        @can('deliveries.create')
-                            <a href="{{ route('orders.delivery-assignment', $order) }}" class="btn btn-primary w-100 py-2">
-                                <i class="bi bi-truck me-1" aria-hidden="true"></i>Tạo phiếu giao
-                            </a>
-                        @endcan
-                    @endif
-                @endif
-
-                @if($nextStatusAction)
-                    @if($nextStatusAction['status'] === \App\Enums\OrderStatus::Delivering)
-                        @if($order->hasActiveReturnDelivery()
-                            ? auth()->user()?->canPermission('deliveries.edit')
-                            : auth()->user()?->canPermission('deliveries.create'))
-                            <a href="{{ route('orders.delivery-assignment', $order) }}" class="btn btn-{{ $nextStatusAction['variant'] }} w-100 py-2">
-                                <i class="bi {{ $nextStatusAction['icon'] }} me-1" aria-hidden="true"></i>{{ $nextStatusAction['label'] }}
-                            </a>
-                        @endif
-                    @else
-                        @can('orders.update_status')
-                            <form action="{{ route('orders.update-status', $order) }}" method="POST">
-                                @csrf
-                                @method('PATCH')
-                                <input type="hidden" name="TrangThai" value="{{ $nextStatusAction['status']->value }}">
-                                <button type="submit" class="btn btn-{{ $nextStatusAction['variant'] }} w-100 py-2">
-                                    <i class="bi {{ $nextStatusAction['icon'] }} me-1" aria-hidden="true"></i>{{ $nextStatusAction['label'] }}
-                                </button>
-                            </form>
-                        @endcan
-                    @endif
-                @endif
-
-                @if($canEdit && ! $isReceiving)
-                    @can('orders.edit')
-                        <a href="{{ route('orders.edit', $order->getKey()) }}" class="btn btn-primary w-100 py-2">
-                            <i class="fas fa-pencil-alt me-1" aria-hidden="true"></i> Chỉnh sửa
-                        </a>
-                    @endcan
-                @endif
-
-                    @can('messages.view')
-                    <a href="{{ route('admin.messages.index', ['order_id' => $order->DonHangID]) }}" class="btn btn-outline-primary w-100 py-2">
-                        <i class="bi bi-chat-dots me-1" aria-hidden="true"></i> Nhắn tin khách hàng
-                    </a>
-                    @endcan
-
-                @php($orderInvoice = $order->hoaDons->first())
-                @if($orderInvoice?->isPaid())
-                    @can('invoices.view')
-                    <a href="{{ route('invoices.show', $orderInvoice->HoaDonID) }}" class="btn btn-outline-primary w-100 py-2">
-                        <i class="fas fa-file-invoice me-1" aria-hidden="true"></i> Xem hóa đơn {{ $orderInvoice->MaHoaDon }}
-                    </a>
-                    @endcan
-                @elseif(! $orderInvoice && in_array($order->TrangThai, ['Hoàn thành giặt', 'Đang giao', 'Đã giao'], true))
-                    @can('invoices.create')
-                        <a href="{{ route('invoices.create', ['order_id' => $order->getKey()]) }}" class="btn btn-outline-primary w-100 py-2">
-                            <i class="fas fa-file-invoice me-1" aria-hidden="true"></i> Tạo hóa đơn
-                        </a>
-                    @endcan
-                @endif
-
-                @can('orders.delete')
-                    <x-admin.detail.confirm-form
-                        :action="route('orders.destroy', $order->getKey())"
-                        title="Xóa đơn hàng?"
-                        text="Đơn hàng đã quyết toán chỉ có thể xóa theo quyền chủ cửa hàng."
-                        label="Xóa đơn hàng"
-                        icon="bi-trash"
-                        variant="btn-outline-danger"
-                        size="py-2"
-                        block
-                    />
-                @endcan
-            </div>
-        </div>
 
     </div>
 
