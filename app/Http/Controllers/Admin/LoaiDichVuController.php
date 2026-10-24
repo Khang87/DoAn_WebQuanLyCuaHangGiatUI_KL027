@@ -96,8 +96,8 @@ class LoaiDichVuController extends Controller
         try {
             $deleted = $this->categoryService->delete($category);
             $message = $deleted
-                ? 'Danh mục đã được xóa.'
-                : 'Danh mục đang được dịch vụ sử dụng nên đã chuyển sang trạng thái tạm ngưng.';
+                ? 'Danh mục và các dịch vụ chưa sử dụng đã được xóa.'
+                : "Danh mục và các dịch vụ thuộc danh mục đã được chuyển sang trạng thái 'Tạm ngưng' để bảo toàn lịch sử đơn hàng/Booking.";
 
             return redirect()->route('service-categories.index')->with('success', $message);
         } catch (\Exception $e) {

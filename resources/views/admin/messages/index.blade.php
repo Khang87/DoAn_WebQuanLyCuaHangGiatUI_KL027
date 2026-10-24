@@ -7,7 +7,7 @@
 <style>
     .message-chat-card { display: flex; flex-direction: column; height: min(48rem, calc(100vh - 10rem)); min-height: 30rem; }
     .message-chat-history { flex: 1; min-height: 0; overflow-y: auto; }
-    .message-inbox-list { max-height: min(35rem, calc(100vh - 19rem)); overflow-y: auto; }
+    .message-inbox-list { max-height: min(35rem, calc(100vh - 19rem)); overflow-y: auto; overflow-anchor: none; }
     .message-inbox-preview { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     @media (max-width: 991.98px) {
         .message-chat-card { height: 36rem; }
@@ -34,40 +34,37 @@
                 <a class="nav-link {{ $activeTab === 'orders' ? 'active' : '' }}" href="{{ route('admin.messages.index', ['tab' => 'orders', 'q' => $search]) }}" @if($activeTab === 'orders') aria-current="page" @endif>Đơn hàng</a>
                 <a class="nav-link {{ $activeTab === 'support' ? 'active' : '' }}" href="{{ route('admin.messages.index', ['tab' => 'support', 'q' => $search]) }}" @if($activeTab === 'support') aria-current="page" @endif>Tư vấn</a>
             </nav>
-            @if($activeTab === 'orders')
-            <div class="list-group list-group-flush message-inbox-list" data-message-inbox="{{ route('admin.messages.inbox', ['page' => $orders->currentPage(), 'q' => $search]) }}" data-selected-order="{{ $selectedOrder?->DonHangID }}" data-message-link="{{ route('admin.messages.index', ['q' => $search]) }}">
-                @forelse($orders as $order)
-                    <a href="{{ route('admin.messages.index', ['order_id' => $order->DonHangID, 'q' => $search]) }}"
-                        data-inbox-order="{{ $order->DonHangID }}" class="list-group-item list-group-item-action {{ $selectedOrder?->DonHangID === $order->DonHangID ? 'active' : '' }}">
-                        <div class="d-flex justify-content-between gap-2">
-                            <span class="fw-semibold text-truncate">{{ $order->khachHang?->HoTen ?: 'Khách hàng' }} @if($order->unread_count > 0)<span class="d-inline-block rounded-circle bg-danger ms-2" style="width:10px;height:10px" role="img" aria-label="Tin nhắn chưa đọc" data-unread-dot></span>@endif</span>
-                            <small>{{ $order->last_message_at ? \Carbon\Carbon::parse($order->last_message_at, 'UTC')->setTimezone(config('app.timezone'))->format('d/m/Y') : $order->NgayTao?->format('d/m/Y') }}</small>
-                        </div>
-                        <small class="d-block">{{ $order->MaDonHang }}</small>
-                        <small class="d-block message-inbox-preview">{{ $order->last_message_preview ?: 'Chưa có tin nhắn' }}</small>
-                    </a>
-                @empty
-                    <div class="text-center text-muted p-4">Không tìm thấy hội thoại đơn hàng.</div>
-                @endforelse
+            @php($selectedId = $selectedCustomer?->getKey() ?? $selectedOrder?->getKey())
+            <div class="message-inbox-list"
+                 data-message-inbox="{{ route('admin.messages.inbox', ['tab' => $activeTab, 'q' => $search]) }}"
+                 data-inbox-tab="{{ $activeTab }}" data-inbox-page="{{ $inboxPage['page'] }}"
+                 data-next-page="{{ $inboxPage['next_page'] }}" data-selected-id="{{ $selectedId }}"
+                 data-message-link="{{ route('admin.messages.index', ['tab' => $activeTab, 'q' => $search]) }}">
+                <div class="list-group list-group-flush" data-inbox-rows>
+                    @forelse($inboxPage['conversations'] as $conversation)
+                        <a href="{{ route('admin.messages.index', ['tab' => $activeTab, $activeTab === 'support' ? 'customer_id' : 'order_id' => $conversation['id'], 'q' => $search]) }}"
+                           data-inbox-id="{{ $conversation['id'] }}" class="list-group-item list-group-item-action {{ (int) $selectedId === $conversation['id'] ? 'active' : '' }}">
+                            <div class="d-flex align-items-center gap-2">
+                                <x-admin.customer-avatar :url="$conversation['avatar_url']" :name="$conversation['customer']" />
+                                <div class="flex-grow-1 min-w-0">
+                                    <div class="d-flex justify-content-between gap-2">
+                                        <span class="fw-semibold text-truncate">{{ $conversation['customer'] }} @if($conversation['unread'])<span class="d-inline-block rounded-circle bg-danger ms-2" style="width:10px;height:10px" role="img" aria-label="Tin nhắn chưa đọc" data-unread-dot></span>@endif</span>
+                                        <small class="flex-shrink-0">{{ $conversation['date'] }}</small>
+                                    </div>
+                                    <small class="d-block text-truncate">{{ $conversation['number'] }}</small>
+                                    <small class="d-block message-inbox-preview">{{ $conversation['preview'] ?: 'Chưa có tin nhắn' }}</small>
+                                </div>
+                            </div>
+                        </a>
+                    @empty
+                        <div class="text-center text-muted p-4">{{ $activeTab === 'support' ? 'Không tìm thấy khách hàng tư vấn.' : 'Không tìm thấy hội thoại đơn hàng.' }}</div>
+                    @endforelse
+                </div>
+                <div class="text-center p-2" data-inbox-loader>
+                    <small class="d-block text-muted" role="status" aria-live="polite" data-inbox-status></small>
+                    <button type="button" class="btn btn-sm btn-outline-primary mt-1" data-inbox-more @if(!$inboxPage['next_page']) hidden @endif>Tải thêm hội thoại</button>
+                </div>
             </div>
-            @if($orders->hasPages())<div class="card-footer bg-white">{{ $orders->links() }}</div>@endif
-            @else
-            <div class="list-group list-group-flush message-inbox-list">
-                @forelse($supportCustomers as $customer)
-                    <a class="list-group-item list-group-item-action {{ $selectedCustomer?->getKey() === $customer->getKey() ? 'active' : '' }}" href="{{ route('admin.messages.index', ['customer_id' => $customer->getKey(), 'q' => $search]) }}">
-                        <div class="d-flex justify-content-between gap-2">
-                            <span class="fw-semibold text-truncate">{{ $customer->name }}</span>
-                            <small>{{ $customer->last_message_at ? \Carbon\Carbon::parse($customer->last_message_at, 'UTC')->setTimezone(config('app.timezone'))->format('d/m/Y') : '' }}</small>
-                        </div>
-                        <small class="d-block">{{ $customer->khachHang?->SoDienThoai ?: 'Tư vấn khách hàng' }}</small>
-                        <small class="d-block message-inbox-preview">{{ $customer->last_message_preview ?: 'Chưa có tin nhắn' }}</small>
-                    </a>
-                @empty
-                    <div class="text-center text-muted p-4">Không tìm thấy khách hàng tư vấn.</div>
-                @endforelse
-            </div>
-            @if($supportCustomers->hasPages())<div class="card-footer bg-white">{{ $supportCustomers->links() }}</div>@endif
-            @endif
         </div>
     </div>
 

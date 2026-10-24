@@ -70,7 +70,8 @@
                         <td>{{ $orders->firstItem() + $loop->index }}</td>
                         <td class="text-dark">{{ $order->MaDonHang }}</td>
                         <td>
-                            <div class="d-flex align-items-center">
+                            <div class="d-flex align-items-center gap-2">
+                                <x-admin.customer-avatar :customer="$order->khachHang" />
                                 <div>
                                     <div class="text-dark">{{ $order->khachHang?->HoTen ?: '-' }}</div>
                                     <small class="text-muted">{{ $order->khachHang?->SoDienThoai ?: 'Chưa có số điện thoại' }}</small>

@@ -57,7 +57,7 @@
             </form>
 
             @if($email !== '')
-                <p class="small text-muted mt-3">Mã OTP có hiệu lực trong 15 phút. Hãy kiểm tra hộp thư và thư rác.</p>
+                <p class="small text-muted mt-3">Mã OTP có hiệu lực trong {{ $otpLifetimeMinutes }} phút. Hãy kiểm tra hộp thư và thư rác.</p>
                 <form method="POST" action="{{ route('password.verify') }}">
                     @csrf
                     <input type="hidden" name="email" value="{{ $email }}">

@@ -17,7 +17,7 @@
                     <h2 class="h5 mb-1">Cập nhật phiếu nhận đồ</h2>
                     <p class="text-muted mb-0">{{ $displayCode ?? 'BGN-'.$bookingDocument->BookingGiaoNhanID }} · {{ $booking?->MaBooking ?: 'Đặt lịch' }}</p>
                 </div>
-                <a href="{{ route('deliveries.booking-documents.show', $bookingDocument) }}" class="btn btn-outline-secondary btn-sm">
+                <a href="{{ route('deliveries.index') }}" class="btn btn-outline-secondary btn-sm">
                     <i class="bi bi-arrow-left me-1"></i>Quay lại
                 </a>
             </div>

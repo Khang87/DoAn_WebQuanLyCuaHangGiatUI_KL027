@@ -10,7 +10,7 @@ class PasswordResetOtpMail extends Mailable
 {
     public function __construct(
         public readonly string $otp,
-        public readonly int $minutes = 15,
+        public readonly int $minutes,
     ) {}
 
     public function envelope(): Envelope

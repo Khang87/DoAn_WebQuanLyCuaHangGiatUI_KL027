@@ -23,6 +23,7 @@ class SupportMessagesTest extends TestCase
             $t->string('TenDangNhap');
             $t->integer('KhachHangID')->nullable();
             $t->integer('NhanVienID')->nullable();
+            $t->string('AvatarURL')->nullable();
             $t->string('TrangThai')->default('Hoạt động');
         });
         foreach (['KhachHang' => 'KhachHangID', 'NhanVien' => 'NhanVienID'] as $name => $id) {
@@ -31,6 +32,7 @@ class SupportMessagesTest extends TestCase
                 $t->string('HoTen');
                 if ($name === 'KhachHang') {
                     $t->string('SoDienThoai')->nullable();
+                    $t->string('AvatarUrl')->nullable();
                 }
                 $t->string('TrangThai')->default('Hoạt động');
             });
@@ -69,6 +71,17 @@ class SupportMessagesTest extends TestCase
             $t->dateTime('ThoiGianGui')->nullable();
             $t->string('TrangThai')->default('Đã gửi');
         });
+        Schema::create('ThongBao', function (Blueprint $t): void {
+            $t->increments('ThongBaoID');
+            $t->integer('TaiKhoanID');
+            $t->integer('DonHangID')->nullable();
+            $t->integer('TinNhanID')->nullable();
+            $t->string('LoaiThongBao')->nullable();
+            $t->string('TieuDe');
+            $t->string('NoiDung');
+            $t->dateTime('ThoiGianGui')->nullable();
+            $t->boolean('DaDoc')->default(false);
+        });
         DB::table('NhanVien')->insert(['NhanVienID' => 1, 'HoTen' => 'Nhân viên cửa hàng']);
         DB::table('KhachHang')->insert([
             ['KhachHangID' => 1, 'HoTen' => 'Nguyễn An'],
@@ -104,6 +117,275 @@ class SupportMessagesTest extends TestCase
             'NguoiGuiID' => $sender, 'NguoiNhanID' => $recipient, 'DonHangID' => $order,
             'NoiDung' => 'Hỏi thông tin trước khi đặt', 'ThoiGianGui' => '2026-10-09 12:00:00',
         ], 'TinNhanID');
+    }
+
+    private function seedLazyInbox(int $count = 23): void
+    {
+        for ($i = 1; $i <= $count; $i++) {
+            DB::table('KhachHang')->insert([
+                'KhachHangID' => 100 + $i, 'HoTen' => sprintf('Lazy inbox %02d', $i),
+                'SoDienThoai' => sprintf('09070000%02d', $i),
+            ]);
+            DB::table('TaiKhoan')->insert([
+                'TaiKhoanID' => 500 + $i, 'KhachHangID' => 100 + $i,
+                'TenDangNhap' => sprintf('lazy-account-%02d', $i),
+                'AvatarURL' => 'https://avatars.example.test/'.$i.'.png',
+            ]);
+            DB::table('DonHang')->insert([
+                'DonHangID' => 1000 + $i, 'KhachHangID' => 100 + $i,
+                'MaDonHang' => sprintf('LAZY-ORDER-%02d', $i), 'NgayTao' => '2026-10-09 12:00:00',
+            ]);
+        }
+    }
+
+    public function test_lazy_inbox_paginates_both_tabs_with_a_common_page_and_defaults_to_orders(): void
+    {
+        Http::fake();
+        Http::preventStrayRequests();
+        $this->seedLazyInbox();
+        $this->actingAs(User::findOrFail(1));
+
+        foreach (['orders' => [...range(1023, 1001), 1], 'support' => [...range(523, 501), 3, 2]] as $tab => $ids) {
+            $first = $this->getJson('/admin/messages/inbox'.($tab === 'support' ? '?tab=support' : ''))
+                ->assertOk()->assertHeader('Cache-Control', 'no-store, private')
+                ->assertJsonPath('tab', $tab)->assertJsonPath('page', 1)->assertJsonPath('next_page', 2)
+                ->assertJsonCount(20, 'conversations');
+            $this->assertEqualsCanonicalizing(['tab', 'page', 'next_page', 'conversations'], array_keys($first->json()));
+            $this->assertSame(array_slice($ids, 0, 20), array_column($first->json('conversations'), 'id'));
+            $this->assertSame([
+                'id' => $ids[0],
+                'number' => $tab === 'orders' ? 'LAZY-ORDER-23' : '0907000023',
+                'customer' => 'Lazy inbox 23',
+                'avatar_url' => 'https://avatars.example.test/23.png',
+                'preview' => null, 'unread' => false,
+                'date' => $tab === 'orders' ? '09/10/2026' : null,
+            ], $first->json('conversations.0'));
+
+            // The JSON endpoint uses page for support too, not the legacy SSR support_page.
+            $second = $this->getJson('/admin/messages/inbox?'.http_build_query([
+                'tab' => $tab, 'page' => 2, 'support_page' => 99,
+            ]))->assertOk()->assertJsonPath('tab', $tab)->assertJsonPath('page', 2)
+                ->assertJsonPath('next_page', null)->assertJsonCount(count($ids) - 20, 'conversations');
+            $this->assertSame(array_slice($ids, 20), array_column($second->json('conversations'), 'id'));
+            $this->assertSame([], array_intersect(
+                array_column($first->json('conversations'), 'id'), array_column($second->json('conversations'), 'id'),
+            ));
+            $this->getJson('/admin/messages/inbox?tab='.$tab.'&page=3')->assertOk()->assertExactJson([
+                'tab' => $tab, 'page' => 3, 'next_page' => null, 'conversations' => [],
+            ]);
+        }
+        Http::assertNothingSent();
+    }
+
+    public function test_lazy_inbox_search_stays_scoped_across_both_tabs_and_all_pages(): void
+    {
+        Http::fake();
+        Http::preventStrayRequests();
+        $this->seedLazyInbox();
+        $this->actingAs(User::findOrFail(1));
+
+        foreach (['orders' => 'lazy-order-', 'support' => 'LAZY-ACCOUNT-'] as $tab => $identifier) {
+            $ids = $tab === 'orders' ? range(1023, 1001) : range(523, 501);
+            foreach (['  Lazy inbox  ', '09070000', $identifier] as $search) {
+                foreach ([1 => 20, 2 => 3, 3 => 0] as $page => $size) {
+                    $response = $this->getJson('/admin/messages/inbox?'.http_build_query([
+                        'tab' => $tab, 'q' => $search, 'page' => $page,
+                    ]))->assertOk()->assertJsonPath('tab', $tab)->assertJsonPath('page', $page)
+                        ->assertJsonPath('next_page', $page === 1 ? 2 : null)->assertJsonCount($size, 'conversations');
+                    $this->assertSame(array_slice($ids, ($page - 1) * 20, 20), array_column($response->json('conversations'), 'id'));
+                }
+            }
+            $this->getJson('/admin/messages/inbox?tab='.$tab.'&q=not-a-fixture')->assertOk()->assertExactJson([
+                'tab' => $tab, 'page' => 1, 'next_page' => null, 'conversations' => [],
+            ]);
+        }
+        Http::assertNothingSent();
+    }
+
+    public function test_lazy_inbox_avatars_prefer_raw_profile_then_the_exact_conversation_account(): void
+    {
+        Http::fake();
+        Http::preventStrayRequests();
+        DB::table('DonHang')->where('DonHangID', 1)->update(['KhachHangID' => 1, 'MaDonHang' => 'AVATAR-ORDER']);
+        DB::table('KhachHang')->where('KhachHangID', 1)->update(['SoDienThoai' => '0901111222']);
+        DB::table('TaiKhoan')->where('TaiKhoanID', 2)->update(['AvatarURL' => 'https://avatars.example.test/original.png']);
+        DB::table('TaiKhoan')->insert([
+            'TaiKhoanID' => 99, 'KhachHangID' => 1, 'TenDangNhap' => 'second-account-same-profile',
+            'AvatarURL' => 'https://avatars.example.test/exact.png',
+        ]);
+        $this->actingAs(User::findOrFail(1));
+        foreach (['https://avatars.example.test/profile.png', null, ''] as $profileAvatar) {
+            DB::table('KhachHang')->where('KhachHangID', 1)->update(['AvatarUrl' => $profileAvatar]);
+            $orders = $this->getJson('/admin/messages/inbox')->assertOk();
+            $this->assertSame([
+                'id' => 1, 'number' => 'AVATAR-ORDER', 'customer' => 'Nguyễn An',
+                'avatar_url' => $profileAvatar ?: 'https://avatars.example.test/original.png',
+                'preview' => null, 'unread' => false, 'date' => null,
+            ], $orders->json('conversations.0'));
+            $support = $this->getJson('/admin/messages/inbox?tab=support&q=0901111222')
+                ->assertOk()->assertJsonCount(2, 'conversations');
+            foreach ([99 => 'exact', 2 => 'original'] as $accountId => $avatar) {
+                $row = collect($support->json('conversations'))->firstWhere('id', $accountId);
+                $this->assertSame([
+                    'id' => $accountId, 'number' => '0901111222', 'customer' => 'Nguyễn An',
+                    'avatar_url' => $profileAvatar ?: 'https://avatars.example.test/'.$avatar.'.png',
+                    'preview' => null, 'unread' => false, 'date' => null,
+                ], $row);
+            }
+        }
+
+        // A sibling account's avatar and the profile accessor's stock image are not fallbacks.
+        DB::table('TaiKhoan')->where('TaiKhoanID', 99)->update(['AvatarURL' => null]);
+        $this->getJson('/admin/messages/inbox?tab=support&q=second-account-same-profile')->assertOk()
+            ->assertJsonCount(1, 'conversations')->assertJsonPath('conversations.0.id', 99)
+            ->assertJsonPath('conversations.0.avatar_url', null);
+        $this->getJson('/admin/messages/inbox?tab=support&q=auth-binh')->assertOk()
+            ->assertJsonPath('conversations.0.id', 3)->assertJsonPath('conversations.0.number', 'Tư vấn khách hàng')
+            ->assertJsonPath('conversations.0.avatar_url', null);
+        Http::assertNothingSent();
+    }
+
+    public function test_lazy_inbox_keeps_orders_without_accounts_or_profiles_and_nullable_dto_fields(): void
+    {
+        Http::fake();
+        Http::preventStrayRequests();
+        DB::table('KhachHang')->insert(['KhachHangID' => 30, 'HoTen' => 'Ánh chưa đăng ký']);
+        DB::table('DonHang')->where('DonHangID', 1)->update(['KhachHangID' => 30, 'MaDonHang' => 'NO-ACCOUNT']);
+        DB::table('DonHang')->insert(['DonHangID' => 2]);
+        $this->actingAs(User::findOrFail(1))->getJson('/admin/messages/inbox')->assertOk()->assertExactJson([
+            'tab' => 'orders', 'page' => 1, 'next_page' => null,
+            'conversations' => [
+                ['id' => 2, 'number' => '', 'customer' => 'Khách hàng', 'avatar_url' => null, 'preview' => null, 'unread' => false, 'date' => null],
+                ['id' => 1, 'number' => 'NO-ACCOUNT', 'customer' => 'Ánh chưa đăng ký', 'avatar_url' => null, 'preview' => null, 'unread' => false, 'date' => null],
+            ],
+        ]);
+        DB::table('KhachHang')->where('KhachHangID', 30)->update(['AvatarUrl' => 'https://avatars.example.test/profile-only.png']);
+        $this->getJson('/admin/messages/inbox?q=NO-ACCOUNT')->assertOk()
+            ->assertJsonPath('conversations.0.avatar_url', 'https://avatars.example.test/profile-only.png');
+        Http::assertNothingSent();
+    }
+
+    public function test_lazy_inbox_rejects_invalid_tab_query_and_page_values(): void
+    {
+        Http::fake();
+        Http::preventStrayRequests();
+        $this->actingAs(User::findOrFail(1));
+        foreach (['orders', 'support'] as $tab) {
+            foreach ([
+                ['page' => 0], ['page' => -1], ['page' => '1.5'], ['page' => 'invalid'], ['page' => [1]],
+                ['q' => str_repeat('a', 101)], ['q' => ['nested']],
+                ['tab' => 'other'], ['tab' => ['orders']],
+            ] as $invalid) {
+                $this->getJson('/admin/messages/inbox?'.http_build_query(array_merge(['tab' => $tab], $invalid)))
+                    ->assertUnprocessable()->assertJsonValidationErrors(array_keys($invalid));
+            }
+            $this->getJson('/admin/messages/inbox?'.http_build_query([
+                'tab' => $tab, 'q' => str_repeat('a', 100), 'page' => 1,
+            ]))->assertOk()->assertJsonPath('conversations', []);
+        }
+        Http::assertNothingSent();
+    }
+
+    public function test_lazy_inbox_requires_staff_permission_and_never_accepts_post_for_either_tab(): void
+    {
+        Http::fake();
+        Http::preventStrayRequests();
+        foreach (['orders', 'support'] as $tab) {
+            $this->getJson('/admin/messages/inbox?tab='.$tab)->assertUnauthorized();
+        }
+        $this->actingAs(User::findOrFail(2));
+        foreach (['orders', 'support'] as $tab) {
+            $this->getJson('/admin/messages/inbox?tab='.$tab)->assertForbidden();
+        }
+        $this->actingAs(User::findOrFail(1));
+        foreach (['orders', 'support'] as $tab) {
+            $this->getJson('/admin/messages/inbox?tab='.$tab)->assertOk();
+            $this->postJson('/admin/messages/inbox?tab='.$tab)->assertStatus(405);
+        }
+        DB::table('TaiKhoan_VaiTro')->where('TaiKhoanID', 1)->delete();
+        PermissionCache::forgetAll();
+        foreach (['orders', 'support'] as $tab) {
+            $this->getJson('/admin/messages/inbox?tab='.$tab)->assertForbidden();
+        }
+        $this->assertDatabaseCount('TinNhan', 0);
+        Http::assertNothingSent();
+    }
+
+    public function test_lazy_inbox_gets_preserve_the_entire_fixture_database_and_unread_state(): void
+    {
+        Http::fake(fn () => Http::response(['messages' => [
+            ['TinNhanID' => 1, 'NoiDung' => 'Order preview'],
+            ['TinNhanID' => 2, 'NoiDung' => 'Support preview'],
+        ]]));
+        Http::preventStrayRequests();
+        config(['services.supabase.project_url' => 'https://chat.example.test', 'services.supabase.service_role_key' => 'fixture-key']);
+        $this->seedLazyInbox();
+        $orderMessage = $this->message(2, 1, 1);
+        $supportMessage = $this->message(2, 1);
+        DB::table('TinNhan')->where('TinNhanID', $orderMessage)->update(['NoiDung' => 'Order preview']);
+        DB::table('TinNhan')->where('TinNhanID', $supportMessage)->update(['NoiDung' => 'Support preview', 'TrangThai' => 'Đã nhận']);
+        $snapshot = fn (): array => collect([
+            'TaiKhoan', 'KhachHang', 'NhanVien', 'VaiTro', 'Quyen', 'TaiKhoan_VaiTro', 'VaiTro_Quyen', 'DonHang', 'TinNhan', 'ThongBao',
+        ])->mapWithKeys(fn ($table): array => [$table => DB::table($table)->orderBy('rowid')->get()->toJson()])->all();
+        $before = $snapshot();
+        $this->actingAs(User::findOrFail(1));
+
+        foreach (['orders', 'support'] as $tab) {
+            foreach ([1, 2, 3] as $page) {
+                $this->getJson('/admin/messages/inbox?tab='.$tab.'&page='.$page)->assertOk();
+                $this->get('/admin/messages?'.http_build_query([
+                    'tab' => $tab, $tab === 'support' ? 'support_page' : 'page' => $page,
+                ]))->assertOk();
+                $this->assertSame($before, $snapshot(), $tab.' page '.$page.' must be read-only');
+            }
+        }
+        $this->getJson('/admin/messages/inbox')->assertOk()->assertJsonPath('conversations.0.id', 1)
+            ->assertJsonPath('conversations.0.preview', 'Order preview')->assertJsonPath('conversations.0.unread', true)
+            ->assertJsonPath('conversations.0.date', '09/10/2026');
+        $this->getJson('/admin/messages/inbox?tab=support&q=auth-an')->assertOk()
+            ->assertJsonPath('conversations.0.id', 2)->assertJsonPath('conversations.0.preview', 'Support preview')
+            ->assertJsonPath('conversations.0.date', '09/10/2026');
+        $this->assertSame($before, $snapshot());
+        Http::assertSent(fn ($request): bool => $request['action'] === 'present_web_messages');
+    }
+
+    public function test_lazy_inbox_account_reads_are_bounded_for_json_and_ssr_and_eagerload_avatar_keys(): void
+    {
+        Http::fake();
+        Http::preventStrayRequests();
+        $this->seedLazyInbox(20);
+        $this->actingAs(User::findOrFail(1));
+        foreach (['orders', 'support'] as $tab) {
+            foreach (['/admin/messages/inbox', '/admin/messages'] as $endpoint) {
+                $this->get($endpoint.'?tab='.$tab)->assertOk(); // Warm permission/schema caches before measuring.
+                $accountReads = [];
+                foreach (['Lazy inbox 01' => 1, 'Lazy inbox' => 20] as $search => $size) {
+                    DB::enableQueryLog();
+                    DB::flushQueryLog();
+                    try {
+                        $response = $this->get($endpoint.'?'.http_build_query(['tab' => $tab, 'q' => $search]))->assertOk();
+                        $rows = $endpoint === '/admin/messages/inbox'
+                            ? $response->json('conversations') : $response->viewData('inboxPage')['conversations'];
+                        $this->assertCount($size, $rows);
+                        foreach ($rows as $row) {
+                            $id = $row['id'] - ($tab === 'orders' ? 1000 : 500);
+                            $this->assertSame('https://avatars.example.test/'.$id.'.png', $row['avatar_url']);
+                        }
+                        $accountReads[$size] = count(array_filter(DB::getQueryLog(), fn ($query): bool => str_contains($query['query'], 'from "TaiKhoan"')));
+                    } finally {
+                        DB::disableQueryLog();
+                    }
+                }
+                $this->assertGreaterThan(0, $accountReads[1]);
+                $this->assertSame($accountReads[1], $accountReads[20], $tab.' '.$endpoint.' must not read one account per row');
+            }
+        }
+        foreach (app(MessageService::class)->getOrders('Lazy inbox') as $order) {
+            $this->assertTrue($order->relationLoaded('khachHang'));
+            $this->assertTrue($order->khachHang->relationLoaded('taiKhoan'));
+            $this->assertEqualsCanonicalizing(['TaiKhoanID', 'KhachHangID', 'AvatarURL'], array_keys($order->khachHang->taiKhoan->getAttributes()));
+        }
+        Http::assertNothingSent();
     }
 
     public function test_unread_count_includes_all_incoming_order_and_support_messages_without_marking_them_read(): void
@@ -148,6 +430,8 @@ class SupportMessagesTest extends TestCase
 
     public function test_unread_count_requires_staff_permission_and_only_accepts_get(): void
     {
+        Http::fake();
+        Http::preventStrayRequests();
         $this->getJson('/admin/messages/unread-count')->assertUnauthorized();
         $this->actingAs(User::findOrFail(2))->getJson('/admin/messages/unread-count')->assertForbidden();
         $this->actingAs(User::findOrFail(1))->postJson('/admin/messages/unread-count')->assertStatus(405);
@@ -197,16 +481,18 @@ class SupportMessagesTest extends TestCase
 
     public function test_order_inbox_promotes_old_order_and_read_receipt_is_scoped_and_persistent(): void
     {
+        Http::fake();
+        Http::preventStrayRequests();
         DB::table('DonHang')->where('DonHangID', 1)->update(['NgayTao' => '2026-10-01 00:00:00', 'MaDonHang' => 'DH1']);
         DB::table('DonHang')->insert(['DonHangID' => 2, 'NgayTao' => '2026-10-08 00:00:00', 'MaDonHang' => 'DH2']);
         $this->actingAs(User::findOrFail(1));
-        $this->getJson('/admin/messages/inbox')->assertOk()->assertJsonPath('orders.0.id', 2);
+        $this->getJson('/admin/messages/inbox')->assertOk()->assertJsonPath('conversations.0.id', 2);
         $incoming = $this->message(2, 1, 1);
         $other = $this->message(2, 1, 2);
         DB::table('TinNhan')->where('TinNhanID', $other)->update(['ThoiGianGui' => '2026-10-08 12:00:00']);
         $outgoing = $this->message(1, 2, 1);
         $support = $this->message(2, 1);
-        $this->getJson('/admin/messages/inbox')->assertJsonPath('orders.0.id', 1)->assertJsonPath('orders.0.unread', true);
+        $this->getJson('/admin/messages/inbox')->assertJsonPath('conversations.0.id', 1)->assertJsonPath('conversations.0.unread', true);
         $this->assertDatabaseHas('TinNhan', ['TinNhanID' => $incoming, 'TrangThai' => 'Đã gửi']);
         $receipt = ['order_id' => 1, 'message_ids' => [$incoming, $other, $outgoing, $support]];
         $this->postJson('/admin/messages/read', $receipt)->assertOk()->assertJsonPath('updated', 1);
@@ -214,9 +500,9 @@ class SupportMessagesTest extends TestCase
             $this->assertDatabaseHas('TinNhan', ['TinNhanID' => $id, 'TrangThai' => 'Đã gửi']);
         }
         $this->postJson('/admin/messages/read', $receipt)->assertJsonPath('updated', 0);
-        $this->getJson('/admin/messages/inbox')->assertJsonPath('orders.0.unread', false)->assertJsonPath('orders.1.unread', true);
+        $this->getJson('/admin/messages/inbox')->assertJsonPath('conversations.0.unread', false)->assertJsonPath('conversations.1.unread', true);
         $this->message(2, 1, 1);
-        $this->getJson('/admin/messages/inbox')->assertJsonPath('orders.0.unread', true);
+        $this->getJson('/admin/messages/inbox')->assertJsonPath('conversations.0.unread', true);
     }
 
     public function test_inbox_search_and_previews_stay_with_their_conversations(): void
@@ -244,6 +530,8 @@ class SupportMessagesTest extends TestCase
 
     public function test_opening_recent_window_clears_older_unread_history_without_touching_later_arrivals(): void
     {
+        Http::fake();
+        Http::preventStrayRequests();
         $old = $this->message(2, 1, 1);
         for ($i = 0; $i < 100; $i++) {
             $boundary = $this->message(1, 2, 1);
@@ -258,6 +546,8 @@ class SupportMessagesTest extends TestCase
 
     public function test_read_receipts_require_staff_permission_and_do_not_mark_new_undisplayed_messages(): void
     {
+        Http::fake();
+        Http::preventStrayRequests();
         $seen = $this->message(2, 1, 1);
         $new = $this->message(2, 1, 1);
         $body = ['order_id' => 1, 'message_ids' => [$seen]];

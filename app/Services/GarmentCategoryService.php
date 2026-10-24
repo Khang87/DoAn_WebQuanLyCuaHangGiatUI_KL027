@@ -4,7 +4,6 @@ namespace App\Services;
 
 use App\Models\DanhMucLoaiDoGiat;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
-use RuntimeException;
 
 class GarmentCategoryService
 {
@@ -63,14 +62,6 @@ class GarmentCategoryService
 
     public function delete(DanhMucLoaiDoGiat $category): bool
     {
-        if ($category->loaiDoGiats()->exists()) {
-            if (! $category->update(['TrangThai' => 'Tạm ngưng'])) {
-                throw new RuntimeException('Không thể tạm ngưng danh mục loại đồ giặt.');
-            }
-
-            return false;
-        }
-
-        return (bool) $category->delete();
+        return app(CatalogDeletionService::class)->delete($category);
     }
 }

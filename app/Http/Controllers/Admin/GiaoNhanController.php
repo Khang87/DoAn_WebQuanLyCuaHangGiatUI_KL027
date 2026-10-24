@@ -223,18 +223,10 @@ class GiaoNhanController extends Controller
         $this->restrictToOwnBookingDocument($bookingDocument, $user);
 
         $displayCode = 'BGN-'.$bookingDocument->BookingGiaoNhanID;
-        $canManageIntake = $this->deliveryService->canManageBookingIntake($bookingDocument);
-        $isIntake = $bookingDocument->LoaiGiaoNhan === 'NHAN_DO';
-        $booking = $bookingDocument->booking;
-        $canInspect = $isIntake
-            && $booking !== null
-            && $this->bookingService->canInspect($booking);
 
         return view('admin.deliveries.booking-document', compact(
             'bookingDocument',
             'displayCode',
-            'canManageIntake',
-            'canInspect',
         ));
     }
 

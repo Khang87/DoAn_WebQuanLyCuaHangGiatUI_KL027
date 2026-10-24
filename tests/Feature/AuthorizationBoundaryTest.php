@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Http\Middleware\EnsureUserHasPermission;
+use App\Models\KhachHang;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -40,15 +41,14 @@ class AuthorizationBoundaryTest extends TestCase
         );
 
         $customers = new LengthAwarePaginator([
-            (object) [
+            (new KhachHang)->forceFill([
                 'KhachHangID' => 7,
                 'HoTen' => 'Khách kiểm thử',
                 'SoDienThoai' => null,
                 'Email' => null,
                 'DiaChi' => null,
-                'diemTichLuy' => null,
                 'NgayTao' => null,
-            ],
+            ])->setRelation('diemTichLuy', null)->setRelation('taiKhoan', null),
         ], 1, 10);
 
         $this->actingAs($staff)

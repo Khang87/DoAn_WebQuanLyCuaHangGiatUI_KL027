@@ -40,13 +40,17 @@ class DonHangController extends Controller
     /**
      * Danh sách nhóm dịch vụ và đơn vị tính lấy từ các bảng tiếng Việt hiện có.
      */
-    private function categoryOptions(): array
+    private function categoryOptions(?DonHang $order = null): array
     {
+        $items = $order?->chiTietDonHangs ?? collect();
+
         return [
-            'serviceCategories' => LoaiDichVu::where('TrangThai', 'Hoạt động')
+            'serviceCategories' => LoaiDichVu::where(fn ($query) => $query->where('TrangThai', 'Hoạt động')
+                ->orWhereIn('LoaiDichVuID', DichVu::whereIn('DichVuID', $items->pluck('DichVuID'))->select('LoaiDichVuID')))
                 ->orderBy('TenLoaiDichVu')
                 ->get(['LoaiDichVuID', 'TenLoaiDichVu']),
-            'units' => DonViTinh::where('TrangThai', 'Hoạt động')->orderBy('TenDonViTinh')->get(['DonViTinhID', 'TenDonViTinh', 'KyHieu']),
+            'units' => DonViTinh::where(fn ($query) => $query->where('TrangThai', 'Hoạt động')
+                ->orWhereIn('DonViTinhID', $items->pluck('DonViTinhID')))->orderBy('TenDonViTinh')->get(['DonViTinhID', 'TenDonViTinh', 'KyHieu']),
         ];
     }
 
@@ -71,8 +75,8 @@ class DonHangController extends Controller
         $customers = KhachHang::with('diemTichLuy')->orderBy('HoTen')->get();
         $selectedCustomerId = $request->old('KhachHangID', $request->query('customer_id'));
         $selectedCustomer = $customers->firstWhere('KhachHangID', $selectedCustomerId);
-        $services = DichVu::where('TrangThai', 'Hoạt động')->orderBy('TenDichVu')->get();
-        $garments = LoaiDoGiat::where('TrangThai', 'Hoạt động')->orderBy('TenLoaiDoGiat')->get();
+        $services = DichVu::availableForBooking()->orderBy('TenDichVu')->get();
+        $garments = LoaiDoGiat::availableForBooking()->orderBy('TenLoaiDoGiat')->get();
         $authenticatedEmployee = NhanVien::query()
             ->whereKey($request->user()?->NhanVienID)
             ->where('TrangThai', 'Hoạt động')
@@ -123,13 +127,18 @@ class DonHangController extends Controller
             $order->statusEnum() === OrderStatus::Pending
             && auth()->user()?->can('orders.edit')
         ) {
-            $services = DichVu::orderBy('TenDichVu')->get();
-            $garments = LoaiDoGiat::orderBy('TenLoaiDoGiat')
+            $existingItems = $order->chiTietDonHangs;
+            $services = DichVu::where(fn ($query) => $query->availableForBooking()
+                ->orWhereIn('DichVuID', $existingItems->pluck('DichVuID')))->orderBy('TenDichVu')->get();
+            $garments = LoaiDoGiat::where(fn ($query) => $query->availableForBooking()
+                ->orWhereIn('LoaiDoGiatID', $existingItems->pluck('LoaiDoGiatID')))->orderBy('TenLoaiDoGiat')
                 ->get(['LoaiDoGiatID', 'TenLoaiDoGiat', 'DanhMucID']);
-            $units = DonViTinh::orderBy('TenDonViTinh')->get();
-            $garmentCategories = DanhMucLoaiDoGiat::orderBy('TenDanhMuc')
+            $units = DonViTinh::where(fn ($query) => $query->where('TrangThai', 'Hoạt động')
+                ->orWhereIn('DonViTinhID', $existingItems->pluck('DonViTinhID')))->orderBy('TenDonViTinh')->get();
+            $garmentCategories = DanhMucLoaiDoGiat::where(fn ($query) => $query->where('TrangThai', 'Hoạt động')
+                ->orWhereIn('DanhMucID', $garments->pluck('DanhMucID')))->orderBy('TenDanhMuc')
                 ->get(['DanhMucID', 'TenDanhMuc']);
-            $inspectionPricings = $this->pricingService->orderOptions();
+            $inspectionPricings = $this->pricingService->orderOptionsForRecord($order);
         }
 
         return view('admin.orders.show', compact(
@@ -259,15 +268,17 @@ class DonHangController extends Controller
         }
 
         $customers = KhachHang::with('diemTichLuy')->orderBy('HoTen')->get();
-        $services = DichVu::where('TrangThai', 'Hoạt động')->orderBy('TenDichVu')->get();
-        $garments = LoaiDoGiat::where('TrangThai', 'Hoạt động')->orderBy('TenLoaiDoGiat')->get();
+        $services = DichVu::where(fn ($query) => $query->availableForBooking()
+            ->orWhereIn('DichVuID', $order->chiTietDonHangs->pluck('DichVuID')))->orderBy('TenDichVu')->get();
+        $garments = LoaiDoGiat::where(fn ($query) => $query->availableForBooking()
+            ->orWhereIn('LoaiDoGiatID', $order->chiTietDonHangs->pluck('LoaiDoGiatID')))->orderBy('TenLoaiDoGiat')->get();
         $employees = NhanVien::where(fn ($query) => $query->where('TrangThai', 'Hoạt động')->orWhere('NhanVienID', $order->NhanVienID))->orderBy('HoTen')->get(['NhanVienID', 'HoTen']);
         $statusFlow = $this->orderService->getStatusFlow();
-        $pricings = $this->pricingService->orderOptions();
+        $pricings = $this->pricingService->orderOptionsForRecord($order);
 
         return view('admin.orders.edit', array_merge(
             compact('order', 'customers', 'services', 'garments', 'employees', 'statusFlow', 'pricings'),
-            $this->categoryOptions()
+            $this->categoryOptions($order)
         ));
     }
 

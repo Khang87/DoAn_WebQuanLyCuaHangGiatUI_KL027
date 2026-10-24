@@ -13,7 +13,7 @@
 <div class="card border-0 shadow-sm mb-4">
     <div class="card-body p-4">
         <div class="small text-muted mb-1 fw-medium">Điểm đánh giá trung bình</div>
-        <div class="d-flex flex-wrap align-items-center gap-3">
+        <div class="d-flex flex-wrap align-items-baseline gap-3">
             <span class="display-5 fw-bold text-warning">{{ number_format($averageValue, 1) }}</span>
             <span class="fs-5 text-warning text-nowrap" aria-label="{{ $averageValue }} trên 5 sao">
                 @for($star = 1; $star <= 5; $star++)

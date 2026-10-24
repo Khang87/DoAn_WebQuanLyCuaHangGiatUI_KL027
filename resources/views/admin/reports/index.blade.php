@@ -48,11 +48,6 @@
         font-size: 0.8125rem;
         font-weight: 500;
     }
-    .badge-breakdown {
-        font-size: 0.6875rem;
-        padding: 0.25rem 0.5rem;
-        white-space: nowrap;
-    }
     /* Reports table overrides - must use !important to beat global laundry.css */
     .reports-table thead th {
         font-size: 0.6875rem !important;
@@ -266,18 +261,22 @@
     <!-- Card 2: Tổng đơn hàng -->
     <div class="col-12 col-sm-6 col-xl-3">
         <div class="card kpi-card h-100 shadow-sm border-0">
-            <div class="card-body d-flex align-items-start p-3">
-                <div class="stat-icon bg-success-subtle text-success flex-shrink-0">
-                    <i class="bi bi-receipt"></i>
-                </div>
-                <div class="ms-3 flex-grow-1 min-w-0">
-                    <div class="stat-value text-dark">{{ number_format($kpi['total_orders'], 0, ',', '.') }}</div>
-                    <div class="stat-label d-flex flex-wrap gap-1 align-items-center mt-1">
-                        <span class="text-muted">Tổng đơn hàng</span>
-                        <span class="badge bg-success-subtle text-success-emphasis badge-breakdown">{{ $kpi['completed_orders'] }} HT</span>
-                        <span class="badge bg-warning-subtle text-warning-emphasis badge-breakdown">{{ $kpi['processing_orders'] }} ĐXL</span>
-                        <span class="badge bg-danger-subtle text-danger-emphasis badge-breakdown">{{ $kpi['cancelled_orders'] }} Hủy</span>
+            <div class="card-body p-3">
+                <div class="d-flex align-items-start">
+                    <div class="stat-icon bg-success-subtle text-success flex-shrink-0">
+                        <i class="bi bi-receipt"></i>
                     </div>
+                    <div class="ms-3 flex-grow-1 min-w-0">
+                        <div class="stat-value text-dark">{{ number_format($kpi['total_orders'], 0, ',', '.') }}</div>
+                        <div class="stat-label text-muted mt-1">Tổng đơn hàng</div>
+                    </div>
+                </div>
+                <div class="mt-3">
+                    <small class="text-muted d-flex flex-wrap gap-1">
+                        <span class="badge bg-success-subtle text-success-emphasis border border-success rounded-pill">{{ $kpi['completed_orders'] }} Hoàn thành</span>
+                        <span class="badge bg-primary-subtle text-primary-emphasis border border-primary-subtle fw-semibold rounded-pill">{{ $kpi['processing_orders'] }} Đang xử lý</span>
+                        <span class="badge bg-danger-subtle text-danger-emphasis border border-danger rounded-pill">{{ $kpi['cancelled_orders'] }} Đã hủy</span>
+                    </small>
                 </div>
             </div>
         </div>
@@ -321,14 +320,14 @@
         <div class="card h-100 shadow-sm border-0">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <span>Xu hướng doanh thu</span>
-                <select id="chartType" class="form-select form-select-sm" style="width: auto; min-width: 100px;">
+                <select id="chartType" class="form-select form-select-sm" style="width: auto; min-width: 100px;" aria-label="Loại biểu đồ doanh thu">
+                    <option value="line" selected>Đường</option>
                     <option value="bar">Cột</option>
-                    <option value="line">Đường</option>
                 </select>
             </div>
             <div class="card-body p-3">
                 <div class="chart-container" style="position: relative; height: 320px; width: 100%;">
-                    @if(array_sum($chartData['revenue'] ?? []) > 0 || array_sum($chartData['orders'] ?? []) > 0)
+                    @if(array_sum($chartData['revenue'] ?? []) > 0)
                     <div id="revenueChart"></div>
                     @else
                     <div class="report-chart-empty">Chưa có doanh thu trong khoảng thời gian này</div>
@@ -483,7 +482,12 @@
                             <tr>
                                 <td>{{ $loop->iteration }}</td>
                                 <td class="ps-3 fw-bold text-primary">{{ $order->code }}</td>
-                                <td class="fw-medium text-dark">{{ $order->customer?->name ?: '-' }}</td>
+                                <td class="fw-medium text-dark">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <x-admin.customer-avatar :customer="$order->khachHang" :size="40" />
+                                        <span>{{ $order->customer?->name ?: '-' }}</span>
+                                    </div>
+                                </td>
                                 <td class="text-secondary text-truncate">{{ $order->items->pluck('service.name')->filter()->join(', ') ?: ($order->service?->name ?: '-') }}</td>
                                 <td class="text-center">
                                     <div class="order-status-badges d-inline-flex align-items-center flex-nowrap gap-1 text-nowrap">
@@ -525,7 +529,6 @@
         const formatCurrency = value => `${new Intl.NumberFormat('vi-VN').format(Number(value) || 0)} VNĐ`;
         const revenueLabels = @json($chartData['labels'] ?? []);
         const revenueValues = @json($chartData['revenue'] ?? []);
-        const orderValues = @json($chartData['orders'] ?? []);
         const compositionLabels = @json($compositionData['labels'] ?? []);
         const compositionValues = @json($compositionData['revenue'] ?? []);
         const colors = ['#3b82f6', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899', '#14b8a6', '#f97316', '#6366f1'];
@@ -550,53 +553,43 @@
             }
 
             revenueChart?.destroy();
-            const displayType = document.getElementById('chartType')?.value === 'line' ? 'line' : 'column';
+            const displayType = document.getElementById('chartType')?.value === 'bar' ? 'bar' : 'line';
             revenueChart = new ApexCharts(element, {
                 series: [
-                    { name: 'Doanh thu', type: displayType, data: revenueValues.map(value => Number(value) || 0) },
-                    { name: 'Số đơn', type: 'line', data: orderValues.map(value => Number(value) || 0) },
+                    { name: 'Doanh thu', data: revenueValues.map(value => Number(value) || 0) },
                 ],
                 chart: {
-                    type: 'line',
+                    type: displayType,
                     height: 320,
                     fontFamily: 'Open Sans, Arial, sans-serif',
                     toolbar: { show: false },
                     animations: { enabled: false },
                     zoom: { enabled: false },
                 },
-                colors: ['#3b82f6', '#22c55e'],
-                stroke: { curve: 'smooth', width: displayType === 'column' ? [0, 3] : [3, 3] },
-                fill: { opacity: [0.85, 1] },
+                colors: ['#3b82f6'],
+                stroke: { curve: 'straight', width: displayType === 'line' ? 3 : 0 },
+                fill: { opacity: 1 },
                 plotOptions: { bar: { columnWidth: '48%', borderRadius: 3 } },
                 dataLabels: { enabled: false },
-                markers: { size: [0, 3], hover: { size: 5 } },
+                markers: { size: displayType === 'line' ? 4 : 0, hover: { size: 6 } },
                 xaxis: {
-                    categories: revenueLabels,
+                    categories: [...revenueLabels],
+                    title: { text: 'Thời gian' },
                     tickAmount: 12,
                     labels: { rotate: 0, hideOverlappingLabels: true },
                 },
-                yaxis: [
-                    {
-                        seriesName: 'Doanh thu',
-                        min: 0,
-                        title: { text: 'Doanh thu' },
-                        labels: { formatter: value => new Intl.NumberFormat('vi-VN', { notation: 'compact' }).format(value) + ' đ' },
-                    },
-                    {
-                        seriesName: 'Số đơn',
-                        opposite: true,
-                        min: 0,
-                        forceNiceScale: true,
-                        title: { text: 'Số đơn' },
-                        labels: { formatter: value => Math.round(value) + ' đơn' },
-                    },
-                ],
+                yaxis: {
+                    min: 0,
+                    title: { text: 'Doanh thu (VNĐ)' },
+                    labels: { formatter: value => new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 0 }).format(value) },
+                },
                 grid: { borderColor: '#e2e8f0', strokeDashArray: 4 },
-                legend: { position: 'top', horizontalAlign: 'left' },
+                legend: { show: false },
                 tooltip: {
-                    shared: true,
+                    shared: false,
+                    intersect: false,
                     y: {
-                        formatter: (value, { seriesIndex }) => seriesIndex === 0 ? formatCurrency(value) : `${value} đơn`,
+                        formatter: value => formatCurrency(value),
                     },
                 },
                 noData: { text: 'Chưa có dữ liệu trong khoảng thời gian này' },

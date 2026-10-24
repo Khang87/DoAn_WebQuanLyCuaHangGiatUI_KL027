@@ -25,7 +25,8 @@ class AdminCommunicationTest extends TestCase
     {
         parent::setUp();
 
-        config(['database.default' => 'sqlite', 'database.connections.sqlite.database' => ':memory:']);
+        $this->assertSame('sqlite', config('database.default'));
+        $this->assertSame(':memory:', config('database.connections.sqlite.database'));
         DB::purge('sqlite');
 
         Schema::create('TaiKhoan', function (Blueprint $table): void {
@@ -34,6 +35,7 @@ class AdminCommunicationTest extends TestCase
             $table->string('MatKhau')->nullable();
             $table->unsignedInteger('KhachHangID')->nullable();
             $table->unsignedInteger('NhanVienID')->nullable();
+            $table->string('AvatarURL')->nullable();
             $table->string('TrangThai')->default('Hoạt động');
         });
 
@@ -45,6 +47,8 @@ class AdminCommunicationTest extends TestCase
         Schema::create('KhachHang', function (Blueprint $table): void {
             $table->increments('KhachHangID');
             $table->string('HoTen');
+            $table->string('SoDienThoai')->nullable();
+            $table->string('AvatarUrl')->nullable();
         });
 
         Schema::create('VaiTro', function (Blueprint $table): void {
@@ -92,6 +96,12 @@ class AdminCommunicationTest extends TestCase
             $table->dateTime('NgayTao')->useCurrent();
         });
 
+        Schema::create('HoaDon', function (Blueprint $table): void {
+            $table->increments('HoaDonID');
+            $table->unsignedInteger('DonHangID');
+            $table->string('TrangThai');
+        });
+
         Schema::create('TinNhan', function (Blueprint $table): void {
             $table->increments('TinNhanID');
             $table->unsignedInteger('NguoiGuiID');
@@ -118,6 +128,174 @@ class AdminCommunicationTest extends TestCase
             $table->string('IPAddress')->nullable();
             $table->text('UserAgent')->nullable();
         });
+    }
+
+    public function test_lazy_inbox_ssr_uses_the_json_dto_only_for_the_active_tab_and_keeps_legacy_pages(): void
+    {
+        Http::fake();
+        Http::preventStrayRequests();
+        $this->actingAs($this->seedLazyInbox());
+        foreach (['orders', 'support'] as $tab) {
+            foreach ([1 => 20, 2 => 3, 3 => 0] as $page => $size) {
+                $expected = $this->getJson('/admin/messages/inbox?'.http_build_query([
+                    'tab' => $tab, 'q' => 'Lazy client', 'page' => $page,
+                ]))->assertOk()->json();
+                DB::enableQueryLog();
+                DB::flushQueryLog();
+                try {
+                    $response = $this->get('/admin/messages?'.http_build_query([
+                        'tab' => $tab, 'q' => 'Lazy client',
+                        'page' => $tab === 'orders' ? $page : 99,
+                        'support_page' => $tab === 'support' ? $page : 99,
+                    ]))->assertOk()->assertViewIs('admin.messages.index')
+                        ->assertViewHas('activeTab', $tab)->assertViewHas('selectedOrder', null)
+                        ->assertViewHas('selectedCustomer', null)->assertViewHas('inboxPage', $expected);
+                    $queries = array_column(DB::getQueryLog(), 'query');
+                } finally {
+                    DB::disableQueryLog();
+                }
+                $activeTable = $tab === 'orders' ? 'DonHang' : 'TaiKhoan';
+                $inactiveTable = $tab === 'orders' ? 'TaiKhoan' : 'DonHang';
+                $this->assertNotEmpty(array_filter($queries, fn ($sql): bool => str_contains($sql, 'select count(*) as "aggregate" from "'.$activeTable.'"')), 'The active inbox must be paginated.');
+                $this->assertEmpty(array_filter($queries, fn ($sql): bool => str_contains($sql, 'select count(*) as "aggregate" from "'.$inactiveTable.'"')), 'The inactive inbox must not be paginated.');
+
+                $xpath = $this->inboxXPath($response->getContent());
+                $inbox = $xpath->query('//*[@data-message-inbox]')->item(0);
+                $this->assertNotNull($inbox);
+                $this->assertSame($tab, $inbox->getAttribute('data-inbox-tab'));
+                $this->assertSame((string) $page, $inbox->getAttribute('data-inbox-page'));
+                $this->assertSame($page === 1 ? '2' : '', $inbox->getAttribute('data-next-page'));
+                parse_str(parse_url($inbox->getAttribute('data-message-inbox'), PHP_URL_QUERY), $inboxQuery);
+                $this->assertSame(['tab' => $tab, 'q' => 'Lazy client'], $inboxQuery);
+                $this->assertSame(1, $xpath->query('.//*[@data-inbox-rows]', $inbox)->length);
+                $more = $xpath->query('.//button[@data-inbox-more]', $inbox)->item(0);
+                $this->assertNotNull($more);
+                $this->assertSame($page !== 1, $more->hasAttribute('hidden'));
+                $this->assertSame(0, $xpath->query('.//*[contains(concat(" ", normalize-space(@class), " "), " pagination ")]', $inbox)->length);
+                $rows = $xpath->query('.//*[@data-inbox-rows]/a[@data-inbox-id]', $inbox);
+                $this->assertSame($size, $rows->length);
+                foreach ($rows as $index => $row) {
+                    $conversation = $expected['conversations'][$index];
+                    $this->assertSame((string) $conversation['id'], $row->getAttribute('data-inbox-id'));
+                    parse_str(parse_url($row->getAttribute('href'), PHP_URL_QUERY), $linkQuery);
+                    $this->assertSame([
+                        'tab' => $tab, $tab === 'orders' ? 'order_id' : 'customer_id' => (string) $conversation['id'], 'q' => 'Lazy client',
+                    ], $linkQuery);
+                    $this->assertStringNotContainsString('page=', $row->getAttribute('href'));
+                    $this->assertStringContainsString($conversation['customer'], $row->textContent);
+                    $this->assertStringContainsString($conversation['number'], $row->textContent);
+                    $this->assertSame($conversation['avatar_url'], $xpath->query('.//img', $row)->item(0)->getAttribute('src'));
+                }
+            }
+        }
+        foreach (['page', 'support_page'] as $parameter) {
+            $this->getJson('/admin/messages?tab=support&'.$parameter.'=0')->assertUnprocessable()->assertJsonValidationErrors($parameter);
+        }
+        Http::assertNothingSent();
+    }
+
+    public function test_lazy_inbox_ssr_escapes_row_text_and_avatar_props_and_displays_the_initial_fallback(): void
+    {
+        $preview = '<script>alert("preview")</script> & hello';
+        Http::fake(fn () => Http::response(['messages' => [
+            ['TinNhanID' => 1, 'NoiDung' => $preview], ['TinNhanID' => 2, 'NoiDung' => $preview],
+        ]]));
+        Http::preventStrayRequests();
+        config(['services.supabase.project_url' => 'https://chat.example.test', 'services.supabase.service_role_key' => 'fixture-key']);
+        $staff = $this->seedLazyInbox(2);
+        $name = '<script>name</script> & "quoted"';
+        $avatar = 'https://avatars.example.test/photo.png?x=" onload="alert(1)&y=<svg>';
+        $number = '<b>number</b> & "quoted"';
+        DB::table('KhachHang')->where('KhachHangID', 101)->update(['HoTen' => $name, 'AvatarUrl' => $avatar, 'SoDienThoai' => $number]);
+        DB::table('KhachHang')->where('KhachHangID', 102)->update(['HoTen' => ' ánh & <b>Bình</b>']);
+        DB::table('TaiKhoan')->where('TaiKhoanID', 502)->update(['AvatarURL' => null]);
+        DB::table('DonHang')->where('DonHangID', 1001)->update(['MaDonHang' => $number]);
+        DB::table('TinNhan')->insert([
+            ['TinNhanID' => 1, 'NguoiGuiID' => 501, 'NguoiNhanID' => $staff->getKey(), 'DonHangID' => 1001, 'NoiDung' => $preview],
+            ['TinNhanID' => 2, 'NguoiGuiID' => 501, 'NguoiNhanID' => $staff->getKey(), 'DonHangID' => null, 'NoiDung' => $preview],
+        ]);
+        $this->actingAs($staff);
+        foreach (['orders' => 1001, 'support' => 501] as $tab => $id) {
+            $response = $this->get('/admin/messages?tab='.$tab)->assertOk()
+                ->assertSee(e($name), false)->assertSee(e($number), false)->assertSee(e($preview), false)
+                ->assertSee('src="'.e($avatar).'"', false)->assertDontSee($name, false)->assertDontSee($preview, false);
+            $xpath = $this->inboxXPath($response->getContent());
+            $row = $xpath->query('//a[@data-inbox-id="'.$id.'"]')->item(0);
+            $this->assertNotNull($row);
+            $this->assertSame(0, $xpath->query('.//script | .//b | .//svg', $row)->length);
+            $image = $xpath->query('.//img', $row)->item(0);
+            $this->assertNotNull($image);
+            $this->assertSame($avatar, $image->getAttribute('src'));
+            $this->assertFalse($image->hasAttribute('onload'));
+            $avatarElement = $xpath->query('.//*[@role="img" and starts-with(@aria-label, "Ảnh đại diện")]', $row)->item(0);
+            $this->assertSame('Ảnh đại diện của '.$name, $avatarElement->getAttribute('aria-label'));
+            $this->assertTrue($xpath->query('./span[@aria-hidden="true"]', $avatarElement)->item(0)->hasAttribute('hidden'));
+
+            $fallback = $xpath->query('//a[@data-inbox-id="'.($id + 1).'"]')->item(0);
+            $this->assertSame(0, $xpath->query('.//img', $fallback)->length);
+            $initial = $xpath->query('.//*[@role="img"]/span[@aria-hidden="true"]', $fallback)->item(0);
+            $this->assertSame('Á', trim($initial->textContent));
+            $this->assertFalse($initial->hasAttribute('hidden'));
+        }
+        $this->assertDatabaseHas('TinNhan', ['TinNhanID' => 1, 'TrangThai' => 'Đã gửi']);
+        $this->assertDatabaseHas('TinNhan', ['TinNhanID' => 2, 'TrangThai' => 'Đã gửi']);
+    }
+
+    public function test_lazy_inbox_ssr_keeps_selected_threads_outside_the_page_without_writing_to_the_database(): void
+    {
+        Http::fake(fn () => Http::response(['messages' => [
+            ['TinNhanID' => 1, 'NoiDung' => 'Selected order message'],
+            ['TinNhanID' => 2, 'NoiDung' => 'Selected support message'],
+            ['TinNhanID' => 3, 'NoiDung' => 'Other order message'],
+            ['TinNhanID' => 4, 'NoiDung' => 'Other support message'],
+        ]]));
+        Http::preventStrayRequests();
+        config(['services.supabase.project_url' => 'https://chat.example.test', 'services.supabase.service_role_key' => 'fixture-key']);
+        $staff = $this->seedLazyInbox();
+        foreach ([1 => [501, 1001, 'Selected order message'], 2 => [501, null, 'Selected support message'],
+            3 => [502, 1002, 'Other order message'], 4 => [502, null, 'Other support message']] as $id => [$sender, $order, $content]) {
+            DB::table('TinNhan')->insert([
+                'TinNhanID' => $id, 'NguoiGuiID' => $sender, 'NguoiNhanID' => $staff->getKey(),
+                'DonHangID' => $order, 'NoiDung' => $content, 'ThoiGianGui' => '2026-10-09 12:00:00',
+            ]);
+        }
+        $snapshot = fn (): array => collect([
+            'TaiKhoan', 'KhachHang', 'NhanVien', 'VaiTro', 'Quyen', 'TaiKhoan_VaiTro', 'VaiTro_Quyen',
+            'DonHang', 'TinNhan', 'ThongBao', 'NhatKyHeThong', 'HoaDon',
+        ])->mapWithKeys(fn ($table): array => [$table => DB::table($table)->orderBy('rowid')->get()->toJson()])->all();
+        $before = $snapshot();
+        $this->actingAs($staff);
+        foreach (['orders' => ['order_id', 1001, 1], 'support' => ['customer_id', 501, 2]] as $tab => [$target, $id, $messageId]) {
+            // A nonmatching search keeps the selected conversation outside the rendered sidebar.
+            $response = $this->get('/admin/messages?'.http_build_query([
+                'tab' => $tab === 'orders' ? 'support' : 'orders', $target => $id, 'q' => 'Lazy client 23',
+            ]))->assertOk()->assertViewHas('activeTab', $tab)->assertViewHas('messageDecryptionUnavailable', false)
+                ->assertSee('data-message-id="'.$messageId.'"', false)
+                ->assertDontSee('data-inbox-id="'.$id.'"', false)->assertSee('data-selected-id="'.$id.'"', false)
+                ->assertSee('name="'.$target.'" value="'.$id.'"', false)->assertSee('data-message-form', false);
+            $this->assertSame($id, $response->viewData($tab === 'orders' ? 'selectedOrder' : 'selectedCustomer')->getKey());
+            $this->assertNull($response->viewData($tab === 'orders' ? 'selectedCustomer' : 'selectedOrder'));
+            $this->assertSame([$messageId], $response->viewData('messages')->pluck('TinNhanID')->all());
+            $this->assertSame([$tab === 'orders' ? 1023 : 523], array_column($response->viewData('inboxPage')['conversations'], 'id'));
+            $response->assertSee('data-message-updates="'.route($tab === 'orders' ? 'admin.messages.updates' : 'admin.messages.support-updates', $id).'"', false);
+            $this->assertSame($before, $snapshot());
+        }
+        Http::assertSent(fn ($request): bool => $request['action'] === 'present_web_messages');
+    }
+
+    public function test_lazy_inbox_ssr_shows_an_order_without_an_account_but_no_send_form(): void
+    {
+        Http::fake();
+        Http::preventStrayRequests();
+        $staff = $this->seedLazyInbox(1);
+        DB::table('TaiKhoan')->where('TaiKhoanID', 501)->delete();
+        $response = $this->actingAs($staff)->get('/admin/messages?order_id=1001')->assertOk()
+            ->assertSee('data-inbox-id="1001"', false)->assertSee('Khách hàng chưa có tài khoản nhận tin nhắn.')
+            ->assertDontSee('data-message-form', false)->assertViewHas('messageDecryptionUnavailable', false);
+        $this->assertNull($response->viewData('inboxPage')['conversations'][0]['avatar_url']);
+        $this->assertSame(1001, $response->viewData('selectedOrder')->getKey());
+        $this->assertTrue($response->viewData('messages')->isEmpty());
+        Http::assertNothingSent();
     }
 
     public function test_store_message_uses_linked_customer_account_and_keeps_chat_out_of_audit_log(): void
@@ -420,6 +598,8 @@ class AdminCommunicationTest extends TestCase
 
     public function test_manager_and_staff_cannot_open_system_logs_or_see_the_menu_link(): void
     {
+        Http::fake();
+        Http::preventStrayRequests();
         foreach (['Quản lý', 'Nhân viên'] as $index => $roleName) {
             $user = $this->createAccount('restricted-'.$index);
             $this->assignRole($user, $roleName);
@@ -664,6 +844,8 @@ class AdminCommunicationTest extends TestCase
 
     public function test_customer_aliases_cannot_use_admin_communications_even_with_grants(): void
     {
+        Http::fake();
+        Http::preventStrayRequests();
         foreach (['Khách hàng', 'Customer', 'Client', 'khach-hang'] as $index => $name) {
             $user = $this->createAccount('excluded-'.$index, $index + 1);
             $this->assignRole($user, $name);
@@ -710,6 +892,36 @@ class AdminCommunicationTest extends TestCase
         $this->assertFalse($user->canPermission('notifications.view'));
         $user->update(['TrangThai' => 'Khóa']);
         $this->assertFalse($user->canPermission('messages.create'));
+    }
+
+    private function seedLazyInbox(int $count = 23): User
+    {
+        $staff = $this->createAccount('inbox-staff');
+        $this->assignRole($staff, 'Owner');
+        for ($i = 1; $i <= $count; $i++) {
+            DB::table('KhachHang')->insert([
+                'KhachHangID' => 100 + $i, 'HoTen' => sprintf('Lazy client %02d', $i),
+                'SoDienThoai' => sprintf('09070000%02d', $i),
+            ]);
+            DB::table('TaiKhoan')->insert([
+                'TaiKhoanID' => 500 + $i, 'KhachHangID' => 100 + $i,
+                'TenDangNhap' => 'inbox-client-'.$i, 'AvatarURL' => 'https://avatars.example.test/'.$i.'.png',
+            ]);
+            DB::table('DonHang')->insert([
+                'DonHangID' => 1000 + $i, 'KhachHangID' => 100 + $i, 'MaDonHang' => 'LAZY-ORDER-'.$i,
+                'TrangThai' => 'Chờ tiếp nhận', 'NgayTao' => '2026-10-09 12:00:00',
+            ]);
+        }
+
+        return $staff;
+    }
+
+    private function inboxXPath(string $html): \DOMXPath
+    {
+        $document = new \DOMDocument;
+        $document->loadHTML('<?xml encoding="UTF-8">'.$html, LIBXML_NOERROR | LIBXML_NOWARNING);
+
+        return new \DOMXPath($document);
     }
 
     private function createAccount(string $username, ?int $customerId = null): User

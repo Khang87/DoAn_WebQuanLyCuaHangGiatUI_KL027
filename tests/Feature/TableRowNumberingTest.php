@@ -64,7 +64,7 @@ class TableRowNumberingTest extends TestCase
     {
         $rows = collect([42, 900])->map(fn (int $id) => (new KhachHang)->forceFill([
             'KhachHangID' => $id, 'HoTen' => 'Khách '.$id,
-        ])->setRelation('diemTichLuy', null));
+        ])->setRelation('diemTichLuy', null)->setRelation('taiKhoan', null));
         $customers = new LengthAwarePaginator($rows, 12, 10, 2, ['path' => '/customers']);
         $xpath = $this->table('admin.customers.index', compact('customers'));
         $this->assertSame('STT', trim($xpath->query('//table/thead/tr/th[1]')->item(0)->textContent));

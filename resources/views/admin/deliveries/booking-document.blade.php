@@ -7,7 +7,6 @@
 @php
     $booking = $bookingDocument->booking;
     $isIntake = $bookingDocument->LoaiGiaoNhan === 'NHAN_DO';
-    $isCancelled = $bookingDocument->TrangThai === \App\Enums\DeliveryStatus::Cancelled->dbValue();
     $order = $bookingDocument->donHang ?? $booking?->donHangs->first();
     $inspection = $booking?->kiemKe;
     $decision = $inspection?->DuLieuThucTe['_decision'] ?? [];
@@ -20,6 +19,7 @@
 <x-admin.detail.page-header
     title="{{ $isIntake ? 'Phiếu nhận đồ từ đặt lịch' : 'Phiếu trả đồ từ đặt lịch' }}"
     :subtitle="$displayCode . ($booking?->MaBooking ? ' · Đặt lịch ' . $booking->MaBooking : '')"
+    :backUrl="route('deliveries.index')"
 >
     <x-slot:badge>
         @if($isIntake && $bookingDocument->TrangThai === 'Hoàn thành')
@@ -35,7 +35,7 @@
 </x-admin.detail.page-header>
 
 <div class="row g-4">
-    <div class="col-lg-8">
+    <div class="col-12">
         <x-admin.detail.panel title="Thông tin phiếu giao nhận" icon="bi-receipt" :iconClass="'bg-primary-subtle text-primary'">
             <x-admin.detail.info-grid :columns="2">
                 <x-admin.detail.info-item label="Mã phiếu" :value="$displayCode" />
@@ -108,44 +108,6 @@
                 </x-admin.detail.info-grid>
             </x-admin.detail.panel>
         @endif
-    </div>
-
-    <div class="col-lg-4">
-        <x-admin.detail.panel title="Thao tác" icon="bi-sliders" :iconClass="'bg-secondary-subtle text-secondary'">
-            <div class="d-flex flex-column gap-2">
-            @if($canInspect)
-                <a href="{{ route('bookings.inspection', $booking->BookingID) }}" class="btn btn-success w-100 py-2">
-                    <i class="bi bi-clipboard-check me-1"></i>Kiểm tra và tạo đơn
-                </a>
-                <p class="small text-muted mb-0">Việc hoàn tất nhận đồ và tạo đơn được ghi nhận cùng lúc sau khi khách đồng ý giá thực tế.</p>
-            @elseif($order)
-                <p class="mb-0">Đơn hàng đã được tạo từ kiểm kê. Không thể tạo thêm đơn cho phiếu này.</p>
-            @elseif(! $isIntake)
-                <p class="mb-0">Đây là phiếu trả đồ từ đặt lịch, không phải phiếu giao trả vận hành.</p>
-            @elseif($isCancelled)
-                <p class="alert alert-danger mb-0">Phiếu nhận đồ đã hủy. Không thể tiếp tục kiểm kê.</p>
-            @else
-                <p class="mb-0">Chỉ nhân viên được phân công mới có thể kiểm kê phiếu này.</p>
-            @endif
-
-            @if($canManageIntake)
-                @can('deliveries.edit')
-                    <a href="{{ route('deliveries.booking-documents.edit', $bookingDocument) }}"
-                       class="btn btn-primary w-100 py-2" aria-label="Chỉnh sửa phiếu nhận đồ">
-                        <i class="bi bi-pencil me-1" aria-hidden="true"></i>Chỉnh sửa
-                    </a>
-                @endcan
-            @elseif($isCancelled)
-                <p class="small text-muted mb-0">Phiếu đã được đánh dấu hủy trước đây; trạng thái Booking được quản lý riêng.</p>
-            @elseif($booking?->statusEnum() === \App\Enums\BookingStatus::Cancelled)
-                <p class="small text-muted mb-0">Booking đã hủy. Phiếu được giữ lại để tra cứu lịch sử.</p>
-            @endif
-
-            <a href="{{ route('deliveries.index') }}" class="btn btn-outline-secondary w-100">
-                <i class="bi bi-arrow-left me-1"></i>Quay lại danh sách giao nhận
-            </a>
-            </div>
-        </x-admin.detail.panel>
     </div>
 </div>
 @endsection

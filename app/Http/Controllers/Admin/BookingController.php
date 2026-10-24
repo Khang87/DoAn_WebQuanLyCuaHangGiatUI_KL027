@@ -187,7 +187,7 @@ class BookingController extends Controller
             ->merge($inspectionMode ? $booking->requestedServices->pluck('DonViTinhID') : [])
             ->unique()->all();
         $services = DichVu::query()
-            ->where(fn ($query) => $query->where('TrangThai', 'Hoạt động')->orWhereIn('DichVuID', $serviceIds))
+            ->where(fn ($query) => $query->availableForBooking()->orWhereIn('DichVuID', $serviceIds))
             ->orderBy('TenDichVu')
             ->get();
         $serviceOptions = $services->map(fn (DichVu $service): array => [
@@ -196,10 +196,12 @@ class BookingController extends Controller
             'categoryId' => $service->LoaiDichVuID,
         ])->values();
         $serviceCategories = LoaiDichVu::query()
+            ->where(fn ($query) => $query->where('TrangThai', 'Hoạt động')
+                ->orWhereIn('LoaiDichVuID', $services->pluck('LoaiDichVuID')))
             ->orderBy('TenLoaiDichVu')
             ->get(['LoaiDichVuID', 'TenLoaiDichVu']);
         $garments = LoaiDoGiat::query()
-            ->where(fn ($query) => $query->where('TrangThai', 'Hoạt động')->orWhereIn('LoaiDoGiatID', $garmentIds))
+            ->where(fn ($query) => $query->availableForBooking()->orWhereIn('LoaiDoGiatID', $garmentIds))
             ->orderBy('TenLoaiDoGiat')
             ->get();
         $garmentOptions = $garments->map(fn (LoaiDoGiat $garment): array => [
@@ -210,7 +212,7 @@ class BookingController extends Controller
             ->where(fn ($query) => $query->where('TrangThai', 'Hoạt động')->orWhereIn('DonViTinhID', $unitIds))
             ->orderBy('TenDonViTinh')
             ->get();
-        $pricingUnitOptions = $this->pricingService->orderOptions()
+        $pricingUnitOptions = $this->pricingService->orderOptionsForRecord($booking)
             ->map(fn (BangGia $pricing): array => [
                 'serviceId' => $pricing->DichVuID,
                 'garmentId' => $pricing->LoaiDoGiatID,

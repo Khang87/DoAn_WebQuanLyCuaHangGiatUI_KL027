@@ -8,7 +8,7 @@ use RuntimeException;
 
 class OtpMailer
 {
-    public function send(string $email, string $otp, int $minutes = 15): void
+    public function send(string $email, string $otp, int $minutes): void
     {
         $sender = config('mail.mailers.gmail.username');
         if (! is_string($sender) || trim($sender) === '') {

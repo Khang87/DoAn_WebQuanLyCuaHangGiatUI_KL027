@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\User;
 use App\Services\OtpMailer;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Schema;
@@ -30,15 +31,18 @@ class PasswordResetTwoStepTest extends TestCase
         });
         $this->user = User::create(['TenDangNhap' => 'reset@example.test', 'Email' => 'reset@example.test', 'MatKhau' => Hash::make('OriginalPass123!'), 'TrangThai' => 'Hoạt động']);
         $mailer = \Mockery::mock(OtpMailer::class);
-        $mailer->shouldReceive('send')->andReturnUsing(function (string $email, string $otp) {
-            $this->otp = $otp;
-        });
+        $mailer->shouldReceive('send')->with($this->user->Email, \Mockery::type('string'), 3)
+            ->andReturnUsing(function (string $email, string $otp) {
+                $this->otp = $otp;
+            });
         $this->app->instance(OtpMailer::class, $mailer);
     }
 
     private function sendOtp(): void
     {
-        $this->post('/forgot-password', ['email' => $this->user->Email])->assertRedirect('/forgot-password');
+        $this->post('/forgot-password', ['email' => $this->user->Email])
+            ->assertRedirect('/forgot-password')
+            ->assertSessionHas('status', 'Mã OTP đã được gửi và có hiệu lực trong 3 phút.');
     }
 
     private function verifyOtp(): void
@@ -51,7 +55,7 @@ class PasswordResetTwoStepTest extends TestCase
     {
         $this->get('/reset-password')->assertRedirect('/forgot-password');
         $this->sendOtp();
-        $response = $this->get('/forgot-password')->assertOk()->assertSee('15 phút');
+        $response = $this->get('/forgot-password')->assertOk()->assertSee('3 phút')->assertDontSee('15 phút');
         $this->assertMatchesRegularExpression('/data-cooldown-seconds="(?:59|60)"/', $response->getContent());
         $response->assertSee('name="otp"', false)->assertDontSee('name="password"', false)->assertDontSee($this->otp);
         $hash = $this->user->MatKhau;
@@ -87,20 +91,48 @@ class PasswordResetTwoStepTest extends TestCase
         $this->verifyOtp();
     }
 
-    public function test_otp_expires_at_exactly_fifteen_minutes(): void
+    public function test_otp_expires_at_exactly_three_minutes(): void
     {
+        $this->freezeTime();
         $this->sendOtp();
-        $this->travel(15)->minutes();
+        $this->travel(3)->minutes();
         $this->post('/forgot-password/verify', ['email' => $this->user->Email, 'otp' => $this->otp])->assertRedirect('/forgot-password')->assertSessionHas('error');
         $this->get('/reset-password')->assertRedirect('/forgot-password');
     }
 
     public function test_otp_is_usable_just_before_expiry_but_cannot_be_verified_twice(): void
     {
+        $this->freezeTime();
         $this->sendOtp();
-        $this->travel(899)->seconds();
+        $this->travel(179)->seconds();
         $this->verifyOtp();
         $this->post('/forgot-password/verify', ['email' => $this->user->Email, 'otp' => $this->otp])->assertRedirect('/forgot-password')->assertSessionHas('error');
+    }
+
+    public function test_otp_cache_expires_after_three_minutes_without_verification(): void
+    {
+        $this->freezeTime();
+        $this->sendOtp();
+        $cache = Cache::store('array');
+        $key = 'pwd_reset_'.$this->user->Email;
+        $this->assertSame(now()->addMinutes(3)->timestamp, $cache->get($key)['expires_at']);
+        $this->travel(179)->seconds();
+        $this->assertTrue($cache->has($key));
+        $this->travel(1)->seconds();
+        $this->assertFalse($cache->has($key));
+    }
+
+    public function test_wrong_code_does_not_extend_the_three_minute_lifetime(): void
+    {
+        $this->freezeTime();
+        $this->sendOtp();
+        $this->travel(120)->seconds();
+        $this->post('/forgot-password/verify', ['email' => $this->user->Email, 'otp' => '000000'])
+            ->assertRedirect('/forgot-password')->assertSessionHas('error');
+        $this->travel(60)->seconds();
+        $this->post('/forgot-password/verify', ['email' => $this->user->Email, 'otp' => $this->otp])
+            ->assertRedirect('/forgot-password')->assertSessionHas('error');
+        $this->get('/reset-password')->assertRedirect('/forgot-password');
     }
 
     public function test_five_wrong_codes_revoke_otp(): void

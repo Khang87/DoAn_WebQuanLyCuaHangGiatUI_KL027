@@ -66,10 +66,16 @@
                                     <a href="{{ route('loaidogiat.edit', $category->LoaiDoGiatID) }}" class="btn btn-order-action edit" title="Sửa"><i class="bi bi-pencil"></i></a>
                                 @endcan
                                 @can('garment_categories.delete')
-                                    <form action="{{ route('loaidogiat.destroy', $category->LoaiDoGiatID) }}" method="POST" class="d-inline" id="deleteCategoryForm_{{ $category->LoaiDoGiatID }}">
-                                        @csrf @method('DELETE')
-                                        <button type="submit" class="btn btn-order-action delete" title="Xóa"><i class="bi bi-trash"></i></button>
-                                    </form>
+                                    <x-admin.detail.confirm-form
+                                        :action="route('loaidogiat.destroy', $category->LoaiDoGiatID)"
+                                        title="Xóa loại đồ giặt?"
+                                        :text="app(\App\Services\CatalogDeletionService::class)->confirmation($category)"
+                                        label="Xóa"
+                                        icon="bi bi-trash"
+                                        variant="btn-order-action delete"
+                                        size=""
+                                        :iconOnly="true"
+                                    />
                                 @endcan
                             </div>
                         </td>
@@ -87,37 +93,3 @@
 
 <x-admin.pagination :paginator="$categories" label="danh mục" />
 @endsection
-
-@push('scripts')
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        document.querySelectorAll('[id^="deleteCategoryForm_"]').forEach(function(form) {
-            form.addEventListener('submit', function(e) {
-                e.preventDefault();
-
-                if (typeof Swal === 'undefined') {
-                    if (confirm('Bạn có chắc muốn xóa loại đồ giặt này?')) {
-                        form.submit();
-                    }
-                    return;
-                }
-
-                Swal.fire({
-                    title: 'Xóa loại đồ giặt?',
-                    text: 'Hành động này không thể hoàn tác.',
-                    icon: 'warning',
-                    showCancelButton: true,
-                    confirmButtonColor: '#dc2626',
-                    cancelButtonColor: '#64748b',
-                    confirmButtonText: 'Xóa',
-                    cancelButtonText: 'Hủy'
-                }).then((result) => {
-                    if (result.isConfirmed) {
-                        form.submit();
-                    }
-                });
-            });
-        });
-    });
-</script>
-@endpush

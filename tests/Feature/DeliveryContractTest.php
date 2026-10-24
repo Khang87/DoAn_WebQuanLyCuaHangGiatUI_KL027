@@ -18,13 +18,17 @@ use App\Services\BookingService;
 use App\Services\DeliveryService;
 use App\Services\EmployeeAssignment;
 use App\Services\OrderService;
+use DOMDocument;
+use DOMXPath;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\ViewErrorBag;
+use Illuminate\Testing\TestResponse;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 use Mockery;
@@ -35,9 +39,29 @@ use Tests\TestCase;
 
 class DeliveryContractTest extends TestCase
 {
+    public function createApplication()
+    {
+        $app = parent::createApplication();
+
+        // Guard before the base TestCase checks/seeds the RBAC schema.
+        $this->assertInMemoryDatabase();
+
+        return $app;
+    }
+
+    private function assertInMemoryDatabase(): void
+    {
+        $this->assertSame('sqlite', config('database.default'));
+        $this->assertSame('sqlite', DB::connection()->getDriverName());
+        $this->assertSame(':memory:', DB::connection()->getDatabaseName());
+    }
+
     protected function setUp(): void
     {
         parent::setUp();
+        $this->assertInMemoryDatabase();
+        Http::preventStrayRequests();
+        Http::fake();
         $this->travelTo(now()->setDate(2026, 10, 7)->startOfDay());
         Schema::create('DonHang', function (Blueprint $table): void {
             $table->increments('DonHangID');
@@ -174,11 +198,41 @@ class DeliveryContractTest extends TestCase
 
     protected function tearDown(): void
     {
-        foreach (['NhatKyHeThong', 'HoaDon', 'ThanhToan', 'BookingKiemKe', 'BookingGiaoNhan', 'GiaoNhan', 'VaiTro_Quyen', 'Quyen', 'TaiKhoan_VaiTro', 'VaiTro', 'TaiKhoan', 'NhanVien', 'KhachHang', 'Booking', 'DonHang'] as $table) {
-            Schema::dropIfExists($table);
+        try {
+            if ($this->app) {
+                $this->assertInMemoryDatabase();
+                foreach (['NhatKyHeThong', 'HoaDon', 'ThanhToan', 'BookingKiemKe', 'BookingGiaoNhan', 'GiaoNhan', 'VaiTro_Quyen', 'Quyen', 'TaiKhoan_VaiTro', 'VaiTro', 'TaiKhoan', 'NhanVien', 'KhachHang', 'Booking', 'DonHang'] as $table) {
+                    Schema::dropIfExists($table);
+                }
+                $this->travelBack();
+            }
+        } finally {
+            parent::tearDown();
         }
-        $this->travelBack();
-        parent::tearDown();
+    }
+
+    private function assertReadOnlyBookingDocument(TestResponse $response): void
+    {
+        $response->assertViewIs('admin.deliveries.booking-document')
+            ->assertViewMissing('canInspect')
+            ->assertViewMissing('canManageIntake')
+            ->assertDontSee('Thao tác')
+            ->assertDontSee('Kiểm tra và tạo đơn')
+            ->assertDontSee('Chỉnh sửa phiếu nhận đồ')
+            ->assertDontSee('Đơn hàng đã được tạo từ kiểm kê')
+            ->assertDontSee('Chỉ nhân viên được phân công mới có thể kiểm kê phiếu này.');
+
+        $document = new DOMDocument;
+        $document->loadHTML('<?xml encoding="UTF-8">'.$response->getContent(), LIBXML_NONET | LIBXML_NOERROR | LIBXML_NOWARNING);
+        $xpath = new DOMXPath($document);
+        $header = '//div[contains(concat(" ", normalize-space(@class), " "), " detail-header ")]';
+        $content = $header.'/following-sibling::div[contains(concat(" ", normalize-space(@class), " "), " row ")][1]';
+
+        $this->assertSame(1, $xpath->query($header.'//a[@href="'.route('deliveries.index').'"][contains(., "Quay lại")]')->length);
+        $this->assertSame(1, $xpath->query($content.'/div')->length);
+        $this->assertSame(1, $xpath->query($content.'/div[contains(concat(" ", normalize-space(@class), " "), " col-12 ")]')->length);
+        $this->assertSame(0, $xpath->query($content.'/div[contains(concat(" ", normalize-space(@class), " "), " col-lg-8 ")]')->length);
+        $this->assertSame(0, $xpath->query($content.'//form | '.$content.'//input | '.$content.'//select | '.$content.'//textarea')->length);
     }
 
     private function data(array $overrides = []): array
@@ -531,14 +585,20 @@ class DeliveryContractTest extends TestCase
             ->assertSee(route('deliveries.booking-documents.show', $documentId), false)
             ->assertSee(route('deliveries.show', $documentId), false);
 
-        $this->get(route('deliveries.booking-documents.show', $documentId))
+        $detailResponse = $this->get(route('deliveries.booking-documents.show', $documentId))
             ->assertOk()
             ->assertSee('Phiếu nhận đồ từ đặt lịch')
             ->assertSee('Mã phiếu')
             ->assertSee('BGN-'.$documentId)
             ->assertDontSee('Chứng từ')
+            ->assertSee('Khách Booking')
+            ->assertSee('0900000000')
+            ->assertSee('08/10/2026')
+            ->assertSee('href="'.route('bookings.show', 2).'"', false)
             ->assertSee('Chưa tạo đơn hàng')
-            ->assertSee('Không yêu cầu địa chỉ giao tận nhà');
+            ->assertSee('Không yêu cầu địa chỉ giao tận nhà')
+            ->assertDontSee('Kết quả kiểm kê');
+        $this->assertReadOnlyBookingDocument($detailResponse);
         $this->get(route('deliveries.show', $documentId))
             ->assertOk()
             ->assertSee('Chi tiết phiếu giao nhận')
@@ -557,11 +617,13 @@ class DeliveryContractTest extends TestCase
             ->assertOk()
             ->assertSee('DH-BOOK-2')
             ->assertSee('DL-BOOK-2');
-        $this->get(route('deliveries.booking-documents.show', $documentId))
+        $linkedDetailResponse = $this->get(route('deliveries.booking-documents.show', $documentId))
             ->assertOk()
             ->assertSee('DH-BOOK-2')
-            ->assertSee('Đơn hàng đã được tạo từ kiểm kê')
-            ->assertDontSee('Kiểm tra và tạo đơn');
+            ->assertSee('href="'.route('orders.show', 2).'"', false)
+            ->assertSee('href="'.route('bookings.show', 2).'"', false)
+            ->assertDontSee('Chưa tạo đơn hàng');
+        $this->assertReadOnlyBookingDocument($linkedDetailResponse);
     }
 
     public function test_unified_delivery_actions_respect_source_permission_and_mutable_state(): void
@@ -663,17 +725,17 @@ class DeliveryContractTest extends TestCase
         $editResponse = $this->get(route('deliveries.booking-documents.edit', $intake))
             ->assertOk()
             ->assertSee('Cập nhật phiếu nhận đồ')
-            ->assertSee('href="'.route('deliveries.booking-documents.show', $intake).'"', false)
+            ->assertSee('<a href="'.route('deliveries.index').'" class="btn btn-outline-secondary btn-sm">', false)
+            ->assertDontSee('href="'.route('deliveries.booking-documents.show', $intake).'"', false)
             ->assertSee('Quay lại')
-            ->assertSee('Lưu thay đổi')
+            ->assertSee('<button type="submit" class="btn btn-primary">Cập nhật</button>', false)
+            ->assertSee('<form action="'.route('deliveries.booking-documents.update', $intake).'" method="POST">', false)
+            ->assertSee('name="_method" value="PUT"', false)
             ->assertSee('BGN-'.$intake->BookingGiaoNhanID)
             ->assertSee('name="address"', false)
             ->assertSee('name="pickup_date"', false)
             ->assertSee('name="pickup_time"', false);
-        $this->assertSame(
-            1,
-            substr_count($editResponse->getContent(), 'href="'.route('deliveries.booking-documents.show', $intake).'"'),
-        );
+        $this->assertSame(1, substr_count($editResponse->getContent(), '</i>Quay lại'));
 
         $this->put(route('deliveries.booking-documents.update', $intake), [
             'employee_id' => 3,
@@ -719,7 +781,7 @@ class DeliveryContractTest extends TestCase
             ->assertForbidden();
     }
 
-    public function test_booking_document_actions_use_booking_id_and_keep_inspection_off_delivery_list(): void
+    public function test_booking_document_is_detail_only_for_fully_permitted_user_and_list_edit_remains_reachable(): void
     {
         DB::table('Booking')->insert([
             'BookingID' => 8,
@@ -749,28 +811,123 @@ class DeliveryContractTest extends TestCase
         $user->shouldReceive('isOwner')->andReturn(false);
         $user->shouldReceive('canPermission')->andReturnUsing(
             fn (string $permission): bool => in_array($permission, [
-                'deliveries.view',
-                'deliveries.edit',
-                'bookings.confirm',
+                'deliveries.view', 'deliveries.create', 'deliveries.edit', 'deliveries.delete',
+                'bookings.view', 'bookings.confirm', 'orders.view', 'orders.create',
             ], true),
         );
         $this->actingAs($user)->withoutMiddleware();
         view()->share('errors', new ViewErrorBag);
 
-        $this->get(route('deliveries.booking-documents.show', $intake))
-            ->assertOk()
-            ->assertSee('href="'.route('bookings.inspection', 8).'"', false)
-            ->assertDontSee('href="'.route('bookings.inspection', $intake->BookingGiaoNhanID).'"', false)
-            ->assertSee('class="btn btn-success w-100 py-2"', false)
-            ->assertSee('href="'.route('deliveries.booking-documents.edit', $intake).'"', false)
-            ->assertSee('class="btn btn-primary w-100 py-2" aria-label="Chỉnh sửa phiếu nhận đồ"', false)
-            ->assertSee('Chỉnh sửa');
+        foreach ([$intake, $receivedIntake] as $document) {
+            $response = $this->get(route('deliveries.booking-documents.show', $document))
+                ->assertOk()
+                ->assertSee('BGN-'.$document->BookingGiaoNhanID)
+                ->assertSee('Thông tin phiếu giao nhận')
+                ->assertSee('Thông tin Booking')
+                ->assertSee('href="'.route('bookings.show', $document->BookingID).'"', false)
+                ->assertDontSee('href="'.route('bookings.inspection', $document->BookingID).'"', false)
+                ->assertDontSee('href="'.route('deliveries.booking-documents.edit', $document).'"', false);
+            $this->assertReadOnlyBookingDocument($response);
+        }
+        $response->assertSee('07/10/2026 10:00');
 
         $this->get(route('deliveries.index'))
             ->assertOk()
             ->assertDontSee('Kiểm tra và tạo đơn')
+            ->assertDontSee('href="'.route('bookings.inspection', 8).'"', false)
+            ->assertSee('href="'.route('deliveries.booking-documents.edit', $intake).'"', false)
             ->assertSee(route('deliveries.booking-documents.show', $intake), false)
             ->assertSee(route('deliveries.booking-documents.show', $receivedIntake), false);
+        $this->get(route('deliveries.booking-documents.edit', $intake))
+            ->assertOk()
+            ->assertSee('Cập nhật phiếu nhận đồ')
+            ->assertSee('href="'.route('deliveries.index').'"', false);
+    }
+
+    public static function bookingInspectionMetadata(): array
+    {
+        return [
+            'accepted with confirmation timestamp' => [[
+                'employee_name' => 'Trần Văn Kiểm kê',
+                'confirmed_at' => '2026-10-07T03:15:30Z',
+                'decided_at' => '2026-10-06T01:00:00Z',
+                'customer_accepted' => true,
+                'agreed_total' => 125000,
+                'charged_total' => 50000,
+            ], '07/10/2026 10:15:30', 'Có'],
+            'declined with decision timestamp' => [[
+                'employee_name' => 'Trần Văn Kiểm kê',
+                'decided_at' => '2026-10-07T04:20:15Z',
+                'customer_accepted' => false,
+                'agreed_total' => 125000,
+                'charged_total' => 0,
+                'reason' => 'Khách chưa đồng ý giá thực tế',
+            ], '07/10/2026 11:20:15', 'Không'],
+        ];
+    }
+
+    #[DataProvider('bookingInspectionMetadata')]
+    public function test_booking_document_retains_inspection_metadata_and_read_only_details(
+        array $decision,
+        string $expectedTimestamp,
+        string $acceptedLabel,
+    ): void {
+        DB::table('Booking')->where('BookingID', 1)->update([
+            'HinhThucNhanDo' => 'Tại nhà',
+            'NgayHen' => '2026-10-08',
+            'GhiChu' => 'Gọi trước khi nhận đồ',
+        ]);
+        DB::table('NhanVien')->where('NhanVienID', 1)->update(['HoTen' => 'Nhân viên nhận đồ']);
+        DB::table('BookingKiemKe')->insert([
+            'BookingKiemKeID' => 1,
+            'BookingID' => 1,
+            'DuLieuThucTe' => json_encode(['_decision' => $decision]),
+        ]);
+        $intake = $this->createBookingIntake([
+            'DonHangID' => 1,
+            'BookingKiemKeID' => 1,
+            'TrangThai' => 'Đã nhận',
+            'ThoiGianThucTe' => '2026-10-07 10:00:00',
+            'PhiGiaoNhan' => 12500,
+        ]);
+        $user = Mockery::mock(User::class)->makePartial();
+        $user->NhanVienID = 1;
+        $user->shouldReceive('isManager')->andReturn(true);
+        $user->shouldReceive('isActive')->andReturn(true);
+        $user->shouldReceive('isOwner')->andReturn(false);
+        $user->shouldReceive('canPermission')->andReturnUsing(
+            fn (string $permission): bool => in_array($permission, [
+                'deliveries.view', 'deliveries.create', 'deliveries.edit', 'deliveries.delete',
+                'bookings.view', 'bookings.confirm', 'orders.view', 'orders.create',
+            ], true),
+        );
+        view()->share('errors', new ViewErrorBag);
+
+        $response = $this->actingAs($user)->withoutMiddleware()
+            ->get(route('deliveries.booking-documents.show', $intake))
+            ->assertOk()
+            ->assertSee('BGN-'.$intake->BookingGiaoNhanID)
+            ->assertSee('Nhân viên nhận đồ')
+            ->assertSee('12 Nguyễn Huệ')
+            ->assertSee('08/10/2026 10:00')
+            ->assertSee('07/10/2026 10:00')
+            ->assertSee('12.500 VNĐ')
+            ->assertSee('Gọi trước khi nhận đồ')
+            ->assertSee('href="'.route('bookings.show', 1).'"', false)
+            ->assertSee('href="'.route('orders.show', 1).'"', false)
+            ->assertSee('Kết quả kiểm kê')
+            ->assertSee($decision['employee_name'])
+            ->assertSee('Thời gian chốt')
+            ->assertSee($expectedTimestamp)
+            ->assertSeeInOrder(['Khách đồng ý báo giá', $acceptedLabel, 'Tổng tiền khách đồng ý', '125.000 VNĐ', 'Số tiền đã thu', number_format($decision['charged_total'], 0, ',', '.').' VNĐ'])
+            ->assertDontSee('href="'.route('bookings.inspection', 1).'"', false)
+            ->assertDontSee('href="'.route('deliveries.booking-documents.edit', $intake).'"', false);
+        if (isset($decision['reason'])) {
+            $response->assertSee('Lý do khách từ chối')->assertSee($decision['reason']);
+        } else {
+            $response->assertDontSee('Lý do khách từ chối');
+        }
+        $this->assertReadOnlyBookingDocument($response);
     }
 
     public function test_booking_intake_assignment_is_limited_to_authorized_active_candidates_and_audited(): void

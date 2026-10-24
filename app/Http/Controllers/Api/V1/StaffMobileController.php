@@ -18,6 +18,7 @@ use App\Services\BookingService;
 use App\Services\DeliveryService;
 use App\Services\DeliveryFeeService;
 use App\Services\OrderService;
+use App\Services\PricingService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -341,7 +342,7 @@ class StaffMobileController extends ApiController
             $selectedCategoryIds = $booking->chiTietBookings->map(fn ($item) => $item->dichVu?->LoaiDichVuID)
                 ->merge($booking->requestedServices->map(fn ($item) => $item->dichVu?->LoaiDichVuID))
                 ->filter()->unique()->values();
-            $prices = BangGia::query()->where('TrangThai', 'Hoạt động')->with(['dichVu', 'loaiDoGiat', 'donViTinh'])->get()->map(fn ($p) => [
+            $prices = app(PricingService::class)->orderOptionsForRecord($booking)->map(fn ($p) => [
                 'service_id' => $p->DichVuID, 'garment_id' => $p->LoaiDoGiatID, 'unit_id' => $p->DonViTinhID,
                 'unit_name' => $p->donViTinh?->TenDonViTinh, 'unit_symbol' => $p->donViTinh?->KyHieu,
                 'unit_price' => (float) $p->DonGia, 'is_weight' => BangGia::isWeightUnit($p->donViTinh),
@@ -349,14 +350,14 @@ class StaffMobileController extends ApiController
             $catalog = [
                 'prices' => $prices,
                 'services' => DichVu::query()
-                    ->where(fn ($query) => $query->where('TrangThai', 'Hoạt động')->orWhereIn('DichVuID', $selectedServiceIds))
+                    ->where(fn ($query) => $query->availableForBooking()->orWhereIn('DichVuID', $selectedServiceIds))
                     ->get(['DichVuID', 'TenDichVu', 'LoaiDichVuID'])
                     ->map(fn ($x) => ['id' => $x->DichVuID, 'name' => $x->TenDichVu, 'category_id' => $x->LoaiDichVuID]),
                 'categories' => DB::table('LoaiDichVu')
                     ->where(fn ($query) => $query->where('TrangThai', 'Hoạt động')->orWhereIn('LoaiDichVuID', $selectedCategoryIds))
                     ->get()->map(fn ($x) => ['id' => $x->LoaiDichVuID, 'name' => $x->TenLoaiDichVu]),
                 'garments' => LoaiDoGiat::query()
-                    ->where(fn ($query) => $query->where('TrangThai', 'Hoạt động')->orWhereIn('LoaiDoGiatID', $selectedGarmentIds))
+                    ->where(fn ($query) => $query->availableForBooking()->orWhereIn('LoaiDoGiatID', $selectedGarmentIds))
                     ->get(['LoaiDoGiatID', 'TenLoaiDoGiat'])
                     ->map(fn ($x) => ['id' => $x->LoaiDoGiatID, 'name' => $x->TenLoaiDoGiat]),
             ];

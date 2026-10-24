@@ -18,13 +18,13 @@ class OtpMailerTest extends TestCase
         ]);
         Mail::fake();
 
-        app(OtpMailer::class)->send('recipient@example.test', '123456');
+        app(OtpMailer::class)->send('recipient@example.test', '123456', 3);
 
         Mail::assertSent(PasswordResetOtpMail::class, function (PasswordResetOtpMail $mail): bool {
             return $mail->hasTo('recipient@example.test')
                 && $mail->from[0]['address'] === 'sender@gmail.com'
                 && $mail->otp === '123456'
-                && $mail->minutes === 15
+                && $mail->minutes === 3
                 && $mail->usesMailer('gmail');
         });
         $this->assertSame('smtp.gmail.com', config('mail.mailers.gmail.host'));
@@ -34,10 +34,11 @@ class OtpMailerTest extends TestCase
 
     public function test_password_reset_email_contains_the_otp_and_expiry(): void
     {
-        $html = (new PasswordResetOtpMail('123456'))->render();
+        $html = (new PasswordResetOtpMail('123456', 3))->render();
 
         $this->assertStringContainsString('123456', $html);
-        $this->assertStringContainsString('15 phút', $html);
+        $this->assertStringContainsString('3 phút', $html);
+        $this->assertStringNotContainsString('15 phút', $html);
         $this->assertStringNotContainsString(route('internal-password.reset'), $html);
     }
 
@@ -47,6 +48,7 @@ class OtpMailerTest extends TestCase
         $html = $mail->render();
 
         $this->assertStringContainsString('654321', $html);
+        $this->assertStringContainsString('10 phút', $html);
         $this->assertStringContainsString(route('internal-password.reset'), $html);
     }
 
@@ -56,6 +58,6 @@ class OtpMailerTest extends TestCase
         $this->expectException(RuntimeException::class);
         $this->expectExceptionMessage('Gmail SMTP sender address is not configured.');
 
-        app(OtpMailer::class)->send('recipient@example.test', '123456');
+        app(OtpMailer::class)->send('recipient@example.test', '123456', 3);
     }
 }

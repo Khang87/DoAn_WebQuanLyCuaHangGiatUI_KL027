@@ -58,8 +58,13 @@
                     <tr>
                         <td class="text-dark text-center fw-semibold">{{ $customers->firstItem() + $loop->index }}</td>
                         <td>
-                            <div class="fw-semibold text-dark">{{ $customer->HoTen }}</div>
-                            <small class="text-muted">{{ $customer->SoDienThoai ?: 'Chưa có số điện thoại' }}</small>
+                            <div class="d-flex align-items-center gap-2">
+                                <x-admin.customer-avatar :customer="$customer" />
+                                <div>
+                                    <div class="fw-semibold text-dark">{{ $customer->HoTen }}</div>
+                                    <small class="text-muted">{{ $customer->SoDienThoai ?: 'Chưa có số điện thoại' }}</small>
+                                </div>
+                            </div>
                         </td>
                         <td class="text-dark">{{ $customer->Email ?: '-' }}</td>
                         <td class="text-dark">{{ $customer->SoDienThoai ?: '-' }}</td>

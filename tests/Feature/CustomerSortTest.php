@@ -29,10 +29,18 @@ class CustomerSortTest extends TestCase
             $table->string('SoDienThoai')->nullable();
             $table->string('Email')->nullable();
             $table->string('DiaChi')->nullable();
+            $table->string('AvatarUrl')->nullable();
             $table->dateTime('NgayTao')->nullable();
             $table->string('TrangThai')->nullable();
         });
         $this->testSchemaCreated = true;
+
+        Schema::create('TaiKhoan', function (Blueprint $table): void {
+            $table->increments('TaiKhoanID');
+            $table->unsignedInteger('KhachHangID')->unique();
+            $table->string('AvatarURL')->nullable();
+            $table->string('MatKhau'); // Test-only column to detect accidental password loading.
+        });
 
         Schema::create('DiemTichLuy', function (Blueprint $table): void {
             $table->increments('DiemTichLuyID');
@@ -48,6 +56,21 @@ class CustomerSortTest extends TestCase
             ['KhachHangID' => 4, 'HoTen' => 'Có điểm thấp'],
         ]);
 
+        DB::table('TaiKhoan')->insert([
+            [
+                'TaiKhoanID' => 11,
+                'KhachHangID' => 1,
+                'AvatarURL' => 'https://example.test/account.jpg',
+                'MatKhau' => 'dummy-test-password-1',
+            ],
+            [
+                'TaiKhoanID' => 12,
+                'KhachHangID' => 2,
+                'AvatarURL' => 'https://example.test/account.jpg',
+                'MatKhau' => 'dummy-test-password-2',
+            ],
+        ]);
+
         DB::table('DiemTichLuy')->insert([
             ['DiemTichLuyID' => 1, 'KhachHangID' => 2, 'DiemHienTai' => 40],
             ['DiemTichLuyID' => 2, 'KhachHangID' => 3, 'DiemHienTai' => 0],
@@ -58,6 +81,7 @@ class CustomerSortTest extends TestCase
     protected function tearDown(): void
     {
         if ($this->testSchemaCreated) {
+            Schema::dropIfExists('TaiKhoan');
             Schema::dropIfExists('DiemTichLuy');
             Schema::dropIfExists('KhachHang');
         }
@@ -88,5 +112,84 @@ class CustomerSortTest extends TestCase
         $customers = app(CustomerService::class)->getAll(['sort' => 'id_asc']);
 
         $this->assertSame([1, 2, 3, 4], $customers->getCollection()->pluck('KhachHangID')->all());
+    }
+
+    public function test_get_all_eager_loads_accounts_without_loading_passwords(): void
+    {
+        $customers = app(CustomerService::class)->getAll(['sort' => 'id_asc'])->getCollection();
+        $accountIds = [1 => 11, 2 => 12];
+
+        $this->assertSame([1, 2, 3, 4], $customers->pluck('KhachHangID')->all());
+
+        foreach ($customers as $customer) {
+            $this->assertTrue($customer->relationLoaded('diemTichLuy'));
+            $this->assertTrue($customer->relationLoaded('taiKhoan'));
+
+            $account = $customer->taiKhoan;
+
+            if (! isset($accountIds[$customer->KhachHangID])) {
+                $this->assertNull($account);
+
+                continue;
+            }
+
+            $this->assertNotNull($account);
+            $this->assertSame($accountIds[$customer->KhachHangID], $account->TaiKhoanID);
+            $this->assertSame($customer->KhachHangID, $account->KhachHangID);
+            $this->assertSame('https://example.test/account.jpg', $account->AvatarURL);
+            $this->assertArrayNotHasKey('MatKhau', $account->getAttributes());
+        }
+    }
+
+    public function test_reading_all_customer_avatars_does_not_query_after_get_all(): void
+    {
+        DB::flushQueryLog();
+        DB::enableQueryLog();
+
+        try {
+            $customers = app(CustomerService::class)->getAll(['sort' => 'id_asc'])->getCollection();
+            $queryCount = count(DB::getQueryLog());
+
+            $this->assertCount(4, $customers);
+
+            foreach ($customers as $customer) {
+                $expectedAvatar = in_array($customer->KhachHangID, [1, 2], true)
+                    ? 'https://example.test/account.jpg'
+                    : asset('assets/images/user_1.jpg');
+
+                $this->assertSame($expectedAvatar, $customer->avatar_url);
+            }
+
+            $this->assertCount($queryCount, DB::getQueryLog(), 'Reading avatars must not trigger lazy-loading queries.');
+        } finally {
+            DB::disableQueryLog();
+            DB::flushQueryLog();
+        }
+    }
+
+    public function test_get_all_query_count_does_not_grow_with_customer_count(): void
+    {
+        DB::flushQueryLog();
+        DB::enableQueryLog();
+
+        try {
+            $service = app(CustomerService::class);
+            $singleCustomer = $service->getAll(['search' => '1', 'sort' => 'id_asc']);
+            $singleCustomerQueryCount = count(DB::getQueryLog());
+
+            $this->assertCount(1, $singleCustomer->getCollection());
+
+            DB::flushQueryLog();
+
+            $multipleCustomers = $service->getAll(['sort' => 'id_asc']);
+            $multipleCustomerQueryCount = count(DB::getQueryLog());
+
+            $this->assertCount(4, $multipleCustomers->getCollection());
+            $this->assertSame(4, $singleCustomerQueryCount, 'Expected pagination count, KhachHang, DiemTichLuy and TaiKhoan queries.');
+            $this->assertSame($singleCustomerQueryCount, $multipleCustomerQueryCount, 'Loading more customers must not add queries.');
+        } finally {
+            DB::disableQueryLog();
+            DB::flushQueryLog();
+        }
     }
 }

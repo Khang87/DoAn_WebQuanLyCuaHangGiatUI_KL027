@@ -55,26 +55,8 @@ class LoaiDoGiatService
         return $category->fresh();
     }
 
-    public function delete(LoaiDoGiat $category): ?string
+    public function delete(LoaiDoGiat $category): bool
     {
-        $relatedRecords = array_filter([
-            'bảng giá' => $category->bangGias()->count(),
-            'chi tiết đơn hàng' => $category->chiTietDonHangs()->count(),
-            'chi tiết lịch hẹn' => $category->chiTietBookings()->count(),
-        ]);
-
-        if ($relatedRecords !== []) {
-            $category->update(['TrangThai' => 'Tạm ngưng']);
-
-            $details = [];
-
-            foreach ($relatedRecords as $recordType => $count) {
-                $details[] = $count.' '.$recordType;
-            }
-
-            return 'Không thể xóa loại đồ giặt vì còn dữ liệu liên quan: '.implode(', ', $details).'. Loại đồ đã được tạm ngưng.';
-        }
-
-        return $category->delete() ? null : 'Không thể xóa loại đồ giặt. Vui lòng thử lại.';
+        return app(CatalogDeletionService::class)->delete($category);
     }
 }

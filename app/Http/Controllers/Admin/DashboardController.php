@@ -165,7 +165,7 @@ class DashboardController extends Controller
 
         // --- Bảng: Đơn hàng mới nhất (top 15) ---
         $recentOrders = DonHang::query()
-            ->with(['khachHang', 'nhanVien', 'statusChanges'])
+            ->with(['khachHang.taiKhoan:TaiKhoanID,KhachHangID,AvatarURL', 'nhanVien', 'statusChanges'])
             ->withExists([
                 'hoaDons as has_paid_invoice' => fn ($invoiceQuery) => $invoiceQuery
                     ->where('TrangThai', InvoiceStatus::Paid->value),

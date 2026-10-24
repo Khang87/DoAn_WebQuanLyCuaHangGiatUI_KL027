@@ -67,7 +67,7 @@ class BookingOrderConversionTest extends TestCase
 
     protected function tearDown(): void
     {
-        foreach (['StaffBookingDraft', 'StaffApiToken', 'BookingKiemKe', 'BookingGiaoNhan', 'KhuyenMai', 'NhatKyHeThong', 'ChiTietBooking', 'ChiTietDonHang', 'GiaoNhan', 'HoaDon', 'ThanhToan', 'DiemTichLuy', 'DonHang', 'Booking', 'BangGia', 'DonViTinh', 'LoaiDoGiat', 'DanhMucLoaiDoGiat', 'DichVu', 'LoaiDichVu', 'NhanVien', 'ThongBao', 'TaiKhoan_VaiTro', 'VaiTro_Quyen', 'Quyen', 'VaiTro', 'TaiKhoan', 'KhachHang'] as $table) {
+        foreach (['StaffBookingDraft', 'StaffApiToken', 'BookingKiemKe', 'BookingGiaoNhan', 'KhuyenMai', 'NhatKyHeThong', 'BookingYeuCauDichVu', 'ChiTietBooking', 'ChiTietDonHang', 'GiaoNhan', 'HoaDon', 'ThanhToan', 'DiemTichLuy', 'DonHang', 'Booking', 'BangGia', 'DonViTinh', 'LoaiDoGiat', 'DanhMucLoaiDoGiat', 'DichVu', 'LoaiDichVu', 'NhanVien', 'ThongBao', 'TaiKhoan_VaiTro', 'VaiTro_Quyen', 'Quyen', 'VaiTro', 'TaiKhoan', 'KhachHang'] as $table) {
             Schema::dropIfExists($table);
         }
 
@@ -1674,8 +1674,6 @@ class BookingOrderConversionTest extends TestCase
     public function test_booking_edit_only_lists_garments_with_effective_prices_for_the_selected_service(): void
     {
         $this->createInspectionCatalog();
-        DB::table('LoaiDichVu')->insert(['LoaiDichVuID' => 1, 'TenLoaiDichVu' => 'Giặt']);
-        DB::table('DichVu')->where('DichVuID', 1)->update(['LoaiDichVuID' => 1]);
         DB::table('LoaiDoGiat')->insert([
             'LoaiDoGiatID' => 3,
             'TenLoaiDoGiat' => 'Áo khoác',
@@ -2364,7 +2362,7 @@ class BookingOrderConversionTest extends TestCase
     public function test_receiving_inspection_saves_condition_recalculates_amount_and_allows_washing(): void
     {
         $this->createRequestCatalog();
-        DB::table('DichVu')->insert(['DichVuID' => 2]);
+        DB::table('DichVu')->insert(['DichVuID' => 2, 'LoaiDichVuID' => 1, 'TrangThai' => 'Hoạt động']);
         DB::table('BangGia')->insert([
             [
                 'BangGiaID' => 1,
@@ -2546,6 +2544,7 @@ class BookingOrderConversionTest extends TestCase
 
     public function test_order_creation_uses_the_exact_price_tuple_instead_of_the_submitted_price(): void
     {
+        $this->createRequestCatalog();
         $this->actingAsBookingEmployee();
         $managerId = $this->createManagementAccount();
         DB::table('DonViTinh')->insert([
@@ -2635,6 +2634,7 @@ class BookingOrderConversionTest extends TestCase
 
     public function test_order_creation_rejects_a_missing_exact_price_tuple(): void
     {
+        $this->createRequestCatalog();
         $this->actingAsBookingEmployee();
         DB::table('DonViTinh')->insert([
             ['DonViTinhID' => 3, 'TenDonViTinh' => 'Cái', 'KyHieu' => 'Cái', 'TrangThai' => 'Hoạt động'],
@@ -2959,13 +2959,8 @@ class BookingOrderConversionTest extends TestCase
 
     public function test_order_service_rounds_excess_weight_precision_before_calculating_and_persisting(): void
     {
+        $this->createRequestCatalog();
         $this->actingAsBookingEmployee();
-        DB::table('DonViTinh')->insert([
-            'DonViTinhID' => 1,
-            'TenDonViTinh' => 'Kilogram',
-            'KyHieu' => 'KG',
-            'TrangThai' => 'Hoạt động',
-        ]);
         DB::table('BangGia')->insert([
             'BangGiaID' => 1,
             'DichVuID' => 1,

@@ -12,10 +12,12 @@ use App\Models\DichVu;
 use App\Models\DonHang;
 use App\Models\DonViTinh;
 use App\Models\LoaiDoGiat;
+use App\Services\CatalogAvailability;
 use App\Services\PricingService;
 use App\Services\TinhTienGiatUiService;
 use App\Support\FriendlyError;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Symfony\Component\HttpFoundation\Response;
 
 class ChiTietDonHangController extends Controller
@@ -75,8 +77,8 @@ class ChiTietDonHangController extends Controller
     public function create()
     {
         $orders = DonHang::orderBy('MaDonHang')->get();
-        $services = DichVu::where('TrangThai', 'Hoạt động')->orderBy('TenDichVu')->get();
-        $garments = LoaiDoGiat::where('TrangThai', 'Hoạt động')->orderBy('TenLoaiDoGiat')->get();
+        $services = DichVu::availableForBooking()->orderBy('TenDichVu')->get();
+        $garments = LoaiDoGiat::availableForBooking()->orderBy('TenLoaiDoGiat')->get();
         $units = DonViTinh::where('TrangThai', 'Hoạt động')->orderBy('TenDonViTinh')->get();
 
         return view('admin.order-items.create', compact('orders', 'services', 'garments', 'units'));
@@ -107,12 +109,13 @@ class ChiTietDonHangController extends Controller
         }
 
         try {
-            $data = $request->validated();
+            DB::transaction(function () use ($request): void {
+                $data = $this->withResolvedPricing($request->validated());
+                CatalogAvailability::assertItemsAvailable([$data]);
+                $data = $this->withComputedSubtotal($data);
 
-            $data = $this->withResolvedPricing($data);
-            $data = $this->withComputedSubtotal($data);
-
-            ChiTietDonHang::create($data);
+                ChiTietDonHang::create($data);
+            });
 
             return redirect()->route('order-items.index')->with('success', 'Chi tiết đơn hàng đã được thêm.');
         } catch (\Exception $e) {
@@ -136,8 +139,10 @@ class ChiTietDonHangController extends Controller
         }
 
         $orders = DonHang::orderBy('MaDonHang')->get();
-        $services = DichVu::where('TrangThai', 'Hoạt động')->orderBy('TenDichVu')->get();
-        $garments = LoaiDoGiat::where('TrangThai', 'Hoạt động')->orderBy('TenLoaiDoGiat')->get();
+        $services = DichVu::where(fn ($query) => $query->availableForBooking()
+            ->orWhere('DichVuID', $item->DichVuID))->orderBy('TenDichVu')->get();
+        $garments = LoaiDoGiat::where(fn ($query) => $query->availableForBooking()
+            ->orWhere('LoaiDoGiatID', $item->LoaiDoGiatID))->orderBy('TenLoaiDoGiat')->get();
         $units = DonViTinh::where('TrangThai', 'Hoạt động')->orderBy('TenDonViTinh')->get();
 
         return view('admin.order-items.edit', compact('item', 'orders', 'services', 'garments', 'units'));
@@ -152,12 +157,15 @@ class ChiTietDonHangController extends Controller
         }
 
         try {
-            $data = $request->validated();
+            DB::transaction(function () use ($request, $id): void {
+                $locked = ChiTietDonHang::query()->lockForUpdate()->findOrFail($id);
+                $data = $this->withResolvedPricing($request->validated());
+                $existing = (int) $locked->DonHangID === (int) $data['DonHangID'] ? $locked : null;
+                CatalogAvailability::assertItemsAvailable([$data], $existing);
+                $data = $this->withComputedSubtotal($data);
 
-            $data = $this->withResolvedPricing($data);
-            $data = $this->withComputedSubtotal($data);
-
-            $item->update($data);
+                $locked->update($data);
+            });
 
             return redirect()->route('order-items.index')->with('success', 'Chi tiết đã được cập nhật.');
         } catch (\Exception $e) {

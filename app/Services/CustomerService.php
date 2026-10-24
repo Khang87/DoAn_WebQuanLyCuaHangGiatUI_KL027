@@ -14,7 +14,7 @@ class CustomerService
 {
     public function getAll(array $filters = []): LengthAwarePaginator
     {
-        $query = KhachHang::query()->with('diemTichLuy');
+        $query = KhachHang::query()->with(['diemTichLuy', 'taiKhoan:TaiKhoanID,KhachHangID,AvatarURL']);
 
         if (! empty($filters['search'])) {
             $search = trim($filters['search']);

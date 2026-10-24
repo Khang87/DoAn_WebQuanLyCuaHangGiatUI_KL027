@@ -22,6 +22,7 @@ class PasswordResetController extends Controller
         return view('auth.passwords.email', [
             'email' => $email,
             'cooldownSeconds' => $email !== '' ? $otpService->cooldownSeconds($email) : 0,
+            'otpLifetimeMinutes' => PasswordResetOtpService::OTP_LIFETIME_MINUTES,
         ]);
     }
 
@@ -38,7 +39,7 @@ class PasswordResetController extends Controller
         $request->session()->put('reset_email', $email);
 
         return redirect()->route('password.request')
-            ->with('status', 'Mã OTP đã được gửi và có hiệu lực trong 15 phút.');
+            ->with('status', 'Mã OTP đã được gửi và có hiệu lực trong '.PasswordResetOtpService::OTP_LIFETIME_MINUTES.' phút.');
     }
 
     public function verifyOtp(Request $request, PasswordResetOtpService $otpService): RedirectResponse

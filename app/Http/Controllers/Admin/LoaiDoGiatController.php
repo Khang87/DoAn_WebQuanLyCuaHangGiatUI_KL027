@@ -117,13 +117,12 @@ class LoaiDoGiatController extends Controller
         }
 
         try {
-            $error = $this->loaiDoGiatService->delete($category);
+            $deleted = $this->loaiDoGiatService->delete($category);
+            $message = $deleted
+                ? 'Loại đồ giặt đã được xóa.'
+                : "Loại đồ giặt đã được chuyển sang trạng thái 'Tạm ngưng' để bảo toàn lịch sử đơn hàng/Booking.";
 
-            if ($error !== null) {
-                return redirect()->route('loaidogiat.index')->with('error', $error);
-            }
-
-            return redirect()->route('loaidogiat.index')->with('success', 'Loại đồ giặt đã được xóa.');
+            return redirect()->route('loaidogiat.index')->with('success', $message);
         } catch (\Exception $e) {
             report($e);
 

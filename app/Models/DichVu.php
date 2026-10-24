@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 
 class DichVu extends Model
@@ -25,6 +26,13 @@ class DichVu extends Model
         'ThoiGianDuKien' => 'integer',
         'NgayTao' => 'datetime',
     ];
+
+    /** Opt-in only: historical relationships must still resolve suspended services. */
+    public function scopeAvailableForBooking(Builder $query): Builder
+    {
+        return $query->where($this->qualifyColumn('TrangThai'), 'Hoạt động')
+            ->whereHas('loaiDichVu', fn (Builder $parent) => $parent->where('TrangThai', 'Hoạt động'));
+    }
 
     public function loaiDichVu()
     {

@@ -47,11 +47,12 @@
     <div class="card-body p-0">
         <div class="table-responsive">
             <table class="table-custom mb-0">
-                <thead><tr><th scope="col">STT</th><th>Khách hàng</th><th>Nhân viên</th><th>Nhận / Trả đồ</th><th>Ngày hẹn</th><th>Trạng thái</th><th>Thao tác</th></tr></thead>
+                <thead><tr><th scope="col">STT</th><th scope="col">Booking</th><th>Khách hàng</th><th>Nhân viên</th><th>Nhận / Trả đồ</th><th>Ngày hẹn</th><th>Trạng thái</th><th>Thao tác</th></tr></thead>
                 <tbody>
                 @forelse($bookings as $booking)
                     <tr>
                         <td>{{ $bookings->firstItem() + $loop->index }}</td>
+                        <td class="text-nowrap fw-semibold">{{ $booking->MaBooking ?: '—' }}</td>
                         <td><div class="fw-semibold">{{ $booking->khachHang?->HoTen ?: '-' }}</div><small class="text-muted">{{ $booking->khachHang?->SoDienThoai ?: 'Chưa có SĐT' }}</small></td>
                         <td>{{ $booking->nhanVien?->HoTen ?: 'Chưa phân công' }}</td>
                         <td>
@@ -97,7 +98,7 @@
                         </div></td>
                     </tr>
                 @empty
-                    <tr><td colspan="7" class="text-center text-muted py-4">Chưa có dữ liệu đặt lịch.</td></tr>
+                    <tr><td colspan="8" class="text-center text-muted py-4">Chưa có dữ liệu đặt lịch.</td></tr>
                 @endforelse
                 </tbody>
             </table>

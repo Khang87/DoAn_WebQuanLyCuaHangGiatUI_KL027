@@ -368,7 +368,8 @@ class ReportsService
                     ->where('TrangThai', InvoiceStatus::Paid->value),
             ])
             ->with([
-                'khachHang:KhachHangID,HoTen',
+                'khachHang:KhachHangID,HoTen,AvatarUrl',
+                'khachHang.taiKhoan:TaiKhoanID,KhachHangID,AvatarURL',
                 'chiTietDonHangs:ChiTietDonHangID,DonHangID,DichVuID',
                 'chiTietDonHangs.dichVu:DichVuID,TenDichVu',
                 'statusChanges',

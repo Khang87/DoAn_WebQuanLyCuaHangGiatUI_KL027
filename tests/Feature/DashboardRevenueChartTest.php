@@ -6,6 +6,7 @@ use App\Enums\InvoiceStatus;
 use App\Enums\OrderStatus;
 use App\Enums\PaymentStatus;
 use App\Http\Controllers\Admin\DashboardController;
+use App\Models\User;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -66,7 +67,15 @@ class DashboardRevenueChartTest extends TestCase
             $table->increments('KhachHangID');
             $table->string('HoTen')->nullable();
             $table->string('SoDienThoai')->nullable();
+            $table->string('AvatarUrl')->nullable();
             $table->dateTime('NgayTao')->nullable();
+        });
+
+        Schema::create('TaiKhoan', function (Blueprint $table): void {
+            $table->increments('TaiKhoanID');
+            $table->unsignedInteger('KhachHangID');
+            $table->string('AvatarURL')->nullable();
+            $table->string('MatKhau');
         });
 
         Schema::create('NhanVien', function (Blueprint $table): void {
@@ -118,7 +127,7 @@ class DashboardRevenueChartTest extends TestCase
 
     protected function tearDown(): void
     {
-        foreach (['DanhGia', 'ChiTietDonHang', 'DichVu', 'NhanVien', 'KhachHang', 'ThanhToan', 'NhatKyHeThong', 'HoaDon'] as $table) {
+        foreach (['DanhGia', 'ChiTietDonHang', 'DichVu', 'NhanVien', 'TaiKhoan', 'KhachHang', 'ThanhToan', 'NhatKyHeThong', 'HoaDon'] as $table) {
             Schema::dropIfExists($table);
         }
         Schema::dropIfExists('DonHang');
@@ -258,6 +267,64 @@ class DashboardRevenueChartTest extends TestCase
 
         $this->assertSame('7_days', $dashboardWithInvalidFilter['revenueFilter']);
         $this->assertSame('7_days', $dashboardWithInvalidFilter['revenueChartData']['filter']);
+    }
+
+    public function test_recent_orders_display_customer_avatars_without_per_row_queries(): void
+    {
+        $staff = \Mockery::mock(User::class)->makePartial();
+        $staff->shouldReceive('isActive')->andReturn(true);
+        $staff->shouldReceive('isOwner')->andReturn(false);
+        $staff->shouldReceive('canPermission')->andReturnUsing(
+            fn (string $permission): bool => $permission === 'orders.view',
+        );
+        $this->actingAs($staff);
+
+        DB::table('KhachHang')->insert([
+            ['KhachHangID' => 1, 'HoTen' => 'Khách ảnh hồ sơ', 'AvatarUrl' => 'https://example.test/profile.jpg'],
+            ['KhachHangID' => 2, 'HoTen' => 'Khách ảnh tài khoản', 'AvatarUrl' => null],
+            ['KhachHangID' => 3, 'HoTen' => 'Đặng An', 'AvatarUrl' => null],
+        ]);
+        DB::table('TaiKhoan')->insert([
+            ['TaiKhoanID' => 11, 'KhachHangID' => 1, 'AvatarURL' => 'https://example.test/unused.jpg', 'MatKhau' => 'test-only'],
+            ['TaiKhoanID' => 12, 'KhachHangID' => 2, 'AvatarURL' => 'https://example.test/account.jpg', 'MatKhau' => 'test-only'],
+        ]);
+        foreach ([1, 2, 3] as $id) {
+            DB::table('DonHang')->where('DonHangID', $id)->update(['KhachHangID' => $id]);
+        }
+        DB::flushQueryLog();
+        DB::enableQueryLog();
+
+        try {
+            $view = app(DashboardController::class)->index(Request::create('/admin/dashboard', 'GET'));
+            $orders = $view->getData()['recentOrders'];
+            $queries = DB::getQueryLog();
+            $accountQueries = array_filter($queries, fn (array $query): bool => str_contains($query['query'], 'from "TaiKhoan"'));
+            $this->assertCount(1, $accountQueries);
+
+            foreach ($orders as $order) {
+                $this->assertTrue($order->relationLoaded('khachHang'));
+                if ($order->khachHang) {
+                    $this->assertTrue($order->khachHang->relationLoaded('taiKhoan'));
+                    if ($order->khachHang->taiKhoan) {
+                        $this->assertArrayNotHasKey('MatKhau', $order->khachHang->taiKhoan->getAttributes());
+                    }
+                }
+            }
+            $this->assertNull($orders->firstWhere('DonHangID', 3)->khachHang->taiKhoan);
+            $this->assertNull($orders->firstWhere('DonHangID', 4)->khachHang);
+
+            $html = $view->render();
+            $this->assertStringContainsString('src="https://example.test/profile.jpg"', $html);
+            $this->assertStringContainsString('src="https://example.test/account.jpg"', $html);
+            $this->assertStringNotContainsString('src="https://example.test/unused.jpg"', $html);
+            $this->assertSame(4, substr_count($html, 'width: 40px; height: 40px;'));
+            $this->assertMatchesRegularExpression('/aria-label="Ảnh đại diện của Đặng An">\s*<span aria-hidden="true"\s*>\s*Đ\s*<\/span>/u', $html);
+            $this->assertStringContainsString('aria-label="Ảnh đại diện khách hàng"', $html);
+            $this->assertCount(count($queries), DB::getQueryLog(), 'Rendering customer avatars must not add queries.');
+        } finally {
+            DB::disableQueryLog();
+            DB::flushQueryLog();
+        }
     }
 
     public function test_dashboard_shows_up_to_fifteen_recent_orders(): void

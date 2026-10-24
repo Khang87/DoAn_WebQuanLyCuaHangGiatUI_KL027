@@ -89,7 +89,7 @@
                                         <x-admin.detail.confirm-form
                                             :action="route('garment-categories.destroy', $category)"
                                             title="Xóa danh mục loại đồ giặt?"
-                                            text="Danh mục đang có loại đồ giặt sẽ được chuyển sang trạng thái tạm ngưng."
+                                            :text="app(\App\Services\CatalogDeletionService::class)->confirmation($category)"
                                             label="Xóa"
                                             icon="bi bi-trash"
                                             variant="btn-order-action delete"

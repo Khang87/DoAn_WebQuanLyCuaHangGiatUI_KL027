@@ -6,6 +6,7 @@ use App\Enums\BookingStatus;
 use App\Enums\InvoiceStatus;
 use App\Enums\PaymentStatus;
 use App\Models\Booking;
+use App\Models\DiemTichLuy;
 use App\Models\DonHang;
 use App\Models\HoaDon;
 use App\Models\KhachHang;
@@ -18,7 +19,7 @@ use Tests\TestCase;
 
 class SchemaModuleCompatibilityTest extends TestCase
 {
-    public function test_booking_list_hides_reference_code_and_keeps_columns_aligned(): void
+    public function test_booking_list_shows_reference_code_and_keeps_columns_aligned(): void
     {
         $booking = new Booking;
         $booking->setRawAttributes([
@@ -38,26 +39,34 @@ class SchemaModuleCompatibilityTest extends TestCase
             'bookings' => new LengthAwarePaginator(collect([$booking]), 1, 10),
         ])->render();
 
-        $this->assertStringNotContainsString('DL-REFERENCE-1', $html);
+        $this->assertStringContainsString('DL-REFERENCE-1', $html);
         $this->assertStringContainsString('name="search"', $html);
         $this->assertStringContainsString('Tìm theo mã lịch', $html);
-        $this->assertDoesNotMatchRegularExpression('/<th[^>]*>\s*Mã lịch hẹn\s*<\/th>/u', $html);
+        $this->assertMatchesRegularExpression('/<th[^>]*>STT<\/th>\s*<th[^>]*>Booking<\/th>/u', $html);
         $this->assertStringNotContainsString('bookings.destroy', $html);
         $this->assertStringNotContainsString('deleteBookingForm_', $html);
         $this->assertStringNotContainsString('Bạn có chắc muốn xóa lịch hẹn này?', $html);
         $this->assertStringNotContainsString('name="_method" value="DELETE"', $html);
         preg_match('/<tbody>(.*?)<\/tbody>/s', $html, $tableBody);
         $this->assertNotEmpty($tableBody);
-        $this->assertSame(7, substr_count($tableBody[1], '<td'));
+        $this->assertSame(8, substr_count($tableBody[1], '<td'));
+        $this->assertMatchesRegularExpression('/<td>1<\/td>\s*<td[^>]*>DL-REFERENCE-1<\/td>/', $tableBody[1]);
+
+        $booking->MaBooking = '<script>alert(1)</script>';
+        $escapedHtml = view('admin.bookings.index', [
+            'bookings' => new LengthAwarePaginator(collect([$booking]), 1, 10),
+        ])->render();
+        $this->assertStringContainsString(e($booking->MaBooking), $escapedHtml);
+        $this->assertStringNotContainsString($booking->MaBooking, $escapedHtml);
     }
 
-    public function test_booking_list_empty_state_spans_the_remaining_columns(): void
+    public function test_booking_list_empty_state_spans_all_columns(): void
     {
         $html = view('admin.bookings.index', [
             'bookings' => new LengthAwarePaginator(collect(), 0, 10),
         ])->render();
 
-        $this->assertStringContainsString('colspan="7"', $html);
+        $this->assertStringContainsString('colspan="8"', $html);
     }
 
     public function test_mobile_customer_avatar_has_priority_over_account_avatar(): void
@@ -210,6 +219,82 @@ class SchemaModuleCompatibilityTest extends TestCase
         $this->assertFalse($notification->isFillable('BookingID'));
         $notification->fill(['BookingID' => 99]);
         $this->assertSame(34, $notification->BookingID);
+    }
+
+    public function test_customer_avatar_component_prioritizes_profile_and_escapes_attributes(): void
+    {
+        $customer = $this->customer('https://example.test/mobile.jpg?a=1&b="2"', 'https://example.test/account.jpg');
+        $customer->HoTen = '  ánh "<test>"  ';
+
+        $html = $this->blade('<x-admin.customer-avatar :customer="$customer" />', compact('customer'));
+
+        $html->assertSee('src="https://example.test/mobile.jpg?a=1&amp;b=&quot;2&quot;"', false)
+            ->assertDontSee('src="https://example.test/account.jpg"', false)
+            ->assertSee('aria-label="Ảnh đại diện của ánh &quot;&lt;test&gt;&quot;"', false)
+            ->assertSee('width: 40px; height: 40px;', false)
+            ->assertSee('aria-hidden="true"  hidden', false)
+            ->assertSee('this.onerror=null; this.previousElementSibling.hidden=false; this.remove();', false);
+    }
+
+    public function test_customer_avatar_component_uses_account_then_unicode_initial(): void
+    {
+        $customer = $this->customer(null, 'https://example.test/account.jpg');
+        $customer->HoTen = '  đặng an  ';
+        $this->blade('<x-admin.customer-avatar :customer="$customer" :size="70" />', compact('customer'))
+            ->assertSee('src="https://example.test/account.jpg"', false)
+            ->assertSee('width: 70px; height: 70px;', false);
+
+        $customer->setRelation('taiKhoan', null);
+        $this->blade('<x-admin.customer-avatar :customer="$customer" />', compact('customer'))
+            ->assertSee('Đ')
+            ->assertDontSee('<img', false)
+            ->assertDontSee(' hidden', false)
+            ->assertDontSee('user_1.jpg', false);
+    }
+
+    public function test_customer_avatar_component_handles_missing_customer(): void
+    {
+        $this->blade('<x-admin.customer-avatar />')
+            ->assertSee('aria-label="Ảnh đại diện khách hàng"', false)
+            ->assertSee('bi bi-person')
+            ->assertDontSee('<img', false);
+    }
+
+    public function test_customer_and_order_pages_display_customer_avatar_without_changing_contact_details(): void
+    {
+        foreach ([['https://example.test/mobile.jpg', 'https://example.test/account.jpg'], [null, 'https://example.test/account.jpg'], [null, null]] as [$profileAvatar, $accountAvatar]) {
+            $customer = $this->customer($profileAvatar, $accountAvatar);
+            $customer->forceFill(['HoTen' => 'Khách avatar', 'SoDienThoai' => '0901234567', 'TrangThai' => 'Hoạt động']);
+            $customer->setRelation('diemTichLuy', (new DiemTichLuy)->forceFill(['DiemHienTai' => 0]));
+            $order = (new DonHang)->forceFill([
+                'DonHangID' => 1, 'MaDonHang' => 'DH-AVATAR',
+                'TrangThai' => \App\Enums\OrderStatus::Received->value,
+                'has_paid_invoice' => false, 'has_successful_payment' => false,
+            ]);
+            $order->setRelation('khachHang', $customer);
+            $order->setRelation('chiTietDonHangs', collect());
+            $order->setRelation('statusChanges', collect());
+            $order->setRelation('hoaDons', collect());
+            $order->setRelation('thanhToans', collect());
+
+            $pages = [
+                ['admin.customers.index', ['customers' => new LengthAwarePaginator([$customer], 1, 10)], 40],
+                ['admin.orders.index', ['orders' => new LengthAwarePaginator([$order], 1, 10)], 40],
+                ['admin.customers.show', ['customer' => $customer, 'orders' => new LengthAwarePaginator([], 0, 10), 'totalSpent' => 0, 'orderCount' => 0], 70],
+            ];
+
+            foreach ($pages as [$view, $data, $size]) {
+                $html = view($view, $data)->render();
+                $this->assertStringContainsString('aria-label="Ảnh đại diện của Khách avatar"', $html);
+                $this->assertStringContainsString("width: {$size}px; height: {$size}px;", $html);
+                $this->assertStringContainsString('0901234567', $html);
+                if ($profileAvatar || $accountAvatar) {
+                    $this->assertStringContainsString('src="'.($profileAvatar ?: $accountAvatar).'"', $html);
+                } else {
+                    $this->assertMatchesRegularExpression('/aria-label="Ảnh đại diện của Khách avatar">\s*<span aria-hidden="true"\s*>\s*K\s*<\/span>\s*<\/span>/u', $html);
+                }
+            }
+        }
     }
 
     private function customer(?string $mobileAvatar, ?string $accountAvatar): KhachHang

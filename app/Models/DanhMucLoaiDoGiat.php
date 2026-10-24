@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\CatalogCache;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
@@ -25,6 +26,12 @@ class DanhMucLoaiDoGiat extends Model
         'DanhMucID' => 'integer',
         'NgayTao' => 'datetime',
     ];
+
+    protected static function booted(): void
+    {
+        static::saved(static fn () => CatalogCache::forgetGarmentTypes());
+        static::deleted(static fn () => CatalogCache::forgetGarmentTypes());
+    }
 
     public function loaiDoGiats(): HasMany
     {

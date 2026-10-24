@@ -14,18 +14,16 @@ class GarmentController extends ApiController
 {
     public function index(Request $request): JsonResponse
     {
-        $paginator = DichVu::query()
+        $paginator = DichVu::query()->availableForBooking()
             ->with('loaiDichVu')
             ->when($request->filled('category_id'), fn ($query) => $query->where('LoaiDichVuID', $request->integer('category_id')))
             ->when($request->filled('search'), function ($query) use ($request) {
                 $search = $request->string('search')->toString();
                 $query->where('TenDichVu', 'like', "%{$search}%");
             })
-            ->when(
-                $request->filled('status'),
-                fn ($query) => $query->where('TrangThai', RecordStatus::parse($request->string('status'))->label()),
-                fn ($query) => $query->where('TrangThai', RecordStatus::Active->label())
-            )
+            ->when($request->filled('status'), fn ($query) => $query->where(
+                'TrangThai', RecordStatus::parse($request->string('status')) === RecordStatus::Active ? 'Hoạt động' : 'Tạm ngưng',
+            ))
             ->orderBy('TenDichVu')
             ->paginate($this->perPage($request))
             ->withQueryString();
@@ -38,7 +36,7 @@ class GarmentController extends ApiController
      */
     public function categories(): JsonResponse
     {
-        $categories = LoaiDichVu::where('TrangThai', RecordStatus::Active->label())
+        $categories = LoaiDichVu::where('TrangThai', 'Hoạt động')
             ->orderBy('TenLoaiDichVu')
             ->get(['LoaiDichVuID as id', 'TenLoaiDichVu as name']);
 

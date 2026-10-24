@@ -2,7 +2,11 @@
 
 namespace App\Http\Requests\Admin;
 
+use App\Models\ChiTietDonHang;
+use App\Services\CatalogAvailability;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\ValidationException;
+use Illuminate\Validation\Validator;
 
 class LuuChiTietDonHangRequest extends FormRequest
 {
@@ -23,6 +27,33 @@ class LuuChiTietDonHangRequest extends FormRequest
             'KhoiLuong' => ['nullable', 'regex:/^\d+(\.\d+)?$/', 'gt:0'],
             'GhiChu' => ['nullable', 'string', 'max:500'],
         ];
+    }
+
+    public function after(): array
+    {
+        return [function (Validator $validator): void {
+            if ($validator->errors()->isNotEmpty()) {
+                return;
+            }
+
+            // Only the route's stored line, still in the same order, may be retained.
+            $line = $this->isMethod('PUT') || $this->isMethod('PATCH')
+                ? ChiTietDonHang::query()->find($this->route('order_item'))
+                : null;
+            if ($line && (int) $line->DonHangID !== (int) $this->input('DonHangID')) {
+                $line = null;
+            }
+
+            try {
+                CatalogAvailability::assertItemsAvailable([$this->only(['DichVuID', 'LoaiDoGiatID', 'DonViTinhID'])], $line);
+            } catch (ValidationException $exception) {
+                foreach ($exception->errors() as $key => $messages) {
+                    foreach ($messages as $message) {
+                        $validator->errors()->add(str_replace('items.0.', '', $key), $message);
+                    }
+                }
+            }
+        }];
     }
 
     public function messages(): array

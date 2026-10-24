@@ -21,9 +21,7 @@
     <div class="col-lg-8">
         <x-admin.detail.panel title="Thông tin khách hàng" icon="bi-person" :iconClass="'bg-primary-subtle text-primary'">
             <div class="d-flex align-items-center gap-3 mb-4 pb-3 border-bottom">
-                <div class="rounded-circle bg-primary-subtle text-primary d-flex align-items-center justify-content-center fw-bold" style="width: 70px; height: 70px;">
-                    {{ mb_substr($customer->HoTen, 0, 1) }}
-                </div>
+                <x-admin.customer-avatar :customer="$customer" :size="70" />
                 <h4 class="mb-1 text-dark fw-bold">{{ $customer->HoTen }}</h4>
             </div>
             <x-admin.detail.info-grid :columns="2">

@@ -217,7 +217,7 @@ class AuthFlowTest extends TestCase
             $otp = $sentOtp;
 
             return preg_match('/^\d{6}$/', $sentOtp) === 1;
-        }));
+        }), 3);
         $this->app->instance(OtpMailer::class, $mailer);
         $this->post(route('password.email'), ['email' => $this->staff->Email])
             ->assertRedirect(route('password.request'))->assertSessionHas('status')->assertSessionMissing('simulation_otp');

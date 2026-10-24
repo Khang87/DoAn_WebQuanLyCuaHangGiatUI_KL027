@@ -14,8 +14,35 @@ use Illuminate\Support\Facades\Schema;
 
 trait BookingInspectionFixture
 {
+    private function createActiveCatalog(): void
+    {
+        DB::table('LoaiDichVu')->insertOrIgnore([
+            'LoaiDichVuID' => 1,
+            'TenLoaiDichVu' => 'Giặt',
+            'TrangThai' => 'Hoạt động',
+        ]);
+        DB::table('DichVu')->insertOrIgnore([
+            'DichVuID' => 1,
+            'TenDichVu' => 'Giặt',
+            'LoaiDichVuID' => 1,
+            'TrangThai' => 'Hoạt động',
+        ]);
+        DB::table('DanhMucLoaiDoGiat')->insertOrIgnore([
+            'DanhMucID' => 1,
+            'TenDanhMuc' => 'Quần áo',
+            'TrangThai' => 'Hoạt động',
+        ]);
+        DB::table('LoaiDoGiat')->insertOrIgnore([
+            'LoaiDoGiatID' => 2,
+            'TenLoaiDoGiat' => 'Áo sơ mi',
+            'DanhMucID' => 1,
+            'TrangThai' => 'Hoạt động',
+        ]);
+    }
+
     private function createInspectionCatalog(): void
     {
+        $this->createActiveCatalog();
         DB::table('DonViTinh')->insert(['DonViTinhID' => 3, 'TenDonViTinh' => 'Cái', 'KyHieu' => 'Cái', 'TrangThai' => 'Hoạt động']);
         DB::table('BangGia')->insert(['DichVuID' => 1, 'LoaiDoGiatID' => 2, 'DonViTinhID' => 3, 'DonGia' => 15000, 'NgayApDung' => '2026-01-01', 'TrangThai' => 'Hoạt động']);
     }
@@ -28,8 +55,7 @@ trait BookingInspectionFixture
     private function createBooking(array $overrides = []): Booking
     {
         DB::table('KhachHang')->insertOrIgnore(['KhachHangID' => 9]);
-        DB::table('DichVu')->insertOrIgnore(['DichVuID' => 1]);
-        DB::table('LoaiDoGiat')->insertOrIgnore(['LoaiDoGiatID' => 2, 'TenLoaiDoGiat' => 'Áo sơ mi']);
+        $this->createActiveCatalog();
 
         $booking = Booking::query()->create(array_merge([
             'KhachHangID' => 9,
@@ -77,16 +103,7 @@ trait BookingInspectionFixture
     private function createRequestCatalog(): void
     {
         DB::table('KhachHang')->insertOrIgnore(['KhachHangID' => 9]);
-        DB::table('DichVu')->insert(['DichVuID' => 1]);
-        DB::table('DanhMucLoaiDoGiat')->insert([
-            'DanhMucID' => 1,
-            'TenDanhMuc' => 'Quần áo',
-        ]);
-        DB::table('LoaiDoGiat')->insert([
-            'LoaiDoGiatID' => 2,
-            'TenLoaiDoGiat' => 'Áo sơ mi',
-            'DanhMucID' => 1,
-        ]);
+        $this->createActiveCatalog();
         DB::table('DonViTinh')->insert([
             ['DonViTinhID' => 1, 'TenDonViTinh' => 'Kilogram', 'KyHieu' => 'KG', 'TrangThai' => 'Hoạt động'],
             ['DonViTinhID' => 2, 'TenDonViTinh' => 'Cái', 'KyHieu' => 'Cái', 'TrangThai' => 'Hoạt động'],
@@ -219,6 +236,7 @@ trait BookingInspectionFixture
         Schema::create('LoaiDichVu', function (Blueprint $table): void {
             $table->increments('LoaiDichVuID');
             $table->string('TenLoaiDichVu');
+            $table->string('TrangThai')->default('Hoạt động');
         });
 
         Schema::create('DanhMucLoaiDoGiat', function (Blueprint $table): void {
@@ -276,6 +294,14 @@ trait BookingInspectionFixture
             $table->boolean('DiemDaTru')->default(false);
             $table->unsignedInteger('KhuyenMaiID')->nullable();
             $table->boolean('KhuyenMaiDaTru')->default(false);
+        });
+
+        Schema::create('BookingYeuCauDichVu', function (Blueprint $table): void {
+            $table->increments('BookingYeuCauDichVuID');
+            $table->unsignedInteger('BookingID');
+            $table->unsignedInteger('DichVuID');
+            $table->unsignedInteger('LoaiDoGiatID');
+            $table->unsignedInteger('DonViTinhID');
         });
 
         Schema::create('ChiTietBooking', function (Blueprint $table): void {

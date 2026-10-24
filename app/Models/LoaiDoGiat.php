@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Support\CatalogCache;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -30,6 +31,13 @@ class LoaiDoGiat extends Model
         'LoaiDoGiatID' => 'integer',
         'DanhMucID' => 'integer',
     ];
+
+    /** DanhMucID is required by the schema; history remains deliberately unscoped. */
+    public function scopeAvailableForBooking(Builder $query): Builder
+    {
+        return $query->where($this->qualifyColumn('TrangThai'), 'Hoạt động')
+            ->whereHas('danhMuc', fn (Builder $parent) => $parent->where('TrangThai', 'Hoạt động'));
+    }
 
     public function danhMuc(): BelongsTo
     {

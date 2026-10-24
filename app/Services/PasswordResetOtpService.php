@@ -18,7 +18,7 @@ class PasswordResetOtpService
 
     private const IP_THROTTLE_PREFIX = 'auth:password-reset-ip-throttle:';
 
-    private const OTP_LIFETIME_MINUTES = 15;
+    public const OTP_LIFETIME_MINUTES = 3;
 
     public function __construct(private OtpMailer $otpMailer) {}
 
@@ -69,10 +69,10 @@ class PasswordResetOtpService
                     'attempts' => 0,
                     'generation' => $generation,
                     'expires_at' => now()->addMinutes(self::OTP_LIFETIME_MINUTES)->timestamp,
-                ], 900) || ! $cache->put($key.':generation', $generation, 1800)) {
+                ], self::OTP_LIFETIME_MINUTES * 60) || ! $cache->put($key.':generation', $generation, 1800)) {
                     throw new \RuntimeException('OTP cache write failed.');
                 }
-                $this->otpMailer->send($email, $otp);
+                $this->otpMailer->send($email, $otp, self::OTP_LIFETIME_MINUTES);
             } catch (Throwable $exception) {
                 $cache->forget($key);
                 $cache->forget($key.':generation');

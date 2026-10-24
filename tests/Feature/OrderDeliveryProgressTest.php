@@ -366,6 +366,7 @@ class OrderDeliveryProgressTest extends TestCase
             'HoTen' => 'Khách kiểm thử',
             'TrangThai' => 'Hoạt động',
         ]);
+        $customer->setRelation('taiKhoan', null);
         $customer->setRelation('diemTichLuy', (new DiemTichLuy)->forceFill([
             'DiemHienTai' => 0,
         ]));

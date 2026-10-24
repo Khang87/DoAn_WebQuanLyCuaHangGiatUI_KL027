@@ -116,7 +116,7 @@ class OrderService
     /** Read-only inspection preview; conversion still rechecks prices under a lock. */
     public function estimateBooking(Booking $booking, array $items): array
     {
-        [$snapshots, $subtotal] = $this->buildItems($items);
+        [$snapshots, $subtotal] = $this->buildItems($items, [], $booking);
         $serviceNames = DichVu::query()
             ->whereIn('DichVuID', array_column($snapshots, 'DichVuID'))
             ->pluck('TenDichVu', 'DichVuID');
@@ -282,7 +282,7 @@ class OrderService
                     ]);
                 }
             }
-            [$snapshots, $total] = $this->buildItems($items);
+            [$snapshots, $total] = $this->buildItems($items, [], $booking);
 
             // The database fee trigger must see the inspected methods before inserting the order.
             // Persist only the whitelisted edits and any server-generated fee quote.
@@ -401,8 +401,9 @@ class OrderService
      *
      * @return array{0: array<int, array<string, mixed>>, 1: float}
      */
-    private function buildItems(?array $rawItems, array $priceOverridesByIndex = []): array
+    private function buildItems(?array $rawItems, array $priceOverridesByIndex = [], Booking|DonHang|null $record = null): array
     {
+        CatalogAvailability::assertItemsAvailable($rawItems ?? [], $record);
         $rows = [];
         $calculationItems = [];
         $items = $rawItems ?? [];
@@ -563,7 +564,7 @@ class OrderService
             'thanhToans as has_successful_payment' => fn ($paymentQuery) => $paymentQuery
                 ->where('TrangThai', PaymentStatus::Paid->value),
         ])->with([
-            'khachHang',
+            'khachHang.taiKhoan:TaiKhoanID,KhachHangID,AvatarURL',
             'chiTietDonHangs.dichVu',
             'statusChanges',
         ])
@@ -669,6 +670,7 @@ class OrderService
 
         unset($item);
 
+        CatalogAvailability::assertItemsAvailable($data['items']);
         $deliveryQuote = $this->deliveryFeeService->quote(
             $data['HinhThucNhanDo'],
             $data['DiaChiNhan'] ?? null,
@@ -830,7 +832,7 @@ class OrderService
                 EmployeeAssignment::assertAssignable((int) $data['NhanVienID'], 'NhanVienID', $lockedOrder->NhanVienID);
             }
 
-            [$items, $subtotal] = $this->buildItems($data['items'] ?? []);
+            [$items, $subtotal] = $this->buildItems($data['items'] ?? [], [], $lockedOrder);
 
             $promotion = $lockedOrder->khuyenMai;
 
@@ -1031,7 +1033,7 @@ class OrderService
                 $items[$index]['GhiChu'] = $notes;
             }
 
-            [$rows, $subtotal] = $this->buildItems($items, $priceOverridesByIndex);
+            [$rows, $subtotal] = $this->buildItems($items, $priceOverridesByIndex, $lockedOrder);
             $retainedIds = [];
 
             foreach ($rows as $index => $row) {

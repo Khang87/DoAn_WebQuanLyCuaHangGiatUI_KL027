@@ -50,6 +50,8 @@ class KhachHangController extends Controller
             abort(404);
         }
 
+        $customer->load('taiKhoan:TaiKhoanID,KhachHangID,AvatarURL');
+
         return view('admin.customers.show', [
             'customer' => $customer,
             'orders' => $customer->donHangs()

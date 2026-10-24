@@ -30,6 +30,8 @@ class MessageController extends Controller
             'customer_id' => ['nullable', 'integer', 'min:1', 'prohibits:order_id'],
             'q' => ['nullable', 'string', 'max:100'],
             'tab' => ['nullable', 'in:orders,support'],
+            'page' => ['nullable', 'integer', 'min:1'],
+            'support_page' => ['nullable', 'integer', 'min:1'],
         ]);
         $search = trim($validated['q'] ?? '');
 
@@ -55,12 +57,14 @@ class MessageController extends Controller
             $messageDecryptionUnavailable = true;
         }
 
+        $activeTab = $customer ? 'support' : ($order ? 'orders' : ($validated['tab'] ?? 'orders'));
+        $page = (int) ($validated[$activeTab === 'support' ? 'support_page' : 'page'] ?? 1);
+
         return view('admin.messages.index', [
-            'orders' => $this->messageService->getOrders($search),
+            'inboxPage' => $this->conversationPage($activeTab, $search, $page),
             'selectedOrder' => $order,
             'selectedCustomer' => $customer,
-            'supportCustomers' => $this->messageService->supportCustomers($search),
-            'activeTab' => $customer ? 'support' : ($order ? 'orders' : ($validated['tab'] ?? 'orders')),
+            'activeTab' => $activeTab,
             'search' => $search,
             'messages' => $messages,
             'messageDecryptionUnavailable' => $messageDecryptionUnavailable,
@@ -247,15 +251,44 @@ class MessageController extends Controller
         $validated = $request->validate([
             'page' => ['nullable', 'integer', 'min:1'],
             'q' => ['nullable', 'string', 'max:100'],
+            'tab' => ['nullable', 'in:orders,support'],
         ]);
 
-        return response()->json(['orders' => $this->messageService->getOrders(trim($validated['q'] ?? ''))->map(fn ($order) => [
-            'id' => (int) $order->getKey(), 'number' => (string) $order->MaDonHang,
-            'customer' => $order->khachHang?->HoTen ?: 'Khách hàng',
-            'preview' => $order->last_message_preview,
-            'unread' => (int) $order->unread_count > 0,
-            'date' => $order->last_message_at ? Carbon::parse($order->last_message_at, 'UTC')->setTimezone(config('app.timezone'))->format('d/m/Y') : $order->NgayTao?->format('d/m/Y'),
-        ])->values()])->header('Cache-Control', 'private, no-store');
+        return response()->json($this->conversationPage(
+            $validated['tab'] ?? 'orders',
+            trim($validated['q'] ?? ''),
+            (int) ($validated['page'] ?? 1),
+        ))->header('Cache-Control', 'private, no-store');
+    }
+
+    private function conversationPage(string $tab, string $search, int $pageNumber): array
+    {
+        $support = $tab === 'support';
+        $page = $support
+            ? $this->messageService->supportCustomers($search, $pageNumber)
+            : $this->messageService->getOrders($search, $pageNumber);
+
+        return [
+            'tab' => $tab,
+            'page' => $page->currentPage(),
+            'next_page' => $page->hasMorePages() ? $page->currentPage() + 1 : null,
+            'conversations' => $page->map(function ($conversation) use ($support): array {
+                $profile = $conversation->khachHang;
+                $account = $support ? $conversation : $profile?->taiKhoan;
+
+                return [
+                    'id' => (int) $conversation->getKey(),
+                    'number' => $support ? ($profile?->SoDienThoai ?: 'Tư vấn khách hàng') : (string) $conversation->MaDonHang,
+                    'customer' => $support ? $conversation->name : ($profile?->HoTen ?: 'Khách hàng'),
+                    'avatar_url' => ($profile?->getAttributes()['AvatarUrl'] ?? null) ?: (($account?->getAttributes()['AvatarURL'] ?? null) ?: null),
+                    'preview' => $conversation->last_message_preview,
+                    'unread' => ! $support && (int) $conversation->unread_count > 0,
+                    'date' => $conversation->last_message_at
+                        ? Carbon::parse($conversation->last_message_at, 'UTC')->setTimezone(config('app.timezone'))->format('d/m/Y')
+                        : ($support ? null : $conversation->NgayTao?->format('d/m/Y')),
+                ];
+            })->values()->all(),
+        ];
     }
 
     public function read(Request $request): JsonResponse

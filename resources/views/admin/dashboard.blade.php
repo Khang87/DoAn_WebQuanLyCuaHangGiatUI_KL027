@@ -281,7 +281,12 @@
                             <tr>
                                 <td>{{ $loop->iteration }}</td>
                                 <td><strong>{{ $order->MaDonHang }}</strong></td>
-                                <td>{{ $order->khachHang?->HoTen ?: '-' }}</td>
+                                <td>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <x-admin.customer-avatar :customer="$order->khachHang" />
+                                        <span>{{ $order->khachHang?->HoTen ?: '-' }}</span>
+                                    </div>
+                                </td>
                                 <td>{{ $order->nhanVien?->HoTen ?: '-' }}</td>
                                 <td><strong>{{ number_format((float) $order->ThanhTien) }} đ</strong></td>
                                 <td class="text-center">

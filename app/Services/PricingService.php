@@ -3,6 +3,8 @@
 namespace App\Services;
 
 use App\Models\BangGia;
+use App\Models\Booking;
+use App\Models\DonHang;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
@@ -126,6 +128,8 @@ class PricingService
     {
         return $this->effectivePrices()
             ->with('donViTinh')
+            ->whereHas('dichVu', fn (Builder $query) => $query->availableForBooking())
+            ->whereHas('loaiDoGiat', fn (Builder $query) => $query->availableForBooking())
             ->whereNotNull('DonGia')
             ->whereHas('donViTinh', fn ($query) => $query
                 ->where('TrangThai', 'Hoạt động')
@@ -133,6 +137,19 @@ class PricingService
                     ->where(fn ($label) => $label->whereNotNull('KyHieu')->where('KyHieu', '<>', ''))
                     ->orWhere(fn ($label) => $label->whereNotNull('TenDonViTinh')->where('TenDonViTinh', '<>', ''))))
             ->get()
+            ->unique(fn ($price) => $price->DichVuID.':'.$price->LoaiDoGiatID.':'.$price->DonViTinhID)
+            ->values();
+    }
+
+    /** Include only this record's persisted historical tuples in edit/inspection options. */
+    public function orderOptionsForRecord(Booking|DonHang $record): Collection
+    {
+        $tuples = CatalogAvailability::persistedItems($record)
+            ->map(fn ($item) => $item->only(['DichVuID', 'LoaiDoGiatID', 'DonViTinhID']))->all();
+        $historical = new Collection(array_values($this->getLatestPricingForTuples($tuples)));
+        $historical->load('donViTinh');
+
+        return $this->orderOptions()->merge($historical)
             ->unique(fn ($price) => $price->DichVuID.':'.$price->LoaiDoGiatID.':'.$price->DonViTinhID)
             ->values();
     }

@@ -99,7 +99,7 @@
                         <x-admin.detail.confirm-form
                             :action="route('services.destroy', $service)"
                             title="Xóa dịch vụ?"
-                            text="Nếu dịch vụ đã được sử dụng trong bảng giá, đơn hàng hoặc lịch hẹn, dịch vụ sẽ chuyển sang trạng thái tạm ngưng."
+                            :text="app(\App\Services\CatalogDeletionService::class)->confirmation($service)"
                             label="Xóa dịch vụ"
                             icon="bi bi-trash"
                             variant="btn-order-action delete"

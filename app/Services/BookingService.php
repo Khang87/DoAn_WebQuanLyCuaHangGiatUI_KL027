@@ -109,6 +109,7 @@ class BookingService
     public function create(array $data): Booking
     {
         return DB::transaction(function () use ($data): Booking {
+            CatalogAvailability::assertItemsAvailable($data['items'] ?? []);
             $booking = Booking::create($this->mapRequestData($data));
 
             if (array_key_exists('items', $data)) {
@@ -268,6 +269,7 @@ class BookingService
                 $data = $draft->Payload;
                 $data['customer_accepted'] = true;
             }
+            CatalogAvailability::assertItemsAvailable($data['items'], $locked);
             $data['items'] = $this->preserveBookingItemNotes($locked, $data['items']);
             $snapshot = $this->inspectionSnapshot($data);
             $changed = $draft?->CoChenhLech ?? $this->inspectionDiffersFromBooking($locked, $snapshot);
@@ -341,6 +343,7 @@ class BookingService
             }
 
             $data['customer_id'] = $locked->KhachHangID;
+            CatalogAvailability::assertItemsAvailable($data['items'], $locked);
             $data['items'] = $this->preserveBookingItemNotes($locked, $data['items']);
             $feeChanged = $data['method'] !== $locked->HinhThucNhanDo
                 || ($data['address'] ?? null) !== $locked->DiaChiNhan
@@ -474,6 +477,7 @@ class BookingService
             }
 
             $data = $this->useOriginalBookingDetails($locked, $data);
+            CatalogAvailability::assertItemsAvailable($data['items'], $locked);
             $data['items'] = $this->preserveBookingItemNotes($locked, $data['items']);
             $snapshot = $this->inspectionSnapshot($data);
             $changed = $this->inspectionDiffersFromBooking($locked, $snapshot);
@@ -1001,6 +1005,7 @@ class BookingService
      */
     private function syncBookingItems(Booking $booking, array $items): void
     {
+        CatalogAvailability::assertItemsAvailable($items, $booking);
         $rows = [];
 
         foreach ($items as $index => $item) {

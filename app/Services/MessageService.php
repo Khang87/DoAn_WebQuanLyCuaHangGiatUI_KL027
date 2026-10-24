@@ -20,14 +20,14 @@ use Illuminate\Validation\ValidationException;
 
 class MessageService
 {
-    public function getOrders(?string $search = null): LengthAwarePaginator
+    public function getOrders(?string $search = null, ?int $pageNumber = null): LengthAwarePaginator
     {
         $activity = TinNhan::query()->select('DonHangID')->selectRaw('MAX("ThoiGianGui") AS last_message_at, MAX("TinNhanID") AS last_message_id')
             ->whereNotNull('DonHangID')->groupBy('DonHangID');
         $unread = $this->unreadIncoming()->select('DonHangID')->selectRaw('COUNT(*) AS unread_count')
             ->whereNotNull('DonHangID')->groupBy('DonHangID');
 
-        $orders = DonHang::query()->with(['khachHang.taiKhoan'])->select('DonHang.*')
+        $orders = DonHang::query()->with(['khachHang.taiKhoan:TaiKhoanID,KhachHangID,AvatarURL'])->select('DonHang.*')
             ->leftJoinSub($activity, 'activity', 'activity.DonHangID', '=', 'DonHang.DonHangID')
             ->leftJoinSub($unread, 'unread', 'unread.DonHangID', '=', 'DonHang.DonHangID')
             ->addSelect('activity.last_message_at', 'unread.unread_count')
@@ -47,7 +47,7 @@ class MessageService
         $page = $orders
             ->orderByRaw('CASE WHEN activity.last_message_at IS NULL THEN 1 ELSE 0 END')
             ->orderByDesc('activity.last_message_at')->orderByDesc('activity.last_message_id')->orderByDesc('DonHang.NgayTao')->orderByDesc('DonHang.DonHangID')
-            ->paginate(20)->withQueryString();
+            ->paginate(20, ['*'], 'page', $pageNumber)->withQueryString();
         $latestIds = $page->getCollection()->pluck('last_message_id')->filter()->map(fn ($id): int => (int) $id);
         if ($latestIds->isNotEmpty()) {
             $latest = $this->presentWebMessages(TinNhan::query()->whereIn('TinNhanID', $latestIds)->get(), true)->keyBy('TinNhanID');
@@ -132,7 +132,7 @@ class MessageService
         return $this->presentWebMessages($messages);
     }
 
-    public function supportCustomers(?string $search = null): LengthAwarePaginator
+    public function supportCustomers(?string $search = null, ?int $pageNumber = null): LengthAwarePaginator
     {
         $customers = User::query()->with('khachHang')->whereNotNull('KhachHangID')
             ->whereNull('NhanVienID')->where('TrangThai', 'Hoạt động');
@@ -158,7 +158,7 @@ class MessageService
             'last_message_preview' => $supportMessage()->select('NoiDung'),
             'last_message_at' => $supportMessage()->select('ThoiGianGui'),
             'last_message_id' => $supportMessage()->select('TinNhanID'),
-        ])->orderByDesc('TaiKhoanID')->paginate(20, ['*'], 'support_page')->withQueryString();
+        ])->orderByDesc('TaiKhoanID')->paginate(20, ['*'], 'support_page', $pageNumber)->withQueryString();
         $latestIds = $page->getCollection()->pluck('last_message_id')->filter()->map(fn ($id): int => (int) $id);
         if ($latestIds->isNotEmpty()) {
             $latest = $this->presentWebMessages(TinNhan::query()->whereIn('TinNhanID', $latestIds)->get(), true)->keyBy('TinNhanID');

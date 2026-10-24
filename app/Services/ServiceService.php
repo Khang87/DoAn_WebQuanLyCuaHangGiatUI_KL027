@@ -74,17 +74,7 @@ class ServiceService
 
     public function delete(DichVu $service): bool
     {
-        if (
-            $service->bangGias()->exists()
-            || $service->chiTietDonHangs()->exists()
-            || $service->chiTietBookings()->exists()
-        ) {
-            $service->update(['TrangThai' => 'Tạm ngưng']);
-
-            return false;
-        }
-
-        return $service->delete();
+        return app(CatalogDeletionService::class)->delete($service);
     }
 
     public function getCategories(): array
@@ -99,7 +89,7 @@ class ServiceService
     public function getGarmentTypes(): array
     {
         return CatalogCache::garmentTypes(fn (): array => LoaiDoGiat::query()
-            ->where('TrangThai', 'Hoạt động')
+            ->availableForBooking()
             ->orderBy('TenLoaiDoGiat')
             ->pluck('TenLoaiDoGiat', 'LoaiDoGiatID')
             ->all());

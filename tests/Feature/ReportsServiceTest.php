@@ -23,6 +23,7 @@ class ReportsServiceTest extends TestCase
         'ThanhToan',
         'Booking',
         'KhachHang',
+        'TaiKhoan',
         'LoaiDichVu',
         'DichVu',
         'LoaiDoGiat',
@@ -116,6 +117,23 @@ class ReportsServiceTest extends TestCase
         $this->assertSame(['Giặt sấy', 'Giặt hấp'], $composition['labels']);
         $this->assertEquals([100000, 25000], $composition['revenue']);
         $this->assertEquals([80, 20], $composition['percentages']);
+    }
+
+    public function test_revenue_trend_keeps_daily_amounts_in_order_and_zero_fills_days_without_payments(): void
+    {
+        DB::table('ThanhToan')->insert([
+            ['DonHangID' => 2, 'SoTien' => 400000, 'PhuongThuc' => 'Tiền mặt', 'ThoiGian' => '2026-01-11 05:00:00', 'TrangThai' => PaymentStatus::Paid->value],
+            ['DonHangID' => 2, 'SoTien' => 100000, 'PhuongThuc' => 'Tiền mặt', 'ThoiGian' => '2026-01-12 05:00:00', 'TrangThai' => PaymentStatus::Paid->value],
+            ['DonHangID' => 2, 'SoTien' => 900000, 'PhuongThuc' => 'Tiền mặt', 'ThoiGian' => '2026-01-13 05:00:00', 'TrangThai' => PaymentStatus::Pending->value],
+            ['DonHangID' => 2, 'SoTien' => 800000, 'PhuongThuc' => 'Tiền mặt', 'ThoiGian' => '2026-01-13 06:00:00', 'TrangThai' => PaymentStatus::Failed->value],
+        ]);
+        $filters = ['range' => 'custom', 'date_from' => '2026-01-10', 'date_to' => '2026-01-13'];
+        $service = app(ReportsService::class);
+        $chart = $service->getRevenueChartData($filters);
+
+        $this->assertSame(['10/01', '11/01', '12/01', '13/01'], $chart['labels']);
+        $this->assertEquals([255000, 400000, 100000, 0], $chart['revenue']);
+        $this->assertEquals($service->getKpiMetrics($filters)['total_revenue'], array_sum($chart['revenue']));
     }
 
     public function test_custom_date_filters_use_vietnamese_calendar_days_against_utc_timestamps(): void
@@ -241,6 +259,75 @@ class ReportsServiceTest extends TestCase
         $this->assertTrue($latestOrder->relationLoaded('chiTietDonHangs'));
     }
 
+    public function test_recent_order_avatars_use_profile_account_and_initial_fallback_without_per_row_queries(): void
+    {
+        $this->seedAvatarFixtures();
+        $connection = DB::connection();
+        $connection->flushQueryLog();
+        $connection->enableQueryLog();
+
+        try {
+            $orders = app(ReportsService::class)->getRecentOrders(['range' => 'all_time']);
+
+            $this->assertCount(4, $orders);
+            $this->assertCount(7, $connection->getQueryLog());
+            $connection->flushQueryLog();
+
+            $avatars = [];
+            $customers = [];
+            foreach ($orders as $order) {
+                $this->assertTrue($order->relationLoaded('khachHang'));
+                $customer = $order->khachHang;
+                $this->assertTrue($customer->relationLoaded('taiKhoan'));
+                $this->assertArrayHasKey('AvatarUrl', $customer->getAttributes());
+                $customers[$customer->KhachHangID] = $customer;
+                $avatars[$customer->KhachHangID] = (string) $this->blade(
+                    '<x-admin.customer-avatar :customer="$customer" :size="40" />',
+                    compact('customer'),
+                );
+            }
+
+            $this->assertSame('https://example.test/profile.jpg', $customers[1]->getAttributes()['AvatarUrl']);
+            $this->assertSame('https://example.test/account.jpg', $customers[2]->taiKhoan->AvatarURL);
+            $this->assertNull($customers[3]->taiKhoan);
+            $this->assertSame('', $customers[4]->taiKhoan->AvatarURL);
+            $this->assertStringContainsString('src="https://example.test/profile.jpg"', $avatars[1]);
+            $this->assertStringNotContainsString('https://example.test/unused.jpg', $avatars[1]);
+            $this->assertStringContainsString('src="https://example.test/account.jpg"', $avatars[2]);
+            foreach ([3 => 'Đ', 4 => 'L'] as $customerId => $initial) {
+                $this->assertStringNotContainsString('<img', $avatars[$customerId]);
+                $this->assertMatchesRegularExpression('/<span aria-hidden="true"\s*>\s*'.$initial.'\s*<\/span>/u', $avatars[$customerId]);
+            }
+            foreach ($avatars as $avatar) {
+                $this->assertStringContainsString('width: 40px; height: 40px;', $avatar);
+                $this->assertStringNotContainsString('assets/images/user_1.jpg', $avatar);
+            }
+            $this->assertSame([], $connection->getQueryLog(), 'Rendering report customer avatars must not issue per-row queries.');
+        } finally {
+            $connection->disableQueryLog();
+            $connection->flushQueryLog();
+        }
+    }
+
+    public function test_reports_page_shows_customer_avatars_beside_names(): void
+    {
+        $this->seedAvatarFixtures();
+
+        $this->actingAs($this->reportOwner())->get('/reports')
+            ->assertOk()
+            ->assertSee('d-flex align-items-center gap-2', false)
+            ->assertSee('width: 40px; height: 40px;', false)
+            ->assertSee('src="https://example.test/profile.jpg"', false)
+            ->assertSee('src="https://example.test/account.jpg"', false)
+            ->assertDontSee('https://example.test/unused.jpg', false)
+            ->assertSee('Ảnh đại diện của Đặng An')
+            ->assertSee('Ảnh đại diện của Lê Bình')
+            ->assertSee('<span>Nguyễn An</span>', false)
+            ->assertSee('<span>Trần Bình</span>', false)
+            ->assertSee('<span>Đặng An</span>', false)
+            ->assertSee('<span>Lê Bình</span>', false);
+    }
+
     public function test_recent_orders_show_operational_and_paid_statuses_and_keep_ten_per_page(): void
     {
         $orders = app(ReportsService::class)->getRecentOrders([
@@ -281,6 +368,36 @@ class ReportsServiceTest extends TestCase
             ->assertSee('Báo cáo', false)
             ->assertSee('order-status-badges d-inline-flex align-items-center flex-nowrap gap-1 text-nowrap', false)
             ->assertSee('formatter: value => formatCurrency(value)', false);
+    }
+
+    public function test_total_order_status_badges_match_dashboard_styles_and_full_labels(): void
+    {
+        $this->actingAs($this->reportOwner())->get('/reports?range=custom&date_from=2026-01-10&date_to=2026-01-10')
+            ->assertOk()
+            ->assertSee('<span class="badge bg-success-subtle text-success-emphasis border border-success rounded-pill">0 Hoàn thành</span>', false)
+            ->assertSee('<span class="badge bg-primary-subtle text-primary-emphasis border border-primary-subtle fw-semibold rounded-pill">2 Đang xử lý</span>', false)
+            ->assertSee('<span class="badge bg-danger-subtle text-danger-emphasis border border-danger rounded-pill">1 Đã hủy</span>', false)
+            ->assertDontSee('badge-breakdown', false);
+    }
+
+    public function test_revenue_trend_defaults_to_a_line_with_time_and_money_axes_only(): void
+    {
+        $this->actingAs($this->reportOwner())->get('/reports')
+            ->assertOk()
+            ->assertSee('<option value="line" selected>Đường</option>', false)
+            ->assertSee("title: { text: 'Thời gian' }", false)
+            ->assertSee("title: { text: 'Doanh thu (VNĐ)' }", false)
+            ->assertDontSee("name: 'Số đơn'", false)
+            ->assertDontSee('const orderValues', false);
+    }
+
+    public function test_revenue_trend_shows_an_empty_state_when_payments_have_no_revenue(): void
+    {
+        DB::table('ThanhToan')->update(['SoTien' => 0]);
+        $this->actingAs($this->reportOwner())->get('/reports')
+            ->assertOk()
+            ->assertSee('Chưa có doanh thu trong khoảng thời gian này')
+            ->assertDontSee('id="revenueChart"', false);
     }
 
     public function test_service_composition_chart_keeps_percentage_labels_for_small_slices(): void
@@ -356,6 +473,13 @@ class ReportsServiceTest extends TestCase
         Schema::create('KhachHang', function (Blueprint $table): void {
             $table->increments('KhachHangID');
             $table->string('HoTen');
+            $table->string('AvatarUrl')->nullable();
+        });
+
+        Schema::create('TaiKhoan', function (Blueprint $table): void {
+            $table->increments('TaiKhoanID');
+            $table->integer('KhachHangID');
+            $table->string('AvatarURL')->nullable();
         });
 
         Schema::create('LoaiDichVu', function (Blueprint $table): void {
@@ -450,6 +574,26 @@ class ReportsServiceTest extends TestCase
             ['ChiTietDonHangID' => 2, 'DonHangID' => 1, 'DichVuID' => 2, 'LoaiDoGiatID' => 2, 'DonViTinhID' => 2, 'SoLuong' => 1, 'KhoiLuong' => null, 'ThanhTien' => 25000],
             ['ChiTietDonHangID' => 3, 'DonHangID' => 1, 'DichVuID' => 1, 'LoaiDoGiatID' => 1, 'DonViTinhID' => 2, 'SoLuong' => 1, 'KhoiLuong' => null, 'ThanhTien' => 0],
         ]);
+    }
+
+    private function seedAvatarFixtures(): void
+    {
+        DB::table('KhachHang')->where('KhachHangID', 1)->update([
+            'AvatarUrl' => 'https://example.test/profile.jpg',
+        ]);
+        DB::table('KhachHang')->insert([
+            ['KhachHangID' => 2, 'HoTen' => 'Trần Bình', 'AvatarUrl' => null],
+            ['KhachHangID' => 3, 'HoTen' => 'Đặng An', 'AvatarUrl' => null],
+            ['KhachHangID' => 4, 'HoTen' => 'Lê Bình', 'AvatarUrl' => ''],
+        ]);
+        DB::table('TaiKhoan')->insert([
+            ['TaiKhoanID' => 11, 'KhachHangID' => 1, 'AvatarURL' => 'https://example.test/unused.jpg'],
+            ['TaiKhoanID' => 12, 'KhachHangID' => 2, 'AvatarURL' => 'https://example.test/account.jpg'],
+            ['TaiKhoanID' => 14, 'KhachHangID' => 4, 'AvatarURL' => ''],
+        ]);
+        foreach ([2, 3, 4] as $id) {
+            DB::table('DonHang')->where('DonHangID', $id)->update(['KhachHangID' => $id]);
+        }
     }
 
     private function reportOwner(): User

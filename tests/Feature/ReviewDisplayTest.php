@@ -46,4 +46,20 @@ class ReviewDisplayTest extends TestCase
         $this->assertStringContainsString('<th>Ngày đánh giá</th>', $html);
         $this->assertStringContainsString('<th scope="col">STT</th>', $html);
     }
+
+    public function test_review_summary_aligns_rating_and_total_on_the_same_text_baseline(): void
+    {
+        foreach ([[4.0, 11], [0.0, 0]] as [$average, $total]) {
+            $html = view('admin.reviews.index', [
+                'reviews' => new LengthAwarePaginator([], 0, 10),
+                'averageRating' => $average,
+                'totalReviews' => $total,
+            ])->render();
+
+            $this->assertMatchesRegularExpression(
+                '/<div class="d-flex flex-wrap align-items-baseline gap-3">\s*<span class="display-5 fw-bold text-warning">'.preg_quote(number_format($average, 1), '/').'<\/span>.*?Tổng <strong>'.$total.'<\/strong> đánh giá<\/div>\s*<\/div>/s',
+                $html,
+            );
+        }
+    }
 }
