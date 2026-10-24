@@ -201,7 +201,7 @@
     :filter="$reportFilter"
     :period-label="$periodLabel"
     :period-description="$periodDescription"
-    note="Bộ lọc áp dụng cho tất cả thẻ, biểu đồ và bảng bên dưới. Doanh thu, cơ cấu dịch vụ, top dịch vụ và phương thức thanh toán theo ngày thu tiền; đơn hàng và đơn đặt lịch theo ngày tạo."
+    note="Bộ lọc áp dụng cho tất cả thẻ, biểu đồ và bảng bên dưới. Doanh thu, cơ cấu giá trị dịch vụ, top dịch vụ và phương thức thanh toán theo ngày thu tiền; đơn hàng và đơn đặt lịch theo ngày tạo."
 />
 
 <!-- KPI Metric Cards -->
@@ -304,7 +304,7 @@
     <div class="col-12 col-lg-5">
         <div class="card h-100 shadow-sm border-0">
             <div class="card-header">
-                <span>Cơ cấu dịch vụ</span>
+                <span>Cơ cấu giá trị dịch vụ (Chưa gồm phí ship &amp; giảm giá)</span>
             </div>
             <div class="card-body p-3">
                 <div class="chart-container" style="position: relative; height: 380px; width: 100%;">
@@ -593,7 +593,7 @@
                                 },
                                 total: {
                                     show: true,
-                                    label: 'Doanh thu dịch vụ',
+                                    label: 'Giá trị dịch vụ',
                                     formatter: context => formatCurrency(context.globals.seriesTotals.reduce((total, value) => total + value, 0)),
                                 },
                             },
