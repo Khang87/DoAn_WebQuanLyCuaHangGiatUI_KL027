@@ -484,6 +484,7 @@ class TaiKhoanController extends Controller
                 'success' => true,
                 'path' => $path,
                 'token' => $token,
+                'bucket' => $bucket,
             ]);
         } catch (ConnectionException $exception) {
             Log::error('Connecting to Supabase for an avatar upload URL failed.', [

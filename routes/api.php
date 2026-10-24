@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\TaiKhoanController;
 use App\Http\Controllers\Api\V1\DichVuController;
 use App\Http\Controllers\Api\V1\DonHangController;
 use App\Http\Controllers\Api\V1\GarmentController;
@@ -37,6 +38,8 @@ Route::middleware('staff.api')->prefix('v1/staff')->group(function () {
     Route::post('auth/change-password', [StaffMobileController::class, 'changePassword']);
     Route::get('profile', [StaffMobileController::class, 'profile']);
     Route::put('profile', [StaffMobileController::class, 'updateProfile']);
+    Route::post('profile/avatar/upload-url', [TaiKhoanController::class, 'createAvatarUploadUrl']);
+    Route::post('profile/avatar', [TaiKhoanController::class, 'completeAvatarUpload']);
     Route::get('orders', [StaffMobileController::class, 'orders']);
     Route::patch('orders/{id}/status', [StaffMobileController::class, 'updateOrderStatus']);
     Route::post('orders/{id}/delivery-progress', [StaffMobileController::class, 'advanceDelivery']);

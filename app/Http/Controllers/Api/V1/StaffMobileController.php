@@ -75,7 +75,9 @@ class StaffMobileController extends ApiController
             $user->nhanVien->forceFill([
                 'HoTen' => trim($data['name']),
                 'SoDienThoai' => trim($data['phone']),
-                'DiaChi' => isset($data['address']) ? trim($data['address']) : null,
+                'DiaChi' => array_key_exists('address', $data)
+                    ? trim((string) $data['address'])
+                    : $user->nhanVien->DiaChi,
             ])->save();
             $user->forceFill(['SoDienThoai' => trim($data['phone'])])->save();
         });
@@ -113,6 +115,7 @@ class StaffMobileController extends ApiController
             'name' => $employee->HoTen,
             'email' => $user->Email,
             'phone' => $employee->SoDienThoai ?: $user->SoDienThoai,
+            'avatar_url' => $user->AvatarURL,
             'address' => $employee->DiaChi,
             'position' => $employee->ChucDanh,
             'roles' => $user->roleNames(),
