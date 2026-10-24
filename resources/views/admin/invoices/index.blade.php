@@ -83,7 +83,7 @@
                                     <a href="{{ route('invoices.show', $invoice) }}" class="btn btn-order-action view" title="Xem"><i class="bi bi-eye"></i></a>
                                 @endcan
                                 @can('invoices.view')
-                                    <a href="{{ route('invoices.show', [$invoice, 'print' => 1]) }}" class="btn btn-order-action view" title="In hóa đơn" aria-label="In hóa đơn" target="_blank" rel="noopener"><i class="bi bi-printer" aria-hidden="true"></i></a>
+                                    <button type="button" data-invoice-print="{{ route('invoices.show', $invoice) }}" class="btn btn-order-action view" title="In hóa đơn" aria-label="In hóa đơn"><i class="bi bi-printer" aria-hidden="true"></i></button>
                                 @endcan
                             </div>
                         </td>
@@ -97,5 +97,70 @@
     </div>
 </div>
 
+<div id="invoice-print-error" class="alert alert-danger mt-3" role="alert" hidden></div>
 <x-admin.pagination :paginator="$invoices" label="hóa đơn" />
 @endsection
+
+@push('scripts')
+<script>
+    (() => {
+        let activeFrame = null;
+        const errorMessage = document.getElementById('invoice-print-error');
+
+        document.querySelectorAll('[data-invoice-print]').forEach((button) => {
+            button.addEventListener('click', () => {
+                if (activeFrame) return;
+
+                errorMessage.hidden = true;
+                button.disabled = true;
+                button.setAttribute('aria-busy', 'true');
+
+                const frame = document.createElement('iframe');
+                activeFrame = frame;
+                frame.title = 'Bản in hóa đơn';
+                frame.setAttribute('aria-hidden', 'true');
+                frame.tabIndex = -1;
+                frame.style.cssText = 'position:fixed;left:-10000px;top:0;width:210mm;height:297mm;border:0;';
+
+                const cleanup = () => {
+                    clearTimeout(timeout);
+                    frame.remove();
+                    activeFrame = null;
+                    button.disabled = false;
+                    button.removeAttribute('aria-busy');
+                    button.focus({ preventScroll: true });
+                };
+                const fail = () => {
+                    if (activeFrame !== frame) return;
+                    cleanup();
+                    errorMessage.textContent = 'Không thể tải hóa đơn để in. Vui lòng thử lại.';
+                    errorMessage.hidden = false;
+                };
+                const timeout = setTimeout(fail, 30000);
+
+                frame.addEventListener('load', async () => {
+                    try {
+                        const printWindow = frame.contentWindow;
+                        if (!printWindow.document.querySelector('.invoice-print-heading')) {
+                            fail();
+                            return;
+                        }
+
+                        await printWindow.document.fonts.ready;
+                        if (activeFrame !== frame) return;
+
+                        clearTimeout(timeout);
+                        printWindow.addEventListener('afterprint', cleanup, { once: true });
+                        printWindow.print();
+                    } catch {
+                        fail();
+                    }
+                }, { once: true });
+                frame.addEventListener('error', fail, { once: true });
+                frame.src = button.dataset.invoicePrint;
+                document.body.appendChild(frame);
+            });
+        });
+    })();
+</script>
+@endpush

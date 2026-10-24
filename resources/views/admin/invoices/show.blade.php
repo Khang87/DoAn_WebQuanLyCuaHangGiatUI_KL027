@@ -304,11 +304,3 @@
     }
 </style>
 @endpush
-
-@if(request()->boolean('print'))
-    @push('scripts')
-        <script>
-            window.addEventListener('load', () => window.print(), { once: true });
-        </script>
-    @endpush
-@endif

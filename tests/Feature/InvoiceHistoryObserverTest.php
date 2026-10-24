@@ -168,7 +168,7 @@ class InvoiceHistoryObserverTest extends TestCase
         $this->assertCount(1, $badges[0]);
     }
 
-    public function test_invoice_detail_has_no_print_button_and_only_auto_prints_when_requested(): void
+    public function test_invoice_detail_keeps_print_layout_without_a_button_or_automatic_printing(): void
     {
         $invoice = $this->createInvoice();
         $invoice->TrangThai = 'Đã thanh toán';
@@ -189,7 +189,7 @@ class InvoiceHistoryObserverTest extends TestCase
             $this->assertSame(0, $xpath->query('//button[contains(normalize-space(.), "In hóa đơn")]')->length);
             $this->assertSame(0, $xpath->query('//h5[normalize-space(.)="Thao tác"]')->length);
             $this->assertSame(1, $xpath->query('//a[@href="'.route('invoices.index').'" and contains(normalize-space(.), "Quay lại")]')->length);
-            $this->assertSame($print === '1', str_contains($html, 'window.print()'));
+            $this->assertStringNotContainsString('window.print()', $html);
             $this->assertStringContainsString('Tổng hợp', $html);
             $this->assertStringContainsString('Thông tin hóa đơn', $html);
             $this->assertStringContainsString('Lịch sử thay đổi', $html);
@@ -197,7 +197,7 @@ class InvoiceHistoryObserverTest extends TestCase
         }
     }
 
-    public function test_invoice_list_print_icon_shares_view_permission_and_opens_the_selected_invoice(): void
+    public function test_invoice_list_print_button_shares_view_permission_without_navigation(): void
     {
         $invoice = $this->createInvoice();
         $invoice->TrangThai = 'Đã thanh toán';
@@ -211,17 +211,20 @@ class InvoiceHistoryObserverTest extends TestCase
             $document = new \DOMDocument;
             @$document->loadHTML('<?xml encoding="UTF-8">'.$html);
             $xpath = new \DOMXPath($document);
-            $links = $xpath->query('//tbody//a[@title="In hóa đơn"]');
+            $buttons = $xpath->query('//tbody//button[@title="In hóa đơn"]');
 
-            $this->assertCount($canView ? 1 : 0, $links);
+            $this->assertCount($canView ? 1 : 0, $buttons);
+            $this->assertSame(0, $xpath->query('//tbody//a[@title="In hóa đơn"]')->length);
             if ($canView) {
-                $link = $links->item(0);
-                $this->assertSame(route('invoices.show', [$invoice, 'print' => 1]), $link->getAttribute('href'));
-                $this->assertSame('_blank', $link->getAttribute('target'));
-                $this->assertStringContainsString('noopener', $link->getAttribute('rel'));
-                $this->assertSame('In hóa đơn', $link->getAttribute('aria-label'));
-                $this->assertStringContainsString('btn-order-action', $link->getAttribute('class'));
-                $this->assertSame(1, $xpath->query('../a[@title="Xem"]', $link)->length);
+                $button = $buttons->item(0);
+                $this->assertSame('button', $button->getAttribute('type'));
+                $this->assertSame(route('invoices.show', $invoice), $button->getAttribute('data-invoice-print'));
+                $this->assertFalse($button->hasAttribute('target'));
+                $this->assertFalse($button->hasAttribute('href'));
+                $this->assertSame('In hóa đơn', $button->getAttribute('aria-label'));
+                $this->assertStringContainsString('btn-order-action', $button->getAttribute('class'));
+                $this->assertSame(1, $xpath->query('../a[@title="Xem"]', $button)->length);
+                $this->assertSame(1, $xpath->query('//*[@id="invoice-print-error" and @role="alert" and @hidden]')->length);
             }
         }
     }
