@@ -78,12 +78,12 @@ test('open conversation receives mobile PostgreSQL messages through real Laravel
         await b.evaluate(`(()=>{const m=document.getElementById('booking-method');m.value='Tại cửa hàng';m.dispatchEvent(new Event('change'));})()`);
         assert.deepEqual(await b.evaluate(`[...document.querySelectorAll('[name="address"],[name="return_address"]')].map(a=>[a.disabled,a.required])`),[[true,false],[false,true]]);
         const fixture=action=>execFileSync(process.env.PHP_BIN||'php',[fileURLToPath(new URL('./messages-state.php',import.meta.url)),action],{timeout:30000});
-        fixture('dashboard-access');await b.navigate('/admin/dashboard');
+        fixture('dashboard-access');await b.navigate('/admin/dashboard?filter=all_time');
         const values=await b.evaluate(`[...document.querySelectorAll('.stat-value')].map(e=>e.textContent.trim())`);
-        assert.equal(values.length,6);assert.equal(values[3],'2');assert.equal(values[4],'2');assert.match(values[5],/^0[.,]0/);
-        fixture('dashboard-change');await b.navigate('/admin/dashboard');
+        assert.equal(values.length,4);assert.equal(values[1],'2');assert.equal(values[2],'2');assert.match(values[3],/^0[.,]0/);
+        fixture('dashboard-change');await b.navigate('/admin/dashboard?filter=all_time');
         const changed=await b.evaluate(`[...document.querySelectorAll('.stat-value')].map(e=>e.textContent.trim())`);
-        assert.equal(changed[4],'3');assert.match(changed[5],/^4[.,]0/);assert.deepEqual(changed.slice(0,4),values.slice(0,4));
+        assert.equal(changed[2],'3');assert.match(changed[3],/^4[.,]0/);assert.deepEqual(changed.slice(0,2),values.slice(0,2));
         await b.navigate('/payments');
         assert.equal(await b.evaluate(`document.querySelector('table img.avatar-cover')?.getAttribute('src')`),process.env.WEB_E2E_URL+'/assets/images/user_2.jpg');
         await b.navigate('/orders/create');

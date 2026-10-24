@@ -69,6 +69,10 @@ class ReportsService
                 'from' => $now->copy()->startOfDay(),
                 'to' => $now->copy()->endOfDay(),
             ],
+            'this_week' => [
+                'from' => $now->copy()->startOfWeek(Carbon::MONDAY),
+                'to' => $now->copy()->endOfDay(),
+            ],
             '7_days' => [
                 'from' => $now->copy()->subDays(6)->startOfDay(),
                 'to' => $now->copy()->endOfDay(),

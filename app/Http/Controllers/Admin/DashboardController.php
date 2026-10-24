@@ -14,7 +14,8 @@ use App\Models\HoaDon;
 use App\Models\KhachHang;
 use App\Services\CollectedRevenueService;
 use App\Services\PaymentService;
-use App\Services\ReviewService;
+use App\Support\TimePeriod;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -23,181 +24,84 @@ use Illuminate\Validation\ValidationException;
 class DashboardController extends Controller
 {
     public function __construct(
-        private ReviewService $reviewService,
         private PaymentService $paymentService,
         private CollectedRevenueService $collectedRevenueService,
     ) {}
 
-    /**
-     * Hiển thị trang Dashboard dành cho Quản lý.
-     * Bao gồm: KPI tài chính, biểu đồ, bảng dữ liệu nhanh.
-     */
     public function index(Request $request)
     {
-        $today = Carbon::today(config('app.timezone'));
-        $thisMonth = $today->month;
-        $thisYear = $today->year;
-        $weekStart = $today->copy()->startOfWeek(Carbon::MONDAY);
-        $prevWeekStart = $weekStart->copy()->subWeek();
-        $monthStart = $today->copy()->startOfMonth();
-        $prevMonthStart = $monthStart->copy()->subMonth();
-        $revenueChartStart = Carbon::today()->subMonths(11)->startOfMonth();
-        $dailyRevenue = $this->getDailyRevenueTotals($revenueChartStart, $today);
+        $dashboardFilter = TimePeriod::normalize($request->query('filter'));
+        [$from, $until] = TimePeriod::bounds($dashboardFilter);
+        $periodLabel = TimePeriod::label($dashboardFilter);
+        $periodDescription = TimePeriod::description($dashboardFilter);
 
-        // --- KPI: Doanh thu hôm nay ---
-        $todayRevenue = $this->sumDailyRevenue($dailyRevenue, $today, $today);
-
-        $previousDay = $today->copy()->subDay();
-        $prevDayRevenue = $this->sumDailyRevenue($dailyRevenue, $previousDay, $previousDay);
-
-        $todayRevenueChange = $this->percentChange($todayRevenue, $prevDayRevenue);
-
-        // --- KPI: Doanh thu tuần này (từ thứ 2) ---
-        $weekRevenue = $this->sumDailyRevenue($dailyRevenue, $weekStart, $today);
-
-        $prevWeekRevenue = $this->sumDailyRevenue(
-            $dailyRevenue,
-            $prevWeekStart,
-            $prevWeekStart->copy()->endOfWeek(Carbon::SUNDAY)
-        );
-
-        $weekRevenueChange = $this->percentChange($weekRevenue, $prevWeekRevenue);
-
-        // --- KPI: Doanh thu tháng này ---
-        $monthRevenue = $this->sumDailyRevenue($dailyRevenue, $monthStart, $today);
-
-        $prevMonthRevenue = $this->sumDailyRevenue(
-            $dailyRevenue,
-            $prevMonthStart,
-            $prevMonthStart->copy()->endOfMonth()
-        );
-
-        $monthRevenueChange = $this->percentChange($monthRevenue, $prevMonthRevenue);
-
-        // --- KPI: Tổng số đơn hàng (theo trạng thái) ---
-        $orderCounts = DonHang::query()
-            ->select('TrangThai')
-            ->selectRaw('COUNT(*) AS total')
+        $revenueChartData = $this->buildRevenueChartData($dashboardFilter, $from, $until);
+        $totalRevenue = (float) array_sum($revenueChartData['data']);
+        $orders = $this->inPeriod(DonHang::query(), 'NgayTao', $from, $until);
+        $statusDistribution = (clone $orders)
+            ->selectRaw('"TrangThai", COUNT(*) AS count')
             ->groupBy('TrangThai')
-            ->get();
+            ->pluck('count', 'TrangThai')
+            ->map(fn ($count): int => (int) $count);
 
-        $statusCounts = ['completed' => 0, 'processing' => 0, 'cancelled' => 0];
-        $totalOrders = 0;
-        foreach ($orderCounts as $orderCount) {
-            $count = (int) $orderCount->total;
-            $totalOrders += $count;
-
-            if ($orderCount->TrangThai === OrderStatus::Delivered->value) {
-                $statusCounts['completed'] += $count;
-            } elseif ($orderCount->TrangThai === OrderStatus::Cancelled->value) {
-                $statusCounts['cancelled'] += $count;
-            } elseif (in_array($orderCount->TrangThai, [
-                OrderStatus::Pending->value,
-                OrderStatus::Received->value,
-                OrderStatus::Washing->value,
-                OrderStatus::Washed->value,
-                OrderStatus::Delivering->value,
-            ], true)) {
-                $statusCounts['processing'] += $count;
+        if ($statusDistribution->has(OrderStatus::Paid->value)) {
+            $legacyPaidOrders = (clone $orders)->where('TrangThai', OrderStatus::Paid->value)
+                ->with('statusChanges')->get(['DonHangID', 'TrangThai']);
+            $statusDistribution->forget(OrderStatus::Paid->value);
+            foreach ($legacyPaidOrders as $order) {
+                $status = $order->operationalStatusEnum()->value;
+                $statusDistribution->put($status, $statusDistribution->get($status, 0) + 1);
             }
         }
 
-        // --- KPI: Khách hàng ---
-        $totalCustomers = KhachHang::count();
-        $newCustomersMonth = KhachHang::whereMonth('NgayTao', $thisMonth)
-            ->whereYear('NgayTao', $thisYear)
-            ->count();
+        $totalOrders = $statusDistribution->sum();
+        $statusCounts = [
+            'completed' => $statusDistribution->get(OrderStatus::Delivered->value, 0),
+            'processing' => $statusDistribution->except([
+                OrderStatus::Delivered->value, OrderStatus::Cancelled->value,
+            ])->sum(),
+            'cancelled' => $statusDistribution->get(OrderStatus::Cancelled->value, 0),
+        ];
+        $totalCustomers = $this->inPeriod(KhachHang::query(), 'NgayTao', $from, $until)->count();
+        $reviews = $this->inPeriod(DanhGia::query(), 'NgayDanhGia', $from, $until)
+            ->where('TrangThai', 'Hiển thị');
+        $reviewStats = (clone $reviews)->selectRaw('COUNT(*) AS total, AVG("SoSao") AS average')->first();
+        $averageRating = (float) ($reviewStats->average ?? 0);
+        $totalReviews = (int) $reviewStats->total;
 
-        // --- KPI: Điểm đánh giá trung bình & tổng số lượt đánh giá ---
-        $averageRating = $this->reviewService->getAverageRating();
-        $totalReviews = $this->reviewService->getTotalReviews();
-
-        // --- Biểu đồ: Doanh thu 7 ngày gần nhất ---
-        $last7DaysRevenue = collect(range(6, 0))->map(function ($daysAgo) use ($dailyRevenue) {
-            $date = Carbon::today()->subDays($daysAgo);
-
-            return [
-                'date' => $date->format('d/m'),
-                'revenue' => $this->sumDailyRevenue($dailyRevenue, $date, $date),
-            ];
-        })->values();
-        $revenueFilter = $this->normalizeRevenueFilter($request->query('filter'));
-        $revenueChartData = $revenueFilter === '7_days'
-            ? [
-                'labels' => $last7DaysRevenue->pluck('date')->all(),
-                'data' => $last7DaysRevenue->pluck('revenue')->all(),
-                'filter' => '7_days',
-                'filter_label' => $this->getFilterLabel('7_days'),
-            ]
-            : $this->buildRevenueChartData($revenueFilter);
-
-        // --- Biểu đồ: Doanh thu 12 tháng gần nhất (cuộn tròn, có giới hạn năm) ---
-        $last12Months = collect(range(11, 0))->map(function ($monthsAgo) use ($dailyRevenue) {
-            $month = Carbon::today()->subMonths($monthsAgo);
-
-            return [
-                'label' => 'T'.$month->month,
-                'revenue' => $this->sumDailyRevenue(
-                    $dailyRevenue,
-                    $month->copy()->startOfMonth(),
-                    $month->copy()->endOfMonth()
-                ),
-            ];
-        })->values();
-
-        // --- Biểu đồ tròn: Tỷ lệ đơn hàng theo trạng thái ---
-        // Nháy kép là bắt buộc: raw SQL không qua wrapper của Eloquent nên
-        // PostgreSQL sẽ hạ `TrangThai` xuống `trangthai` và báo thiếu cột.
-        $statusDistribution = DonHang::query()
-            ->selectRaw('"TrangThai", COUNT(*) as count')
-            ->groupBy('TrangThai')
-            ->pluck('count', 'TrangThai');
-
-        // --- Biểu đồ cột: Top dịch vụ được đặt nhiều nhất ---
-        $topServices = DichVu::withCount('chiTietDonHangs')
-            ->orderByDesc('chi_tiet_don_hangs_count')
-            ->limit(5)
-            ->get()
-            ->map(fn (DichVu $service) => [
+        $topServices = DichVu::query()
+            ->withCount(['chiTietDonHangs as orders_count' => fn (Builder $details) => $details
+                ->select(DB::raw('COUNT(DISTINCT "DonHangID")'))
+                ->whereHas('donHang', fn (Builder $query) => $this->inPeriod($query, 'NgayTao', $from, $until))])
+            ->whereHas('chiTietDonHangs.donHang', fn (Builder $query) => $this->inPeriod($query, 'NgayTao', $from, $until))
+            ->orderByDesc('orders_count')->orderBy('DichVuID')->limit(5)->get()
+            ->map(fn (DichVu $service): array => [
                 'name' => $service->TenDichVu,
-                'orders_count' => $service->chi_tiet_don_hangs_count,
+                'orders_count' => (int) $service->orders_count,
             ]);
 
-        // --- Bảng: Đơn hàng mới nhất (top 15) ---
-        $recentOrders = DonHang::query()
+        $recentOrders = (clone $orders)
             ->with(['khachHang.taiKhoan:TaiKhoanID,KhachHangID,AvatarURL', 'nhanVien', 'statusChanges'])
             ->withExists([
                 'hoaDons as has_paid_invoice' => fn ($invoiceQuery) => $invoiceQuery
                     ->where('TrangThai', InvoiceStatus::Paid->value),
             ])
-            ->orderBy('NgayTao', 'desc')
-            ->limit(15)
-            ->get();
-
-        // --- Bảng: Đánh giá mới nhất đang hiển thị ---
-        $latestReviews = DanhGia::with(['khachHang', 'donHang'])
-            ->where('TrangThai', 'Hiển thị')
-            ->orderBy('NgayDanhGia', 'desc')
-            ->limit(10)
-            ->get();
+            ->orderByDesc('NgayTao')->orderByDesc('DonHangID')->limit(15)->get();
+        $latestReviews = (clone $reviews)->with(['khachHang', 'donHang'])
+            ->orderByDesc('NgayDanhGia')->orderByDesc('DanhGiaID')->limit(10)->get();
 
         return view('admin.dashboard', [
             'isAdmin' => true,
-            'todayRevenue' => $todayRevenue,
-            'todayRevenueChange' => $todayRevenueChange,
-            'weekRevenue' => $weekRevenue,
-            'weekRevenueChange' => $weekRevenueChange,
-            'monthRevenue' => $monthRevenue,
-            'monthRevenueChange' => $monthRevenueChange,
+            'dashboardFilter' => $dashboardFilter,
+            'periodLabel' => $periodLabel,
+            'periodDescription' => $periodDescription,
+            'totalRevenue' => $totalRevenue,
             'statusCounts' => $statusCounts,
             'totalOrders' => $totalOrders,
             'totalCustomers' => $totalCustomers,
-            'newCustomersMonth' => $newCustomersMonth,
             'averageRating' => $averageRating,
             'totalReviews' => $totalReviews,
-            'revenueFilter' => $revenueFilter,
             'revenueChartData' => $revenueChartData,
-            'last12Months' => $last12Months,
             'statusDistribution' => $statusDistribution,
             'topServices' => $topServices,
             'recentOrders' => $recentOrders,
@@ -205,47 +109,6 @@ class DashboardController extends Controller
         ]);
     }
 
-    /**
-     * @return array<string, float>
-     */
-    private function getDailyRevenueTotals(Carbon $from, Carbon $to): array
-    {
-        $localTimestamp = $this->localTimestampExpression('"ThoiGian"');
-        $localDate = 'DATE('.$localTimestamp.')';
-
-        return $this->collectedRevenueService->query()
-            ->selectRaw($localDate.' AS revenue_date, SUM("SoTien") AS total')
-            ->whereBetween('ThoiGian', [
-                $from->copy()->startOfDay()->utc(),
-                $to->copy()->endOfDay()->utc(),
-            ])
-            ->groupByRaw($localDate)
-            ->orderBy('revenue_date')
-            ->get()
-            ->mapWithKeys(fn ($row): array => [(string) $row->revenue_date => (float) $row->total])
-            ->all();
-    }
-
-    /**
-     * @param  array<string, float>  $dailyRevenue
-     */
-    private function sumDailyRevenue(array $dailyRevenue, Carbon $from, Carbon $to): float
-    {
-        $total = 0.0;
-        $date = $from->copy()->startOfDay();
-        $lastDate = $to->copy()->startOfDay();
-
-        while ($date->lessThanOrEqualTo($lastDate)) {
-            $total += $dailyRevenue[$date->toDateString()] ?? 0.0;
-            $date->addDay();
-        }
-
-        return $total;
-    }
-
-    /**
-     * Thu tiền mặt cho hóa đơn.
-     */
     public function collectCashPayment(Request $request, int $invoice)
     {
         $invoice = HoaDon::with('donHang')->find($invoice);
@@ -289,156 +152,84 @@ class DashboardController extends Controller
         ]);
     }
 
-    /**
-     * Tính phần trăm tăng/giảm so với kỳ trước.
-     */
-    private function percentChange(float $current, float $previous): float
-    {
-        if ($previous <= 0) {
-            return $current > 0 ? 100.0 : 0.0;
-        }
-
-        return round((($current - $previous) / $previous) * 100, 1);
-    }
-
-    /**
-     * API lấy dữ liệu doanh thu cho biểu đồ Dashboard.
-     * Hỗ trợ filter: today, 7_days, this_month, this_year
-     */
     public function getRevenueChartData(Request $request)
     {
-        $filter = $this->normalizeRevenueFilter($request->query('filter'));
+        $filter = TimePeriod::normalize($request->query('filter'));
+        [$from, $until] = TimePeriod::bounds($filter);
 
-        return response()->json($this->buildRevenueChartData($filter));
+        return response()->json($this->buildRevenueChartData($filter, $from, $until));
     }
 
-    /**
-     * @return array{labels: array<int, string>, data: array<int, float>, filter: string, filter_label: string}
-     */
-    private function buildRevenueChartData(string $filter): array
+    private function buildRevenueChartData(string $filter, ?Carbon $from, ?Carbon $until): array
     {
-        $today = Carbon::today(config('app.timezone'));
-        $thisYear = $today->year;
-        $groupBy = 'day';
-        $from = $today->copy()->subDays(6)->startOfDay();
-        $to = $today->copy()->endOfDay();
+        $groupBy = match ($filter) {
+            TimePeriod::TODAY => 'hour',
+            TimePeriod::ALL_TIME => 'month',
+            default => 'day',
+        };
+        $totals = $this->getGroupedRevenueTotals($from, $until, $groupBy);
         $labels = [];
         $periodKeys = [];
 
-        switch ($filter) {
-            case 'today':
-                $groupBy = 'hour';
-                $from = $today->copy()->startOfDay();
-
-                for ($hour = 0; $hour <= 23; $hour++) {
-                    $labels[] = sprintf('%02d:00', $hour);
-                    $periodKeys[] = $hour;
-                }
-                break;
-
-            case '7_days':
-                for ($daysAgo = 6; $daysAgo >= 0; $daysAgo--) {
-                    $date = $today->copy()->subDays($daysAgo);
-                    $labels[] = $date->format('d/m');
-                    $periodKeys[] = $date->toDateString();
-                }
-                break;
-
-            case 'this_month':
-                $from = $today->copy()->startOfMonth();
-                $to = $today->copy()->endOfMonth();
-
-                $daysInMonth = $today->copy()->daysInMonth;
-                for ($day = 1; $day <= $daysInMonth; $day++) {
-                    $date = $today->copy()->setDay($day);
-                    $labels[] = $date->format('d/m');
-                    $periodKeys[] = $date->toDateString();
-                }
-                break;
-
-            case 'this_year':
-                $groupBy = 'month';
-                $from = Carbon::create($thisYear, 1, 1, 0, 0, 0, config('app.timezone'))->startOfYear();
-                $to = $from->copy()->endOfYear();
-
-                for ($month = 1; $month <= 12; $month++) {
-                    $labels[] = 'Tháng '.$month;
-                    $periodKeys[] = $month;
-                }
-                break;
-
-            default:
-                for ($daysAgo = 6; $daysAgo >= 0; $daysAgo--) {
-                    $date = $today->copy()->subDays($daysAgo);
-                    $labels[] = $date->format('d/m');
-                    $periodKeys[] = $date->toDateString();
-                }
+        if ($groupBy === 'hour') {
+            for ($hour = 0; $hour < 24; $hour++) {
+                $labels[] = sprintf('%02d:00', $hour);
+                $periodKeys[] = $hour;
+            }
+        } elseif ($groupBy === 'month' && $totals !== []) {
+            $date = Carbon::createFromFormat('!Y-m', array_key_first($totals), config('app.timezone'));
+            $lastMonth = array_key_last($totals);
+            while ($date->format('Y-m') <= $lastMonth) {
+                $labels[] = $date->format('m/Y');
+                $periodKeys[] = $date->format('Y-m');
+                $date->addMonth();
+            }
+        } elseif ($groupBy === 'day') {
+            for ($date = $from->copy(); $date->lt($until); $date->addDay()) {
+                $labels[] = $date->format('d/m');
+                $periodKeys[] = $date->toDateString();
+            }
         }
-
-        $totals = $this->getGroupedRevenueTotals($from, $to, $groupBy);
-        $data = array_map(fn (int|string $periodKey): float => $totals[$periodKey] ?? 0.0, $periodKeys);
 
         return [
             'labels' => $labels,
-            'data' => $data,
+            'data' => array_map(fn (int|string $key): float => $totals[$key] ?? 0.0, $periodKeys),
             'filter' => $filter,
-            'filter_label' => $this->getFilterLabel($filter),
+            'filter_label' => 'Doanh thu · '.TimePeriod::label($filter),
         ];
     }
 
-    private function normalizeRevenueFilter(mixed $filter): string
+    /**
+     * Supabase stores UTC wall time in timestamp-without-time-zone columns.
+     */
+    private function inPeriod(Builder $query, string $column, ?Carbon $from, ?Carbon $until): Builder
     {
-        return in_array($filter, ['today', '7_days', 'this_month', 'this_year'], true)
-            ? $filter
-            : '7_days';
+        return $from
+            ? $query->where($column, '>=', $from->copy()->utc())->where($column, '<', $until->copy()->utc())
+            : $query;
     }
 
-    /**
-     * @return array<int|string, float>
-     */
-    private function getGroupedRevenueTotals(Carbon $from, Carbon $to, string $groupBy): array
+    private function getGroupedRevenueTotals(?Carbon $from, ?Carbon $until, string $groupBy): array
     {
-        $driver = DB::connection()->getDriverName();
-        $localTimestamp = $this->localTimestampExpression('"ThoiGian"');
+        $sqlite = DB::connection()->getDriverName() === 'sqlite';
+        $localTimestamp = $sqlite
+            ? 'datetime("ThoiGian", \'+7 hours\')'
+            : '("ThoiGian" + INTERVAL \'7 hours\')';
         $groupExpression = match ($groupBy) {
-            'hour' => $driver === 'sqlite'
+            'hour' => $sqlite
                 ? 'CAST(strftime(\'%H\', '.$localTimestamp.') AS INTEGER)'
                 : 'EXTRACT(HOUR FROM '.$localTimestamp.')::integer',
-            'month' => $driver === 'sqlite'
-                ? 'CAST(strftime(\'%m\', '.$localTimestamp.') AS INTEGER)'
-                : 'EXTRACT(MONTH FROM '.$localTimestamp.')::integer',
+            'month' => $sqlite
+                ? 'strftime(\'%Y-%m\', '.$localTimestamp.')'
+                : 'TO_CHAR('.$localTimestamp.', \'YYYY-MM\')',
             default => 'DATE('.$localTimestamp.')',
         };
 
-        return $this->collectedRevenueService->query()
+        return $this->inPeriod($this->collectedRevenueService->query(), 'ThoiGian', $from, $until)
             ->selectRaw($groupExpression.' AS period_key, SUM("SoTien") AS total')
-            ->whereBetween('ThoiGian', [$from->copy()->utc(), $to->copy()->utc()])
-            ->groupByRaw($groupExpression)
-            ->get()
+            ->groupByRaw($groupExpression)->orderBy('period_key')->get()
             ->mapWithKeys(fn ($row): array => [
-                $groupBy === 'day' ? (string) $row->period_key : (int) $row->period_key => (float) $row->total,
-            ])
-            ->all();
-    }
-
-    private function localTimestampExpression(string $column): string
-    {
-        return DB::connection()->getDriverName() === 'sqlite'
-            ? "datetime({$column}, '+7 hours')"
-            : "({$column} + INTERVAL '7 hours')";
-    }
-
-    /**
-     * Nhãn hiển thị cho từng filter.
-     */
-    private function getFilterLabel(string $filter): string
-    {
-        return match ($filter) {
-            'today' => 'Doanh thu hôm nay',
-            '7_days' => 'Doanh thu 7 ngày gần nhất',
-            'this_month' => 'Doanh thu tháng này',
-            'this_year' => 'Doanh thu năm '.now()->year,
-            default => 'Doanh thu 7 ngày gần nhất',
-        };
+                $groupBy === 'hour' ? (int) $row->period_key : (string) $row->period_key => (float) $row->total,
+            ])->all();
     }
 }

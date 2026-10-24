@@ -54,86 +54,39 @@
 @endpush
 
 @section('content')
-<!-- ===== KPI Cards Row (2 rows x 3 cols = 6 cards) ===== -->
+<x-admin.period-filter
+    :route="route('admin.dashboard')"
+    :filter="$dashboardFilter"
+    :period-label="$periodLabel"
+    :period-description="$periodDescription"
+    note="Bộ lọc áp dụng cho tất cả thẻ, biểu đồ và danh sách bên dưới. Doanh thu theo ngày thu tiền; đơn hàng và dịch vụ theo ngày tạo đơn; khách hàng theo ngày tạo hồ sơ; đánh giá theo ngày đánh giá."
+/>
 @if(auth()->user()?->canAny(['reports.revenue', 'orders.view', 'customers.view', 'reviews.view']))
 <div class="row g-4 mb-4">
-    <!-- 1. Doanh thu hôm nay -->
     @can('reports.revenue')
-    <div class="col-12 col-md-6 col-xl-4">
-        <div class="card stat-card stat-card--revenue-today h-100">
+    <div class="col-12 col-md-6">
+        <div class="card stat-card stat-card--revenue h-100">
             <div class="card-body">
                 <div class="d-flex align-items-center justify-content-between">
                     <div>
-                        <div class="stat-value">{{ number_format($todayRevenue) }} VNĐ</div>
-                        <div class="stat-label">Doanh thu hôm nay</div>
+                        <div class="stat-value" id="dashboard-total-revenue">{{ number_format($totalRevenue) }} VNĐ</div>
+                        <div class="stat-label">Doanh thu · {{ $periodLabel }}</div>
                     </div>
                     <div class="stat-icon"><i class="bi bi-currency-dollar"></i></div>
                 </div>
-                <div class="mt-3">
-                    @if($todayRevenueChange >= 0)
-                        <small class="stat-change text-success"><i class="bi bi-arrow-up"></i> {{ abs($todayRevenueChange) }}% so với hôm qua</small>
-                    @else
-                        <small class="stat-change text-danger"><i class="bi bi-arrow-down"></i> {{ abs($todayRevenueChange) }}% so với hôm qua</small>
-                    @endif
-                </div>
+                <div class="mt-3"><small class="text-muted">Tổng tiền đã thu trong kỳ, khớp với biểu đồ doanh thu.</small></div>
             </div>
         </div>
     </div>
-
-    <!-- 2. Doanh thu tuần này -->
-    <div class="col-12 col-md-6 col-xl-4">
-        <div class="card stat-card stat-card--revenue-week h-100">
-            <div class="card-body">
-                <div class="d-flex align-items-center justify-content-between">
-                    <div>
-                        <div class="stat-value">{{ number_format($weekRevenue) }} VNĐ</div>
-                        <div class="stat-label">Doanh thu tuần này</div>
-                    </div>
-                    <div class="stat-icon"><i class="bi bi-calendar-week"></i></div>
-                </div>
-                <div class="mt-3">
-                    @if($weekRevenueChange >= 0)
-                        <small class="stat-change text-success"><i class="bi bi-arrow-up"></i> {{ abs($weekRevenueChange) }}% so với tuần trước</small>
-                    @else
-                        <small class="stat-change text-danger"><i class="bi bi-arrow-down"></i> {{ abs($weekRevenueChange) }}% so với tuần trước</small>
-                    @endif
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- 3. Doanh thu tháng này -->
-    <div class="col-12 col-md-6 col-xl-4">
-        <div class="card stat-card stat-card--revenue-month h-100">
-            <div class="card-body">
-                <div class="d-flex align-items-center justify-content-between">
-                    <div>
-                        <div class="stat-value">{{ number_format($monthRevenue) }} VNĐ</div>
-                        <div class="stat-label">Doanh thu tháng này</div>
-                    </div>
-                    <div class="stat-icon"><i class="bi bi-graph-up-arrow"></i></div>
-                </div>
-                <div class="mt-3">
-                    @if($monthRevenueChange >= 0)
-                        <small class="stat-change text-success"><i class="bi bi-arrow-up"></i> {{ abs($monthRevenueChange) }}% so với tháng trước</small>
-                    @else
-                        <small class="stat-change text-danger"><i class="bi bi-arrow-down"></i> {{ abs($monthRevenueChange) }}% so với tháng trước</small>
-                    @endif
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- 4. Tổng đơn hàng -->
     @endcan
     @can('orders.view')
-    <div class="col-12 col-md-6 col-xl-4">
+    <div class="col-12 col-md-6">
         <div class="card stat-card stat-card--orders h-100">
             <div class="card-body">
                 <div class="d-flex align-items-center justify-content-between">
                     <div>
-                        <div class="stat-value">{{ $totalOrders }}</div>
-                        <div class="stat-label">Tổng đơn hàng</div>
+                        <div class="stat-value" id="dashboard-total-orders">{{ $totalOrders }}</div>
+                        <div class="stat-label">Tổng đơn hàng · {{ $periodLabel }}</div>
                     </div>
                     <div class="stat-icon"><i class="bi bi-receipt"></i></div>
                 </div>
@@ -148,41 +101,39 @@
         </div>
     </div>
 
-    <!-- 5. Tổng khách hàng -->
     @endcan
     @can('customers.view')
-    <div class="col-12 col-md-6 col-xl-4">
+    <div class="col-12 col-md-6">
         <div class="card stat-card stat-card--customers h-100">
             <div class="card-body">
                 <div class="d-flex align-items-center justify-content-between">
                     <div>
-                        <div class="stat-value">{{ number_format($totalCustomers) }}</div>
-                        <div class="stat-label">Tổng khách hàng</div>
+                        <div class="stat-value" id="dashboard-total-customers">{{ number_format($totalCustomers) }}</div>
+                        <div class="stat-label">{{ $dashboardFilter === 'all_time' ? 'Tổng khách hàng' : 'Khách hàng mới' }} · {{ $periodLabel }}</div>
                     </div>
                     <div class="stat-icon"><i class="bi bi-people"></i></div>
                 </div>
                 <div class="mt-3">
-                    <small class="stat-change text-muted"><i class="bi bi-person-plus"></i> {{ number_format($newCustomersMonth) }} khách mới tháng {{ now()->format('m/Y') }}</small>
+                    <small class="text-muted">{{ $dashboardFilter === 'all_time' ? 'Tất cả hồ sơ khách hàng.' : 'Hồ sơ khách hàng được tạo trong kỳ đã chọn.' }}</small>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- 6. Điểm đánh giá trung bình -->
     @endcan
     @can('reviews.view')
-    <div class="col-12 col-md-6 col-xl-4">
+    <div class="col-12 col-md-6">
         <div class="card stat-card stat-card--rating h-100">
             <div class="card-body">
                 <div class="d-flex align-items-center justify-content-between">
                     <div>
-                        <div class="stat-value">{{ number_format($averageRating, 1) }}<small class="fs-6 text-muted">/5.0</small></div>
-                        <div class="stat-label">Điểm đánh giá trung bình</div>
+                        <div class="stat-value" id="dashboard-average-rating">{{ number_format($averageRating, 1) }}<small class="fs-6 text-muted">/5.0</small></div>
+                        <div class="stat-label">Điểm đánh giá trung bình · {{ $periodLabel }}</div>
                     </div>
                     <div class="stat-icon"><i class="bi bi-star-fill"></i></div>
                 </div>
                 <div class="mt-3">
-                    <small class="stat-change text-muted"><i class="bi bi-star"></i> {{ number_format($totalReviews) }} lượt đánh giá</small>
+                    <small class="stat-change text-muted" id="dashboard-total-reviews"><i class="bi bi-star"></i> {{ number_format($totalReviews) }} lượt đánh giá đang hiển thị trong kỳ</small>
                 </div>
             </div>
         </div>
@@ -200,19 +151,9 @@
         <div class="card h-100">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <h5 class="card-title mb-0" id="revenue-chart-title">{{ $revenueChartData['filter_label'] }}</h5>
-                <select class="form-select form-select-sm"
-                        id="revenueFilter"
-                        data-revenue-chart-url="{{ route('admin.dashboard.revenue-chart') }}"
-                        style="width: auto;">
-                    <option value="today" @selected($revenueFilter === 'today')>Hôm nay</option>
-                    <option value="7_days" @selected($revenueFilter === '7_days')>7 ngày gần nhất</option>
-                    <option value="this_month" @selected($revenueFilter === 'this_month')>Tháng này</option>
-                    <option value="this_year" @selected($revenueFilter === 'this_year')>Năm nay</option>
-                </select>
             </div>
             <div class="card-body">
                 <div id="revenue-chart" style="height: 300px;"></div>
-                <div id="revenue-filter-status" class="small text-danger mt-2" role="status" aria-live="polite" hidden></div>
             </div>
         </div>
     </div>
@@ -332,7 +273,7 @@
                         <small class="text-muted">{{ Str::limit($review->BinhLuan ?: '', 100) }}</small>
                     </div>
                     <div class="text-end">
-                        <small class="text-muted">{{ $review->NgayDanhGia?->format('d/m H:i') }}</small>
+                        <small class="text-muted">{{ $review->NgayDanhGia?->copy()->shiftTimezone('UTC')->setTimezone(config('app.timezone'))->format('d/m H:i') }}</small>
                     </div>
                 </div>
                 @empty
@@ -356,6 +297,7 @@
 
     // Chart configuration for revenue
     var revenueChartOptions = {
+        noData: { text: 'Chưa có doanh thu trong kỳ đã chọn' },
         series: [{
             name: 'Doanh thu',
             data: @json($revenueChartData['data'])
@@ -411,6 +353,7 @@
 
     @can('orders.view')
     var statusOptions = {
+        noData: { text: 'Chưa có đơn hàng trong kỳ đã chọn' },
         series: @json($statusDistribution->values()->all()),
         chart: {
             type: 'donut',
@@ -450,6 +393,7 @@
 
     @can('services.view')
     var topServiceOptions = {
+        noData: { text: 'Chưa có dịch vụ được đặt trong kỳ đã chọn' },
         series: [{
             name: 'Số đơn',
             data: @json($topServices->pluck('orders_count')->values())
@@ -503,7 +447,5 @@
     @endcan
 
 </script>
-@can('reports.revenue')
-@vite('resources/js/admin-revenue-dashboard.js')
-@endcan
+@vite('resources/js/admin-period-filter.js')
 @endpush

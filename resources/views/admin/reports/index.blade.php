@@ -166,21 +166,6 @@
     .pagination .page-item:last-child .page-link {
         border-radius: 0 6px 6px 0;
     }
-    /* Filter bar responsive */
-    @media (max-width: 767.98px) {
-        .filter-form {
-            flex-direction: column;
-            align-items: stretch !important;
-        }
-        .filter-form > div {
-            width: 100% !important;
-            min-width: 0 !important;
-        }
-        .filter-form .btn {
-            width: 100%;
-            justify-content: center;
-        }
-    }
     /* Ensure table-responsive works properly */
     .table-responsive {
         overflow-x: auto;
@@ -206,40 +191,18 @@
 @endpush
 
 @section('content')
-<!-- Page Header + Global Filter Bar -->
-<div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
-    <div>
-        <h1 class="h4 fw-bold text-dark mb-0">Báo cáo & Thống kê kinh doanh</h1>
-        <p class="text-muted mb-0 small">Tổng quan hiệu suất kinh doanh cửa hàng giặt ủi</p>
-    </div>
-    <form action="{{ route('reports.index') }}" method="GET" class="d-flex flex-wrap gap-2 align-items-end filter-form" style="max-width: 900px; width: 100%;">
-        <div class="flex-grow-1" style="min-width: 180px;">
-            <label class="form-label mb-1 small fw-medium">Khoảng thời gian</label>
-            <select name="range" class="form-select form-select-sm" id="rangeSelect" onchange="toggleCustomDate(this)">
-                <option value="all_time" {{ $filters['range'] === 'all_time' ? 'selected' : '' }}>Toàn thời gian</option>
-                <option value="today" {{ $filters['range'] === 'today' ? 'selected' : '' }}>Hôm nay</option>
-                <option value="7_days" {{ $filters['range'] === '7_days' ? 'selected' : '' }}>7 ngày qua</option>
-                <option value="this_month" {{ $filters['range'] === 'this_month' ? 'selected' : '' }}>Tháng này</option>
-                <option value="last_month" {{ $filters['range'] === 'last_month' ? 'selected' : '' }}>Tháng trước</option>
-                <option value="custom" {{ $filters['range'] === 'custom' ? 'selected' : '' }}>Tuỳ chỉnh</option>
-            </select>
-        </div>
-        <div id="customFromGroup" class="{{ $filters['range'] === 'custom' ? '' : 'd-none' }}" style="min-width: 140px;">
-            <label class="form-label mb-1 small fw-medium">Từ ngày</label>
-            <input type="date" name="date_from" class="form-control form-control-sm" value="{{ $filters['date_from'] ?? '' }}">
-        </div>
-        <div id="customToGroup" class="{{ $filters['range'] === 'custom' ? '' : 'd-none' }}" style="min-width: 140px;">
-            <label class="form-label mb-1 small fw-medium">Đến ngày</label>
-            <input type="date" name="date_to" class="form-control form-control-sm" value="{{ $filters['date_to'] ?? '' }}">
-        </div>
-        <button type="submit" class="btn btn-outline-secondary btn-sm">
-            <i class="bi bi-filter me-1"></i>Lọc dữ liệu
-        </button>
-        <a href="{{ route('reports.index') }}" class="btn btn-outline-secondary btn-sm">
-            <i class="bi bi-arrow-clockwise me-1"></i>Đặt lại
-        </a>
-    </form>
+<div class="mb-4">
+    <h1 class="h4 fw-bold text-dark mb-0">Báo cáo & Thống kê kinh doanh</h1>
+    <p class="text-muted mb-0 small">Tổng quan hiệu suất kinh doanh cửa hàng giặt ủi</p>
 </div>
+
+<x-admin.period-filter
+    :route="route('reports.index')"
+    :filter="$reportFilter"
+    :period-label="$periodLabel"
+    :period-description="$periodDescription"
+    note="Bộ lọc áp dụng cho tất cả thẻ, biểu đồ và bảng bên dưới. Doanh thu, cơ cấu dịch vụ, top dịch vụ và phương thức thanh toán theo ngày thu tiền; đơn hàng và đơn đặt lịch theo ngày tạo."
+/>
 
 <!-- KPI Metric Cards -->
 <div class="row g-3 mb-4">
@@ -533,11 +496,6 @@
         const compositionValues = @json($compositionData['revenue'] ?? []);
         const colors = ['#3b82f6', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899', '#14b8a6', '#f97316', '#6366f1'];
 
-        window.toggleCustomDate = function (select) {
-            document.getElementById('customFromGroup')?.classList.toggle('d-none', select.value !== 'custom');
-            document.getElementById('customToGroup')?.classList.toggle('d-none', select.value !== 'custom');
-        };
-
         if (typeof window.ApexCharts === 'undefined') {
             console.error('ApexCharts did not load; report charts cannot be rendered.');
             return;
@@ -657,4 +615,5 @@
         renderCompositionChart();
     })();
 </script>
+@vite('resources/js/admin-period-filter.js')
 @endpush

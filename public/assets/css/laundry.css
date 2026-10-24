@@ -488,25 +488,11 @@ body {
 }
 
 /* Stat Card Variants */
-.stat-card--revenue-today .stat-icon {
+.stat-card--revenue .stat-icon {
     background-color: #22c55e; /* Emerald Green */
 }
-.stat-card--revenue-today .stat-icon:hover {
+.stat-card--revenue .stat-icon:hover {
     background-color: #16a34a;
-}
-
-.stat-card--revenue-week .stat-icon {
-    background-color: #3b82f6; /* Primary Blue */
-}
-.stat-card--revenue-week .stat-icon:hover {
-    background-color: #2563eb;
-}
-
-.stat-card--revenue-month .stat-icon {
-    background-color: #8b5cf6; /* Indigo/Purple */
-}
-.stat-card--revenue-month .stat-icon:hover {
-    background-color: #7c3aed;
 }
 
 .stat-card--rating .stat-icon {

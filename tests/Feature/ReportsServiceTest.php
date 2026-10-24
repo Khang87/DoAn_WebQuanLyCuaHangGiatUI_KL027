@@ -9,6 +9,7 @@ use App\Enums\PaymentStatus;
 use App\Models\User;
 use App\Services\ReportsService;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Mockery;
@@ -52,6 +53,8 @@ class ReportsServiceTest extends TestCase
 
     protected function tearDown(): void
     {
+        Carbon::setTestNow();
+
         if ($this->testSchemaCreated) {
             foreach (array_reverse(self::TEST_TABLES) as $table) {
                 Schema::dropIfExists($table);
@@ -352,13 +355,12 @@ class ReportsServiceTest extends TestCase
         $this->assertStringContainsString('Đã thanh toán', $statusBadges);
     }
 
-    public function test_invalid_range_shape_is_rejected_with_a_validation_error(): void
+    public function test_invalid_filter_shape_falls_back_to_the_default_period(): void
     {
-        $response = $this->actingAs($this->reportOwner())
-            ->get('/reports?range%5B%5D=today');
-
-        $response->assertRedirect();
-        $response->assertSessionHasErrors('range');
+        $this->actingAs($this->reportOwner())
+            ->get('/reports?filter%5B%5D=today')
+            ->assertOk()
+            ->assertSee('data-active-filter="all_time"', false);
     }
 
     public function test_reports_page_renders_for_owner_with_isolated_fixtures(): void
@@ -372,7 +374,9 @@ class ReportsServiceTest extends TestCase
 
     public function test_total_order_status_badges_match_dashboard_styles_and_full_labels(): void
     {
-        $this->actingAs($this->reportOwner())->get('/reports?range=custom&date_from=2026-01-10&date_to=2026-01-10')
+        Carbon::setTestNow(Carbon::parse('2026-01-10 12:00:00', 'Asia/Ho_Chi_Minh'));
+
+        $this->actingAs($this->reportOwner())->get('/reports?filter=today')
             ->assertOk()
             ->assertSee('<span class="badge bg-success-subtle text-success-emphasis border border-success rounded-pill">0 Hoàn thành</span>', false)
             ->assertSee('<span class="badge bg-primary-subtle text-primary-emphasis border border-primary-subtle fw-semibold rounded-pill">2 Đang xử lý</span>', false)
@@ -410,10 +414,23 @@ class ReportsServiceTest extends TestCase
     public function test_reports_page_renders_with_all_supported_date_filters(): void
     {
         $this->actingAs($this->reportOwner());
-        foreach (['today', '7_days', 'this_month', 'last_month'] as $range) {
-            $this->get('/reports?range='.$range)->assertOk();
+        foreach (['today', 'this_week', 'this_month', 'all_time'] as $filter) {
+            $this->get('/reports?filter='.$filter)
+                ->assertOk()
+                ->assertSee('data-active-filter="'.$filter.'"', false);
         }
-        $this->get('/reports?range=custom&date_from=2026-01-01&date_to=2026-12-31')->assertOk();
+    }
+
+    public function test_this_week_starts_on_monday_of_the_vietnamese_calendar(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-01-10 12:00:00', 'Asia/Ho_Chi_Minh'));
+
+        $dates = app(ReportsService::class)->getDateRange(['range' => 'this_week']);
+
+        $this->assertSame('this_week', $dates['range']);
+        $this->assertSame('2026-01-05 00:00:00', $dates['local_from']->format('Y-m-d H:i:s'));
+        $this->assertSame('2026-01-04 17:00:00', $dates['from']->format('Y-m-d H:i:s'));
+        $this->assertSame('2026-01-10 16:59:59', $dates['to']->format('Y-m-d H:i:s'));
     }
 
     /**

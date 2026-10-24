@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Services\ReportsService;
+use App\Support\TimePeriod;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\View\View;
@@ -24,7 +25,8 @@ class ReportsController extends Controller
     {
         Gate::authorize('reports.view');
 
-        $filters = $this->validatedFilters($request);
+        $filter = TimePeriod::normalize($request->query('filter'), TimePeriod::ALL_TIME);
+        $filters = ['range' => $filter];
 
         $kpi = $this->reportsService->getKpiMetrics($filters);
         $chartData = $this->reportsService->getRevenueChartData($filters);
@@ -58,32 +60,11 @@ class ReportsController extends Controller
             'recentOrders',
             'chartColors',
             'paymentMethodColors',
-            'paymentMethodLabels'
-        ));
-    }
-
-    /**
-     * @return array{range: string, date_from?: string, date_to?: string}
-     */
-    private function validatedFilters(Request $request): array
-    {
-        $rangeAliases = [
-            'Hôm nay' => 'today',
-            'Tháng này' => 'this_month',
-            'Tháng trước' => 'last_month',
-            'Toàn thời gian' => 'all_time',
-            'Từ ngày - Đến ngày' => 'custom',
-        ];
-        $requestedRange = $request->input('filter_type', $request->input('range', 'all_time'));
-        $range = is_string($requestedRange)
-            ? ($rangeAliases[$requestedRange] ?? $requestedRange)
-            : $requestedRange;
-        $request->merge(['range' => $range]);
-
-        return $request->validate([
-            'range' => ['sometimes', 'string', 'in:today,7_days,this_month,last_month,all_time,custom'],
-            'date_from' => ['required_if:range,custom', 'nullable', 'date_format:Y-m-d'],
-            'date_to' => ['required_if:range,custom', 'nullable', 'date_format:Y-m-d', 'after_or_equal:date_from'],
+            'paymentMethodLabels',
+        ) + [
+            'reportFilter' => $filter,
+            'periodLabel' => TimePeriod::label($filter),
+            'periodDescription' => TimePeriod::description($filter),
         ]);
     }
 }
