@@ -303,9 +303,13 @@ class StaffMobileController extends ApiController
         if ($promotionId !== null && ! $this->customerCanUsePromotion($booking, (int) $promotionId)) {
             throw ValidationException::withMessages(['promotion_id' => 'Mã giảm giá không còn khả dụng cho khách hàng này.']);
         }
-        return response()->json(['data' => $this->orders->estimateBookingWithRewards(
+        $estimate = $this->orders->estimateBookingWithRewards(
             $booking, $data['items'], $promotionId, (int) ($data['points_used'] ?? 0), true,
-        )]);
+        );
+        $estimate['pickup_distance_meters'] = (int) $booking->PickupDistanceMeters;
+        $estimate['return_distance_meters'] = (int) $booking->DeliveryDistanceMeters;
+
+        return response()->json(['data' => $estimate]);
     }
 
     public function draft(Request $request, int $id): JsonResponse
@@ -448,6 +452,9 @@ class StaffMobileController extends ApiController
             'appointment' => $booking->NgayHen?->format('Y-m-d').' '.($appointmentTime ?? ''),
             'note' => $booking->GhiChu, 'created_at' => $booking->NgayTao?->toIso8601String(),
             'pickup_fee' => (float) $booking->PickupDeliveryFee, 'return_fee' => (float) $booking->DeliveryFee,
+            'pickup_distance_meters' => (int) $booking->PickupDistanceMeters,
+            'return_distance_meters' => (int) $booking->DeliveryDistanceMeters,
+            'payment_method' => $booking->PhuongThucThanhToan,
             'customer' => ['id' => $booking->KhachHangID, 'name' => $booking->khachHang?->HoTen, 'phone' => $booking->khachHang?->SoDienThoai],
             'items' => $items, 'inspection_draft_saved' => $draft !== null,
             ...($includeCatalog ? [
