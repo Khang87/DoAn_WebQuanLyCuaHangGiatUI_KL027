@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Enums\InvoiceStatus;
-use App\Enums\OrderStatus;
 use App\Enums\PaymentStatus;
 use App\Exceptions\SettledOrderException;
 use App\Http\Controllers\Controller;
@@ -14,6 +13,7 @@ use App\Models\HoaDon;
 use App\Models\KhachHang;
 use App\Services\CollectedRevenueService;
 use App\Services\PaymentService;
+use App\Support\OrderStatusRollup;
 use App\Support\TimePeriod;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
@@ -38,29 +38,13 @@ class DashboardController extends Controller
         $revenueChartData = $this->buildRevenueChartData($dashboardFilter, $from, $until);
         $totalRevenue = (float) array_sum($revenueChartData['data']);
         $orders = $this->inPeriod(DonHang::query(), 'NgayTao', $from, $until);
-        $statusDistribution = (clone $orders)
-            ->selectRaw('"TrangThai", COUNT(*) AS count')
-            ->groupBy('TrangThai')
-            ->pluck('count', 'TrangThai')
-            ->map(fn ($count): int => (int) $count);
-
-        if ($statusDistribution->has(OrderStatus::Paid->value)) {
-            $legacyPaidOrders = (clone $orders)->where('TrangThai', OrderStatus::Paid->value)
-                ->with('statusChanges')->get(['DonHangID', 'TrangThai']);
-            $statusDistribution->forget(OrderStatus::Paid->value);
-            foreach ($legacyPaidOrders as $order) {
-                $status = $order->operationalStatusEnum()->value;
-                $statusDistribution->put($status, $statusDistribution->get($status, 0) + 1);
-            }
-        }
-
-        $totalOrders = $statusDistribution->sum();
+        $statusRollup = OrderStatusRollup::counts($orders);
+        $statusDistribution = $statusRollup['distribution'];
+        $totalOrders = $statusRollup['total'];
         $statusCounts = [
-            'completed' => $statusDistribution->get(OrderStatus::Delivered->value, 0),
-            'processing' => $statusDistribution->except([
-                OrderStatus::Delivered->value, OrderStatus::Cancelled->value,
-            ])->sum(),
-            'cancelled' => $statusDistribution->get(OrderStatus::Cancelled->value, 0),
+            'completed' => $statusRollup['completed'],
+            'processing' => $statusRollup['processing'],
+            'cancelled' => $statusRollup['cancelled'],
         ];
         $totalCustomers = $this->inPeriod(KhachHang::query(), 'NgayTao', $from, $until)->count();
         $reviews = $this->inPeriod(DanhGia::query(), 'NgayDanhGia', $from, $until)

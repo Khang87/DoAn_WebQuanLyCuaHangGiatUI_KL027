@@ -4,10 +4,10 @@ namespace App\Services;
 
 use App\Enums\BookingStatus;
 use App\Enums\InvoiceStatus;
-use App\Enums\OrderStatus;
 use App\Models\Booking;
 use App\Models\ChiTietDonHang;
 use App\Models\DonHang;
+use App\Support\OrderStatusRollup;
 use Carbon\Carbon;
 use Carbon\CarbonPeriod;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
@@ -27,19 +27,6 @@ class ReportsService
     public function __construct(
         private CollectedRevenueService $collectedRevenueService,
     ) {}
-
-    /**
-     * Trạng thái đang xử lý.
-     *
-     * @var list<string>
-     */
-    private const PROCESSING_STATUSES = [
-        OrderStatus::Pending->value,
-        OrderStatus::Received->value,
-        OrderStatus::Washing->value,
-        OrderStatus::Washed->value,
-        OrderStatus::Delivering->value,
-    ];
 
     /**
      * Lấy khoảng thời gian lọc.
@@ -124,26 +111,12 @@ class ReportsService
 
         $totalRevenue = (float) (clone $paidPayments)->sum('SoTien');
 
-        $orderCounts = (clone $base)
-            ->selectRaw('COUNT(*) AS total_orders')
-            ->selectRaw(
-                'SUM(CASE WHEN "TrangThai" = ? THEN 1 ELSE 0 END) AS completed_orders',
-                [OrderStatus::Delivered->value],
-            )
-            ->selectRaw(
-                'SUM(CASE WHEN "TrangThai" IN ('.implode(', ', array_fill(0, count(self::PROCESSING_STATUSES), '?')).') THEN 1 ELSE 0 END) AS processing_orders',
-                self::PROCESSING_STATUSES,
-            )
-            ->selectRaw(
-                'SUM(CASE WHEN "TrangThai" = ? THEN 1 ELSE 0 END) AS cancelled_orders',
-                [OrderStatus::Cancelled->value],
-            )
-            ->first();
+        $orderCounts = OrderStatusRollup::counts($base);
 
-        $totalOrders = (int) $orderCounts->total_orders;
-        $completedOrders = (int) $orderCounts->completed_orders;
-        $processingOrders = (int) $orderCounts->processing_orders;
-        $cancelledOrders = (int) $orderCounts->cancelled_orders;
+        $totalOrders = $orderCounts['total'];
+        $completedOrders = $orderCounts['completed'];
+        $processingOrders = $orderCounts['processing'];
+        $cancelledOrders = $orderCounts['cancelled'];
 
         $bookings = Booking::query()->where('TrangThai', BookingStatus::Pending->value);
 

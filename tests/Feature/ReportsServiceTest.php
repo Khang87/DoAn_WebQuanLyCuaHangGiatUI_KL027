@@ -73,13 +73,16 @@ class ReportsServiceTest extends TestCase
         ]);
 
         $this->assertSame(4, $metrics['total_orders']);
-        $this->assertSame(0, $metrics['completed_orders']);
+        $this->assertSame(1, $metrics['completed_orders']);
         $this->assertSame(2, $metrics['processing_orders']);
         $this->assertSame(1, $metrics['cancelled_orders']);
-        $this->assertSame(3, $metrics['completed_orders'] + $metrics['processing_orders'] + $metrics['cancelled_orders']);
+        $this->assertSame(
+            $metrics['total_orders'],
+            $metrics['completed_orders'] + $metrics['processing_orders'] + $metrics['cancelled_orders']
+        );
         $this->assertSame(1, $metrics['new_bookings']);
         $this->assertEquals(255000, $metrics['total_revenue']);
-        $this->assertEquals(0, $metrics['avg_order_value']);
+        $this->assertEquals(255000, $metrics['avg_order_value']);
     }
 
     public function test_kpis_and_revenue_chart_use_bounded_aggregate_query_counts(): void
@@ -93,8 +96,12 @@ class ReportsServiceTest extends TestCase
 
         DB::connection()->flushQueryLog();
         DB::connection()->enableQueryLog();
-        $service->getKpiMetrics($filters);
-        $this->assertCount(3, DB::connection()->getQueryLog());
+        $metrics = $service->getKpiMetrics($filters);
+        $this->assertCount(5, DB::connection()->getQueryLog());
+        $this->assertSame(
+            $metrics['total_orders'],
+            $metrics['completed_orders'] + $metrics['processing_orders'] + $metrics['cancelled_orders']
+        );
 
         DB::connection()->flushQueryLog();
         $chart = $service->getRevenueChartData($filters);
@@ -378,7 +385,7 @@ class ReportsServiceTest extends TestCase
 
         $this->actingAs($this->reportOwner())->get('/reports?filter=today')
             ->assertOk()
-            ->assertSee('<span class="badge bg-success-subtle text-success-emphasis border border-success rounded-pill">0 Hoàn thành</span>', false)
+            ->assertSee('<span class="badge bg-success-subtle text-success-emphasis border border-success rounded-pill">1 Hoàn thành</span>', false)
             ->assertSee('<span class="badge bg-primary-subtle text-primary-emphasis border border-primary-subtle fw-semibold rounded-pill">2 Đang xử lý</span>', false)
             ->assertSee('<span class="badge bg-danger-subtle text-danger-emphasis border border-danger rounded-pill">1 Đã hủy</span>', false)
             ->assertDontSee('badge-breakdown', false);
