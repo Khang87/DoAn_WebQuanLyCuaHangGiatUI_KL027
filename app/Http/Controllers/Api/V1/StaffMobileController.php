@@ -171,6 +171,7 @@ class StaffMobileController extends ApiController
                 'BookingID' => $o->booking->BookingID, 'MaBooking' => $o->booking->MaBooking,
                 'HinhThucNhanDo' => $o->booking->HinhThucNhanDo, 'HinhThucTraDo' => $o->booking->HinhThucTraDo,
                 'DiaChiNhan' => $o->booking->DiaChiNhan, 'DiaChiTra' => $o->booking->DiaChiTra,
+                'PhuongThucThanhToan' => $o->booking->PhuongThucThanhToan,
                 'NgayHen' => $o->booking->NgayHen?->format('Y-m-d'), 'GioHen' => $o->booking->GioHen,
                 'GhiChu' => $o->booking->GhiChu,
             ] : null,
