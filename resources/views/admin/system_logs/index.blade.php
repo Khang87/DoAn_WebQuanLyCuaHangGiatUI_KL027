@@ -160,10 +160,10 @@
                 <thead class="table-light">
                     <tr>
                         <th scope="col">STT</th>
-                        <th style="width: 150px;">Thời gian</th>
-                        <th style="width: 190px;">Tài khoản</th>
+                        <th style="width: 170px;">Thời gian</th>
+                        <th style="width: 170px;">Tài khoản</th>
+                        <th style="width: 210px;">Bảng dữ liệu</th>
                         <th>Hành động</th>
-                        <th style="width: 160px;">Bảng dữ liệu</th>
                         <th style="width: 110px;">Chi tiết</th>
                     </tr>
                 </thead>
@@ -179,13 +179,13 @@
                                     {{ $log->taiKhoan?->TenDangNhap ?: 'Tài khoản #'.$log->TaiKhoanID }}
                                 @endif
                             </td>
+                            <td><span class="badge {{ \App\Models\NhatKyHeThong::toneForBang((string) $log->BangDuLieu) }}">{{ $log->BangDuLieuLabel }}</span></td>
                             <td>
                                 {{ $log->HanhDong }}
                                 @if($log->BanGhiID)
                                     <span class="text-muted ms-1">· {{ $targetCodes[$log->NhatKyID] ?? '#'.$log->BanGhiID }}</span>
                                 @endif
                             </td>
-                            <td><span class="badge {{ \App\Models\NhatKyHeThong::toneForBang((string) $log->BangDuLieu) }}">{{ $log->BangDuLieuLabel }}</span></td>
                             <td>
                                 @if($log->DuLieuCu || $log->DuLieuMoi || $log->LyDo)
                                     <details>
