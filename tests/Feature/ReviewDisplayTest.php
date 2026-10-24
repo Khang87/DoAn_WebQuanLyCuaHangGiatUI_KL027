@@ -15,6 +15,7 @@ class ReviewDisplayTest extends TestCase
         $customer = new KhachHang;
         $customer->setAttribute('KhachHangID', 7);
         $customer->setAttribute('HoTen', 'Khách hàng kiểm thử');
+        $customer->setRelation('taiKhoan', null);
 
         $order = new DonHang;
         $order->setAttribute('DonHangID', 24);

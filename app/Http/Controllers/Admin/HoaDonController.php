@@ -101,16 +101,6 @@ class HoaDonController extends Controller
     }
 
     /**
-     * Hóa đơn đã thanh toán là chốt số tiền: chỉ Chủ cửa hàng (người giữ quyền
-     * invoices.edit_paid / invoices.delete_paid) được mở khoá. Nhân viên và
-     * Quản lý không bao giờ được cấp 2 quyền này nên vẫn bị khoá như cũ.
-     */
-    private function canOverrideSettled(): bool
-    {
-        return auth()->user()?->canPermission('invoices.edit_paid') ?? false;
-    }
-
-    /**
      * Hóa đơn chờ thu không nằm trong danh sách Hóa đơn nên điểm quay lại hợp lý
      * là trang Đơn hàng của nó (nếu tài khoản này xem được đơn hàng).
      */
@@ -131,7 +121,7 @@ class HoaDonController extends Controller
             abort(404);
         }
 
-        if ($invoice->isPaid() && ! $this->canOverrideSettled()) {
+        if ($invoice->isPaid()) {
             return $this->denySettled(
                 $request,
                 'Hóa đơn '.$invoice->MaHoaDon.' đã thanh toán nên chỉ có thể xem.',

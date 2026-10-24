@@ -38,7 +38,7 @@
 
 @if($isPaid)
     <div class="no-print">
-        <x-admin.detail.locked text="Hóa đơn đã thanh toán nên bị khóa. Liên hệ Chủ cửa hàng nếu cần điều chỉnh." />
+        <x-admin.detail.locked text="Hóa đơn đã thanh toán nên chỉ có thể xem, không thể chỉnh sửa." />
     </div>
 @endif
 
@@ -199,20 +199,6 @@
                 </div>
             @endif
         </x-admin.detail.panel>
-
-        <div class="card shadow-sm border-0 no-print order-first">
-            <div class="card-header bg-transparent border-bottom d-flex align-items-center gap-2 py-3">
-                <div class="bg-light rounded p-2 d-inline-flex align-items-center justify-content-center">
-                    <i class="fas fa-sliders-h text-secondary"></i>
-                </div>
-                <h5 class="card-title mb-0 fw-bold">Thao tác</h5>
-            </div>
-            <div class="card-body d-flex flex-column gap-2">
-                <button type="button" class="btn btn-outline-primary w-100 py-2" onclick="window.print()">
-                    <i class="fas fa-print me-1"></i> In hóa đơn
-                </button>
-            </div>
-        </div>
     </div>
 </div>
 @endsection
@@ -318,3 +304,11 @@
     }
 </style>
 @endpush
+
+@if(request()->boolean('print'))
+    @push('scripts')
+        <script>
+            window.addEventListener('load', () => window.print(), { once: true });
+        </script>
+    @endpush
+@endif

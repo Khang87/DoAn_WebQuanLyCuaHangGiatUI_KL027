@@ -40,6 +40,12 @@ class PaymentOrderRedirectTest extends TestCase
             $table->string('HoTen');
         });
 
+        Schema::create('TaiKhoan', function (Blueprint $table): void {
+            $table->increments('TaiKhoanID');
+            $table->unsignedInteger('KhachHangID')->nullable();
+            $table->string('AvatarURL')->nullable();
+        });
+
         Schema::create('DonHang', function (Blueprint $table): void {
             $table->increments('DonHangID');
             $table->string('MaDonHang');
@@ -62,6 +68,9 @@ class PaymentOrderRedirectTest extends TestCase
             $table->string('MaHoaDon')->nullable();
             $table->string('TrangThai')->nullable();
             $table->dateTime('NgayLap')->nullable();
+            $table->decimal('TongTien', 12, 2)->nullable();
+            $table->decimal('GiamGia', 12, 2)->default(0);
+            $table->decimal('PhiGiaoHang', 12, 2)->default(0);
             $table->decimal('ThanhTien', 12, 2)->nullable();
         });
 
@@ -103,7 +112,7 @@ class PaymentOrderRedirectTest extends TestCase
 
     protected function tearDown(): void
     {
-        foreach (['NhatKyHeThong', 'LichSuThayDoiHoaDon', 'ThanhToan', 'HoaDon', 'ChiTietDonHang', 'DonHang', 'KhachHang'] as $tableName) {
+        foreach (['ThongBao', 'NhatKyHeThong', 'LichSuThayDoiHoaDon', 'ThanhToan', 'HoaDon', 'ChiTietDonHang', 'DonHang', 'TaiKhoan', 'KhachHang'] as $tableName) {
             Schema::dropIfExists($tableName);
         }
 
@@ -247,7 +256,14 @@ class PaymentOrderRedirectTest extends TestCase
             'ThanhTien' => 50000,
         ]);
 
+        DB::table('TaiKhoan')->insert([
+            'KhachHangID' => 3,
+            'AvatarURL' => 'https://example.test/account.jpg',
+        ]);
         $invoiceService = app(InvoiceService::class);
+        $invoice = $invoiceService->getAll(['search' => '37'])->first();
+        $this->assertTrue($invoice->donHang->khachHang->relationLoaded('taiKhoan'));
+        $this->assertSame('https://example.test/account.jpg', $invoice->donHang->khachHang->taiKhoan->AvatarURL);
 
         $this->assertSame(
             [19],
@@ -665,6 +681,91 @@ class PaymentOrderRedirectTest extends TestCase
         $this->assertSame(InvoiceStatus::Paid->value, DB::table('HoaDon')->where('HoaDonID', 1)->value('TrangThai'));
         $this->assertSame(25000.0, (float) DB::table('HoaDon')->where('HoaDonID', 1)->value('ThanhTien'));
         $this->assertSame(1, DB::table('ThanhToan')->where('DonHangID', 70)->count());
+    }
+
+    public function test_paid_invoice_edit_routes_reject_owner_and_staff_without_changing_records(): void
+    {
+        Schema::create('ThongBao', function (Blueprint $table): void {
+            $table->increments('ThongBaoID');
+            $table->unsignedInteger('TaiKhoanID');
+            $table->string('LoaiThongBao')->nullable();
+            $table->dateTime('ThoiGianGui')->nullable();
+            $table->boolean('DaDoc')->default(false);
+        });
+        $this->createPaidWashingOrder(70);
+        DB::table('HoaDon')->insert([
+            'HoaDonID' => 1, 'DonHangID' => 70, 'MaHoaDon' => 'HD0070',
+            'TrangThai' => InvoiceStatus::Paid->value, 'TongTien' => 25000,
+            'ThanhTien' => 25000, 'NgayLap' => '2026-10-01 00:00:00',
+        ]);
+        $before = (array) DB::table('HoaDon')->where('HoaDonID', 1)->first();
+
+        foreach ([true, false] as $isOwner) {
+            $this->actingAs($this->userWithPermissions($isOwner, ['invoices.view', 'invoices.edit']));
+            $this->get(route('invoices.edit', 1))->assertForbidden()
+                ->assertSee('Không thể chỉnh sửa hóa đơn')
+                ->assertDontSee('Chỉ Chủ cửa hàng được phép thực hiện');
+            $this->put(route('invoices.update', 1), ['order_id' => 70])->assertForbidden()
+                ->assertSee('Không thể chỉnh sửa hóa đơn')
+                ->assertDontSee('Chỉ Chủ cửa hàng được phép thực hiện');
+            $this->putJson(route('invoices.update', 1), [
+                'order_id' => 70, 'invoice_date' => '2026-10-24',
+                'total' => 25000, 'status' => InvoiceStatus::Paid->value, 'notes' => 'Đổi ghi chú',
+            ])->assertForbidden();
+            $this->get(route('invoices.index'))->assertOk()
+                ->assertDontSee(route('invoices.edit', 1), false)
+                ->assertSee('title="In hóa đơn"', false);
+        }
+
+        $this->assertSame($before, (array) DB::table('HoaDon')->where('HoaDonID', 1)->first());
+        $this->assertSame(0, DB::table('LichSuThayDoiHoaDon')->count());
+        $this->assertSame(0, DB::table('NhatKyHeThong')->count());
+        $this->assertSame(25000.0, (float) DB::table('ThanhToan')->value('SoTien'));
+    }
+
+    public function test_paid_invoice_service_rejects_all_manual_edits_even_from_a_stale_model(): void
+    {
+        $this->createPaidWashingOrder(70);
+        DB::table('HoaDon')->insert([
+            'HoaDonID' => 1, 'DonHangID' => 70, 'MaHoaDon' => 'HD0070',
+            'TrangThai' => InvoiceStatus::Unpaid->value, 'TongTien' => 25000,
+            'ThanhTien' => 25000, 'NgayLap' => '2026-10-01 00:00:00',
+        ]);
+        $stale = HoaDon::findOrFail(1);
+        DB::table('HoaDon')->where('HoaDonID', 1)->update(['TrangThai' => InvoiceStatus::Paid->value]);
+        $before = (array) DB::table('HoaDon')->where('HoaDonID', 1)->first();
+
+        foreach ([$stale, $stale->fresh()] as $invoice) {
+            foreach ([[], ['notes' => 'Đổi ghi chú'], ['invoice_date' => '2026-10-24'], ['total' => 25000], ['total' => 20000]] as $data) {
+                try {
+                    app(InvoiceService::class)->update($invoice, $data);
+                    $this->fail('Every manual edit of a paid invoice must be rejected.');
+                } catch (SettledOrderException) {
+                    $this->assertSame($before, (array) DB::table('HoaDon')->where('HoaDonID', 1)->first());
+                }
+            }
+        }
+    }
+
+    public function test_unpaid_invoice_can_still_be_edited_and_synchronized_after_collection(): void
+    {
+        DB::table('DonHang')->insert([
+            'DonHangID' => 70, 'MaDonHang' => 'DH0070',
+            'TrangThai' => OrderStatus::Washing->value, 'ThanhTien' => 25000,
+        ]);
+        DB::table('HoaDon')->insert([
+            'HoaDonID' => 1, 'DonHangID' => 70, 'MaHoaDon' => 'HD0070',
+            'TrangThai' => InvoiceStatus::Unpaid->value, 'TongTien' => 25000, 'ThanhTien' => 25000,
+        ]);
+        $invoice = app(InvoiceService::class)->update(HoaDon::findOrFail(1), ['invoice_date' => '2026-10-24']);
+        $this->assertSame('2026-10-24', $invoice->NgayLap->format('Y-m-d'));
+
+        DB::table('ThanhToan')->insert([
+            'DonHangID' => 70, 'SoTien' => 25000, 'TrangThai' => PaymentStatus::Paid->value,
+        ]);
+        $invoice = app(InvoiceService::class)->update($invoice, ['status' => InvoiceStatus::Paid->value]);
+        $this->assertTrue($invoice->isPaid());
+        $this->assertSame(25000.0, $invoice->ThanhTien);
     }
 
     public function test_refunded_payment_cannot_be_deleted_or_reopened_as_paid(): void

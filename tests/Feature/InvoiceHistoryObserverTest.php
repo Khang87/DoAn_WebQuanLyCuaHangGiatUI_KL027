@@ -8,7 +8,9 @@ use App\Models\TinNhan;
 use App\Models\User;
 use App\Services\InvoiceService;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
@@ -164,6 +166,76 @@ class InvoiceHistoryObserverTest extends TestCase
         );
 
         $this->assertCount(1, $badges[0]);
+    }
+
+    public function test_invoice_detail_has_no_print_button_and_only_auto_prints_when_requested(): void
+    {
+        $invoice = $this->createInvoice();
+        $invoice->TrangThai = 'Đã thanh toán';
+        $invoice->setRelation('donHang', null);
+        $invoice->setRelation('lichSuThayDoiHoaDons', collect());
+
+        foreach ([null, '0', 'false', '1'] as $print) {
+            request()->query->set('print', $print);
+            $html = view('admin.invoices.show', [
+                'invoice' => $invoice,
+                'totalPaid' => 100,
+                'balance' => 0,
+            ])->render();
+            $document = new \DOMDocument;
+            @$document->loadHTML('<?xml encoding="UTF-8">'.$html);
+            $xpath = new \DOMXPath($document);
+
+            $this->assertSame(0, $xpath->query('//button[contains(normalize-space(.), "In hóa đơn")]')->length);
+            $this->assertSame(0, $xpath->query('//h5[normalize-space(.)="Thao tác"]')->length);
+            $this->assertSame(1, $xpath->query('//a[@href="'.route('invoices.index').'" and contains(normalize-space(.), "Quay lại")]')->length);
+            $this->assertSame($print === '1', str_contains($html, 'window.print()'));
+            $this->assertStringContainsString('Tổng hợp', $html);
+            $this->assertStringContainsString('Thông tin hóa đơn', $html);
+            $this->assertStringContainsString('Lịch sử thay đổi', $html);
+            $this->assertStringContainsString('@media print', $html);
+        }
+    }
+
+    public function test_invoice_list_print_icon_shares_view_permission_and_opens_the_selected_invoice(): void
+    {
+        $invoice = $this->createInvoice();
+        $invoice->TrangThai = 'Đã thanh toán';
+        $invoice->setRelation('donHang', null);
+
+        foreach ([true, false] as $canView) {
+            Gate::define('invoices.view', fn () => $canView);
+            $html = view('admin.invoices.index', [
+                'invoices' => new LengthAwarePaginator(collect([$invoice]), 1, 10),
+            ])->render();
+            $document = new \DOMDocument;
+            @$document->loadHTML('<?xml encoding="UTF-8">'.$html);
+            $xpath = new \DOMXPath($document);
+            $links = $xpath->query('//tbody//a[@title="In hóa đơn"]');
+
+            $this->assertCount($canView ? 1 : 0, $links);
+            if ($canView) {
+                $link = $links->item(0);
+                $this->assertSame(route('invoices.show', [$invoice, 'print' => 1]), $link->getAttribute('href'));
+                $this->assertSame('_blank', $link->getAttribute('target'));
+                $this->assertStringContainsString('noopener', $link->getAttribute('rel'));
+                $this->assertSame('In hóa đơn', $link->getAttribute('aria-label'));
+                $this->assertStringContainsString('btn-order-action', $link->getAttribute('class'));
+                $this->assertSame(1, $xpath->query('../a[@title="Xem"]', $link)->length);
+            }
+        }
+    }
+
+    public function test_order_view_omits_pending_invoice_controls_and_preserves_existing_invoice_guard(): void
+    {
+        $source = file_get_contents(resource_path('views/admin/orders/show.blade.php'));
+
+        $this->assertStringNotContainsString('đang chờ thanh toán; thu tiền xong hóa đơn mới hiển thị.', $source);
+        $this->assertStringNotContainsString('Sửa hóa đơn chờ thu', $source);
+        $this->assertStringNotContainsString('Xóa hóa đơn chờ thu', $source);
+        $this->assertStringContainsString('@elseif(! $orderInvoice && in_array($order->TrangThai,', $source);
+        $this->assertStringContainsString("route('payments.create', ['order_id' => \$order->getKey()])", $source);
+        $this->assertStringContainsString('@if($orderInvoice?->isPaid())', $source);
     }
 
     private function createInvoice(): HoaDon

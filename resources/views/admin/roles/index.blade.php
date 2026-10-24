@@ -65,18 +65,11 @@
                             <i class="bi {{ $roleIcon }} fs-5" aria-hidden="true"></i>
                         </span>
                         <div class="flex-grow-1 min-w-0">
-                            <div class="d-flex align-items-center flex-wrap gap-2">
-                                <span class="small text-muted">STT {{ $loop->iteration }}</span>
-                                <h3 class="h6 fw-bold mb-0 text-break">
-                                    <a href="{{ route('roles.edit', $role->getKey()) }}" class="link-dark text-decoration-none">
-                                        {{ $role->TenVaiTro }}
-                                    </a>
-                                </h3>
+                            <h3 class="h6 fw-bold mb-2 text-break">{{ $role->TenVaiTro }}</h3>
+                            <div class="d-flex align-items-center flex-wrap gap-2 small">
                                 <span class="badge {{ $isBuiltIn ? 'bg-primary-subtle text-primary' : 'bg-info-subtle text-info-emphasis' }}">
                                     {{ $isBuiltIn ? 'Có sẵn' : 'Tùy chỉnh' }}
                                 </span>
-                            </div>
-                            <div class="small mt-1">
                                 <x-admin.status-badge
                                     :status="$role->TrangThai"
                                     :enum="\App\Enums\RecordStatus::class"
@@ -91,7 +84,6 @@
                             </button>
                             <ul class="dropdown-menu dropdown-menu-end">
                                 <li><a class="dropdown-item" href="{{ route('roles.edit', $role->getKey()) }}#role-info"><i class="bi bi-pencil me-2"></i>Chỉnh sửa nhóm</a></li>
-                                <li><a class="dropdown-item" href="{{ route('roles.edit', $role->getKey()) }}"><i class="bi bi-eye me-2"></i>Xem chi tiết</a></li>
                                 @if(! $role->isOwner())
                                     <li><hr class="dropdown-divider"></li>
                                     <li>

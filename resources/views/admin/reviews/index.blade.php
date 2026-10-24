@@ -95,7 +95,10 @@
                         <td>{{ $review->NgayDanhGia?->format('d/m/Y H:i') ?? '—' }}</td>
                         <td><span class="fw-semibold text-dark">{{ $review->donHang?->MaDonHang ?: '—' }}</span></td>
                         <td>
-                            <span class="fw-semibold">{{ $review->khachHang?->HoTen ?: '—' }}</span>
+                            <div class="d-flex align-items-center gap-2">
+                                <x-admin.customer-avatar :customer="$review->khachHang" />
+                                <span class="fw-semibold">{{ $review->khachHang?->HoTen ?: '—' }}</span>
+                            </div>
                         </td>
                         <td>
                             <div class="text-warning">

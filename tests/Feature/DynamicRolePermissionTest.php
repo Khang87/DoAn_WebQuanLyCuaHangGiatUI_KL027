@@ -434,6 +434,37 @@ class DynamicRolePermissionTest extends TestCase
         $this->assertDatabaseMissing('TaiKhoan', ['Email' => 'wrong-customer-profile@example.test']);
     }
 
+    public function test_role_cards_separate_titles_from_badges_and_keep_only_secondary_menu_actions(): void
+    {
+        $ownerRole = $this->createRole('Chủ cửa hàng');
+        $owner = $this->createAccount($ownerRole);
+        $customRole = $this->createRole('Nhóm kiểm thử với tên dài');
+        $customRole->update(['TrangThai' => 'Ngừng hoạt động']);
+
+        $html = $this->actingAs($owner)->get(route('roles.index'))->assertOk()->getContent();
+        $document = new \DOMDocument;
+        @$document->loadHTML('<?xml encoding="UTF-8">'.$html);
+        $xpath = new \DOMXPath($document);
+        $cards = $xpath->query('//article');
+
+        $this->assertCount(2, $cards);
+        foreach ($cards as $card) {
+            $this->assertStringNotContainsString('STT', $card->textContent);
+            $this->assertSame(0, $xpath->query('.//h3//a | .//h3//span', $card)->length);
+            $this->assertSame(2, $xpath->query('.//h3/following-sibling::div//span[contains(@class, "badge")]', $card)->length);
+            $this->assertSame(1, $xpath->query('.//a[contains(normalize-space(.), "Xem chi tiết nhóm")]', $card)->length);
+            $this->assertSame(0, $xpath->query('.//ul//a[contains(normalize-space(.), "Xem chi tiết")]', $card)->length);
+            $this->assertSame(1, $xpath->query('.//ul//a[contains(normalize-space(.), "Chỉnh sửa nhóm") and contains(@href, "#role-info")]', $card)->length);
+        }
+
+        $this->assertSame(0, $xpath->query('//form[@action="'.route('roles.destroy', $ownerRole).'"]')->length);
+        $this->assertSame(1, $xpath->query('//form[@action="'.route('roles.destroy', $customRole).'"]//input[@name="_method" and @value="DELETE"]')->length);
+        $this->assertStringContainsString('Có sẵn', $html);
+        $this->assertStringContainsString('Tùy chỉnh', $html);
+        $this->assertStringContainsString('Đang hoạt động', $html);
+        $this->assertStringContainsString('Ngừng hoạt động', $html);
+    }
+
     public function test_role_cards_show_assigned_permissions_and_refresh_after_role_update(): void
     {
         $owner = $this->createAccount($this->createRole('Chủ cửa hàng'));

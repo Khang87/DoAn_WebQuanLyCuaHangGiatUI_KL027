@@ -54,7 +54,12 @@
                     <tr>
                         <td>{{ $invoices->firstItem() + $loop->index }}</td>
                         <td><strong>{{ $invoice->MaHoaDon }}</strong></td>
-                        <td>{{ $invoice->donHang?->khachHang?->HoTen ?: '-' }}</td>
+                        <td>
+                            <div class="d-flex align-items-center gap-2">
+                                <x-admin.customer-avatar :customer="$invoice->donHang?->khachHang" />
+                                <span>{{ $invoice->donHang?->khachHang?->HoTen ?: '-' }}</span>
+                            </div>
+                        </td>
                         <td>
                             @if($invoice->donHang)
                                 {{ $invoice->donHang->MaDonHang }}
@@ -77,11 +82,9 @@
                                 @can('invoices.view')
                                     <a href="{{ route('invoices.show', $invoice) }}" class="btn btn-order-action view" title="Xem"><i class="bi bi-eye"></i></a>
                                 @endcan
-                                @if(auth()->user()?->canPermission('invoices.edit_paid'))
-                                    @can('invoices.edit')
-                                        <a href="{{ route('invoices.edit', $invoice) }}" class="btn btn-order-action edit" title="Sửa hóa đơn đã thanh toán (Chủ cửa hàng)"><i class="bi bi-pencil"></i></a>
-                                    @endcan
-                                @endif
+                                @can('invoices.view')
+                                    <a href="{{ route('invoices.show', [$invoice, 'print' => 1]) }}" class="btn btn-order-action view" title="In hóa đơn" aria-label="In hóa đơn" target="_blank" rel="noopener"><i class="bi bi-printer" aria-hidden="true"></i></a>
+                                @endcan
                             </div>
                         </td>
                     </tr>

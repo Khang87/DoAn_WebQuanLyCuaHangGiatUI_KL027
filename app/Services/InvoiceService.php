@@ -46,7 +46,7 @@ class InvoiceService
             });
         }
 
-        return $query->with('donHang.khachHang')->orderBy('NgayLap', 'desc')->paginate(10);
+        return $query->with('donHang.khachHang.taiKhoan:TaiKhoanID,KhachHangID,AvatarURL')->orderBy('NgayLap', 'desc')->paginate(10);
     }
 
     public function find(int|string $id): ?HoaDon
@@ -135,6 +135,10 @@ class InvoiceService
             }
             $invoice = HoaDon::query()->lockForUpdate()->findOrFail($invoice->getKey());
 
+            if ($invoice->isPaid()) {
+                throw new SettledOrderException('Hóa đơn '.$invoice->MaHoaDon.' đã thanh toán nên không thể chỉnh sửa.');
+            }
+
             $data['TrangThai'] = InvoiceStatus::parse($data['TrangThai'] ?? $data['status'] ?? $invoice->TrangThai)->value;
             $data['NgayLap'] = $data['NgayLap'] ?? $data['invoice_date'] ?? $invoice->NgayLap;
             $data['GhiChu'] = $data['GhiChu'] ?? $data['notes'] ?? null;
@@ -156,12 +160,7 @@ class InvoiceService
         });
     }
 
-    /**
-     * HÓA ĐƠN ĐÃ THANH TOÁN LÀ CHỐT SỐ TIỀN: CHỈ CHO SỬA GHI CHÚ, MỌI THAY ĐỔI
-     * VỀ KHOẢN TIỀN HOẶC ĐÁNH DẤU LẠI LÀ CHƯA THANH TOÁN ĐƯỢC BỊ TỪ CHỐI.
-     *
-     * @param  array<string, mixed>  $data
-     */
+    // Giữ nguyên số tiền đã thu kể cả khi trạng thái hóa đơn chưa đồng bộ.
     private function guardSettledInvoice(HoaDon $invoice, array $data): void
     {
         if (! $invoice->isPaid() && ! $this->hasFinalPayment($invoice)) {

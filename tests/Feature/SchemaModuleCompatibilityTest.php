@@ -4,8 +4,10 @@ namespace Tests\Feature;
 
 use App\Enums\BookingStatus;
 use App\Enums\InvoiceStatus;
+use App\Enums\OrderStatus;
 use App\Enums\PaymentStatus;
 use App\Models\Booking;
+use App\Models\DanhGia;
 use App\Models\DiemTichLuy;
 use App\Models\DonHang;
 use App\Models\HoaDon;
@@ -268,7 +270,7 @@ class SchemaModuleCompatibilityTest extends TestCase
             $customer->setRelation('diemTichLuy', (new DiemTichLuy)->forceFill(['DiemHienTai' => 0]));
             $order = (new DonHang)->forceFill([
                 'DonHangID' => 1, 'MaDonHang' => 'DH-AVATAR',
-                'TrangThai' => \App\Enums\OrderStatus::Received->value,
+                'TrangThai' => OrderStatus::Received->value,
                 'has_paid_invoice' => false, 'has_successful_payment' => false,
             ]);
             $order->setRelation('khachHang', $customer);
@@ -292,6 +294,42 @@ class SchemaModuleCompatibilityTest extends TestCase
                     $this->assertStringContainsString('src="'.($profileAvatar ?: $accountAvatar).'"', $html);
                 } else {
                     $this->assertMatchesRegularExpression('/aria-label="Ảnh đại diện của Khách avatar">\s*<span aria-hidden="true"\s*>\s*K\s*<\/span>\s*<\/span>/u', $html);
+                }
+            }
+        }
+    }
+
+    public function test_invoice_and_review_lists_display_customer_avatars_and_handle_missing_customers(): void
+    {
+        foreach ([['https://example.test/mobile.jpg', 'https://example.test/account.jpg'], [null, 'https://example.test/account.jpg'], [null, null], [null, null, true]] as $scenario) {
+            [$profileAvatar, $accountAvatar] = $scenario;
+            $customer = ($scenario[2] ?? false) ? null : $this->customer($profileAvatar, $accountAvatar);
+            $customer?->forceFill(['HoTen' => 'Khách avatar']);
+            $order = (new DonHang)->forceFill(['DonHangID' => 1, 'MaDonHang' => 'DH-AVATAR']);
+            $order->setRelation('khachHang', $customer);
+            $invoice = (new HoaDon)->forceFill(['HoaDonID' => 1, 'MaHoaDon' => 'HD-AVATAR', 'TrangThai' => InvoiceStatus::Paid->value]);
+            $invoice->setRelation('donHang', $order);
+            $review = (new DanhGia)->forceFill(['DanhGiaID' => 1, 'SoSao' => 5, 'TrangThai' => 'Hiển thị']);
+            $review->setRelation('donHang', $order);
+            $review->setRelation('khachHang', $customer);
+
+            foreach ([
+                ['admin.invoices.index', ['invoices' => new LengthAwarePaginator([$invoice], 1, 10)]],
+                ['admin.reviews.index', ['reviews' => new LengthAwarePaginator([$review], 1, 10), 'averageRating' => 5, 'totalReviews' => 1]],
+            ] as [$view, $data]) {
+                $html = view($view, $data)->render();
+                $label = $customer ? 'Ảnh đại diện của Khách avatar' : 'Ảnh đại diện khách hàng';
+                $this->assertStringContainsString('aria-label="'.$label.'"', $html);
+                $this->assertStringContainsString('width: 40px; height: 40px;', $html);
+                if ($profileAvatar || $accountAvatar) {
+                    $this->assertStringContainsString('src="'.($profileAvatar ?: $accountAvatar).'"', $html);
+                    if ($profileAvatar) {
+                        $this->assertStringNotContainsString('src="'.$accountAvatar.'"', $html);
+                    }
+                } elseif ($customer) {
+                    $this->assertMatchesRegularExpression('/aria-label="'.preg_quote($label, '/').'">\s*<span aria-hidden="true"\s*>\s*K\s*<\/span>\s*<\/span>/u', $html);
+                } else {
+                    $this->assertStringContainsString('bi bi-person', $html);
                 }
             }
         }

@@ -41,7 +41,7 @@ class ReviewService
         $sortBy = in_array($filters['sort_by'] ?? null, $allowedSorts, true) ? $filters['sort_by'] : 'NgayDanhGia';
         $sortOrder = ($filters['sort_order'] ?? 'desc') === 'asc' ? 'asc' : 'desc';
 
-        return $query->with(['khachHang', 'donHang'])
+        return $query->with(['khachHang.taiKhoan:TaiKhoanID,KhachHangID,AvatarURL', 'donHang'])
             ->orderBy($sortBy, $sortOrder)
             ->orderByDesc('DanhGiaID')
             ->paginate(10);

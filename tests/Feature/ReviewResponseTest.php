@@ -69,6 +69,24 @@ class ReviewResponseTest extends TestCase
         ]);
     }
 
+    public function test_review_list_eager_loads_the_customer_account_avatar(): void
+    {
+        Schema::create('TaiKhoan', function (Blueprint $table): void {
+            $table->increments('TaiKhoanID');
+            $table->unsignedInteger('KhachHangID');
+            $table->string('AvatarURL')->nullable();
+        });
+        DB::table('TaiKhoan')->insert([
+            'KhachHangID' => 7,
+            'AvatarURL' => 'https://example.test/account.jpg',
+        ]);
+
+        $review = app(ReviewService::class)->getAll()->first();
+
+        $this->assertTrue($review->khachHang->relationLoaded('taiKhoan'));
+        $this->assertSame('https://example.test/account.jpg', $review->khachHang->taiKhoan->AvatarURL);
+    }
+
     public function test_response_is_saved_and_remains_available_after_a_fresh_query(): void
     {
         $this->from(route('reviews.show', 3))
