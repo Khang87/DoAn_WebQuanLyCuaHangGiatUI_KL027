@@ -143,10 +143,10 @@ test('browser → HTTP → PostgreSQL business flows with real session, CSRF and
             }
             assert.deepEqual(state('order',cases.legacy),before,'Display-only edits never write PostgreSQL');
         });
-        await t.test('E2E-07: voucher then points leave both delivery fees payable', async () => {
+        await t.test('E2E-07: voucher then points can cover delivery fees', async () => {
             const {before, saved} = await inspect('voucher', {measurement:'10',points:true});
             const o=saved.orders[0];
-            assert.deepEqual([o.TongTien,o.TienGiamKhuyenMai,o.DiemSuDung,o.TienGiamDoDiem,o.PhiGiaoHang,o.ThanhTien].map(Number), [100000,10000,90000,90000,30000,30000]);
+            assert.deepEqual([o.TongTien,o.TienGiamKhuyenMai,o.DiemSuDung,o.TienGiamDoDiem,o.PhiGiaoHang,o.ThanhTien].map(Number), [100000,10000,100000,100000,30000,20000]);
             assert.equal(before.balance-saved.balance,90000);
             assert.equal(saved.legs.length,2);
         });

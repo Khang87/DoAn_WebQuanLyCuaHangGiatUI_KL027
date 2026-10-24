@@ -653,7 +653,7 @@ class RewardPointTest extends TestCase
         $this->assertEquals(0, DB::table('KhuyenMai')->value('SoLuongSuDung'));
     }
 
-    public function test_reserved_promotion_is_applied_before_points_and_delivery_fees_are_added_after_discounts(): void
+    public function test_reserved_promotion_is_applied_before_points_and_points_can_cover_delivery_fees(): void
     {
         $customer = $this->createCustomer(1, 500);
         $booking = $this->createBooking($customer);
@@ -663,10 +663,10 @@ class RewardPointTest extends TestCase
         $this->actingAsBookingEmployee();
         $order = $this->createOrderThroughInspection($booking, [array_merge($this->orderItem(), ['TinhTrangTruocKhiGiat' => 'Bình thường'])]);
         $this->assertSame(9900.0, $order->TienGiamKhuyenMai);
-        $this->assertSame(100, $order->DiemSuDung);
+        $this->assertSame(500, $order->DiemSuDung);
         $this->assertSame(2000.0, $order->PhiGiaoHang);
-        $this->assertSame(2000.0, $order->ThanhTien);
-        $this->assertSame(400, $customer->fresh()->points());
+        $this->assertSame(1600.0, $order->ThanhTien);
+        $this->assertSame(0, $customer->fresh()->points());
         $this->assertFalse($booking->fresh()->KhuyenMaiDaTru);
     }
 

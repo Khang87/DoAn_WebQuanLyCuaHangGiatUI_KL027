@@ -83,7 +83,7 @@ class OrderService
      *   Tạm tính            = Σ (số lượng hoặc kg × Đơn giá lịch sử theo BangGia)
      *   Tiền giảm khuyến mãi = KhuyenMai::calculateDiscount(Tạm tính)
      *   Tiền giảm do điểm    = số điểm dùng × POINT_VALUE
-     *   Tổng thanh toán      = max(0, Tạm tính - giảm khuyến mãi - giảm điểm) + phí giao hàng
+     *   Tổng thanh toán      = max(0, Tạm tính - giảm khuyến mãi - giảm điểm + phí giao hàng)
      *
      * Mỗi khoản giảm được chặn tối đa bằng số tiền còn lại để tổng không âm.
      *
@@ -98,7 +98,8 @@ class OrderService
             : 0.0;
 
         // Không cho dùng vượt số điểm khách đang có.
-        $remaining = max(0, $subtotal - $discountByPromotion);
+        $deliveryFee = max(0, $deliveryFee);
+        $remaining = max(0, $subtotal - $discountByPromotion + $deliveryFee);
         $redeemablePoints = (int) floor($remaining / self::POINT_VALUE);
         $effectivePoints = max(0, min($pointsUsed, $customerPoints, $redeemablePoints));
         $discountByPoints = $effectivePoints * self::POINT_VALUE;
@@ -109,7 +110,7 @@ class OrderService
             'DiemSuDung' => $effectivePoints,
             'TienGiamDoDiem' => round($discountByPoints, 2),
             'PhiGiaoHang' => round(max(0, $deliveryFee), 2),
-            'ThanhTien' => round(max(0, $subtotal - $discountByPromotion - $discountByPoints) + max(0, $deliveryFee), 2),
+            'ThanhTien' => round(max(0, $subtotal - $discountByPromotion - $discountByPoints + $deliveryFee), 2),
         ];
     }
 

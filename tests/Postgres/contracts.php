@@ -78,14 +78,14 @@ try {
     pgReject(fn () => app(BookingService::class)->inspectBookingAndCreateOrder($booking, 2, pgItems()), 'Inactive staff cannot receive assignment', 'NhanVienID');
     pgExpect(DonHang::count(), $before, 'Rejected assignment creates no Order');
 
-    // Redeemed points cover only services after voucher, never either delivery fee.
+    // Redeemed points cover services after voucher, then can cover delivery fees.
     DB::table('DiemTichLuy')->where('KhachHangID', 1)->update(['DiemHienTai' => 100000]);
     $promotion = KhuyenMai::create(['MaKhuyenMai' => 'LOCAL-VOUCHER', 'TenKhuyenMai' => 'Local voucher', 'LoaiKhuyenMai' => 'Tiền mặt', 'GiaTriGiam' => 10000, 'NgayBatDau' => today(), 'NgayKetThuc' => today()->addDay(), 'TrangThai' => 'Hoạt động']);
     $booking = pgBooking('Tại nhà', 'Tại nhà');
     DB::table('Booking')->where('BookingID', $booking->getKey())->update(['KhuyenMaiID' => $promotion->getKey(), 'PickupDeliveryFee' => 10000, 'DeliveryFee' => 20000]);
     $order = app(BookingService::class)->inspectBookingAndCreateOrder($booking->fresh(), 1, pgItems(2, 10), 100000);
-    pgExpect([$order->TongTien, $order->TienGiamKhuyenMai, $order->DiemSuDung, $order->TienGiamDoDiem, $order->PhiGiaoHang, $order->ThanhTien], [100000.0, 10000.0, 90000, 90000.0, 30000.0, 30000.0], 'Voucher precedes points; both fees remain payable');
-    pgExpect((int) DB::table('DiemTichLuy')->where('KhachHangID', 1)->value('DiemHienTai'), 10000, 'Actual redemption capped by remaining services');
+    pgExpect([$order->TongTien, $order->TienGiamKhuyenMai, $order->DiemSuDung, $order->TienGiamDoDiem, $order->PhiGiaoHang, $order->ThanhTien], [100000.0, 10000.0, 100000, 100000.0, 30000.0, 20000.0], 'Voucher precedes points; points also cover delivery fees');
+    pgExpect((int) DB::table('DiemTichLuy')->where('KhachHangID', 1)->value('DiemHienTai'), 0, 'Actual redemption consumes only the available points');
 
     // Partial Web collection is rejected; customers must wait until delivery.
     $prepaid = app(BookingService::class)->inspectBookingAndCreateOrder(pgBooking(), 1, pgItems());
