@@ -95,8 +95,13 @@
                     <tr>
                         <td>{{ $accounts->firstItem() + $loop->index }}</td>
                         <td>
-                            <strong class="fw-semibold text-dark">{{ $account->name }}</strong>
-                            <br><small class="text-muted">{{ $account->Email }}</small>
+                            <div class="d-flex align-items-center gap-2">
+                                <x-admin.customer-avatar :url="$account->AvatarURL" :name="$account->name ?: $account->TenDangNhap" />
+                                <div class="min-w-0">
+                                    <strong class="fw-semibold text-dark d-block text-truncate">{{ $account->name }}</strong>
+                                    <small class="text-muted d-block text-break">{{ $account->Email }}</small>
+                                </div>
+                            </div>
                         </td>
                         <td>
                             @if($account->UserAuthId)

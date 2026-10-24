@@ -24,8 +24,8 @@
             </span>
         @endif
     </div>
-    <a href="{{ route('roles.index') }}" class="btn btn-outline-secondary">
-        <i class="bi bi-arrow-left me-1"></i>Danh sách nhóm quyền
+    <a href="{{ route('roles.index') }}" class="btn btn-outline-secondary btn-sm flex-shrink-0">
+        <i class="bi bi-arrow-left me-1"></i>Quay lại
     </a>
 </div>
 
@@ -191,14 +191,10 @@
                     @foreach($members as $member)
                         @php
                             $memberName = $member->nhanVien?->HoTen ?: $member->khachHang?->HoTen ?: $member->TenDangNhap;
-                            $memberInitials = mb_strtoupper(mb_substr($memberName, 0, 1));
                         @endphp
                         <div class="list-group-item px-0 d-flex align-items-center justify-content-between gap-3">
                             <div class="d-flex align-items-center gap-3 min-w-0">
-                                <div class="rounded-circle bg-primary-subtle text-primary fw-semibold d-flex align-items-center justify-content-center flex-shrink-0"
-                                     style="width: 44px; height: 44px;" aria-hidden="true">
-                                    {{ $memberInitials ?: '?' }}
-                                </div>
+                                <x-admin.customer-avatar :url="$member->AvatarURL" :name="$memberName" :size="44" />
                                 <div class="min-w-0">
                                     <div class="fw-semibold text-truncate">{{ $memberName }}</div>
                                     <div class="small text-muted text-break">{{ $member->Email ?: $member->TenDangNhap }}</div>

@@ -16,7 +16,9 @@ use App\Models\TaiKhoan;
 use App\Models\ThanhToan;
 use App\Models\ThongBao;
 use App\Models\TinNhan;
+use App\Models\User;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\ViewErrorBag;
 use Tests\TestCase;
 
 class SchemaModuleCompatibilityTest extends TestCase
@@ -43,6 +45,7 @@ class SchemaModuleCompatibilityTest extends TestCase
         ])->render();
 
         $this->assertStringContainsString('DL-REFERENCE-1', $html);
+        $this->assertStringContainsString('aria-label="Ảnh đại diện khách hàng"', $html);
         $this->assertStringContainsString('name="search"', $html);
         $this->assertStringContainsString('Tìm theo mã lịch', $html);
         $this->assertMatchesRegularExpression('/<th[^>]*>STT<\/th>\s*<th[^>]*>Booking<\/th>/u', $html);
@@ -71,6 +74,37 @@ class SchemaModuleCompatibilityTest extends TestCase
         ])->render();
 
         $this->assertStringContainsString('colspan="8"', $html);
+    }
+
+    public function test_account_list_and_role_members_show_account_avatars(): void
+    {
+        $account = new User;
+        $account->setRawAttributes([
+            'TaiKhoanID' => 7,
+            'TenDangNhap' => 'account-seven',
+            'Email' => 'account@example.test',
+            'AvatarURL' => 'https://example.test/google.jpg',
+            'TrangThai' => 'Hoạt động',
+        ]);
+        $account->setRelation('nhanVien', null);
+        $account->setRelation('khachHang', null);
+        $account->setRelation('vaiTros', collect());
+
+        $html = view('admin.accounts.index', [
+            'accounts' => new LengthAwarePaginator(collect([$account]), 1, 10),
+            'roles' => collect(),
+            'canManageRoles' => true,
+            'errors' => new ViewErrorBag,
+        ])->render();
+
+        $this->assertStringContainsString('aria-label="Ảnh đại diện của account-seven"', $html);
+        $this->assertStringContainsString('src="https://example.test/google.jpg"', $html);
+        $this->assertStringContainsString('account@example.test', $html);
+
+        $roleForm = (string) file_get_contents(resource_path('views/admin/roles/form.blade.php'));
+        $this->assertStringContainsString('<x-admin.customer-avatar :url="$member->AvatarURL" :name="$memberName" :size="44" />', $roleForm);
+        $this->assertStringNotContainsString('Danh sách nhóm quyền', $roleForm);
+        $this->assertStringContainsString('>Quay lại', $roleForm);
     }
 
     public function test_mobile_customer_avatar_has_priority_over_account_avatar(): void

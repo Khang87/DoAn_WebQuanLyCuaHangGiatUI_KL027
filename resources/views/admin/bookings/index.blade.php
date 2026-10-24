@@ -53,7 +53,15 @@
                     <tr>
                         <td>{{ $bookings->firstItem() + $loop->index }}</td>
                         <td class="text-nowrap fw-semibold">{{ $booking->MaBooking ?: '—' }}</td>
-                        <td><div class="fw-semibold">{{ $booking->khachHang?->HoTen ?: '-' }}</div><small class="text-muted">{{ $booking->khachHang?->SoDienThoai ?: 'Chưa có SĐT' }}</small></td>
+                        <td>
+                            <div class="d-flex align-items-center gap-2">
+                                <x-admin.customer-avatar :customer="$booking->khachHang" />
+                                <div>
+                                    <div class="fw-semibold">{{ $booking->khachHang?->HoTen ?: '-' }}</div>
+                                    <small class="text-muted">{{ $booking->khachHang?->SoDienThoai ?: 'Chưa có SĐT' }}</small>
+                                </div>
+                            </div>
+                        </td>
                         <td>{{ $booking->nhanVien?->HoTen ?: 'Chưa phân công' }}</td>
                         <td>
                             <i class="bi {{ $booking->method_icon }} me-1"></i>Nhận: {{ $booking->method_label }}<br><small>Trả: {{ $booking->return_method_label }}</small>
