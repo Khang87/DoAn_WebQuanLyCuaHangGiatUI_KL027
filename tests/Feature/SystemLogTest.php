@@ -60,6 +60,13 @@ class SystemLogTest extends TestCase
             $table->boolean('DaDoc')->default(false);
         });
 
+        Schema::create('DonHang', function (Blueprint $table): void {
+            $table->increments('DonHangID');
+            $table->string('MaDonHang');
+        });
+
+        DB::table('DonHang')->insert(['DonHangID' => 24, 'MaDonHang' => 'DH0024']);
+
         Schema::create('NhatKyHeThong', function (Blueprint $table): void {
             $table->increments('NhatKyID');
             $table->unsignedInteger('TaiKhoanID')->nullable();
@@ -107,6 +114,31 @@ class SystemLogTest extends TestCase
             ->get(route('admin.system-logs.index'))
             ->assertOk()
             ->assertSee('Hệ thống');
+    }
+
+    public function test_log_row_shows_target_record_code_and_one_line_timestamp(): void
+    {
+        $owner = $this->createAccount('owner');
+        $this->assignRole($owner, 'Owner');
+        NhatKyHeThong::query()->create([
+            'TaiKhoanID' => $owner->TaiKhoanID,
+            'HanhDong' => 'Chuyển trạng thái đơn hàng',
+            'BangDuLieu' => 'DonHang',
+            'BanGhiID' => 24,
+            'ThoiGian' => '2026-10-24 19:04:57',
+        ]);
+
+        $html = $this->actingAs($owner)
+            ->get(route('admin.system-logs.index'))
+            ->assertOk()
+            ->getContent();
+
+        preg_match('/<tbody>(.*?)<\/tbody>/s', $html, $tableBody);
+        $this->assertNotEmpty($tableBody);
+        $this->assertStringContainsString('DH0024', $tableBody[1]);
+        $this->assertStringContainsString('24/10/2026 19:04:57', $tableBody[1]);
+        $this->assertStringNotContainsString('font-monospace', $html);
+        $this->assertStringContainsString('bg-success-subtle text-success-emphasis', $tableBody[1]);
     }
 
     public function test_view_receives_accounts_with_only_the_required_dropdown_attributes(): void

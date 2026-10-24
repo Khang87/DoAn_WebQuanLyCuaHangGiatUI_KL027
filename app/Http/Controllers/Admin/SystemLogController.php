@@ -44,8 +44,11 @@ class SystemLogController extends Controller
             $query->whereDate('ThoiGian', '<=', $filters['to']);
         }
 
+        $logs = $query->orderByDesc('ThoiGian')->orderByDesc('NhatKyID')->paginate(30)->withQueryString();
+
         return view('admin.system_logs.index', [
-            'logs' => $query->orderByDesc('ThoiGian')->orderByDesc('NhatKyID')->paginate(30)->withQueryString(),
+            'logs' => $logs,
+            'targetCodes' => NhatKyHeThong::targetCodes($logs->getCollection()),
             'filters' => $filters,
             'accounts' => TaiKhoan::query()
                 ->select(['TaiKhoanID', 'TenDangNhap'])

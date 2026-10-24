@@ -171,14 +171,7 @@
                     @forelse($logs as $log)
                         <tr>
                             <td>{{ $logs->firstItem() + $loop->index }}</td>
-                            <td class="text-nowrap px-3 py-2">
-                                @if($log->ThoiGian)
-                                    <div class="fw-normal font-monospace">{{ $log->ThoiGian->format('d/m/Y') }}</div>
-                                    <div class="small fw-normal font-monospace text-muted mt-1">{{ $log->ThoiGian->format('H:i:s') }}</div>
-                                @else
-                                    <span class="fw-normal text-muted">—</span>
-                                @endif
-                            </td>
+                            <td class="text-nowrap">{{ $log->ThoiGian?->format('d/m/Y H:i:s') ?: '—' }}</td>
                             <td>
                                 @if($log->TaiKhoanID === null)
                                     <span class="badge bg-secondary-subtle text-secondary-emphasis">Hệ thống</span>
@@ -186,8 +179,13 @@
                                     {{ $log->taiKhoan?->TenDangNhap ?: 'Tài khoản #'.$log->TaiKhoanID }}
                                 @endif
                             </td>
-                            <td>{{ $log->HanhDong }}</td>
-                            <td><span class="badge bg-light text-dark border">{{ $log->BangDuLieuLabel }}</span></td>
+                            <td>
+                                {{ $log->HanhDong }}
+                                @if($log->BanGhiID)
+                                    <span class="text-muted ms-1">· {{ $targetCodes[$log->NhatKyID] ?? '#'.$log->BanGhiID }}</span>
+                                @endif
+                            </td>
+                            <td><span class="badge {{ \App\Models\NhatKyHeThong::toneForBang((string) $log->BangDuLieu) }}">{{ $log->BangDuLieuLabel }}</span></td>
                             <td>
                                 @if($log->DuLieuCu || $log->DuLieuMoi || $log->LyDo)
                                     <details>
