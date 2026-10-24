@@ -20,6 +20,7 @@ use App\Services\CatalogAvailability;
 use App\Services\NotificationService;
 use App\Services\OrderService;
 use App\Services\PricingService;
+use App\Support\OrderWorkflow;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Route;
@@ -379,14 +380,25 @@ class CatalogAvailabilityTest extends TestCase
         $this->assertSame([1], $create['services']->pluck('DichVuID')->all());
         $this->assertSame([1], $create['garments']->pluck('LoaiDoGiatID')->all());
         $edit = app(DonHangController::class)->edit($request, $order->getKey())->getData();
-        $show = app(DonHangController::class)->show($order->getKey())->getData();
-        foreach ([$edit, $show] as $data) {
-            $this->assertSame([1, 3], $data['services']->pluck('DichVuID')->all());
-            $this->assertSame([1, 3], $data['garments']->pluck('LoaiDoGiatID')->all());
-        }
+        $this->assertSame([1, 3], $edit['services']->pluck('DichVuID')->all());
+        $this->assertSame([1, 3], $edit['garments']->pluck('LoaiDoGiatID')->all());
         $this->assertSame([1, 2], $edit['serviceCategories']->pluck('LoaiDichVuID')->all());
-        $this->assertSame([1, 2], $show['garmentCategories']->pluck('DanhMucID')->all());
-        $this->assertCount(3, $show['inspectionPricings']);
+
+        // Màn chi tiết mặc định chỉ xem thông tin, nên không dựng danh mục nhập.
+        $show = app(DonHangController::class)->show($order->getKey())->getData();
+        $this->assertEmpty($show['services']);
+        $this->assertEmpty($show['garments']);
+
+        // Tùy chọn kiểm tra thực tế chỉ hiện khi mở đúng ý định tiếp nhận
+        // từ cột Thao tác của danh sách.
+        $this->app->instance('request', Request::create('/orders/'.$order->getKey(), 'GET', [
+            'action' => OrderWorkflow::INTENT_RECEIVING,
+        ]));
+        $receiving = app(DonHangController::class)->show($order->getKey())->getData();
+        $this->assertSame([1, 3], $receiving['services']->pluck('DichVuID')->all());
+        $this->assertSame([1, 3], $receiving['garments']->pluck('LoaiDoGiatID')->all());
+        $this->assertSame([1, 2], $receiving['garmentCategories']->pluck('DanhMucID')->all());
+        $this->assertCount(3, $receiving['inspectionPricings']);
     }
 
     public function test_booking_and_staff_catalogs_keep_only_own_suspended_selections(): void

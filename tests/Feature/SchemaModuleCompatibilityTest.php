@@ -58,6 +58,7 @@ class SchemaModuleCompatibilityTest extends TestCase
         $booking->MaBooking = '<script>alert(1)</script>';
         $escapedHtml = view('admin.bookings.index', [
             'bookings' => new LengthAwarePaginator(collect([$booking]), 1, 10),
+            'inspectableBookingIds' => [],
         ])->render();
         $this->assertStringContainsString(e($booking->MaBooking), $escapedHtml);
         $this->assertStringNotContainsString($booking->MaBooking, $escapedHtml);
