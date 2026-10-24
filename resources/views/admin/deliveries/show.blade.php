@@ -80,7 +80,7 @@
 <x-admin.detail.page-header
     title="Chi tiết phiếu giao nhận"
     :subtitle="$displayCode . ' · ' . ($delivery->LoaiGiaoNhan === 'NHAN_DO' ? 'Nhận đồ' : 'Giao đồ') . ' · ' . ($delivery->ThoiGianDuKien?->format('d/m/Y') ?: 'Chưa hẹn ngày')"
-    backUrl="{{ route('deliveries.index') }}"
+    backUrl="{{ \App\Support\OrderWorkflow::listBackUrl(route('deliveries.index')) }}"
 >
     <x-slot:badge>
         <x-admin.status-badge :status="\App\Enums\DeliveryStatus::parseForLeg($delivery->TrangThai, $delivery->LoaiGiaoNhan)" :enum="\App\Enums\DeliveryStatus::class" />

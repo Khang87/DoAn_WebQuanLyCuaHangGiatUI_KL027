@@ -29,7 +29,7 @@
 <x-admin.detail.page-header
     title="Hóa đơn {{ $invoice->MaHoaDon }}"
     :subtitle="$invoice->NgayLap?->format('d/m/Y')"
-    backUrl="{{ route('invoices.index') }}"
+    backUrl="{{ \App\Support\OrderWorkflow::listBackUrl(route('invoices.index')) }}"
 >
     <x-slot:badge>
         <x-admin.status-badge :status="$invoice->TrangThai" :enum="\App\Enums\InvoiceStatus::class" />

@@ -62,9 +62,10 @@
     $selectedAddress ??= old('address');
     $lockDeliveryType ??= false;
     $statusOptions ??= \App\Enums\DeliveryStatus::options();
+    $backUrl ??= route('deliveries.index');
 @endphp
 <div class="card"><div class="card-body">
-    <div class="d-flex justify-content-between align-items-center mb-4"><h5 class="mb-0">Thông tin lịch giao nhận</h5><a href="{{ route('deliveries.index') }}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left me-1"></i>Quay lại</a></div>
+    <div class="d-flex justify-content-between align-items-center mb-4"><h5 class="mb-0">Thông tin lịch giao nhận</h5><a href="{{ $backUrl }}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left me-1"></i>Quay lại</a></div>
     <form action="{{ route('deliveries.store') }}" method="POST" data-booking-prefill>@csrf
         @if($errors->any())
             <div class="alert alert-danger" role="alert"><ul class="mb-0">@foreach($errors->all() as $message)<li>{{ $message }}</li>@endforeach</ul></div>

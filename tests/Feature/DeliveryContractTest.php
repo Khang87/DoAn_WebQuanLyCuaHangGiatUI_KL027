@@ -1660,7 +1660,10 @@ class DeliveryContractTest extends TestCase
             DonHang::findOrFail(1),
         );
 
-        $this->assertSame(route('deliveries.edit', $delivery), $response->getTargetUrl());
+        $this->assertSame(
+            route('deliveries.edit', [$delivery] + \App\Support\OrderWorkflow::listReturnParams()),
+            $response->getTargetUrl(),
+        );
         $this->assertSame(1, GiaoNhan::count());
         $this->assertSame(OrderStatus::Washed->value, DB::table('DonHang')->where('DonHangID', 1)->value('TrangThai'));
     }

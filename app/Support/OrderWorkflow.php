@@ -18,6 +18,32 @@ class OrderWorkflow
 {
     public const INTENT_RECEIVING = 'tiep-nhan';
 
+    public const LIST_RETURN_PARAM = 'from';
+
+    public const LIST_RETURN_VALUE = 'don-hang';
+
+    /**
+     * Tham số gắn vào liên kết tới màn hình khác mở ra từ cột "Thao tác" của
+     * danh sách đơn hàng, để nút "Quay lại" ở đích đưa người dùng về lại danh
+     * sách thay vì về danh sách của module khác.
+     *
+     * @return array<string, string>
+     */
+    public static function listReturnParams(): array
+    {
+        return [self::LIST_RETURN_PARAM => self::LIST_RETURN_VALUE];
+    }
+
+    /**
+     * @param  string  $fallback  đích "Quay lại" khi màn hình mở từ nơi khác
+     */
+    public static function listBackUrl(string $fallback): string
+    {
+        return request()->query(self::LIST_RETURN_PARAM) === self::LIST_RETURN_VALUE
+            ? route('orders.index')
+            : $fallback;
+    }
+
     /**
      * Bước kế tiếp trong chuỗi xử lý đơn, hoặc null khi đơn đã dừng.
      *

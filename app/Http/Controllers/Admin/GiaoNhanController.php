@@ -17,6 +17,7 @@ use App\Services\BookingService;
 use App\Services\DeliveryService;
 use App\Services\EmployeeAssignment;
 use App\Support\FriendlyError;
+use App\Support\OrderWorkflow;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -123,7 +124,10 @@ class GiaoNhanController extends Controller
             abort_unless($request->user()?->canPermission('deliveries.edit'), 403);
             $this->restrictToOwnDelivery($activeLeg, $user);
 
-            return redirect()->route('deliveries.edit', $activeLeg);
+            return redirect()->route(
+                'deliveries.edit',
+                [$activeLeg] + OrderWorkflow::listReturnParams(),
+            );
         }
 
         abort_unless($request->user()?->canPermission('deliveries.create'), 403);
@@ -173,6 +177,7 @@ class GiaoNhanController extends Controller
             'selectedAddress' => $selectedAddress,
             'lockDeliveryType' => true,
             'statusOptions' => ['pending' => DeliveryStatus::Pending->label()],
+            'backUrl' => route('orders.index'),
         ]);
     }
 

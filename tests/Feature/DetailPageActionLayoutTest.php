@@ -168,4 +168,35 @@ class DetailPageActionLayoutTest extends TestCase
         );
         $this->assertNull(DeliveryWorkflow::progressAction('GIAO_DO', 'Tại nhà', DeliveryStatus::Completed));
     }
+
+    public function test_pages_opened_from_the_order_list_return_to_the_order_list(): void
+    {
+        $this->assertStringContainsString(
+            'listReturnParams()',
+            $this->source('orders/index'),
+            'Cột Thao tác ở danh sách đơn hàng phải gắn ngữ cảnh quay lại vào liên kết sang màn hình khác.',
+        );
+
+        foreach (['payments/create', 'invoices/create'] as $view) {
+            $this->assertStringContainsString(
+                "\$preselectedOrder ? route('orders.index')",
+                $this->source($view),
+                "Màn $view mở từ đơn hàng phải quay lại danh sách đơn hàng.",
+            );
+        }
+
+        foreach (['invoices/show', 'deliveries/show', 'deliveries/edit'] as $view) {
+            $this->assertStringContainsString(
+                'OrderWorkflow::listBackUrl(',
+                $this->source($view),
+                "Màn $view dùng chung cho nhiều nơi nên phải tôn trọng ngữ cảnh quay lại.",
+            );
+        }
+
+        $invoicesIndex = route('invoices.index');
+        $this->assertSame($invoicesIndex, OrderWorkflow::listBackUrl($invoicesIndex));
+
+        request()->merge([OrderWorkflow::LIST_RETURN_PARAM => OrderWorkflow::LIST_RETURN_VALUE]);
+        $this->assertSame(route('orders.index'), OrderWorkflow::listBackUrl($invoicesIndex));
+    }
 }

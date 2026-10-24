@@ -131,7 +131,7 @@
                                     @if($order->hasActiveReturnDelivery()
                                         ? auth()->user()?->canPermission('deliveries.edit')
                                         : auth()->user()?->canPermission('deliveries.create'))
-                                        <a href="{{ route('orders.delivery-assignment', $order) }}"
+                                        <a href="{{ route('orders.delivery-assignment', [$order] + \App\Support\OrderWorkflow::listReturnParams()) }}"
                                            class="btn btn-order-action"
                                            title="{{ $nextOrderAction['label'] }}"
                                            aria-label="{{ $nextOrderAction['label'] }} đơn {{ $order->MaDonHang }}">
@@ -159,7 +159,7 @@
                                 @if($isBookingReturnFlow)
                                     @if($returnDelivery)
                                         @can('deliveries.view')
-                                            <a href="{{ route('deliveries.show', $returnDelivery) }}"
+                                            <a href="{{ route('deliveries.show', [$returnDelivery] + \App\Support\OrderWorkflow::listReturnParams()) }}"
                                                class="btn btn-order-action"
                                                title="Xem phiếu giao"
                                                aria-label="Xem phiếu giao của đơn {{ $order->MaDonHang }}">
@@ -168,7 +168,7 @@
                                         @endcan
                                     @elseif($operationalStatus === \App\Enums\OrderStatus::Washed)
                                         @can('deliveries.create')
-                                            <a href="{{ route('orders.delivery-assignment', $order) }}"
+                                            <a href="{{ route('orders.delivery-assignment', [$order] + \App\Support\OrderWorkflow::listReturnParams()) }}"
                                                class="btn btn-order-action"
                                                title="Tạo phiếu giao"
                                                aria-label="Tạo phiếu giao cho đơn {{ $order->MaDonHang }}">
@@ -179,7 +179,7 @@
                                 @endif
                                 @if($orderInvoice?->isPaid())
                                     @can('invoices.view')
-                                        <a href="{{ route('invoices.show', $orderInvoice->HoaDonID) }}"
+                                        <a href="{{ route('invoices.show', [$orderInvoice->HoaDonID] + \App\Support\OrderWorkflow::listReturnParams()) }}"
                                            class="btn btn-order-action"
                                            title="Xem hóa đơn {{ $orderInvoice->MaHoaDon }}"
                                            aria-label="Xem hóa đơn {{ $orderInvoice->MaHoaDon }}">
