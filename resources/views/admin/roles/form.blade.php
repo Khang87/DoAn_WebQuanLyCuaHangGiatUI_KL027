@@ -194,7 +194,10 @@
                         @endphp
                         <div class="list-group-item px-0 d-flex align-items-center justify-content-between gap-3">
                             <div class="d-flex align-items-center gap-3 min-w-0">
-                                <x-admin.customer-avatar :url="$member->AvatarURL" :name="$memberName" :size="44" />
+                                <x-admin.customer-avatar
+                                    :url="$member->getAttributes()['AvatarURL'] ?? $member->khachHang?->getAttributes()['AvatarUrl'] ?? null"
+                                    :name="$memberName"
+                                    :size="44" />
                                 <div class="min-w-0">
                                     <div class="fw-semibold text-truncate">{{ $memberName }}</div>
                                     <div class="small text-muted text-break">{{ $member->Email ?: $member->TenDangNhap }}</div>

@@ -96,7 +96,9 @@
                         <td>{{ $accounts->firstItem() + $loop->index }}</td>
                         <td>
                             <div class="d-flex align-items-center gap-2">
-                                <x-admin.customer-avatar :url="$account->AvatarURL" :name="$account->name ?: $account->TenDangNhap" />
+                                <x-admin.customer-avatar
+                                    :url="$account->getAttributes()['AvatarURL'] ?? $account->khachHang?->getAttributes()['AvatarUrl'] ?? null"
+                                    :name="$account->name ?: $account->TenDangNhap" />
                                 <div class="min-w-0">
                                     <strong class="fw-semibold text-dark d-block text-truncate">{{ $account->name }}</strong>
                                     <small class="text-muted d-block text-break">{{ $account->Email }}</small>

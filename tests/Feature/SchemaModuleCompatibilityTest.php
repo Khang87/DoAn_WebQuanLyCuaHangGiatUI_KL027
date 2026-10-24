@@ -78,31 +78,54 @@ class SchemaModuleCompatibilityTest extends TestCase
 
     public function test_account_list_and_role_members_show_account_avatars(): void
     {
-        $account = new User;
-        $account->setRawAttributes([
-            'TaiKhoanID' => 7,
-            'TenDangNhap' => 'account-seven',
-            'Email' => 'account@example.test',
-            'AvatarURL' => 'https://example.test/google.jpg',
+        $renderAccount = function (array $attributes, ?KhachHang $customer): string {
+            $account = (new User)->setRawAttributes($attributes);
+            $account->setRelation('nhanVien', null);
+            $account->setRelation('khachHang', $customer);
+            $account->setRelation('vaiTros', collect());
+
+            return view('admin.accounts.index', [
+                'accounts' => new LengthAwarePaginator(collect([$account]), 1, 10),
+                'roles' => collect(),
+                'canManageRoles' => true,
+                'errors' => new ViewErrorBag,
+            ])->render();
+        };
+
+        $googleAvatar = $renderAccount([
+            'TaiKhoanID' => 7, 'TenDangNhap' => 'account-seven',
+            'Email' => 'account@example.test', 'AvatarURL' => 'https://example.test/google.jpg',
             'TrangThai' => 'Hoạt động',
-        ]);
-        $account->setRelation('nhanVien', null);
-        $account->setRelation('khachHang', null);
-        $account->setRelation('vaiTros', collect());
+        ], null);
 
-        $html = view('admin.accounts.index', [
-            'accounts' => new LengthAwarePaginator(collect([$account]), 1, 10),
-            'roles' => collect(),
-            'canManageRoles' => true,
-            'errors' => new ViewErrorBag,
-        ])->render();
+        $this->assertStringContainsString('aria-label="Ảnh đại diện của account-seven"', $googleAvatar);
+        $this->assertStringContainsString('src="https://example.test/google.jpg"', $googleAvatar);
+        $this->assertStringContainsString('account@example.test', $googleAvatar);
 
-        $this->assertStringContainsString('aria-label="Ảnh đại diện của account-seven"', $html);
-        $this->assertStringContainsString('src="https://example.test/google.jpg"', $html);
-        $this->assertStringContainsString('account@example.test', $html);
+        // Tài khoản chưa có ảnh riêng thì lấy ảnh hồ sơ khách hàng — cùng nguồn
+        // mà danh sách Khách hàng đang hiển thị — thay vì ảnh minh họa mặc định.
+        $profileOnly = $renderAccount([
+            'TaiKhoanID' => 8, 'TenDangNhap' => 'account-eight',
+            'Email' => 'profile@example.test', 'AvatarURL' => null,
+            'TrangThai' => 'Hoạt động',
+        ], $this->customer('https://example.test/profile.jpg', null));
+
+        $this->assertStringContainsString('src="https://example.test/profile.jpg"', $profileOnly);
+
+        $withoutAvatar = $renderAccount([
+            'TaiKhoanID' => 9, 'TenDangNhap' => 'account-nine',
+            'Email' => 'plain@example.test', 'AvatarURL' => null,
+            'TrangThai' => 'Hoạt động',
+        ], null);
+
+        $this->assertMatchesRegularExpression(
+            '/aria-label="Ảnh đại diện của account-nine">\s*<span aria-hidden="true"\s*>\s*A\s*<\/span>/u',
+            $withoutAvatar
+        );
+        $this->assertStringContainsString('aria-label="Ảnh đại diện của account-nine"', $withoutAvatar);
 
         $roleForm = (string) file_get_contents(resource_path('views/admin/roles/form.blade.php'));
-        $this->assertStringContainsString('<x-admin.customer-avatar :url="$member->AvatarURL" :name="$memberName" :size="44" />', $roleForm);
+        $this->assertStringContainsString('$member->getAttributes()[\'AvatarURL\'] ?? $member->khachHang?->getAttributes()[\'AvatarUrl\'] ?? null', $roleForm);
         $this->assertStringNotContainsString('Danh sách nhóm quyền', $roleForm);
         $this->assertStringContainsString('>Quay lại', $roleForm);
     }
