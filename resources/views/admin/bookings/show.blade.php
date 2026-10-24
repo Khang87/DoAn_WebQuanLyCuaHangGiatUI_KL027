@@ -147,11 +147,7 @@
                             <div class="small text-muted mt-2">
                                 {{ $leg->HinhThuc === 'Tại nhà' ? 'Nhân viên đến nhận đồ tại địa chỉ trên.' : 'Khách mang đồ đến cửa hàng để nhân viên tiếp nhận.' }}
                             </div>
-                            @if($canInspect)
-                                <a href="{{ route('bookings.inspection', $booking) }}" class="btn btn-success btn-sm mt-3">
-                                    <i class="bi bi-clipboard-check me-1"></i>Kiểm tra và tạo đơn
-                                </a>
-                            @elseif($leg->TrangThai === \App\Enums\DeliveryStatus::Cancelled->dbValue())
+                            @if($leg->TrangThai === \App\Enums\DeliveryStatus::Cancelled->dbValue())
                                 <div class="small text-muted mt-2">Phiếu đã hủy; không thể tiếp tục kiểm kê.</div>
                             @elseif(! $leg->NhanVienID)
                                 <div class="small text-muted mt-2">Chưa phân công nhân viên nhận và kiểm kê.</div>

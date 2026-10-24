@@ -51,7 +51,11 @@ class BookingController extends Controller
         // Lấy nhân viên từ bảng NhanVien (không dùng User/TaiKhoan vì role là quan hệ many-to-many)
         $employees = NhanVien::where('TrangThai', 'Hoạt động')->orderBy('HoTen')->get();
 
-        return view('admin.bookings.index', compact('bookings', 'customers', 'employees'));
+        // Nút "Kiểm tra và tạo đơn" nằm ở cột Thao tác của danh sách nên phải
+        // biết booking nào đang tới lượt kiểm kê.
+        $inspectableBookingIds = $this->bookingService->inspectableBookingIds($bookings->getCollection());
+
+        return view('admin.bookings.index', compact('bookings', 'customers', 'employees', 'inspectableBookingIds'));
     }
 
     // create() and store() methods disabled - "Tạo đặt lịch" feature disabled
@@ -66,9 +70,8 @@ class BookingController extends Controller
 
         $employees = NhanVien::query()->orderBy('HoTen')->get(['NhanVienID', 'HoTen']);
         $bookingAmounts = $booking->chiTietBookings->isNotEmpty() ? $orders->estimateSavedBooking($booking) : null;
-        $canInspect = $this->bookingService->canInspect($booking);
 
-        return view('admin.bookings.show', compact('booking', 'employees', 'bookingAmounts', 'canInspect'));
+        return view('admin.bookings.show', compact('booking', 'employees', 'bookingAmounts'));
     }
 
     public function estimate(Request $request, int $booking, OrderService $orders): JsonResponse

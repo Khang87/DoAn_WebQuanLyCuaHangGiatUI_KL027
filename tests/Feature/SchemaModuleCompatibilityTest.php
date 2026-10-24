@@ -39,6 +39,7 @@ class SchemaModuleCompatibilityTest extends TestCase
 
         $html = view('admin.bookings.index', [
             'bookings' => new LengthAwarePaginator(collect([$booking]), 1, 10),
+            'inspectableBookingIds' => [],
         ])->render();
 
         $this->assertStringContainsString('DL-REFERENCE-1', $html);

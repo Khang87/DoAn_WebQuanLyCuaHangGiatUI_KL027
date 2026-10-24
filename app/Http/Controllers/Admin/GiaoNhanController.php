@@ -201,14 +201,10 @@ class GiaoNhanController extends Controller
 
         $this->restrictToOwnDelivery($delivery, auth()->user());
         $displayCode = 'GN-'.$delivery->GiaoNhanID;
-        $canCancelReturnDelivery = $this->deliveryService->canCancelReturnDelivery($delivery);
-        $canEditReturnDelivery = $this->deliveryService->canEditReturnDelivery($delivery);
 
         return view('admin.deliveries.show', compact(
             'delivery',
             'displayCode',
-            'canCancelReturnDelivery',
-            'canEditReturnDelivery',
         ));
     }
 

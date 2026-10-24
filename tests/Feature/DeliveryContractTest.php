@@ -669,6 +669,8 @@ class DeliveryContractTest extends TestCase
         $response = $this->actingAs($manager)->withoutMiddleware()->get(route('deliveries.index'))->assertOk();
         $response->assertSee(route('deliveries.edit', $pendingId), false)
             ->assertSee('action="'.route('deliveries.cancel-return', $pendingId).'"', false)
+            ->assertSee('action="'.route('deliveries.advance-progress', $pendingId).'"', false)
+            ->assertSee('Bắt đầu giao đồ')
             ->assertSee('data-confirm-form', false)
             ->assertSee('method="POST"', false)
             ->assertSee('title="Hủy lịch giao"', false)
@@ -678,16 +680,13 @@ class DeliveryContractTest extends TestCase
             ->assertDontSee('value="DELETE"', false);
         $this->get(route('deliveries.show', $pendingId))
             ->assertOk()
-            ->assertSee(route('deliveries.edit', $pendingId), false)
-            ->assertSee('class="btn btn-primary w-100 py-2"', false)
-            ->assertSee('Chỉnh sửa')
-            ->assertSee('class="d-flex flex-column gap-2"', false)
-            ->assertSee('class="btn btn-outline-danger py-2 w-100"', false)
-            ->assertSee('Hủy lịch giao')
+            ->assertDontSee('Thao tác')
+            ->assertDontSee(route('deliveries.edit', $pendingId), false)
+            ->assertDontSee('action="'.route('deliveries.cancel-return', $pendingId).'"', false)
+            ->assertDontSee('action="'.route('deliveries.advance-progress', $pendingId).'"', false)
+            ->assertDontSee('Chỉnh sửa')
             ->assertDontSee('btn-order-action delete', false)
-            ->assertSee('action="'.route('deliveries.cancel-return', $pendingId).'"', false)
-            ->assertSee('data-confirm-form', false)
-            ->assertSee('method="POST"', false);
+            ->assertSee('Quay lại');
         $this->get(route('deliveries.edit', $completedId))->assertForbidden();
         $successBadge = 'badge status-badge bg-success-subtle text-success-emphasis border border-success rounded-pill px-3 py-2';
         $this->assertSame(2, substr_count($response->getContent(), $successBadge));

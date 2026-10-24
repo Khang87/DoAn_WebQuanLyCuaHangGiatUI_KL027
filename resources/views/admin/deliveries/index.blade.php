@@ -170,6 +170,24 @@
                                             </a>
                                         @endcan
                                     @elseif(! $isBookingDocument)
+                                        @php($progressAction = \App\Support\DeliveryWorkflow::progressAction($delivery->task_type, $delivery->fulfillment, $deliveryStatus))
+                                        @if($progressAction)
+                                            @can('deliveries.edit')
+                                                <x-admin.detail.confirm-form
+                                                    :action="route('deliveries.advance-progress', $delivery->source_id)"
+                                                    method="POST"
+                                                    :title="$progressAction['label'].'?'"
+                                                    text="Trạng thái phiếu được cập nhật và ghi vào lịch sử."
+                                                    :label="$progressAction['label']"
+                                                    :icon="$progressAction['icon']"
+                                                    variant="btn-order-action"
+                                                    size=""
+                                                    iconOnly
+                                                    :color="$progressAction['color']"
+                                                    iconName="question"
+                                                />
+                                            @endcan
+                                        @endif
                                         @if($canEditOperationalDelivery)
                                             @can('deliveries.edit')
                                                 <a href="{{ route('deliveries.edit', $delivery->source_id) }}"

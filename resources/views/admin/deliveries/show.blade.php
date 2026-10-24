@@ -24,28 +24,6 @@
         \App\Enums\DeliveryStatus::Completed => count($deliveryProgressSteps),
         default => 0,
     };
-    $progressAction = match ($deliveryStatus) {
-        \App\Enums\DeliveryStatus::Pending => [
-            'label' => $delivery->LoaiGiaoNhan === 'NHAN_DO'
-                ? 'Bắt đầu nhận đồ'
-                : ($delivery->HinhThuc === 'Tại cửa hàng' ? 'Xác nhận đã bàn giao' : 'Bắt đầu giao đồ'),
-            'icon' => $delivery->LoaiGiaoNhan === 'NHAN_DO'
-                ? 'bi-box-arrow-in-down'
-                : ($delivery->HinhThuc === 'Tại cửa hàng' ? 'bi-check-circle' : 'bi-truck'),
-            'variant' => 'primary',
-        ],
-        \App\Enums\DeliveryStatus::Picking => [
-            'label' => 'Xác nhận đã nhận đồ',
-            'icon' => 'bi-check-circle',
-            'variant' => 'success',
-        ],
-        \App\Enums\DeliveryStatus::Delivering => [
-            'label' => 'Xác nhận đã giao đồ',
-            'icon' => 'bi-check-circle',
-            'variant' => 'success',
-        ],
-        default => null,
-    };
 @endphp
 
 @push('styles')
@@ -215,58 +193,10 @@
 
     {{-- ============ CỘT PHỤ (5/12) ============ --}}
     <div class="col-lg-5 d-flex flex-column">
-        <div class="card shadow-sm border-0 order-first">
-            <div class="card-header bg-transparent border-bottom d-flex align-items-center gap-2 py-3">
-                <div class="bg-light rounded p-2 d-inline-flex align-items-center justify-content-center">
-                    <i class="fas fa-sliders-h text-secondary"></i>
-                </div>
-                <h5 class="card-title mb-0 fw-bold">Thao tác</h5>
-            </div>
-            <div class="card-body d-flex flex-column gap-2">
-                @if($progressAction)
-                    @can('deliveries.edit')
-                        <form action="{{ route('deliveries.advance-progress', $delivery) }}" method="POST">
-                            @csrf
-                            <button type="submit" class="btn btn-{{ $progressAction['variant'] }} w-100 py-2">
-                                <i class="bi {{ $progressAction['icon'] }} me-1" aria-hidden="true"></i>{{ $progressAction['label'] }}
-                            </button>
-                        </form>
-                    @endcan
-                @endif
-
-                <div class="d-flex flex-column gap-2">
-                    @if($delivery->LoaiGiaoNhan !== 'GIAO_DO' || $canEditReturnDelivery)
-                        @can('deliveries.edit')
-                            <a href="{{ route('deliveries.edit', $delivery) }}"
-                               class="btn btn-primary w-100 py-2">
-                                <i class="fas fa-pencil-alt me-1" aria-hidden="true"></i> Chỉnh sửa
-                            </a>
-                        @endcan
-                    @endif
-
-                    @if($delivery->LoaiGiaoNhan === 'GIAO_DO' && $canCancelReturnDelivery)
-                        @can('deliveries.delete')
-                            <x-admin.detail.confirm-form
-                                :action="route('deliveries.cancel-return', $delivery)"
-                                method="POST"
-                                title="Hủy lịch giao?"
-                                text="Phiếu được giữ lại làm lịch sử; đơn hàng và trạng thái thanh toán không thay đổi."
-                                label="Hủy lịch giao"
-                                icon="bi bi-x-circle"
-                                variant="btn-outline-danger"
-                                size="py-2"
-                                block
-                            />
-                        @endcan
-                    @endif
-                </div>
-
-                @if($delivery->LoaiGiaoNhan === 'GIAO_DO' && $deliveryStatus === \App\Enums\DeliveryStatus::Cancelled)
-                    <p class="small text-muted mb-0">Lịch giao đã hủy; phiếu chỉ còn để tra cứu lịch sử.</p>
-                @endif
-
-            </div>
-        </div>
+        {{-- Mọi nút hành động của phiếu nằm ở cột "Thao tác" trong danh sách. --}}
+        @if($delivery->LoaiGiaoNhan === 'GIAO_DO' && $deliveryStatus === \App\Enums\DeliveryStatus::Cancelled)
+            <p class="small text-muted">Lịch giao đã hủy; phiếu chỉ còn để tra cứu lịch sử.</p>
+        @endif
 
         <x-admin.detail.panel title="Khách hàng" icon="bi-person" :iconClass="'bg-secondary-subtle text-secondary'">
             @php

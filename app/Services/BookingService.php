@@ -17,6 +17,7 @@ use App\Models\NhanVien;
 use App\Models\NhatKyHeThong;
 use App\Services\DeliveryFeeService;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -489,6 +490,54 @@ class BookingService
         return $this->inspectionUnavailableReason($booking) === null;
     }
 
+    /**
+     * Những Booking trong danh sách mà tài khoản hiện tại tới lượt kiểm kê.
+     *
+     * Cột "Thao tác" ở danh sách cần biết điều này để hiển thị nút "Kiểm tra và
+     * tạo đơn" mà vẫn dùng đúng một điều kiện với inspectionUnavailableReason(),
+     * nên chỉ gộp truy vấn theo từng nhóm lọc chứ không gọi lại theo từng dòng.
+     *
+     * @param  Collection<int, Booking>  $bookings
+     * @return array<int, int>
+     */
+    public function inspectableBookingIds(Collection $bookings): array
+    {
+        $employeeId = $this->activeEmployeeId();
+
+        if ($employeeId === null) {
+            return [];
+        }
+
+        $candidateIds = $bookings
+            ->filter(fn (Booking $booking) => $booking->TrangThai === BookingStatus::Confirmed->value)
+            ->pluck('BookingID')
+            ->all();
+
+        $candidateIds = array_values(array_diff(
+            $candidateIds,
+            DonHang::query()->whereIn('BookingID', $candidateIds)->pluck('BookingID')->all(),
+        ));
+
+        $candidateIds = array_values(array_diff(
+            $candidateIds,
+            BookingKiemKe::query()->whereIn('BookingID', $candidateIds)->pluck('BookingID')->all(),
+        ));
+
+        if ($candidateIds === []) {
+            return [];
+        }
+
+        return BookingGiaoNhan::query()
+            ->whereIn('BookingID', $candidateIds)
+            ->where('LoaiGiaoNhan', 'NHAN_DO')
+            ->where('NhanVienID', $employeeId)
+            ->get()
+            ->filter(fn (BookingGiaoNhan $intake) => $this->intakeLegAllowsInspection($intake))
+            ->pluck('BookingID')
+            ->map(fn ($id) => (int) $id)
+            ->all();
+    }
+
     public function assertCanInspect(Booking $booking): void
     {
         $reason = $this->inspectionUnavailableReason($booking);
@@ -509,28 +558,44 @@ class BookingService
             ->first();
 
         if (
-            ! $intake
-            || ! in_array($intake->TrangThai, [
-                DeliveryStatus::Pending->dbValue(),
-                DeliveryStatus::Picking->dbValue(),
-            ], true)
-            || $intake->ThoiGianThucTe !== null
-            || $intake->DonHangID !== null
-            || $intake->BookingKiemKeID !== null
+            ! $this->intakeLegAllowsInspection($intake)
             || BookingKiemKe::query()->where('BookingID', $booking->BookingID)->exists()
         ) {
             return 'Phiếu nhận không còn ở trạng thái cho phép kiểm kê.';
         }
 
-        $employeeId = auth()->user()?->NhanVienID;
-        if (! $employeeId || ! NhanVien::query()->whereKey($employeeId)->where('TrangThai', 'Hoạt động')->exists()) {
+        $employeeId = $this->activeEmployeeId();
+        if ($employeeId === null) {
             return 'Tài khoản cần hồ sơ nhân viên đang hoạt động để kiểm kê.';
         }
-        if ($intake->NhanVienID === null || (int) $intake->NhanVienID !== (int) $employeeId) {
+        if ((int) $intake->NhanVienID !== $employeeId) {
             return 'Chỉ nhân viên được phân công mới có thể kiểm tra và xử lý phiếu nhận đồ.';
         }
 
         return null;
+    }
+
+    private function intakeLegAllowsInspection(?BookingGiaoNhan $intake): bool
+    {
+        return $intake !== null
+            && in_array($intake->TrangThai, [
+                DeliveryStatus::Pending->dbValue(),
+                DeliveryStatus::Picking->dbValue(),
+            ], true)
+            && $intake->ThoiGianThucTe === null
+            && $intake->DonHangID === null
+            && $intake->BookingKiemKeID === null;
+    }
+
+    private function activeEmployeeId(): ?int
+    {
+        $employeeId = auth()->user()?->NhanVienID;
+
+        if (! $employeeId || ! NhanVien::query()->whereKey($employeeId)->where('TrangThai', 'Hoạt động')->exists()) {
+            return null;
+        }
+
+        return (int) $employeeId;
     }
 
     public function refuseQuote(Booking $booking, array $data): Booking

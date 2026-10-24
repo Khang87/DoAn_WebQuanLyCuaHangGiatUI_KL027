@@ -177,6 +177,12 @@ class BookingOrderConversionTest extends TestCase
         $this->get(route('deliveries.booking-documents.show', $intake))
             ->assertOk()
             ->assertDontSee('Xác nhận đã nhận đồ')
+            ->assertDontSee('Kiểm tra và tạo đơn');
+
+        // Nút kiểm kê chỉ còn ở cột "Thao tác" của danh sách đặt lịch.
+        $this->get(route('bookings.index'))
+            ->assertOk()
+            ->assertSee('href="'.route('bookings.inspection', $booking).'"', false)
             ->assertSee('Kiểm tra và tạo đơn');
 
         $this->assertNull($intake->fresh()->ThoiGianThucTe);
@@ -203,13 +209,12 @@ class BookingOrderConversionTest extends TestCase
             'Ước tính từ lịch đặt',
             'data-booking-mobile-summary',
             'Khách hàng',
-            'Thao tác',
             'Phiếu nhận và kế hoạch trả từ Booking',
             'Đơn hàng liên kết',
         ], false);
         $this->get(route('deliveries.booking-documents.show', $intake))
             ->assertOk()
-            ->assertSee('Đơn hàng đã được tạo từ kiểm kê')
+            ->assertSee('Đơn hàng liên kết')
             ->assertDontSee('Kiểm tra và tạo đơn');
     }
 
@@ -464,10 +469,13 @@ class BookingOrderConversionTest extends TestCase
 
         $this->get(route('deliveries.booking-documents.show', $intake))
             ->assertOk()
-            ->assertSee('Kiểm tra và tạo đơn');
+            ->assertDontSee('Kiểm tra và tạo đơn');
         $this->get(route('bookings.show', $booking))
             ->assertOk()
-            ->assertSee('Kiểm tra và tạo đơn');
+            ->assertDontSee('Kiểm tra và tạo đơn');
+        $this->get(route('bookings.index'))
+            ->assertOk()
+            ->assertSee('href="'.route('bookings.inspection', $booking).'"', false);
         $this->get(route('bookings.inspection', $booking))->assertOk();
 
         $payload = $this->inspectionPayload($booking, 2);
@@ -850,7 +858,7 @@ class BookingOrderConversionTest extends TestCase
 
         $this->get(route('bookings.show', $booking))
             ->assertOk()
-            ->assertSee('Kiểm tra và tạo đơn')
+            ->assertDontSee('Kiểm tra và tạo đơn')
             ->assertDontSee('Xóa đặt lịch')
             ->assertDontSee('finalize-inspection')
             ->assertDontSee('Đang chờ khách xác nhận');
@@ -877,19 +885,25 @@ class BookingOrderConversionTest extends TestCase
             RestoreRememberedLogin::class,
         ]);
 
-        $response = $this->get(route('bookings.show', $booking));
+        $response = $this->get(route('bookings.index'));
 
         $response->assertOk()
             ->assertSee('Hủy đặt lịch')
             ->assertDontSee('Hủy Booking')
             ->assertDontSee('Xóa đặt lịch')
             ->assertSee('Xác nhận Booking')
-            ->assertSee('btn-success w-100 py-2', false)
-            ->assertSee('btn btn-outline-danger py-2 w-100', false)
             ->assertSee(route('bookings.cancel', $booking), false)
             ->assertSee('data-confirm-form', false)
             ->assertSee('method="POST"', false)
             ->assertDontSee('name="_method" value="DELETE"', false);
+
+        // Màn chi tiết chỉ còn là khung thông tin: không có nút hành động nào.
+        $this->get(route('bookings.show', $booking))
+            ->assertOk()
+            ->assertDontSee('Hủy đặt lịch')
+            ->assertDontSee('Xác nhận Booking')
+            ->assertDontSee('btn-success w-100 py-2', false)
+            ->assertDontSee('btn btn-outline-danger py-2 w-100', false);
 
         $this->post(route('bookings.cancel', $booking))
             ->assertRedirect(route('bookings.show', $booking))
