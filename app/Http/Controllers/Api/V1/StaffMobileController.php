@@ -54,6 +54,71 @@ class StaffMobileController extends ApiController
         return response()->json(['success' => true]);
     }
 
+    public function profile(): JsonResponse
+    {
+        return response()->json(['data' => $this->profileData(Auth::user())]);
+    }
+
+    public function updateProfile(Request $request): JsonResponse
+    {
+        $user = Auth::user();
+        $request->merge([
+            'phone' => preg_replace('/[\s().-]/', '', trim((string) $request->input('phone'))),
+        ]);
+        $data = $request->validate([
+            'name' => ['required', 'string', 'max:100'],
+            'phone' => ['required', 'string', 'max:15', 'regex:/^\+?[0-9]{8,15}$/', 'unique:TaiKhoan,SoDienThoai,'.$user->TaiKhoanID.',TaiKhoanID'],
+            'address' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        DB::transaction(function () use ($user, $data): void {
+            $user->nhanVien->forceFill([
+                'HoTen' => trim($data['name']),
+                'SoDienThoai' => trim($data['phone']),
+                'DiaChi' => isset($data['address']) ? trim($data['address']) : null,
+            ])->save();
+            $user->forceFill(['SoDienThoai' => trim($data['phone'])])->save();
+        });
+
+        return response()->json(['data' => $this->profileData($user->fresh()->load('nhanVien'))]);
+    }
+
+    public function changePassword(Request $request): JsonResponse
+    {
+        $user = Auth::user();
+        $data = $request->validate([
+            'current_password' => ['required', 'string'],
+            'new_password' => ['required', 'string', 'min:8', 'confirmed', 'regex:/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&_-]).+$/'],
+        ], [
+            'new_password.regex' => 'Mật khẩu phải chứa chữ hoa, chữ thường, số và ký tự đặc biệt.',
+            'new_password.confirmed' => 'Mật khẩu xác nhận không khớp.',
+        ]);
+        if (! Hash::check($data['current_password'], $user->getAuthPassword())) {
+            throw ValidationException::withMessages(['current_password' => 'Mật khẩu hiện tại không đúng.']);
+        }
+
+        $user->forceFill(['MatKhau' => Hash::make($data['new_password'])])->save();
+        DB::table('StaffApiToken')->where('TaiKhoanID', $user->TaiKhoanID)
+            ->where('TokenHash', '<>', $request->attributes->get('staff_api_token_hash'))->delete();
+
+        return response()->json(['success' => true]);
+    }
+
+    private function profileData(User $user): array
+    {
+        $employee = $user->nhanVien;
+
+        return [
+            'id' => $user->TaiKhoanID,
+            'name' => $employee->HoTen,
+            'email' => $user->Email,
+            'phone' => $employee->SoDienThoai ?: $user->SoDienThoai,
+            'address' => $employee->DiaChi,
+            'position' => $employee->ChucDanh,
+            'roles' => $user->roleNames(),
+        ];
+    }
+
     public function bookings(): JsonResponse
     {
         $employeeId = Auth::user()->NhanVienID;

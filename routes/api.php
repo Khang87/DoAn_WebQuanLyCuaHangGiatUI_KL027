@@ -34,6 +34,9 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
 
 Route::middleware('staff.api')->prefix('v1/staff')->group(function () {
     Route::post('auth/logout', [StaffMobileController::class, 'logout']);
+    Route::post('auth/change-password', [StaffMobileController::class, 'changePassword']);
+    Route::get('profile', [StaffMobileController::class, 'profile']);
+    Route::put('profile', [StaffMobileController::class, 'updateProfile']);
     Route::get('orders', [StaffMobileController::class, 'orders']);
     Route::patch('orders/{id}/status', [StaffMobileController::class, 'updateOrderStatus']);
     Route::post('orders/{id}/delivery-progress', [StaffMobileController::class, 'advanceDelivery']);
