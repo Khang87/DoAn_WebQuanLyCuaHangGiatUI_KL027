@@ -69,6 +69,22 @@ class DetailPageActionLayoutTest extends TestCase
         $this->assertStringContainsString('orders.destroy', $source);
     }
 
+    public function test_order_list_rows_stay_one_line_tall(): void
+    {
+        $source = $this->source('orders/index');
+
+        // Cụm nút thao tác không được xuống dòng: khi cho phép wrap, bảng tự
+        // động bóp cột "Thao tác" về chiều ngang một nút và hàng thành rất cao.
+        $this->assertStringNotContainsString('flex-wrap', $source);
+        $this->assertStringContainsString('<td class="text-nowrap">', $source);
+        $this->assertStringContainsString('d-flex align-items-center flex-nowrap gap-2', $source);
+
+        // Hai cột chữ dài phải giới hạn bề ngang để không kéo giãn hàng.
+        $this->assertSame(2, substr_count($source, 'text-truncate'));
+        $this->assertStringContainsString('max-width: 180px;', $source);
+        $this->assertStringContainsString('max-width: 240px;', $source);
+    }
+
     public function test_delivery_and_booking_details_are_read_only(): void
     {
         foreach (['deliveries/show', 'bookings/show'] as $view) {

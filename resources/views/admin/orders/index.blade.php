@@ -79,7 +79,9 @@
                             </div>
                         </td>
                         <td class="text-dark">{{ $order->khachHang?->SoDienThoai ?: '-' }}</td>
-                        <td class="text-dark">{{ $order->chiTietDonHangs->map(fn ($item) => $item->dichVu?->TenDichVu)->filter()->unique()->join(', ') ?: '-' }}</td>
+                        <td style="max-width: 180px;">
+                            <div class="text-truncate" title="{{ $order->chiTietDonHangs->map(fn ($item) => $item->dichVu?->TenDichVu)->filter()->unique()->join(', ') }}">{{ $order->chiTietDonHangs->map(fn ($item) => $item->dichVu?->TenDichVu)->filter()->unique()->join(', ') ?: '-' }}</div>
+                        </td>
                         <td class="text-dark">
                             @php
                                 $itemQuantity = (float) $order->chiTietDonHangs->sum('SoLuong');
@@ -91,7 +93,9 @@
                                 -
                             @endif
                         </td>
-                        <td><small class="text-muted">{{ $order->GhiChu ?: 'Không có ghi chú' }}</small></td>
+                        <td style="max-width: 240px;">
+                            <small class="d-block text-muted text-truncate" title="{{ $order->GhiChu }}">{{ $order->GhiChu ?: 'Không có ghi chú' }}</small>
+                        </td>
                         <td class="text-dark">{{ number_format((float) $order->ThanhTien) }} đ</td>
                         <td class="text-center">
                             <div class="order-status-badges d-inline-flex align-items-center flex-nowrap gap-1 text-nowrap">
@@ -99,7 +103,7 @@
                             </div>
                         </td>
                         <td class="text-dark">{{ $order->NgayTao?->format('d/m/Y H:i') ?: '-' }}</td>
-                        <td>
+                        <td class="text-nowrap">
                             @php
                                 $canManageSettled = ! $order->isLocked() || auth()->user()?->isOwner();
                                 $operationalStatus = $order->operationalStatusEnum();
@@ -113,7 +117,7 @@
                                     ? \App\Support\OrderWorkflow::activeReturnDelivery($order)
                                     : null;
                             @endphp
-                            <div class="d-flex flex-wrap gap-2">
+                            <div class="d-flex align-items-center flex-nowrap gap-2">
                                 @can('orders.view')
                                     <a href="{{ route('orders.show', $order) }}" class="btn btn-order-action view" title="Xem"><i class="bi bi-eye"></i></a>
                                 @endcan
