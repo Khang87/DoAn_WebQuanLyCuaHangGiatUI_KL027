@@ -394,6 +394,50 @@ class BookingService
             $fees = $feeChanged ? app(DeliveryFeeService::class)->quote(
                 $data['method'], $data['address'] ?? null, $data['return_method'], $data['return_address'] ?? null,
             ) : null;
+            $promotionId = isset($data['promotion_id']) ? (int) $data['promotion_id'] : null;
+            $requestedPoints = (int) ($data['points_used'] ?? 0);
+            if ($fees) {
+                $locked->forceFill([
+                    'PickupDeliveryFee' => $fees['pickup_fee'], 'DeliveryFee' => $fees['return_fee'],
+                ]);
+            }
+            $estimate = $this->orderService->estimateBookingWithRewards(
+                $locked, $data['items'], $promotionId, $requestedPoints, true,
+            );
+            if ($promotionId !== null && $estimate['promotion_warning'] !== null) {
+                throw ValidationException::withMessages(['promotion_id' => $estimate['promotion_warning']]);
+            }
+            if ($requestedPoints > (int) $estimate['available_points']) {
+                throw ValidationException::withMessages(['points_used' => 'Số dư điểm đã thay đổi. Vui lòng tính lại giá.']);
+            }
+
+            $previousPromotionId = $locked->KhuyenMaiID === null ? null : (int) $locked->KhuyenMaiID;
+            $promotionReserved = (bool) $locked->KhuyenMaiDaTru && $previousPromotionId === $promotionId;
+            if ($previousPromotionId !== $promotionId && $locked->KhuyenMaiDaTru) {
+                KhuyenMai::whereKey($previousPromotionId)->whereNotNull('SoLuongSuDung')->increment('SoLuongSuDung');
+            }
+            if ($promotionId !== null && ! $promotionReserved) {
+                $promotion = KhuyenMai::query()->whereKey($promotionId)->lockForUpdate()->first();
+                if (! $promotion || ! $promotion->isValid()
+                    || Booking::query()->where('KhachHangID', $locked->KhachHangID)
+                        ->where('KhuyenMaiID', $promotionId)->where('TrangThai', '<>', BookingStatus::Cancelled->value)
+                        ->where('BookingID', '<>', $locked->BookingID)->exists()) {
+                    throw ValidationException::withMessages(['promotion_id' => 'Mã giảm giá vừa hết hạn hoặc đã được dùng cho lịch đặt khác.']);
+                }
+                if ($promotion->SoLuongSuDung !== null) {
+                    $affected = KhuyenMai::query()->whereKey($promotionId)->where('SoLuongSuDung', '>', 0)->decrement('SoLuongSuDung');
+                    if ($affected !== 1) {
+                        throw ValidationException::withMessages(['promotion_id' => 'Mã giảm giá vừa hết lượt sử dụng.']);
+                    }
+                    $promotionReserved = true;
+                }
+            }
+            if ($locked->DiemDaTru && (int) $locked->DiemSuDung > 0) {
+                KhachHang::find($locked->KhachHangID)?->addPoints((int) $locked->DiemSuDung);
+            }
+            if ($estimate['DiemSuDung'] > 0 && ! KhachHang::find($locked->KhachHangID)?->deductPoints((int) $estimate['DiemSuDung'])) {
+                throw ValidationException::withMessages(['points_used' => 'Số dư điểm đã thay đổi. Vui lòng tính lại giá.']);
+            }
             $before = $this->bookingAuditSnapshot($locked);
             $beforeItems = $this->bookingItemsAuditSnapshot($locked);
             $locked->forceFill([
@@ -402,6 +446,11 @@ class BookingService
                     'PickupDeliveryFee' => $fees['pickup_fee'], 'DeliveryFee' => $fees['return_fee'],
                     'PickupDistanceMeters' => $fees['pickup_distance_meters'], 'DeliveryDistanceMeters' => $fees['return_distance_meters'],
                 ] : []),
+                'KhuyenMaiID' => $promotionId,
+                'KhuyenMaiDaTru' => $promotionReserved,
+                'DiemSuDung' => $estimate['DiemSuDung'],
+                'TienGiamDoDiem' => $estimate['TienGiamDoDiem'],
+                'DiemDaTru' => $estimate['DiemSuDung'] > 0,
                 'NgayCapNhat' => now(),
             ])->saveQuietly();
             if ($fees) {
@@ -1121,6 +1170,7 @@ class BookingService
             'ThoiGianXacNhan',
             'HinhThucGiaoDo', 'DiaChiGiao', 'PhuongThucThanhToan',
             'PickupDistanceMeters', 'DeliveryDistanceMeters', 'PickupDeliveryFee', 'DeliveryFee',
+            'KhuyenMaiID', 'KhuyenMaiDaTru', 'DiemSuDung', 'TienGiamDoDiem', 'DiemDaTru',
         ]);
     }
 
