@@ -16,7 +16,7 @@ test('open conversation receives mobile PostgreSQL messages through real Laravel
         await b.evaluate(`document.querySelector('[name=email]').value='staff@example.test';document.querySelector('[name=password]').value=${JSON.stringify(process.env.WEB_E2E_PASSWORD)};document.querySelector('form').requestSubmit()`);
         await b.waitFor(async()=>await b.evaluate('location.pathname')==='/orders','staff session');
         await b.navigate('/admin/messages?order_id='+cases.paid);
-        await b.waitFor(()=>b.evaluate(`document.querySelector('[data-message-status]')?.textContent==='Realtime chưa kết nối; cập nhật dự phòng mỗi 3 giây'`),'initial sync');
+        await b.waitFor(()=>b.evaluate(`document.querySelector('[data-message-connection-dot]')?.className.includes('bg-warning')`),'initial sync');
         await b.evaluate(`window.messagePageMarker=true;document.querySelector('[data-message-form] textarea').value='Unsaved draft'`);
         const documents=b.responses.filter(r=>r.type==='Document').length;
         execFileSync(process.env.PHP_BIN||'php',[fileURLToPath(new URL('./messages-state.php',import.meta.url)),'insert'],{timeout:30000});
@@ -46,7 +46,7 @@ test('open conversation receives mobile PostgreSQL messages through real Laravel
         await b.navigate('/notifications/'+notification.id);
         assert.equal(await b.evaluate(`document.querySelector('a[href$="/notifications"].btn')?.textContent.includes('Quay lại')`),true);
         await b.navigate('/admin/messages?customer_id=1');
-        await b.waitFor(()=>b.evaluate(`document.querySelector('[data-message-status]').textContent==='Realtime chưa kết nối; cập nhật dự phòng mỗi 3 giây'`),'support sync');
+        await b.waitFor(()=>b.evaluate(`document.querySelector('[data-message-connection-dot]')?.className.includes('bg-warning')`),'support sync');
         assert.ok(await b.evaluate(`document.querySelector('h5.mb-1').textContent.includes('Local customer')`));
         const posts=b.requests.filter(r=>r.method==='POST'&&r.url.endsWith('/admin/messages')).length;
         await b.evaluate(`(()=>{const f=document.querySelector('[data-message-form]');f.querySelector('textarea').value='Unique support reply';f.requestSubmit();f.requestSubmit();})()`);
@@ -112,7 +112,7 @@ test('Realtime invalidation refreshes the Laravel conversation immediately witho
         await b.evaluate(`document.querySelector('[name=email]').value='staff@example.test';document.querySelector('[name=password]').value=${JSON.stringify(process.env.WEB_E2E_PASSWORD)};document.querySelector('form').requestSubmit()`);
         await b.waitFor(()=>b.evaluate(`location.pathname==='/orders'`),'staff login');
         await b.navigate('/admin/messages?order_id='+cases.paid);
-        await b.waitFor(()=>b.evaluate(`document.querySelector('[data-message-status]')?.textContent==='Đang nhận tin nhắn trực tiếp'`),'subscribed');
+        await b.waitFor(()=>b.evaluate(`document.querySelector('[data-message-connection-dot]')?.className.includes('text-success')`),'subscribed');
         const documents=b.responses.filter(r=>r.type==='Document').length;
         await b.evaluate(`document.querySelector('[data-message-form] textarea').value='Realtime draft';window.realtimePageMarker=true`);
         const signals=JSON.parse(execFileSync(process.env.PHP_BIN||'php',[fileURLToPath(new URL('./messages-state.php',import.meta.url)),'realtime-insert'],{timeout:30000}));

@@ -7,8 +7,18 @@
 <style>
     .message-chat-card { display: flex; flex-direction: column; height: min(48rem, calc(100vh - 10rem)); min-height: 30rem; }
     .message-chat-history { flex: 1; min-height: 0; overflow-y: auto; }
-    .message-inbox-list { max-height: min(35rem, calc(100vh - 19rem)); overflow-y: auto; overflow-anchor: none; }
+    .message-inbox-list { max-height: min(35rem, calc(100vh - 19rem)); overflow-y: auto; overflow-x: hidden; overflow-anchor: none; }
     .message-inbox-preview { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .message-inbox-list .list-group-item { border-left: 3px solid transparent; }
+    .message-inbox-list .list-group-item:hover { background-color: #f6f8fb; }
+    .message-inbox-list .list-group-item.active {
+        background-color: #f2f6fc;
+        border-left-color: var(--bs-primary);
+        color: #1c2b4a;
+    }
+    .message-inbox-list .list-group-item.active .text-truncate,
+    .message-inbox-list .list-group-item.active small { color: #1c2b4a; }
+    .message-status-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: currentColor; vertical-align: middle; }
     @media (max-width: 991.98px) {
         .message-chat-card { height: 36rem; }
         .message-inbox-list { max-height: 19rem; }
@@ -71,17 +81,16 @@
     <div class="col-12 col-md-8 col-xl-6">
         <div class="card border-0 shadow-sm message-chat-card">
             @if($selectedOrder || $selectedCustomer)
-                <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
-                    <div>
+                <div class="card-header bg-white py-3 d-flex justify-content-between align-items-start gap-3">
+                    <div class="min-w-0">
                         <h5 class="mb-1 fw-semibold">{{ $selectedCustomer ? ('Hỗ trợ: '.$selectedCustomer->name) : ('Đơn '.$selectedOrder->MaDonHang) }}</h5>
                         <small class="text-muted">{{ $selectedCustomer?->name ?: ($selectedOrder?->khachHang?->HoTen ?: 'Khách hàng') }}</small>
-                        <small class="d-block text-muted" data-message-status role="status">
-                            {{ $messageDecryptionUnavailable ? 'Máy chủ chưa tải được nội dung hội thoại. Vui lòng thử lại sau.' : 'Đang đồng bộ tin nhắn…' }}
-                        </small>
+                        <small class="d-block text-muted" data-message-status role="status" aria-live="polite"></small>
                     </div>
-                    @if($selectedOrder)<a href="{{ route('orders.show', $selectedOrder) }}" class="btn btn-sm btn-outline-secondary">
-                        <i class="bi bi-box-arrow-up-right me-1"></i>Chi tiết đơn
-                    </a>@endif
+                    <div class="flex-shrink-0 d-flex align-items-center gap-2 pt-1">
+                        <span class="message-status-dot bg-warning text-body-secondary" data-message-connection-dot role="img" title="Chưa xác định kết nối" aria-label="Chưa xác định kết nối"></span>
+                        <small class="d-block text-muted">Trạng thái kết nối</small>
+                    </div>
                 </div>
                 <div class="card-body bg-light message-chat-history"
                     data-message-read="{{ route('admin.messages.read') }}"
@@ -180,9 +189,26 @@
         </div>
         @if($selectedOrder)
         <div class="card border-0 shadow-sm mt-3">
-            <div class="card-header bg-white py-3"><h6 class="mb-0 fw-semibold">Đơn {{ $selectedOrder->MaDonHang }}</h6></div>
+            <div class="card-header bg-white py-3"><h6 class="mb-0 fw-semibold">Đơn hàng</h6></div>
             <div class="card-body small">
                 <div class="mb-3"><x-admin.order-status-badges :order="$selectedOrder" :is-paid="$selectedOrder->isPaid()" :is-receiving="false" compact /></div>
+                @php($orderItems = $selectedOrder->chiTietDonHangs)
+                @if($orderItems->isNotEmpty())
+                    <div class="mb-3">
+                        <div class="text-muted mb-1">Dịch vụ</div>
+                        @foreach($orderItems->take(3) as $item)
+                            @php($qtyWeight = format_quantity_weight($item->SoLuong, $item->KhoiLuong))
+                            @php($unit = str_ends_with($qtyWeight, 'kg') ? '' : ($item->donViTinh?->KyHieu ?? ''))
+                            <div class="d-flex justify-content-between gap-2">
+                                <span class="text-truncate">{{ $item->dichVu?->TenDichVu ?: 'Dịch vụ không còn tồn tại' }}</span>
+                                <span class="flex-shrink-0 text-muted">{{ trim($qtyWeight ?: '1') }}{{ $unit ? ' '.$unit : '' }}</span>
+                            </div>
+                        @endforeach
+                        @if($orderItems->count() > 3)
+                            <div class="text-muted mt-1">Và {{ $orderItems->count() - 3 }} mục khác.</div>
+                        @endif
+                    </div>
+                @endif
                 <div class="d-flex justify-content-between gap-2 mb-3"><span class="text-muted">Giá trị đơn</span><strong>{{ number_format((float) $selectedOrder->ThanhTien) }} đ</strong></div>
                 <a href="{{ route('orders.show', $selectedOrder) }}" class="btn btn-sm btn-outline-primary w-100">Xem chi tiết đơn</a>
             </div>

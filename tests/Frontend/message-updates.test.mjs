@@ -9,16 +9,16 @@ function harness(read=false) {
     let clock=0;
     const element=()=>({dataset:{},style:{},children:[],append(child){this.children.push(child);},replaceChildren(fragment){this.children=fragment?.children||[];},addEventListener(){},querySelector(){return null;},querySelectorAll(){return [];},scrollTop:0,scrollHeight:10,clientHeight:10});
     const conversation=element();conversation.dataset={orderId:'7',messageUpdates:'/updates'};if(read)conversation.dataset.messageRead='/read';
-    const status={textContent:''}, input={value:'draft',disabled:false};
+    const status={textContent:''}, dot={className:'message-status-dot bg-warning text-body-secondary', title:'', setAttribute(name,value){if(name==='title'||name==='aria-label')this.title=value;}}, input={value:'draft',disabled:false};
     const form=element();form.querySelectorAll=selector=>selector==='textarea, button'?[input]:[];
-    const document={hidden:false,querySelector:s=>s==='[data-message-updates]'?conversation:s==='[data-message-status]'?status:s==='[data-message-form]'?form:s==='meta[name="csrf-token"]'?{content:''}:null,createElement:element,createDocumentFragment:element,addEventListener:(name,fn)=>{documentEvents[name]=fn;}};
+    const document={hidden:false,querySelector:s=>s==='[data-message-updates]'?conversation:s==='[data-message-status]'?status:s==='[data-message-connection-dot]'?dot:s==='[data-message-form]'?form:s==='meta[name="csrf-token"]'?{content:''}:null,createElement:element,createDocumentFragment:element,addEventListener:(name,fn)=>{documentEvents[name]=fn;}};
     const navigator={onLine:true};
     const context={Event,document,navigator,window:{dispatchEvent:()=>{},addEventListener:(name,fn)=>{events[name]=fn;}},AbortController,fetch:(url,options)=>new Promise((resolve,reject)=>{calls.push({resolve,reject,options});options.signal.addEventListener('abort',()=>reject(Error('aborted')));}),setTimeout:(fn,ms)=>{timers.set(++clock,{fn,ms});return clock;},clearTimeout:id=>timers.delete(id)};
     vm.runInNewContext(source,context);
     const settle=async()=>{for(let i=0;i<10;i++)await Promise.resolve();};
     const respond=async(statusCode=200,messages=[])=>{calls.at(-1).resolve({status:statusCode,ok:statusCode===200,json:async()=>({order_id:7,messages})});await settle();};
     const runTimer=()=>{const [id,timer]=[...timers].find(([,v])=>v.ms!==30000);timers.delete(id);timer.fn();return timer.ms;};
-    return {conversation,status,input,document,navigator,events,documentEvents,calls,timers,settle,respond,runTimer};
+    return {conversation,status,dot,input,document,navigator,events,documentEvents,calls,timers,settle,respond,runTimer};
 }
 const message={id:1,content:'<img onerror=alert(1)>',sender_name:'Customer',is_mine:false,sent_at:null};
 const timestampedMessage={...message,sent_at:'2026-10-09T03:27:00+00:00'};
@@ -26,6 +26,9 @@ test('snapshot renders text, preserves draft and avoids duplicate messages',asyn
     const h=harness();await h.respond(200,[message]);
     assert.equal(h.conversation.children[0].children[0].children[1].textContent,message.content);
     assert.equal(h.input.value,'draft');
+    assert.equal(h.status.textContent,'');
+    assert.match(h.dot.className,/bg-warning/);
+    assert.match(h.dot.title,/3 giây/);
     assert.equal(h.runTimer(),3000);await h.respond(200,[message]);
     assert.equal(h.conversation.children.length,1);
 });
@@ -55,18 +58,22 @@ test('requests never overlap and pause while hidden, then resume',async()=>{
     const h=harness();h.events.online();assert.equal(h.calls.length,1);
     h.document.hidden=true;h.documentEvents.visibilitychange();await h.settle();
     assert.equal(h.timers.size,0);
+    assert.match(h.dot.className,/text-body-secondary/);
     h.document.hidden=false;h.documentEvents.visibilitychange();assert.equal(h.calls.length,2);
     await h.respond();assert.equal(h.runTimer(),3000);
 });
 test('network failure backs off then successful recovery restores interval',async()=>{
     const h=harness();h.calls[0].reject(Error('offline'));await h.settle();
+    assert.match(h.dot.className,/bg-danger/);
     // Retry backs off to six seconds after the first failed request.
     const [id,timer]=[...h.timers][0];assert.equal(timer.ms,6000);h.timers.delete(id);timer.fn();
     await h.respond();assert.equal(h.runTimer(),3000);
+    assert.match(h.dot.className,/bg-warning/);
 });
 test('encrypted-message decryption outages show a clear status and back off',async()=>{
     const h=harness();await h.respond(503);
     assert.equal(h.status.textContent,'Tin nhắn mã hóa tạm thời chưa thể giải mã. Vui lòng thử lại sau.');
+    assert.match(h.dot.className,/bg-danger/);
     assert.equal(h.runTimer(),6000);
 });
 for(const code of [401,403,404])test(`${code} clears protected content and stops requests`,async()=>{

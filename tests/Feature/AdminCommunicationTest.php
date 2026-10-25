@@ -96,6 +96,28 @@ class AdminCommunicationTest extends TestCase
             $table->dateTime('NgayTao')->useCurrent();
         });
 
+        Schema::create('DichVu', function (Blueprint $table): void {
+            $table->increments('DichVuID');
+            $table->string('TenDichVu');
+        });
+
+        Schema::create('DonViTinh', function (Blueprint $table): void {
+            $table->increments('DonViTinhID');
+            $table->string('KyHieu')->nullable();
+            $table->string('TenDonViTinh')->nullable();
+        });
+
+        Schema::create('ChiTietDonHang', function (Blueprint $table): void {
+            $table->increments('ChiTietDonHangID');
+            $table->unsignedInteger('DonHangID');
+            $table->unsignedInteger('DichVuID')->nullable();
+            $table->unsignedInteger('DonViTinhID')->nullable();
+            $table->decimal('SoLuong', 18, 2)->nullable();
+            $table->decimal('KhoiLuong', 18, 2)->nullable();
+            $table->decimal('DonGia', 18, 2)->default(0);
+            $table->decimal('ThanhTien', 18, 2)->default(0);
+        });
+
         Schema::create('HoaDon', function (Blueprint $table): void {
             $table->increments('HoaDonID');
             $table->unsignedInteger('DonHangID');

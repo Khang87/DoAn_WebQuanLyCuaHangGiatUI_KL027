@@ -3,6 +3,7 @@ const conversation = document.querySelector('[data-message-updates]');
 
 if (conversation) {
     const status = document.querySelector('[data-message-status]');
+    const connectionDot = document.querySelector('[data-message-connection-dot]');
     const form = document.querySelector('[data-message-form]');
     const orderId = conversation.dataset.orderId ? Number(conversation.dataset.orderId) : null;
     const customerId = conversation.dataset.customerAccountId ? Number(conversation.dataset.customerAccountId) : null;
@@ -13,8 +14,24 @@ if (conversation) {
 
     const acknowledged = new Set();
 
-    function showStatus(text) {
+    const connectionViews = {
+        realtime: ['text-success', 'Đang nhận tin nhắn trực tiếp'],
+        polling: ['bg-warning', 'Chưa kết nối realtime; tự cập nhật mỗi 3 giây'],
+        paused: ['text-body-secondary', 'Tạm dừng cập nhật'],
+        error: ['bg-danger', 'Kết nối gián đoạn; đang thử lại'],
+    };
+
+    function setConnectionState(state) {
+        const [color, label] = connectionViews[state];
+        connectionDot.className = `message-status-dot ${color}`;
+        connectionDot.title = label;
+        connectionDot.setAttribute('aria-label', label);
+    }
+
+    function showStatus(text, state = null) {
         status.textContent = text;
+        if (state === null) return;
+        setConnectionState(state);
     }
 
     async function prepareMessageImage(file) {
@@ -208,12 +225,12 @@ if (conversation) {
                 conversation.replaceChildren();
                 if (form) form.dataset.accessLost = 'true';
                 form?.querySelectorAll('textarea, button').forEach(input => { input.disabled = true; });
-                showStatus(response.status === 401 ? 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.' : 'Cuộc trò chuyện không còn khả dụng.');
+                showStatus(response.status === 401 ? 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.' : 'Cuộc trò chuyện không còn khả dụng.', 'paused');
                 return;
             }
             if (response.status === 503) {
                 const body = await response.json().catch(() => ({}));
-                showStatus(body.message || 'Máy chủ chưa tải được nội dung hội thoại. Đang thử lại…');
+                showStatus(body.message || 'Máy chủ chưa tải được nội dung hội thoại. Đang thử lại…', 'error');
                 retry = Math.min(retry * 2, 120000);
                 return;
             }
@@ -244,9 +261,9 @@ if (conversation) {
             }
             if (messagesChanged) window.dispatchEvent(new Event('message-inbox-changed'));
             retry = interval;
-            showStatus(connected ? 'Đang nhận tin nhắn trực tiếp' : 'Realtime chưa kết nối; cập nhật dự phòng mỗi 3 giây');
+            showStatus('', connected ? 'realtime' : 'polling');
         } catch (error) {
-            if (!document.hidden && !stopped) showStatus(error?.message || 'Kết nối gián đoạn. Đang thử lại…');
+            if (!document.hidden && !stopped) showStatus(error?.message || 'Kết nối gián đoạn. Đang thử lại…', 'error');
             retry = Math.min(retry * 2, 120000);
         } finally {
             clearTimeout(deadline);
@@ -268,7 +285,7 @@ if (conversation) {
         if (document.hidden || !navigator.onLine) {
             controller?.abort();
             realtime?.pause();
-            showStatus(document.hidden ? 'Tạm dừng cập nhật' : 'Mất kết nối. Đang chờ kết nối lại…');
+            showStatus(document.hidden ? 'Tạm dừng cập nhật' : 'Mất kết nối. Đang chờ kết nối lại…', document.hidden ? 'paused' : 'error');
         } else {
             retry = interval;
             void realtime?.resume();
@@ -545,10 +562,8 @@ if (conversation) {
                 refresh: () => { void sync(); },
                 connection: ready => {
                     connected = ready;
-                    if (!ready) {
-                        showStatus('Realtime chưa kết nối; cập nhật dự phòng mỗi 3 giây');
-                        schedule();
-                    }
+                    setConnectionState(ready ? 'realtime' : 'polling');
+                    if (!ready) schedule();
                 },
                 denied: () => { void sync(); },
             });
