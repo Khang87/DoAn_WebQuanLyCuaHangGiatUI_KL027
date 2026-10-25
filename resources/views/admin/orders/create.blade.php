@@ -630,7 +630,7 @@
                 <button type="reset" class="btn btn-outline-secondary">Làm mới</button>
 
                 <button type="submit" class="btn btn-primary">
-                    <i class="bi bi-check-lg me-1"></i>Lưu đơn hàng
+                    <i class="bi bi-plus-lg me-1"></i>Thêm mới
                 </button>
             </div>
         </form>

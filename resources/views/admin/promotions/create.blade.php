@@ -103,7 +103,7 @@
                 </div>
             </section>
             <div class="d-flex justify-content-end mt-4">
-                <button type="submit" class="btn btn-primary">Thêm mới</button>
+                <button type="submit" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i>Thêm mới</button>
             </div>
         </form>
     </div>

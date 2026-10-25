@@ -60,7 +60,7 @@
             </div>
             <div class="d-flex justify-content-end gap-2 mt-4">
                 <a href="{{ route('order-items.index') }}" class="btn btn-outline-secondary">Hủy</a>
-                <button type="submit" class="btn btn-primary">Thêm mới</button>
+                <button type="submit" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i>Thêm mới</button>
             </div>
         </form>
     </div>

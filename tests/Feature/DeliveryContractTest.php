@@ -727,7 +727,7 @@ class DeliveryContractTest extends TestCase
             ->assertSee('<a href="'.route('deliveries.index').'" class="btn btn-outline-secondary btn-sm">', false)
             ->assertDontSee('href="'.route('deliveries.booking-documents.show', $intake).'"', false)
             ->assertSee('Quay lại')
-            ->assertSee('<button type="submit" class="btn btn-primary">Cập nhật</button>', false)
+            ->assertSee('<button type="submit" class="btn btn-primary"><i class="bi bi-check-lg me-1"></i>Cập nhật</button>', false)
             ->assertSee('<form action="'.route('deliveries.booking-documents.update', $intake).'" method="POST">', false)
             ->assertSee('name="_method" value="PUT"', false)
             ->assertSee('BGN-'.$intake->BookingGiaoNhanID)

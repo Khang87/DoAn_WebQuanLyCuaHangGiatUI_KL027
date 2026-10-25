@@ -71,7 +71,7 @@
                 </div>
             @endif
             <button type="submit" class="btn btn-primary">
-                <i class="bi bi-check-lg me-1"></i>{{ $editing ? 'Cập nhật' : 'Tạo nhóm quyền' }}
+                <i class="bi bi-{{ $editing ? 'check-lg' : 'plus-lg' }} me-1"></i>{{ $editing ? 'Cập nhật' : 'Thêm mới' }}
             </button>
         </form>
     </div>
@@ -152,7 +152,7 @@
                     </div>
 
                     <button type="submit" class="btn btn-primary mt-3" @disabled($role->TrangThai !== 'Hoạt động')>
-                        <i class="bi bi-check-lg me-1"></i>Lưu quyền nhóm
+                        <i class="bi bi-check-lg me-1"></i>Cập nhật
                     </button>
                 </form>
             @endif
@@ -254,7 +254,7 @@
                         <div class="modal-footer">
                             <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Hủy</button>
                             <button type="submit" class="btn btn-primary" @disabled($availableAccounts->isEmpty())>
-                                <i class="bi bi-person-plus me-1"></i>Thêm vào nhóm
+                                <i class="bi bi-plus-lg me-1"></i>Thêm mới
                             </button>
                         </div>
                     </form>

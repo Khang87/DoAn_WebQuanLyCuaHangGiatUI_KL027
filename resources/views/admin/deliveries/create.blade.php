@@ -158,7 +158,7 @@
             <div class="col-12"><label class="form-label" for="notes">Ghi chú</label><textarea class="form-control" id="notes" name="notes" rows="3">{{ old('notes') }}</textarea></div>
         </div>
         <div class="d-flex flex-wrap justify-content-end gap-2 mt-4">
-            <button type="submit" class="btn btn-primary">Thêm mới</button>
+            <button type="submit" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i>Thêm mới</button>
         </div>
     </form>
 </div></div>

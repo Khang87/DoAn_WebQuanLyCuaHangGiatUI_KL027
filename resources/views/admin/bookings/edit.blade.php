@@ -468,7 +468,7 @@
                     Khách từ chối — Hủy Booking
                 </button>
             @endif
-            <button type="submit" class="btn btn-success ms-auto">{{ $inspectionMode ? 'Xác nhận nhận đồ và tạo đơn' : 'Cập nhật' }}</button>
+            <button type="submit" class="btn btn-success ms-auto"><i class="bi bi-check-lg me-1"></i>{{ $inspectionMode ? 'Xác nhận nhận đồ và tạo đơn' : 'Cập nhật' }}</button>
             </div>
             @if($inspectionMode)
             <div class="modal fade" id="booking-refusal-modal" tabindex="-1" aria-labelledby="booking-refusal-title" aria-hidden="true">

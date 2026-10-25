@@ -101,6 +101,55 @@ class DetailPageActionLayoutTest extends TestCase
         }
     }
 
+    public function test_create_and_edit_forms_share_the_submit_button_labels(): void
+    {
+        $themMoi = '<i class="bi bi-plus-lg me-1"></i>Thêm mới';
+        $capNhat = '<i class="bi bi-check-lg me-1"></i>Cập nhật';
+
+        $createViews = collect(File::glob(resource_path('views/admin/*/create.blade.php')))
+            ->map(fn (string $path): string => str_replace('\\', '/', $path));
+        $editViews = collect(File::glob(resource_path('views/admin/*/edit.blade.php')))
+            ->map(fn (string $path): string => str_replace('\\', '/', $path))
+            ->push(str_replace('\\', '/', resource_path('views/admin/deliveries/booking-document-edit.blade.php')));
+
+        $this->assertGreaterThan(10, $createViews->count());
+        $this->assertGreaterThan(10, $editViews->count());
+
+        foreach ($createViews as $view) {
+            $source = (string) File::get($view);
+            $label = dirname($view).'/create';
+            $this->assertSame(
+                preg_match_all('/<button\b[^>]*type="submit"/i', $source),
+                substr_count($source, $themMoi),
+                "{$label} còn nút nộp không dùng nhãn \"Thêm mới\" kèm icon dấu cộng."
+            );
+        }
+
+        foreach ($editViews as $view) {
+            $source = (string) File::get($view);
+            if (str_contains($view, 'bookings/edit.blade.php')) {
+                $this->assertStringContainsString('<i class="bi bi-check-lg me-1"></i>{{ $inspectionMode', $source);
+                $this->assertStringContainsString("'Cập nhật' }}", $source);
+                continue;
+            }
+
+            $label = basename($view);
+            $this->assertSame(
+                preg_match_all('/<button\b[^>]*type="submit"/i', $source),
+                substr_count($source, $capNhat),
+                "{$label} còn nút nộp không dùng nhãn \"Cập nhật\" kèm icon dấu tích."
+            );
+            $this->assertStringNotContainsString($themMoi, $source, "{$label} dùng nhãn tạo mới trong form chỉnh sửa.");
+        }
+
+        $rolesForm = $this->source('roles/form');
+        $this->assertStringContainsString(
+            "<i class=\"bi bi-{{ \$editing ? 'check-lg' : 'plus-lg' }} me-1\"></i>{{ \$editing ? 'Cập nhật' : 'Thêm mới' }}",
+            $rolesForm
+        );
+        $this->assertStringNotContainsString('Lưu quyền nhóm', $rolesForm);
+    }
+
     public function test_delivery_and_booking_details_are_read_only(): void
     {
         foreach (['deliveries/show', 'bookings/show'] as $view) {
