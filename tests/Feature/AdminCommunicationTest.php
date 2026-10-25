@@ -602,9 +602,12 @@ class AdminCommunicationTest extends TestCase
         $html = $view->render();
 
         $this->assertStringContainsString('name="TaiKhoanID"', $html);
-        $this->assertStringContainsString('log-owner (#'.$account->TaiKhoanID.')', $html);
+        $this->assertStringContainsString('log-owner', $html);
+        $this->assertStringNotContainsString('log-owner (#'.$account->TaiKhoanID.')', $html);
         $this->assertStringContainsString('value="'.$account->TaiKhoanID.'" selected', $html);
         $this->assertStringContainsString('Bảng dữ liệu', $html);
+        $this->assertStringNotContainsString('>Lọc<', $html);
+        $this->assertStringContainsString('Xóa lọc', $html);
     }
 
     public function test_owner_can_view_system_logs_and_sees_the_menu_link(): void

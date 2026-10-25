@@ -48,6 +48,27 @@ class TaiKhoan extends Model
         return $this->belongsTo(KhachHang::class, 'KhachHangID');
     }
 
+    /** Tên hiển thị cho người dùng: nhân viên/khách hàng liên kết, nếu không thì dùng tên đăng nhập. */
+    public function getTenHienThiAttribute(): string
+    {
+        return (string) ($this->nhanVien?->HoTen ?: $this->khachHang?->HoTen ?: $this->TenDangNhap);
+    }
+
+    public function dropdownLabel(): string
+    {
+        $name = $this->tenHienThi;
+        if ($name === $this->TenDangNhap) {
+            return $name;
+        }
+
+        // Tài khoản mobile sinh TenDangNhap dạng auth-<UUID>; chỉ giữ đoạn đầu cho dễ đọc.
+        $username = preg_match('/^auth-[0-9a-f]{8}/i', $this->TenDangNhap)
+            ? substr($this->TenDangNhap, 0, 13).'…'
+            : $this->TenDangNhap;
+
+        return $name.' ('.$username.')';
+    }
+
     public function taiKhoanVaiTros()
     {
         return $this->hasMany(TaiKhoanVaiTro::class, 'TaiKhoanID');

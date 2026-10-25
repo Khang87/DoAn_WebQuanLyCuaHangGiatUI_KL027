@@ -22,7 +22,21 @@ class SystemLogTest extends TestCase
             $table->increments('TaiKhoanID');
             $table->string('TenDangNhap');
             $table->string('MatKhau')->nullable();
+            $table->unsignedInteger('NhanVienID')->nullable();
+            $table->unsignedInteger('KhachHangID')->nullable();
+            $table->string('AvatarURL')->nullable();
             $table->string('TrangThai')->default('Hoạt động');
+        });
+
+        Schema::create('NhanVien', function (Blueprint $table): void {
+            $table->increments('NhanVienID');
+            $table->string('HoTen');
+        });
+
+        Schema::create('KhachHang', function (Blueprint $table): void {
+            $table->increments('KhachHangID');
+            $table->string('HoTen');
+            $table->string('AvatarUrl')->nullable();
         });
 
         Schema::create('VaiTro', function (Blueprint $table): void {
@@ -100,7 +114,7 @@ class SystemLogTest extends TestCase
                 return $logs->total() === 1
                     && $logs->items()[0]->NhatKyID === $selectedLog->NhatKyID;
             })
-            ->assertSee('selected-account (#'.$selectedAccount->TaiKhoanID.')')
+            ->assertSee('selected-account')
             ->assertDontSee('Other account action');
     }
 
@@ -141,11 +155,13 @@ class SystemLogTest extends TestCase
         $this->assertStringContainsString('bg-success-subtle text-success-emphasis', $tableBody[1]);
     }
 
-    public function test_view_receives_accounts_with_only_the_required_dropdown_attributes(): void
+    public function test_dropdown_and_account_column_show_linked_names(): void
     {
         $owner = $this->createAccount('owner');
         $this->assignRole($owner, 'Owner');
         $account = $this->createAccount('dropdown-account');
+        $staffAccount = $this->createAccountWithStaff('login-account', 'Nhân viên kế toán');
+        $mobileAccount = $this->createAccountWithCustomer('auth-0be30498-4fa2-4a4b-8e47-473b641ca000', 'Khoa Võ');
 
         $response = $this->actingAs($owner)->get(route('admin.system-logs.index'));
 
@@ -155,10 +171,22 @@ class SystemLogTest extends TestCase
 
                 return $dropdownAccount !== null
                     && $dropdownAccount->TenDangNhap === 'dropdown-account'
-                    && array_keys($dropdownAccount->getAttributes()) === ['TaiKhoanID', 'TenDangNhap'];
+                    && array_keys($dropdownAccount->getAttributes()) === ['TaiKhoanID', 'TenDangNhap', 'NhanVienID', 'KhachHangID', 'AvatarURL'];
             })
-            ->assertSee('dropdown-account (#'.$account->TaiKhoanID.')')
+            ->assertSee('dropdown-account')
+            ->assertSee('Nhân viên kế toán (login-account)')
+            ->assertSee('Khoa Võ (auth-0be30498…)')
+            ->assertDontSee('auth-0be30498-4fa2-4a4b-8e47-473b641ca000)')
             ->assertSee('name="TaiKhoanID"', false);
+
+        $log = $this->createLog($staffAccount->TaiKhoanID, 'Account display action');
+
+        $this->actingAs($owner)
+            ->get(route('admin.system-logs.index', ['TaiKhoanID' => $staffAccount->TaiKhoanID]))
+            ->assertOk()
+            ->assertViewHas('logs', fn ($logs) => $logs->total() === 1 && $logs->items()[0]->NhatKyID === $log->NhatKyID)
+            ->assertSee('Nhân viên kế toán')
+            ->assertDontSee('login-account (#');
     }
 
     public function test_staff_is_forbidden_from_accessing_system_logs(): void
@@ -178,6 +206,24 @@ class SystemLogTest extends TestCase
             'MatKhau' => 'test-password',
             'TrangThai' => 'Hoạt động',
         ]);
+    }
+
+    private function createAccountWithStaff(string $username, string $staffName): User
+    {
+        $nhanVienId = DB::table('NhanVien')->insertGetId(['HoTen' => $staffName], 'NhanVienID');
+        $account = $this->createAccount($username);
+        $account->forceFill(['NhanVienID' => $nhanVienId])->save();
+
+        return $account->fresh();
+    }
+
+    private function createAccountWithCustomer(string $username, string $customerName): User
+    {
+        $khachHangId = DB::table('KhachHang')->insertGetId(['HoTen' => $customerName], 'KhachHangID');
+        $account = $this->createAccount($username);
+        $account->forceFill(['KhachHangID' => $khachHangId])->save();
+
+        return $account->fresh();
     }
 
     private function assignRole(User $user, string $roleName): void

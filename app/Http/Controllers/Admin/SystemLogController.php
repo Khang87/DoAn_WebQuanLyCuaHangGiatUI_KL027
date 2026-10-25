@@ -22,7 +22,7 @@ class SystemLogController extends Controller
             'to' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:from'],
         ]);
 
-        $query = NhatKyHeThong::query()->with('taiKhoan');
+        $query = NhatKyHeThong::query()->with(['taiKhoan.nhanVien', 'taiKhoan.khachHang']);
 
         if (! empty($filters['table'])) {
             $query->where('BangDuLieu', $filters['table']);
@@ -51,7 +51,8 @@ class SystemLogController extends Controller
             'targetCodes' => NhatKyHeThong::targetCodes($logs->getCollection()),
             'filters' => $filters,
             'accounts' => TaiKhoan::query()
-                ->select(['TaiKhoanID', 'TenDangNhap'])
+                ->with(['nhanVien', 'khachHang'])
+                ->select(['TaiKhoanID', 'TenDangNhap', 'NhanVienID', 'KhachHangID', 'AvatarURL'])
                 ->orderBy('TenDangNhap')
                 ->get(),
             'tables' => NhatKyHeThong::query()->select('BangDuLieu')->distinct()->orderBy('BangDuLieu')->pluck('BangDuLieu'),
