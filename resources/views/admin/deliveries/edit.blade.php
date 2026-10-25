@@ -29,7 +29,7 @@
 <div class="delivery-form-shell"><div class="card"><div class="card-body">
     <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
         <h2 class="h5 mb-0">Cập nhật lịch giao nhận</h2>
-        <a href="{{ \App\Support\OrderWorkflow::listBackUrl(route('deliveries.show', $delivery)) }}" class="btn btn-outline-secondary btn-sm">
+        <a href="{{ \App\Support\OrderWorkflow::listBackUrl(route('deliveries.index')) }}" class="btn btn-outline-secondary btn-sm">
             <i class="bi bi-arrow-left me-1"></i>Quay lại
         </a>
     </div>

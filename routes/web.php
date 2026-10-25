@@ -369,6 +369,7 @@ Route::middleware(['auth', 'reject.customer'])->group(function () {
     Route::get('roles', [VaiTroController::class, 'index'])->name('roles.index');
     Route::post('roles', [VaiTroController::class, 'store'])->name('roles.store');
     Route::get('roles/create', [VaiTroController::class, 'create'])->name('roles.create');
+    Route::get('roles/{role}', [VaiTroController::class, 'show'])->name('roles.show');
     Route::post('roles/{role}/members', [VaiTroController::class, 'addMember'])->name('roles.members.store');
     Route::delete('roles/{role}/members/{account}', [VaiTroController::class, 'removeMember'])->name('roles.members.destroy');
     Route::get('roles/{role}/edit', [VaiTroController::class, 'edit'])->name('roles.edit');

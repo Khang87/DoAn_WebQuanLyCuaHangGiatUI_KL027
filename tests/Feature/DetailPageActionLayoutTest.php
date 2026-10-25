@@ -85,6 +85,22 @@ class DetailPageActionLayoutTest extends TestCase
         $this->assertStringContainsString('max-width: 240px;', $source);
     }
 
+    public function test_role_detail_is_read_only_and_edit_forms_say_update(): void
+    {
+        $show = $this->source('roles/show');
+        $this->assertStringNotContainsString('<form', $show, 'Trang chi tiết nhóm quyền không được chứa form.');
+        $this->assertStringNotContainsString('type="checkbox"', $show);
+        $this->assertStringContainsString("route('roles.index')", $show);
+
+        $this->assertStringContainsString('route(\'roles.show\', $role->getKey())', $this->source('roles/index'));
+
+        foreach (['services/edit', 'accounts/edit', 'accounts/profile'] as $view) {
+            $source = $this->source($view);
+            $this->assertStringContainsString('>Cập nhật', $source, "{$view} chưa dùng nhãn nút chuẩn.");
+            $this->assertStringNotContainsString('Lưu thay đổi', $source);
+        }
+    }
+
     public function test_delivery_and_booking_details_are_read_only(): void
     {
         foreach (['deliveries/show', 'bookings/show'] as $view) {

@@ -53,17 +53,22 @@ class VaiTroController extends Controller
             ->with('success', 'Đã thêm nhóm quyền '.$role->TenVaiTro.'. Tiếp theo, hãy chọn các quyền được cấp.');
     }
 
+    /** Trang chỉ xem; mọi chỉnh sửa đi qua form roles.edit mở từ menu thao tác. */
+    public function show(int $role): View
+    {
+        Gate::authorize('roles.manage');
+
+        return view('admin.roles.show', [
+            'role' => $this->roleWithRelations($role),
+            'permissionGroups' => $this->roleService->getActivePermissionGroups(),
+        ]);
+    }
+
     public function edit(int $role): View
     {
         Gate::authorize('roles.manage');
 
-        $vaiTro = VaiTro::query()
-            ->with([
-                'quyens',
-                'taiKhoans.nhanVien',
-                'taiKhoans.khachHang',
-            ])
-            ->findOrFail($role);
+        $vaiTro = $this->roleWithRelations($role);
         $availableAccounts = TaiKhoan::query()
             ->with(['nhanVien', 'khachHang'])
             ->where('TrangThai', 'Hoạt động')
@@ -224,5 +229,16 @@ class VaiTroController extends Controller
 
         return redirect()->route('roles.edit', $vaiTro->getKey())
             ->with('success', 'Quyền của nhóm đã được cập nhật.');
+    }
+
+    private function roleWithRelations(int $role): VaiTro
+    {
+        return VaiTro::query()
+            ->with([
+                'quyens',
+                'taiKhoans.nhanVien',
+                'taiKhoans.khachHang',
+            ])
+            ->findOrFail($role);
     }
 }

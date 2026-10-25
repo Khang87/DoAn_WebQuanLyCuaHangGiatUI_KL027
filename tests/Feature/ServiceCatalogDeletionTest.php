@@ -326,9 +326,9 @@ class ServiceCatalogDeletionTest extends TestCase
             'errors' => new ViewErrorBag,
         ])->render();
 
-        $this->assertStringContainsString(route('services.show', $service), $html);
+        $this->assertStringContainsString(route('services.index'), $html);
         $this->assertSame(1, substr_count($html, 'Quay lại'));
-        $this->assertStringContainsString('Lưu thay đổi', $html);
+        $this->assertStringContainsString('Cập nhật', $html);
         $this->assertStringNotContainsString('>Hủy</a>', $html);
         $this->assertStringContainsString(route('services.update', $service->getKey()), $html);
         $this->assertStringContainsString('name="_method" value="PUT"', $html);

@@ -71,7 +71,7 @@
                 </div>
             @endif
             <button type="submit" class="btn btn-primary">
-                <i class="bi bi-check-lg me-1"></i>{{ $editing ? 'Lưu thông tin' : 'Tạo nhóm quyền' }}
+                <i class="bi bi-check-lg me-1"></i>{{ $editing ? 'Cập nhật' : 'Tạo nhóm quyền' }}
             </button>
         </form>
     </div>
@@ -118,31 +118,26 @@
                                         @foreach($permissions as $permission)
                                             @php
                                                 $permissionId = (int) $permission->getKey();
-                                                $isOwnerOnly = in_array($permission->MaQuyen, $ownerOnly ?? [], true);
-                                                $isCustomerGroup = \App\Support\InternalCommunicationPolicy::isCustomerRole($role->TenVaiTro);
-                                                $isDefault = ! $isCustomerGroup && in_array($permission->MaQuyen, ['MESSAGES_VIEW', 'MESSAGES_CREATE', 'NOTIFICATION_VIEW', 'NOTIFICATIONS_VIEW'], true);
-                                                $isExcluded = $isCustomerGroup && \App\Support\InternalCommunicationPolicy::handles(strtolower(str_replace('_', '.', $permission->MaQuyen)));
-                                                $isMobileNotification = $isExcluded && in_array($permission->MaQuyen, ['NOTIFICATION_VIEW', 'NOTIFICATIONS_VIEW'], true);
-                                                $isChecked = $isDefault || ($assignedPermissionIds->contains($permissionId) && (! $isExcluded || $isMobileNotification));
+                                                $state = \App\Support\RolePermissionDisplay::state($permission, $role, $assignedPermissionIds);
                                             @endphp
                                             <label class="d-flex align-items-start gap-2 py-2 {{ ! $loop->last ? 'border-bottom' : '' }}">
                                                 <input class="form-check-input mt-1 flex-shrink-0" type="checkbox"
                                                        name="permission_ids[]" value="{{ $permissionId }}"
-                                                       @checked($isChecked)
-                                                       @disabled($isDefault || $isExcluded || $isOwnerOnly || $role->TrangThai !== 'Hoạt động')>
+                                                       @checked($state['granted'])
+                                                       @disabled($state['default'] || $state['excluded'] || $state['ownerOnly'] || $role->TrangThai !== 'Hoạt động')>
                                                 <span class="min-w-0">
                                                     <span class="d-block fw-medium">{{ $permission->TenQuyen }}</span>
                                                     <span class="small text-muted"><code>{{ $permission->MaQuyen }}</code></span>
                                                     @if($permission->MoTa)
                                                         <span class="d-block small text-muted">{{ $permission->MoTa }}</span>
                                                     @endif
-                                                    @if($isDefault)
+                                                    @if($state['default'])
                                                         <span class="badge bg-primary-subtle text-primary mt-1">Mặc định cho nhóm nội bộ</span>
                                                     @endif
-                                                    @if($isExcluded)
-                                                        <span class="badge bg-secondary-subtle text-secondary mt-1">{{ $isMobileNotification ? 'Chỉ dành cho mobile; bị chặn trên quản trị' : 'Khách hàng không dùng trên quản trị' }}</span>
+                                                    @if($state['excluded'])
+                                                        <span class="badge bg-secondary-subtle text-secondary mt-1">{{ $state['mobileOnly'] ? 'Chỉ dành cho mobile; bị chặn trên quản trị' : 'Khách hàng không dùng trên quản trị' }}</span>
                                                     @endif
-                                                    @if($isOwnerOnly)
+                                                    @if($state['ownerOnly'])
                                                         <span class="badge bg-warning-subtle text-warning-emphasis mt-1">Chỉ Chủ cửa hàng</span>
                                                     @endif
                                                 </span>

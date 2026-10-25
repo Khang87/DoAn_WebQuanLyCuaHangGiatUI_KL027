@@ -125,7 +125,7 @@
                         @endforelse
                     </div>
 
-                    <a href="{{ route('roles.edit', $role->getKey()) }}" class="btn btn-outline-primary btn-sm mt-auto">
+                    <a href="{{ route('roles.show', $role->getKey()) }}" class="btn btn-outline-primary btn-sm mt-auto">
                         Xem chi tiết nhóm <i class="bi bi-arrow-right ms-1"></i>
                     </a>
                 </div>

@@ -334,9 +334,9 @@ class DeliveryContractTest extends TestCase
 
         $this->get(route('deliveries.edit', 1))
             ->assertOk()
-            ->assertSee('href="'.route('deliveries.show', 1).'"', false)
+            ->assertSee('href="'.route('deliveries.index').'"', false)
             ->assertSee('Quay lại')
-            ->assertSee('Lưu thay đổi')
+            ->assertSee('Cập nhật')
             ->assertDontSee('>Hủy</a>', false)
             ->assertSee('DH00000072 · Khoa Vo')
             ->assertSee('value="Giao đồ"', false)
