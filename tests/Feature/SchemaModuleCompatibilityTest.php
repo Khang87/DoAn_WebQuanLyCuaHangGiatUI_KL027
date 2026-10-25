@@ -165,6 +165,24 @@ class SchemaModuleCompatibilityTest extends TestCase
         $this->assertStringContainsString('src="https://example.test/mobile.jpg?a=1&amp;b=&quot;2&quot;"', $html);
         $this->assertStringNotContainsString('src="https://example.test/account.jpg"', $html);
         $this->assertStringContainsString('onerror="this.onerror=null;', $html);
+
+        $customerWithoutPhoto = $this->customer(null, null);
+        $customerWithoutPhoto->setAttribute('HoTen', 'không có ảnh');
+        $orderWithoutPhoto = new DonHang(['MaDonHang' => 'DH-NOAVATAR']);
+        $orderWithoutPhoto->setRelation('khachHang', $customerWithoutPhoto);
+        $payment->setRelation('donHang', $orderWithoutPhoto);
+
+        $html = view('admin.payments.index', [
+            'payments' => new LengthAwarePaginator(collect([$payment]), 1, 10),
+            'methods' => [], 'statuses' => [],
+        ])->render();
+
+        $this->assertStringContainsString('aria-label="Ảnh đại diện của không có ảnh"', $html);
+        preg_match('/<tbody>(.*?)<\/tbody>/s', $html, $tableBody);
+        $this->assertNotEmpty($tableBody);
+        $this->assertMatchesRegularExpression('/>\s*K\s*</', $tableBody[1]);
+        $this->assertStringNotContainsString('<img', $tableBody[1]);
+        $this->assertStringNotContainsString('user_1.jpg', $tableBody[1]);
     }
 
     public function test_payment_list_renders_each_status_once(): void
