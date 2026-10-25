@@ -245,7 +245,7 @@ class RemainingInspectionCasesTest extends TestCase
         }
     }
 
-    public function test_299_legacy_reprices_services_refunds_delta_and_keeps_delivery_fee(): void
+    public function test_299_legacy_reprices_services_refunds_delta_and_points_cover_delivery_fee(): void
     {
         Schema::create('KhuyenMai', function (Blueprint $t): void {
             $t->increments('KhuyenMaiID');
@@ -268,9 +268,9 @@ class RemainingInspectionCasesTest extends TestCase
         $result = app(OrderService::class)->completeReceivingInspection($order, [$row]);
         $this->assertSame(50000.0, (float) $result->TongTien);
         $this->assertSame(10000.0, (float) $result->TienGiamKhuyenMai);
-        $this->assertSame(40000, (int) $result->DiemSuDung);
-        $this->assertSame(60000, (int) DB::table('DiemTichLuy')->value('DiemHienTai'));
-        $this->assertSame(30000.0, (float) $result->ThanhTien);
+        $this->assertSame(70000, (int) $result->DiemSuDung);
+        $this->assertSame(30000, (int) DB::table('DiemTichLuy')->value('DiemHienTai'));
+        $this->assertSame(0.0, (float) $result->ThanhTien);
     }
 
     public function test_300_point_write_failure_rolls_back_legacy_details_status_and_balance(): void
