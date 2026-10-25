@@ -109,11 +109,22 @@
                 <div class="text-muted mb-3">Không dùng voucher.</div>
             @endif
             @if($bookingAmounts !== null)
+                @php
+                    $bookingRows = [
+                        'TongTien' => 'Tạm tính (ước tính)',
+                        'PhiGiaoHang' => 'Phí giao nhận',
+                        'TienGiamKhuyenMai' => 'Giảm từ mã khuyến mãi',
+                        'TienGiamDoDiem' => 'Giảm từ điểm',
+                        'TongDuocGiam' => 'Tổng tiền được giảm',
+                        'ThanhTien' => 'Tổng tiền thanh toán (ước tính)',
+                    ];
+                    $bookingAmounts['TongDuocGiam'] = (float) $bookingAmounts['TienGiamKhuyenMai'] + (float) $bookingAmounts['TienGiamDoDiem'];
+                @endphp
                 <dl class="mb-0" data-booking-money-summary>
-                    @foreach(['TongTien' => 'Tiền dịch vụ dự kiến', 'TienGiamKhuyenMai' => 'Giảm khuyến mãi', 'TienGiamDoDiem' => 'Giảm điểm tích lũy', 'PhiGiaoHang' => 'Phí nhận và giao đồ', 'ThanhTien' => 'Tổng thanh toán ước tính'] as $field => $label)
+                    @foreach($bookingRows as $field => $label)
                         <div class="d-flex justify-content-between gap-3 py-2 {{ $field === 'ThanhTien' ? 'border-top fw-bold' : '' }}">
                             <dt class="fw-normal">{{ $label }}</dt>
-                            <dd class="mb-0 text-end" data-booking-amount="{{ $field }}"><x-admin.detail.money :value="$bookingAmounts[$field]" :negative="in_array($field, ['TienGiamKhuyenMai', 'TienGiamDoDiem'])" /></dd>
+                            <dd class="mb-0 text-end" data-booking-amount="{{ $field }}"><x-admin.detail.money :value="$bookingAmounts[$field]" :negative="in_array($field, ['TienGiamKhuyenMai', 'TienGiamDoDiem', 'TongDuocGiam'])" /></dd>
                         </div>
                     @endforeach
                 </dl>

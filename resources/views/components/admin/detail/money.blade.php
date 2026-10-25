@@ -13,4 +13,4 @@
 
     :negative=true  -> tiền giảm, tự thêm dấu "-" và tô đỏ.
 --}}
-<span {{ $attributes->merge(['class' => 'detail-money ' . $class]) }}>{{ $negative ? '-' : '' }}{{ number_format((float) $value) }} {{ $unit }}</span>
+<span {{ $attributes->merge(['class' => 'detail-money ' . $class]) }}>{{ $negative ? '-' : '' }}{{ number_format((float) $value, 0, ',', '.') }} {{ $unit }}</span>

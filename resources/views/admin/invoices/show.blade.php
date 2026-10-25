@@ -131,16 +131,16 @@
                     <x-admin.detail.money :value="$invoice->TongTien" class="fw-semibold" />
                 </div>
                 <div class="d-flex justify-content-between align-items-center py-2">
-                    <span class="detail-summary__label">Giảm giá (Voucher + Điểm)</span>
-                    <x-admin.detail.money :value="$invoice->GiamGia" :negative="$hasDiscount" class="text-danger" />
+                    <span class="detail-summary__label">Phí giao nhận</span>
+                    <x-admin.detail.money :value="$invoice->PhiGiaoHang" class="fw-semibold" />
                 </div>
                 <div class="d-flex justify-content-between align-items-center py-2">
-                    <span class="detail-summary__label">Phí giao hàng</span>
-                    <x-admin.detail.money :value="$invoice->PhiGiaoHang" class="fw-semibold" />
+                    <span class="detail-summary__label">Tổng tiền được giảm</span>
+                    <x-admin.detail.money :value="$invoice->GiamGia" :negative="$hasDiscount" class="text-danger" />
                 </div>
 
                 <div class="detail-summary d-flex justify-content-between align-items-center">
-                    <span class="detail-summary__total">Tổng cộng</span>
+                    <span class="detail-summary__total">Tổng tiền thanh toán</span>
                     <x-admin.detail.money :value="$invoice->ThanhTien" class="detail-summary__total text-primary" />
                 </div>
 

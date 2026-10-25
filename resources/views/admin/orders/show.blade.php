@@ -458,24 +458,30 @@
             </div>
             @if($hasPromotionDiscount)
                 <div class="d-flex justify-content-between align-items-center py-2">
-                    <span class="detail-summary__label">Voucher giảm giá</span>
+                    <span class="detail-summary__label">Giảm từ mã khuyến mãi</span>
                     <x-admin.detail.money :value="$order->discount_by_promotion" :negative="true" class="text-success fw-semibold" />
                 </div>
             @endif
             @if($hasPointsDiscount)
                 <div class="d-flex justify-content-between align-items-start py-2">
                     <span class="detail-summary__label">
-                        Giảm giá từ điểm tích lũy
+                        Giảm từ điểm
                         @if($order->points_used > 0)
-                            <small class="d-block">({{ number_format($order->points_used) }} điểm)</small>
+                            <small class="d-block">({{ number_format($order->points_used, 0, ',', '.') }} điểm)</small>
                         @endif
                     </span>
                     <x-admin.detail.money :value="$order->discount_by_points" :negative="true" class="text-success fw-semibold" />
                 </div>
             @endif
+            @if($hasPromotionDiscount || $hasPointsDiscount)
+                <div class="d-flex justify-content-between align-items-center py-2">
+                    <span class="detail-summary__label">Tổng tiền được giảm</span>
+                    <x-admin.detail.money :value="(float) $order->discount_by_promotion + (float) $order->discount_by_points" :negative="true" class="text-success fw-semibold" />
+                </div>
+            @endif
 
             <div class="detail-summary d-flex justify-content-between align-items-center">
-                <span class="detail-summary__total">Tổng thanh toán</span>
+                <span class="detail-summary__total">Tổng tiền thanh toán</span>
                 <x-admin.detail.money :value="$order->total_amount" class="detail-summary__total text-primary" />
             </div>
 

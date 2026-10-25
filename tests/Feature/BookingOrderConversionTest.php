@@ -1290,23 +1290,28 @@ class BookingOrderConversionTest extends TestCase
         $response = $this->get(route('orders.show', $order))->assertOk();
         $response->assertSeeTextInOrder([
             'Tạm tính',
-            '700,000 VNĐ',
+            '700.000 VNĐ',
             'Phí giao nhận',
-            number_format($fee).' VNĐ',
-            'Tổng thanh toán',
-            number_format($total).' VNĐ',
+            number_format($fee, 0, ',', '.').' VNĐ',
+            'Tổng tiền thanh toán',
+            number_format($total, 0, ',', '.').' VNĐ',
         ]);
 
         if ($promotionDiscount > 0) {
-            $response->assertSeeText('Voucher giảm giá')->assertSeeText('-'.number_format($promotionDiscount).' VNĐ');
+            $response->assertSeeText('Giảm từ mã khuyến mãi')->assertSeeText('-'.number_format($promotionDiscount, 0, ',', '.').' VNĐ');
+            $response->assertSeeText('Tổng tiền được giảm')->assertSeeText('-'.number_format($promotionDiscount + $pointsDiscount, 0, ',', '.').' VNĐ');
         } else {
-            $response->assertDontSeeText('Voucher giảm giá');
+            $response->assertDontSeeText('Giảm từ mã khuyến mãi');
         }
 
         if ($pointsDiscount > 0) {
-            $response->assertSeeText('Giảm giá từ điểm tích lũy')->assertSeeText('-'.number_format($pointsDiscount).' VNĐ');
+            $response->assertSeeText('Giảm từ điểm')->assertSeeText('-'.number_format($pointsDiscount, 0, ',', '.').' VNĐ');
+            $response->assertSeeText('Tổng tiền được giảm')->assertSeeText('-'.number_format($promotionDiscount + $pointsDiscount, 0, ',', '.').' VNĐ');
         } else {
-            $response->assertDontSeeText('Giảm giá từ điểm tích lũy');
+            $response->assertDontSeeText('Giảm từ điểm');
+        }
+        if ($promotionDiscount <= 0 && $pointsDiscount <= 0) {
+            $response->assertDontSeeText('Tổng tiền được giảm');
         }
     }
 

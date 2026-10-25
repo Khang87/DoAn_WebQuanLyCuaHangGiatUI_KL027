@@ -186,16 +186,24 @@
                                             <td>Tạm tính:</td>
                                             <td class="text-end"><span id="subtotalAmount">0</span> VNĐ</td>
                                         </tr>
+                                        <tr>
+                                            <td>Phí giao nhận:</td>
+                                            <td class="text-end"><span id="deliveryFeeAmount">{{ number_format((float) $order->PhiGiaoHang, 0, ',', '.') }}</span> VNĐ</td>
+                                        </tr>
                                         <tr id="promotionDiscountRow" class="d-none">
-                                            <td>Voucher giảm giá:</td>
+                                            <td>Giảm từ mã khuyến mãi:</td>
                                             <td class="text-end text-success">-<span id="promotionDiscount">0</span> VNĐ</td>
                                         </tr>
                                         <tr id="pointsDiscountRow" class="{{ (float) $order->TienGiamDoDiem > 0 ? '' : 'd-none' }}">
-                                            <td>Giảm giá từ điểm tích lũy:</td>
+                                            <td>Giảm từ điểm:</td>
                                             <td class="text-end text-success">-<span id="pointsDiscount">{{ number_format((float) $order->TienGiamDoDiem, 0, ',', '.') }}</span> VNĐ</td>
                                         </tr>
+                                        <tr id="totalDiscountRow" class="{{ (float) $order->TienGiamDoDiem > 0 ? '' : 'd-none' }}">
+                                            <td>Tổng tiền được giảm:</td>
+                                            <td class="text-end text-success">-<span id="totalDiscount">{{ number_format((float) $order->TienGiamDoDiem, 0, ',', '.') }}</span> VNĐ</td>
+                                        </tr>
                                         <tr class="table-light">
-                                            <td class="fw-bold fs-5">TỔNG THANH TOÁN:</td>
+                                            <td class="fw-bold fs-5">Tổng tiền thanh toán:</td>
                                             <td class="text-end fw-bold fs-5 text-primary"><span id="grandTotal">0</span> VNĐ</td>
                                         </tr>
                                     </tbody>
@@ -235,6 +243,7 @@
     const customerSelect = document.getElementById('customer_id');
     const originalCustomerId = @json((string) $order->KhachHangID);
     const savedPointsDiscount = {{ (float) $order->TienGiamDoDiem }};
+    const deliveryFee = {{ (float) $order->PhiGiaoHang }};
 
     const savedPromotion = @json($savedPromotionPreview);
 
@@ -242,6 +251,8 @@
         subtotal: document.getElementById('subtotalAmount'),
         promotion: document.getElementById('promotionDiscount'),
         promotionRow: document.getElementById('promotionDiscountRow'),
+        totalDiscount: document.getElementById('totalDiscount'),
+        totalDiscountRow: document.getElementById('totalDiscountRow'),
         grand: document.getElementById('grandTotal')
     };
 
@@ -275,11 +286,14 @@
         });
 
         const promoDiscount = promotionDiscountFor(subtotal);
+        const totalDiscount = promoDiscount + savedPointsDiscount;
 
         out.subtotal.textContent = fmt(subtotal);
         out.promotion.textContent = fmt(promoDiscount);
         out.promotionRow.classList.toggle('d-none', promoDiscount <= 0);
-        out.grand.textContent = fmt(Math.max(0, subtotal - promoDiscount - savedPointsDiscount));
+        out.totalDiscount.textContent = fmt(totalDiscount);
+        out.totalDiscountRow.classList.toggle('d-none', totalDiscount <= 0);
+        out.grand.textContent = fmt(Math.max(0, subtotal + deliveryFee - totalDiscount));
     }
 
     table.addEventListener('input', event => {
