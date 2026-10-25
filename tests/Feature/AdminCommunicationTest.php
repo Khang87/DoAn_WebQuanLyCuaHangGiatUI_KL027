@@ -101,6 +101,11 @@ class AdminCommunicationTest extends TestCase
             $table->string('TenDichVu');
         });
 
+        Schema::create('LoaiDoGiat', function (Blueprint $table): void {
+            $table->increments('LoaiDoGiatID');
+            $table->string('TenLoaiDoGiat');
+        });
+
         Schema::create('DonViTinh', function (Blueprint $table): void {
             $table->increments('DonViTinhID');
             $table->string('KyHieu')->nullable();
@@ -111,6 +116,7 @@ class AdminCommunicationTest extends TestCase
             $table->increments('ChiTietDonHangID');
             $table->unsignedInteger('DonHangID');
             $table->unsignedInteger('DichVuID')->nullable();
+            $table->unsignedInteger('LoaiDoGiatID')->nullable();
             $table->unsignedInteger('DonViTinhID')->nullable();
             $table->decimal('SoLuong', 18, 2)->nullable();
             $table->decimal('KhoiLuong', 18, 2)->nullable();
@@ -318,6 +324,33 @@ class AdminCommunicationTest extends TestCase
         $this->assertSame(1001, $response->viewData('selectedOrder')->getKey());
         $this->assertTrue($response->viewData('messages')->isEmpty());
         Http::assertNothingSent();
+    }
+
+    public function test_order_service_summary_distinguishes_lines_of_the_same_service(): void
+    {
+        Http::fake();
+        Http::preventStrayRequests();
+        $staff = $this->seedLazyInbox(1);
+        $dichVuId = DB::table('DichVu')->insertGetId(['TenDichVu' => 'Giặt thường'], 'DichVuID');
+        $caiId = DB::table('DonViTinh')->insertGetId(['KyHieu' => 'cái'], 'DonViTinhID');
+        $doiId = DB::table('DonViTinh')->insertGetId(['KyHieu' => 'đôi'], 'DonViTinhID');
+        foreach ([['Chăn', 3, $caiId], ['Ga giường', 4, $caiId], ['Giày', 1, $doiId]] as [$name, $quantity, $unitId]) {
+            $loaiDoGiatId = DB::table('LoaiDoGiat')->insertGetId(['TenLoaiDoGiat' => $name], 'LoaiDoGiatID');
+            DB::table('ChiTietDonHang')->insert([
+                'DonHangID' => 1001, 'DichVuID' => $dichVuId, 'LoaiDoGiatID' => $loaiDoGiatId,
+                'DonViTinhID' => $unitId, 'SoLuong' => $quantity, 'DonGia' => 22000,
+                'ThanhTien' => 22000 * $quantity,
+            ]);
+        }
+
+        $this->actingAs($staff)
+            ->get('/admin/messages?order_id=1001')
+            ->assertOk()
+            ->assertSee('Giặt thường - Chăn')
+            ->assertSee('Giặt thường - Ga giường')
+            ->assertSee('Giặt thường - Giày')
+            ->assertSee('3 cái')
+            ->assertSee('1 đôi');
     }
 
     public function test_store_message_uses_linked_customer_account_and_keeps_chat_out_of_audit_log(): void
@@ -607,7 +640,7 @@ class AdminCommunicationTest extends TestCase
         $this->assertStringContainsString('value="'.$account->TaiKhoanID.'" selected', $html);
         $this->assertStringContainsString('Bảng dữ liệu', $html);
         $this->assertStringNotContainsString('>Lọc<', $html);
-        $this->assertStringContainsString('Xóa lọc', $html);
+        $this->assertStringNotContainsString('Xóa lọc', $html);
     }
 
     public function test_owner_can_view_system_logs_and_sees_the_menu_link(): void

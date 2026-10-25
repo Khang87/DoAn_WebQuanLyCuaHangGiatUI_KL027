@@ -20,24 +20,6 @@
             align-items: center;
             gap: 0.5rem;
         }
-
-        .system-log-filter-reset {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.3rem;
-            margin-top: 0.75rem;
-            padding: 0;
-            border: 0;
-            background: none;
-            color: #6c757d;
-            font-size: 0.875rem;
-            text-decoration: none;
-        }
-
-        .system-log-filter-reset:hover {
-            color: #0d6efd;
-            text-decoration: underline;
-        }
     </style>
 @endpush
 
@@ -80,13 +62,6 @@
                 <label for="to" class="form-label">Đến ngày</label>
                 <input id="to" name="to" type="date" value="{{ $filters['to'] ?? '' }}" class="form-control">
             </div>
-            @if(collect($filters)->filter(fn ($value) => $value !== null && $value !== '')->isNotEmpty())
-                <div class="col-12">
-                    <a href="{{ route('admin.system-logs.index') }}" class="system-log-filter-reset">
-                        <i class="bi bi-x-circle" aria-hidden="true"></i>Xóa lọc
-                    </a>
-                </div>
-            @endif
         </form>
     </div>
 </div>

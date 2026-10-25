@@ -200,7 +200,7 @@
                             @php($qtyWeight = format_quantity_weight($item->SoLuong, $item->KhoiLuong))
                             @php($unit = str_ends_with($qtyWeight, 'kg') ? '' : ($item->donViTinh?->KyHieu ?? ''))
                             <div class="d-flex justify-content-between gap-2">
-                                <span class="text-truncate">{{ $item->dichVu?->TenDichVu ?: 'Dịch vụ không còn tồn tại' }}</span>
+                                <span class="text-truncate">{{ $item->item_name }}</span>
                                 <span class="flex-shrink-0 text-muted">{{ trim($qtyWeight ?: '1') }}{{ $unit ? ' '.$unit : '' }}</span>
                             </div>
                         @endforeach

@@ -102,7 +102,7 @@ class MessageService
     public function findOrder(int $orderId): ?DonHang
     {
         return DonHang::query()
-            ->with(['khachHang.taiKhoan', 'chiTietDonHangs.dichVu', 'chiTietDonHangs.donViTinh'])
+            ->with(['khachHang.taiKhoan', 'chiTietDonHangs.dichVu', 'chiTietDonHangs.loaiDoGiat', 'chiTietDonHangs.donViTinh'])
             ->find($orderId);
     }
 
