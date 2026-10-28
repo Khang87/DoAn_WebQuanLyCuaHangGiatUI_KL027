@@ -24,8 +24,8 @@
                     @enderror
                 </div>
                 <div class="col-md-6">
-                    <label class="form-label">Email</label>
-                    <input type="email" class="form-control @error('Email') is-invalid @enderror" name="Email" value="{{ old('Email', $customer->Email) }}">
+                    <label class="form-label">Email <span class="text-danger ms-1">*</span></label>
+                    <input type="email" class="form-control @error('Email') is-invalid @enderror" name="Email" value="{{ old('Email', $customer->Email) }}" required>
                     @error('Email')
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
@@ -54,7 +54,6 @@
             </div>
 
             <div class="d-flex justify-content-end gap-2 mt-4">
-                <button type="reset" class="btn btn-outline-secondary">Làm mới</button>
                 <button type="submit" class="btn btn-primary">
                     <i class="bi bi-check-lg me-1"></i>Cập nhật
                 </button>

@@ -4,7 +4,9 @@ namespace Tests\Feature;
 
 use App\Enums\DeliveryStatus;
 use App\Enums\OrderStatus;
+use App\Models\Booking;
 use App\Models\DonHang;
+use App\Models\GiaoNhan;
 use App\Support\DeliveryWorkflow;
 use App\Support\OrderWorkflow;
 use Illuminate\Support\Facades\File;
@@ -101,6 +103,16 @@ class DetailPageActionLayoutTest extends TestCase
         }
     }
 
+    public function test_admin_forms_do_not_offer_reset_buttons_or_cancel_next_to_update(): void
+    {
+        foreach (File::allFiles(resource_path('views/admin')) as $view) {
+            $source = $view->getContents();
+            $this->assertDoesNotMatchRegularExpression('/<(?:button|input)\b[^>]*\btype=["\']reset["\']/i', $source, $view->getRelativePathname());
+            $this->assertStringNotContainsString('Làm mới', $source, $view->getRelativePathname());
+            $this->assertDoesNotMatchRegularExpression('/<(?:a|button)\b[^>]*>Hủy<\/(?:a|button)>\s*<button\b[^>]*>(?:(?!<\/button>)[\s\S])*Cập nhật<\/button>/u', $source, $view->getRelativePathname());
+        }
+    }
+
     public function test_create_and_edit_forms_share_the_submit_button_labels(): void
     {
         $themMoi = '<i class="bi bi-plus-lg me-1"></i>Thêm mới';
@@ -130,6 +142,7 @@ class DetailPageActionLayoutTest extends TestCase
             if (str_contains($view, 'bookings/edit.blade.php')) {
                 $this->assertStringContainsString('<i class="bi bi-check-lg me-1"></i>{{ $inspectionMode', $source);
                 $this->assertStringContainsString("'Cập nhật' }}", $source);
+
                 continue;
             }
 
@@ -210,7 +223,7 @@ class DetailPageActionLayoutTest extends TestCase
         }
 
         $order->TrangThai = OrderStatus::Washed->value;
-        $order->setRelation('giaoNhans', collect([new \App\Models\GiaoNhan(['LoaiGiaoNhan' => 'GIAO_DO'])]));
+        $order->setRelation('giaoNhans', collect([new GiaoNhan(['LoaiGiaoNhan' => 'GIAO_DO'])]));
         $this->assertSame(
             ['kind' => 'delivery', 'label' => 'Bắt đầu giao hàng'],
             collect(OrderWorkflow::nextAction($order))->only(['kind', 'label'])->all(),
@@ -218,7 +231,7 @@ class DetailPageActionLayoutTest extends TestCase
 
         $bookingOrder = new DonHang;
         $bookingOrder->TrangThai = OrderStatus::Washed->value;
-        $bookingOrder->setRelation('booking', new \App\Models\Booking);
+        $bookingOrder->setRelation('booking', new Booking);
         $bookingOrder->setRelation('giaoNhans', collect());
         $this->assertNull(OrderWorkflow::nextAction($bookingOrder));
 

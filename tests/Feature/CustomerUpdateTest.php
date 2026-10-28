@@ -5,10 +5,13 @@ namespace Tests\Feature;
 use App\Http\Middleware\EnsureUserHasPermission;
 use App\Http\Middleware\RejectCustomerRole;
 use App\Models\User;
+use Illuminate\Auth\Middleware\Authenticate;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Testing\TestResponse;
+use Illuminate\View\Middleware\ShareErrorsFromSession;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 class CustomerUpdateTest extends TestCase
@@ -240,7 +243,43 @@ class CustomerUpdateTest extends TestCase
             ->assertDontSee('setCustomValidity', false);
     }
 
-    public function test_existing_customer_can_still_be_updated_without_contact_details(): void
+    public static function invalidUpdateEmails(): array
+    {
+        return [
+            'missing' => [[], 'Vui lòng nhập địa chỉ email.'],
+            'null' => [['Email' => null], 'Vui lòng nhập địa chỉ email.'],
+            'empty' => [['Email' => ''], 'Vui lòng nhập địa chỉ email.'],
+            'whitespace' => [['Email' => '   '], 'Vui lòng nhập địa chỉ email.'],
+            'invalid format' => [['Email' => 'invalid-email'], 'Email không đúng định dạng.'],
+        ];
+    }
+
+    #[DataProvider('invalidUpdateEmails')]
+    public function test_customer_update_requires_a_valid_email(array $contact, string $message): void
+    {
+        $customerId = DB::table('KhachHang')->insertGetId([
+            'HoTen' => 'Khách hiện tại',
+            'Email' => 'current@example.com',
+        ], 'KhachHangID');
+
+        $response = $this->actingAs($this->makeAuthenticatedUser())->withoutMiddleware([
+            RejectCustomerRole::class,
+            EnsureUserHasPermission::class,
+        ])->from(route('customers.edit', $customerId))
+            ->put(route('customers.update', $customerId), ['HoTen' => 'Khách đã cập nhật', ...$contact]);
+
+        $response->assertRedirect(route('customers.edit', $customerId))
+            ->assertSessionHasErrors(['Email' => $message])
+            ->assertSessionDoesntHaveErrors(['SoDienThoai'])
+            ->assertSessionHasInput('HoTen', 'Khách đã cập nhật');
+        $this->assertDatabaseHas('KhachHang', [
+            'KhachHangID' => $customerId,
+            'HoTen' => 'Khách hiện tại',
+            'Email' => 'current@example.com',
+        ]);
+    }
+
+    public function test_existing_customer_can_be_updated_with_email_without_a_phone(): void
     {
         $customerId = DB::table('KhachHang')->insertGetId([
             'HoTen' => 'Khách hiện tại',
@@ -252,12 +291,15 @@ class CustomerUpdateTest extends TestCase
         ])->from(route('customers.edit', $customerId))
             ->put(route('customers.update', $customerId), [
                 'HoTen' => 'Khách đã cập nhật',
+                'Email' => ' updated@example.com ',
             ]);
 
-        $response->assertRedirect(route('customers.index'));
+        $response->assertRedirect(route('customers.index'))->assertSessionHasNoErrors();
         $this->assertDatabaseHas('KhachHang', [
             'KhachHangID' => $customerId,
             'HoTen' => 'Khách đã cập nhật',
+            'Email' => 'updated@example.com',
+            'SoDienThoai' => null,
         ]);
     }
 
@@ -308,7 +350,34 @@ class CustomerUpdateTest extends TestCase
             ->get(route('customers.edit', $customerId));
 
         $response->assertOk()
-            ->assertSee('value="customer@example.com"', false);
+            ->assertSee('Email <span class="text-danger ms-1">*</span>', false)
+            ->assertSee('name="Email" value="customer@example.com" required', false)
+            ->assertSee('name="SoDienThoai" value=""', false)
+            ->assertSee('Quay lại')
+            ->assertSee('Cập nhật')
+            ->assertDontSee('type="reset"', false)
+            ->assertDontSee('Làm mới');
+    }
+
+    public function test_edit_form_preserves_invalid_email_and_displays_its_error(): void
+    {
+        $customerId = DB::table('KhachHang')->insertGetId([
+            'HoTen' => 'Tên khách',
+            'Email' => 'customer@example.com',
+        ], 'KhachHangID');
+
+        $this->withViewErrors(['Email' => 'Email không đúng định dạng.'])
+            ->withSession(['_old_input' => ['Email' => 'invalid-email']])
+            ->withoutMiddleware([
+                Authenticate::class,
+                RejectCustomerRole::class,
+                EnsureUserHasPermission::class,
+                ShareErrorsFromSession::class,
+            ])->get(route('customers.edit', $customerId))
+            ->assertOk()
+            ->assertSee('name="Email" value="invalid-email" required', false)
+            ->assertSee('Email không đúng định dạng.')
+            ->assertSee('class="form-control  is-invalid " name="Email"', false);
     }
 
     private function makeAuthenticatedUser(): User

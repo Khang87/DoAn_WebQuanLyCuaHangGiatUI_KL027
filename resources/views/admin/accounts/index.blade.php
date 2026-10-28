@@ -242,7 +242,6 @@
                     <small class="text-muted">Đổi vai trò sẽ đăng xuất các phiên hiện tại của tài khoản để áp dụng quyền mới.</small>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Hủy</button>
                     <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg me-1"></i>Cập nhật</button>
                 </div>
             </form>

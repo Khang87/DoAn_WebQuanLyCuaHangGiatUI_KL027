@@ -35,7 +35,7 @@ class LuuKhachHangRequest extends FormRequest
         return [
             'HoTen' => ['required', 'string', 'max:255'],
             'Email' => [
-                ...($isCreating ? ['required'] : ['nullable']),
+                'required',
                 'string',
                 'email',
                 'max:255',
