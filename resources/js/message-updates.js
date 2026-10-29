@@ -3,6 +3,24 @@ const conversation = document.querySelector('[data-message-updates]');
 
 if (conversation) {
     const status = document.querySelector('[data-message-status]');
+    const imageViewer = document.querySelector('[data-message-image-viewer]');
+    const imageViewerImage = imageViewer?.querySelector('[data-message-image-viewer-image]');
+    let imageViewerTrigger;
+    const closeImageViewer = () => {
+        if (!imageViewer) return;
+        imageViewer.classList.add('d-none');
+        imageViewer.setAttribute('aria-hidden', 'true');
+        imageViewerImage?.removeAttribute('src');
+        document.body.classList.remove('overflow-hidden');
+        imageViewerTrigger?.focus({ preventScroll: true });
+    };
+    imageViewer?.querySelector('[data-message-image-viewer-close]')?.addEventListener('click', closeImageViewer);
+    imageViewer?.addEventListener('click', event => {
+        if (event.target === imageViewer) closeImageViewer();
+    });
+    document.addEventListener('keydown', event => {
+        if (event.key === 'Escape' && imageViewer && !imageViewer.classList.contains('d-none')) closeImageViewer();
+    });
     const connectionDot = document.querySelector('[data-message-connection-dot]');
     const form = document.querySelector('[data-message-form]');
     const orderId = conversation.dataset.orderId ? Number(conversation.dataset.orderId) : null;
@@ -13,6 +31,7 @@ if (conversation) {
     let timer, controller, signature, pending = false, stopped = false, disposed = false, retry = interval;
 
     const acknowledged = new Set();
+    let initialConversationRender = true;
 
     const connectionViews = {
         realtime: ['text-success', 'Đang nhận tin nhắn trực tiếp'],
@@ -101,7 +120,7 @@ if (conversation) {
             }
             return false;
         }
-        const atBottom = conversation.scrollHeight - conversation.scrollTop - conversation.clientHeight < 48;
+        const atBottom = initialConversationRender || conversation.scrollHeight - conversation.scrollTop - conversation.clientHeight < 48;
         const anchor = [...conversation.children].find(row => row.offsetTop >= conversation.scrollTop);
         const anchorId = anchor?.dataset.messageId;
         const anchorOffset = anchor ? anchor.offsetTop - conversation.scrollTop : 0;
@@ -122,8 +141,8 @@ if (conversation) {
             if (message.image_url) {
                 const link = document.createElement('a');
                 link.href = message.image_url;
-                link.target = '_blank';
-                link.rel = 'noopener noreferrer';
+                link.dataset.messageImageViewerTrigger = '';
+                link.setAttribute('aria-label', 'Xem ảnh đính kèm');
                 const image = document.createElement('img');
                 image.src = message.image_url;
                 image.dataset.signedUrlUpdatedAt = String(Date.now());
@@ -198,6 +217,7 @@ if (conversation) {
             const restoredAnchor = [...conversation.children].find(row => row.dataset.messageId === anchorId);
             conversation.scrollTop = restoredAnchor ? restoredAnchor.offsetTop - anchorOffset : previousTop;
         }
+        initialConversationRender = false;
         signature = nextSignature;
         return true;
     }
@@ -296,6 +316,19 @@ if (conversation) {
     function conversationTarget() {
         return customerId !== null ? { customer_id: customerId } : { order_id: orderId };
     }
+
+    conversation.scrollTop = conversation.scrollHeight;
+    conversation.addEventListener('click', event => {
+        const trigger = event.target.closest('[data-message-image-viewer-trigger]');
+        if (!trigger || !imageViewer || !imageViewerImage) return;
+        event.preventDefault();
+        imageViewerTrigger = trigger;
+        imageViewerImage.src = trigger.href;
+        imageViewer.classList.remove('d-none');
+        imageViewer.setAttribute('aria-hidden', 'false');
+        document.body.classList.add('overflow-hidden');
+        imageViewer.querySelector('[data-message-image-viewer-close]')?.focus();
+    });
 
     conversation.addEventListener('click', async event => {
         const menuToggle = event.target.closest('[data-message-menu-toggle]');

@@ -19,6 +19,9 @@
     .message-inbox-list .list-group-item.active .text-truncate,
     .message-inbox-list .list-group-item.active small { color: #1c2b4a; }
     .message-status-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: currentColor; vertical-align: middle; }
+    .message-image-viewer { position: fixed; inset: 0; z-index: 2000; display: flex; align-items: center; justify-content: center; padding: 3rem; background: rgb(0 0 0 / 88%); }
+    .message-image-viewer img { max-width: 95vw; max-height: 90vh; object-fit: contain; }
+    .message-image-viewer-close { position: absolute; top: 1rem; right: 1rem; width: 2.75rem; height: 2.75rem; border: 1px solid rgb(255 255 255 / 55%); border-radius: 50%; color: #fff; background: rgb(0 0 0 / 45%); font-size: 1.75rem; line-height: 1; }
     @media (max-width: 991.98px) {
         .message-chat-card { height: 36rem; }
         .message-inbox-list { max-height: 19rem; }
@@ -110,7 +113,7 @@
                                     {{ app(\App\Services\MessageService::class)->displayName($message, auth()->user()) }}
                                 </div>
                                 @if($message->ImageUrl ?? false)
-                                    <a href="{{ $message->ImageUrl }}" target="_blank" rel="noopener noreferrer"><img src="{{ $message->ImageUrl }}" alt="Ảnh đính kèm" class="img-fluid rounded mb-1" style="max-height:240px"></a>
+                                    <a href="{{ $message->ImageUrl }}" data-message-image-viewer-trigger aria-label="Xem ảnh đính kèm"><img src="{{ $message->ImageUrl }}" alt="Ảnh đính kèm" class="img-fluid rounded mb-1" style="max-height:240px"></a>
                                 @else
                                     <div class="text-break">{{ $message->NoiDung }}</div>
                                 @endif
@@ -134,6 +137,10 @@
                             Chưa có tin nhắn. Hãy gửi lời chào tới khách hàng.
                         </div>
                     @endforelse
+                </div>
+                <div class="message-image-viewer d-none" data-message-image-viewer role="dialog" aria-modal="true" aria-label="Xem ảnh đính kèm" aria-hidden="true" tabindex="-1">
+                    <button type="button" class="message-image-viewer-close" data-message-image-viewer-close aria-label="Đóng ảnh">&times;</button>
+                    <img src="" alt="Ảnh đính kèm đang xem" data-message-image-viewer-image>
                 </div>
                 @can('messages.create')
                 <div class="card-footer bg-white">
