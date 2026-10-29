@@ -152,6 +152,14 @@
                                 <button type="button" class="btn btn-sm btn-outline-secondary" data-message-template="Bạn vui lòng cho biết mã đơn hàng để cửa hàng kiểm tra nhé.">Hỏi mã đơn</button>
                                 <button type="button" class="btn btn-sm btn-outline-secondary" data-message-template="Cửa hàng sẽ kiểm tra và phản hồi bạn sớm.">Hẹn phản hồi</button>
                             </div>
+                            <div class="border rounded-3 p-2 d-flex align-items-center gap-2 d-none" data-message-image-preview>
+                                <img src="" alt="Ảnh đã chọn" class="rounded object-fit-cover flex-shrink-0" style="width:64px;height:64px" data-message-image-preview-thumbnail>
+                                <div class="min-w-0 flex-grow-1">
+                                    <span class="d-block text-truncate fw-semibold" data-message-image-preview-name></span>
+                                    <small class="text-muted" data-message-image-preview-size></small>
+                                </div>
+                                <button type="button" class="btn-close flex-shrink-0" aria-label="Bỏ ảnh đã chọn" title="Bỏ ảnh" data-message-image-remove></button>
+                            </div>
                             <div class="d-flex gap-2">
                                 <textarea name="content" rows="2" maxlength="1000" class="form-control" placeholder="Nhập tin nhắn cho khách hàng...">{{ old('content') }}</textarea>
                                 <label class="btn btn-outline-secondary align-self-end mb-0" title="Chọn ảnh">
@@ -162,7 +170,7 @@
                                     <i class="bi bi-send me-1"></i>Gửi
                                 </button>
                             </div>
-                            <small class="text-muted">Ảnh JPEG, PNG hoặc WEBP tối đa 5 MB. Ảnh sẽ hiện ngay trong khung chat khi bắt đầu gửi.</small>
+                            <small class="text-muted">Ảnh JPEG, PNG hoặc WEBP tối đa 5 MB. Ảnh xem trước sẽ hiện sau khi chọn và chỉ tải lên khi nhấn Gửi.</small>
                         </form>
                         @error('content')<div class="text-danger small mt-2">{{ $message }}</div>@enderror
                         @error('message')<div class="text-danger small mt-2">{{ $message }}</div>@enderror

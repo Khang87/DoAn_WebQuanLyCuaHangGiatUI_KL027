@@ -482,7 +482,7 @@ if (conversation) {
                         optimistic.remove(); URL.revokeObjectURL(previewUrl);
                     } catch (error) { optimistic.remove(); URL.revokeObjectURL(previewUrl); throw error; }
                     form.querySelector('textarea[name="content"]').value = '';
-                    imageInput.value = '';
+                    clearImageSelection();
                     window.dispatchEvent(new Event('message-inbox-changed'));
                     signature = undefined;
                     await sync();
@@ -497,7 +497,7 @@ if (conversation) {
                     throw new Error(body.message || Object.values(body.errors ?? {}).flat()[0] || 'Không gửi được tin nhắn.');
                 }
                 form.querySelector('textarea[name="content"]').value = '';
-                form.querySelector('[data-message-image]').value = '';
+                clearImageSelection();
                 window.dispatchEvent(new Event('message-inbox-changed'));
                 signature = undefined;
                 await sync();
@@ -512,25 +512,52 @@ if (conversation) {
         });
 
         const imageInput = form.querySelector('[data-message-image]');
-        const attachClipboardImage = file => {
-            if (!file || !file.type.startsWith('image/')) return false;
+        const imagePreview = form.querySelector('[data-message-image-preview]');
+        const imagePreviewThumbnail = form.querySelector('[data-message-image-preview-thumbnail]');
+        const imagePreviewName = form.querySelector('[data-message-image-preview-name]');
+        const imagePreviewSize = form.querySelector('[data-message-image-preview-size]');
+        let imagePreviewUrl;
+        const clearImageSelection = () => {
+            if (imagePreviewUrl) URL.revokeObjectURL(imagePreviewUrl);
+            imagePreviewUrl = undefined;
+            imageInput.value = '';
+            imagePreviewThumbnail.removeAttribute('src');
+            imagePreview.classList.add('d-none');
+            imagePreviewName.textContent = '';
+            imagePreviewSize.textContent = '';
+        };
+        const showImageSelection = file => {
+            if (!file) return;
             if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+                clearImageSelection();
                 showStatus('Chỉ hỗ trợ ảnh JPEG, PNG hoặc WEBP.');
-                return true;
+                return;
             }
             if (file.size > 5 * 1024 * 1024) {
+                clearImageSelection();
                 showStatus('Ảnh tối đa 5 MB.');
-                return true;
+                return;
             }
+            if (imagePreviewUrl) URL.revokeObjectURL(imagePreviewUrl);
+            imagePreviewUrl = URL.createObjectURL(file);
+            imagePreviewThumbnail.src = imagePreviewUrl;
+            imagePreviewName.textContent = file.name;
+            imagePreviewSize.textContent = `${(file.size / 1024 / 1024).toFixed(2)} MB`;
+            imagePreview.classList.remove('d-none');
+            showStatus(`Đã chọn ảnh: ${file.name}`);
+        };
+        form.querySelector('[data-message-image-remove]')?.addEventListener('click', clearImageSelection);
+        const attachClipboardImage = file => {
+            if (!file || !file.type.startsWith('image/')) return false;
             const transfer = new DataTransfer();
             const namedFile = new File([file], file.name || `anh-dan-vao.${file.type.split('/')[1]}`, { type: file.type });
             transfer.items.add(namedFile);
             imageInput.files = transfer.files;
-            showStatus('Đã đính kèm ảnh. Nhấn Gửi để gửi vào cuộc trò chuyện.');
+            showImageSelection(namedFile);
             return true;
         };
         imageInput?.addEventListener('change', () => {
-            if (imageInput.files?.[0]) showStatus(`Đã chọn ảnh: ${imageInput.files[0].name}`);
+            showImageSelection(imageInput.files?.[0]);
         });
         form.addEventListener('paste', event => {
             const items = [...(event.clipboardData?.items ?? [])];
