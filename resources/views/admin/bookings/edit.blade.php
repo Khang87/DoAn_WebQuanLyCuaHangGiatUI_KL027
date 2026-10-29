@@ -211,7 +211,7 @@
                 @endif
                 @php
                     $bookingItems = old('items', $booking->chiTietBookings->map(fn ($item) => $item->only(['DichVuID', 'LoaiDoGiatID', 'DonViTinhID', 'SoLuong', 'KhoiLuong', 'GhiChu', 'TinhTrangTruocKhiGiat']))->all());
-                    if ($inspectionMode && old('items') === null) {
+                    if (old('items') === null) {
                         $existingTuples = collect($bookingItems)->mapWithKeys(fn ($item) => [implode(':', [
                             $item['DichVuID'] ?? '', $item['LoaiDoGiatID'] ?? '', $item['DonViTinhID'] ?? '',
                         ]) => true]);

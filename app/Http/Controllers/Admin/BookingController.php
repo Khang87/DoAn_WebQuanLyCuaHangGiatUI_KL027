@@ -181,13 +181,13 @@ class BookingController extends Controller
         }
 
         $serviceIds = $booking->chiTietBookings->pluck('DichVuID')
-            ->merge($inspectionMode ? $booking->requestedServices->pluck('DichVuID') : [])
+            ->merge($booking->requestedServices->pluck('DichVuID'))
             ->unique()->all();
         $garmentIds = $booking->chiTietBookings->pluck('LoaiDoGiatID')
-            ->merge($inspectionMode ? $booking->requestedServices->pluck('LoaiDoGiatID') : [])
+            ->merge($booking->requestedServices->pluck('LoaiDoGiatID'))
             ->unique()->all();
         $unitIds = $booking->chiTietBookings->pluck('DonViTinhID')
-            ->merge($inspectionMode ? $booking->requestedServices->pluck('DonViTinhID') : [])
+            ->merge($booking->requestedServices->pluck('DonViTinhID'))
             ->unique()->all();
         $services = DichVu::query()
             ->where(fn ($query) => $query->availableForBooking()->orWhereIn('DichVuID', $serviceIds))
