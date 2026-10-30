@@ -71,14 +71,6 @@
                             @can('bookings.view')
                                 <a href="{{ route('bookings.show', $booking) }}" class="btn btn-order-action view" title="Xem"><i class="bi bi-eye"></i></a>
                             @endcan
-                            @if(in_array($booking->BookingID, $inspectableBookingIds, true))
-                                <a href="{{ route('bookings.inspection', $booking) }}"
-                                   class="btn btn-order-action"
-                                   title="Kiểm tra và tạo đơn"
-                                   aria-label="Kiểm tra và tạo đơn cho {{ $booking->MaBooking }}">
-                                    <i class="bi bi-clipboard-check" aria-hidden="true"></i>
-                                </a>
-                            @endif
                             @if($booking->statusEnum() === \App\Enums\BookingStatus::Pending && $booking->donHangs->isEmpty())
                                 @can('bookings.confirm')
                                     <x-admin.detail.confirm-form

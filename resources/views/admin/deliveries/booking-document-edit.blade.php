@@ -55,8 +55,7 @@
 
                     <div class="col-12">
                         <label class="form-label" for="employee_select">Nhân viên phụ trách</label>
-                        @if($canAssignEmployee)
-                        @if($canAssignEmployee)
+                        @if($canAssignEmployee ?? true)
                             <div class="delivery-employee-picker" data-employee-picker>
                                 <button class="form-select text-start text-truncate" id="employee_select" type="button"
                                         data-employee-toggle aria-expanded="false" aria-haspopup="listbox"
@@ -93,7 +92,8 @@
                                 @error('employee_id')<div class="text-danger small mt-1" role="alert">{{ $message }}</div>@enderror
                             </div>
                         @else
-                            <input class="form-control" id="employee_id" value="{{ $employee?->HoTen ?: 'Chưa phân công' }}" readonly>
+                            <input class="form-control" id="employee_display" value="{{ $employee?->HoTen ?: 'Chưa phân công' }}" readonly>
+                            <input type="hidden" name="employee_id" value="{{ $employee?->NhanVienID ?? '' }}">
                         @endif
                     </div>
 

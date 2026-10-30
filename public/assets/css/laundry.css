@@ -376,8 +376,8 @@ body {
 
 .navbar-message-count {
     position: absolute;
-    top: -6px;
-    right: -6px;
+    top: -8px;
+    right: -8px;
     min-width: 20px;
     height: 20px;
     padding: 0 5px;
@@ -390,10 +390,17 @@ body {
     line-height: 18px;
     text-align: center;
     white-space: nowrap;
+    z-index: 10;
 }
 
 .navbar-action-btn.notification-bell-toggle::after {
-    display: none;
+    display: none !important;
+    visibility: hidden !important;
+}
+
+.navbar-action-btn.notification-bell-toggle .navbar-action-badge {
+    display: none !important;
+    visibility: hidden !important;
 }
 
 /* ---------------------------------------------------------------------

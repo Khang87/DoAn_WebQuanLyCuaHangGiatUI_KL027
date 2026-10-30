@@ -305,14 +305,15 @@
                 <button class="navbar-action-btn dropdown-toggle notification-bell-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Thông báo{{ $unreadCount > 0 ? ', có '.$unreadCount.' tin chưa đọc' : '' }}">
                     <i class="bi bi-bell"></i>
                     @if($unreadCount > 0)
-                        <span class="navbar-action-badge" aria-hidden="true"></span>
+                        <span class="navbar-message-count" aria-hidden="true">{{ $unreadCount }}</span>
                     @endif
                 </button>
                 <div class="dropdown-menu dropdown-menu-end notification-dropdown">
                     <div class="p-3 border-bottom d-flex justify-content-between align-items-center">
                         <h6 class="mb-0">Thông báo</h6>
-                        <span data-notification-count class="badge bg-danger-subtle text-danger-emphasis" @if($unreadCount === 0) hidden @endif>{{ $unreadCount }} mới</span>
-
+                        @if($unreadCount > 0)
+                            <span class="navbar-message-count" data-notification-count>{{ $unreadCount }} mới</span>
+                        @endif
                     </div>
                     <div class="p-2" data-notification-list style="max-height: 300px; overflow-y: auto;">
                         @forelse($dropdownNotifications as $notif)

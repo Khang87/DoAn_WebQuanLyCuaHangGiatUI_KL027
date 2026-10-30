@@ -15,23 +15,30 @@ class EmployeeAssignment
     /** Stub employee IDs used by the booking intake combobox while mock staff data is enabled. */
     public const MOCK_EMPLOYEE_IDS = [9001, 9002, 9003, 9004];
 
+    /**
+     * Lấy danh sách nhân viên có thể phân công cho giao nhận.
+     * Bao gồm: người trong nhóm "Nhân viên" (có quyền deliveries.*), Chủ cửa hàng, Quản lý.
+     */
     public static function deliveryCandidates(?int $currentId = null): Builder
     {
         return NhanVien::query()->where(function ($query) use ($currentId): void {
-            $query->where(function ($active): void {
-                $active->where('TrangThai', 'Hoạt động')
-                    ->where(fn ($title) => $title->whereNull('ChucDanh')
-                        ->orWhere(fn ($staffTitle) => $staffTitle
-                            ->where('ChucDanh', '!=', 'Chủ cửa hàng')
-                            ->where('ChucDanh', 'not like', 'Quản lý%')))
-                    ->whereDoesntHave('taiKhoans.vaiTros', fn ($role) => $role
-                        ->where(fn ($name) => $name->where('TenVaiTro', 'Chủ cửa hàng')
-                            ->orWhere('TenVaiTro', 'like', 'Quản lý%')));
+            // Filter active employees with appropriate permissions or roles
+            $query->where('TrangThai', 'Hoạt động')->where(function ($q) {
+                // Include users with deliveries.edit permission (nhóm Nhân viên) hoặc là Chủ cửa hàng/Quản lý
+                $q->whereHas('taiKhoans.vaiTros.quyens', function ($q2) {
+                    $q2->where('MaQuyen', QuyenMapper::resolveMaQuyen('deliveries.edit'));
+                })
+                 ->orWhereHas('taiKhoans.vaiTros', function ($vr) {
+                     $vr->where('TenVaiTro', 'Chủ cửa hàng');
+                 })
+                 ->orWhereHas('taiKhoans.vaiTros', function ($vr) {
+                     $vr->where('TenVaiTro', 'like', '%Quản lý%');
+                 });
             });
             if ($currentId !== null) {
                 $query->orWhereKey($currentId);
             }
-        });
+        })->orderBy('HoTen')->orderBy('NhanVienID');
     }
 
     public static function canAssignBookingIntake(?User $user): bool
