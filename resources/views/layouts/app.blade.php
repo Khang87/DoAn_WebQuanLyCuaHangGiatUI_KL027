@@ -23,7 +23,7 @@
     <link rel="stylesheet" href="{{ asset('assets/libs/flatpickr/flatpickr.min.css') }}">
     
     {{-- Flatpickr Dropdown Arrow Fix --}}
-    <link rel="stylesheet" href="{{ asset('assets/css/flatpickr-fix.css') }}">
+    <link rel="stylesheet" href="{{ asset('assets/css/flatpickr-fix.css') }}?v={{ filemtime(public_path('assets/css/flatpickr-fix.css')) }}">
 
     <!-- FontAwesome 6 -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
