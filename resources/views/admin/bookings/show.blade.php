@@ -40,9 +40,9 @@
                     <x-admin.status-badge :status="$booking->TrangThai" :enum="\App\Enums\BookingStatus::class" />
                 </x-admin.detail.info-item>
                 <x-admin.detail.info-item label="HÌNH THỨC NHÂN VIÊN NHẬN ĐỒ" :value="$booking->method_label" />
+                <x-admin.detail.info-item label="ĐỊA CHỈ NHÂN VIÊN NHẬN ĐỒ" :value="$receiveAtStore ? $storeAddress : ($booking->DiaChiNhan ?: '—')" />
                 <x-admin.detail.info-item label="HÌNH THỨC NHÂN VIÊN GIAO ĐỒ" :value="$booking->return_method_label" />
-                <x-admin.detail.info-item label="Địa chỉ nhận đồ" :value="$receiveAtStore ? $storeAddress : ($booking->DiaChiNhan ?: '—')" />
-                <x-admin.detail.info-item label="Địa chỉ trả đồ" :value="$returnAtStore ? $storeAddress : ($booking->DiaChiTra ?: '—')" />
+                <x-admin.detail.info-item label="ĐỊA CHỈ NHÂN VIÊN GIAO ĐỒ" :value="$returnAtStore ? $storeAddress : ($booking->DiaChiTra ?: '—')" />
                 <x-admin.detail.info-item label="Nhân viên xác nhận Booking" :value="$booking->nhanVienXacNhan?->HoTen ?? '—'" />
                 <x-admin.detail.info-item label="Nhân viên nhận và kiểm kê" :value="$intakeDocument?->nhanVien?->HoTen ?? 'Chưa phân công'" />
                 <x-admin.detail.info-item label="Thời gian xác nhận" :value="$booking->ThoiGianXacNhan?->format('d/m/Y H:i') ?? '—'" />
