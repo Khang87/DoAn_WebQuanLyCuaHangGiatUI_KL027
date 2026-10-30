@@ -54,7 +54,6 @@
                         <th scope="col">STT</th>
                         <th class="fw-bold text-dark">Mã đơn hàng</th>
                         <th class="fw-bold text-dark">Khách hàng</th>
-                        <th class="fw-bold text-dark">Số điện thoại</th>
                         <th class="fw-bold text-dark">Thành tiền</th>
                         <th class="fw-bold text-dark text-center">Trạng thái</th>
                         <th class="fw-bold text-dark">Ngày tạo</th>
@@ -75,7 +74,6 @@
                                 </div>
                             </div>
                         </td>
-                        <td class="text-dark">{{ $order->khachHang?->SoDienThoai ?: '-' }}</td>
                         <td class="text-dark">{{ number_format((float) $order->ThanhTien) }} đ</td>
                         <td class="text-center">
                             <div class="order-status-badges d-inline-flex align-items-center flex-nowrap gap-1 text-nowrap">
