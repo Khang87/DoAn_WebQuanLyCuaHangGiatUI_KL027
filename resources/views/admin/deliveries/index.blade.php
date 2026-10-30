@@ -67,6 +67,7 @@
                             $isBookingDocument = $delivery->source_type === 'booking';
                             $isIntake = $delivery->task_type === 'NHAN_DO';
                             $isMutableBookingIntake = $isBookingDocument && (int) $delivery->intake_mutable === 1;
+                            $isReturnIntake = $isBookingDocument && $delivery->task_type === 'GIAO_DO';
                             $deliveryStatus = \App\Enums\DeliveryStatus::parseForLeg($delivery->raw_status, $delivery->task_type);
                             $canManageOperationalReturn = ! $isBookingDocument
                                 && $delivery->task_type === 'GIAO_DO'
@@ -169,41 +170,54 @@
                                                 <i class="bi bi-pencil"></i>
                                             </a>
                                         @endcan
-                                    @elseif($isBookingDocument && $delivery->task_type === 'NHAN_DO' && $delivery->order_code && in_array($delivery->order_status, [\App\Enums\OrderStatus::Washed->value, \App\Enums\OrderStatus::Delivering->value], true) && $delivery->employee_name !== null)
-                                        @if($deliveryStatus !== \App\Enums\DeliveryStatus::Cancelled)
-                                            @can('bookings.view')
-                                                <a href="{{ route('bookings.inspection', $delivery->booking_id) }}"
-                                                   class="btn btn-order-action"
-                                                   title="Kiểm tra và tạo đơn"
-                                                   aria-label="Kiểm tra và tạo đơn cho {{ $delivery->booking_code }}">
-                                                    <i class="bi bi-clipboard-check" aria-hidden="true"></i>
-                                                </a>
-                                            @endcan
-                                        @endif
-                                        @if($canEditOperationalDelivery)
+                                    @elseif($isBookingDocument && $isIntake && $delivery->employee_name !== null)
+                                        // Phiếu nhận từ booking + có nhân viên -> "Kiểm tra và tạo đơn" (kể cả khi hoàn thành)
+                                        @can('bookings.view')
+                                            <a href="{{ route('bookings.inspection', $delivery->booking_id) }}"
+                                               class="btn btn-order-action"
+                                               title="Kiểm tra và tạo đơn"
+                                               aria-label="Kiểm tra và tạo đơn cho {{ $delivery->booking_code }}">
+                                                <i class="bi bi-clipboard-check" aria-hidden="true"></i>
+                                            </a>
+                                        @endcan
+                                    @elseif($isReturnIntake && $delivery->employee_name !== null && in_array($deliveryStatus, [\App\Enums\DeliveryStatus::Pending, \App\Enums\DeliveryStatus::Picking, \App\Enums\DeliveryStatus::Delivering], true))
+                                        // Phiếu giao từ booking + có nhân viên + không cancelled → "Xác nhận giao đồ"
+                                        @php
+                                            $progressAction = \App\Support\DeliveryWorkflow::progressAction($delivery->task_type, $delivery->fulfillment, $deliveryStatus);
+                                            $paymentNotDone = false;
+                                            if ($progressAction && in_array($deliveryStatus, [\App\Enums\DeliveryStatus::Picking, \App\Enums\DeliveryStatus::Delivering], true)) {
+                                                $order = \App\Models\DonHang::find($delivery->order_id);
+                                                if ($order) {
+                                                    $paymentStatusEnum = \App\Enums\OrderPaymentStatus::tryFrom($order->TrangThaiThanhToan ?? '') 
+                                                        ?: \App\Enums\OrderPaymentStatus::Unpaid;
+                                                    $paymentNotDone = $paymentStatusEnum !== \App\Enums\OrderPaymentStatus::Paid;
+                                                }
+                                            }
+                                        @endphp
+                                        @if($progressAction)
                                             @can('deliveries.edit')
-                                                <a href="{{ route('deliveries.edit', $delivery->source_id) }}"
-                                                   class="btn btn-order-action edit" title="Sửa">
-                                                    <i class="bi bi-pencil"></i>
-                                                </a>
+                                                @if($paymentNotDone)
+                                                    <button class="btn btn-order-action disabled" title="Vui lòng thanh toán trước khi xác nhận giao đồ">
+                                                        <i class="{{ $progressAction['icon'] }}"></i>{{ $progressAction['label'] }} (Chờ thanh toán)
+                                                    </button>
+                                                @else
+                                                    <x-admin.detail.confirm-form
+                                                        :action="route('deliveries.advance-progress', $delivery->source_id)"
+                                                        method="POST"
+                                                        :title="$progressAction['label'].'?'"
+                                                        text="Trạng thái phiếu được cập nhật và ghi vào lịch sử."
+                                                        :label="$progressAction['label']"
+                                                        :icon="$progressAction['icon']"
+                                                        variant="btn-order-action"
+                                                        size=""
+                                                        iconOnly
+                                                        :color="$progressAction['color']"
+                                                        iconName="question"
+                                                    />
+                                                @endif
                                             @endcan
                                         @endif
-                                        @if($canManageOperationalReturn)
-                                            @can('deliveries.delete')
-                                                <x-admin.detail.confirm-form
-                                                    :action="route('deliveries.cancel-return', $delivery->source_id)"
-                                                    method="POST"
-                                                    title="Hủy lịch giao?"
-                                                    text="Phiếu được giữ lại làm lịch sử; đơn hàng và trạng thái thanh toán không thay đổi."
-                                                    label="Hủy lịch giao"
-                                                    icon="bi bi-x-circle"
-                                                    variant="btn-order-action delete"
-                                                    size=""
-                                                    iconOnly
-                                                />
-                                            @endcan
-                                        @endif
-                                    @else
+                                    @elseif(! $isBookingDocument)
                                         @php
                                             $progressAction = \App\Support\DeliveryWorkflow::progressAction($delivery->task_type, $delivery->fulfillment, $deliveryStatus);
                                             
@@ -223,7 +237,7 @@
                                         @if($progressAction)
                                             @can('deliveries.edit')
                                                 @if($paymentNotDone)
-                                                    <button class="btn btn-order-action {{ $progressAction['icon'] === 'bi-check-circle' ? '' : '' }}" disabled title="Vui lòng thanh toán trước khi xác nhận giao đồ">
+                                                    <button class="btn btn-order-action disabled" title="Vui lòng thanh toán trước khi xác nhận giao đồ">
                                                         <i class="{{ $progressAction['icon'] }}"></i>{{ $progressAction['label'] }} (Chờ thanh toán)
                                                     </button>
                                                 @else

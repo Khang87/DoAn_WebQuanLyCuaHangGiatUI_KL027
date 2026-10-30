@@ -87,8 +87,8 @@
                                 </div>
                                 <input type="hidden" id="employee_id" name="employee_id" value="{{ $employee?->NhanVienID }}" data-employee-id>
                                 <input type="hidden" name="employee_search" value="{{ $employee?->HoTen }}" data-selected-employee-search>
-                                @error('employee_id')<div class="text-danger small mt-1" role="alert">{{ $message }}</div>@enderror
                             </div>
+                            @error('employee_id')<div class="text-danger small mt-1" role="alert">{{ $message }}</div>@enderror
                         @else
                             <input class="form-control" id="employee_display" value="{{ $employee?->HoTen ?: 'Chưa phân công' }}" readonly>
                             <input type="hidden" name="employee_id" value="{{ $employee?->NhanVienID ?? '' }}">

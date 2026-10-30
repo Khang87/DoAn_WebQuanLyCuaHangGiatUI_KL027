@@ -22,19 +22,14 @@ class EmployeeAssignment
     public static function deliveryCandidates(?int $currentId = null): Builder
     {
         return NhanVien::query()->where(function ($query) use ($currentId): void {
-            // Filter active employees with appropriate permissions or roles
-            $query->where('TrangThai', 'Hoạt động')->where(function ($q) {
-                // Include users with deliveries.edit permission (nhóm Nhân viên) hoặc là Chủ cửa hàng/Quản lý
-                $q->whereHas('taiKhoans.vaiTros.quyens', function ($q2) {
-                    $q2->where('MaQuyen', QuyenMapper::resolveMaQuyen('deliveries.edit'));
-                })
-                 ->orWhereHas('taiKhoans.vaiTros', function ($vr) {
-                     $vr->where('TenVaiTro', 'Chủ cửa hàng');
-                 })
-                 ->orWhereHas('taiKhoans.vaiTros', function ($vr) {
-                     $vr->where('TenVaiTro', 'like', '%Quản lý%');
-                 });
-            });
+            // Filter active employees who are in "Nhân viên" role (simple approach)
+            $query->where('TrangThai', 'Hoạt động')
+                  ->whereDoesntHave('taiKhoans.vaiTros', fn ($q) => $q->where('TenVaiTro', 'Chủ cửa hàng'))
+                  ->whereDoesntHave('taiKhoans.vaiTros', fn ($q) => $q->where('TenVaiTro', 'like', '%Quản lý%'));
+            
+            // Include users with deliveries.edit permission OR not in owner/manager roles
+            $query->orWhereDoesntHave('taiKhoans.vaiTros'); // Users without any role assignment
+            
             if ($currentId !== null) {
                 $query->orWhereKey($currentId);
             }
