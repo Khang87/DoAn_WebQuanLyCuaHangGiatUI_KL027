@@ -456,12 +456,6 @@
                 <span class="detail-summary__label">Phí giao nhận</span>
                 <x-admin.detail.money :value="$order->PhiGiaoHang" class="fw-semibold" />
             </div>
-            @if($hasPromotionDiscount)
-                <div class="d-flex justify-content-between align-items-center py-2">
-                    <span class="detail-summary__label">Giảm từ mã khuyến mãi</span>
-                    <x-admin.detail.money :value="$order->discount_by_promotion" :negative="true" class="text-success fw-semibold" />
-                </div>
-            @endif
             @if($hasPointsDiscount)
                 <div class="d-flex justify-content-between align-items-start py-2">
                     <span class="detail-summary__label">
@@ -473,10 +467,10 @@
                     <x-admin.detail.money :value="$order->discount_by_points" :negative="true" class="text-success fw-semibold" />
                 </div>
             @endif
-            @if($hasPromotionDiscount || $hasPointsDiscount)
+            @if($hasPointsDiscount)
                 <div class="d-flex justify-content-between align-items-center py-2">
                     <span class="detail-summary__label">Tổng tiền được giảm</span>
-                    <x-admin.detail.money :value="(float) $order->discount_by_promotion + (float) $order->discount_by_points" :negative="true" class="text-success fw-semibold" />
+                    <x-admin.detail.money :value="$order->discount_by_points" :negative="true" class="text-success fw-semibold" />
                 </div>
             @endif
 
@@ -514,13 +508,7 @@
                 </div>
             @endif
 
-            @if($order->promotion)
-                <div class="d-flex justify-content-end">
-                    <span class="badge bg-primary-subtle text-primary-emphasis border border-primary px-3 py-2 rounded-pill">
-                        <i class="fas fa-ticket me-1"></i>{{ $order->promotion->name }} ({{ $order->promotion->code }})
-                    </span>
-                </div>
-            @endif
+
         </x-admin.detail.panel>
 
     </div>

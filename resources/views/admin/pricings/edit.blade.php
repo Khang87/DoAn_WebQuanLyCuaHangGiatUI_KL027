@@ -80,15 +80,7 @@
     </div>
 </div>
 @push('scripts')
-<script src="{{ asset('assets/libs/flatpickr/flatpickr.min.js') }}"></script>
-<script>
-    document.querySelectorAll('[data-date-picker]').forEach((input) => {
-        flatpickr(input, {
-            allowInput: true,
-            dateFormat: 'd/m/Y',
-            minDate: input.dataset.minDate || null,
-        });
-    });
-</script>
+    <script src="{{ asset('assets/libs/flatpickr/flatpickr.min.js') }}"></script>
+    <!-- Cấu hình flatpickr chuẩn tiếng Việt nằm ở public/assets/js/localized-date-inputs.js -->
 @endpush
 @endsection

@@ -1873,3 +1873,31 @@ select option:hover {
 .detail-timeline__item--muted {
     color: var(--text-muted);
 }
+/* ============ Flatpickr / Date inputs chu?n Vi?t Nam ============ */
+/* ?n mui t�n dropdown m?c d?nh c?a tr�nh duy?t tr�n input type="date" */
+input[type="date"]::-webkit-calendar-picker-indicator {
+    display: none;
+}
+input[type="date"] {
+    appearance: none;
+    -webkit-appearance: none;
+}
+
+
+/* Chỉ ẩn mũi tên điều hướng tháng/năm (lừa/trái) và mũi tên kìa giữa tháng/năm, giữ lại dropdown tháng và năm */
+/* Chỉ giữ 1 mũi tên downward giữa tháng và năm, ẩn mũi tên mặc định của trình duyệt trên select */
+.flatpickr-calendar .flatpickr-month-dropdown-months select,
+.flatpickr-calendar .flatpickr-month-dropdown-years select {
+    appearance: none !important;
+    -webkit-appearance: none !important;
+    background-image: none !important;
+}
+
+.flatpickr-calendar .flatpickr-prev-month,
+.flatpickr-calendar .flatpickr-next-month,
+.flatpickr-calendar .flatpickr-current-month > span:not(.cur-month):not(.cur-year),
+.flatpickr-calendar .flatpickr-months > span:not(.cur-month):not(.cur-year),
+.flatpickr-calendar .flatpickr-months > svg,
+.flatpickr-calendar .flatpickr-months > i {
+    display: none !important;
+}

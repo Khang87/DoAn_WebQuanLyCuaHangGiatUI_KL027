@@ -680,6 +680,10 @@ ALTER TABLE "public"."TaiKhoan" ADD CONSTRAINT "TaiKhoan_TrangThai_check" CHECK 
 
 ALTER TABLE "public"."TaiKhoan" ADD CONSTRAINT "TaiKhoan_pkey" PRIMARY KEY ("TaiKhoanID");
 
+ALTER TABLE "public"."TaiKhoan" ADD CONSTRAINT "TaiKhoan_Email_key" UNIQUE ("Email");
+
+ALTER TABLE "public"."TaiKhoan" ADD CONSTRAINT "TaiKhoan_UserAuthId_key" UNIQUE ("UserAuthId");
+
 ALTER TABLE "public"."TaiKhoan_VaiTro" ADD CONSTRAINT "TaiKhoan_VaiTro_pkey" PRIMARY KEY ("TaiKhoanID", "VaiTroID");
 
 ALTER TABLE "public"."ThanhToan" ADD CONSTRAINT "ThanhToan_PhuongThuc_check" CHECK ("PhuongThuc"::text = ANY (ARRAY['Tiền mặt'::character varying, 'Chuyển khoản'::character varying]::text[]));

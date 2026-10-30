@@ -9,6 +9,7 @@ use App\Http\Requests\Admin\BookingQuoteRefusalRequest;
 use App\Http\Requests\Admin\LuuBookingRequest;
 use App\Http\Requests\Admin\XacNhanBookingRequest;
 use App\Models\BangGia;
+use App\Models\KhuyenMai;
 use App\Models\DichVu;
 use App\Models\DonViTinh;
 use App\Models\KhachHang;
@@ -97,6 +98,50 @@ class BookingController extends Controller
 
         return response()->json($orders->estimateBooking($record, $validated['items']))
             ->header('Cache-Control', 'private, no-store');
+    }
+
+    public function applyCoupon(Request $request, int $booking)
+    {
+        $record = $this->bookingService->find($booking);
+        abort_if(! $record, 404);
+
+        $validated = $request->validate([
+            'ma_khuyen_mai' => ['required', 'string', 'max:100'],
+        ]);
+
+        $code = trim($validated['ma_khuyen_mai']);
+        $khuyenMai = KhuyenMai::findByCode($code);
+
+        if (! $khuyenMai) {
+            return back()->withErrors(['ma_khuyen_mai' => 'Mã giảm giá không tồn tại.'])->withInput();
+        }
+
+        if (! $khuyenMai->isValid()) {
+            return back()->withErrors(['ma_khuyen_mai' => 'Mã giảm giá không còn hiệu lực.'])->withInput();
+        }
+
+        $customer = $record->khachHang;
+
+        if ($record->chiTietBookings->isNotEmpty()) {
+            $subtotal = (float) $record->chiTietBookings->sum(fn ($item) => (float) ($item->ThanhTien ?? 0));
+            if (! $khuyenMai->isApplicableForCustomer($customer, $subtotal)) {
+                return back()->withErrors(['ma_khuyen_mai' => $khuyenMai->rejectionReasonForCustomer($customer, $subtotal)])->withInput();
+            }
+        }
+
+        try {
+            $record->update([
+                'KhuyenMaiID' => $khuyenMai->KhuyenMaiID,
+                'KhuyenMaiDaTru' => true,
+                'NgayCapNhat' => now(),
+            ]);
+
+            return redirect()
+                ->route('bookings.show', $record)
+                ->with('success', 'Đã áp dụng mã giảm giá '.$khuyenMai->MaKhuyenMai.'.');
+        } catch (\Throwable $e) {
+            return back()->with('error', 'Không thể áp dụng mã giảm giá.')->withInput();
+        }
     }
 
     public function quoteDeliveryFee(Request $request, int $booking, DeliveryFeeService $deliveryFeeService): JsonResponse
@@ -228,6 +273,15 @@ class BookingController extends Controller
             ])
             ->values();
 
+        // Danh sách mã giảm giá đang hoạt động, dùng cho dropdown chọn trên trang chỉnh sửa Booking.
+        $coupons = KhuyenMai::where('TrangThai', 'Hoạt động')
+            ->where('NgayBatDau', '<=', today())
+            ->where(function ($q) {
+                $q->where('NgayKetThuc', '>=', today())->orWhereNull('NgayKetThuc');
+            })
+            ->orderBy('MaKhuyenMai')
+            ->get();
+
         return view('admin.bookings.edit', compact(
             'booking',
             'inspectionMode',
@@ -238,6 +292,7 @@ class BookingController extends Controller
             'garmentOptions',
             'units',
             'pricingUnitOptions',
+            'coupons',
         ));
     }
 

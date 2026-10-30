@@ -21,6 +21,9 @@
 
     <!-- Flatpickr -->
     <link rel="stylesheet" href="{{ asset('assets/libs/flatpickr/flatpickr.min.css') }}">
+    
+    {{-- Flatpickr Dropdown Arrow Fix --}}
+    <link rel="stylesheet" href="{{ asset('assets/css/flatpickr-fix.css') }}">
 
     <!-- FontAwesome 6 -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
@@ -415,6 +418,9 @@
     <!-- Bootstrap JS -->
     <script defer src="{{ asset('assets/libs/bootstrap/js/bootstrap.bundle.min.js') }}"></script>
     <script defer src="{{ asset('assets/libs/flatpickr/flatpickr.min.js') }}"></script>
+    
+    {{-- Flatpickr Month/Year Display Fix --}}
+    <script defer src="{{ asset('assets/js/flatpickr-month-fix.js') }}?v={{ filemtime(public_path('assets/js/flatpickr-month-fix.js')) }}"></script>
     <script defer src="{{ asset('assets/js/localized-date-inputs.js') }}?v={{ filemtime(public_path('assets/js/localized-date-inputs.js')) }}"></script>
 
     <!-- SweetAlert2 -->

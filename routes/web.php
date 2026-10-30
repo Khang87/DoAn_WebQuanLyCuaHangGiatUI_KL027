@@ -255,6 +255,9 @@ Route::middleware(['auth', 'reject.customer'])->group(function () {
         ->middlewareFor(['edit', 'update'], 'permission:bookings.edit');
     Route::get('bookings/{booking}/inspection', [BookingController::class, 'inspection'])
         ->name('bookings.inspection');
+    Route::post('bookings/{booking}/apply-coupon', [BookingController::class, 'applyCoupon'])
+        ->middleware('permission:bookings.edit')
+        ->name('bookings.apply-coupon');
     Route::get('osm/autocomplete', BookingAddressAutocompleteController::class)
         ->middleware(['permission:bookings.confirm', 'throttle:30,1'])
         ->name('bookings.address-autocomplete');

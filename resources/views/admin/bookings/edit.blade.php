@@ -72,25 +72,7 @@
                     <label class="form-label" for="booking-customer-email">Email</label>
                     <input class="form-control booking-main-control bg-light text-muted" id="booking-customer-email" value="{{ $customerEmail ?: '—' }}" disabled>
                 </div>
-                <div class="col-md-6">
-                    <label class="form-label" for="booking-staff-name">
-                        {{ $inspectionMode ? 'Nhân viên được phân công nhận và kiểm kê' : 'Nhân viên phụ trách hiện tại' }}
-                    </label>
-                    <input
-                        type="text"
-                        class="form-control booking-main-control bg-light text-muted"
-                        id="booking-staff-name"
-                        value="{{ $inspectionMode
-                            ? ($intakeEmployee?->HoTen ?? 'Chưa phân công')
-                            : ($booking->nhanVien?->HoTen ?? 'Chưa phân công') }}"
-                        readonly
-                    >
-                    @if($inspectionMode)
-                        <div class="form-text">Người xác nhận Booking: {{ $booking->nhanVienXacNhan?->HoTen ?? '—' }}. Chỉ nhân viên được phân công hoặc người có thẩm quyền mới được chốt kiểm kê.</div>
-                    @else
-                        <div class="form-text">Thông tin này chỉ để xem; không thể đổi nhân viên phụ trách tại đây.</div>
-                    @endif
-                </div>
+
                 @if($inspectionMode)
                             </div>
                         </div>
@@ -191,13 +173,53 @@
                                     <input class="form-control booking-main-control" id="booking-points" value="{{ number_format((int) $booking->DiemSuDung, 0, ',', '.') }} điểm ({{ number_format((float) $booking->TienGiamDoDiem, 0, ',', '.') }} VNĐ)" readonly>
                                 </div>
                             </div>
-                            <div class="form-text mt-2">Ưu đãi chỉ được kế thừa từ Booking; không thể thêm, đổi hoặc bỏ tại màn hình kiểm tra.</div>
+                            <div class="col-12 mt-3">
+                                <form action="{{ route('bookings.apply-coupon', $booking) }}" method="POST" class="d-flex gap-2">
+                                    @csrf
+                                    <input type="text" name="ma_khuyen_mai" class="form-control" placeholder="Nhập mã giảm giá khác" autocomplete="off">
+                                    <button type="submit" class="btn btn-primary">Áp dụng</button>
+                                </form>
+                                @error('ma_khuyen_mai')
+                                    <div class="text-danger small mt-1">{{ $message }}</div>
+                                @enderror
+                            </div>
+                            <div class="form-text mt-2">Nhập mã giảm giá để áp dụng vào Booking này.</div>
                         </div>
                     </div>
                     <div class="col-12">
                         <div class="small text-muted">Phí giao nhận được giữ theo thông tin đã lưu trên Booking; kiểm kê không gọi lại dịch vụ định tuyến.</div>
                     </div>
                 @endif
+
+            {{-- Áp dụng mã giảm giá: hiển thị trên cả trang chỉnh sửa Booking thường --}}
+            <div class="col-12">
+                <div class="border rounded-3 p-3 mb-3">
+                    <h6 class="mb-3"><i class="fas fa-ticket me-2 text-primary"></i>Áp dụng mã giảm giá</h6>
+                    @if($coupons->isNotEmpty())
+                        <form action="{{ route('bookings.apply-coupon', $booking) }}" method="POST">
+                            @csrf
+                            <div style="display: flex; gap: 8px; align-items: flex-end;">
+                                <select name="ma_khuyen_mai" class="form-select" required style="flex: 1; min-width: 0; width: auto;">
+                                    <option value="" selected disabled>-- Chọn mã giảm giá --</option>
+                                    @foreach($coupons as $coupon)
+                                        <option value="{{ $coupon->MaKhuyenMai }}" {{ old('ma_khuyen_mai') === $coupon->MaKhuyenMai || optional($booking->khuyenMai)->MaKhuyenMai === $coupon->MaKhuyenMai ? 'selected' : '' }}>
+                                            {{ $coupon->MaKhuyenMai }} · {{ $coupon->discountValueLabel() }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                                <button type="submit" class="btn btn-primary">Áp dụng</button>
+                            </div>
+                        </form>
+                        @error('ma_khuyen_mai')
+                            <div class="text-danger small mt-1">{{ $message }}</div>
+                        @enderror
+                        <div class="form-text mt-2">Chọn một mã giảm giá đang hoạt động rồi nhấn nút Áp dụng để áp dụng vào Booking này.</div>
+                    @else
+                        <div class="text-muted small">Hiện chưa có mã giảm giá nào đang hoạt động.</div>
+                    @endif
+                </div>
+            </div>
+
                 <div class="col-md-6"><label class="form-label">Ngày hẹn <span class="text-danger ms-1">*</span></label><input type="date" class="form-control booking-main-control @error('scheduled_date') is-invalid @enderror" name="scheduled_date" value="{{ old('scheduled_date', $booking->NgayHen?->format('Y-m-d')) }}" required @readonly($inspectionMode)>@error('scheduled_date')<div class="invalid-feedback">{{ $message }}</div>@enderror</div>
                 <div class="col-md-6"><label class="form-label">Giờ hẹn <span class="text-danger ms-1">*</span></label><input type="time" class="form-control booking-main-control @error('scheduled_time') is-invalid @enderror" name="scheduled_time" value="{{ old('scheduled_time', $booking->GioHen?->format('H:i')) }}" required @readonly($inspectionMode)>@error('scheduled_time')<div class="invalid-feedback">{{ $message }}</div>@enderror</div>
                 @if(! $inspectionMode)

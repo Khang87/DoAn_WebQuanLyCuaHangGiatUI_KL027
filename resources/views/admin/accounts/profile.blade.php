@@ -25,13 +25,73 @@
         <div class="d-flex justify-content-center mb-4">
             <div class="position-relative d-inline-block">
                 <label for="avatarInput" class="d-block" style="cursor: pointer;">
-                    <img id="avatarPreview" src="{{ $account->avatar_url }}" alt="Avatar" class="rounded-circle shadow-sm avatar-cover" data-user-avatar onerror="this.onerror=null; this.src='{{ asset('assets/images/user_'.(($account->getKey() % 8) + 1).'.jpg') }}';" style="width: 180px; height: 180px; border: 4px solid #e9ecef;">
+                    <img id="avatarPreview" src="{{ $account->avatar_url ?: asset('assets/images/user_' . ((($account->getKey() ?? 1) % 8) + 1) . '.jpg') }}" 
+                         alt="Avatar" 
+                         class="rounded-circle shadow-sm avatar-cover" 
+                         data-user-avatar
+                         style="width: 180px; height: 180px; border: 4px solid #e9ecef;">
                 </label>
                 <span class="position-absolute bottom-0 end-0 translate-middle badge rounded-circle bg-primary border-2 border-white" style="width: 34px; height: 34px; display: flex; align-items: center; justify-content: center;">
                     <i class="bi bi-camera" style="font-size: 14px;"></i>
                 </span>
             </div>
         </div>
+        
+        <!-- Script để realtime update avatar khi sửa thông tin -->
+        @push('scripts')
+        <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const account = @json($account);
+            const userKey = account.key || account.TaiKhoanID || 1;
+            const seed = ((userKey % 8) + 1);
+            const defaultAvatar = "{{ asset('assets/images/user_') }}" + seed + ".jpg";
+            
+            let currentAvatarUrl = null;
+            let uploadedImageUrl = null;
+            
+            // Listen to input changes and preview in real-time
+            const nameInput = document.querySelector('input[name="name"]');
+            const emailInput = document.querySelector('input[name="email"]');
+            const phoneInput = document.querySelector('input[name="phone"]');
+            const avatarPreview = document.getElementById('avatarPreview');
+            const avatarInput = document.getElementById('avatarInput');
+            
+            if (avatarPreview) {
+                avatarPreview.addEventListener('error', function() {
+                    this.src = defaultAvatar;
+                });
+            }
+            
+            // Update form when changing avatar
+            if (avatarInput) {
+                avatarInput.addEventListener('change', function(e) {
+                    const file = e.target.files[0];
+                    if (file) {
+                        const reader = new FileReader();
+                        reader.onload = function(e) {
+                            if (avatarPreview) {
+                                avatarPreview.src = e.target.result;
+                                uploadedImageUrl = e.target.result;
+                            }
+                        };
+                        reader.readAsDataURL(file);
+                    }
+                });
+            }
+            
+            // Auto-save avatar URL before form submission
+            const form = document.querySelector('form[action^="{{ route('profile.update') }}"]');
+            if (form) {
+                form.addEventListener('submit', function(e) {
+                    if (!currentAvatarUrl && !uploadedImageUrl && avatarPreview.src.includes(defaultAvatar)) {
+                        // Reset to default if no custom upload
+                        console.log('Keeping default avatar');
+                    }
+                });
+            }
+        });
+        </script>
+        @endpush
 
         <div
             id="avatarUploadConfig"

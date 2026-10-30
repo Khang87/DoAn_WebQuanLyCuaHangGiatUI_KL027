@@ -1,0 +1,134 @@
+/* ============================================================================
+   FLATPICKR DROPDOWN ARROW OVERRIDE - CHỈ ẨN MŨI TÊN (giữ nguyên text)
+   Issue: 2 mũi tên xuất hiện trên dropdown tháng trong datepicker
+   Fix: Ẩn arrow dropdown, giữ text + thêm year inline
+   ============================================================================ */
+
+/* Make month/year display more compact */
+.flatpickr-current-month {
+    padding: 8px 0 !important;
+}
+
+/* Compact month select */
+.flatpickr-current-month .cur-year {
+    font-size: 1rem !important;
+    padding: 4px 6px !important;
+}
+
+/* Compact month dropdown */
+.flatpickr-current-month select.flatpickr-monthDropdown-months {
+    font-size: 0.95rem !important;
+    padding: 3px 6px !important;
+    max-width: 100px !important;
+}
+
+/* Hide native arrow completely */
+.flatpickr-current-month select.flatpickr-monthDropdown,
+.flatpickr-current-month .cur-year {
+    /* Standard properties for all browsers */
+    appearance: none !important;
+    -webkit-appearance: none !important;
+    -moz-appearance: none !important;
+    -ms-appearance: none !important;
+    
+    /* Remove native styling */
+    background-image: none !important;
+    border: none !important;
+    outline: none !important;
+}
+
+/* Webkit browsers (Chrome, Safari, Edge) - Hide spin buttons */
+.flatpickr-current-month select.flatpickr-monthDropdown::-webkit-inner-spin-button,
+.flatpickr-current-month select.flatpickr-monthDropdown::-webkit-outer-spin-button,
+.flatpickr-current-month select.flatpickr-monthDropdown::-webkit-calendar-picker-indicator,
+.flatpickr-current-month .cur-year::-webkit-inner-spin-button,
+.flatpickr-current-month .cur-year::-webkit-outer-spin-button,
+.flatpickr-current-month .cur-year::-webkit-calendar-picker-indicator {
+    -webkit-appearance: none !important;
+    margin: 0 !important;
+    opacity: 0 !important;
+    display: none !important;
+}
+
+/* Firefox */
+.flatpickr-current-month select.flatpickr-monthDropdown::-moz-list-button,
+.flatpickr-current-month select.flatpickr-monthDropdown::-moz-focus-outer,
+.flatpickr-current-month .cur-year::-moz-list-button,
+.flatpickr-current-month .cur-year::-moz-focus-outer {
+    border: 0 !important;
+    opacity: 0 !important;
+    display: none !important;
+}
+
+/* IE/Edge */
+.flatpickr-current-month select.flatpickr-monthDropdown::-ms-expand,
+.flatpickr-current-month .cur-year::-ms-expand {
+    display: none !important;
+    opacity: 0 !important;
+}
+
+/* Keep styling intact */
+.flatpickr-current-month select.flatpickr-monthDropdown,
+.flatpickr-current-month .cur-year {
+    font-weight: 700 !important;
+    color: var(--text-main) !important;
+    background: transparent !important;
+    border-radius: var(--radius-md) !important;
+    padding: 4px 8px !important;
+    cursor: pointer !important;
+    position: relative !important;
+}
+
+/* Focus state without outline */
+.flatpickr-current-month select:focus {
+    outline: none !important;
+    box-shadow: none !important;
+}
+
+/* 
+ * CRITICAL: Force hide ALL custom flatpickr chevron elements
+ * These are the 2 arrows you're seeing
+ */
+div.flatpickr-months div.flatpickr-current-month span.arrowUp,
+div.flatpickr-months div.flatpickr-current-month span.arrowDown,
+div.flatpickr-current-month select ~ .arrow-container,
+div.flatpickr-current-month > .arrow-up,
+div.flatpickr-current-month > .arrow-down,
+.flatpickr-monthDropdown-months + *,
+.cur-year + *,
+select + .custom-arrow,
+.custom-select::after {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+    height: 0 !important;
+    width: 0 !important;
+    max-height: 0 !important;
+    max-width: 0 !important;
+    overflow: hidden !important;
+    pointer-events: none !important;
+    content: '' !important;
+}
+
+/* Ensure proper alignment */
+div.flatpickr-current-month {
+    max-width: 100% !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+}
+
+/* Custom inline year display with compact design */
+.flatpickr-current-month .flatpickr-monthDropdown-months {
+    white-space: nowrap !important;
+}
+
+/* Final fallback - ensure text is always readable */
+@media screen and (-webkit-min-device-pixel-ratio: 0) {
+    .flatpickr-current-month select,
+    .flatpickr-current-month .cur-year {
+        background-image: none !important;
+        mask-image: none !important;
+        -webkit-mask-image: none !important;
+    }
+}

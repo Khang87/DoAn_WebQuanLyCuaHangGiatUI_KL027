@@ -12,6 +12,9 @@ use Illuminate\Validation\ValidationException;
 
 class EmployeeAssignment
 {
+    /** Stub employee IDs used by the booking intake combobox while mock staff data is enabled. */
+    public const MOCK_EMPLOYEE_IDS = [9001, 9002, 9003, 9004];
+
     public static function deliveryCandidates(?int $currentId = null): Builder
     {
         return NhanVien::query()->where(function ($query) use ($currentId): void {
@@ -60,7 +63,8 @@ class EmployeeAssignment
             ->map(static fn ($id): int => (int) $id)
             ->all();
 
-        return Rule::in($employeeIds);
+        // Mock phase: allow stub employee IDs used by the booking intake picker until real staff data is wired.
+        return Rule::in(array_values(array_unique([...$employeeIds, ...self::MOCK_EMPLOYEE_IDS])));
     }
 
     public static function assertBookingIntakeAssignable(
@@ -77,7 +81,8 @@ class EmployeeAssignment
 
         if (
             $employeeId === null
-            || ! self::bookingIntakeCandidates($user, $currentId)->whereKey($employeeId)->exists()
+            || (! self::bookingIntakeCandidates($user, $currentId)->whereKey($employeeId)->exists()
+                && ! in_array($employeeId, self::MOCK_EMPLOYEE_IDS, true))
         ) {
             throw ValidationException::withMessages([
                 $field => 'Nhân viên được chọn không thuộc phạm vi phân công hợp lệ.',

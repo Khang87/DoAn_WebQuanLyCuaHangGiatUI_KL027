@@ -124,7 +124,7 @@
 
             <div class="mt-4">
                 <div class="detail-field__label mb-2">Địa chỉ</div>
-                <div class="detail-text">{{ $delivery->DiaChi ?: 'Chưa cập nhật địa chỉ.' }}</div>
+                <div class="detail-text">{{ $delivery->DiaChi ?: '140 Lê Trọng Tấn, Tây Thạnh, Hồ Chí Minh 700000, Việt Nam' }}</div>
             </div>
 
             @if($delivery->GhiChu)

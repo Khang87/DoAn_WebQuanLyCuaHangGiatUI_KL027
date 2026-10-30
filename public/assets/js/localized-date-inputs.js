@@ -19,19 +19,31 @@ document.addEventListener('DOMContentLoaded', function () {
         time_24hr: true,
     };
 
+    const initPicker = function (input, opts) {
+        if (input._flatpickr) {
+            input._flatpickr.destroy();
+        }
+        const merged = Object.assign({}, vietnameseLocale, opts, {
+            locale: vietnameseLocale,
+            time_24hr: true,
+        });
+        return window.flatpickr(input, merged);
+    };
+
+    // 1. input[type="date"] và datetime-local (đưa về định dạng Việt Nam)
     document.querySelectorAll('input[type="date"], input[type="datetime-local"]').forEach(function (input) {
         const includesTime = input.type === 'datetime-local';
         const displayFormat = includesTime ? 'd/m/Y H:i' : 'd/m/Y';
         const dateFormat = includesTime ? 'Y-m-d\\TH:i' : 'Y-m-d';
-        const picker = window.flatpickr(input, {
+        const picker = initPicker(input, {
             allowInput: !input.readOnly,
             altInput: true,
             altFormat: displayFormat,
             dateFormat: dateFormat,
             disableMobile: true,
             enableTime: includesTime,
-            locale: vietnameseLocale,
-            time_24hr: true,
+            showMonthsShort: false, // Full month names instead of abbreviated
+            nativeInputOffsetForJqueryUI: [0, 0],
             onReady: function (_dates, _dateString, instance) {
                 instance.altInput.placeholder = displayFormat;
                 instance.altInput.setAttribute('inputmode', 'numeric');
@@ -75,6 +87,28 @@ document.addEventListener('DOMContentLoaded', function () {
 
         picker.altInput.addEventListener('input', function () {
             picker.altInput.setCustomValidity('');
+        });
+    });
+
+    // 2. [data-date-picker] (type="text", ví dụ ngày áp dụng bảng giá) - chuẩn tiếng Việt
+    document.querySelectorAll('input[data-date-picker]').forEach(function (input) {
+        const minDate = input.dataset.minDate || null;
+        const displayFormat = 'd/m/Y';
+        initPicker(input, {
+            allowInput: true,
+            altInput: false,
+            dateFormat: displayFormat,
+            altFormat: displayFormat,
+            disableMobile: true,
+            minDate: minDate === 'today' ? new Date() : minDate,
+            onReady: function (_dates, _dateString, instance) {
+                instance.input.placeholder = displayFormat;
+                instance.input.setAttribute('inputmode', 'numeric');
+            },
+        });
+
+        input.addEventListener('input', function () {
+            input.setCustomValidity('');
         });
     });
 });

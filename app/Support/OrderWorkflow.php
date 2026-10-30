@@ -65,7 +65,7 @@ class OrderWorkflow
 
         return match ($next) {
             OrderStatus::Washing => self::action('status', $next, 'Bắt đầu giặt', 'bi-play-circle', 'primary'),
-            OrderStatus::Washed => self::action('status', $next, 'Hoàn thành giặt', 'bi-check2-circle', 'success'),
+            OrderStatus::Washed => self::action('status', $next, 'Hoàn thành giặt', 'bi-check-lg', 'success'),
             OrderStatus::Delivering => self::action('delivery', $next, 'Bắt đầu giao hàng', 'bi-truck', 'primary'),
             OrderStatus::Delivered => self::action(
                 'status',

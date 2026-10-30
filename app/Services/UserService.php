@@ -69,6 +69,22 @@ class UserService
     public function create(array $data): User
     {
         return DB::transaction(function () use ($data): User {
+            // Kiểm tra trùng email hoặc userauthid trước khi tạo mới
+            $existingByAuthId = User::query()->where('userauthid', $data['userauthid'] ?? '')
+                ->whereNotNull('userauthid')
+                ->first();
+            
+            if ($existingByAuthId) {
+                throw new \RuntimeException('Tài khoản với Google ID này đã tồn tại.');
+            }
+            
+            $existingByEmail = User::query()->where('email', $data['email'])->first();
+            
+            if ($existingByEmail) {
+                // Nếu email đã tồn tại, trả về tài khoản cũ thay vì tạo mới
+                throw new \RuntimeException('Email này đã được sử dụng cho tài khoản khác.');
+            }
+
             $user = User::create([
                 'TenDangNhap' => $data['email'],
                 'MatKhau' => Hash::make($data['password']),
@@ -78,6 +94,7 @@ class UserService
                 'KhachHangID' => $data['KhachHangID'] ?? null,
                 'TrangThai' => 'Hoạt động',
                 'NgayTao' => now(),
+                'UserAuthId' => $data['userauthid'] ?? null,
             ]);
 
             $this->syncRole($user, $data['role']);

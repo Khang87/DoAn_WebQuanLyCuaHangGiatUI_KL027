@@ -47,7 +47,7 @@
     <div class="card-body p-0">
         <div class="table-responsive">
             <table class="table-custom mb-0">
-                <thead><tr><th scope="col">STT</th><th scope="col">Booking</th><th>Khách hàng</th><th>Nhân viên</th><th>Nhận / Trả đồ</th><th>Ngày hẹn</th><th>Trạng thái</th><th>Thao tác</th></tr></thead>
+                <thead><tr><th scope="col">STT</th><th scope="col">Booking</th><th>Khách hàng</th><th>Nhận / Trả đồ</th><th>Ngày hẹn</th><th>Trạng thái</th><th>Thao tác</th></tr></thead>
                 <tbody>
                 @forelse($bookings as $booking)
                     <tr>
@@ -62,7 +62,6 @@
                                 </div>
                             </div>
                         </td>
-                        <td>{{ $booking->nhanVien?->HoTen ?: 'Chưa phân công' }}</td>
                         <td>
                             <i class="bi {{ $booking->method_icon }} me-1"></i>Nhận: {{ $booking->method_label }}<br><small>Trả: {{ $booking->return_method_label }}</small>
                         </td>
@@ -71,9 +70,6 @@
                         <td><div class="d-flex gap-2">
                             @can('bookings.view')
                                 <a href="{{ route('bookings.show', $booking) }}" class="btn btn-order-action view" title="Xem"><i class="bi bi-eye"></i></a>
-                            @endcan
-                            @can('bookings.edit')
-                                <a href="{{ route('bookings.edit', $booking) }}" class="btn btn-order-action edit" title="Sửa"><i class="bi bi-pencil"></i></a>
                             @endcan
                             @if(in_array($booking->BookingID, $inspectableBookingIds, true))
                                 <a href="{{ route('bookings.inspection', $booking) }}"
@@ -114,7 +110,7 @@
                         </div></td>
                     </tr>
                 @empty
-                    <tr><td colspan="8" class="text-center text-muted py-4">Chưa có dữ liệu đặt lịch.</td></tr>
+                    <tr><td colspan="7" class="text-center text-muted py-4">Chưa có dữ liệu đặt lịch.</td></tr>
                 @endforelse
                 </tbody>
             </table>

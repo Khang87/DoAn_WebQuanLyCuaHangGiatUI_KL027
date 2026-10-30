@@ -96,9 +96,6 @@
                     <div class="min-w-0">
                         <div class="fw-semibold text-truncate">{{ $memberName }}</div>
                         <div class="small text-muted text-break">{{ $member->Email ?: $member->TenDangNhap }}</div>
-                        @if($member->Email && $member->TenDangNhap !== $member->Email)
-                            <div class="small text-muted">{{ $member->TenDangNhap }}</div>
-                        @endif
                     </div>
                 </div>
             @endforeach

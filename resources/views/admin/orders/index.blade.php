@@ -55,9 +55,6 @@
                         <th class="fw-bold text-dark">Mã đơn hàng</th>
                         <th class="fw-bold text-dark">Khách hàng</th>
                         <th class="fw-bold text-dark">Số điện thoại</th>
-                        <th class="fw-bold text-dark">Dịch vụ</th>
-                        <th class="fw-bold text-dark">Số lượng</th>
-                        <th class="fw-bold text-dark">Ghi chú khách hàng</th>
                         <th class="fw-bold text-dark">Thành tiền</th>
                         <th class="fw-bold text-dark text-center">Trạng thái</th>
                         <th class="fw-bold text-dark">Ngày tạo</th>
@@ -79,30 +76,13 @@
                             </div>
                         </td>
                         <td class="text-dark">{{ $order->khachHang?->SoDienThoai ?: '-' }}</td>
-                        <td style="max-width: 180px;">
-                            <div class="text-truncate" title="{{ $order->chiTietDonHangs->map(fn ($item) => $item->dichVu?->TenDichVu)->filter()->unique()->join(', ') }}">{{ $order->chiTietDonHangs->map(fn ($item) => $item->dichVu?->TenDichVu)->filter()->unique()->join(', ') ?: '-' }}</div>
-                        </td>
-                        <td class="text-dark">
-                            @php
-                                $itemQuantity = (float) $order->chiTietDonHangs->sum('SoLuong');
-                                $itemWeight = (float) $order->chiTietDonHangs->sum('KhoiLuong');
-                            @endphp
-                            @if($itemQuantity > 0 || $itemWeight > 0)
-                                {{ format_quantity_weight($itemQuantity ?: null, $itemWeight ?: null) }}
-                            @else
-                                -
-                            @endif
-                        </td>
-                        <td style="max-width: 240px;">
-                            <small class="d-block text-muted text-truncate" title="{{ $order->GhiChu }}">{{ $order->GhiChu ?: 'Không có ghi chú' }}</small>
-                        </td>
                         <td class="text-dark">{{ number_format((float) $order->ThanhTien) }} đ</td>
                         <td class="text-center">
                             <div class="order-status-badges d-inline-flex align-items-center flex-nowrap gap-1 text-nowrap">
                                 <x-admin.order-status-badges :order="$order" :is-paid="$order->isPaid()" :is-receiving="false" compact />
                             </div>
                         </td>
-                        <td class="text-dark">{{ $order->NgayTao?->format('d/m/Y H:i') ?: '-' }}</td>
+                        <td class="text-dark">{{ $order->NgayTao?->format('d/m/Y') ?: '-' }}</td>
                         <td class="text-nowrap">
                             @php
                                 $canManageSettled = ! $order->isLocked() || auth()->user()?->isOwner();
@@ -246,7 +226,7 @@
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="11" class="text-center text-muted py-4">Chưa có đơn hàng nào</td>
+                        <td colspan="8" class="text-center text-muted py-4">Chưa có đơn hàng nào</td>
                     </tr>
                     @endforelse
                 </tbody>

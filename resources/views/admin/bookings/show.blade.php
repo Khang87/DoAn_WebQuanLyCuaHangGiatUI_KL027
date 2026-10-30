@@ -40,8 +40,7 @@
                 <x-admin.detail.info-item label="Hình thức giao" :value="$booking->return_method_label" />
                 <x-admin.detail.info-item label="Địa chỉ nhận đồ" :value="$booking->DiaChiNhan ?: '—'" />
                 <x-admin.detail.info-item label="Địa chỉ trả đồ" :value="$booking->DiaChiTra ?: '—'" />
-                <x-admin.detail.info-item label="Nhân viên xác nhận Booking" :value="$booking->nhanVienXacNhan?->HoTen ?? '—'" />
-                <x-admin.detail.info-item label="Nhân viên nhận và kiểm kê" :value="$intakeDocument?->nhanVien?->HoTen ?? 'Chưa phân công'" />
+
                 <x-admin.detail.info-item label="Thời gian xác nhận" :value="$booking->ThoiGianXacNhan?->format('d/m/Y H:i') ?? '—'" />
                 <x-admin.detail.info-item label="Ngày hẹn" :value="$booking->NgayHen?->format('d/m/Y')" />
                 <x-admin.detail.info-item label="Giờ hẹn" :value="$booking->GioHen?->format('H:i')" />
@@ -101,12 +100,15 @@
         </x-admin.detail.panel>
 
         <x-admin.detail.panel title="Ước tính từ lịch đặt" icon="bi-calculator" :iconClass="'bg-info-subtle text-info'">
-            @if($booking->KhuyenMaiID)
-                <div class="mb-3">Voucher: <strong>{{ $booking->khuyenMai?->MaKhuyenMai ?: 'Không tìm thấy mã' }}</strong>
-                    @if($booking->khuyenMai)<span class="text-muted"> · {{ $booking->khuyenMai->TenKhuyenMai }}</span>@endif
+            @if($booking->KhuyenMaiID && $booking->khuyenMai)
+                <div class="d-flex align-items-center gap-2 mb-3">
+                    <span class="badge bg-primary-subtle text-primary-emphasis border border-primary px-3 py-2 rounded-pill">
+                        <i class="fas fa-ticket me-1"></i>{{ $booking->khuyenMai->MaKhuyenMai }}
+                    </span>
+                    <span class="text-muted small">Đã áp dụng · {{ $booking->khuyenMai->discountValueLabel() }}</span>
                 </div>
             @else
-                <div class="text-muted mb-3">Không dùng voucher.</div>
+                <div class="text-muted mb-3">Không dùng mã giảm giá.</div>
             @endif
             @if($bookingAmounts !== null)
                 @php

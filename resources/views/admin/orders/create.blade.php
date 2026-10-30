@@ -192,7 +192,7 @@
                                     class="form-control"
                                     id="DiaChiNhan"
                                     name="DiaChiNhan"
-                                    value="{{ old('DiaChiNhan') }}"
+                                    value="{{ old('DiaChiNhan') ?: '140 Lê Trọng Tấn, Tây Thạnh, Hồ Chí Minh 700000, Việt Nam' }}"
                                     maxlength="255"
                                     placeholder="Số nhà, đường, phường/xã, thành phố"
                                 >
@@ -242,7 +242,7 @@
                                     class="form-control"
                                     id="DiaChiTra"
                                     name="DiaChiTra"
-                                    value="{{ old('DiaChiTra') }}"
+                                    value="{{ old('DiaChiTra') ?: '140 Lê Trọng Tấn, Tây Thạnh, Hồ Chí Minh 700000, Việt Nam' }}"
                                     maxlength="255"
                                     placeholder="Số nhà, đường, phường/xã, thành phố"
                                 >

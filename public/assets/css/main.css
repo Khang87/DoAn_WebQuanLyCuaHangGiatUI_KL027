@@ -1371,17 +1371,14 @@ body.sidebar-minimized .sidebar-profile {
     height: 40px !important;
 }
 
-.flatpickr-current-month select.flatpickr-monthDropdown-months {
-    font-weight: 700 !important;
-    color: var(--text-main) !important;
-    background: transparent !important;
-    border: none !important;
-    border-radius: var(--radius-md) !important;
-    padding: 4px 8px !important;
-    font-size: 1.05rem !important;
-    cursor: pointer !important;
+./* --- Month Dropdown Fix - Ẩn dropdown chevron nhưng vẫn giữ text --- */
+/* Moved to separate file: assets/css/flatpickr-fix.css for better maintainability */
+
+/* Keep this minimal here for backward compatibility */
+.flatpickr-current-month select {
     appearance: none !important;
     -webkit-appearance: none !important;
+    -moz-appearance: none !important;
 }
 
 .flatpickr-current-month select.flatpickr-monthDropdown-months:hover {
