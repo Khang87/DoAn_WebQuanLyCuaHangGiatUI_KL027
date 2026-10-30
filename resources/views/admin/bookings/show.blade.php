@@ -16,6 +16,9 @@
 
 @php $order = $booking->donHangs->first() @endphp
 @php
+    $storeAddress = '140 Lê Trọng Tấn, Tây Thạnh, Hồ Chí Minh, Việt Nam';
+    $receiveAtStore = $booking->HinhThucNhanDo === 'Tại cửa hàng';
+    $returnAtStore = $booking->HinhThucTraDo === 'Tại cửa hàng';
     $intakeDocument = $booking->giaoNhanDuKiens->firstWhere('LoaiGiaoNhan', 'NHAN_DO');
     $legacyRequestPrefix = 'Khách chọn dịch vụ chưa rõ số lượng: ';
     $bookingNoteLines = preg_split('/\r\n|\r|\n/', (string) ($booking->GhiChu ?? ''));
@@ -36,10 +39,10 @@
                 <x-admin.detail.info-item label="Trạng thái">
                     <x-admin.status-badge :status="$booking->TrangThai" :enum="\App\Enums\BookingStatus::class" />
                 </x-admin.detail.info-item>
-                <x-admin.detail.info-item label="Hình thức nhận đồ" :value="$booking->method_label" />
-                <x-admin.detail.info-item label="Hình thức giao" :value="$booking->return_method_label" />
-                <x-admin.detail.info-item label="Địa chỉ nhận đồ" :value="$booking->DiaChiNhan ?: '—'" />
-                <x-admin.detail.info-item label="Địa chỉ trả đồ" :value="$booking->DiaChiTra ?: '—'" />
+                <x-admin.detail.info-item label="HÌNH THỨC NHÂN VIÊN NHẬN ĐỒ" :value="$booking->method_label" />
+                <x-admin.detail.info-item label="HÌNH THỨC NHÂN VIÊN GIAO ĐỒ" :value="$booking->return_method_label" />
+                <x-admin.detail.info-item label="Địa chỉ nhận đồ" :value="$receiveAtStore ? $storeAddress : ($booking->DiaChiNhan ?: '—')" />
+                <x-admin.detail.info-item label="Địa chỉ trả đồ" :value="$returnAtStore ? $storeAddress : ($booking->DiaChiTra ?: '—')" />
                 <x-admin.detail.info-item label="Nhân viên xác nhận Booking" :value="$booking->nhanVienXacNhan?->HoTen ?? '—'" />
                 <x-admin.detail.info-item label="Nhân viên nhận và kiểm kê" :value="$intakeDocument?->nhanVien?->HoTen ?? 'Chưa phân công'" />
                 <x-admin.detail.info-item label="Thời gian xác nhận" :value="$booking->ThoiGianXacNhan?->format('d/m/Y H:i') ?? '—'" />
