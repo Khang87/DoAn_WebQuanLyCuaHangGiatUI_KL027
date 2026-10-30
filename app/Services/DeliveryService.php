@@ -202,13 +202,13 @@ class DeliveryService
             )
             ->addSelect('b.TrangThai as booking_status');
 
-        // Once a Booking return slip is completed through an order delivery, show the order slip as the final record.
+        // Prefer the operational return slip while it is active; otherwise the Booking plan duplicates it.
         $bookingRows->whereNotExists(fn ($query) => $query->selectRaw('1')
             ->from('GiaoNhan as g')
             ->whereColumn('g.DonHangID', 'bg.DonHangID')
             ->whereColumn('g.LoaiGiaoNhan', 'bg.LoaiGiaoNhan')
             ->where('g.LoaiGiaoNhan', 'GIAO_DO')
-            ->where('g.TrangThai', DeliveryStatus::Completed->dbValue()));
+            ->where('g.TrangThai', '!=', DeliveryStatus::Cancelled->dbValue()));
 
         $rows = $operationalRows->unionAll($bookingRows);
         $query = DB::query()->fromSub($rows, 'delivery_rows');

@@ -1,7 +1,7 @@
 @extends('layouts.app')
 
-@section('title', 'Chi tiết phiếu giao nhận - Sky Laundry')
-@section('page-title', 'Chi tiết phiếu giao nhận')
+@section('title', ($delivery->LoaiGiaoNhan === 'NHAN_DO' ? 'Chi tiết phiếu nhận đồ' : 'Chi tiết phiếu giao đồ').' - Sky Laundry')
+@section('page-title', $delivery->LoaiGiaoNhan === 'NHAN_DO' ? 'Chi tiết phiếu nhận đồ' : 'Chi tiết phiếu giao đồ')
 
 @section('content')
 @php
@@ -78,7 +78,7 @@
 @endpush
 
 <x-admin.detail.page-header
-    title="Chi tiết phiếu giao nhận"
+    title="{{ $delivery->LoaiGiaoNhan === 'NHAN_DO' ? 'Chi tiết phiếu nhận đồ' : 'Chi tiết phiếu giao đồ' }}"
     :subtitle="$displayCode . ' · ' . ($delivery->LoaiGiaoNhan === 'NHAN_DO' ? 'Nhận đồ' : 'Giao đồ') . ' · ' . ($delivery->ThoiGianDuKien?->format('d/m/Y') ?: 'Chưa hẹn ngày')"
     backUrl="{{ \App\Support\OrderWorkflow::listBackUrl(route('deliveries.index')) }}"
 >
@@ -90,7 +90,7 @@
 <div class="row g-4 align-items-start">
     {{-- ============ CỘT CHÍNH (7/12) ============ --}}
     <div class="col-lg-7">
-        <x-admin.detail.panel title="Thông tin giao nhận" icon="bi-truck" :iconClass="'bg-primary-subtle text-primary'">
+        <x-admin.detail.panel :title="$delivery->LoaiGiaoNhan === 'NHAN_DO' ? 'Thông tin phiếu nhận đồ' : 'Thông tin phiếu giao đồ'" icon="bi-truck" :iconClass="'bg-primary-subtle text-primary'">
             <x-admin.detail.info-grid :columns="2">
                 <x-admin.detail.info-item label="Mã phiếu" :value="$displayCode" />
                 <x-admin.detail.info-item label="Loại giao nhận">
@@ -98,7 +98,7 @@
                         <i class="bi {{ $delivery->LoaiGiaoNhan === 'NHAN_DO' ? 'bi-box-arrow-in-down' : 'bi-truck' }} me-1"></i>{{ $delivery->LoaiGiaoNhan === 'NHAN_DO' ? 'Nhận đồ' : 'Giao đồ' }}
                     </span>
                 </x-admin.detail.info-item>
-                <x-admin.detail.info-item label="Hình thức" :value="$delivery->HinhThuc" />
+                <x-admin.detail.info-item :label="$delivery->LoaiGiaoNhan === 'NHAN_DO' ? 'HÌNH THỨC NHÂN VIÊN NHẬN ĐỒ' : 'HÌNH THỨC NHÂN VIÊN GIAO ĐỒ'" :value="$delivery->HinhThuc" />
                 <x-admin.detail.info-item label="Đơn hàng">
                     @if($delivery->donHang)
                         @can('orders.view')

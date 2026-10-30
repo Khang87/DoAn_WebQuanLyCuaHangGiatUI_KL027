@@ -1,12 +1,11 @@
 @extends('layouts.app')
 
-@section('title', 'Chi tiết phiếu giao nhận - Sky Laundry')
-@section('page-title', 'Chi tiết phiếu giao nhận')
+@section('title', ($isIntake ? 'Chi tiết phiếu nhận đồ' : 'Chi tiết phiếu giao đồ').' - Sky Laundry')
+@section('page-title', $isIntake ? 'Chi tiết phiếu nhận đồ' : 'Chi tiết phiếu giao đồ')
 
 @section('content')
 @php
     $booking = $bookingDocument->booking;
-    $isIntake = $bookingDocument->LoaiGiaoNhan === 'NHAN_DO';
     $order = $bookingDocument->donHang ?? $booking?->donHangs->first();
     $inspection = $booking?->kiemKe;
     $decision = $inspection?->DuLieuThucTe['_decision'] ?? [];
@@ -17,7 +16,7 @@
 @endphp
 
 <x-admin.detail.page-header
-    title="{{ $isIntake ? 'Phiếu nhận đồ từ đặt lịch' : 'Phiếu trả đồ từ đặt lịch' }}"
+    title="{{ $isIntake ? 'Phiếu nhận đồ từ đặt lịch' : 'Phiếu giao đồ từ đặt lịch' }}"
     :subtitle="$displayCode . ($booking?->MaBooking ? ' · Đặt lịch ' . $booking->MaBooking : '')"
     :backUrl="route('deliveries.index')"
 >
@@ -36,13 +35,13 @@
 
 <div class="row g-4">
     <div class="col-12">
-        <x-admin.detail.panel title="Thông tin phiếu giao nhận" icon="bi-receipt" :iconClass="'bg-primary-subtle text-primary'">
+        <x-admin.detail.panel :title="$isIntake ? 'Thông tin phiếu nhận đồ' : 'Thông tin phiếu giao đồ'" icon="bi-receipt" :iconClass="'bg-primary-subtle text-primary'">
             <x-admin.detail.info-grid :columns="2">
                 <x-admin.detail.info-item label="Mã phiếu" :value="$displayCode" />
                 <x-admin.detail.info-item label="Mã đặt lịch" :value="$booking?->MaBooking ?: '—'" />
                 <x-admin.detail.info-item label="Khách hàng" :value="$booking?->khachHang?->HoTen ?: '—'" />
                 <x-admin.detail.info-item label="Số điện thoại" :value="$booking?->khachHang?->SoDienThoai ?: '—'" />
-                <x-admin.detail.info-item label="Hình thức" :value="$bookingDocument->HinhThuc ?: '—'" />
+                <x-admin.detail.info-item :label="$isIntake ? 'HÌNH THỨC NHÂN VIÊN NHẬN ĐỒ' : 'HÌNH THỨC NHÂN VIÊN GIAO ĐỒ'" :value="$bookingDocument->HinhThuc ?: '—'" />
                 <x-admin.detail.info-item label="Địa chỉ" :value="$bookingDocument->DiaChi ?: 'Không yêu cầu địa chỉ giao tận nhà'" />
                 <x-admin.detail.info-item label="Nhân viên phụ trách" :value="$bookingDocument->nhanVien?->HoTen ?: 'Chưa phân công'" />
                 <x-admin.detail.info-item label="Nhân viên xác nhận Booking" :value="$booking?->nhanVienXacNhan?->HoTen ?: '—'" />
