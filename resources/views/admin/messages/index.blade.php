@@ -19,6 +19,9 @@
     .message-inbox-list .list-group-item.active .text-truncate,
     .message-inbox-list .list-group-item.active small { color: #1c2b4a; }
     .message-status-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: currentColor; vertical-align: middle; }
+    .message-image-viewer { position: fixed; inset: 0; z-index: 2000; display: flex; align-items: center; justify-content: center; padding: 3rem; background: rgb(0 0 0 / 88%); }
+    .message-image-viewer img { max-width: 95vw; max-height: 90vh; object-fit: contain; }
+    .message-image-viewer-close { position: absolute; top: 1rem; right: 1rem; width: 2.75rem; height: 2.75rem; border: 1px solid rgb(255 255 255 / 55%); border-radius: 50%; color: #fff; background: rgb(0 0 0 / 45%); font-size: 1.75rem; line-height: 1; }
     @media (max-width: 991.98px) {
         .message-chat-card { height: 36rem; }
         .message-inbox-list { max-height: 19rem; }
@@ -110,7 +113,7 @@
                                     {{ app(\App\Services\MessageService::class)->displayName($message, auth()->user()) }}
                                 </div>
                                 @if($message->ImageUrl ?? false)
-                                    <a href="{{ $message->ImageUrl }}" target="_blank" rel="noopener noreferrer"><img src="{{ $message->ImageUrl }}" alt="Ảnh đính kèm" class="img-fluid rounded mb-1" style="max-height:240px"></a>
+                                    <a href="{{ $message->ImageUrl }}" data-message-image-viewer-trigger aria-label="Xem ảnh đính kèm"><img src="{{ $message->ImageUrl }}" alt="Ảnh đính kèm" class="img-fluid rounded mb-1" style="max-height:240px"></a>
                                 @else
                                     <div class="text-break">{{ $message->NoiDung }}</div>
                                 @endif
@@ -135,6 +138,10 @@
                         </div>
                     @endforelse
                 </div>
+                <div class="message-image-viewer d-none" data-message-image-viewer role="dialog" aria-modal="true" aria-label="Xem ảnh đính kèm" aria-hidden="true" tabindex="-1">
+                    <button type="button" class="message-image-viewer-close" data-message-image-viewer-close aria-label="Đóng ảnh">&times;</button>
+                    <img src="" alt="Ảnh đính kèm đang xem" data-message-image-viewer-image>
+                </div>
                 @can('messages.create')
                 <div class="card-footer bg-white">
                     @if(!$selectedCustomer && !$selectedOrder?->khachHang?->taiKhoan)
@@ -152,6 +159,14 @@
                                 <button type="button" class="btn btn-sm btn-outline-secondary" data-message-template="Bạn vui lòng cho biết mã đơn hàng để cửa hàng kiểm tra nhé.">Hỏi mã đơn</button>
                                 <button type="button" class="btn btn-sm btn-outline-secondary" data-message-template="Cửa hàng sẽ kiểm tra và phản hồi bạn sớm.">Hẹn phản hồi</button>
                             </div>
+                            <div class="border rounded-3 p-2 d-flex align-items-center gap-2 d-none" data-message-image-preview>
+                                <img src="" alt="Ảnh đã chọn" class="rounded object-fit-cover flex-shrink-0" style="width:64px;height:64px" data-message-image-preview-thumbnail>
+                                <div class="min-w-0 flex-grow-1">
+                                    <span class="d-block text-truncate fw-semibold" data-message-image-preview-name></span>
+                                    <small class="text-muted" data-message-image-preview-size></small>
+                                </div>
+                                <button type="button" class="btn-close flex-shrink-0" aria-label="Bỏ ảnh đã chọn" title="Bỏ ảnh" data-message-image-remove></button>
+                            </div>
                             <div class="d-flex gap-2">
                                 <textarea name="content" rows="2" maxlength="1000" class="form-control" placeholder="Nhập tin nhắn cho khách hàng...">{{ old('content') }}</textarea>
                                 <label class="btn btn-outline-secondary align-self-end mb-0" title="Chọn ảnh">
@@ -162,7 +177,7 @@
                                     <i class="bi bi-send me-1"></i>Gửi
                                 </button>
                             </div>
-                            <small class="text-muted">Ảnh JPEG, PNG hoặc WEBP tối đa 5 MB. Ảnh sẽ hiện ngay trong khung chat khi bắt đầu gửi.</small>
+                            <small class="text-muted">Ảnh JPEG, PNG hoặc WEBP tối đa 5 MB. Ảnh xem trước sẽ hiện sau khi chọn và chỉ tải lên khi nhấn Gửi.</small>
                         </form>
                         @error('content')<div class="text-danger small mt-2">{{ $message }}</div>@enderror
                         @error('message')<div class="text-danger small mt-2">{{ $message }}</div>@enderror

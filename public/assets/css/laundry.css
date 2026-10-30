@@ -1304,6 +1304,15 @@ select.status-select-compact {
     padding-left: 0.5rem !important;
 }
 
+.flatpickr-current-month .flatpickr-monthDropdown-months {
+    min-height: 0 !important;
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+    background-image: none !important;
+    appearance: menulist !important;
+    -webkit-appearance: menulist !important;
+}
+
 select:focus:not(:disabled):not(.is-invalid),
 select.form-select:focus:not(:disabled):not(.is-invalid) {
     border-color: #3b82f6 !important;

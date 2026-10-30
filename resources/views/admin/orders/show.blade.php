@@ -152,7 +152,6 @@
                     @endif
                 </x-admin.detail.info-item>
                 <x-admin.detail.info-item label="Số điện thoại" :value="$order->customer?->phone" />
-                <x-admin.detail.info-item label="Nhân viên phụ trách" :value="$order->employee?->HoTen ?: '—'" />
                 <x-admin.detail.info-item
                     label="Dịch vụ"
                     :value="$order->chiTietDonHangs->map(fn ($item) => $item->dichVu?->TenDichVu)->filter()->unique()->join(', ') ?: '—'"

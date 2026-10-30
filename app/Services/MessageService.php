@@ -30,7 +30,7 @@ class MessageService
         $orders = DonHang::query()->with(['khachHang.taiKhoan:TaiKhoanID,KhachHangID,AvatarURL'])->select('DonHang.*')
             ->leftJoinSub($activity, 'activity', 'activity.DonHangID', '=', 'DonHang.DonHangID')
             ->leftJoinSub($unread, 'unread', 'unread.DonHangID', '=', 'DonHang.DonHangID')
-            ->addSelect('activity.last_message_at', 'unread.unread_count')
+            ->addSelect('activity.last_message_at', 'activity.last_message_id', 'unread.unread_count')
             ->addSelect(['last_message_preview' => TinNhan::query()->select('NoiDung')
                 ->whereColumn('TinNhan.DonHangID', 'DonHang.DonHangID')
                 ->orderByDesc('ThoiGianGui')->orderByDesc('TinNhanID')->limit(1)]);

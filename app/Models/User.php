@@ -268,7 +268,8 @@ class User extends Authenticatable
 
     public function isManager(): bool
     {
-        return $this->hasRole(['manager', 'owner']);
+        return $this->hasRole(['manager', 'owner'])
+            || collect($this->roleNames())->contains(fn (string $name): bool => str_starts_with(VaiTro::slugForName($name), 'quan-ly-'));
     }
 
     public function isAdmin(): bool
