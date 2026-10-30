@@ -55,9 +55,6 @@
                         <th class="fw-bold text-dark">Mã đơn hàng</th>
                         <th class="fw-bold text-dark">Khách hàng</th>
                         <th class="fw-bold text-dark">Số điện thoại</th>
-                        <th class="fw-bold text-dark">Dịch vụ</th>
-                        <th class="fw-bold text-dark">Số lượng</th>
-                        <th class="fw-bold text-dark">Ghi chú khách hàng</th>
                         <th class="fw-bold text-dark">Thành tiền</th>
                         <th class="fw-bold text-dark text-center">Trạng thái</th>
                         <th class="fw-bold text-dark">Ngày tạo</th>
@@ -79,23 +76,6 @@
                             </div>
                         </td>
                         <td class="text-dark">{{ $order->khachHang?->SoDienThoai ?: '-' }}</td>
-                        <td style="max-width: 180px;">
-                            <div class="text-truncate" title="{{ $order->chiTietDonHangs->map(fn ($item) => $item->dichVu?->TenDichVu)->filter()->unique()->join(', ') }}">{{ $order->chiTietDonHangs->map(fn ($item) => $item->dichVu?->TenDichVu)->filter()->unique()->join(', ') ?: '-' }}</div>
-                        </td>
-                        <td class="text-dark">
-                            @php
-                                $itemQuantity = (float) $order->chiTietDonHangs->sum('SoLuong');
-                                $itemWeight = (float) $order->chiTietDonHangs->sum('KhoiLuong');
-                            @endphp
-                            @if($itemQuantity > 0 || $itemWeight > 0)
-                                {{ format_quantity_weight($itemQuantity ?: null, $itemWeight ?: null) }}
-                            @else
-                                -
-                            @endif
-                        </td>
-                        <td style="max-width: 240px;">
-                            <small class="d-block text-muted text-truncate" title="{{ $order->GhiChu }}">{{ $order->GhiChu ?: 'Không có ghi chú' }}</small>
-                        </td>
                         <td class="text-dark">{{ number_format((float) $order->ThanhTien) }} đ</td>
                         <td class="text-center">
                             <div class="order-status-badges d-inline-flex align-items-center flex-nowrap gap-1 text-nowrap">
@@ -214,14 +194,6 @@
                                 @if($canManageSettled)
                                     @can('orders.edit')
                                         <a href="{{ route('orders.edit', $order) }}" class="btn btn-order-action edit" title="Sửa"><i class="bi bi-pencil"></i></a>
-                                    @endcan
-                                    @can('messages.view')
-                                        <a href="{{ route('admin.messages.index', ['order_id' => $order->DonHangID]) }}"
-                                           class="btn btn-order-action"
-                                           title="Nhắn tin khách hàng"
-                                           aria-label="Nhắn tin khách hàng của đơn {{ $order->MaDonHang }}">
-                                            <i class="bi bi-chat-dots" aria-hidden="true"></i>
-                                        </a>
                                     @endcan
                                     @can('orders.delete')
                                         <x-admin.detail.confirm-form
