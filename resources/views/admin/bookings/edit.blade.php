@@ -411,6 +411,35 @@
                     @if($inspectionMode)<input type="hidden" name="notes" value="{{ old('notes', $booking->GhiChu) }}">@endif
                     @error('notes')<div class="invalid-feedback">{{ $message }}</div>@enderror
                 </div>
+
+                {{-- Áp dụng mã giảm giá: đặt ngoài form cập nhật Booking để tránh form lồng nhau --}}
+                <div class="mt-4">
+                    <div class="border rounded-3 p-3">
+                        <h6 class="mb-3"><i class="fas fa-ticket me-2 text-primary"></i>Áp dụng mã giảm giá</h6>
+                        @if($coupons->isNotEmpty())
+                            <form action="{{ route('bookings.apply-coupon', $booking) }}" method="POST">
+                                @csrf
+                                <div style="display: flex; gap: 8px; align-items: flex-end;">
+                                    <select name="ma_khuyen_mai" class="form-select" required style="flex: 1; min-width: 0; width: auto;">
+                                        <option value="" selected disabled>-- Chọn mã giảm giá --</option>
+                                        @foreach($coupons as $coupon)
+                                            <option value="{{ $coupon->MaKhuyenMai }}" {{ old('ma_khuyen_mai') === $coupon->MaKhuyenMai || optional($booking->khuyenMai)->MaKhuyenMai === $coupon->MaKhuyenMai ? 'selected' : '' }}>
+                                                {{ $coupon->MaKhuyenMai }} · {{ $coupon->discountValueLabel() }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                    <button type="submit" class="btn btn-primary">Áp dụng</button>
+                                </div>
+                            </form>
+                            @error('ma_khuyen_mai')
+                                <div class="text-danger small mt-1">{{ $message }}</div>
+                            @enderror
+                            <div class="form-text mt-2">Chọn một mã giảm giá đang hoạt động rồi nhấn nút Áp dụng để áp dụng vào Booking này.</div>
+                        @else
+                            <div class="text-muted small">Hiện chưa có mã giảm giá nào đang hoạt động.</div>
+                        @endif
+                    </div>
+                </div>
             </div>
             @if($inspectionMode)
                 <div
@@ -476,24 +505,6 @@
             @endif
         </form>
 
-        {{-- Áp dụng mã giảm giá: đặt ngoài form cập nhật Booking để tránh form lồng nhau --}}
-        <div class="mt-4">
-            <div class="border rounded-3 p-3">
-                <h6 class="mb-3"><i class="fas fa-ticket me-2 text-primary"></i>Áp dụng mã giảm giá</h6>
-                @if($coupons->isNotEmpty())
-                    <form action="{{ route('bookings.apply-coupon', $booking) }}" method="POST">
-                        @csrf
-                        <div style="display: flex; gap: 8px; align-items: flex-end;">
-                            <select name="ma_khuyen_mai" class="form-select" required style="flex: 1; min-width: 0; width: auto;">
-                                <option value="" selected disabled>-- Chọn mã giảm giá --</option>
-                                @foreach($coupons as $coupon)
-                                    <option value="{{ $coupon->MaKhuyenMai }}" {{ old('ma_khuyen_mai') === $coupon->MaKhuyenMai || optional($booking->khuyenMai)->MaKhuyenMai === $coupon->MaKhuyenMai ? 'selected' : '' }}>
-                                        {{ $coupon->MaKhuyenMai }} · {{ $coupon->discountValueLabel() }}
-                                    </option>
-                                @endforeach
-                            </select>
-                            <button type="submit" class="btn btn-primary">Áp dụng</button>
-                        </div>
                     </form>
                     @error('ma_khuyen_mai')
                         <div class="text-danger small mt-1">{{ $message }}</div>
