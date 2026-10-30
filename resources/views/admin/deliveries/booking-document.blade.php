@@ -13,22 +13,24 @@
     $formattedDecisionTimestamp = $decisionTimestamp
         ? \Illuminate\Support\Carbon::parse($decisionTimestamp)->timezone('Asia/Ho_Chi_Minh')->format('d/m/Y H:i:s')
         : 'Chưa chốt kiểm kê';
+    $statusValue = ! $isIntake
+        ? ($bookingDocument->donHang?->giaoNhans->firstWhere('LoaiGiaoNhan', 'GIAO_DO')?->TrangThai ?? $bookingDocument->TrangThai)
+        : $bookingDocument->TrangThai;
 @endphp
 
 <x-admin.detail.page-header
-    title="{{ $isIntake ? 'Phiếu nhận đồ từ đặt lịch' : 'Phiếu giao đồ từ đặt lịch' }}"
-    :subtitle="$displayCode . ($booking?->MaBooking ? ' · Đặt lịch ' . $booking->MaBooking : '')"
+    title="{{ $isIntake ? 'Trạng thái nhân viên nhận đồ' : 'Trạng thái nhân viên giao đồ' }}"
     :backUrl="route('deliveries.index')"
 >
     <x-slot:badge>
-        @if($isIntake && $bookingDocument->TrangThai === 'Hoàn thành')
+        @if($isIntake && $statusValue === 'Hoàn thành')
             <x-admin.status-badge
                 :status="\App\Enums\DeliveryStatus::Completed"
                 :enum="\App\Enums\DeliveryStatus::class"
                 label="Đã nhận đồ"
             />
         @else
-            <x-admin.status-badge :status="\App\Enums\DeliveryStatus::parseForLeg($bookingDocument->TrangThai, $bookingDocument->LoaiGiaoNhan)" :enum="\App\Enums\DeliveryStatus::class" />
+            <x-admin.status-badge :status="\App\Enums\DeliveryStatus::parseForLeg($statusValue, $bookingDocument->LoaiGiaoNhan)" :enum="\App\Enums\DeliveryStatus::class" />
         @endif
     </x-slot:badge>
 </x-admin.detail.page-header>
@@ -42,11 +44,11 @@
                 <x-admin.detail.info-item label="Khách hàng" :value="$booking?->khachHang?->HoTen ?: '—'" />
                 <x-admin.detail.info-item label="Số điện thoại" :value="$booking?->khachHang?->SoDienThoai ?: '—'" />
                 <x-admin.detail.info-item :label="$isIntake ? 'HÌNH THỨC NHÂN VIÊN NHẬN ĐỒ' : 'HÌNH THỨC NHÂN VIÊN GIAO ĐỒ'" :value="$bookingDocument->HinhThuc ?: '—'" />
-                <x-admin.detail.info-item label="Địa chỉ" :value="$bookingDocument->DiaChi ?: 'Không yêu cầu địa chỉ giao tận nhà'" />
-                <x-admin.detail.info-item label="Nhân viên phụ trách" :value="$bookingDocument->nhanVien?->HoTen ?: 'Chưa phân công'" />
+                <x-admin.detail.info-item :label="$isIntake ? 'Địa chỉ nhận đồ' : 'Địa chỉ giao đồ'" :value="$bookingDocument->DiaChi ?: 'Không yêu cầu địa chỉ giao tận nhà'" />
+                <x-admin.detail.info-item :label="$isIntake ? 'Nhân viên phụ trách nhận đồ' : 'Nhân viên phụ trách giao đồ'" :value="$bookingDocument->nhanVien?->HoTen ?: 'Chưa phân công'" />
                 <x-admin.detail.info-item label="Nhân viên xác nhận Booking" :value="$booking?->nhanVienXacNhan?->HoTen ?: '—'" />
-                <x-admin.detail.info-item label="Thời gian dự kiến" :value="$bookingDocument->ThoiGianDuKien?->format('d/m/Y H:i') ?: 'Chưa lên lịch'" />
-                <x-admin.detail.info-item label="Thời gian thực tế" :value="$bookingDocument->ThoiGianThucTe?->format('d/m/Y H:i') ?: 'Chưa ghi nhận'" />
+                <x-admin.detail.info-item :label="$isIntake ? 'Thời gian nhận đồ dự kiến' : 'Thời gian giao đồ dự kiến'" :value="$bookingDocument->ThoiGianDuKien?->format('d/m/Y H:i') ?: 'Chưa lên lịch'" />
+                <x-admin.detail.info-item :label="$isIntake ? 'Thời gian nhận đồ thực tế' : 'Thời gian giao đồ thực tế'" :value="$bookingDocument->ThoiGianThucTe?->format('d/m/Y H:i') ?: 'Chưa ghi nhận'" />
                 <x-admin.detail.info-item label="Phí dự kiến" :value="number_format((float) $bookingDocument->PhiGiaoNhan, 0, ',', '.') . ' VNĐ'" />
                 <x-admin.detail.info-item label="Đơn hàng liên kết">
                     @if($order)
@@ -59,7 +61,7 @@
                         <span class="text-muted">Chưa tạo đơn hàng</span>
                     @endif
                 </x-admin.detail.info-item>
-                <x-admin.detail.info-item label="Trạng thái Booking">
+                <x-admin.detail.info-item label="Trạng thái đặt lịch">
                     @if($booking)
                         <x-admin.status-badge :status="$booking->TrangThai" :enum="\App\Enums\BookingStatus::class" :pill="false" />
                     @else

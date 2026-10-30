@@ -78,8 +78,7 @@
 @endpush
 
 <x-admin.detail.page-header
-    title="{{ $delivery->LoaiGiaoNhan === 'NHAN_DO' ? 'Chi tiết phiếu nhận đồ' : 'Chi tiết phiếu giao đồ' }}"
-    :subtitle="$displayCode . ' · ' . ($delivery->LoaiGiaoNhan === 'NHAN_DO' ? 'Nhận đồ' : 'Giao đồ') . ' · ' . ($delivery->ThoiGianDuKien?->format('d/m/Y') ?: 'Chưa hẹn ngày')"
+    title="{{ $delivery->LoaiGiaoNhan === 'NHAN_DO' ? 'Trạng thái phiếu nhận đồ' : 'Trạng thái phiếu giao đồ' }}"
     backUrl="{{ \App\Support\OrderWorkflow::listBackUrl(route('deliveries.index')) }}"
 >
     <x-slot:badge>
@@ -87,22 +86,28 @@
     </x-slot:badge>
 </x-admin.detail.page-header>
 
-<div class="row g-4 align-items-start">
-    {{-- ============ CỘT CHÍNH (7/12) ============ --}}
-    <div class="col-lg-7">
+<div class="row g-4">
+    <div class="col-12">
         <x-admin.detail.panel :title="$delivery->LoaiGiaoNhan === 'NHAN_DO' ? 'Thông tin phiếu nhận đồ' : 'Thông tin phiếu giao đồ'" icon="bi-truck" :iconClass="'bg-primary-subtle text-primary'">
+            @if($delivery->LoaiGiaoNhan === 'GIAO_DO' && $deliveryStatus === \App\Enums\DeliveryStatus::Cancelled)
+                <p class="small text-muted mb-3">Lịch giao đã hủy; phiếu chỉ còn để tra cứu lịch sử.</p>
+            @endif
+
             <x-admin.detail.info-grid :columns="2">
                 <x-admin.detail.info-item label="Mã phiếu" :value="$displayCode" />
-                <x-admin.detail.info-item label="Loại giao nhận">
-                    <span class="badge bg-primary-subtle text-primary-emphasis border border-primary px-3 py-2 rounded-pill">
-                        <i class="bi {{ $delivery->LoaiGiaoNhan === 'NHAN_DO' ? 'bi-box-arrow-in-down' : 'bi-truck' }} me-1"></i>{{ $delivery->LoaiGiaoNhan === 'NHAN_DO' ? 'Nhận đồ' : 'Giao đồ' }}
-                    </span>
-                </x-admin.detail.info-item>
+                <x-admin.detail.info-item label="Mã đặt lịch" :value="$delivery->donHang?->booking?->MaBooking ?: '—'" />
+                <x-admin.detail.info-item label="Khách hàng" :value="$delivery->donHang?->khachHang?->HoTen ?: '—'" />
+                <x-admin.detail.info-item label="Số điện thoại" :value="$delivery->donHang?->khachHang?->SoDienThoai ?: '—'" />
                 <x-admin.detail.info-item :label="$delivery->LoaiGiaoNhan === 'NHAN_DO' ? 'HÌNH THỨC NHÂN VIÊN NHẬN ĐỒ' : 'HÌNH THỨC NHÂN VIÊN GIAO ĐỒ'" :value="$delivery->HinhThuc" />
-                <x-admin.detail.info-item label="Đơn hàng">
+                <x-admin.detail.info-item :label="$delivery->LoaiGiaoNhan === 'NHAN_DO' ? 'Địa chỉ nhân viên nhận đồ' : 'Địa chỉ nhân viên giao đồ'" :value="$delivery->DiaChi ?: 'Chưa cập nhật địa chỉ.'" />
+                <x-admin.detail.info-item :label="$delivery->LoaiGiaoNhan === 'NHAN_DO' ? 'Nhân viên phụ trách nhận đồ' : 'Nhân viên phụ trách giao đồ'" :value="$delivery->nhanVien?->HoTen ?: 'Chưa phân công'" />
+                <x-admin.detail.info-item :label="$delivery->LoaiGiaoNhan === 'NHAN_DO' ? 'Thời gian nhận đồ dự kiến' : 'Thời gian giao đồ dự kiến'" :value="$delivery->ThoiGianDuKien?->format('d/m/Y H:i')" />
+                <x-admin.detail.info-item :label="$delivery->LoaiGiaoNhan === 'NHAN_DO' ? 'Thời gian nhận đồ thực tế' : 'Thời gian giao đồ thực tế'" :value="$delivery->ThoiGianThucTe?->format('d/m/Y H:i') ?: 'Chưa hoàn tất'" />
+                <x-admin.detail.info-item label="Phí dự kiến" :value="number_format((float) $delivery->PhiGiaoNhan, 0, ',', '.') . ' VNĐ'" />
+                <x-admin.detail.info-item label="Đơn hàng liên kết">
                     @if($delivery->donHang)
                         @can('orders.view')
-                        <a href="{{ route('orders.show', $delivery->donHang->DonHangID) }}" class="text-decoration-none">
+                        <a href="{{ route('orders.show', $delivery->donHang->DonHangID) }}">
                             {{ $delivery->donHang->MaDonHang }}
                         </a>
                         @else
@@ -112,20 +117,10 @@
                         <span class="detail-empty-value">—</span>
                     @endif
                 </x-admin.detail.info-item>
-                <x-admin.detail.info-item label="Trạng thái">
+                <x-admin.detail.info-item :label="$delivery->LoaiGiaoNhan === 'NHAN_DO' ? 'Trạng thái phiếu nhận đồ' : 'Trạng thái phiếu giao đồ'">
                     <x-admin.status-badge :status="\App\Enums\DeliveryStatus::parseForLeg($delivery->TrangThai, $delivery->LoaiGiaoNhan)" :enum="\App\Enums\DeliveryStatus::class" />
                 </x-admin.detail.info-item>
-                <x-admin.detail.info-item label="Ngày giao nhận" :value="$delivery->ThoiGianDuKien?->format('d/m/Y')" />
-                <x-admin.detail.info-item label="Giờ giao nhận" :value="$delivery->ThoiGianDuKien?->format('H:i')" />
-                <x-admin.detail.info-item label="Thời gian bàn giao thực tế" :value="$delivery->ThoiGianThucTe?->format('d/m/Y H:i') ?: 'Chưa hoàn tất'" />
-                <x-admin.detail.info-item label="Nhân viên phụ trách" :value="$delivery->nhanVien?->HoTen ?: 'Chưa phân công'" />
-                <x-admin.detail.info-item label="Ngày tạo" :value="$delivery->ThoiGianDuKien?->format('d/m/Y H:i')" />
             </x-admin.detail.info-grid>
-
-            <div class="mt-4">
-                <div class="detail-field__label mb-2">Địa chỉ</div>
-                <div class="detail-text">{{ $delivery->DiaChi ?: '140 Lê Trọng Tấn, Tây Thạnh, Hồ Chí Minh 700000, Việt Nam' }}</div>
-            </div>
 
             @if($delivery->GhiChu)
                 @can('customers.view')
@@ -191,33 +186,5 @@
         </x-admin.detail.panel>
     </div>
 
-    {{-- ============ CỘT PHỤ (5/12) ============ --}}
-    <div class="col-lg-5 d-flex flex-column">
-        {{-- Mọi nút hành động của phiếu nằm ở cột "Thao tác" trong danh sách. --}}
-        @if($delivery->LoaiGiaoNhan === 'GIAO_DO' && $deliveryStatus === \App\Enums\DeliveryStatus::Cancelled)
-            <p class="small text-muted">Lịch giao đã hủy; phiếu chỉ còn để tra cứu lịch sử.</p>
-        @endif
-
-        <x-admin.detail.panel title="Khách hàng" icon="bi-person" :iconClass="'bg-secondary-subtle text-secondary'">
-            @php
-                $deliveryCustomer = $delivery->donHang?->khachHang;
-            @endphp
-
-            @if($deliveryCustomer)
-                <x-admin.detail.info-grid :columns="1">
-                    <x-admin.detail.info-item label="Họ và tên" :value="$deliveryCustomer->HoTen" />
-                    <x-admin.detail.info-item label="Số điện thoại" :value="$deliveryCustomer->SoDienThoai" />
-                    <x-admin.detail.info-item label="Địa chỉ" :value="$deliveryCustomer->DiaChi" />
-                </x-admin.detail.info-grid>
-                <div class="mt-3">
-                    <a href="{{ route('customers.show', $deliveryCustomer->KhachHangID) }}" class="btn btn-outline-secondary btn-sm w-100">
-                        <i class="bi bi-box-arrow-up-right me-1"></i>Hồ sơ khách hàng
-                    </a>
-                </div>
-            @else
-                <x-admin.detail.empty message="Phiếu giao nhận chưa gắn khách hàng" icon="bi-person" />
-            @endif
-        </x-admin.detail.panel>
-    </div>
 </div>
 @endsection

@@ -36,18 +36,18 @@
         <x-admin.detail.panel title="Thông tin lịch hẹn" icon="bi-calendar-check" :iconClass="'bg-primary-subtle text-primary'">
             <x-admin.detail.info-grid :columns="2">
                 <x-admin.detail.info-item label="Mã đặt lịch" :value="$booking->MaBooking ?: '—'" />
-                <x-admin.detail.info-item label="Trạng thái">
+                <x-admin.detail.info-item label="Trạng thái đặt lịch">
                     <x-admin.status-badge :status="$booking->TrangThai" :enum="\App\Enums\BookingStatus::class" />
                 </x-admin.detail.info-item>
                 <x-admin.detail.info-item label="HÌNH THỨC NHÂN VIÊN NHẬN ĐỒ" :value="$booking->method_label" />
                 <x-admin.detail.info-item label="ĐỊA CHỈ NHÂN VIÊN NHẬN ĐỒ" :value="$receiveAtStore ? $storeAddress : ($booking->DiaChiNhan ?: '—')" />
                 <x-admin.detail.info-item label="HÌNH THỨC NHÂN VIÊN GIAO ĐỒ" :value="$booking->return_method_label" />
                 <x-admin.detail.info-item label="ĐỊA CHỈ NHÂN VIÊN GIAO ĐỒ" :value="$returnAtStore ? $storeAddress : ($booking->DiaChiTra ?: '—')" />
-                <x-admin.detail.info-item label="Nhân viên xác nhận Booking" :value="$booking->nhanVienXacNhan?->HoTen ?? '—'" />
-                <x-admin.detail.info-item label="Nhân viên nhận và kiểm kê" :value="$intakeDocument?->nhanVien?->HoTen ?? 'Chưa phân công'" />
-                <x-admin.detail.info-item label="Thời gian xác nhận" :value="$booking->ThoiGianXacNhan?->format('d/m/Y H:i') ?? '—'" />
-                <x-admin.detail.info-item label="Ngày hẹn" :value="$booking->NgayHen?->format('d/m/Y')" />
-                <x-admin.detail.info-item label="Giờ hẹn" :value="$booking->GioHen?->format('H:i')" />
+                <x-admin.detail.info-item label="Nhân viên xác nhận đặt lịch" :value="$booking->nhanVienXacNhan?->HoTen ?? '—'" />
+                <x-admin.detail.info-item label="Nhân viên nhận và kiểm kê đồ" :value="$intakeDocument?->nhanVien?->HoTen ?? 'Chưa phân công'" />
+                <x-admin.detail.info-item label="Thời gian xác nhận đặt lịch" :value="$booking->ThoiGianXacNhan?->format('d/m/Y H:i') ?? '—'" />
+                <x-admin.detail.info-item label="Ngày hẹn nhận đồ" :value="$booking->NgayHen?->format('d/m/Y')" />
+                <x-admin.detail.info-item label="Giờ hẹn nhận đồ" :value="$booking->GioHen?->format('H:i')" />
             </x-admin.detail.info-grid>
 
             <div class="mt-4">

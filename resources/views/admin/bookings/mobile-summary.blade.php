@@ -2,7 +2,7 @@
     $mobileCustomer = $booking->khachHang;
     $mobileAccount = $mobileCustomer?->taiKhoan;
 @endphp
-<x-admin.detail.panel title="Thông tin lịch đặt trên mobile" icon="bi-phone" :iconClass="'bg-info-subtle text-info'" data-booking-mobile-summary>
+<x-admin.detail.panel title="Thông tin đặt lịch trên mobile" icon="bi-phone" :iconClass="'bg-info-subtle text-info'" data-booking-mobile-summary>
     <div class="d-flex align-items-center gap-3 mb-3">
         @if($mobileCustomer)<img src="{{ $mobileCustomer->avatar_url }}" alt="Ảnh khách hàng" class="rounded-circle" width="40" height="40" style="object-fit:cover">@endif
         <div><strong>{{ $mobileCustomer?->HoTen ?: $mobileAccount?->TenDangNhap ?: 'Chưa có tên khách hàng' }}</strong>

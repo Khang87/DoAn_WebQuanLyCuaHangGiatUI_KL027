@@ -372,6 +372,7 @@ class DeliveryService
                 'booking.kiemKe',
                 'booking.giaoNhanDuKiens.nhanVien',
                 'donHang.khachHang',
+                'donHang.giaoNhans',
                 'nhanVien',
             ])
             ->find($id);

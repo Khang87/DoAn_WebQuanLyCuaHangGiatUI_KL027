@@ -36,25 +36,21 @@
                 @csrf
                 @method('PUT')
                 @php
-                    $employees = collect([
-                        ['NhanVienID' => 9001, 'HoTen' => 'Phạm Văn Cường', 'ChucDanh' => 'Nhân viên', 'SoDienThoai' => null, 'Email' => 'cuong@giatui.vn'],
-                        ['NhanVienID' => 9002, 'HoTen' => 'Nguyễn Trường Khang', 'ChucDanh' => 'Nhân viên', 'SoDienThoai' => null, 'Email' => 'khanglmao9@gmail.com'],
-                        ['NhanVienID' => 9003, 'HoTen' => 'Võ Anh Khoa', 'ChucDanh' => 'Nhân viên', 'SoDienThoai' => null, 'Email' => 'voanhkhoa010203@gmail.com'],
-                        ['NhanVienID' => 9004, 'HoTen' => 'Trần Văn Bìnhh', 'ChucDanh' => 'Nhân viên', 'SoDienThoai' => null, 'Email' => 'binh@giatui.vn'],
-                    ]);
+                    $duplicateEmployeeNames = $employees->countBy(fn ($candidate) => mb_strtolower(trim((string) $candidate->HoTen)));
+                    $currentUserEmployeeId = (int) (auth()->user()?->NhanVienID ?? 0);
                 @endphp
                 <div class="row g-3">
                     <div class="col-md-6">
-                        <label class="form-label" for="booking_display">Đặt lịch</label>
+                        <label class="form-label" for="booking_display">Mã đặt lịch</label>
                         <input class="form-control" id="booking_display" value="{{ $booking?->MaBooking ?: '—' }}" readonly>
                     </div>
                     <div class="col-md-6">
-                        <label class="form-label" for="fulfillment_display">Hình thức nhận đồ</label>
+                        <label class="form-label" for="fulfillment_display">Hình thức nhân viên nhận đồ</label>
                         <input class="form-control" id="fulfillment_display" value="{{ $bookingDocument->HinhThuc }}" readonly>
                     </div>
 
                     <div class="col-12">
-                        <label class="form-label" for="employee_select">Nhân viên phụ trách</label>
+                        <label class="form-label" for="employee_select">Nhân viên phụ trách nhận đồ</label>
                         @if($canAssignEmployee ?? true)
                             <div class="delivery-employee-picker" data-employee-picker>
                                 <button class="form-select text-start text-truncate" id="employee_select" type="button"
@@ -72,14 +68,16 @@
                                          role="listbox" aria-label="Nhân viên có thể được phân công" data-employee-options>
                                         @foreach($employees as $candidate)
                                             <button class="delivery-employee-option" type="button" role="option"
-                                                    aria-selected="@selected((int) $employee?->NhanVienID === (int) $candidate['NhanVienID])" data-employee-option
-                                                    data-employee-id="{{ $candidate['NhanVienID'] }}"
-                                                    data-employee-name="{{ $candidate['HoTen'] }}"
-                                                    data-employee-description="{{ $candidate['ChucDanh'] }}"
-                                                    data-employee-search-text="{{ $candidate['HoTen'] }} {{ $candidate['ChucDanh'] }}">
+                                                    aria-selected="@selected((int) old('employee_id', $bookingDocument->NhanVienID) === (int) $candidate->NhanVienID)" data-employee-option
+                                                    data-employee-id="{{ $candidate->NhanVienID }}"
+                                                    data-employee-name="{{ $candidate->HoTen }}"
+                                                    data-employee-description="{{ $candidate->ChucDanh }}"
+                                                    data-employee-search-text="{{ $candidate->HoTen }} {{ $candidate->ChucDanh }}">
                                                     <span>
-                                                        <span class="d-block">{{ $candidate['HoTen'] }}</span>
-                                                        <span class="small text-muted">{{ $candidate['ChucDanh'] }}</span>
+                                                        <span class="d-block">
+                                                            @if((int) $candidate->NhanVienID === $currentUserEmployeeId)Bản thân tôi — @endif
+                                                            {{ $candidate->HoTen }}{{ $candidate->ChucDanh ? ' · '.$candidate->ChucDanh : '' }}@if(($duplicateEmployeeNames[mb_strtolower(trim((string) $candidate->HoTen))] ?? 0) > 1) · {{ $candidate->SoDienThoai ?: ($candidate->Email ?: 'Mã NV '.$candidate->NhanVienID) }}@endif
+                                                        </span>
                                                     </span>
                                                     <i class="bi bi-check2 text-primary" aria-hidden="true" hidden data-selected-indicator></i>
                                             </button>
@@ -106,13 +104,13 @@
                     @endif
 
                     <div class="col-md-6">
-                        <label class="form-label" for="pickup_date">Ngày dự kiến</label>
+                        <label class="form-label" for="pickup_date">Ngày nhận đồ dự kiến</label>
                         <input type="date" class="form-control" id="pickup_date" name="pickup_date"
                                value="{{ old('pickup_date', $bookingDocument->ThoiGianDuKien?->format('Y-m-d')) }}">
                         @error('pickup_date')<div class="text-danger small mt-1">{{ $message }}</div>@enderror
                     </div>
                     <div class="col-md-6">
-                        <label class="form-label" for="pickup_time">Giờ dự kiến</label>
+                        <label class="form-label" for="pickup_time">Giờ nhận đồ dự kiến</label>
                         <input type="time" class="form-control" id="pickup_time" name="pickup_time"
                                value="{{ old('pickup_time', $bookingDocument->ThoiGianDuKien?->format('H:i')) }}">
                         @error('pickup_time')<div class="text-danger small mt-1">{{ $message }}</div>@enderror

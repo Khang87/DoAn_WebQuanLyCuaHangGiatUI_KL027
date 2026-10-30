@@ -72,19 +72,37 @@
                     <label class="form-label" for="booking-customer-email">Email</label>
                     <input class="form-control booking-main-control bg-light text-muted" id="booking-customer-email" value="{{ $customerEmail ?: '—' }}" disabled>
                 </div>
-
+                <div class="col-md-6">
+                    <label class="form-label" for="booking-staff-name">
+                        {{ $inspectionMode ? 'Nhân viên được phân công nhận và kiểm kê đồ' : 'Nhân viên phụ trách nhận đồ hiện tại' }}
+                    </label>
+                    <input
+                        type="text"
+                        class="form-control booking-main-control bg-light text-muted"
+                        id="booking-staff-name"
+                        value="{{ $inspectionMode
+                            ? ($intakeEmployee?->HoTen ?? 'Chưa phân công')
+                            : ($booking->nhanVien?->HoTen ?? 'Chưa phân công') }}"
+                        readonly
+                    >
+                    @if($inspectionMode)
+                        <div class="form-text">Người xác nhận Booking: {{ $booking->nhanVienXacNhan?->HoTen ?? '—' }}. Chỉ nhân viên được phân công hoặc người có thẩm quyền mới được chốt kiểm kê.</div>
+                    @else
+                        <div class="form-text">Thông tin này chỉ để xem; không thể đổi nhân viên phụ trách tại đây.</div>
+                    @endif
+                </div>
                 @if($inspectionMode)
                             </div>
                         </div>
                     </div>
                     <div class="col-12">
                         <div class="border rounded-3 p-3">
-                            <h6 class="mb-3">Thông tin nhận và trả đồ từ Booking</h6>
+                            <h6 class="mb-3">Thông tin nhận và giao đồ từ đặt lịch</h6>
                             <div class="row g-3">
                 @endif
-                <div class="col-md-6"><label class="form-label">Hình thức nhận đồ <span class="text-danger ms-1">*</span></label><select class="form-select booking-main-control @error('method') is-invalid @enderror" name="method" id="booking-method" required @disabled($inspectionMode)>@foreach(\App\Enums\ReceiveMethod::options() as $value => $label)<option value="{{ $value }}" @selected(old('method', $booking->HinhThucNhanDo) === $value)>{{ $label }}</option>@endforeach</select>@if($inspectionMode)<input type="hidden" name="method" value="{{ $booking->HinhThucNhanDo }}">@endif @error('method')<div class="invalid-feedback">{{ $message }}</div>@enderror</div>
+                <div class="col-md-6"><label class="form-label">Hình thức nhân viên nhận đồ <span class="text-danger ms-1">*</span></label><select class="form-select booking-main-control @error('method') is-invalid @enderror" name="method" id="booking-method" required @disabled($inspectionMode)>@foreach(\App\Enums\ReceiveMethod::options() as $value => $label)<option value="{{ $value }}" @selected(old('method', $booking->HinhThucNhanDo) === $value)>{{ $label }}</option>@endforeach</select>@if($inspectionMode)<input type="hidden" name="method" value="{{ $booking->HinhThucNhanDo }}">@endif @error('method')<div class="invalid-feedback">{{ $message }}</div>@enderror</div>
                 <div class="col-md-6">
-                    <label class="form-label" for="booking-pickup-address">Địa chỉ nhận đồ</label>
+                    <label class="form-label" for="booking-pickup-address">Địa chỉ nhân viên nhận đồ</label>
                     <div class="position-relative">
                         <input
                             type="text"
@@ -113,7 +131,7 @@
                     </div>
                 </div>
                 <div class="col-md-6">
-                    <label class="form-label" for="booking-return-method">Hình thức giao <span class="text-danger">*</span></label>
+                    <label class="form-label" for="booking-return-method">Hình thức nhân viên giao đồ <span class="text-danger">*</span></label>
                     <select class="form-select booking-main-control @error('return_method') is-invalid @enderror" name="return_method" id="booking-return-method" required @disabled($inspectionMode)>
                         <option value="">Chọn hình thức giao</option>
                         @foreach(\App\Enums\ReturnMethod::options() as $value => $label)
@@ -126,7 +144,7 @@
                     @error('return_method')<div class="invalid-feedback">{{ $message }}</div>@enderror
                 </div>
                 <div class="col-md-6">
-                    <label class="form-label" for="booking-return-address">Địa chỉ trả đồ</label>
+                    <label class="form-label" for="booking-return-address">Địa chỉ nhân viên giao đồ</label>
                     <div class="position-relative">
                         <input
                             type="text"
@@ -162,7 +180,7 @@
                 @if($inspectionMode)
                     <div class="col-12">
                         <div class="border rounded-3 p-3">
-                            <h6 class="mb-2">Ưu đãi từ Booking</h6>
+                            <h6 class="mb-2">Ưu đãi từ đặt lịch</h6>
                             <div class="row g-3">
                                 <div class="col-md-6">
                                     <label class="form-label" for="booking-promotion">Mã giảm giá</label>
@@ -179,9 +197,8 @@
                         <div class="small text-muted">Phí giao nhận được giữ theo thông tin đã lưu trên Booking; kiểm kê không gọi lại dịch vụ định tuyến.</div>
                     </div>
                 @endif
-
-                <div class="col-md-6"><label class="form-label">Ngày hẹn <span class="text-danger ms-1">*</span></label><input type="date" class="form-control booking-main-control @error('scheduled_date') is-invalid @enderror" name="scheduled_date" value="{{ old('scheduled_date', $booking->NgayHen?->format('Y-m-d')) }}" required @readonly($inspectionMode)>@error('scheduled_date')<div class="invalid-feedback">{{ $message }}</div>@enderror</div>
-                <div class="col-md-6"><label class="form-label">Giờ hẹn <span class="text-danger ms-1">*</span></label><input type="time" class="form-control booking-main-control @error('scheduled_time') is-invalid @enderror" name="scheduled_time" value="{{ old('scheduled_time', $booking->GioHen?->format('H:i')) }}" required @readonly($inspectionMode)>@error('scheduled_time')<div class="invalid-feedback">{{ $message }}</div>@enderror</div>
+                <div class="col-md-6"><label class="form-label">Ngày hẹn nhân viên nhận đồ <span class="text-danger ms-1">*</span></label><input type="date" class="form-control booking-main-control @error('scheduled_date') is-invalid @enderror" name="scheduled_date" value="{{ old('scheduled_date', $booking->NgayHen?->format('Y-m-d')) }}" required @readonly($inspectionMode)>@error('scheduled_date')<div class="invalid-feedback">{{ $message }}</div>@enderror</div>
+                <div class="col-md-6"><label class="form-label">Giờ hẹn nhân viên nhận đồ <span class="text-danger ms-1">*</span></label><input type="time" class="form-control booking-main-control @error('scheduled_time') is-invalid @enderror" name="scheduled_time" value="{{ old('scheduled_time', $booking->GioHen?->format('H:i')) }}" required @readonly($inspectionMode)>@error('scheduled_time')<div class="invalid-feedback">{{ $message }}</div>@enderror</div>
                 @if(! $inspectionMode)
                     <div class="col-md-6"><label class="form-label">Trạng thái</label><x-admin.status-select name="status" id="booking-status" :options="\App\Enums\BookingStatus::options()" :selected="old('status', $booking->TrangThai)" class="form-select booking-main-control @error('status') is-invalid @enderror" />@error('status')<div class="invalid-feedback">{{ $message }}</div>@enderror</div>
                 @endif

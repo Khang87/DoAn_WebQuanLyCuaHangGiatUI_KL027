@@ -59,6 +59,7 @@ class GiaoNhanController extends Controller
         $assignedEmployee = $canAssignEmployee ? null : $linkedEmployee;
         $customers = KhachHang::query()->orderBy('HoTen')->get(['KhachHangID', 'HoTen']);
         $employees = $this->assignableEmployees($linkedEmployee?->NhanVienID);
+        $employeeNameCounts = $employees->countBy(fn ($employee) => mb_strtolower(trim((string) $employee->HoTen)));
         $defaultEmployeeId = old('employee_id', $linkedEmployee?->NhanVienID);
         $selectedEmployee = $employees->firstWhere('NhanVienID', (int) $defaultEmployeeId);
         $oldEmployeeSearch = old('employee_search');
@@ -76,6 +77,7 @@ class GiaoNhanController extends Controller
         return view('admin.deliveries.create', compact(
             'customers',
             'employees',
+            'employeeNameCounts',
             'selectedEmployee',
             'canAssignEmployee',
             'assignedEmployee',
@@ -149,6 +151,7 @@ class GiaoNhanController extends Controller
         }
         $employees = ! $user || $user->isManager()
             ? $this->assignableEmployees($linkedEmployee?->NhanVienID) : new Collection([$linkedEmployee]);
+        $employeeNameCounts = $employees->countBy(fn ($employee) => mb_strtolower(trim((string) $employee->HoTen)));
         $orders = $this->orderOptions($order->getKey());
         $selectedFulfillment = $isBookingReturn ? $returnMethod : 'Tại nhà';
         $selectedAddress = $selectedFulfillment === 'Tại nhà'
@@ -167,6 +170,7 @@ class GiaoNhanController extends Controller
         return view('admin.deliveries.create', [
             'customers' => $customers,
             'employees' => $employees,
+            'employeeNameCounts' => $employeeNameCounts,
             'selectedEmployee' => $selectedEmployee,
             'canAssignEmployee' => ! $user || $user->isManager(),
             'assignedEmployee' => $user && ! $user->isManager() ? $linkedEmployee : null,
