@@ -111,8 +111,8 @@
             @if($bookingAmounts !== null)
                 @php
                     $bookingRows = [
-                        'TongTien' => 'Tạm tính (ước tính)',
-                        'PhiGiaoHang' => 'Phí giao nhận',
+                        'TongTien' => 'Tạm tính các dịch vụ đã rõ số lượng',
+                        'PhiGiaoHang' => 'Tổng phí giao nhận',
                         'TienGiamKhuyenMai' => 'Giảm từ mã khuyến mãi',
                         'TienGiamDoDiem' => 'Giảm từ điểm',
                         'TongDuocGiam' => 'Tổng tiền được giảm',

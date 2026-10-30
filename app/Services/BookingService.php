@@ -248,7 +248,7 @@ class BookingService
                 ->where('LoaiGiaoNhan', 'NHAN_DO')
                 ->lockForUpdate()
                 ->firstOrFail();
-            $this->assertAssignedIntakeHandler($intake, $employeeId);
+            $this->assertAssignedIntakeHandler($intake, $employeeId, allowManager: true);
             if (
                 ! in_array($intake->TrangThai, [
                     DeliveryStatus::Pending->dbValue(),
@@ -378,7 +378,7 @@ class BookingService
             }
             $employeeId = $this->requireAuthenticatedEmployeeId('booking', 'Cần nhân viên đang hoạt động để lưu kết quả kiểm kê.');
             $intake = BookingGiaoNhan::query()->where('BookingID', $locked->BookingID)->where('LoaiGiaoNhan', 'NHAN_DO')->lockForUpdate()->firstOrFail();
-            $this->assertAssignedIntakeHandler($intake, $employeeId);
+            $this->assertAssignedIntakeHandler($intake, $employeeId, allowManager: true);
             if (! in_array($intake->TrangThai, [DeliveryStatus::Pending->dbValue(), DeliveryStatus::Picking->dbValue()], true)
                 || $intake->ThoiGianThucTe !== null || $intake->DonHangID !== null || $intake->BookingKiemKeID !== null
                 || BookingKiemKe::query()->where('BookingID', $locked->BookingID)->exists()) {
@@ -502,6 +502,7 @@ class BookingService
      */
     public function inspectableBookingIds(Collection $bookings): array
     {
+        $isManager = auth()->user()?->isManager() ?? false;
         $employeeId = $this->activeEmployeeId();
 
         if ($employeeId === null) {
@@ -530,7 +531,7 @@ class BookingService
         return BookingGiaoNhan::query()
             ->whereIn('BookingID', $candidateIds)
             ->where('LoaiGiaoNhan', 'NHAN_DO')
-            ->where('NhanVienID', $employeeId)
+            ->when(! $isManager, fn ($query) => $query->where('NhanVienID', $employeeId))
             ->get()
             ->filter(fn (BookingGiaoNhan $intake) => $this->intakeLegAllowsInspection($intake))
             ->pluck('BookingID')
@@ -568,7 +569,7 @@ class BookingService
         if ($employeeId === null) {
             return 'Tài khoản cần hồ sơ nhân viên đang hoạt động để kiểm kê.';
         }
-        if ((int) $intake->NhanVienID !== $employeeId) {
+        if (! auth()->user()?->isManager() && (int) $intake->NhanVienID !== $employeeId) {
             return 'Chỉ nhân viên được phân công mới có thể kiểm tra và xử lý phiếu nhận đồ.';
         }
 
@@ -707,9 +708,9 @@ class BookingService
         });
     }
 
-    private function assertAssignedIntakeHandler(BookingGiaoNhan $intake, int $employeeId): void
+    private function assertAssignedIntakeHandler(BookingGiaoNhan $intake, int $employeeId, bool $allowManager = false): void
     {
-        if ($intake->NhanVienID === null || (int) $intake->NhanVienID !== $employeeId) {
+        if ($intake->NhanVienID === null || ((int) $intake->NhanVienID !== $employeeId && ! ($allowManager && auth()->user()?->isManager()))) {
             throw ValidationException::withMessages([
                 'booking' => 'Chỉ nhân viên được phân công mới có thể kiểm tra và xử lý phiếu nhận đồ.',
             ]);
