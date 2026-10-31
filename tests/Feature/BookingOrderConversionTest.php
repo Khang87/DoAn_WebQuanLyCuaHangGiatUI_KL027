@@ -1278,7 +1278,7 @@ class BookingOrderConversionTest extends TestCase
                 'SoLuongSuDung' => 5, 'TrangThai' => 'Hoạt động',
             ],
             [
-                'KhuyenMaiID' => 12, 'MaKhuyenMai' => 'SOLDOUT', 'TenKhuyenMai' => 'Hết lượt',
+                'KhuyenMaiID' => 12, 'MaKhuyenMai' => 'USEDZERO', 'TenKhuyenMai' => 'Đã dùng hết lượt ghi nhận',
                 'LoaiKhuyenMai' => 'Tiền mặt', 'GiaTriGiam' => 1000, 'GiaTriDonToiThieu' => null,
                 'NgayBatDau' => today()->subDay()->toDateString(), 'NgayKetThuc' => today()->addDay()->toDateString(),
                 'SoLuongSuDung' => 0, 'TrangThai' => 'Hoạt động',
@@ -1303,9 +1303,9 @@ class BookingOrderConversionTest extends TestCase
 
         $this->get(route('bookings.inspection', $booking))->assertOk()
             ->assertSee('ELIGIBLE10 · 10%')
+            ->assertSee('USEDZERO')
             ->assertSee('MINIMUM20K')
             ->assertSee('data-minimum="20000"', false)
-            ->assertDontSee('SOLDOUT')
             ->assertDontSee('EXPIRED')
             ->assertSee('data-minimum="', false)
             ->assertSee('option value=""', false);
@@ -1323,7 +1323,36 @@ class BookingOrderConversionTest extends TestCase
 
         $this->get(route('bookings.inspection', $booking))->assertOk()
             ->assertSee('option value="">Chưa có mã khuyến mãi đủ điều kiện</option>', false)
-            ->assertSee('Mã hết hạn, tạm ngưng, hết lượt, đã dùng hoặc không thỏa điều kiện khách hàng sẽ không xuất hiện.');
+            ->assertSee('Mã hết hạn, tạm ngưng, khách hàng đã dùng hoặc không thỏa điều kiện áp dụng sẽ không xuất hiện.');
+    }
+
+    public function test_inspection_promotion_dropdown_explains_when_customer_already_used_the_code(): void
+    {
+        $this->createInspectionCatalog();
+        $this->createPromotionTable();
+        $booking = $this->createBooking();
+        DB::table('KhuyenMai')->insert([
+            'KhuyenMaiID' => 16,
+            'MaKhuyenMai' => 'ONEPERCLIENT',
+            'TenKhuyenMai' => 'Mã đã sử dụng',
+            'LoaiKhuyenMai' => 'Tiền mặt',
+            'GiaTriGiam' => 15000,
+            'GiaTriDonToiThieu' => 20000,
+            'NgayBatDau' => today()->subDay()->toDateString(),
+            'NgayKetThuc' => today()->addDay()->toDateString(),
+            'SoLuongSuDung' => null,
+            'TrangThai' => 'Hoạt động',
+        ]);
+        $priorBooking = $this->createBooking();
+        $priorBooking->forceFill(['KhuyenMaiID' => 16])->saveQuietly();
+        $this->actingAsBookingEmployee();
+        $this->prepareBookingForInspection($booking);
+        $this->createPermissionTables();
+        $this->withoutMiddleware([Authenticate::class, EnsureUserHasPermission::class, RejectCustomerRole::class, RestoreRememberedLogin::class]);
+
+        $this->get(route('bookings.inspection', $booking))->assertOk()
+            ->assertDontSee('option value="16"', false)
+            ->assertSee('Mã ONEPERCLIENT đang hoạt động nhưng khách hàng này đã sử dụng trong booking khác nên không thể áp dụng lại.');
     }
 
     public function test_selecting_an_eligible_inspection_promotion_changes_the_order_discount(): void

@@ -17,7 +17,7 @@ class LuuGiaoNhanRequest extends FormRequest
     public function authorize(): bool
     {
         $user = $this->user();
-        if (! $user || $user->isManager()) {
+        if (EmployeeAssignment::canManageAssignments($user)) {
             return true;
         }
 
@@ -40,7 +40,7 @@ class LuuGiaoNhanRequest extends FormRequest
             $this->merge(['fulfillment' => $this->input('fulfillment', 'Tại nhà')]);
         }
 
-        if ($this->user() && ! $this->user()->isManager() && ! $this->has('employee_id')) {
+        if ($this->user() && ! EmployeeAssignment::canManageAssignments($this->user()) && ! $this->has('employee_id')) {
             $this->merge(['employee_id' => $this->user()->NhanVienID]);
         }
     }
@@ -51,7 +51,7 @@ class LuuGiaoNhanRequest extends FormRequest
             'order_id' => ['required', 'exists:DonHang,DonHangID'],
             'employee_id' => [
                 'required', 'integer', EmployeeAssignment::rule($this->currentDelivery()?->NhanVienID),
-                ...($this->user() && ! $this->user()->isManager() ? [Rule::in([(int) $this->user()->NhanVienID])] : []),
+                ...($this->user() && ! EmployeeAssignment::canManageAssignments($this->user()) ? [Rule::in([(int) $this->user()->NhanVienID])] : []),
             ],
             'employee_search' => ['sometimes', 'string', 'max:255'],
             'method' => ['required', 'in:nhan_do,giao_do'],
@@ -79,7 +79,7 @@ class LuuGiaoNhanRequest extends FormRequest
                 $isAssignableEmployee = EmployeeAssignment::deliveryCandidates()
                     ->whereKey((int) $employeeId)->exists();
 
-                if ($this->user()?->isManager() && ! $isAssignableEmployee) {
+                if (EmployeeAssignment::canManageAssignments($this->user()) && ! $isAssignableEmployee) {
                     $validator->errors()->add('employee_id', 'Chỉ được phân công nhân viên có tài khoản nội bộ được cấp quyền xử lý giao nhận.');
                 }
 

@@ -275,19 +275,19 @@ class BookingController extends Controller
             ->pluck('KhuyenMaiID');
         $currentCouponSubtotal = (float) $booking->chiTietBookings->sum('ThanhTien');
 
-        // Chỉ gửi các mã còn hiệu lực, còn lượt và chưa được khách dùng ở Booking khác.
+        // SoLuongSuDung là số lượt đã dùng, không phải số lượt còn lại hay hạn mức.
+        // Chỉ lọc theo trạng thái/ngày hiệu lực và quy tắc áp dụng cho khách hàng.
         $coupons = KhuyenMai::query()->where('TrangThai', 'Hoạt động')
             ->where('NgayBatDau', '<=', today())
             ->where('NgayKetThuc', '>=', today())
-            ->where(function ($q) use ($booking) {
-                $q->whereNull('SoLuongSuDung')->orWhere('SoLuongSuDung', '>', 0);
-                if ($booking->KhuyenMaiID !== null) {
-                    $q->orWhereKey($booking->KhuyenMaiID);
-                }
-            })
-            ->whereNotIn('KhuyenMaiID', $usedPromotionIds)
             ->orderBy('MaKhuyenMai')
-            ->get()
+            ->get();
+        $customerUsedPromotionCodes = $coupons
+            ->whereIn('KhuyenMaiID', $usedPromotionIds)
+            ->pluck('MaKhuyenMai')
+            ->values();
+        $coupons = $coupons
+            ->whereNotIn('KhuyenMaiID', $usedPromotionIds)
             ->filter(fn (KhuyenMai $coupon): bool => $coupon->rejectionReasonForCustomer(
                 $booking->khachHang,
                 PHP_FLOAT_MAX,
@@ -318,6 +318,7 @@ class BookingController extends Controller
             'coupons',
             'currentCouponSubtotal',
             'minimumPromotionThreshold',
+            'customerUsedPromotionCodes',
         ));
     }
 

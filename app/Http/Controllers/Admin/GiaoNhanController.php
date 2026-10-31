@@ -35,7 +35,7 @@ class GiaoNhanController extends Controller
     {
         $user = $request->user();
         $filters = [
-            'employee_id' => $user && ! $user->isManager() ? ($user->NhanVienID ?: -1) : null,
+            'employee_id' => $user && ! EmployeeAssignment::canManageAssignments($user) ? ($user->NhanVienID ?: -1) : null,
             'search' => $request->input('search'),
             'customer_id' => $request->input('customer_id'),
             'method' => $request->input('method'),
@@ -62,7 +62,7 @@ class GiaoNhanController extends Controller
     {
         $user = auth()->user();
         $this->requireActiveEmployeeForStaff($user);
-        $canAssignEmployee = ! $user || $user->isManager();
+        $canAssignEmployee = EmployeeAssignment::canManageAssignments($user);
         $linkedEmployee = $user?->nhanVien;
         if ($linkedEmployee?->TrangThai !== 'Hoạt động') {
             $linkedEmployee = null;
@@ -160,7 +160,8 @@ class GiaoNhanController extends Controller
         if ($linkedEmployee?->TrangThai !== 'Hoạt động') {
             $linkedEmployee = null;
         }
-        $employees = ! $user || $user->isManager()
+        $canAssignEmployee = EmployeeAssignment::canManageAssignments($user);
+        $employees = $canAssignEmployee
             ? $this->assignableEmployees() : new Collection([$linkedEmployee]);
         $employeeNameCounts = $employees->countBy(fn ($employee) => mb_strtolower(trim((string) $employee->HoTen)));
         $orders = $this->orderOptions($order->getKey());
@@ -183,8 +184,8 @@ class GiaoNhanController extends Controller
             'employees' => $employees,
             'employeeNameCounts' => $employeeNameCounts,
             'selectedEmployee' => $selectedEmployee,
-            'canAssignEmployee' => ! $user || $user->isManager(),
-            'assignedEmployee' => $user && ! $user->isManager() ? $linkedEmployee : null,
+            'canAssignEmployee' => $canAssignEmployee,
+            'assignedEmployee' => $user && ! $canAssignEmployee ? $linkedEmployee : null,
             'orders' => $orders,
             'selectedOrderId' => $order->getKey(),
             'selectedMethod' => 'giao_do',
@@ -385,7 +386,7 @@ class GiaoNhanController extends Controller
             403,
             'Lịch giao đồ không còn ở trạng thái có thể chỉnh sửa.',
         );
-        $canAssignEmployee = ! $user || $user->isManager();
+        $canAssignEmployee = EmployeeAssignment::canManageAssignments($user);
         $assignedEmployee = $canAssignEmployee ? null : $user->nhanVien;
 
         $customers = KhachHang::query()->orderBy('HoTen')->get(['KhachHangID', 'HoTen']);
@@ -498,14 +499,14 @@ class GiaoNhanController extends Controller
 
     private function requireActiveEmployeeForStaff(?User $user): void
     {
-        if ($user && ! $user->isManager()) {
+        if ($user && ! EmployeeAssignment::canManageAssignments($user)) {
             abort_unless($user->nhanVien?->TrangThai === 'Hoạt động', 403, 'Tài khoản chưa liên kết với nhân viên đang hoạt động.');
         }
     }
 
     private function restrictToOwnDelivery(GiaoNhan $delivery, ?User $user): void
     {
-        if ($user && ! $user->isManager()) {
+        if ($user && ! EmployeeAssignment::canManageAssignments($user)) {
             $this->requireActiveEmployeeForStaff($user);
             abort_unless($user->NhanVienID && (int) $delivery->NhanVienID === (int) $user->NhanVienID, 403);
         }
@@ -513,7 +514,7 @@ class GiaoNhanController extends Controller
 
     private function restrictToOwnBookingDocument(BookingGiaoNhan $document, ?User $user): void
     {
-        if ($user && ! $user->isManager()) {
+        if ($user && ! EmployeeAssignment::canManageAssignments($user)) {
             $this->requireActiveEmployeeForStaff($user);
             abort_unless($user->NhanVienID && (int) $document->NhanVienID === (int) $user->NhanVienID, 403);
         }

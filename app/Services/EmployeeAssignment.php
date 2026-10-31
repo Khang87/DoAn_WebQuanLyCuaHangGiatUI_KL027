@@ -42,9 +42,15 @@ class EmployeeAssignment
 
     public static function canAssignBookingIntake(?User $user): bool
     {
-        return $user !== null
-            && $user->isManager()
-            && $user->canPermission('deliveries.edit');
+        return $user !== null && $user->canPermission('deliveries.edit');
+    }
+
+    /** A management title is not required when the account has the RBAC permission. */
+    public static function canManageAssignments(?User $user): bool
+    {
+        return $user === null
+            || $user->isManager()
+            || $user->canPermission('deliveries.edit');
     }
 
     public static function bookingIntakeCandidates(): Builder

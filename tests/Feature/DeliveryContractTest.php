@@ -370,7 +370,10 @@ class DeliveryContractTest extends TestCase
         );
 
         $manager = Mockery::mock(User::class)->makePartial();
-        $manager->shouldReceive('isManager')->andReturn(true);
+        $manager->shouldReceive('isManager')->andReturn(false);
+        $manager->shouldReceive('canPermission')->andReturnUsing(
+            fn (string $permission): bool => $permission === 'deliveries.edit',
+        );
         $this->actingAs($manager)->withoutMiddleware();
 
         $this->get(route('deliveries.edit', 1))
@@ -999,7 +1002,7 @@ class DeliveryContractTest extends TestCase
         $manager = Mockery::mock(User::class)->makePartial();
         $manager->TaiKhoanID = 104;
         $manager->NhanVienID = 4;
-        $manager->shouldReceive('isManager')->andReturn(true);
+        $manager->shouldReceive('isManager')->andReturn(false);
         $manager->shouldReceive('isActive')->andReturn(true);
         $manager->shouldReceive('isOwner')->andReturn(false);
         $manager->shouldReceive('canPermission')->andReturnUsing(
@@ -1088,7 +1091,7 @@ class DeliveryContractTest extends TestCase
         $this->get(route('deliveries.booking-documents.edit', $intake))
             ->assertOk()
             ->assertDontSee('<select class="form-select" id="employee_id"', false)
-            ->assertSee('id="employee_id" value="Chưa phân công" readonly', false);
+            ->assertSee('id="employee_display" value="Chưa phân công" readonly', false);
 
         $this->put(route('deliveries.booking-documents.update', $intake), [
             'employee_id' => 2,
