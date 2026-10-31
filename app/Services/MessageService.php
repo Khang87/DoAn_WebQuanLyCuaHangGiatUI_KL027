@@ -68,6 +68,19 @@ class MessageService
         return $this->unreadIncoming()->count();
     }
 
+    /** @return array{tab: string, id: int}|null */
+    public function latestUnreadConversation(): ?array
+    {
+        $message = $this->unreadIncoming()->orderByDesc('ThoiGianGui')->orderByDesc('TinNhanID')->first();
+        if (! $message) {
+            return null;
+        }
+
+        return $message->DonHangID !== null
+            ? ['tab' => 'orders', 'id' => (int) $message->DonHangID]
+            : ['tab' => 'support', 'id' => (int) $message->NguoiGuiID];
+    }
+
     private function unreadIncoming(): Builder
     {
         return TinNhan::query()->whereIn('TrangThai', ['Đã gửi', 'Đã nhận'])
@@ -158,7 +171,9 @@ class MessageService
             'last_message_preview' => $supportMessage()->select('NoiDung'),
             'last_message_at' => $supportMessage()->select('ThoiGianGui'),
             'last_message_id' => $supportMessage()->select('TinNhanID'),
-        ])->orderByDesc('TaiKhoanID')->paginate(20, ['*'], 'support_page', $pageNumber)->withQueryString();
+        ])->orderByRaw('CASE WHEN last_message_at IS NULL THEN 1 ELSE 0 END')
+            ->orderByDesc('last_message_at')->orderByDesc('last_message_id')->orderByDesc('TaiKhoan.TaiKhoanID')
+            ->paginate(20, ['*'], 'support_page', $pageNumber)->withQueryString();
         $latestIds = $page->getCollection()->pluck('last_message_id')->filter()->map(fn ($id): int => (int) $id);
         if ($latestIds->isNotEmpty()) {
             $latest = $this->presentWebMessages(TinNhan::query()->whereIn('TinNhanID', $latestIds)->get(), true)->keyBy('TinNhanID');

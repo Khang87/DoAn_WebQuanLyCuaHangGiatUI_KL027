@@ -408,7 +408,8 @@ class SupportMessagesTest extends TestCase
 
         foreach (['', '?q=missing&page=99'] as $query) {
             $this->getJson('/admin/messages/unread-count'.$query)
-                ->assertOk()->assertExactJson(['unread_count' => 4])
+                ->assertOk()->assertJsonPath('unread_count', 4)
+                ->assertJsonPath('latest_unread.tab', 'support')->assertJsonPath('latest_unread.id', 2)
                 ->assertHeader('Cache-Control', 'no-store, private');
         }
 
@@ -420,11 +421,11 @@ class SupportMessagesTest extends TestCase
     {
         Http::fake();
         $this->actingAs(User::findOrFail(1));
-        $this->getJson('/admin/messages/unread-count')->assertOk()->assertExactJson(['unread_count' => 0]);
+        $this->getJson('/admin/messages/unread-count')->assertOk()->assertExactJson(['unread_count' => 0, 'latest_unread' => null]);
         DB::table('TaiKhoan')->insert(['TaiKhoanID' => 4, 'TenDangNhap' => 'LockedStaff', 'NhanVienID' => 1, 'TrangThai' => 'Khóa']);
         DB::table('TaiKhoan_VaiTro')->insert(['TaiKhoanID' => 4, 'VaiTroID' => 1]);
         $this->message(2, 4);
-        $this->getJson('/admin/messages/unread-count')->assertOk()->assertExactJson(['unread_count' => 0]);
+        $this->getJson('/admin/messages/unread-count')->assertOk()->assertExactJson(['unread_count' => 0, 'latest_unread' => null]);
         Http::assertNothingSent();
     }
 
@@ -526,6 +527,7 @@ class SupportMessagesTest extends TestCase
         $this->assertSame(1, $customers->total());
         $this->assertSame('Tư vấn An', $customers->first()->last_message_preview);
         $this->assertSame(1, $service->supportCustomers('0901111222')->total());
+        $this->assertSame([2, 3], $service->supportCustomers()->getCollection()->pluck('TaiKhoanID')->all());
     }
 
     public function test_opening_recent_window_clears_older_unread_history_without_touching_later_arrivals(): void

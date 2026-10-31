@@ -3589,6 +3589,7 @@ class BookingOrderConversionTest extends TestCase
         $this->get(route('bookings.inspection', $booking))
             ->assertOk()
             ->assertSee('Kiểm tra thực tế trước khi tạo đơn')
+            ->assertSee('href="'.route('deliveries.index').'"', false)
             ->assertSee('TinhTrangTruocKhiGiat')
             ->assertSee('name="return_method"', false)
             ->assertSee('Ghi chú từ khách hàng cần giữ')

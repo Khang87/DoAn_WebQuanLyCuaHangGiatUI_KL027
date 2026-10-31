@@ -242,7 +242,10 @@ class MessageController extends Controller
 
     public function unreadCount(): JsonResponse
     {
-        return response()->json(['unread_count' => $this->messageService->unreadCount()])
+        return response()->json([
+            'unread_count' => $this->messageService->unreadCount(),
+            'latest_unread' => $this->messageService->latestUnreadConversation(),
+        ])
             ->header('Cache-Control', 'private, no-store');
     }
 

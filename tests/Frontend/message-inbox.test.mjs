@@ -171,7 +171,9 @@ function harness({withInbox = true, withBadge = false, hidden = false, online = 
     const settle = async () => { for (let i = 0; i < 12; i++) await Promise.resolve(); };
     const respond = async (body, status = 200, call = calls.at(-1)) => {
         assert.ok(call, 'Expected a mocked polling request');
-        call.resolve({status, ok: status === 200, json: async () => body});
+        const payload = body && Object.hasOwn(body, 'unread_count') && !Object.hasOwn(body, 'latest_unread')
+            ? {...body, latest_unread: null} : body;
+        call.resolve({status, ok: status === 200, json: async () => payload});
         await settle();
     };
     const inboxCalls = () => calls.filter(call => new URL(call.url, 'https://test.local').pathname === '/inbox');
@@ -616,6 +618,22 @@ test('message badge follows unread counts, caps display and keeps the link at ze
         assert.equal(options.headers.Accept, 'application/json');
         assert.equal(options.body, undefined);
     }
+});
+
+test('message badge link opens the newest unread support or order conversation', async () => {
+    const h = badgeHarness();
+    await h.respond({unread_count: 4, latest_unread: {tab: 'support', id: 12}});
+    let target = new URL(h.link.href);
+    assert.equal(target.searchParams.get('tab'), 'support');
+    assert.equal(target.searchParams.get('customer_id'), '12');
+    h.runTimer();
+    await h.respond({unread_count: 2, latest_unread: {tab: 'orders', id: 34}});
+    target = new URL(h.link.href);
+    assert.equal(target.searchParams.get('tab'), 'orders');
+    assert.equal(target.searchParams.get('order_id'), '34');
+    h.runTimer();
+    await h.respond({unread_count: 0, latest_unread: null});
+    assert.equal(new URL(h.link.href).pathname, '/admin/messages');
 });
 
 test('badge refreshes after inbox changes without overlapping requests', async () => {

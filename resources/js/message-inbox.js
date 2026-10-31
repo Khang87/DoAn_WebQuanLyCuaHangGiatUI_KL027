@@ -198,6 +198,7 @@ if (inbox) {
 const messageLink = document.querySelector('[data-message-unread]');
 if (messageLink) {
     const badge = messageLink.querySelector('[data-message-unread-count]');
+    const inboxUrl = messageLink.href;
     let timer, controller, pending = false, stopped = false, disposed = false, delay = 15000;
 
     async function sync() {
@@ -218,10 +219,19 @@ if (messageLink) {
             }
             if (!response.ok) throw new Error('Message count sync failed');
             const data = await response.json();
-            if (!Number.isSafeInteger(data.unread_count) || data.unread_count < 0) throw new Error('Invalid message count');
+            if (!Number.isSafeInteger(data.unread_count) || data.unread_count < 0
+                || (data.latest_unread !== null && (typeof data.latest_unread !== 'object'
+                    || !['orders', 'support'].includes(data.latest_unread.tab)
+                    || !Number.isSafeInteger(data.latest_unread.id) || data.latest_unread.id < 1))) throw new Error('Invalid message count');
             if (document.hidden || disposed) return;
             badge.hidden = data.unread_count === 0;
             badge.textContent = data.unread_count > 99 ? '99+' : String(data.unread_count);
+            const target = new URL(inboxUrl, location.origin);
+            if (data.latest_unread) {
+                target.searchParams.set('tab', data.latest_unread.tab);
+                target.searchParams.set(data.latest_unread.tab === 'support' ? 'customer_id' : 'order_id', String(data.latest_unread.id));
+            }
+            messageLink.href = target.href;
             const label = `Tin nhắn khách hàng, ${data.unread_count} tin chưa đọc`;
             messageLink.setAttribute('aria-label', label);
             messageLink.setAttribute('title', label);
