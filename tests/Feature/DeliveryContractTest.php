@@ -965,17 +965,21 @@ class DeliveryContractTest extends TestCase
         ]);
         DB::table('NhanVien')->insert(['NhanVienID' => 7, 'HoTen' => 'Tài khoản khách hàng', 'TrangThai' => 'Hoạt động']);
         DB::table('NhanVien')->insert(['NhanVienID' => 8, 'HoTen' => 'Chủ cửa hàng', 'TrangThai' => 'Hoạt động']);
+        DB::table('NhanVien')->insert(['NhanVienID' => 9, 'HoTen' => 'Kế toán', 'TrangThai' => 'Hoạt động']);
+        DB::table('NhanVien')->insert(['NhanVienID' => 10, 'HoTen' => 'Khách hàng tiếng Việt', 'TrangThai' => 'Hoạt động']);
         DB::table('VaiTro')->insert([
             ['VaiTroID' => 7, 'TenVaiTro' => 'Nhân viên'],
             ['VaiTroID' => 8, 'TenVaiTro' => 'Quản lý_2'],
             ['VaiTroID' => 9, 'TenVaiTro' => 'customer'],
             ['VaiTroID' => 10, 'TenVaiTro' => 'Quản lý'],
             ['VaiTroID' => 11, 'TenVaiTro' => 'Chủ cửa hàng'],
+            ['VaiTroID' => 12, 'TenVaiTro' => 'Kế toán'],
+            ['VaiTroID' => 13, 'TenVaiTro' => 'Khách hàng'],
         ]);
         $managerRoleId = 10;
         $deliveryPermissionId = 50;
         $accountingPermissionId = 52;
-        DB::table('Quyen')->insert(['QuyenID' => $accountingPermissionId, 'MaQuyen' => 'ORDER_VIEW', 'TrangThai' => 'Hoạt động']);
+        DB::table('Quyen')->insert(['QuyenID' => $accountingPermissionId, 'MaQuyen' => 'ACCOUNTING_VIEW', 'TrangThai' => 'Hoạt động']);
         DB::table('TaiKhoan')->insert([
             ['TaiKhoanID' => 103, 'NhanVienID' => 3, 'TrangThai' => 'Hoạt động'],
             ['TaiKhoanID' => 104, 'NhanVienID' => 4, 'TrangThai' => 'Hoạt động'],
@@ -983,6 +987,8 @@ class DeliveryContractTest extends TestCase
             ['TaiKhoanID' => 106, 'NhanVienID' => 6, 'TrangThai' => 'Hoạt động'],
             ['TaiKhoanID' => 107, 'NhanVienID' => 7, 'TrangThai' => 'Hoạt động'],
             ['TaiKhoanID' => 108, 'NhanVienID' => 8, 'TrangThai' => 'Hoạt động'],
+            ['TaiKhoanID' => 109, 'NhanVienID' => 9, 'TrangThai' => 'Hoạt động'],
+            ['TaiKhoanID' => 110, 'NhanVienID' => 10, 'TrangThai' => 'Hoạt động'],
         ]);
         DB::table('TaiKhoan_VaiTro')->insert([
             ['TaiKhoanID' => 103, 'VaiTroID' => 7],
@@ -991,12 +997,16 @@ class DeliveryContractTest extends TestCase
             ['TaiKhoanID' => 106, 'VaiTroID' => 7],
             ['TaiKhoanID' => 107, 'VaiTroID' => 9],
             ['TaiKhoanID' => 108, 'VaiTroID' => 11],
+            ['TaiKhoanID' => 109, 'VaiTroID' => 12],
+            ['TaiKhoanID' => 110, 'VaiTroID' => 13],
         ]);
         DB::table('VaiTro_Quyen')->insert([
             ['VaiTroID' => 7, 'QuyenID' => $deliveryPermissionId],
             ['VaiTroID' => $managerRoleId, 'QuyenID' => $deliveryPermissionId],
             ['VaiTroID' => 8, 'QuyenID' => $accountingPermissionId],
+            ['VaiTroID' => 12, 'QuyenID' => $accountingPermissionId],
             ['VaiTroID' => 9, 'QuyenID' => $deliveryPermissionId],
+            ['VaiTroID' => 13, 'QuyenID' => $deliveryPermissionId],
         ]);
         $intake = $this->createBookingIntake(['BookingID' => 2, 'NhanVienID' => 1]);
         $manager = Mockery::mock(User::class)->makePartial();
@@ -1019,6 +1029,8 @@ class DeliveryContractTest extends TestCase
             ->assertSee('0900000006')
             ->assertDontSee('data-employee-id="5"', false)
             ->assertDontSee('data-employee-id="7"', false)
+            ->assertDontSee('data-employee-id="9"', false)
+            ->assertDontSee('data-employee-id="10"', false)
             ->assertSee('id="employee_id" name="employee_id"', false)
             ->assertSee('id="employee_id" name="employee_id" value="1" data-employee-id', false);
 

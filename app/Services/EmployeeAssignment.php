@@ -15,7 +15,10 @@ use Illuminate\Validation\ValidationException;
 
 class EmployeeAssignment
 {
-    /** Lấy nhân viên có tài khoản nội bộ đang hoạt động được cấp quyền sửa giao nhận. */
+    /**
+     * Lấy nhân viên có tài khoản nội bộ đang hoạt động mà vai trò hiện có quyền
+     * sửa/quản lý giao nhận theo mã quyền trong database, không theo tên chức danh.
+     */
     public static function deliveryCandidates(): Builder
     {
         $deliveryPermissions = array_values(array_unique(array_filter([
