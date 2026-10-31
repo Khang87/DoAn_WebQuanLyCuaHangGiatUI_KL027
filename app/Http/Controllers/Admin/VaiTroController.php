@@ -82,6 +82,7 @@ class VaiTroController extends Controller
                     ->whereNull('KhachHangID')
                     ->whereHas('nhanVien');
             })
+            ->whereDoesntHave('vaiTros', fn ($query) => $query->where('TenVaiTro', VaiTro::OWNER))
             ->whereDoesntHave('vaiTros', fn ($query) => $query->where('VaiTro.VaiTroID', $vaiTro->getKey()))
             ->orderBy('TenDangNhap')
             ->get();

@@ -785,6 +785,11 @@ class DynamicRolePermissionTest extends TestCase
         $owner = $this->createAccount($this->createRole('Chủ cửa hàng'));
         $employeeRole = $this->createRole('Kế toán');
         $customerRole = $this->createRole('Khách hàng');
+        $ownerProfile = NhanVien::query()->create([
+            'HoTen' => 'Hồ sơ chủ cửa hàng',
+            'SoDienThoai' => '0909000009',
+        ]);
+        $owner->forceFill(['NhanVienID' => $ownerProfile->getKey()])->save();
 
         $employeeProfile = NhanVien::query()->create([
             'HoTen' => 'Hồ sơ nhân viên hợp lệ',
