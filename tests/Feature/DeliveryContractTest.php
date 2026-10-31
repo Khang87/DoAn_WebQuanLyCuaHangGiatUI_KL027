@@ -961,11 +961,13 @@ class DeliveryContractTest extends TestCase
             'TrangThai' => 'Hoạt động',
         ]);
         DB::table('NhanVien')->insert(['NhanVienID' => 7, 'HoTen' => 'Tài khoản khách hàng', 'TrangThai' => 'Hoạt động']);
+        DB::table('NhanVien')->insert(['NhanVienID' => 8, 'HoTen' => 'Chủ cửa hàng', 'TrangThai' => 'Hoạt động']);
         DB::table('VaiTro')->insert([
             ['VaiTroID' => 7, 'TenVaiTro' => 'Nhân viên'],
             ['VaiTroID' => 8, 'TenVaiTro' => 'Quản lý_2'],
             ['VaiTroID' => 9, 'TenVaiTro' => 'customer'],
             ['VaiTroID' => 10, 'TenVaiTro' => 'Quản lý'],
+            ['VaiTroID' => 11, 'TenVaiTro' => 'Chủ cửa hàng'],
         ]);
         $managerRoleId = 10;
         $deliveryPermissionId = 50;
@@ -977,6 +979,7 @@ class DeliveryContractTest extends TestCase
             ['TaiKhoanID' => 105, 'NhanVienID' => 5, 'TrangThai' => 'Hoạt động'],
             ['TaiKhoanID' => 106, 'NhanVienID' => 6, 'TrangThai' => 'Hoạt động'],
             ['TaiKhoanID' => 107, 'NhanVienID' => 7, 'TrangThai' => 'Hoạt động'],
+            ['TaiKhoanID' => 108, 'NhanVienID' => 8, 'TrangThai' => 'Hoạt động'],
         ]);
         DB::table('TaiKhoan_VaiTro')->insert([
             ['TaiKhoanID' => 103, 'VaiTroID' => 7],
@@ -984,6 +987,7 @@ class DeliveryContractTest extends TestCase
             ['TaiKhoanID' => 105, 'VaiTroID' => 8],
             ['TaiKhoanID' => 106, 'VaiTroID' => 7],
             ['TaiKhoanID' => 107, 'VaiTroID' => 9],
+            ['TaiKhoanID' => 108, 'VaiTroID' => 11],
         ]);
         DB::table('VaiTro_Quyen')->insert([
             ['VaiTroID' => 7, 'QuyenID' => $deliveryPermissionId],
@@ -1027,7 +1031,7 @@ class DeliveryContractTest extends TestCase
             ->sort()
             ->values()
             ->all();
-        $this->assertSame([1, 3, 4, 6], $allowedEmployeeIds);
+        $this->assertSame([1, 3, 4, 6, 8], $allowedEmployeeIds);
         $this->assertTrue(Validator::make(
             ['employee_id' => 5],
             ['employee_id' => EmployeeAssignment::bookingIntakeRule()],

@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\NhanVien;
 use App\Models\User;
+use App\Models\VaiTro;
 use App\Support\QuyenMapper;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Database\Eloquent\Builder;
@@ -30,9 +31,12 @@ class EmployeeAssignment
                 ->whereHas('vaiTros', fn ($roles) => $roles
                     ->where('TrangThai', 'Hoạt động')
                     ->whereRaw("LOWER(TRIM({$roleNameColumn})) NOT IN (?, ?)", ['khách hàng', 'customer'])
-                    ->whereHas('quyens', fn ($permissions) => $permissions
-                        ->where('TrangThai', 'Hoạt động')
-                        ->whereIn('MaQuyen', $deliveryPermissions))))
+                    ->where(fn ($eligibleRoles) => $eligibleRoles
+                        // User::canPermission grants the owner role full access implicitly.
+                        ->whereRaw("LOWER(TRIM({$roleNameColumn})) = ?", [mb_strtolower(VaiTro::OWNER)])
+                        ->orWhereHas('quyens', fn ($permissions) => $permissions
+                            ->where('TrangThai', 'Hoạt động')
+                            ->whereIn('MaQuyen', $deliveryPermissions)))))
             ->orderBy('HoTen')->orderBy('NhanVienID');
     }
 

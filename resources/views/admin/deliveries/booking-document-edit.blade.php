@@ -70,7 +70,7 @@
                                          role="listbox" aria-label="Nhân viên có thể được phân công" data-employee-options>
                                         @foreach($employees as $candidate)
                                             <button class="delivery-employee-option" type="button" role="option"
-                                                    aria-selected="@selected((int) old('employee_id', $bookingDocument->NhanVienID) === (int) $candidate->NhanVienID)" data-employee-option
+                                                    aria-selected="{{ (int) old('employee_id', $bookingDocument->NhanVienID) === (int) $candidate->NhanVienID ? 'true' : 'false' }}" data-employee-option
                                                     data-employee-id="{{ $candidate->NhanVienID }}"
                                                     data-employee-name="{{ $candidate->HoTen }}"
                                                     data-employee-description="{{ $candidate->ChucDanh }}"
@@ -156,8 +156,7 @@
         }
 
         .delivery-employee-option:hover,
-        .delivery-employee-option:focus-visible,
-        .delivery-employee-option[aria-selected="true"] {
+        .delivery-employee-option:focus-visible {
             outline: none;
             background: var(--bs-primary-bg-subtle);
             color: var(--bs-primary-text-emphasis);
