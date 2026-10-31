@@ -76,13 +76,11 @@ class LuuGiaoNhanRequest extends FormRequest
             $employeeId = $this->input('employee_id');
             if (is_numeric($employeeId) && ! $validator->errors()->has('employee_id')) {
                 $employee = NhanVien::query()->whereKey((int) $employeeId)->first();
-                $isOwnLinkedEmployee = (int) $employeeId === (int) $this->user()?->NhanVienID
-                    && $employee?->TrangThai === 'Hoạt động';
-                $isAssignableEmployee = EmployeeAssignment::deliveryCandidates($this->currentDelivery()?->NhanVienID)
+                $isAssignableEmployee = EmployeeAssignment::deliveryCandidates()
                     ->whereKey((int) $employeeId)->exists();
 
-                if ($this->user()?->isManager() && ! $isOwnLinkedEmployee && ! $isAssignableEmployee) {
-                    $validator->errors()->add('employee_id', 'Chỉ được phân công nhân viên giao nhận hợp lệ hoặc chính nhân viên đang liên kết với tài khoản.');
+                if ($this->user()?->isManager() && ! $isAssignableEmployee) {
+                    $validator->errors()->add('employee_id', 'Chỉ được phân công nhân viên có tài khoản nội bộ được cấp quyền xử lý giao nhận.');
                 }
 
                 if ($this->exists('employee_search')

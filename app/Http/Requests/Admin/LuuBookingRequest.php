@@ -30,6 +30,7 @@ class LuuBookingRequest extends FormRequest
             'notes' => ['nullable', 'string', 'max:500'],
             'status' => ['nullable', 'in:'.implode(',', BookingStatus::values())],
             'DiemSuDung' => ['nullable', 'integer', 'min:0'],
+            'promotion_id' => ['nullable', 'integer', 'exists:KhuyenMai,KhuyenMaiID'],
             'items' => ['sometimes', 'array'],
             'items.*.DichVuID' => ['required', 'integer', 'exists:DichVu,DichVuID'],
             'items.*.LoaiDoGiatID' => ['required', 'integer', 'exists:LoaiDoGiat,LoaiDoGiatID'],

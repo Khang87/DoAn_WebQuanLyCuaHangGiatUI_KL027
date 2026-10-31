@@ -6,7 +6,9 @@
 @section('content')
 @php
     $booking = $bookingDocument->booking;
-    $employee = $bookingDocument->nhanVien;
+    $employee = ($canAssignEmployee ?? false)
+        ? $employees->firstWhere('NhanVienID', (int) old('employee_id', $bookingDocument->NhanVienID))
+        : $bookingDocument->nhanVien;
 @endphp
 
 <div class="delivery-form-shell">

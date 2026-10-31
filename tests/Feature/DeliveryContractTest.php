@@ -194,6 +194,11 @@ class DeliveryContractTest extends TestCase
             'PhiGiaoNhan' => 4200,
         ]);
         DB::table('NhanVien')->insert([['NhanVienID' => 1, 'TrangThai' => 'Hoạt động'], ['NhanVienID' => 2, 'TrangThai' => 'Khóa']]);
+        DB::table('Quyen')->insert(['QuyenID' => 50, 'MaQuyen' => 'DELIVERY_MANAGE', 'TrangThai' => 'Hoạt động']);
+        DB::table('VaiTro')->insert(['VaiTroID' => 50, 'TenVaiTro' => 'Nhân viên', 'TrangThai' => 'Hoạt động']);
+        DB::table('VaiTro_Quyen')->insert(['VaiTroID' => 50, 'QuyenID' => 50]);
+        DB::table('TaiKhoan')->insert(['TaiKhoanID' => 150, 'NhanVienID' => 1, 'TrangThai' => 'Hoạt động']);
+        DB::table('TaiKhoan_VaiTro')->insert(['TaiKhoanID' => 150, 'VaiTroID' => 50]);
     }
 
     protected function tearDown(): void
@@ -370,7 +375,9 @@ class DeliveryContractTest extends TestCase
 
         $this->get(route('deliveries.edit', 1))
             ->assertOk()
-            ->assertSee('<select class="form-select" id="employee_id" name="employee_id"', false);
+            ->assertSee('class="form-select text-start text-truncate" id="employee_select" type="button"', false)
+            ->assertSee('data-employee-search', false)
+            ->assertSee('name="employee_id"', false);
     }
 
     public function test_manager_assignment_list_excludes_owner_and_manager_profiles(): void
@@ -423,7 +430,7 @@ class DeliveryContractTest extends TestCase
             ->assertDontSee('Chưa xác định được nhân viên mặc định');
     }
 
-    public function test_manager_defaults_to_own_linked_profile_even_when_that_profile_is_not_assignable_to_others(): void
+    public function test_manager_with_delivery_permission_defaults_to_own_linked_profile(): void
     {
         DB::table('NhanVien')->insert([
             'NhanVienID' => 4,
@@ -431,6 +438,10 @@ class DeliveryContractTest extends TestCase
             'ChucDanh' => 'Quản lý',
             'TrangThai' => 'Hoạt động',
         ]);
+        DB::table('VaiTro')->insert(['VaiTroID' => 51, 'TenVaiTro' => 'Quản lý', 'TrangThai' => 'Hoạt động']);
+        DB::table('VaiTro_Quyen')->insert(['VaiTroID' => 51, 'QuyenID' => 50]);
+        DB::table('TaiKhoan')->insert(['TaiKhoanID' => 151, 'NhanVienID' => 4, 'TrangThai' => 'Hoạt động']);
+        DB::table('TaiKhoan_VaiTro')->insert(['TaiKhoanID' => 151, 'VaiTroID' => 51]);
         $manager = Mockery::mock(User::class)->makePartial();
         $manager->NhanVienID = 4;
         $manager->shouldReceive('isManager')->andReturn(true);
@@ -459,6 +470,8 @@ class DeliveryContractTest extends TestCase
             'HoTen' => 'Nguyễn Văn B',
             'TrangThai' => 'Hoạt động',
         ]);
+        DB::table('TaiKhoan')->insert(['TaiKhoanID' => 152, 'NhanVienID' => 3, 'TrangThai' => 'Hoạt động']);
+        DB::table('TaiKhoan_VaiTro')->insert(['TaiKhoanID' => 152, 'VaiTroID' => 50]);
         $manager = Mockery::mock(User::class)->makePartial();
         $manager->shouldReceive('isActive')->andReturn(true);
         $manager->shouldReceive('isManager')->andReturn(true);
@@ -492,6 +505,8 @@ class DeliveryContractTest extends TestCase
             'SoDienThoai' => '0900000003',
             'TrangThai' => 'Hoạt động',
         ]);
+        DB::table('TaiKhoan')->insert(['TaiKhoanID' => 153, 'NhanVienID' => 3, 'TrangThai' => 'Hoạt động']);
+        DB::table('TaiKhoan_VaiTro')->insert(['TaiKhoanID' => 153, 'VaiTroID' => 50]);
         $manager = Mockery::mock(User::class)->makePartial();
         $manager->shouldReceive('isManager')->andReturn(true);
         view()->share('errors', new ViewErrorBag);
@@ -945,14 +960,36 @@ class DeliveryContractTest extends TestCase
             'SoDienThoai' => '0900000006',
             'TrangThai' => 'Hoạt động',
         ]);
-        DB::table('VaiTro')->insert(['VaiTroID' => 7, 'TenVaiTro' => 'Nhân viên']);
+        DB::table('NhanVien')->insert(['NhanVienID' => 7, 'HoTen' => 'Tài khoản khách hàng', 'TrangThai' => 'Hoạt động']);
+        DB::table('VaiTro')->insert([
+            ['VaiTroID' => 7, 'TenVaiTro' => 'Nhân viên'],
+            ['VaiTroID' => 8, 'TenVaiTro' => 'Quản lý_2'],
+            ['VaiTroID' => 9, 'TenVaiTro' => 'customer'],
+            ['VaiTroID' => 10, 'TenVaiTro' => 'Quản lý'],
+        ]);
+        $managerRoleId = 10;
+        $deliveryPermissionId = 50;
+        $accountingPermissionId = 52;
+        DB::table('Quyen')->insert(['QuyenID' => $accountingPermissionId, 'MaQuyen' => 'ORDER_VIEW', 'TrangThai' => 'Hoạt động']);
         DB::table('TaiKhoan')->insert([
             ['TaiKhoanID' => 103, 'NhanVienID' => 3, 'TrangThai' => 'Hoạt động'],
+            ['TaiKhoanID' => 104, 'NhanVienID' => 4, 'TrangThai' => 'Hoạt động'],
+            ['TaiKhoanID' => 105, 'NhanVienID' => 5, 'TrangThai' => 'Hoạt động'],
             ['TaiKhoanID' => 106, 'NhanVienID' => 6, 'TrangThai' => 'Hoạt động'],
+            ['TaiKhoanID' => 107, 'NhanVienID' => 7, 'TrangThai' => 'Hoạt động'],
         ]);
         DB::table('TaiKhoan_VaiTro')->insert([
             ['TaiKhoanID' => 103, 'VaiTroID' => 7],
+            ['TaiKhoanID' => 104, 'VaiTroID' => $managerRoleId],
+            ['TaiKhoanID' => 105, 'VaiTroID' => 8],
             ['TaiKhoanID' => 106, 'VaiTroID' => 7],
+            ['TaiKhoanID' => 107, 'VaiTroID' => 9],
+        ]);
+        DB::table('VaiTro_Quyen')->insert([
+            ['VaiTroID' => 7, 'QuyenID' => $deliveryPermissionId],
+            ['VaiTroID' => $managerRoleId, 'QuyenID' => $deliveryPermissionId],
+            ['VaiTroID' => 8, 'QuyenID' => $accountingPermissionId],
+            ['VaiTroID' => 9, 'QuyenID' => $deliveryPermissionId],
         ]);
         $intake = $this->createBookingIntake(['BookingID' => 2, 'NhanVienID' => 1]);
         $manager = Mockery::mock(User::class)->makePartial();
@@ -973,15 +1010,17 @@ class DeliveryContractTest extends TestCase
             ->assertSee('Quản lý hiện tại')
             ->assertSee('Nhân viên cấp dưới')
             ->assertSee('0900000006')
-            ->assertDontSee('value="5"', false)
-            ->assertSee('id="employee_id" name="employee_id" value="1"', false);
+            ->assertDontSee('data-employee-id="5"', false)
+            ->assertDontSee('data-employee-id="7"', false)
+            ->assertSee('id="employee_id" name="employee_id"', false)
+            ->assertSee('id="employee_id" name="employee_id" value="1" data-employee-id', false);
 
         $payload = [
             'address' => '12 Nguyễn Huệ',
             'pickup_date' => '2026-10-08',
             'pickup_time' => '10:00',
         ];
-        $allowedEmployeeIds = EmployeeAssignment::bookingIntakeCandidates($manager, $intake->NhanVienID)
+        $allowedEmployeeIds = EmployeeAssignment::bookingIntakeCandidates()
             ->orderBy('NhanVienID')
             ->pluck('NhanVienID')
             ->map(static fn ($id): int => (int) $id)
@@ -991,7 +1030,7 @@ class DeliveryContractTest extends TestCase
         $this->assertSame([1, 3, 4, 6], $allowedEmployeeIds);
         $this->assertTrue(Validator::make(
             ['employee_id' => 5],
-            ['employee_id' => EmployeeAssignment::bookingIntakeRule($manager, $intake->NhanVienID)],
+            ['employee_id' => EmployeeAssignment::bookingIntakeRule()],
         )->fails());
         $forbiddenEmployeeResponse = $this->put(route('deliveries.booking-documents.update', $intake), $payload + ['employee_id' => 5]);
         $this->assertSame(302, $forbiddenEmployeeResponse->status(), $forbiddenEmployeeResponse->getContent());

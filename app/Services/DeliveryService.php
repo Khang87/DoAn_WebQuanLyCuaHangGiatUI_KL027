@@ -412,7 +412,6 @@ class DeliveryService
                     auth()->user(),
                     isset($data['employee_id']) ? (int) $data['employee_id'] : null,
                     'employee_id',
-                    $current->NhanVienID,
                 );
                 $attributes['NhanVienID'] = (int) $data['employee_id'];
             }

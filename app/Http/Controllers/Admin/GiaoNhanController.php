@@ -69,7 +69,7 @@ class GiaoNhanController extends Controller
         }
         $assignedEmployee = $canAssignEmployee ? null : $linkedEmployee;
         $customers = KhachHang::query()->orderBy('HoTen')->get(['KhachHangID', 'HoTen']);
-        $employees = $this->assignableEmployees($linkedEmployee?->NhanVienID);
+        $employees = $this->assignableEmployees();
         $employeeNameCounts = $employees->countBy(fn ($employee) => mb_strtolower(trim((string) $employee->HoTen)));
         $defaultEmployeeId = old('employee_id', $linkedEmployee?->NhanVienID);
         $selectedEmployee = $employees->firstWhere('NhanVienID', (int) $defaultEmployeeId);
@@ -161,7 +161,7 @@ class GiaoNhanController extends Controller
             $linkedEmployee = null;
         }
         $employees = ! $user || $user->isManager()
-            ? $this->assignableEmployees($linkedEmployee?->NhanVienID) : new Collection([$linkedEmployee]);
+            ? $this->assignableEmployees() : new Collection([$linkedEmployee]);
         $employeeNameCounts = $employees->countBy(fn ($employee) => mb_strtolower(trim((string) $employee->HoTen)));
         $orders = $this->orderOptions($order->getKey());
         $selectedFulfillment = $isBookingReturn ? $returnMethod : 'Tại nhà';
@@ -263,7 +263,7 @@ class GiaoNhanController extends Controller
 
         $canAssignEmployee = EmployeeAssignment::canAssignBookingIntake($user);
         $employees = $canAssignEmployee
-            ? $this->bookingIntakeAssignableEmployees($user, $bookingDocument->NhanVienID)
+            ? $this->bookingIntakeAssignableEmployees()
             : new Collection([$bookingDocument->nhanVien]);
         $displayCode = 'BGN-'.$bookingDocument->BookingGiaoNhanID;
 
@@ -304,7 +304,7 @@ class GiaoNhanController extends Controller
             $rules['employee_id'] = [
                 'required',
                 'integer',
-                EmployeeAssignment::bookingIntakeRule($user, $bookingDocument->NhanVienID),
+                EmployeeAssignment::bookingIntakeRule(),
             ];
         }
 
@@ -390,7 +390,7 @@ class GiaoNhanController extends Controller
 
         $customers = KhachHang::query()->orderBy('HoTen')->get(['KhachHangID', 'HoTen']);
         $employees = $canAssignEmployee
-            ? $this->assignableEmployees($delivery->NhanVienID) : new Collection([$assignedEmployee]);
+            ? $this->assignableEmployees() : new Collection([$assignedEmployee]);
         $orders = $this->orderOptions($delivery->DonHangID);
         $statusOptions = DeliveryStatus::options();
         unset($statusOptions[$delivery->LoaiGiaoNhan === 'GIAO_DO' ? DeliveryStatus::Picking->value : DeliveryStatus::Delivering->value]);
@@ -519,17 +519,17 @@ class GiaoNhanController extends Controller
         }
     }
 
-    private function assignableEmployees(?int $currentId = null): Collection
+    private function assignableEmployees(): Collection
     {
-        return EmployeeAssignment::deliveryCandidates($currentId)
+        return EmployeeAssignment::deliveryCandidates()
             ->orderBy('HoTen')
             ->orderBy('NhanVienID')
             ->get(['NhanVienID', 'HoTen', 'ChucDanh', 'SoDienThoai', 'Email', 'NgayVaoLam']);
     }
 
-    private function bookingIntakeAssignableEmployees(User $user, ?int $currentId = null): Collection
+    private function bookingIntakeAssignableEmployees(): Collection
     {
-        return EmployeeAssignment::bookingIntakeCandidates($user, $currentId)
+        return EmployeeAssignment::bookingIntakeCandidates()
             ->orderBy('HoTen')
             ->orderBy('NhanVienID')
             ->get(['NhanVienID', 'HoTen', 'ChucDanh', 'SoDienThoai', 'Email', 'NgayVaoLam']);

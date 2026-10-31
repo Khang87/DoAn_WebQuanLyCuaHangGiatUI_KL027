@@ -4,6 +4,8 @@ namespace App\Services;
 
 use App\Models\NhanVien;
 use App\Models\User;
+use App\Support\QuyenMapper;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Exists;
@@ -12,26 +14,26 @@ use Illuminate\Validation\ValidationException;
 
 class EmployeeAssignment
 {
-    /**
-     * Lấy danh sách nhân viên có thể phân công cho giao nhận.
-     * Bao gồm: người trong nhóm "Nhân viên" (có quyền deliveries.*), Chủ cửa hàng, Quản lý.
-     */
-    public static function deliveryCandidates(?int $currentId = null): Builder
+    /** Lấy nhân viên có tài khoản nội bộ đang hoạt động được cấp quyền sửa giao nhận. */
+    public static function deliveryCandidates(): Builder
     {
-        return NhanVien::query()->where(function ($query) use ($currentId): void {
-            $query->where('TrangThai', 'Hoạt động')
-                ->whereHas('taiKhoans', fn ($accounts) => $accounts
-                    ->where('TrangThai', 'Hoạt động')
-                    ->whereHas('vaiTros', fn ($roles) => $roles
-                        ->where(fn ($names) => $names
-                            ->where('TenVaiTro', 'Nhân viên')
-                            ->orWhere('TenVaiTro', 'Chủ cửa hàng')
-                            ->orWhere('TenVaiTro', 'like', 'Quản lý%'))));
+        $deliveryPermissions = array_values(array_unique(array_filter([
+            QuyenMapper::resolveMaQuyen('deliveries.edit'),
+            QuyenMapper::FULL_ACCESS,
+        ])));
+        $roleNameColumn = DB::connection()->getQueryGrammar()->wrap('TenVaiTro');
 
-            if ($currentId !== null) {
-                $query->orWhereKey($currentId);
-            }
-        })->orderBy('HoTen')->orderBy('NhanVienID');
+        return NhanVien::query()
+            ->where('TrangThai', 'Hoạt động')
+            ->whereHas('taiKhoans', fn ($accounts) => $accounts
+                ->where('TrangThai', 'Hoạt động')
+                ->whereHas('vaiTros', fn ($roles) => $roles
+                    ->where('TrangThai', 'Hoạt động')
+                    ->whereRaw("LOWER(TRIM({$roleNameColumn})) NOT IN (?, ?)", ['khách hàng', 'customer'])
+                    ->whereHas('quyens', fn ($permissions) => $permissions
+                        ->where('TrangThai', 'Hoạt động')
+                        ->whereIn('MaQuyen', $deliveryPermissions))))
+            ->orderBy('HoTen')->orderBy('NhanVienID');
     }
 
     public static function canAssignBookingIntake(?User $user): bool
@@ -41,24 +43,14 @@ class EmployeeAssignment
             && $user->canPermission('deliveries.edit');
     }
 
-    public static function bookingIntakeCandidates(User $user, ?int $currentId = null): Builder
+    public static function bookingIntakeCandidates(): Builder
     {
-        $query = self::deliveryCandidates($currentId);
-        $selfId = $user->NhanVienID ? (int) $user->NhanVienID : null;
-
-        if ($selfId !== null && NhanVien::query()
-            ->whereKey($selfId)
-            ->where('TrangThai', 'Hoạt động')
-            ->exists()) {
-            $query->orWhereKey($selfId);
-        }
-
-        return $query;
+        return self::deliveryCandidates();
     }
 
-    public static function bookingIntakeRule(User $user, ?int $currentId = null): In
+    public static function bookingIntakeRule(): In
     {
-        $employeeIds = self::bookingIntakeCandidates($user, $currentId)
+        $employeeIds = self::bookingIntakeCandidates()
             ->pluck('NhanVienID')
             ->map(static fn ($id): int => (int) $id)
             ->all();
@@ -70,7 +62,6 @@ class EmployeeAssignment
         ?User $user,
         ?int $employeeId,
         string $field,
-        ?int $currentId = null,
     ): void {
         if (! self::canAssignBookingIntake($user)) {
             throw ValidationException::withMessages([
@@ -80,7 +71,7 @@ class EmployeeAssignment
 
         if (
             $employeeId === null
-            || ! self::bookingIntakeCandidates($user, $currentId)->whereKey($employeeId)->exists()
+            || ! self::bookingIntakeCandidates()->whereKey($employeeId)->exists()
         ) {
             throw ValidationException::withMessages([
                 $field => 'Nhân viên được chọn không thuộc phạm vi phân công hợp lệ.',

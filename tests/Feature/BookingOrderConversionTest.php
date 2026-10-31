@@ -1245,6 +1245,9 @@ class BookingOrderConversionTest extends TestCase
 
         $this->get(route('bookings.inspection', $booking))->assertOk()
             ->assertSee('BOOKING10')
+            ->assertSee('id="booking-promotion-select" name="promotion_id" data-booking-promotion', false)
+            ->assertSeeInOrder(['Áp dụng mã giảm giá', 'Tổng kết đơn hàng'])
+            ->assertDontSee('Áp dụng</button>')
             ->assertSee('50 điểm (50 VNĐ)')
             ->assertDontSee('Tính lại phí giao nhận')
             ->assertSee('booking-items-table', false)

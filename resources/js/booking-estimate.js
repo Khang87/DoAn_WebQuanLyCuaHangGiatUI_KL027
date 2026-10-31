@@ -4,6 +4,7 @@ const panel = document.querySelector('[data-booking-estimate]');
 
 if (panel) {
     const form = document.querySelector('#booking-edit-form');
+    const promotionSelect = form.querySelector('[data-booking-promotion]');
     const total = panel.querySelector('[data-estimate-total]');
     const details = panel.querySelector('[data-estimate-details]');
     const itemBreakdown = panel.querySelector('[data-estimate-items]');
@@ -161,12 +162,40 @@ if (panel) {
         }
 
         const { items, subtotal, warning: itemWarning } = calculateCurrentItems();
-        const promotion = estimateData.promotion_context;
+        let ineligiblePromotionWarning = '';
+        if (promotionSelect) {
+            [...promotionSelect.options].forEach(option => {
+                if (!option.value) {
+                    return;
+                }
+
+                const eligible = subtotal >= Number(option.dataset.minimum || 0);
+                option.hidden = !eligible;
+                option.disabled = !eligible;
+                if (!eligible && option.selected) {
+                    ineligiblePromotionWarning = `Đơn chưa đạt giá trị tối thiểu để dùng mã ${option.textContent.trim()}. Mã đã được bỏ chọn.`;
+                    promotionSelect.value = '';
+                }
+            });
+        }
+
+        const selectedPromotion = promotionSelect?.selectedOptions[0];
+        const promotion = selectedPromotion?.value
+            ? {
+                eligible: true,
+                type: selectedPromotion.dataset.discountType,
+                value: Number(selectedPromotion.dataset.discountValue),
+                minimum: Number(selectedPromotion.dataset.minimum || 0),
+                maximum: Number(selectedPromotion.dataset.maximum) > 0
+                    ? Number(selectedPromotion.dataset.maximum)
+                    : null,
+            }
+            : null;
         let promotionDiscount = 0;
-        let promotionWarning = estimateData.promotion_warning ?? '';
+        let promotionWarning = ineligiblePromotionWarning;
 
         if (promotion?.eligible) {
-            if (promotion.minimum !== null && subtotal < Number(promotion.minimum)) {
+            if (subtotal < promotion.minimum) {
                 promotionWarning = 'Đơn hàng chưa đạt giá trị tối thiểu để dùng mã khuyến mãi.';
             } else {
                 promotionWarning = '';
@@ -175,14 +204,16 @@ if (panel) {
                     : promotion.type === 'Tiền mặt'
                         ? Number(promotion.value)
                         : 0;
-                if (promotion.maximum && promotionDiscount > Number(promotion.maximum)) {
-                    promotionDiscount = Number(promotion.maximum);
+                if (promotion.maximum !== null && promotionDiscount > promotion.maximum) {
+                    promotionDiscount = promotion.maximum;
                 }
                 promotionDiscount = roundMoney(Math.min(subtotal, promotionDiscount));
             }
         }
 
-        const remaining = Math.max(0, subtotal - promotionDiscount);
+        const pickupFee = Number(estimateData.PhiNhanDo);
+        const returnFee = Number(estimateData.PhiGiaoDo);
+        const remaining = Math.max(0, subtotal - promotionDiscount + pickupFee + returnFee);
         const pointValue = Number(estimateData.point_value);
         const pointsUsed = pointValue > 0
             ? Math.max(0, Math.min(
@@ -192,11 +223,7 @@ if (panel) {
             ))
             : 0;
         const pointsDiscount = roundMoney(pointsUsed * pointValue);
-        const pickupFee = Number(estimateData.PhiNhanDo);
-        const returnFee = Number(estimateData.PhiGiaoDo);
-        const amountDue = roundMoney(
-            Math.max(0, remaining - pointsDiscount) + pickupFee + returnFee,
-        );
+        const amountDue = roundMoney(Math.max(0, remaining - pointsDiscount));
         const localEstimate = {
             TongTien: subtotal,
             TienGiamKhuyenMai: promotionDiscount,
@@ -223,7 +250,7 @@ if (panel) {
             row.querySelector('.booking-weight').value,
         ]);
 
-        return JSON.stringify(rows);
+        return JSON.stringify({ items: rows, promotionId: promotionSelect?.value ?? '' });
     }
 
     function refreshLocalEstimate() {

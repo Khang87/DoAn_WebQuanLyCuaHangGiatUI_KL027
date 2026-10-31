@@ -9,6 +9,7 @@ use App\Http\Requests\Admin\BookingQuoteRefusalRequest;
 use App\Http\Requests\Admin\LuuBookingRequest;
 use App\Http\Requests\Admin\XacNhanBookingRequest;
 use App\Models\BangGia;
+use App\Models\Booking;
 use App\Models\KhuyenMai;
 use App\Models\DichVu;
 use App\Models\DonViTinh;
@@ -266,14 +267,38 @@ class BookingController extends Controller
             ])
             ->values();
 
-        // Danh sách mã giảm giá đang hoạt động, dùng cho dropdown chọn trên trang chỉnh sửa Booking.
-        $coupons = KhuyenMai::where('TrangThai', 'Hoạt động')
+        $usedPromotionIds = Booking::query()
+            ->where('KhachHangID', $booking->KhachHangID)
+            ->whereKeyNot($booking->BookingID)
+            ->where('TrangThai', '<>', BookingStatus::Cancelled->value)
+            ->whereNotNull('KhuyenMaiID')
+            ->pluck('KhuyenMaiID');
+        $currentCouponSubtotal = (float) $booking->chiTietBookings->sum('ThanhTien');
+
+        // Chỉ gửi các mã còn hiệu lực, còn lượt và chưa được khách dùng ở Booking khác.
+        $coupons = KhuyenMai::query()->where('TrangThai', 'Hoạt động')
             ->where('NgayBatDau', '<=', today())
-            ->where(function ($q) {
-                $q->where('NgayKetThuc', '>=', today())->orWhereNull('NgayKetThuc');
+            ->where('NgayKetThuc', '>=', today())
+            ->where(function ($q) use ($booking) {
+                $q->whereNull('SoLuongSuDung')->orWhere('SoLuongSuDung', '>', 0);
+                if ($booking->KhuyenMaiID !== null) {
+                    $q->orWhereKey($booking->KhuyenMaiID);
+                }
             })
+            ->whereNotIn('KhuyenMaiID', $usedPromotionIds)
             ->orderBy('MaKhuyenMai')
-            ->get();
+            ->get()
+            ->filter(fn (KhuyenMai $coupon): bool => $coupon->rejectionReasonForCustomer(
+                $booking->khachHang,
+                PHP_FLOAT_MAX,
+            ) === null)
+            ->values();
+        if (! $inspectionMode) {
+            $coupons = $coupons->filter(fn (KhuyenMai $coupon): bool =>
+                $coupon->GiaTriDonToiThieu === null
+                || $currentCouponSubtotal >= (float) $coupon->GiaTriDonToiThieu
+            )->values();
+        }
 
         return view('admin.bookings.edit', compact(
             'booking',
@@ -286,6 +311,7 @@ class BookingController extends Controller
             'units',
             'pricingUnitOptions',
             'coupons',
+            'currentCouponSubtotal',
         ));
     }
 
