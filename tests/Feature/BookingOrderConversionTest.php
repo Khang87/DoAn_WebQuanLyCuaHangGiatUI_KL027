@@ -165,6 +165,14 @@ class BookingOrderConversionTest extends TestCase
         $this->withoutMiddleware();
         $this->bookingService->approve($booking);
         $this->createPermissionTables();
+        $inspectionUrl = route('bookings.inspection', $booking);
+        $this->get(route('deliveries.index'))
+            ->assertOk()
+            ->assertDontSee('href="'.$inspectionUrl.'"', false);
+        $this->get($inspectionUrl)
+            ->assertRedirect(route('bookings.show', $booking))
+            ->assertSessionHas('error', 'Phiếu nhận chưa được phân công nhân viên phụ trách.');
+
         DB::table('BookingGiaoNhan')
             ->where('BookingID', $booking->BookingID)
             ->where('LoaiGiaoNhan', 'NHAN_DO')
@@ -182,8 +190,11 @@ class BookingOrderConversionTest extends TestCase
         // Nút kiểm kê chỉ còn ở cột "Thao tác" của danh sách đặt lịch.
         $this->get(route('bookings.index'))
             ->assertOk()
-            ->assertSee('href="'.route('bookings.inspection', $booking).'"', false)
+            ->assertSee('href="'.$inspectionUrl.'"', false)
             ->assertSee('Kiểm tra và tạo đơn');
+        $this->get(route('deliveries.index'))
+            ->assertOk()
+            ->assertSee('href="'.$inspectionUrl.'"', false);
 
         $this->assertNull($intake->fresh()->ThoiGianThucTe);
         $this->assertDatabaseCount('DonHang', 0);

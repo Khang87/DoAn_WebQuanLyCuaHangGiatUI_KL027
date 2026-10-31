@@ -525,6 +525,7 @@ class BookingService
         return BookingGiaoNhan::query()
             ->whereIn('BookingID', $candidateIds)
             ->where('LoaiGiaoNhan', 'NHAN_DO')
+            ->whereNotNull('NhanVienID')
             ->when(! $isManager, fn ($query) => $query->where('NhanVienID', $employeeId))
             ->get()
             ->filter(fn (BookingGiaoNhan $intake) => $this->intakeLegAllowsInspection($intake))
@@ -557,6 +558,9 @@ class BookingService
             || BookingKiemKe::query()->where('BookingID', $booking->BookingID)->exists()
         ) {
             return 'Phiếu nhận không còn ở trạng thái cho phép kiểm kê.';
+        }
+        if ($intake->NhanVienID === null) {
+            return 'Phiếu nhận chưa được phân công nhân viên phụ trách.';
         }
 
         $employeeId = $this->activeEmployeeId();
