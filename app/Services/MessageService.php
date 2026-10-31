@@ -171,8 +171,8 @@ class MessageService
             'last_message_preview' => $supportMessage()->select('NoiDung'),
             'last_message_at' => $supportMessage()->select('ThoiGianGui'),
             'last_message_id' => $supportMessage()->select('TinNhanID'),
-        ])->orderByRaw('CASE WHEN last_message_at IS NULL THEN 1 ELSE 0 END')
-            ->orderByDesc('last_message_at')->orderByDesc('last_message_id')->orderByDesc('TaiKhoan.TaiKhoanID')
+        ])->orderByRaw('"last_message_at" DESC NULLS LAST')
+            ->orderByDesc('last_message_id')->orderByDesc('TaiKhoan.TaiKhoanID')
             ->paginate(20, ['*'], 'support_page', $pageNumber)->withQueryString();
         $latestIds = $page->getCollection()->pluck('last_message_id')->filter()->map(fn ($id): int => (int) $id);
         if ($latestIds->isNotEmpty()) {

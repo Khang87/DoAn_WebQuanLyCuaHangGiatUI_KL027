@@ -113,7 +113,7 @@
                             @endif
                         </td>
                         <td>
-                            @forelse($account->vaiTros as $role)
+                            @forelse($account->vaiTros->take(1) as $role)
                                 @php
                                     $roleBadgeClass = match ((int) $role->VaiTroID) {
                                         1 => 'bg-danger-subtle text-danger-emphasis border border-danger',
@@ -153,7 +153,7 @@
                                         data-bs-toggle="modal"
                                         data-bs-target="#updateRoleModal"
                                         data-account-name="{{ $account->name }}"
-                                        data-account-roles="{{ $account->vaiTros->pluck('VaiTroID')->implode(',') }}"
+                                        data-account-role="{{ $account->vaiTros->first()?->VaiTroID }}"
                                         data-update-url="{{ route('accounts.update-role', $account->getKey()) }}"
                                     ><i class="bi bi-shield-lock"></i></button>
                                 @endif
@@ -232,14 +232,16 @@
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button>
                 </div>
                 <div class="modal-body">
-                    <p>Chọn vai trò mới cho <strong id="roleAccountName"></strong>:</p>
-                    @foreach($roles as $role)
-                        <div class="form-check mb-2">
-                            <input class="form-check-input role-option" type="checkbox" name="vai_tro_ids[]" value="{{ $role->VaiTroID }}" id="role-{{ $role->VaiTroID }}">
-                            <label class="form-check-label" for="role-{{ $role->VaiTroID }}">{{ $role->TenVaiTro }}</label>
-                        </div>
-                    @endforeach
-                    <small class="text-muted">Đổi vai trò sẽ đăng xuất các phiên hiện tại của tài khoản để áp dụng quyền mới.</small>
+                    <fieldset class="mb-3">
+                        <legend class="form-label fs-6">Chọn vai trò mới cho <strong id="roleAccountName"></strong>:</legend>
+                        @foreach($roles as $role)
+                            <div class="form-check mb-2">
+                                <input class="form-check-input role-option" type="radio" name="vai_tro_id" value="{{ $role->VaiTroID }}" id="role-{{ $role->VaiTroID }}" required>
+                                <label class="form-check-label" for="role-{{ $role->VaiTroID }}">{{ $role->TenVaiTro }}</label>
+                            </div>
+                        @endforeach
+                    </fieldset>
+                    <small class="text-muted">Mỗi tài khoản chỉ có một vai trò. Đổi vai trò sẽ đăng xuất các phiên hiện tại để áp dụng quyền mới.</small>
                 </div>
                 <div class="modal-footer">
                     <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg me-1"></i>Cập nhật</button>
@@ -262,15 +264,13 @@ document.addEventListener('DOMContentLoaded', function () {
 
     modal.addEventListener('show.bs.modal', function (event) {
         const button = event.relatedTarget;
-        const selectedRoles = (button.dataset.accountRoles || '')
-            .split(',')
-            .filter(Boolean);
+        const selectedRole = button.dataset.accountRole || '';
 
         document.getElementById('roleAccountName').textContent = button.dataset.accountName;
         document.getElementById('updateRoleForm').action = button.dataset.updateUrl;
 
-        modal.querySelectorAll('.role-option').forEach(function (checkbox) {
-            checkbox.checked = selectedRoles.includes(checkbox.value);
+        modal.querySelectorAll('.role-option').forEach(function (radio) {
+            radio.checked = radio.value === selectedRole;
         });
     });
 });

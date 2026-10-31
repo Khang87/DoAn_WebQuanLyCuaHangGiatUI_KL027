@@ -15,6 +15,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
 
 class VaiTroController extends Controller
@@ -134,42 +135,13 @@ class VaiTroController extends Controller
                 ]);
             }
 
-            $vaiTro->taiKhoans()->syncWithoutDetaching([$accountId]);
+            $lockedAccount->vaiTros()->sync([$vaiTro->getKey()]);
         });
         PermissionCache::forget($accountId);
+        $this->revokeDatabaseSessions($accountId);
 
         return redirect()->route('roles.edit', $vaiTro->getKey())
-            ->with('success', 'Đã thêm tài khoản vào nhóm quyền.');
-    }
-
-    public function removeMember(Request $request, int $role, int $account): RedirectResponse
-    {
-        Gate::authorize('roles.manage');
-
-        $vaiTro = VaiTro::query()->findOrFail($role);
-        abort_if($vaiTro->isOwner(), 403, 'Không thể thay đổi thành viên của vai trò Chủ cửa hàng.');
-        abort_if(
-            $request->user()->getKey() === $account,
-            422,
-            'Không thể tự thay đổi vai trò của tài khoản đang đăng nhập.',
-        );
-
-        DB::transaction(function () use ($vaiTro, $account): void {
-            $lockedAccount = User::query()->lockForUpdate()->findOrFail($account);
-
-            if ($lockedAccount->isOwner()) {
-                throw ValidationException::withMessages([
-                    'account' => 'Không thể thay đổi vai trò của tài khoản Chủ cửa hàng.',
-                ]);
-            }
-
-            abort_unless($vaiTro->taiKhoans()->whereKey($account)->exists(), 404);
-            $vaiTro->taiKhoans()->detach($account);
-        });
-        PermissionCache::forget($account);
-
-        return redirect()->route('roles.edit', $vaiTro->getKey())
-            ->with('success', 'Đã gỡ tài khoản khỏi nhóm quyền.');
+            ->with('success', 'Đã chuyển tài khoản sang vai trò mới và đăng xuất các phiên hiện tại.');
     }
 
     public function updateRole(Request $request, int $role): RedirectResponse
@@ -262,5 +234,22 @@ class VaiTroController extends Controller
                 'taiKhoans.khachHang',
             ])
             ->findOrFail($role);
+    }
+
+    private function revokeDatabaseSessions(int $accountId): void
+    {
+        if (config('session.driver') !== 'database') {
+            return;
+        }
+
+        $connection = config('session.connection');
+        $sessionsTable = (string) config('session.table', 'sessions');
+
+        if (Schema::connection($connection)->hasTable($sessionsTable)) {
+            DB::connection($connection)
+                ->table($sessionsTable)
+                ->where('user_id', $accountId)
+                ->delete();
+        }
     }
 }

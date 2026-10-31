@@ -106,19 +106,7 @@ class UserSeeder extends Seeder
             return;
         }
 
-        $exists = DB::table('TaiKhoan_VaiTro')
-            ->where('TaiKhoanID', $account->getKey())
-            ->where('VaiTroID', $role->VaiTroID)
-            ->exists();
-
-        if ($exists) {
-            return;
-        }
-
-        DB::table('TaiKhoan_VaiTro')->insert([
-            'TaiKhoanID' => $account->getKey(),
-            'VaiTroID' => $role->VaiTroID,
-        ]);
+        $account->vaiTros()->sync([(int) $role->VaiTroID]);
     }
 
     /**

@@ -167,7 +167,7 @@
         <div class="card-header bg-white d-flex justify-content-between align-items-center gap-3 py-3">
             <div>
                 <h3 class="h6 fw-bold mb-1"><i class="bi bi-people text-primary me-2"></i>Những người thuộc nhóm này</h3>
-                <p class="small text-muted mb-0">{{ $members->count() }} tài khoản được phân vào nhóm.</p>
+                <p class="small text-muted mb-0">{{ $members->count() }} tài khoản được phân vào nhóm. Mỗi tài khoản chỉ có một vai trò; thêm người ở đây sẽ chuyển họ sang nhóm này.</p>
             </div>
             @if(! $role->isOwner() && $role->TrangThai === 'Hoạt động')
                 <button class="btn btn-primary btn-sm" type="button" data-bs-toggle="modal" data-bs-target="#{{ $addMemberModalId }}">
@@ -201,21 +201,6 @@
                                     @endif
                                 </div>
                             </div>
-                            @if(! $role->isOwner())
-                                <x-admin.detail.confirm-form
-                                    :action="route('roles.members.destroy', [$role->getKey(), $member->getKey()])"
-                                    method="DELETE"
-                                    title="Gỡ {{ $memberName }} khỏi nhóm?"
-                                    text="Cảnh báo: tài khoản này sẽ mất quyền truy cập được cấp thông qua nhóm {{ $role->TenVaiTro }}. Tài khoản không bị xóa."
-                                    label="Gỡ thành viên"
-                                    icon="bi-person-dash"
-                                    variant="btn-outline-danger"
-                                    color="#dc2626"
-                                    iconName="warning"
-                                >
-                                    Gỡ
-                                </x-admin.detail.confirm-form>
-                            @endif
                         </div>
                     @endforeach
                 </div>
@@ -252,7 +237,6 @@
                             @endif
                         </div>
                         <div class="modal-footer">
-                            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Hủy</button>
                             <button type="submit" class="btn btn-primary" @disabled($availableAccounts->isEmpty())>
                                 <i class="bi bi-plus-lg me-1"></i>Thêm mới
                             </button>

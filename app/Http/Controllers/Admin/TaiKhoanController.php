@@ -80,22 +80,14 @@ class TaiKhoanController extends Controller
         return view('admin.accounts.index', compact('accounts', 'roles', 'canManageRoles'));
     }
 
-    /**
-     * Cập nhật danh sách vai trò cho tài khoản, chỉ cho phép Chủ cửa hàng.
-     */
+    /** Cập nhật vai trò duy nhất của tài khoản, chỉ cho phép Chủ cửa hàng. */
     public function updateRole(Request $request, int $taiKhoanId): RedirectResponse
     {
         $actor = $request->user();
         abort_unless($this->hasOwnerRole($actor), 403);
 
         $validated = $request->validate([
-            'vai_tro_ids' => ['required', 'array', 'min:1'],
-            'vai_tro_ids.*' => [
-                'required',
-                'integer',
-                'distinct',
-                'exists:VaiTro,VaiTroID,TrangThai,Hoạt động',
-            ],
+            'vai_tro_id' => ['required', 'integer', 'exists:VaiTro,VaiTroID,TrangThai,Hoạt động'],
         ]);
 
         $account = User::query()->findOrFail($taiKhoanId);
@@ -107,7 +99,8 @@ class TaiKhoanController extends Controller
         );
 
         DB::transaction(function () use ($account, $validated): void {
-            $account->vaiTros()->sync(array_map('intval', $validated['vai_tro_ids']));
+            $lockedAccount = User::query()->lockForUpdate()->findOrFail($account->getKey());
+            $lockedAccount->vaiTros()->sync([(int) $validated['vai_tro_id']]);
         });
 
         PermissionCache::forget((int) $account->getKey());

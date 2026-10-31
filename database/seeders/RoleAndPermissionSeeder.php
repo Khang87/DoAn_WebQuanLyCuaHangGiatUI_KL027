@@ -244,19 +244,7 @@ class RoleAndPermissionSeeder extends Seeder
                 $user->forceFill(['NhanVienID' => $staff->NhanVienID])->save();
             }
 
-            $exists = DB::table('TaiKhoan_VaiTro')
-                ->where('TaiKhoanID', $user->getKey())
-                ->where('VaiTroID', $role->getKey())
-                ->exists();
-
-            if ($exists) {
-                continue;
-            }
-
-            DB::table('TaiKhoan_VaiTro')->insert([
-                'TaiKhoanID' => $user->getKey(),
-                'VaiTroID' => $role->getKey(),
-            ]);
+            $user->vaiTros()->sync([$role->getKey()]);
         }
     }
 }

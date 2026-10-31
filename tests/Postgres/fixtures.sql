@@ -244,7 +244,7 @@ CREATE TABLE public."TaiKhoan" (
  "AvatarURL" text
 );
 CREATE TABLE public."TaiKhoan_VaiTro" (
- "TaiKhoanID" integer NOT NULL,
+ "TaiKhoanID" integer NOT NULL UNIQUE,
  "VaiTroID" integer NOT NULL
 );
 CREATE TABLE public."ThanhToan" (

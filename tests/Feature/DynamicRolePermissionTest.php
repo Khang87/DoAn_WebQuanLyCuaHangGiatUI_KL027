@@ -72,6 +72,7 @@ class DynamicRolePermissionTest extends TestCase
             $table->unsignedInteger('TaiKhoanID');
             $table->unsignedInteger('VaiTroID');
             $table->primary(['TaiKhoanID', 'VaiTroID']);
+            $table->unique('TaiKhoanID');
         });
         Schema::create('VaiTro_Quyen', function (Blueprint $table): void {
             $table->unsignedInteger('VaiTroID');
@@ -664,7 +665,7 @@ class DynamicRolePermissionTest extends TestCase
         $account = $this->createAccount($staffRole);
         $this->actingAs($owner)
             ->post(route('accounts.update-role', $account->getKey()), [
-                'vai_tro_ids' => [$role->getKey()],
+                'vai_tro_id' => $role->getKey(),
             ])
             ->assertRedirect(route('accounts.index'));
 
@@ -676,6 +677,23 @@ class DynamicRolePermissionTest extends TestCase
             'TaiKhoanID' => $account->getKey(),
             'VaiTroID' => $staffRole->getKey(),
         ]);
+        $this->assertSame(1, DB::table('TaiKhoan_VaiTro')->where('TaiKhoanID', $account->getKey())->count());
+
+        $this->actingAs($owner)
+            ->get(route('accounts.index'))
+            ->assertOk()
+            ->assertSee('type="radio" name="vai_tro_id"', false)
+            ->assertDontSee('type="checkbox" name="vai_tro_ids[]"', false)
+            ->assertSee('data-account-role="'.$role->getKey().'"', false);
+
+        $this->actingAs($owner)
+            ->from(route('accounts.index'))
+            ->post(route('accounts.update-role', $account->getKey()), [
+                'vai_tro_ids' => [$staffRole->getKey(), $role->getKey()],
+            ])
+            ->assertSessionHasErrors('vai_tro_id');
+
+        $this->assertSame(1, DB::table('TaiKhoan_VaiTro')->where('TaiKhoanID', $account->getKey())->count());
     }
 
     public function test_role_detail_lists_member_accounts_with_names_contacts_and_exact_count(): void
@@ -718,14 +736,15 @@ class DynamicRolePermissionTest extends TestCase
             ->assertSee('T')
             ->assertSee('Thêm người')
             ->assertSee('data-confirm-icon="warning"', false)
-            ->assertSee('mất quyền truy cập được cấp thông qua nhóm', false)
-            ->assertSee('Gỡ');
+            ->assertSee('Mỗi tài khoản chỉ có một vai trò', false)
+            ->assertDontSee('Gỡ');
     }
 
-    public function test_role_member_can_be_added_and_removed_through_role_detail_actions(): void
+    public function test_adding_a_member_to_a_role_replaces_the_previous_role(): void
     {
         $owner = $this->createAccount($this->createRole('Chủ cửa hàng'));
         $role = $this->createRole('Kế toán');
+        $previousRole = $this->createRole('Nhân viên');
         $employee = NhanVien::query()->create([
             'HoTen' => 'Nhân viên kế toán',
             'SoDienThoai' => '0909000001',
@@ -736,6 +755,7 @@ class DynamicRolePermissionTest extends TestCase
             'NhanVienID' => $employee->getKey(),
             'TrangThai' => 'Hoạt động',
         ]);
+        $member->vaiTros()->attach($previousRole->getKey());
 
         $this->actingAs($owner)
             ->post(route('roles.members.store', $role->getKey()), [
@@ -748,26 +768,16 @@ class DynamicRolePermissionTest extends TestCase
             'TaiKhoanID' => $member->getKey(),
             'VaiTroID' => $role->getKey(),
         ]);
+        $this->assertDatabaseMissing('TaiKhoan_VaiTro', [
+            'TaiKhoanID' => $member->getKey(),
+            'VaiTroID' => $previousRole->getKey(),
+        ]);
+        $this->assertSame(1, DB::table('TaiKhoan_VaiTro')->where('TaiKhoanID', $member->getKey())->count());
 
         $this->actingAs($owner)
             ->get(route('roles.edit', $role->getKey()))
             ->assertOk()
             ->assertSee('1 tài khoản được phân vào nhóm.');
-
-        $this->actingAs($owner)
-            ->delete(route('roles.members.destroy', [$role->getKey(), $member->getKey()]))
-            ->assertRedirect(route('roles.edit', $role->getKey()))
-            ->assertSessionHas('success');
-
-        $this->assertDatabaseMissing('TaiKhoan_VaiTro', [
-            'TaiKhoanID' => $member->getKey(),
-            'VaiTroID' => $role->getKey(),
-        ]);
-
-        $this->actingAs($owner)
-            ->get(route('roles.edit', $role->getKey()))
-            ->assertOk()
-            ->assertSee('0 tài khoản được phân vào nhóm.');
     }
 
     public function test_add_member_dropdown_only_shows_active_accounts_with_the_matching_profile_type(): void

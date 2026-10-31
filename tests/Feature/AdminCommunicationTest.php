@@ -186,6 +186,12 @@ class AdminCommunicationTest extends TestCase
                 $inactiveTable = $tab === 'orders' ? 'TaiKhoan' : 'DonHang';
                 $this->assertNotEmpty(array_filter($queries, fn ($sql): bool => str_contains($sql, 'select count(*) as "aggregate" from "'.$activeTable.'"')), 'The active inbox must be paginated.');
                 $this->assertEmpty(array_filter($queries, fn ($sql): bool => str_contains($sql, 'select count(*) as "aggregate" from "'.$inactiveTable.'"')), 'The inactive inbox must not be paginated.');
+                if ($tab === 'support') {
+                    $this->assertNotEmpty(array_filter(
+                        $queries,
+                        fn ($sql): bool => str_contains($sql, 'order by "last_message_at" desc nulls last'),
+                    ), 'Support inbox ordering must use a PostgreSQL-compatible selected-column alias.');
+                }
 
                 $xpath = $this->inboxXPath($response->getContent());
                 $inbox = $xpath->query('//*[@data-message-inbox]')->item(0);
@@ -928,10 +934,9 @@ class AdminCommunicationTest extends TestCase
         $this->assertDatabaseCount('TinNhan', 0);
     }
 
-    public function test_customer_membership_wins_over_owner_for_admin_communications(): void
+    public function test_customer_role_does_not_get_internal_communication_defaults(): void
     {
-        $user = $this->createAccount('mixed-role');
-        $this->assignRole($user, 'Owner');
+        $user = $this->createAccount('customer-role');
         $this->assignRole($user, 'Khách hàng');
         $this->actingAs($user);
         $this->assertFalse($user->can('messages.create'));

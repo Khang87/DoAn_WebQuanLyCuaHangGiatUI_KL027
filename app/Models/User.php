@@ -229,26 +229,19 @@ class User extends Authenticatable
     /**
      * Slug vai trò chuẩn của tài khoản.
      *
-     * Một tài khoản có thể mang nhiều vai trò (VD nhân viên kiêm khách hàng),
-     * nên ưu tiên theo thứ tự quyền cao: Chủ cửa hàng > Quản lý > Nhân viên.
+     * Mỗi tài khoản chỉ có một vai trò; pivot được ràng buộc duy nhất theo
+     * TaiKhoanID và các luồng cập nhật thay thế vai trò hiện tại.
      *
      * Đọc từ {@see PermissionCache} nên không query lại `TaiKhoan_VaiTro`/`VaiTro`
      * ở mỗi lần gọi trong cùng một request.
      */
     public function roleSlug(): ?string
     {
-        $slugs = collect($this->roleNames())
-            ->map(fn (string $tenVaiTro) => self::ROLE_SLUGS[mb_strtolower(trim($tenVaiTro))]
-                ?? VaiTro::slugForName($tenVaiTro))
-            ->values();
+        $roleName = $this->roleNames()[0] ?? null;
 
-        foreach (['owner', 'manager', 'staff', 'customer'] as $priority) {
-            if ($slugs->contains($priority)) {
-                return $priority;
-            }
-        }
-
-        return $slugs->first();
+        return $roleName === null
+            ? null
+            : (self::ROLE_SLUGS[mb_strtolower(trim($roleName))] ?? VaiTro::slugForName($roleName));
     }
 
     /**
