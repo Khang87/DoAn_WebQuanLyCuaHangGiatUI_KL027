@@ -49,14 +49,7 @@ class BookingController extends Controller
         ]);
 
         $customers = KhachHang::orderBy('HoTen')->get();
-        // Lấy nhân viên từ bảng NhanVien (không dùng User/TaiKhoan vì role là quan hệ many-to-many)
-        $employees = NhanVien::where('TrangThai', 'Hoạt động')->orderBy('HoTen')->get();
-
-        // Nút "Kiểm tra và tạo đơn" nằm ở cột Thao tác của danh sách nên phải
-        // biết booking nào đang tới lượt kiểm kê.
-        $inspectableBookingIds = $this->bookingService->inspectableBookingIds($bookings->getCollection());
-
-        return view('admin.bookings.index', compact('bookings', 'customers', 'employees', 'inspectableBookingIds'));
+        return view('admin.bookings.index', compact('bookings', 'customers'));
     }
 
     // create() and store() methods disabled - "Tạo đặt lịch" feature disabled

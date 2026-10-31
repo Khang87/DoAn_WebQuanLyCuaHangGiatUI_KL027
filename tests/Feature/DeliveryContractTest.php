@@ -945,6 +945,15 @@ class DeliveryContractTest extends TestCase
             'SoDienThoai' => '0900000006',
             'TrangThai' => 'Hoạt động',
         ]);
+        DB::table('VaiTro')->insert(['VaiTroID' => 7, 'TenVaiTro' => 'Nhân viên']);
+        DB::table('TaiKhoan')->insert([
+            ['TaiKhoanID' => 103, 'NhanVienID' => 3, 'TrangThai' => 'Hoạt động'],
+            ['TaiKhoanID' => 106, 'NhanVienID' => 6, 'TrangThai' => 'Hoạt động'],
+        ]);
+        DB::table('TaiKhoan_VaiTro')->insert([
+            ['TaiKhoanID' => 103, 'VaiTroID' => 7],
+            ['TaiKhoanID' => 106, 'VaiTroID' => 7],
+        ]);
         $intake = $this->createBookingIntake(['BookingID' => 2, 'NhanVienID' => 1]);
         $manager = Mockery::mock(User::class)->makePartial();
         $manager->TaiKhoanID = 104;
@@ -965,7 +974,7 @@ class DeliveryContractTest extends TestCase
             ->assertSee('Nhân viên cấp dưới')
             ->assertSee('0900000006')
             ->assertDontSee('value="5"', false)
-            ->assertSee('value="1" selected', false);
+            ->assertSee('id="employee_id" name="employee_id" value="1"', false);
 
         $payload = [
             'address' => '12 Nguyễn Huệ',
@@ -976,6 +985,8 @@ class DeliveryContractTest extends TestCase
             ->orderBy('NhanVienID')
             ->pluck('NhanVienID')
             ->map(static fn ($id): int => (int) $id)
+            ->sort()
+            ->values()
             ->all();
         $this->assertSame([1, 3, 4, 6], $allowedEmployeeIds);
         $this->assertTrue(Validator::make(
@@ -1808,6 +1819,29 @@ class DeliveryContractTest extends TestCase
         $this->assertNotNull($delivery->fresh()->ThoiGianThucTe);
         $this->assertSame(PaymentStatus::Paid->value, DB::table('ThanhToan')->where('DonHangID', 1)->value('TrangThai'));
         $this->assertSame(1, DB::table('ThanhToan')->where('DonHangID', 1)->count());
+    }
+
+    public function test_return_delivery_requires_payment_before_completion(): void
+    {
+        DB::table('NhanVien')->insert(['NhanVienID' => 3, 'TrangThai' => 'Hoạt động']);
+        $service = app(DeliveryService::class);
+        $delivery = $service->create($this->data(['employee_id' => 3]));
+        $delivery = $service->update($delivery, [
+            'status' => 'delivering',
+            'pickup_date' => '2026-10-08',
+            'pickup_time' => '10:00',
+        ]);
+
+        $this->reject(fn () => $service->advanceProgress($delivery), 'payment');
+        $this->reject(fn () => $service->update($delivery, ['status' => 'completed']), 'payment');
+        $this->assertSame('Đang thực hiện', $delivery->fresh()->TrangThai);
+
+        DB::table('ThanhToan')->insert([
+            'DonHangID' => 1,
+            'TrangThai' => PaymentStatus::Paid->value,
+            'SoTien' => 10000,
+        ]);
+        $this->assertSame('Hoàn thành', $service->advanceProgress($delivery)->TrangThai);
     }
 
     public function test_progress_action_advances_pickup_to_completion_and_rejects_terminal_slip(): void

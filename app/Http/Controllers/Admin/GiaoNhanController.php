@@ -9,6 +9,7 @@ use App\Exceptions\SettledOrderException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\LuuGiaoNhanRequest;
 use App\Models\BookingGiaoNhan;
+use App\Models\Booking;
 use App\Models\DonHang;
 use App\Models\GiaoNhan;
 use App\Models\KhachHang;
@@ -44,7 +45,17 @@ class GiaoNhanController extends Controller
         ];
         $deliveries = $this->deliveryService->getUnifiedDeliveries($filters);
 
-        return view('admin.deliveries.index', compact('deliveries'));
+        $inspectableBookingIds = Booking::query()
+            ->whereIn('BookingID', $deliveries->getCollection()
+                ->where('source_type', 'booking')
+                ->where('task_type', 'NHAN_DO')
+                ->pluck('booking_id'))
+            ->get()
+            ->filter(fn (Booking $booking) => $this->bookingService->canInspect($booking))
+            ->pluck('BookingID')
+            ->all();
+
+        return view('admin.deliveries.index', compact('deliveries', 'inspectableBookingIds'));
     }
 
     public function create()
@@ -337,6 +348,26 @@ class GiaoNhanController extends Controller
 
         return redirect()->route('deliveries.show', $delivery)
             ->with('success', 'Đã xác nhận tiến độ: '.$status->label().'.');
+    }
+
+    public function advanceBookingDocument(int $bookingDelivery): RedirectResponse
+    {
+        $document = $this->deliveryService->findBookingDocument($bookingDelivery);
+        abort_if(! $document, 404);
+        $this->restrictToOwnBookingDocument($document, auth()->user());
+
+        try {
+            $this->deliveryService->advanceBookingDelivery($document);
+        } catch (ValidationException $exception) {
+            return redirect()->route('deliveries.booking-documents.show', $document)
+                ->with('error', collect($exception->errors())->flatten()->first());
+        } catch (SettledOrderException $exception) {
+            return redirect()->route('deliveries.booking-documents.show', $document)
+                ->with('error', $exception->getMessage());
+        }
+
+        return redirect()->route('deliveries.booking-documents.show', $document)
+            ->with('success', 'Đã cập nhật tiến độ giao đồ.');
     }
 
     public function edit(int $id)

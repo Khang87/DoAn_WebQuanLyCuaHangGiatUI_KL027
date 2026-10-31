@@ -227,6 +227,10 @@ Route::middleware(['auth', 'reject.customer'])->group(function () {
     Route::post('deliveries/{delivery}/advance-progress', [GiaoNhanController::class, 'advanceProgress'])
         ->middleware('permission:deliveries.edit')
         ->name('deliveries.advance-progress');
+    Route::post('deliveries/booking-documents/{bookingDelivery}/advance-progress', [GiaoNhanController::class, 'advanceBookingDocument'])
+        ->whereNumber('bookingDelivery')
+        ->middleware('permission:deliveries.edit')
+        ->name('deliveries.booking-documents.advance-progress');
     Route::post('deliveries/{delivery}/cancel-return', [GiaoNhanController::class, 'cancelReturnDelivery'])
         ->whereNumber('delivery')
         ->middleware('permission:deliveries.delete')

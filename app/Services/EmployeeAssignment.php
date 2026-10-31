@@ -12,9 +12,6 @@ use Illuminate\Validation\ValidationException;
 
 class EmployeeAssignment
 {
-    /** Stub employee IDs used by the booking intake combobox while mock staff data is enabled. */
-    public const MOCK_EMPLOYEE_IDS = [9001, 9002, 9003, 9004];
-
     /**
      * Lấy danh sách nhân viên có thể phân công cho giao nhận.
      * Bao gồm: người trong nhóm "Nhân viên" (có quyền deliveries.*), Chủ cửa hàng, Quản lý.
@@ -22,14 +19,15 @@ class EmployeeAssignment
     public static function deliveryCandidates(?int $currentId = null): Builder
     {
         return NhanVien::query()->where(function ($query) use ($currentId): void {
-            // Filter active employees who are in "Nhân viên" role (simple approach)
             $query->where('TrangThai', 'Hoạt động')
-                  ->whereDoesntHave('taiKhoans.vaiTros', fn ($q) => $q->where('TenVaiTro', 'Chủ cửa hàng'))
-                  ->whereDoesntHave('taiKhoans.vaiTros', fn ($q) => $q->where('TenVaiTro', 'like', '%Quản lý%'));
-            
-            // Include users with deliveries.edit permission OR not in owner/manager roles
-            $query->orWhereDoesntHave('taiKhoans.vaiTros'); // Users without any role assignment
-            
+                ->whereHas('taiKhoans', fn ($accounts) => $accounts
+                    ->where('TrangThai', 'Hoạt động')
+                    ->whereHas('vaiTros', fn ($roles) => $roles
+                        ->where(fn ($names) => $names
+                            ->where('TenVaiTro', 'Nhân viên')
+                            ->orWhere('TenVaiTro', 'Chủ cửa hàng')
+                            ->orWhere('TenVaiTro', 'like', 'Quản lý%'))));
+
             if ($currentId !== null) {
                 $query->orWhereKey($currentId);
             }
@@ -65,8 +63,7 @@ class EmployeeAssignment
             ->map(static fn ($id): int => (int) $id)
             ->all();
 
-        // Mock phase: allow stub employee IDs used by the booking intake picker until real staff data is wired.
-        return Rule::in(array_values(array_unique([...$employeeIds, ...self::MOCK_EMPLOYEE_IDS])));
+        return Rule::in($employeeIds);
     }
 
     public static function assertBookingIntakeAssignable(
@@ -83,8 +80,7 @@ class EmployeeAssignment
 
         if (
             $employeeId === null
-            || (! self::bookingIntakeCandidates($user, $currentId)->whereKey($employeeId)->exists()
-                && ! in_array($employeeId, self::MOCK_EMPLOYEE_IDS, true))
+            || ! self::bookingIntakeCandidates($user, $currentId)->whereKey($employeeId)->exists()
         ) {
             throw ValidationException::withMessages([
                 $field => 'Nhân viên được chọn không thuộc phạm vi phân công hợp lệ.',
