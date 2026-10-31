@@ -171,7 +171,6 @@
                                             </a>
                                         @endcan
                                     @elseif($isBookingDocument && $isIntake && $delivery->employee_name !== null)
-                                        // Phiếu nhận từ booking + có nhân viên -> "Kiểm tra và tạo đơn" (kể cả khi hoàn thành)
                                         @can('bookings.view')
                                             <a href="{{ route('bookings.inspection', $delivery->booking_id) }}"
                                                class="btn btn-order-action"
@@ -181,7 +180,6 @@
                                             </a>
                                         @endcan
                                     @elseif($isReturnIntake && $delivery->employee_name !== null && in_array($deliveryStatus, [\App\Enums\DeliveryStatus::Pending, \App\Enums\DeliveryStatus::Picking, \App\Enums\DeliveryStatus::Delivering], true))
-                                        // Phiếu giao từ booking + có nhân viên + không cancelled → "Xác nhận giao đồ"
                                         @php
                                             $progressAction = \App\Support\DeliveryWorkflow::progressAction($delivery->task_type, $delivery->fulfillment, $deliveryStatus);
                                             $paymentNotDone = false;
