@@ -1355,6 +1355,42 @@ class BookingOrderConversionTest extends TestCase
             ->assertDontSee('đã sử dụng trong booking khác');
     }
 
+    public function test_inspection_promotion_selected_in_mobile_draft_is_locked_on_web(): void
+    {
+        $this->createInspectionCatalog();
+        $this->createPromotionTable();
+        $booking = $this->createBooking();
+        DB::table('KhuyenMai')->insert([
+            'KhuyenMaiID' => 17,
+            'MaKhuyenMai' => 'MOBILECODE',
+            'TenKhuyenMai' => 'Mã từ mobile',
+            'LoaiKhuyenMai' => 'Tiền mặt',
+            'GiaTriGiam' => 5000,
+            'GiaTriDonToiThieu' => 0,
+            'NgayBatDau' => today()->subDay()->toDateString(),
+            'NgayKetThuc' => today()->addDay()->toDateString(),
+            'SoLuongSuDung' => null,
+            'TrangThai' => 'Hoạt động',
+        ]);
+        $booking->forceFill(['KhuyenMaiID' => 17])->saveQuietly();
+        DB::table('StaffBookingDraft')->insert([
+            'BookingID' => $booking->BookingID,
+            'Payload' => json_encode(['promotion_id' => 17, 'items' => $this->actualItems()]),
+            'CoChenhLech' => true,
+            'CapNhatLuc' => now(),
+        ]);
+        $this->actingAsBookingEmployee();
+        $this->prepareBookingForInspection($booking);
+        $this->createPermissionTables();
+        $this->withoutMiddleware([Authenticate::class, EnsureUserHasPermission::class, RejectCustomerRole::class, RestoreRememberedLogin::class]);
+
+        $this->get(route('bookings.inspection', $booking))->assertOk()
+            ->assertSee('data-booking-promotion', false)
+            ->assertSee('disabled', false)
+            ->assertSee('name="promotion_id" value="17"', false)
+            ->assertSee('MOBILECODE đã được áp dụng trên ứng dụng nhân viên và khóa chỉnh sửa tại đây.');
+    }
+
     public function test_selecting_an_eligible_inspection_promotion_changes_the_order_discount(): void
     {
         $this->createInspectionCatalog();

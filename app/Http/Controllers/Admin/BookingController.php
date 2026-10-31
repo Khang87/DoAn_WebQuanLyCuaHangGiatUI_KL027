@@ -17,6 +17,7 @@ use App\Models\KhachHang;
 use App\Models\LoaiDichVu;
 use App\Models\LoaiDoGiat;
 use App\Models\NhanVien;
+use App\Models\StaffBookingDraft;
 use App\Services\BookingService;
 use App\Services\DeliveryFeeService;
 use App\Services\OrderService;
@@ -269,18 +270,32 @@ class BookingController extends Controller
 
         $currentCouponSubtotal = (float) $booking->chiTietBookings->sum('ThanhTien');
 
+        $staffDraft = $inspectionMode ? StaffBookingDraft::query()->find($booking->BookingID) : null;
+        $staffDraftPayload = $staffDraft?->Payload ?? [];
+        $mobileAppliedPromotionId = isset($staffDraftPayload['promotion_id'])
+            ? (int) $staffDraftPayload['promotion_id']
+            : null;
+        if ($mobileAppliedPromotionId !== (int) ($booking->KhuyenMaiID ?? 0)) {
+            $mobileAppliedPromotionId = null;
+        }
+
         // SoLuongSuDung là số lượt đã dùng, không phải số lượt còn lại hay hạn mức.
-        // Chỉ lọc theo trạng thái/ngày hiệu lực và quy tắc áp dụng cho khách hàng.
-        $coupons = KhuyenMai::query()->where('TrangThai', 'Hoạt động')
-            ->where('NgayBatDau', '<=', today())
-            ->where('NgayKetThuc', '>=', today())
+        // Mã đã lưu trong bản kiểm kê mobile vẫn cần có option để hiển thị và tính tổng.
+        $coupons = KhuyenMai::query()->where(function ($query) use ($mobileAppliedPromotionId): void {
+            $query->where(function ($active): void {
+                $active->where('TrangThai', 'Hoạt động')
+                    ->where('NgayBatDau', '<=', today())
+                    ->where('NgayKetThuc', '>=', today());
+            });
+            if ($mobileAppliedPromotionId !== null) {
+                $query->orWhereKey($mobileAppliedPromotionId);
+            }
+        })
             ->orderBy('MaKhuyenMai')
             ->get();
         $coupons = $coupons
-            ->filter(fn (KhuyenMai $coupon): bool => $coupon->rejectionReasonForCustomer(
-                $booking->khachHang,
-                PHP_FLOAT_MAX,
-            ) === null)
+            ->filter(fn (KhuyenMai $coupon): bool => (int) $coupon->KhuyenMaiID === $mobileAppliedPromotionId
+                || $coupon->rejectionReasonForCustomer($booking->khachHang, PHP_FLOAT_MAX) === null)
             ->values();
         $minimumPromotionThreshold = null;
         if (! $inspectionMode) {
@@ -307,6 +322,7 @@ class BookingController extends Controller
             'coupons',
             'currentCouponSubtotal',
             'minimumPromotionThreshold',
+            'mobileAppliedPromotionId',
         ));
     }
 

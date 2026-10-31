@@ -435,7 +435,8 @@
                     <i class="bi bi-ticket-perforated me-1 text-primary" aria-hidden="true"></i>Áp dụng mã giảm giá
                 </label>
                 <select class="form-select @error('promotion_id') is-invalid @enderror"
-                        id="booking-promotion-select" name="promotion_id" data-booking-promotion>
+                        id="booking-promotion-select" name="promotion_id" data-booking-promotion
+                        @disabled($mobileAppliedPromotionId !== null)>
                     <option value="">{{ $coupons->isEmpty() ? 'Chưa có mã khuyến mãi đủ điều kiện' : 'Không áp dụng mã khuyến mãi' }}</option>
                     @foreach($coupons as $coupon)
                         @php
@@ -452,7 +453,12 @@
                         </option>
                     @endforeach
                 </select>
-                @if($coupons->isEmpty() && $minimumPromotionThreshold !== null && ! $inspectionMode)
+                @if($mobileAppliedPromotionId !== null)
+                    <input type="hidden" name="promotion_id" value="{{ $mobileAppliedPromotionId }}">
+                    <div class="form-text" role="status">
+                        Mã {{ $coupons->firstWhere('KhuyenMaiID', $mobileAppliedPromotionId)?->MaKhuyenMai }} đã được áp dụng trên ứng dụng nhân viên và khóa chỉnh sửa tại đây.
+                    </div>
+                @elseif($coupons->isEmpty() && $minimumPromotionThreshold !== null && ! $inspectionMode)
                     <div class="form-text" role="status">
                         Có mã đang hoạt động nhưng tổng dịch vụ hiện tại {{ number_format($currentCouponSubtotal, 0, ',', '.') }} VNĐ chưa đạt mức tối thiểu {{ number_format($minimumPromotionThreshold, 0, ',', '.') }} VNĐ.
                     </div>
