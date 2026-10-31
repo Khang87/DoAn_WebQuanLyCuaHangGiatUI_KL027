@@ -191,7 +191,9 @@
                                             @can('deliveries.edit')
                                                 @if($paymentNotDone)
                                                     @can('payments.create')
-                                                        <a class="btn btn-order-action" href="{{ route('payments.create', ['order_id' => $delivery->order_id]) }}" title="Thanh toán">Thanh toán</a>
+                                                        <a class="btn btn-order-action payment" href="{{ route('payments.create', ['order_id' => $delivery->order_id]) }}" title="Thanh toán" aria-label="Thanh toán đơn {{ $delivery->order_code }}">
+                                                            <i class="bi bi-credit-card" aria-hidden="true"></i>
+                                                        </a>
                                                     @endcan
                                                 @else
                                                     <x-admin.detail.confirm-form
@@ -225,7 +227,9 @@
                                             @can('deliveries.edit')
                                                 @if($paymentNotDone)
                                                     @can('payments.create')
-                                                        <a class="btn btn-order-action" href="{{ route('payments.create', ['order_id' => $delivery->order_id]) }}" title="Thanh toán">Thanh toán</a>
+                                                        <a class="btn btn-order-action payment" href="{{ route('payments.create', ['order_id' => $delivery->order_id]) }}" title="Thanh toán" aria-label="Thanh toán đơn {{ $delivery->order_code }}">
+                                                            <i class="bi bi-credit-card" aria-hidden="true"></i>
+                                                        </a>
                                                     @endcan
                                                 @else
                                                     <x-admin.detail.confirm-form
