@@ -69,17 +69,19 @@ class UserService
     public function create(array $data): User
     {
         return DB::transaction(function () use ($data): User {
-            // Kiểm tra trùng email hoặc userauthid trước khi tạo mới
-            $existingByAuthId = User::query()->where('userauthid', $data['userauthid'] ?? '')
-                ->whereNotNull('userauthid')
-                ->first();
-            
-            if ($existingByAuthId) {
-                throw new \RuntimeException('Tài khoản với Google ID này đã tồn tại.');
+            // TaiKhoan uses case-sensitive PostgreSQL identifiers for these columns.
+            $authId = $data['userauthid'] ?? null;
+
+            if (is_string($authId) && trim($authId) !== '') {
+                $existingByAuthId = User::query()->where('UserAuthId', $authId)->first();
+
+                if ($existingByAuthId) {
+                    throw new \RuntimeException('Tài khoản với Google ID này đã tồn tại.');
+                }
             }
-            
-            $existingByEmail = User::query()->where('email', $data['email'])->first();
-            
+
+            $existingByEmail = User::query()->where('Email', $data['email'])->first();
+
             if ($existingByEmail) {
                 // Nếu email đã tồn tại, trả về tài khoản cũ thay vì tạo mới
                 throw new \RuntimeException('Email này đã được sử dụng cho tài khoản khác.');
@@ -94,7 +96,7 @@ class UserService
                 'KhachHangID' => $data['KhachHangID'] ?? null,
                 'TrangThai' => 'Hoạt động',
                 'NgayTao' => now(),
-                'UserAuthId' => $data['userauthid'] ?? null,
+                'UserAuthId' => $authId,
             ]);
 
             $this->syncRole($user, $data['role']);
