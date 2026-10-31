@@ -452,18 +452,13 @@
                         </option>
                     @endforeach
                 </select>
-                @if($customerUsedPromotionCodes->isNotEmpty())
-                    <div class="form-text" role="status">
-                        Mã {{ $customerUsedPromotionCodes->implode(', ') }} đang hoạt động nhưng khách hàng này đã sử dụng trong booking khác nên không thể áp dụng lại.
-                    </div>
-                @endif
                 @if($coupons->isEmpty() && $minimumPromotionThreshold !== null && ! $inspectionMode)
                     <div class="form-text" role="status">
                         Có mã đang hoạt động nhưng tổng dịch vụ hiện tại {{ number_format($currentCouponSubtotal, 0, ',', '.') }} VNĐ chưa đạt mức tối thiểu {{ number_format($minimumPromotionThreshold, 0, ',', '.') }} VNĐ.
                     </div>
                 @elseif($coupons->isEmpty())
                     <div class="form-text" role="status">
-                        Hiện không có mã phù hợp với khách hàng này. Mã hết hạn, tạm ngưng, khách hàng đã dùng hoặc không thỏa điều kiện áp dụng sẽ không xuất hiện.
+                        Hiện không có mã phù hợp. Hãy kiểm tra trạng thái, thời hạn, điều kiện áp dụng và tổng giá trị dịch vụ.
                     </div>
                 @else
                     <div class="form-text" data-promotion-help>

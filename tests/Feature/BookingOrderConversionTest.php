@@ -1323,10 +1323,10 @@ class BookingOrderConversionTest extends TestCase
 
         $this->get(route('bookings.inspection', $booking))->assertOk()
             ->assertSee('option value="">Chưa có mã khuyến mãi đủ điều kiện</option>', false)
-            ->assertSee('Mã hết hạn, tạm ngưng, khách hàng đã dùng hoặc không thỏa điều kiện áp dụng sẽ không xuất hiện.');
+            ->assertSee('Hiện không có mã phù hợp. Hãy kiểm tra trạng thái, thời hạn, điều kiện áp dụng và tổng giá trị dịch vụ.');
     }
 
-    public function test_inspection_promotion_dropdown_explains_when_customer_already_used_the_code(): void
+    public function test_inspection_promotion_dropdown_allows_code_used_on_another_booking(): void
     {
         $this->createInspectionCatalog();
         $this->createPromotionTable();
@@ -1351,8 +1351,8 @@ class BookingOrderConversionTest extends TestCase
         $this->withoutMiddleware([Authenticate::class, EnsureUserHasPermission::class, RejectCustomerRole::class, RestoreRememberedLogin::class]);
 
         $this->get(route('bookings.inspection', $booking))->assertOk()
-            ->assertDontSee('option value="16"', false)
-            ->assertSee('Mã ONEPERCLIENT đang hoạt động nhưng khách hàng này đã sử dụng trong booking khác nên không thể áp dụng lại.');
+            ->assertSee('<option value="16"', false)
+            ->assertDontSee('đã sử dụng trong booking khác');
     }
 
     public function test_selecting_an_eligible_inspection_promotion_changes_the_order_discount(): void
@@ -1372,6 +1372,8 @@ class BookingOrderConversionTest extends TestCase
             'SoLuongSuDung' => 2,
             'TrangThai' => 'Hoạt động',
         ]);
+        $priorBooking = $this->createBooking();
+        $priorBooking->forceFill(['KhuyenMaiID' => 14])->saveQuietly();
         $this->actingAsBookingEmployee();
 
         $order = $this->createOrderThroughInspection(

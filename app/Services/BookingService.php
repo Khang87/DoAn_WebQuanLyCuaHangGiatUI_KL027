@@ -290,11 +290,8 @@ class BookingService
             $promotionReserved = $previousPromotionId === $promotionId && $previousPromotionReserved;
             if ($promotionId !== null && ! $promotionReserved) {
                 $promotion = KhuyenMai::query()->whereKey($promotionId)->lockForUpdate()->first();
-                if (! $promotion || ! $promotion->isValid()
-                    || Booking::query()->where('KhachHangID', $locked->KhachHangID)
-                        ->where('KhuyenMaiID', $promotionId)->where('TrangThai', '<>', BookingStatus::Cancelled->value)
-                        ->where('BookingID', '<>', $locked->BookingID)->exists()) {
-                    throw ValidationException::withMessages(['promotion_id' => 'Mã giảm giá vừa hết hạn hoặc đã được dùng cho lịch đặt khác.']);
+                if (! $promotion || ! $promotion->isValid()) {
+                    throw ValidationException::withMessages(['promotion_id' => 'Mã giảm giá vừa hết hạn hoặc không còn hiệu lực.']);
                 }
                 if ($promotion->SoLuongSuDung !== null) {
                     $affected = KhuyenMai::query()->whereKey($promotionId)->where('SoLuongSuDung', '>', 0)
@@ -419,11 +416,8 @@ class BookingService
             }
             if ($promotionId !== null && ! $promotionReserved) {
                 $promotion = KhuyenMai::query()->whereKey($promotionId)->lockForUpdate()->first();
-                if (! $promotion || ! $promotion->isValid()
-                    || Booking::query()->where('KhachHangID', $locked->KhachHangID)
-                        ->where('KhuyenMaiID', $promotionId)->where('TrangThai', '<>', BookingStatus::Cancelled->value)
-                        ->where('BookingID', '<>', $locked->BookingID)->exists()) {
-                    throw ValidationException::withMessages(['promotion_id' => 'Mã giảm giá vừa hết hạn hoặc đã được dùng cho lịch đặt khác.']);
+                if (! $promotion || ! $promotion->isValid()) {
+                    throw ValidationException::withMessages(['promotion_id' => 'Mã giảm giá vừa hết hạn hoặc không còn hiệu lực.']);
                 }
                 if ($promotion->SoLuongSuDung !== null) {
                     $affected = KhuyenMai::query()->whereKey($promotionId)->where('SoLuongSuDung', '>', 0)->decrement('SoLuongSuDung');

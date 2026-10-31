@@ -155,7 +155,7 @@
             </div>
             <div class="d-flex justify-content-end gap-2 mt-4">
                 <a href="{{ $preselectedOrder ? route('orders.show', $preselectedOrder) : route('orders.index') }}" class="btn btn-success d-none" id="paymentBankComplete">Hoàn tất</a>
-                <button type="submit" class="btn btn-primary {{ $initialMethod === 'bank_transfer' ? 'd-none' : '' }}" id="paymentCashSubmit" @disabled($initialMethod === 'bank_transfer')><i class="bi bi-plus-lg me-1"></i>Thêm mới</button>
+                <button type="submit" class="btn btn-primary {{ $initialMethod === 'bank_transfer' ? 'd-none' : '' }}" id="paymentCashSubmit" @disabled($initialMethod === 'bank_transfer')><i class="bi bi-check-lg me-1"></i>Cập nhật</button>
             </div>
         </form>
     </div>

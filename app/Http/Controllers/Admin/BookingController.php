@@ -267,12 +267,6 @@ class BookingController extends Controller
             ])
             ->values();
 
-        $usedPromotionIds = Booking::query()
-            ->where('KhachHangID', $booking->KhachHangID)
-            ->whereKeyNot($booking->BookingID)
-            ->where('TrangThai', '<>', BookingStatus::Cancelled->value)
-            ->whereNotNull('KhuyenMaiID')
-            ->pluck('KhuyenMaiID');
         $currentCouponSubtotal = (float) $booking->chiTietBookings->sum('ThanhTien');
 
         // SoLuongSuDung là số lượt đã dùng, không phải số lượt còn lại hay hạn mức.
@@ -282,12 +276,7 @@ class BookingController extends Controller
             ->where('NgayKetThuc', '>=', today())
             ->orderBy('MaKhuyenMai')
             ->get();
-        $customerUsedPromotionCodes = $coupons
-            ->whereIn('KhuyenMaiID', $usedPromotionIds)
-            ->pluck('MaKhuyenMai')
-            ->values();
         $coupons = $coupons
-            ->whereNotIn('KhuyenMaiID', $usedPromotionIds)
             ->filter(fn (KhuyenMai $coupon): bool => $coupon->rejectionReasonForCustomer(
                 $booking->khachHang,
                 PHP_FLOAT_MAX,
@@ -318,7 +307,6 @@ class BookingController extends Controller
             'coupons',
             'currentCouponSubtotal',
             'minimumPromotionThreshold',
-            'customerUsedPromotionCodes',
         ));
     }
 
