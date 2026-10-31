@@ -160,10 +160,10 @@
                     @if($order->booking)
                         @can('bookings.view')
                         <a href="{{ route('bookings.show', $order->booking) }}" class="text-decoration-none">
-                            <i class="bi bi-calendar-check me-1"></i>Lịch hẹn {{ $order->booking->code }}
+                            <i class="bi bi-calendar-check me-1"></i>Đặt lịch {{ $order->booking->code }}
                         </a>
                         @else
-                        Lịch hẹn {{ $order->booking->code }}
+                        Đặt lịch {{ $order->booking->code }}
                         @endcan
                     @else
                         Nhập trực tiếp

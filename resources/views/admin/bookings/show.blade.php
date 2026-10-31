@@ -5,7 +5,7 @@
 
 @section('content')
 <x-admin.detail.page-header
-    title="Chi tiết lịch hẹn"
+    title="Chi tiết đặt lịch"
     :subtitle="$booking->method_label . ' ngày ' . ($booking->NgayHen?->format('d/m/Y') ?: '—')"
     backUrl="{{ route('bookings.index') }}"
 >
@@ -33,7 +33,7 @@
 
 <div class="row g-4 align-items-start">
     <div class="col-lg-8">
-        <x-admin.detail.panel title="Thông tin lịch hẹn" icon="bi-calendar-check" :iconClass="'bg-primary-subtle text-primary'">
+        <x-admin.detail.panel title="Thông tin đặt lịch" icon="bi-calendar-check" :iconClass="'bg-primary-subtle text-primary'">
             <x-admin.detail.info-grid :columns="2">
                 <x-admin.detail.info-item label="Mã đặt lịch" :value="$booking->MaBooking ?: '—'" />
                 <x-admin.detail.info-item label="Trạng thái đặt lịch">
@@ -44,7 +44,7 @@
                 <x-admin.detail.info-item label="HÌNH THỨC NHÂN VIÊN GIAO ĐỒ" :value="$booking->return_method_label" />
                 <x-admin.detail.info-item label="ĐỊA CHỈ NHÂN VIÊN GIAO ĐỒ" :value="$returnAtStore ? $storeAddress : ($booking->DiaChiTra ?: '—')" />
                 <x-admin.detail.info-item label="Nhân viên xác nhận đặt lịch" :value="$booking->nhanVienXacNhan?->HoTen ?? '—'" />
-                <x-admin.detail.info-item label="Nhân viên nhận và kiểm kê đồ" :value="$intakeDocument?->nhanVien?->HoTen ?? 'Chưa phân công'" />
+                <x-admin.detail.info-item label="Nhân viên nhận và kiểm tra đồ" :value="$intakeDocument?->nhanVien?->HoTen ?? 'Chưa phân công'" />
                 <x-admin.detail.info-item label="Thời gian xác nhận đặt lịch" :value="$booking->ThoiGianXacNhan?->format('d/m/Y H:i') ?? '—'" />
                 <x-admin.detail.info-item label="Ngày hẹn nhận đồ" :value="$booking->NgayHen?->format('d/m/Y')" />
                 <x-admin.detail.info-item label="Giờ hẹn nhận đồ" :value="$booking->GioHen?->format('H:i')" />
@@ -103,7 +103,7 @@
             @endif
         </x-admin.detail.panel>
 
-        <x-admin.detail.panel title="Ước tính từ lịch đặt" icon="bi-calculator" :iconClass="'bg-info-subtle text-info'">
+        <x-admin.detail.panel title="Tạm tính" icon="bi-calculator" :iconClass="'bg-info-subtle text-info'">
             @if($booking->KhuyenMaiID && $booking->khuyenMai)
                 <div class="d-flex align-items-center gap-2 mb-3">
                     <span class="badge bg-primary-subtle text-primary-emphasis border border-primary px-3 py-2 rounded-pill">
@@ -111,8 +111,6 @@
                     </span>
                     <span class="text-muted small">Đã áp dụng · {{ $booking->khuyenMai->discountValueLabel() }}</span>
                 </div>
-            @else
-                <div class="text-muted mb-3">Không dùng mã giảm giá.</div>
             @endif
             @if($bookingAmounts !== null)
                 @php
@@ -135,9 +133,6 @@
                     @endforeach
                 </dl>
                 @if($bookingAmounts['promotion_warning'])<div class="alert alert-warning mt-3 mb-0" role="status">{{ $bookingAmounts['promotion_warning'] }}</div>@endif
-                <p class="text-muted small mt-3 mb-0">Ước tính theo dịch vụ đã đặt và số điểm đã chọn. Tiền chốt được tính lại khi kiểm kê đồ thực tế; xem đơn hàng liên kết để biết số tiền đã xác nhận.</p>
-            @else
-                <p class="text-muted mb-0">Chưa có dịch vụ dự kiến để tính tổng tiền. Tổng thanh toán sẽ được tính khi kiểm kê đồ thực tế.</p>
             @endif
         </x-admin.detail.panel>
         @include('admin.bookings.mobile-summary')
@@ -153,10 +148,10 @@
         </x-admin.detail.panel>
 
         @if($booking->giaoNhanDuKiens->isNotEmpty())
-            <x-admin.detail.panel title="Phiếu nhận và kế hoạch trả từ Booking" icon="bi-truck" :iconClass="'bg-info-subtle text-info'">
+            <x-admin.detail.panel title="Phiếu nhận và kế hoạch giao từ đặt lịch" icon="bi-truck" :iconClass="'bg-info-subtle text-info'">
                 @foreach($booking->giaoNhanDuKiens as $leg)
                     <div class="border rounded p-3 mb-2">
-                        <strong>{{ $leg->LoaiGiaoNhan === 'NHAN_DO' ? 'Phiếu nhận đồ' : 'Kế hoạch trả đồ' }}</strong>
+                        <strong>{{ $leg->LoaiGiaoNhan === 'NHAN_DO' ? 'Phiếu nhận đồ' : 'Kế hoạch giao đồ' }}</strong>
                         <span class="ms-2">{{ $leg->HinhThuc }}</span>
                         <span class="ms-2 text-muted">{{ $leg->TrangThai }}</span>
                         <div class="text-muted small">{{ $leg->DiaChi ?: 'Tại cửa hàng' }}</div>
@@ -165,16 +160,16 @@
                                 {{ $leg->HinhThuc === 'Tại nhà' ? 'Nhân viên đến nhận đồ tại địa chỉ trên.' : 'Khách mang đồ đến cửa hàng để nhân viên tiếp nhận.' }}
                             </div>
                             @if($leg->TrangThai === \App\Enums\DeliveryStatus::Cancelled->dbValue())
-                                <div class="small text-muted mt-2">Phiếu đã hủy; không thể tiếp tục kiểm kê.</div>
+                                <div class="small text-muted mt-2">Phiếu đã hủy; không thể tiếp tục kiểm tra.</div>
                             @elseif(! $leg->NhanVienID)
-                                <div class="small text-muted mt-2">Chưa phân công nhân viên nhận và kiểm kê.</div>
+                                <div class="small text-muted mt-2">Chưa phân công nhân viên nhận và kiểm tra.</div>
                             @endif
                         @else
-                            <div class="small text-muted mt-2">Thông tin kế hoạch từ Booking; đây chưa phải phiếu giao vận hành.</div>
+                            <div class="small text-muted mt-2">Thông tin kế hoạch từ đặt lịch; đây chưa phải phiếu giao vận hành.</div>
                         @endif
                         @if($leg->DonHangID && $leg->BookingKiemKeID === $booking->kiemKe?->BookingKiemKeID)
                             <div class="small mt-2">
-                                Đã đối soát từ phiếu nhận · kiểm kê phiên bản {{ $booking->kiemKe->PhienBan }} ·
+                                Đã đối soát từ phiếu nhận · kiểm tra phiên bản {{ $booking->kiemKe->PhienBan }} ·
                                 @can('orders.view')
                                     <a href="{{ route('orders.show', $order) }}">Đơn {{ $order->MaDonHang }}</a>
                                 @else

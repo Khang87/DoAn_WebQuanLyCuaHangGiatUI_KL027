@@ -179,7 +179,11 @@ class OrderService
         $promotion = $overridePromotion
             ? ($promotionId === null ? null : KhuyenMai::find($promotionId))
             : $booking->khuyenMai;
-        $warning = $promotion?->rejectionReasonForCustomer($customer, $subtotal);
+        $warning = $promotion?->rejectionReasonForCustomer(
+            $customer,
+            $subtotal,
+            excludeBookingId: (int) $booking->BookingID,
+        );
         if (! $overridePromotion && $booking->KhuyenMaiID && ! $promotion) {
             $warning = 'Không tìm thấy khuyến mãi của lịch đặt. Vui lòng kiểm tra trước khi xác nhận.';
         }
@@ -246,7 +250,7 @@ class OrderService
             }
 
             if ($booking->TrangThai !== BookingStatus::Confirmed->value) {
-                throw ValidationException::withMessages(['booking' => 'Chỉ Booking đã xác nhận mới có thể được kiểm kê và tạo đơn.']);
+                throw ValidationException::withMessages(['booking' => 'Chỉ đặt lịch đã xác nhận mới có thể được kiểm tra và tạo đơn.']);
             }
             $inspection = null;
             $legs = $booking->giaoNhanDuKiens()->lockForUpdate()->get()->keyBy('LoaiGiaoNhan');
@@ -256,7 +260,7 @@ class OrderService
                 'Đã nhận',
             ], true)
                 || ! $legs->has('GIAO_DO')) {
-                throw ValidationException::withMessages(['booking' => 'Cần phiếu Nhận đang được xử lý hoặc đã hoàn tất và phiếu kế hoạch trả trước khi tạo đơn.']);
+                throw ValidationException::withMessages(['booking' => 'Cần phiếu nhận đang được xử lý hoặc đã hoàn tất và phiếu kế hoạch giao trước khi tạo đơn.']);
             }
             $inspection = BookingKiemKe::query()->where('BookingID', $booking->BookingID)->lockForUpdate()->first();
             $storedInspection = $inspection?->DuLieuThucTe;
@@ -265,7 +269,7 @@ class OrderService
                 'DichVuID', 'LoaiDoGiatID', 'DonViTinhID', 'SoLuong', 'KhoiLuong', 'TinhTrangTruocKhiGiat', 'GhiChu',
             ])), $items);
             if (! $inspection || $expectedItems != $actualItems) {
-                throw ValidationException::withMessages(['booking' => 'Bản kiểm kê chưa được lưu hoặc không khớp với dữ liệu đang tạo đơn.']);
+                throw ValidationException::withMessages(['booking' => 'Kết quả kiểm tra chưa được lưu hoặc không khớp với dữ liệu đang tạo đơn.']);
             }
             // Preserve edits from inspection, never stale customer/status/reward markers.
             $booking->fill($inspectionChanges);
@@ -304,7 +308,7 @@ class OrderService
             $deliveryQuote = $booking->deliveryFeeSnapshot();
 
             $bookingCode = $booking->MaBooking ?: Booking::nextCode();
-            $customer = KhachHang::query()->find($booking->KhachHangID);
+            $customer = KhachHang::query()->lockForUpdate()->find($booking->KhachHangID);
             // Older App bookings may already have reserved points. Return that
             // reservation inside this transaction before redeeming the inspected order.
             if ($booking->getAttribute('DiemDaTru') && (int) $booking->getAttribute('DiemSuDung') > 0) {
@@ -313,7 +317,7 @@ class OrderService
             $customerPoints = $customer?->fresh()->points() ?? 0;
             $this->assertRequestedPointsAvailable($pointsUsed, $customerPoints);
             $promotion = $booking->getAttribute('KhuyenMaiID')
-                ? $this->applyPromotionConditions(KhuyenMai::find($booking->getAttribute('KhuyenMaiID')), $customer, $total)
+                ? $this->applyPromotionConditions(KhuyenMai::find($booking->getAttribute('KhuyenMaiID')), $customer, $total, excludeBookingId: (int) $booking->BookingID)
                 : null;
             if ($requirePromotion && $booking->getAttribute('KhuyenMaiID') && $promotion === null) {
                 throw ValidationException::withMessages([
@@ -594,6 +598,7 @@ class OrderService
             'hoaDons',
         ])
             ->orderBy($sortBy, $sortOrder)
+            ->orderBy('DonHangID', $sortOrder)
             ->paginate(10)
             ->withQueryString();
     }
@@ -621,7 +626,13 @@ class OrderService
      * Chính sách: Đơn vẫn được lưu nhưng KHÔNG áp dụng giảm giá, đồng thời ghi
      * nhận lý do để controller hiển thị cảnh báo cho người dùng.
      */
-    private function applyPromotionConditions(?KhuyenMai $promotion, ?KhachHang $customer, float $subtotal, ?int $excludeOrderId = null): ?KhuyenMai
+    private function applyPromotionConditions(
+        ?KhuyenMai $promotion,
+        ?KhachHang $customer,
+        float $subtotal,
+        ?int $excludeOrderId = null,
+        ?int $excludeBookingId = null,
+    ): ?KhuyenMai
     {
         $this->promotionRejection = null;
 
@@ -629,7 +640,7 @@ class OrderService
             return null;
         }
 
-        $reason = $promotion->rejectionReasonForCustomer($customer, $subtotal, $excludeOrderId);
+        $reason = $promotion->rejectionReasonForCustomer($customer, $subtotal, $excludeOrderId, $excludeBookingId);
 
         if ($reason !== null) {
             $this->promotionRejection = $reason;
@@ -686,8 +697,8 @@ class OrderService
             ],
 
         ], [
-            'BookingID.prohibited' => 'Hãy tạo đơn từ màn hình kiểm kê Booking.',
-            'TrangThai.in' => 'Đơn mới chỉ được tạo ở trạng thái Đã tiếp nhận sau khi kiểm kê.',
+            'BookingID.prohibited' => 'Hãy tạo đơn từ màn hình kiểm tra đặt lịch.',
+            'TrangThai.in' => 'Đơn mới chỉ được tạo ở trạng thái Đã tiếp nhận sau khi kiểm tra.',
         ])->validate();
         foreach ($data['items'] as &$item) {
             $item['TinhTrangTruocKhiGiat'] = trim($item['TinhTrangTruocKhiGiat']);
@@ -1221,11 +1232,11 @@ class OrderService
                     ? $booking->HinhThucTraDo !== $lockedDelivery->HinhThuc
                     : ! $lockedOrder->requiresHomeDelivery())
             ) {
-                throw ValidationException::withMessages(['delivery' => 'Phiếu giao đồ không thuộc chặng trả hợp lệ của đơn hàng.']);
+                throw ValidationException::withMessages(['delivery' => 'Phiếu giao đồ không thuộc chặng giao hợp lệ của đơn hàng.']);
             }
 
             if ($booking?->statusEnum() === BookingStatus::Cancelled) {
-                throw ValidationException::withMessages(['booking' => 'Không thể hoàn tất giao đồ cho Booking đã hủy.']);
+                throw ValidationException::withMessages(['booking' => 'Không thể hoàn tất giao đồ cho đặt lịch đã hủy.']);
             }
 
             $deliveryStatus = DeliveryStatus::parseForLeg($lockedDelivery->TrangThai, $lockedDelivery->LoaiGiaoNhan);
@@ -1301,7 +1312,7 @@ class OrderService
         $current = $lockedOrder->statusEnum();
         if ($target === OrderStatus::Delivered && $lockedOrder->BookingID !== null) {
             throw ValidationException::withMessages([
-                'TrangThai' => 'Hoàn tất bàn giao qua phiếu giao đồ để đồng bộ đơn hàng và Booking.',
+                'TrangThai' => 'Hoàn tất bàn giao qua phiếu giao đồ để đồng bộ đơn hàng và đặt lịch.',
             ]);
         }
         if (
@@ -1318,7 +1329,7 @@ class OrderService
             && $lockedOrder->requiresHomeDelivery()
         ) {
             throw ValidationException::withMessages([
-                'TrangThai' => 'Đơn hàng trả tại nhà phải qua bước đang giao trước khi xác nhận đã giao.',
+                'TrangThai' => 'Đơn hàng giao tại nhà phải qua bước đang giao trước khi xác nhận đã giao.',
             ]);
         }
         if (

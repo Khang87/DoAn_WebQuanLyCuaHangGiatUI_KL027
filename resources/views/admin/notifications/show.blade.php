@@ -7,7 +7,7 @@
 @php
     $typeLabels = [
         'order' => 'Đơn hàng',
-        'booking' => 'Lịch hẹn',
+        'booking' => 'Đặt lịch',
         'payment' => 'Thanh toán',
         'promotion' => 'Khuyến mãi',
         'system' => 'Hệ thống',

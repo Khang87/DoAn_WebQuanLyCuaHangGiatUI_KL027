@@ -38,13 +38,6 @@
                     @enderror
                     <div class="form-text" id="customer-contact-help">Nhập số điện thoại gồm 10 hoặc 11 chữ số, bắt đầu bằng số 0.</div>
                 </div>
-                <div class="col-md-6">
-                    <label class="form-label">Điểm tích lũy</label>
-                    <input type="number" class="form-control @error('DiemHienTai') is-invalid @enderror" name="DiemHienTai" value="0" min="0" placeholder="Điểm tích lũy">
-                    @error('DiemHienTai')
-                        <div class="invalid-feedback">{{ $message }}</div>
-                    @enderror
-                </div>
                 <div class="col-12">
                     <label class="form-label">Địa chỉ</label>
                     <textarea class="form-control @error('DiaChi') is-invalid @enderror" name="DiaChi" rows="3" placeholder="Nhập địa chỉ"></textarea>

@@ -224,6 +224,9 @@ class OrderListPerformanceTest extends TestCase
         for ($id = 3; $id <= 12; $id++) {
             $this->seedOrder($id, OrderStatus::Received);
         }
+        $latest = app(OrderService::class)->getAll();
+        $this->assertSame(12, $latest->first()->DonHangID, 'Newest IDs break ties when creation timestamps match.');
+
         $page = app(OrderService::class)->getAll(['sort' => 'code_desc']);
         $this->assertSame(12, $page->total());
         $this->assertSame(10, $page->count());

@@ -73,11 +73,7 @@
                         value="{{ $nextOrderCode }}"
                         readonly
                         disabled
-                        aria-describedby="order-code-help"
                     >
-                    <div class="form-text" id="order-code-help">
-                        Mã được hệ thống tự tạo khi lưu đơn hàng.
-                    </div>
                 </div>
 
                 <div class="col-md-6">
@@ -128,7 +124,6 @@
                         value="{{ $authenticatedEmployee?->HoTen ?? 'Chưa có hồ sơ nhân viên đang hoạt động' }}"
                         readonly
                     >
-                    <div class="form-text">Đơn hàng sẽ được gán tự động cho nhân viên thuộc tài khoản đang đăng nhập.</div>
                     @error('NhanVienID')<div class="text-danger small mt-1">{{ $message }}</div>@enderror
                 </div>
 
@@ -137,19 +132,18 @@
                         Trạng thái <span class="text-danger ms-1">*</span>
                     </label>
 
-                    <select class="form-select @error('TrangThai') is-invalid @enderror" id="status" name="TrangThai" required aria-describedby="order-status-help">
+                    <select class="form-select @error('TrangThai') is-invalid @enderror" id="status" name="TrangThai" required>
                         @foreach($statusFlow as $value => $label)
                             <option value="{{ $value }}" @selected($value === \App\Enums\OrderStatus::Received->value) @disabled($value !== \App\Enums\OrderStatus::Received->value)>{{ $label }}</option>
                         @endforeach
                     </select>
                     @error('TrangThai')<div class="invalid-feedback">{{ $message }}</div>@enderror
-                    <div class="form-text" id="order-status-help">Đơn mới bắt đầu ở trạng thái Đã tiếp nhận sau kiểm kê. Cập nhật trạng thái tiếp theo sau khi lưu đơn. Đơn từ Booking cần tạo trên màn hình kiểm kê Booking.</div>
                 </div>
 
-                {{-- ======== Thông tin nhận và trả đồ ======== --}}
+                {{-- ======== Thông tin nhận và giao đồ ======== --}}
                 <div class="col-12">
                     <div class="border rounded-3 p-3">
-                        <h6 class="mb-3">Thông tin nhận và trả đồ</h6>
+                        <h6 class="mb-3">Thông tin nhận và giao đồ</h6>
 
                         <div class="row g-3">
                             <div class="col-md-6">
@@ -173,7 +167,7 @@
                                         value="Tại nhà"
                                         @selected(old('HinhThucNhanDo') === 'Tại nhà')
                                     >
-                                        Nhân viên đến nhà lấy đồ
+                                        Nhân viên đến nhà nhận đồ
                                     </option>
                                 </select>
 
@@ -184,7 +178,7 @@
 
                             <div class="col-md-6" id="pickupAddressGroup">
                                 <label for="DiaChiNhan" class="form-label">
-                                    Địa chỉ lấy đồ
+                                    Địa chỉ nhận đồ
                                 </label>
 
                                 <input
@@ -204,7 +198,7 @@
 
                             <div class="col-md-6">
                                 <label for="HinhThucTraDo" class="form-label">
-                                    Trả đồ sạch
+                                    Giao đồ sạch
                                 </label>
 
                                 <select
@@ -268,7 +262,7 @@
                                     role="status"
                                     aria-live="polite"
                                 >
-                                    Chọn phương thức nhận/trả đồ và nhập địa chỉ nếu giao tại nhà.
+                                    Chọn phương thức nhận/giao đồ và nhập địa chỉ nếu giao tại nhà.
                                 </div>
 
                                 <div
@@ -276,12 +270,12 @@
                                     class="border rounded-3 p-3 mt-3 d-none"
                                 >
                                     <div class="d-flex justify-content-between gap-3">
-                                        <span>Quãng đường lấy đồ</span>
+                                        <span>Quãng đường nhận đồ</span>
                                         <strong id="pickupDistanceText">—</strong>
                                     </div>
 
                                     <div class="d-flex justify-content-between gap-3">
-                                        <span>Phí lấy đồ</span>
+                                        <span>Phí nhận đồ</span>
                                         <strong id="pickupFeeText">0đ</strong>
                                     </div>
 
@@ -304,10 +298,6 @@
                                         <strong id="deliveryTotalFeeText">0đ</strong>
                                     </div>
 
-                                    <div class="form-text mt-2">
-                                        Đây là báo giá xem trước. Khi lưu đơn, máy chủ sẽ tính lại
-                                        để không tin tưởng số tiền do trình duyệt gửi lên.
-                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -514,12 +504,6 @@
                         </table>
                     </div>
 
-                    <div class="form-text">
-                        Đơn giá lấy từ bảng giá hiện hành và không sửa trực tiếp.
-                        Dịch vụ có đơn vị <strong>kg</strong> sẽ tính theo khối lượng,
-                        tối thiểu {{ number_format($minimumWeight, 1) }} kg;
-                        các đơn vị khác tính theo số lượng.
-                    </div>
                 </div>
 
                 {{-- ======== Ưu đãi và điểm tích lũy ======== --}}
@@ -573,7 +557,7 @@
                         @enderror
 
                         <p class="small text-muted mb-0 mt-1">
-                            Đơn tạo trên web không dùng voucher. Đơn chuyển từ Booking giữ voucher của lịch đặt.
+                            Đơn tạo trên web không dùng voucher. Đơn chuyển từ đặt lịch giữ voucher của lịch đặt.
                         </p>
                     </div>
                 </div>
@@ -744,7 +728,7 @@
         );
     }
 
-    // ======== Thông tin nhận/trả đồ ========
+    // ======== Thông tin nhận/giao đồ ========
 
     function formatVnd(value) {
         return new Intl.NumberFormat('vi-VN').format(Number(value) || 0) + 'đ';
@@ -773,7 +757,7 @@
         quoteResult.classList.add('d-none');
 
         quoteStatus.textContent =
-            'Thông tin nhận/trả đồ đã thay đổi. Hãy tính lại phí giao nhận.';
+            'Thông tin nhận/giao đồ đã thay đổi. Hãy tính lại phí giao nhận.';
 
         updateTotals();
     }
@@ -807,7 +791,7 @@
         const returnAtHome = returnMethod.value === 'Tại nhà';
 
         if (pickupAtHome && !pickupAddress.value.trim()) {
-            quoteStatus.textContent = 'Vui lòng nhập địa chỉ lấy đồ.';
+            quoteStatus.textContent = 'Vui lòng nhập địa chỉ nhận đồ.';
             pickupAddress.focus();
             return;
         }

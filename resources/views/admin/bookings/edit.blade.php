@@ -1,7 +1,7 @@
 @extends('layouts.app')
 
 @section('title', ($inspectionMode ?? false) ? 'Kiểm tra thực tế - Sky Laundry' : 'Chỉnh sửa đặt lịch - Sky Laundry')
-@section('page-title', ($inspectionMode ?? false) ? 'Kiểm tra thực tế Booking' : 'Chỉnh sửa đặt lịch')
+@section('page-title', ($inspectionMode ?? false) ? 'Kiểm tra thực tế đặt lịch' : 'Chỉnh sửa đặt lịch')
 
 @push('styles')
 <style>
@@ -74,7 +74,7 @@
                 </div>
                 <div class="col-md-6">
                     <label class="form-label" for="booking-staff-name">
-                        {{ $inspectionMode ? 'Nhân viên được phân công nhận và kiểm kê đồ' : 'Nhân viên phụ trách nhận đồ hiện tại' }}
+                        {{ $inspectionMode ? 'Nhân viên được phân công nhận và kiểm tra đồ' : 'Nhân viên phụ trách nhận đồ hiện tại' }}
                     </label>
                     <input
                         type="text"
@@ -86,7 +86,6 @@
                         readonly
                     >
                     @if($inspectionMode)
-                        <div class="form-text">Người xác nhận Booking: {{ $booking->nhanVienXacNhan?->HoTen ?? '—' }}. Chỉ nhân viên được phân công hoặc người có thẩm quyền mới được chốt kiểm kê.</div>
                     @else
                         <div class="form-text">Thông tin này chỉ để xem; không thể đổi nhân viên phụ trách tại đây.</div>
                     @endif
@@ -166,7 +165,7 @@
                             @readonly($inspectionMode)
                         >
                         @if($inspectionMode)
-                            <div id="booking-return-address-suggestions" class="list-group booking-address-suggestions position-absolute top-100 start-0 w-100 shadow d-none" role="listbox" aria-label="Gợi ý địa chỉ trả đồ"></div>
+                            <div id="booking-return-address-suggestions" class="list-group booking-address-suggestions position-absolute top-100 start-0 w-100 shadow d-none" role="listbox" aria-label="Gợi ý địa chỉ giao đồ"></div>
                             <div class="form-text" data-address-autocomplete-status role="status" aria-live="polite"></div>
                         @endif
                         @error('return_address')<div class="invalid-feedback">{{ $message }}</div>@enderror
@@ -175,26 +174,6 @@
                 @if($inspectionMode)
                             </div>
                         </div>
-                    </div>
-                @endif
-                @if($inspectionMode)
-                    <div class="col-12">
-                        <div class="border rounded-3 p-3">
-                            <h6 class="mb-2">Ưu đãi từ đặt lịch</h6>
-                            <div class="row g-3">
-                                <div class="col-md-6">
-                                    <label class="form-label" for="booking-promotion">Mã giảm giá</label>
-                                    <input class="form-control booking-main-control" id="booking-promotion" value="{{ $booking->khuyenMai?->MaKhuyenMai ?: 'Không có mã giảm giá' }}" readonly>
-                                </div>
-                                <div class="col-md-6">
-                                    <label class="form-label" for="booking-points">Điểm đã sử dụng</label>
-                                    <input class="form-control booking-main-control" id="booking-points" value="{{ number_format((int) $booking->DiemSuDung, 0, ',', '.') }} điểm ({{ number_format((float) $booking->TienGiamDoDiem, 0, ',', '.') }} VNĐ)" readonly>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-12">
-                        <div class="small text-muted">Phí giao nhận được giữ theo thông tin đã lưu trên Booking; kiểm kê không gọi lại dịch vụ định tuyến.</div>
                     </div>
                 @endif
                 <div class="col-md-6"><label class="form-label">Ngày hẹn nhân viên nhận đồ <span class="text-danger ms-1">*</span></label><input type="date" class="form-control booking-main-control @error('scheduled_date') is-invalid @enderror" name="scheduled_date" value="{{ old('scheduled_date', $booking->NgayHen?->format('Y-m-d')) }}" required @readonly($inspectionMode)>@error('scheduled_date')<div class="invalid-feedback">{{ $message }}</div>@enderror</div>
@@ -243,7 +222,7 @@
                     @if($booking->requestedServices->isNotEmpty() || $legacyRequestedServices->isNotEmpty())
                         <div class="col-12">
                             <div class="alert alert-info mb-2">
-                                <strong>Dịch vụ khách yêu cầu · đã thêm vào bảng kiểm kê bên dưới</strong>
+                                <strong>Dịch vụ khách yêu cầu · đã thêm vào bảng kiểm tra bên dưới</strong>
                                 <div class="small mt-1">Các dòng chưa biết số lượng/khối lượng bắt đầu từ 0. Nhân viên kiểm tra thực tế rồi cập nhật trước khi báo giá.</div>
                                 @if($booking->requestedServices->isNotEmpty())
                                     <ul class="mb-0 mt-2">
@@ -267,7 +246,7 @@
                     @endif
                     <div class="col-12">
                         <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
-                            <h6 class="mb-0">Mặt hàng từ Booking · kiểm tra và chỉnh nếu cần</h6>
+                            <h6 class="mb-0">Mặt hàng từ đặt lịch · kiểm tra và chỉnh nếu cần</h6>
                             <button type="button" class="btn btn-sm btn-outline-primary" id="add-booking-item">
                                 <i class="bi bi-plus-lg me-1"></i>Thêm mặt hàng
                             </button>
@@ -359,7 +338,6 @@
                                 </tbody>
                             </table>
                         </div>
-                        <div class="form-text">Đơn giá và thành tiền là ước tính theo bảng giá hiệu lực hiện tại; máy chủ sẽ kiểm tra lại khi xác nhận.</div>
                     </div>
                 @else
                     <div class="col-12" id="booking-items">
@@ -419,7 +397,22 @@
                 @endif
                 @if($inspectionMode)
                     <div class="col-12">
-                        <div class="alert alert-info mb-0">Thông tin lịch hẹn ban đầu được giữ nguyên. Đối chiếu và cập nhật số lượng, khối lượng, loại đồ, dịch vụ và tình trạng theo thực tế; giá được tính lại bằng bảng giá hiện hành. Sau khi báo tổng tiền cho khách, chỉ tiếp tục khi khách đồng ý.</div>
+                        <div class="alert alert-info mb-0">Thông tin đặt lịch ban đầu được giữ nguyên. Đối chiếu và cập nhật số lượng, khối lượng, loại đồ, dịch vụ và tình trạng theo thực tế; giá được tính lại bằng bảng giá hiện hành. Sau khi báo tổng tiền cho khách, chỉ tiếp tục khi khách đồng ý.</div>
+                    </div>
+                    <div class="col-12">
+                        <div class="border rounded-3 p-3">
+                            <h6 class="mb-2">Ưu đãi từ đặt lịch</h6>
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="form-label" for="booking-promotion">Mã giảm giá</label>
+                                    <input class="form-control booking-main-control" id="booking-promotion" value="{{ $booking->khuyenMai?->MaKhuyenMai ?: 'Không có mã giảm giá' }}" readonly>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label" for="booking-points">Điểm đã sử dụng</label>
+                                    <input class="form-control booking-main-control" id="booking-points" value="{{ number_format((int) $booking->DiemSuDung, 0, ',', '.') }} điểm ({{ number_format((float) $booking->TienGiamDoDiem, 0, ',', '.') }} VNĐ)" readonly>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 @endif
                 <div class="col-12">
@@ -456,7 +449,7 @@
                 @if($lockedPromotionId !== null)
                     <input type="hidden" name="promotion_id" value="{{ $lockedPromotionId }}">
                     <div class="form-text" role="status">
-                        Mã {{ $coupons->firstWhere('KhuyenMaiID', $lockedPromotionId)?->MaKhuyenMai }} đã được áp dụng cho booking và không thể thay đổi tại bước kiểm tra.
+                        Mã {{ $coupons->firstWhere('KhuyenMaiID', $lockedPromotionId)?->MaKhuyenMai }} đã được áp dụng cho đặt lịch và không thể thay đổi tại bước kiểm tra.
                     </div>
                 @elseif($coupons->isEmpty() && $minimumPromotionThreshold !== null && ! $inspectionMode)
                     <div class="form-text" role="status">
@@ -487,7 +480,6 @@
                         <div class="table-responsive mt-3" data-estimate-items></div>
                         <div data-estimate-warning class="small text-danger mt-2" role="status" aria-live="polite"></div>
                         <div class="mt-3" data-estimate-details></div>
-                        <div class="form-text mt-2">Giá hiển thị là ước tính theo bảng giá hiện hành; giá, khuyến mãi, điểm và phí được máy chủ kiểm tra lại khi xác nhận.</div>
                         <div class="border-top mt-3 pt-3 d-flex flex-wrap justify-content-between align-items-center gap-2">
                             <span class="fw-bold">Tổng thanh toán</span>
                             <span class="fw-bold fs-5 text-primary" data-estimate-total>Đang tính…</span>
@@ -498,7 +490,7 @@
                     <div class="form-check border rounded-3 p-3">
                         <input class="form-check-input ms-0 me-2" type="checkbox" id="customer_accepted" name="customer_accepted" value="1" required @checked(old('customer_accepted'))>
                         <label class="form-check-label fw-semibold" for="customer_accepted">
-                            Tôi xác nhận đã báo kết quả kiểm kê và tổng tiền thực tế trực tiếp cho khách hàng, và khách đã đồng ý bằng lời.
+                            Tôi xác nhận đã báo kết quả kiểm tra và tổng tiền thực tế trực tiếp cho khách hàng, và khách đã đồng ý bằng lời.
                         </label>
                         <div class="form-text">Đây là ghi nhận của nhân viên, không phải chữ ký hay bằng chứng xác nhận độc lập từ khách.</div>
                         @error('customer_accepted')<div class="text-danger small mt-2">{{ $message }}</div>@enderror
@@ -508,7 +500,7 @@
             <div class="d-flex flex-wrap justify-content-between gap-2 mt-4">
             @if($inspectionMode)
                 <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#booking-refusal-modal">
-                    Khách từ chối — Hủy Booking
+                    Khách từ chối — Hủy đặt lịch
                 </button>
             @endif
             <button type="submit" class="btn {{ $inspectionMode ? 'btn-success' : 'btn-primary' }} ms-auto"><i class="bi bi-check-lg me-1"></i>{{ $inspectionMode ? 'Xác nhận nhận đồ và tạo đơn' : 'Cập nhật' }}</button>
@@ -522,14 +514,14 @@
                             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button>
                         </div>
                         <div class="modal-body">
-                            <p>Booking sẽ bị hủy, không tạo đơn hàng, không ghi nhận đã nhận đồ và không thu phí lấy đồ. Dữ liệu kiểm kê hiện tại và lý do từ chối sẽ được lưu để tra cứu.</p>
+                            <p>Đặt lịch sẽ bị hủy, không tạo đơn hàng, không ghi nhận đã nhận đồ và không thu phí nhận đồ. Dữ liệu kiểm tra hiện tại và lý do từ chối sẽ được lưu để tra cứu.</p>
                             <label class="form-label" for="rejection_reason">Lý do khách từ chối <span class="text-danger">*</span></label>
                             <textarea class="form-control @error('rejection_reason') is-invalid @enderror" id="rejection_reason" name="rejection_reason" rows="3" maxlength="500" disabled>{{ old('rejection_reason') }}</textarea>
                             @error('rejection_reason')<div class="invalid-feedback">{{ $message }}</div>@enderror
                         </div>
                         <div class="modal-footer">
-                            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Quay lại kiểm kê</button>
-                            <button type="submit" class="btn btn-danger" formaction="{{ route('bookings.refuse-quote', $booking) }}" data-refusal-submit>Hủy Booking và lưu lý do</button>
+                            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Quay lại kiểm tra</button>
+                            <button type="submit" class="btn btn-danger" formaction="{{ route('bookings.refuse-quote', $booking) }}" data-refusal-submit>Hủy đặt lịch và lưu lý do</button>
                         </div>
                     </div>
                 </div>

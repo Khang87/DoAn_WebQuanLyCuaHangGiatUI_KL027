@@ -10,7 +10,7 @@
             <i class="bi bi-arrow-left me-1"></i>Quay lại Đơn hàng
         </a>
     </div>
-    <p class="text-muted page-toolbar__desc">Danh sách chi tiết từng món đồ giặt trong các đơn hàng, phục vụ đối soát khi giao trả.</p>
+    <p class="text-muted page-toolbar__desc">Danh sách chi tiết từng món đồ giặt trong các đơn hàng, phục vụ đối soát khi giao đồ.</p>
 </div>
 <form action="{{ url()->current() }}" method="GET" class="row g-3 align-items-center mb-4">
     <div class="col-12">

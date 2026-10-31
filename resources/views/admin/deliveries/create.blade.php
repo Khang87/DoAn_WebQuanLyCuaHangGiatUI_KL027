@@ -115,8 +115,6 @@
                                value="{{ old('employee_search', $selectedEmployee?->HoTen) }}" data-selected-employee-search>
                         @if($errors->has('employee_id'))
                             <div class="text-danger small mt-1" role="alert">{{ $errors->first('employee_id') }}</div>
-                        @elseif(! $selectedEmployee)
-                            <div class="form-text text-danger">Tài khoản chưa có nhân viên hợp lệ được liên kết. Vui lòng chọn nhân viên phụ trách.</div>
                         @endif
                     </div>
                 @else
@@ -131,12 +129,10 @@
             </div>
             <div class="col-12"><label class="form-label" for="method">Loại giao nhận <span class="text-danger ms-1">*</span></label><select class="form-select {{ $lockDeliveryType ? 'delivery-locked-control' : '' }}" id="method" name="method" required @disabled($lockDeliveryType)><option value="nhan_do" @selected($selectedMethod === 'nhan_do')>Nhận đồ</option><option value="giao_do" @selected($selectedMethod === 'giao_do')>Giao đồ</option></select>@if($lockDeliveryType)<input type="hidden" name="method" value="{{ $selectedMethod }}">@endif</div>
             <div class="col-12"><label class="form-label" for="fulfillment">Hình thức nhân viên {{ $selectedMethod === 'giao_do' ? 'giao đồ' : 'nhận đồ' }}</label><select class="form-select" id="fulfillment" name="fulfillment" required><option value="Tại cửa hàng" @selected($selectedFulfillment === 'Tại cửa hàng')>Tại cửa hàng</option><option value="Tại nhà" @selected($selectedFulfillment === 'Tại nhà')>Tại nhà</option></select></div>
-            <div class="col-12"><label class="form-label" for="address">Địa chỉ nhân viên {{ $selectedMethod === 'giao_do' ? 'giao đồ' : 'nhận đồ' }} (bắt buộc khi tại nhà)</label><input type="text" class="form-control {{ $selectedFulfillment === 'Tại cửa hàng' ? 'delivery-locked-control bg-light text-muted' : '' }}" id="address" name="address" value="{{ $selectedAddress }}" placeholder="Nhập địa chỉ lấy/giao đồ" @required($selectedFulfillment === 'Tại nhà') @disabled($selectedFulfillment === 'Tại cửa hàng')></div>
-            <div class="col-md-6"><label class="form-label" for="pickup_date">Ngày {{ $selectedMethod === 'giao_do' ? 'giao' : 'nhận' }} đồ dự kiến</label><input type="date" class="form-control" id="pickup_date" name="pickup_date" aria-describedby="schedule-help" value="{{ old('pickup_date') }}">@error('pickup_date')<div class="text-danger small">{{ $message }}</div>@enderror</div>
-            <div class="col-md-6"><label class="form-label" for="pickup_time">Giờ {{ $selectedMethod === 'giao_do' ? 'giao' : 'nhận' }} đồ dự kiến</label><input type="time" class="form-control" id="pickup_time" name="pickup_time" aria-describedby="schedule-help" value="{{ old('pickup_time') }}">@error('pickup_time')<div class="text-danger small">{{ $message }}</div>@enderror</div>
+            <div class="col-12"><label class="form-label" for="address">Địa chỉ nhân viên {{ $selectedMethod === 'giao_do' ? 'giao đồ' : 'nhận đồ' }} (bắt buộc khi tại nhà)</label><input type="text" class="form-control {{ $selectedFulfillment === 'Tại cửa hàng' ? 'delivery-locked-control bg-light text-muted' : '' }}" id="address" name="address" value="{{ $selectedAddress }}" placeholder="Nhập địa chỉ nhận/giao đồ" @required($selectedFulfillment === 'Tại nhà') @disabled($selectedFulfillment === 'Tại cửa hàng')></div>
+            <div class="col-md-6"><label class="form-label" for="pickup_date">Ngày {{ $selectedMethod === 'giao_do' ? 'giao' : 'nhận' }} đồ dự kiến</label><input type="date" class="form-control" id="pickup_date" name="pickup_date" value="{{ old('pickup_date') }}">@error('pickup_date')<div class="text-danger small">{{ $message }}</div>@enderror</div>
+            <div class="col-md-6"><label class="form-label" for="pickup_time">Giờ {{ $selectedMethod === 'giao_do' ? 'giao' : 'nhận' }} đồ dự kiến</label><input type="time" class="form-control" id="pickup_time" name="pickup_time" value="{{ old('pickup_time') }}">@error('pickup_time')<div class="text-danger small">{{ $message }}</div>@enderror</div>
             <div class="col-md-6"><label class="form-label" for="status">Trạng thái</label><x-admin.status-select name="status" id="status" :options="$statusOptions" selected="pending" class="form-select" /></div>
-            <div class="col-12 form-text" id="schedule-help" aria-live="polite">Phiếu trả đang chờ có thể chưa đặt lịch. Khi đặt lịch, hãy nhập đủ ngày và giờ.</div>
-            <div class="col-12 form-text">Khi chọn đơn có Booking, hình thức, địa chỉ và lịch nhận (nếu có) sẽ được điền sẵn; bạn có thể điều chỉnh trước khi lưu.</div>
             <div class="col-12"><label class="form-label" for="notes">Ghi chú</label><textarea class="form-control" id="notes" name="notes" rows="3">{{ old('notes') }}</textarea></div>
         </div>
         <div class="d-flex flex-wrap justify-content-end gap-2 mt-4">

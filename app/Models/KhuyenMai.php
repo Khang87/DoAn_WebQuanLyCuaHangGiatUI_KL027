@@ -2,8 +2,11 @@
 
 namespace App\Models;
 
+use App\Enums\BookingStatus;
+use App\Enums\OrderStatus;
 use App\Enums\RecordStatus;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Schema;
 
 class KhuyenMai extends Model
 {
@@ -128,15 +131,15 @@ class KhuyenMai extends Model
             || str_contains($condition, 'đơn hàng đầu tiên');
     }
 
-    public function isApplicableForCustomer(?KhachHang $customer, float $subtotal, ?int $excludeOrderId = null): bool
+    public function isApplicableForCustomer(?KhachHang $customer, float $subtotal, ?int $excludeOrderId = null, ?int $excludeBookingId = null): bool
     {
-        return $this->rejectionReasonForCustomer($customer, $subtotal, $excludeOrderId) === null;
+        return $this->rejectionReasonForCustomer($customer, $subtotal, $excludeOrderId, $excludeBookingId) === null;
     }
 
     /**
      * Lý do khuyến mãi bị loại (null nghĩa là dùng được).
      */
-    public function rejectionReasonForCustomer(?KhachHang $customer, float $subtotal, ?int $excludeOrderId = null): ?string
+    public function rejectionReasonForCustomer(?KhachHang $customer, float $subtotal, ?int $excludeOrderId = null, ?int $excludeBookingId = null): ?string
     {
         if (! $this->isValid()) {
             return 'Chương trình khuyến mãi không còn hiệu lực.';
@@ -146,11 +149,47 @@ class KhuyenMai extends Model
             return 'Đơn hàng chưa đạt giá trị tối thiểu để dùng mã khuyến mãi.';
         }
 
+        if ($customer && $this->hasBeenUsedByCustomer($customer, $excludeOrderId, $excludeBookingId)) {
+            return 'Khách hàng đã sử dụng mã khuyến mãi này.';
+        }
+
         if ($this->isFirstOrderOnly() && $this->customerAlreadyOrderedBefore($customer, $excludeOrderId)) {
             return 'Mã khuyến mãi chỉ áp dụng cho đơn hàng đầu tiên của khách hàng.';
         }
 
         return null;
+    }
+
+    public function hasBeenUsedByCustomer(KhachHang $customer, ?int $excludeOrderId = null, ?int $excludeBookingId = null): bool
+    {
+        $usedOnOrder = Schema::hasTable('DonHang')
+            && Schema::hasColumn('DonHang', 'KhuyenMaiID')
+            && Schema::hasColumn('DonHang', 'KhachHangID')
+            && Schema::hasColumn('DonHang', 'TrangThai')
+            && DonHang::query()
+                ->where('KhachHangID', $customer->KhachHangID)
+                ->where('KhuyenMaiID', $this->KhuyenMaiID)
+                ->where('TrangThai', '<>', OrderStatus::Cancelled->value)
+                ->when($excludeOrderId !== null, fn ($query) => $query->whereKeyNot($excludeOrderId))
+                ->exists();
+
+        if ($usedOnOrder) {
+            return true;
+        }
+
+        if (! Schema::hasTable('Booking')
+            || ! Schema::hasColumn('Booking', 'KhachHangID')
+            || ! Schema::hasColumn('Booking', 'KhuyenMaiID')
+            || ! Schema::hasColumn('Booking', 'TrangThai')) {
+            return false;
+        }
+
+        return Booking::query()
+            ->where('KhachHangID', $customer->KhachHangID)
+            ->where('KhuyenMaiID', $this->KhuyenMaiID)
+            ->where('TrangThai', '<>', BookingStatus::Cancelled->value)
+            ->when($excludeBookingId !== null, fn ($query) => $query->whereKeyNot($excludeBookingId))
+            ->exists();
     }
 
     /**

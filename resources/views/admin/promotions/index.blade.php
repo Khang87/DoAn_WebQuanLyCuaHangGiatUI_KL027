@@ -60,7 +60,6 @@
                         <th class="fw-bold text-dark">Mã khuyến mãi</th>
                         <th class="fw-bold text-dark">Giá trị giảm</th>
                         <th class="fw-bold text-dark">Hạn sử dụng</th>
-                        <th class="fw-bold text-dark">Số lượng đã sử dụng</th>
                         <th class="fw-bold text-dark">Trạng thái</th>
                         <th class="fw-bold text-dark">Thao tác</th>
                     </tr>
@@ -78,7 +77,6 @@
                         <td>
                             {{ $promotion->NgayKetThuc?->format('d/m/Y') ?: 'Không hạn' }}
                         </td>
-                        <td>{{ number_format($promotion->usedCount) }} đơn</td>
                         <td>
                             <x-admin.promotion-status-badge :promotion="$promotion" />
                         </td>
@@ -101,7 +99,7 @@
                      </tr>
                      @empty
                     <tr>
-                        <td colspan="8" class="text-center text-muted py-4">Chưa có dữ liệu nào</td>
+                        <td colspan="7" class="text-center text-muted py-4">Chưa có dữ liệu nào</td>
                     </tr>
                     @endempty
                 </tbody>

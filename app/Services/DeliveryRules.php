@@ -25,7 +25,7 @@ class DeliveryRules
             $order->BookingID !== null
             && Booking::query()->whereKey($order->BookingID)->value('TrangThai') === BookingStatus::Cancelled->value
         ) {
-            throw ValidationException::withMessages(['booking' => 'Không thể thay đổi giao nhận của Booking đã hủy.']);
+            throw ValidationException::withMessages(['booking' => 'Không thể thay đổi giao nhận của đặt lịch đã hủy.']);
         }
     }
 
@@ -100,7 +100,7 @@ class DeliveryRules
 
             if ($isBookingReturn && ! $current && $booking->statusEnum() !== BookingStatus::Confirmed) {
                 throw ValidationException::withMessages([
-                    'booking' => 'Booking phải đang được xác nhận để tạo hoặc cập nhật phiếu trả đồ.',
+                    'booking' => 'Đặt lịch phải được xác nhận để tạo hoặc cập nhật phiếu giao đồ.',
                 ]);
             }
 

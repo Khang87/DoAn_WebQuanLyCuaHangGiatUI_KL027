@@ -12,7 +12,7 @@
     $decisionTimestamp = $decision['confirmed_at'] ?? $decision['decided_at'] ?? null;
     $formattedDecisionTimestamp = $decisionTimestamp
         ? \Illuminate\Support\Carbon::parse($decisionTimestamp)->timezone('Asia/Ho_Chi_Minh')->format('d/m/Y H:i:s')
-        : 'Chưa chốt kiểm kê';
+        : 'Chưa chốt kiểm tra';
     $statusValue = ! $isIntake
         ? ($bookingDocument->donHang?->giaoNhans->firstWhere('LoaiGiaoNhan', 'GIAO_DO')?->TrangThai ?? $bookingDocument->TrangThai)
         : $bookingDocument->TrangThai;
@@ -46,7 +46,7 @@
                 <x-admin.detail.info-item :label="$isIntake ? 'HÌNH THỨC NHÂN VIÊN NHẬN ĐỒ' : 'HÌNH THỨC NHÂN VIÊN GIAO ĐỒ'" :value="$bookingDocument->HinhThuc ?: '—'" />
                 <x-admin.detail.info-item :label="$isIntake ? 'Địa chỉ nhận đồ' : 'Địa chỉ giao đồ'" :value="$bookingDocument->DiaChi ?: 'Không yêu cầu địa chỉ giao tận nhà'" />
                 <x-admin.detail.info-item :label="$isIntake ? 'Nhân viên phụ trách nhận đồ' : 'Nhân viên phụ trách giao đồ'" :value="$bookingDocument->nhanVien?->HoTen ?: 'Chưa phân công'" />
-                <x-admin.detail.info-item label="Nhân viên xác nhận Booking" :value="$booking?->nhanVienXacNhan?->HoTen ?: '—'" />
+                <x-admin.detail.info-item label="Nhân viên xác nhận đặt lịch" :value="$booking?->nhanVienXacNhan?->HoTen ?: '—'" />
                 <x-admin.detail.info-item :label="$isIntake ? 'Thời gian nhận đồ dự kiến' : 'Thời gian giao đồ dự kiến'" :value="$bookingDocument->ThoiGianDuKien?->format('d/m/Y H:i') ?: 'Chưa lên lịch'" />
                 <x-admin.detail.info-item :label="$isIntake ? 'Thời gian nhận đồ thực tế' : 'Thời gian giao đồ thực tế'" :value="$bookingDocument->ThoiGianThucTe?->format('d/m/Y H:i') ?: 'Chưa ghi nhận'" />
                 <x-admin.detail.info-item label="Phí dự kiến" :value="number_format((float) $bookingDocument->PhiGiaoNhan, 0, ',', '.') . ' VNĐ'" />
@@ -72,25 +72,25 @@
         </x-admin.detail.panel>
 
         @if($booking)
-            <x-admin.detail.panel title="Thông tin Booking" icon="bi-calendar-check" :iconClass="'bg-info-subtle text-info'">
+            <x-admin.detail.panel title="Thông tin đặt lịch" icon="bi-calendar-check" :iconClass="'bg-info-subtle text-info'">
                 <x-admin.detail.info-grid :columns="2">
                     <x-admin.detail.info-item label="Nhận đồ" :value="$booking->method_label" />
-                    <x-admin.detail.info-item label="Trả đồ" :value="$booking->return_method_label" />
+                    <x-admin.detail.info-item label="Giao đồ" :value="$booking->return_method_label" />
                     <x-admin.detail.info-item label="Ngày hẹn" :value="$booking->NgayHen?->format('d/m/Y') ?: '—'" />
                     <x-admin.detail.info-item label="Ghi chú" :value="$booking->GhiChu ?: '—'" />
                 </x-admin.detail.info-grid>
                 @can('bookings.view')
                     <a class="btn btn-outline-primary btn-sm mt-3" href="{{ route('bookings.show', $booking) }}">
-                        <i class="bi bi-box-arrow-up-right me-1"></i>Xem Booking
+                        <i class="bi bi-box-arrow-up-right me-1"></i>Xem đặt lịch
                     </a>
                 @endcan
             </x-admin.detail.panel>
         @endif
 
         @if($inspection)
-            <x-admin.detail.panel title="Kết quả kiểm kê" icon="bi-clipboard-check" :iconClass="'bg-success-subtle text-success'">
+            <x-admin.detail.panel title="Kết quả kiểm tra" icon="bi-clipboard-check" :iconClass="'bg-success-subtle text-success'">
                 <x-admin.detail.info-grid :columns="2">
-                    <x-admin.detail.info-item label="Nhân viên chốt kiểm kê" :value="$decision['employee_name'] ?? '—'" />
+                    <x-admin.detail.info-item label="Nhân viên chốt kiểm tra" :value="$decision['employee_name'] ?? '—'" />
                     <x-admin.detail.info-item label="Thời gian chốt" :value="$formattedDecisionTimestamp" />
                     @if(array_key_exists('customer_accepted', $decision))
                         <x-admin.detail.info-item label="Khách đồng ý báo giá">

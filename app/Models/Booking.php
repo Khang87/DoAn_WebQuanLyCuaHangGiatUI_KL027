@@ -69,6 +69,16 @@ class Booking extends Model
         return $value ?? ($this->attributes['DiaChiGiao'] ?? null);
     }
 
+    /** Booking creation timestamps defaulted by Postgres are UTC-naive. */
+    public function getNgayTaoAttribute(?string $value): ?Carbon
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        return Carbon::parse($value, 'UTC')->setTimezone(config('app.timezone'));
+    }
+
     /** Fees accepted by mobile and persisted by the booking RPC; never re-geocode them. */
     public function deliveryFeeSnapshot(): array
     {

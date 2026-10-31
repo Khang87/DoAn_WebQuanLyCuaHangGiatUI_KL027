@@ -32,8 +32,8 @@ class XacNhanBookingRequest extends LuuBookingRequest
             'items.required' => 'Vui lòng nhập ít nhất một dòng kiểm tra thực tế trước khi tạo đơn.',
             'items.min' => 'Vui lòng nhập ít nhất một dòng kiểm tra thực tế trước khi tạo đơn.',
             'items.*.TinhTrangTruocKhiGiat.required' => 'Vui lòng nhập tình trạng trước khi giặt cho từng dòng.',
-            'customer_accepted.required' => 'Xác nhận khách hàng đồng ý với kết quả kiểm kê và tổng tiền là bắt buộc.',
-            'customer_accepted.accepted' => 'Chỉ được tạo đơn sau khi ghi nhận khách hàng đã đồng ý với kết quả kiểm kê và tổng tiền.',
+            'customer_accepted.required' => 'Xác nhận khách hàng đồng ý với kết quả kiểm tra và tổng tiền là bắt buộc.',
+            'customer_accepted.accepted' => 'Chỉ được tạo đơn sau khi ghi nhận khách hàng đã đồng ý với kết quả kiểm tra và tổng tiền.',
         ]);
     }
 
@@ -45,7 +45,7 @@ class XacNhanBookingRequest extends LuuBookingRequest
             $booking = $routeBooking instanceof Booking ? $routeBooking : Booking::query()->find($routeBooking);
             if ($booking && ! $booking->donHangs()->exists()) {
                 if ($booking->statusEnum() !== BookingStatus::Confirmed) {
-                    $validator->errors()->add('booking', 'Hãy xác nhận Booking trước khi kiểm kê và tạo đơn.');
+                    $validator->errors()->add('booking', 'Hãy xác nhận đặt lịch trước khi kiểm tra và tạo đơn.');
                 } elseif (! BookingGiaoNhan::query()->where('BookingID', $booking->BookingID)
                     ->where('LoaiGiaoNhan', 'NHAN_DO')
                     ->whereIn('TrangThai', [
@@ -55,7 +55,7 @@ class XacNhanBookingRequest extends LuuBookingRequest
                     ->whereNull('ThoiGianThucTe')
                     ->whereNull('DonHangID')
                     ->exists()) {
-                    $validator->errors()->add('booking', 'Phiếu nhận không còn ở trạng thái cho phép kiểm kê và tạo đơn.');
+                    $validator->errors()->add('booking', 'Phiếu nhận không còn ở trạng thái cho phép kiểm tra và tạo đơn.');
                 }
             }
         });

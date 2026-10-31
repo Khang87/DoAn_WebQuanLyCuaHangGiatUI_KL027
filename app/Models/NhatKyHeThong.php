@@ -56,7 +56,7 @@ class NhatKyHeThong extends Model
             'ChiTietDonHang' => 'Chi tiết đơn hàng',
             'Booking' => 'Lịch hẹn',
             'BookingGiaoNhan' => 'Giao nhận theo lịch hẹn',
-            'BookingKiemKe' => 'Kiểm kê theo lịch hẹn',
+            'BookingKiemKe' => 'Kiểm tra theo đặt lịch',
             'TaiKhoan' => 'Tài khoản',
             'KhachHang' => 'Khách hàng',
             'NhanVien' => 'Nhân viên',

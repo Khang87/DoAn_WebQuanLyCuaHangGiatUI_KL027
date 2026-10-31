@@ -25,7 +25,7 @@ class CatalogDeletionService
         $childLabel = $record instanceof LoaiDichVu ? 'dịch vụ' : 'loại đồ giặt';
 
         if ($this->hasHistory($items)) {
-            return $label." này đã từng phát sinh trong đơn hàng/Booking nên hệ thống sẽ chuyển sang trạng thái 'Tạm ngưng' để bảo toàn dữ liệu lịch sử."
+            return $label." này đã từng phát sinh trong đơn hàng/đặt lịch nên hệ thống sẽ chuyển sang trạng thái 'Tạm ngưng' để bảo toàn dữ liệu lịch sử."
                 .($children !== null ? ' Các '.$childLabel.' thuộc danh mục cũng sẽ được tạm ngưng.' : '');
         }
 
@@ -34,7 +34,7 @@ class CatalogDeletionService
             $relatedMessage = ' Các '.$childLabel.' chưa sử dụng thuộc danh mục và bảng giá liên quan cũng sẽ bị xóa.';
         }
 
-        return $label.' này chưa phát sinh trong đơn hàng/Booking và sẽ được xóa vĩnh viễn.'
+        return $label.' này chưa phát sinh trong đơn hàng/đặt lịch và sẽ được xóa vĩnh viễn.'
             .$relatedMessage.' Hành động này không thể hoàn tác.';
     }
 

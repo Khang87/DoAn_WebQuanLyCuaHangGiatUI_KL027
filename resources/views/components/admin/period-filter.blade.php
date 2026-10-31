@@ -1,4 +1,4 @@
-@props(['route', 'filter', 'periodLabel', 'periodDescription', 'note'])
+@props(['route', 'filter', 'periodLabel', 'periodDescription', 'note', 'exportRoute' => null])
 
 <div class="card mb-4">
     <div class="card-body">
@@ -16,6 +16,11 @@
                     <option value="all_time" @selected($filter === 'all_time')>Toàn thời gian (All time)</option>
                 </select>
             </form>
+            @if($exportRoute)
+                <a class="btn btn-outline-success btn-sm" href="{{ route($exportRoute, ['filter' => $filter]) }}">
+                    <i class="bi bi-file-earmark-excel me-1" aria-hidden="true"></i>Xuất Excel
+                </a>
+            @endif
         </div>
         <p class="small text-muted mb-0 mt-2">{{ $note }}</p>
     </div>

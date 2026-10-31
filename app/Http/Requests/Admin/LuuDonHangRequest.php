@@ -153,14 +153,14 @@ class LuuDonHangRequest extends FormRequest
             'KhachHangID.required' => 'Khách hàng là bắt buộc.',
             'KhachHangID.exists' => 'Khách hàng không tồn tại.',
             'NhanVienID.exists' => 'Vui lòng chọn nhân viên đang hoạt động.',
-            'KhuyenMaiID.prohibited' => 'Voucher chỉ được kế thừa từ Booking, không thể thêm hoặc đổi trên đơn web.',
-            'promotion_code.prohibited' => 'Voucher chỉ được kế thừa từ Booking, không thể thêm hoặc đổi trên đơn web.',
+            'KhuyenMaiID.prohibited' => 'Mã giảm giá chỉ được kế thừa từ đặt lịch, không thể thêm hoặc đổi trên đơn web.',
+            'promotion_code.prohibited' => 'Mã giảm giá chỉ được kế thừa từ đặt lịch, không thể thêm hoặc đổi trên đơn web.',
             'TrangThai.required' => 'Trạng thái là bắt buộc.',
             'TrangThai.in' => $this->isMethod('POST')
-                ? 'Đơn mới chỉ được tạo ở trạng thái Đã tiếp nhận sau khi kiểm kê.'
+                ? 'Đơn mới chỉ được tạo ở trạng thái Đã tiếp nhận sau khi kiểm tra.'
                 : 'Trạng thái không hợp lệ.',
-            'BookingID.prohibited' => 'Hãy tạo đơn từ màn hình kiểm kê Booking.',
-            'items.required' => 'Vui lòng kiểm kê ít nhất một mặt hàng trước khi tạo đơn.',
+            'BookingID.prohibited' => 'Hãy tạo đơn từ màn hình kiểm tra đặt lịch.',
+            'items.required' => 'Vui lòng kiểm tra ít nhất một mặt hàng trước khi tạo đơn.',
             'items.*.TinhTrangTruocKhiGiat.required' => 'Vui lòng nhập tình trạng trước khi giặt.',
             'GhiChu.max' => 'Ghi chú không quá 500 ký tự.',
             'items.*.DichVuID.required' => 'Hãy chọn dịch vụ cho từng mặt hàng.',
@@ -175,7 +175,7 @@ class LuuDonHangRequest extends FormRequest
 
             'HinhThucNhanDo.required' => 'Vui lòng chọn phương thức nhận đồ.',
             'HinhThucTraDo.required' => 'Vui lòng chọn hình thức giao.',
-            'DiaChiNhan.required_if' => 'Vui lòng nhập địa chỉ lấy đồ tại nhà.',
+            'DiaChiNhan.required_if' => 'Vui lòng nhập địa chỉ nhận đồ tại nhà.',
             'DiaChiTra.required_if' => 'Vui lòng nhập địa chỉ giao đồ sạch.',
 
         ];

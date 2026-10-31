@@ -140,10 +140,10 @@
             @endphp
             @if($returnNote?->DonHangID === $delivery->DonHangID
                 && $returnNote?->BookingKiemKeID === $approvedInspection?->BookingKiemKeID)
-                <x-admin.detail.panel title="Đồ trả từ phiếu nhận" icon="bi-clipboard-check" :iconClass="'bg-info-subtle text-info'">
+                <x-admin.detail.panel title="Đồ giao từ phiếu nhận" icon="bi-clipboard-check" :iconClass="'bg-info-subtle text-info'">
                     <p class="small text-muted mb-2">
-                        Đã đối soát theo Booking {{ $linkedBooking->MaBooking }} · kiểm kê phiên bản {{ $approvedInspection->PhienBan }}.
-                        @can('bookings.view')<a href="{{ route('bookings.show', $linkedBooking) }}">Xem Booking</a>@endcan
+                        Đã đối soát theo đặt lịch {{ $linkedBooking->MaBooking }} · kiểm tra phiên bản {{ $approvedInspection->PhienBan }}.
+                        @can('bookings.view')<a href="{{ route('bookings.show', $linkedBooking) }}">Xem đặt lịch</a>@endcan
                     </p>
                     <ul class="small mb-0 ps-3" data-delivery-return-items>
                         @foreach($delivery->donHang->chiTietDonHangs as $item)

@@ -159,7 +159,10 @@ class AuthorizationBoundaryTest extends TestCase
             'permission:reports.view',
             $routes->getByName('reports.index')->getAction('middleware'),
         );
-        $this->assertNull($routes->getByName('reports.export'));
+        $this->assertContains(
+            'permission:reports.view',
+            $routes->getByName('reports.export')->getAction('middleware'),
+        );
         $this->assertNull($routes->getByName('invoices.export-excel'));
     }
 }

@@ -1337,7 +1337,7 @@ class BookingOrderConversionTest extends TestCase
             ->assertSee('Hiện không có mã phù hợp. Hãy kiểm tra trạng thái, thời hạn, điều kiện áp dụng và tổng giá trị dịch vụ.');
     }
 
-    public function test_inspection_promotion_dropdown_allows_code_used_on_another_booking(): void
+    public function test_inspection_promotion_dropdown_hides_code_reserved_for_same_customer(): void
     {
         $this->createInspectionCatalog();
         $this->createPromotionTable();
@@ -1362,8 +1362,7 @@ class BookingOrderConversionTest extends TestCase
         $this->withoutMiddleware([Authenticate::class, EnsureUserHasPermission::class, RejectCustomerRole::class, RestoreRememberedLogin::class]);
 
         $this->get(route('bookings.inspection', $booking))->assertOk()
-            ->assertSee('<option value="16"', false)
-            ->assertDontSee('đã sử dụng trong booking khác');
+            ->assertDontSee('<option value="16"', false);
     }
 
     public function test_inspection_promotion_saved_on_booking_is_locked_on_web(): void
@@ -3788,5 +3787,14 @@ class BookingOrderConversionTest extends TestCase
         $response->assertSee('Đơn vị tính')->assertSee('order-item-pricing.js');
         $this->assertMatchesRegularExpression('/<select[^>]*item-unit-value[^>]*name="items\[0\]\[DonViTinhID\]"/', $response->getContent());
         $this->assertMatchesRegularExpression('/<input[^>]*item-price[^>]*readonly/', $response->getContent());
+    }
+
+    public function test_booking_created_at_from_utc_database_default_is_displayed_in_vietnam_time(): void
+    {
+        config(['app.timezone' => 'Asia/Ho_Chi_Minh']);
+        $booking = new Booking;
+        $booking->setRawAttributes(['NgayTao' => '2026-10-31 11:13:48']);
+
+        $this->assertSame('2026-10-31 18:13:48', $booking->NgayTao->format('Y-m-d H:i:s'));
     }
 }

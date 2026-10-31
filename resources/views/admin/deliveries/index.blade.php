@@ -16,7 +16,7 @@
         <div class="input-group input-group-sm shadow-sm rounded-3 overflow-hidden filter-search">
             <span class="input-group-text bg-white border-end-0 ps-3"><i class="fas fa-search text-muted"></i></span>
             <input type="search" name="search" class="form-control form-control-sm border-start-0 ps-2"
-                   placeholder="Tìm mã phiếu, đơn hàng, Booking, khách hàng, nhân viên hoặc địa chỉ..."
+                   placeholder="Tìm mã phiếu, đơn hàng, đặt lịch, khách hàng, nhân viên hoặc địa chỉ..."
                    value="{{ request('search') }}">
         </div>
     </div>
@@ -54,7 +54,7 @@
                         <th scope="col">Mã phiếu</th>
                         <th scope="col">Công việc</th>
                         <th scope="col">Khách hàng</th>
-                        <th scope="col">Booking / Đơn hàng</th>
+                        <th scope="col">Đặt lịch / Đơn hàng</th>
                         <th scope="col">Nhân viên phụ trách</th>
                         <th scope="col">Thời gian dự kiến</th>
                         <th scope="col">Trạng thái</th>

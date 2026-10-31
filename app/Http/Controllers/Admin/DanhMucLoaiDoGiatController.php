@@ -101,7 +101,7 @@ class DanhMucLoaiDoGiatController extends Controller
             $deleted = $this->categoryService->delete($category);
             $message = $deleted
                 ? 'Danh mục và các loại đồ giặt chưa sử dụng đã được xóa.'
-                : "Danh mục và các loại đồ giặt thuộc danh mục đã được chuyển sang trạng thái 'Tạm ngưng' để bảo toàn lịch sử đơn hàng/Booking.";
+                : "Danh mục và các loại đồ giặt thuộc danh mục đã được chuyển sang trạng thái 'Tạm ngưng' để bảo toàn lịch sử đơn hàng/đặt lịch.";
 
             return redirect()->route('garment-categories.index')->with('success', $message);
         } catch (\Throwable $exception) {

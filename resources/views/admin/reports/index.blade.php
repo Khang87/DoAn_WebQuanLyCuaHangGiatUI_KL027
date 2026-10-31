@@ -198,6 +198,7 @@
 
 <x-admin.period-filter
     :route="route('reports.index')"
+    export-route="reports.export"
     :filter="$reportFilter"
     :period-label="$periodLabel"
     :period-description="$periodDescription"

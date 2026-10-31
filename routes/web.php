@@ -349,6 +349,7 @@ Route::middleware(['auth', 'reject.customer'])->group(function () {
         ->middlewareFor('destroy', 'permission:coupons.delete');
 
     Route::prefix('reports')->name('reports.')->middleware('permission:reports.view')->group(function () {
+        Route::get('/export', [ReportsController::class, 'export'])->name('export');
         Route::get('/', [ReportsController::class, 'index'])->name('index');
     });
 

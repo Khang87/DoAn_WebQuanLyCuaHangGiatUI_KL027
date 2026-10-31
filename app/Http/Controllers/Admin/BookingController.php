@@ -116,10 +116,18 @@ class BookingController extends Controller
 
         $customer = $record->khachHang;
 
+        if ($customer && $khuyenMai->hasBeenUsedByCustomer($customer, excludeBookingId: (int) $record->BookingID)) {
+            return back()->withErrors(['ma_khuyen_mai' => 'Khách hàng đã sử dụng mã khuyến mãi này.'])->withInput();
+        }
+
         if ($record->chiTietBookings->isNotEmpty()) {
             $subtotal = (float) $record->chiTietBookings->sum(fn ($item) => (float) ($item->ThanhTien ?? 0));
-            if (! $khuyenMai->isApplicableForCustomer($customer, $subtotal)) {
-                return back()->withErrors(['ma_khuyen_mai' => $khuyenMai->rejectionReasonForCustomer($customer, $subtotal)])->withInput();
+            if (! $khuyenMai->isApplicableForCustomer($customer, $subtotal, excludeBookingId: (int) $record->BookingID)) {
+                return back()->withErrors(['ma_khuyen_mai' => $khuyenMai->rejectionReasonForCustomer(
+                    $customer,
+                    $subtotal,
+                    excludeBookingId: (int) $record->BookingID,
+                )])->withInput();
             }
         }
 
@@ -178,7 +186,7 @@ class BookingController extends Controller
         try {
             $this->bookingService->approve($booking);
 
-            return redirect()->route('bookings.show', $booking)->with('success', 'Đã xác nhận Booking và lập phiếu nhận, phiếu trả. Chưa tạo đơn hàng.');
+            return redirect()->route('bookings.show', $booking)->with('success', 'Đã xác nhận đặt lịch và lập phiếu nhận, phiếu giao. Chưa tạo đơn hàng.');
         } catch (ValidationException $e) {
             return redirect()->route('bookings.show', $booking)->withErrors($e->errors());
         }
@@ -192,7 +200,7 @@ class BookingController extends Controller
         try {
             $this->bookingService->cancelPending($booking);
 
-            return redirect()->route('bookings.show', $booking)->with('success', 'Đã hủy Booking.');
+            return redirect()->route('bookings.show', $booking)->with('success', 'Đã hủy đặt lịch.');
         } catch (ValidationException $e) {
             return redirect()->route('bookings.show', $booking)->withErrors($e->errors());
         }
@@ -276,7 +284,7 @@ class BookingController extends Controller
             : null;
 
         // SoLuongSuDung là số lượt đã dùng, không phải số lượt còn lại hay hạn mức.
-        // Mã đã lưu trong bản kiểm kê mobile vẫn cần có option để hiển thị và tính tổng.
+        // Mã đã lưu trong bản kiểm tra mobile vẫn cần có option để hiển thị và tính tổng.
         $coupons = KhuyenMai::query()->where(function ($query) use ($lockedPromotionId): void {
             $query->where(function ($active): void {
                 $active->where('TrangThai', 'Hoạt động')
@@ -291,7 +299,11 @@ class BookingController extends Controller
             ->get();
         $coupons = $coupons
             ->filter(fn (KhuyenMai $coupon): bool => (int) $coupon->KhuyenMaiID === $lockedPromotionId
-                || $coupon->rejectionReasonForCustomer($booking->khachHang, PHP_FLOAT_MAX) === null)
+                || $coupon->rejectionReasonForCustomer(
+                    $booking->khachHang,
+                    PHP_FLOAT_MAX,
+                    excludeBookingId: (int) $booking->BookingID,
+                ) === null)
             ->values();
         $minimumPromotionThreshold = null;
         if (! $inspectionMode) {
@@ -378,7 +390,7 @@ class BookingController extends Controller
             $validated = $request->validated();
             $order = $this->bookingService->submitInspection($booking, $validated);
 
-            return redirect()->route('orders.show', $order)->with('success', 'Đã đối soát kiểm kê và tạo đơn '.$order->MaDonHang.'.');
+            return redirect()->route('orders.show', $order)->with('success', 'Đã đối soát kết quả kiểm tra và tạo đơn '.$order->MaDonHang.'.');
         } catch (ValidationException $e) {
             return redirect()->route('bookings.inspection', $booking)->withErrors($e->errors())->withInput();
         } catch (Throwable $e) {
@@ -400,7 +412,7 @@ class BookingController extends Controller
             $this->bookingService->refuseQuote($booking, $request->validated());
 
             return redirect()->route('bookings.show', $booking)
-                ->with('success', 'Đã hủy Booking theo yêu cầu từ chối báo giá. Không tạo đơn và không thu phí nhận đồ.');
+                ->with('success', 'Đã hủy đặt lịch theo yêu cầu từ chối báo giá. Không tạo đơn và không thu phí nhận đồ.');
         } catch (ValidationException $exception) {
             return redirect()->route('bookings.inspection', $booking)
                 ->withErrors($exception->errors())

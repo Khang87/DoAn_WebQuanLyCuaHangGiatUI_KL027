@@ -13,7 +13,7 @@ namespace App\Enums;
  *
  * Quy trình nghiệp vụ:
  *   ChoTiepNhan -> Chờ xác nhận
- *   DaXacNhan   -> Đã xác nhận (luồng mới còn phải nhận đồ/kiểm kê trước khi tạo DonHang)
+ *   DaXacNhan   -> Đã xác nhận (luồng mới còn phải nhận đồ/kiểm tra trước khi tạo DonHang)
  *   HoanThanh   -> Hoàn thành
  *   DaHuy       -> Đã hủy
  */

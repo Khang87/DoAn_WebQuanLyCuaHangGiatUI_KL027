@@ -131,7 +131,7 @@ class GiaoNhanController extends Controller
 
         if ($activeLeg) {
             if ($isBookingReturn && $activeLeg->HinhThuc !== $returnMethod) {
-                abort(422, 'Phiếu giao trả hiện có không khớp với hình thức Booking; cần đối soát trước khi tiếp tục.');
+                abort(422, 'Phiếu giao hiện có không khớp với hình thức đặt lịch; cần đối soát trước khi tiếp tục.');
             }
 
             abort_unless($request->user()?->canPermission('deliveries.edit'), 403);

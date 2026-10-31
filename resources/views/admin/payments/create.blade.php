@@ -100,15 +100,11 @@
                 <div class="col-md-6">
                     @if($preselectedOrder)
                         <label class="form-label">Số tiền thanh toán toàn bộ</label>
-                        <input type="number" class="form-control" value="{{ $preselectedAmount }}" min="0" step="1000" disabled aria-describedby="payment-amount-help">
+                        <input type="number" class="form-control" value="{{ $preselectedAmount }}" min="0" step="1000" disabled>
                         <input type="hidden" name="amount" value="{{ $preselectedAmount }}">
                     @else
                         <label class="form-label">Số tiền thanh toán toàn bộ <span class="text-danger ms-1">*</span></label>
                         <input type="number" class="form-control" name="amount" value="{{ old('amount') }}" placeholder="250000" min="0" step="1000" required>
-                        <div class="form-text">Nhập đúng toàn bộ số tiền phải trả của hóa đơn; không hỗ trợ thanh toán một phần.</div>
-                    @endif
-                    @if($preselectedOrder)
-                        <div class="form-text" id="payment-amount-help">Phải thanh toán đủ toàn bộ số tiền hiển thị.</div>
                     @endif
                 </div>
                 <div class="col-md-6">
@@ -136,21 +132,18 @@
                 </div>
                 <div class="col-md-6 {{ $initialMethod === 'bank_transfer' ? 'd-none' : '' }}" data-cash-only>
                     <label class="form-label">Trạng thái</label>
-                    <select class="form-select" disabled aria-describedby="payment-status-help">
+                    <select class="form-select" disabled>
                         <option value="{{ \App\Enums\PaymentStatus::Paid->value }}" selected>{{ \App\Enums\PaymentStatus::Paid->label() }}</option>
                     </select>
                     <input type="hidden" name="status" value="{{ \App\Enums\PaymentStatus::Paid->value }}">
-                    <div class="form-text" id="payment-status-help">Giao dịch chỉ thành công sau khi nhân viên xác nhận đã nhận đủ tiền mặt.</div>
                 </div>
                 <div class="col-md-6 {{ $initialMethod === 'bank_transfer' ? 'd-none' : '' }}" data-cash-only>
                     <label class="form-label">Ngày thanh toán</label>
-                    <input type="datetime-local" class="form-control" value="{{ now()->format('Y-m-d\TH:i') }}" disabled aria-describedby="payment-date-help">
-                    <div class="form-text" id="payment-date-help">Thời gian được tự động ghi nhận khi lưu thanh toán.</div>
+                    <input type="datetime-local" class="form-control" value="{{ now()->format('Y-m-d\TH:i') }}" disabled>
                 </div>
                 <div class="col-md-6 {{ $initialMethod === 'bank_transfer' ? 'd-none' : '' }}" data-cash-only>
                     <label class="form-label">Mã giao dịch</label>
-                    <input type="text" class="form-control" id="transaction_code" name="transaction_code" value="{{ old('transaction_code') }}" placeholder="Mã giao dịch tự động" maxlength="100" readonly aria-describedby="transaction-code-help">
-                    <div class="form-text" id="transaction-code-help">Mã được hệ thống tự tạo theo phương thức thanh toán.</div>
+                    <input type="text" class="form-control" id="transaction_code" name="transaction_code" value="{{ old('transaction_code') }}" placeholder="Mã giao dịch tự động" maxlength="100" readonly>
                 </div>
             </div>
             <div class="d-flex justify-content-end gap-2 mt-4">

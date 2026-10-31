@@ -103,7 +103,7 @@ class DichVuController extends Controller
 
             $message = $deleted
                 ? 'Dịch vụ đã được xóa.'
-                : "Dịch vụ đã được chuyển sang trạng thái 'Tạm ngưng' để bảo toàn lịch sử đơn hàng/Booking.";
+                : "Dịch vụ đã được chuyển sang trạng thái 'Tạm ngưng' để bảo toàn lịch sử đơn hàng/đặt lịch.";
 
             return redirect()->route('services.index')->with('success', $message);
         } catch (\Exception $e) {

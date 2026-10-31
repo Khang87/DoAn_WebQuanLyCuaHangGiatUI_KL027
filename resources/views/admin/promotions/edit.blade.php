@@ -55,7 +55,7 @@
                     </div>
                     <div class="col-md-6">
                         <label class="form-label" for="GiaTriGiam">Giá trị giảm <span class="text-danger">*</span></label>
-                        <input type="number" id="GiaTriGiam" name="GiaTriGiam" min="0" step="0.01" class="form-control @error('GiaTriGiam') is-invalid @enderror" value="{{ old('GiaTriGiam', $promotion->GiaTriGiam) }}" required>
+                        <input type="number" id="GiaTriGiam" name="GiaTriGiam" min="0.01" step="0.01" class="form-control @error('GiaTriGiam') is-invalid @enderror" value="{{ old('GiaTriGiam', $promotion->GiaTriGiam) }}" required>
                         @error('GiaTriGiam')<div class="invalid-feedback">{{ $message }}</div>@enderror
                     </div>
                     <div class="col-md-6">

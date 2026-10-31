@@ -5,14 +5,14 @@
 
 @section('content')
 <div class="page-toolbar">
-    <p class="text-muted page-toolbar__desc">Theo dõi Booking từ khi xác nhận, nhận đồ thực tế đến khi kiểm kê và tạo đơn.</p>
+    <p class="text-muted page-toolbar__desc">Theo dõi đặt lịch từ khi xác nhận, nhận đồ thực tế đến khi kiểm tra và tạo đơn.</p>
 </div>
 
 <form action="{{ url()->current() }}" method="GET" class="row g-3 align-items-center mb-4">
     <div class="col-12 col-md-auto flex-grow-1">
         <div class="input-group input-group-sm shadow-sm rounded-3 overflow-hidden filter-search">
             <span class="input-group-text bg-white border-end-0 ps-3"><i class="fas fa-search text-muted"></i></span>
-            <input type="text" name="search" class="form-control form-control-sm border-start-0 ps-2" placeholder="Tìm theo mã lịch, tên khách hàng, SĐT, địa chỉ nhận/trả..." value="{{ request('search') }}">
+            <input type="text" name="search" class="form-control form-control-sm border-start-0 ps-2" placeholder="Tìm theo mã lịch, tên khách hàng, SĐT, địa chỉ nhận/giao..." value="{{ request('search') }}">
         </div>
     </div>
     <div class="col-12 col-sm-6 col-md-auto">
@@ -47,7 +47,7 @@
     <div class="card-body p-0">
         <div class="table-responsive">
             <table class="table-custom mb-0">
-                <thead><tr><th scope="col">STT</th><th scope="col">Booking</th><th>Khách hàng</th><th>Nhận / Trả đồ</th><th>Ngày hẹn</th><th>Trạng thái</th><th>Thao tác</th></tr></thead>
+                <thead><tr><th scope="col">STT</th><th scope="col">Đặt lịch</th><th>Khách hàng</th><th>Nhận / Giao đồ</th><th>Ngày hẹn</th><th>Trạng thái</th><th>Thao tác</th></tr></thead>
                 <tbody>
                 @forelse($bookings as $booking)
                     <tr>
@@ -63,7 +63,7 @@
                             </div>
                         </td>
                         <td>
-                            <i class="bi {{ $booking->method_icon }} me-1"></i>Nhận: {{ $booking->method_label }}<br><small>Trả: {{ $booking->return_method_label }}</small>
+                            <i class="bi {{ $booking->method_icon }} me-1"></i>Nhận: {{ $booking->method_label }}<br><small>Giao: {{ $booking->return_method_label }}</small>
                         </td>
                         <td>{{ $booking->NgayHen?->format('d/m/Y') ?: '-' }} {{ $booking->GioHen?->format('H:i') ?: '' }}</td>
                         <td><x-admin.status-badge :status="$booking->TrangThai" :enum="\App\Enums\BookingStatus::class" /></td>
@@ -76,9 +76,9 @@
                                     <x-admin.detail.confirm-form
                                         :action="route('bookings.approve', $booking)"
                                         method="POST"
-                                        title="Xác nhận Booking?"
-                                        text="Booking sẽ chuyển sang trạng thái Đã xác nhận để tiếp tục phân công nhận đồ."
-                                        label="Xác nhận Booking"
+                                        title="Xác nhận đặt lịch?"
+                                        text="Đặt lịch sẽ chuyển sang trạng thái Đã xác nhận để tiếp tục phân công nhận đồ."
+                                        label="Xác nhận đặt lịch"
                                         icon="bi bi-check2-circle"
                                         variant="btn-order-action"
                                         size=""
@@ -90,7 +90,7 @@
                                         :action="route('bookings.cancel', $booking)"
                                         method="POST"
                                         title="Hủy đặt lịch?"
-                                        text="Booking đang chờ sẽ được chuyển sang trạng thái Đã hủy. Bạn có muốn tiếp tục không?"
+                                        text="Đặt lịch đang chờ sẽ được chuyển sang trạng thái Đã hủy. Bạn có muốn tiếp tục không?"
                                         label="Hủy đặt lịch"
                                         icon="bi bi-x-circle"
                                         variant="btn-order-action delete"
@@ -110,6 +110,6 @@
     </div>
 </div>
 
-<x-admin.pagination :paginator="$bookings" label="lịch hẹn" />
+<x-admin.pagination :paginator="$bookings" label="đặt lịch" />
 
 @endsection

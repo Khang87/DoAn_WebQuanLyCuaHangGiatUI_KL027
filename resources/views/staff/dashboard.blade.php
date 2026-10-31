@@ -56,7 +56,7 @@
                     <div class="stat-icon"><i class="bi bi-check2-circle"></i></div>
                 </div>
                 <div class="mt-3">
-                    <small class="text-success"><i class="bi bi-box-seam"></i> Chờ giao hàng hoặc khách lấy</small>
+                    <small class="text-success"><i class="bi bi-box-seam"></i> Chờ giao hàng hoặc khách nhận</small>
                 </div>
             </div>
         </div>
@@ -236,12 +236,12 @@
     </div>
 
     @endcan
-<!-- Lịch hẹn sắp tới -->
+<!-- Đặt lịch sắp tới -->
     @can('bookings.view')
         <div class="col-lg-6">
             <div class="card shadow-sm border-0 rounded-3 h-100">
                 <div class="card-header bg-white d-flex justify-content-between align-items-center">
-                    <h5 class="card-title mb-0">Lịch hẹn sắp tới</h5>
+                    <h5 class="card-title mb-0">Đặt lịch sắp tới</h5>
                     @can('bookings.view')<a href="{{ route('bookings.index') }}" class="btn btn-sm btn-outline-primary">Xem tất cả</a>@endcan
                 </div>
             <div class="card-body p-0">
@@ -273,7 +273,7 @@
                                 </td>
                             </tr>
                             @empty
-                            <tr><td colspan="6" class="text-center text-muted py-4">Không có lịch hẹn sắp tới</td></tr>
+                            <tr><td colspan="6" class="text-center text-muted py-4">Không có đặt lịch nào sắp tới</td></tr>
                             @endforelse
                         </tbody>
                     </table>

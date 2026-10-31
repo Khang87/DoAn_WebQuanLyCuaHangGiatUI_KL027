@@ -163,7 +163,7 @@
                                 <div class="col-md-6">
                                     <label class="form-label" for="saved-promotion">Voucher đã lưu</label>
                                     <input type="text" class="form-control" id="saved-promotion" readonly value="{{ $order->khuyenMai?->MaKhuyenMai ?: 'Không có voucher' }}">
-                                    <div class="form-text">Voucher được giữ từ Booking hoặc đơn cũ và kiểm tra lại khi lưu; không thể thêm hoặc đổi tại đây. Số tiền hiển thị là dự kiến trước khi lưu.</div>
+                                    <div class="form-text">Voucher được giữ từ đặt lịch hoặc đơn cũ và kiểm tra lại khi lưu; không thể thêm hoặc đổi tại đây. Số tiền hiển thị là dự kiến trước khi lưu.</div>
                                     @if($savedVoucherWarning)<div class="text-warning small" data-saved-voucher-warning>{{ $savedVoucherWarning }}</div>@endif
                                 </div>
                                 <div class="col-md-6">

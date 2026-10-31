@@ -144,13 +144,13 @@ class BookingService
         return DB::transaction(function () use ($booking): Booking {
             $locked = Booking::query()->lockForUpdate()->findOrFail($booking->BookingID);
             if ($this->hasConvertedOrder($locked)) {
-                throw ValidationException::withMessages(['booking' => 'Booking đã có đơn hàng và không cần xác nhận lại.']);
+                throw ValidationException::withMessages(['booking' => 'Đặt lịch đã có đơn hàng và không cần xác nhận lại.']);
             }
             if (! in_array($locked->TrangThai, [BookingStatus::Pending->value, BookingStatus::Confirmed->value], true)) {
-                throw ValidationException::withMessages(['booking' => 'Chỉ có thể xác nhận Booking đang chờ nhận đồ.']);
+                throw ValidationException::withMessages(['booking' => 'Chỉ có thể xác nhận đặt lịch đang chờ nhận đồ.']);
             }
 
-            $employeeId = $this->requireAuthenticatedEmployeeId('booking', 'Tài khoản cần hồ sơ nhân viên đang hoạt động để xác nhận Booking.');
+            $employeeId = $this->requireAuthenticatedEmployeeId('booking', 'Tài khoản cần hồ sơ nhân viên đang hoạt động để xác nhận đặt lịch.');
             $before = $this->bookingAuditSnapshot($locked);
             $beforeItems = $this->bookingItemsAuditSnapshot($locked);
 
@@ -189,7 +189,7 @@ class BookingService
         return DB::transaction(function () use ($booking): Booking {
             $locked = Booking::query()->lockForUpdate()->findOrFail($booking->BookingID);
             if ($locked->TrangThai !== BookingStatus::Pending->value || $this->hasConvertedOrder($locked)) {
-                throw ValidationException::withMessages(['booking' => 'Chỉ có thể hủy Booking đang chờ và chưa có đơn hàng.']);
+                throw ValidationException::withMessages(['booking' => 'Chỉ có thể hủy đặt lịch đang chờ và chưa có đơn hàng.']);
             }
 
             return $this->update($locked, ['status' => BookingStatus::Cancelled->value]);
@@ -201,16 +201,16 @@ class BookingService
         return DB::transaction(function () use ($booking): BookingGiaoNhan {
             $locked = Booking::query()->lockForUpdate()->findOrFail($booking->BookingID);
             if ($locked->TrangThai !== BookingStatus::Confirmed->value || $this->hasConvertedOrder($locked)) {
-                throw ValidationException::withMessages(['booking' => 'Chỉ Booking đã xác nhận và chưa có đơn mới được bắt đầu kiểm kê.']);
+                throw ValidationException::withMessages(['booking' => 'Chỉ đặt lịch đã xác nhận và chưa có đơn mới được bắt đầu kiểm tra.']);
             }
             $employeeId = $this->requireAuthenticatedEmployeeId('booking', 'Cần nhân viên đang hoạt động để nhận đồ.');
             $leg = BookingGiaoNhan::query()->where('BookingID', $locked->BookingID)
                 ->where('LoaiGiaoNhan', 'NHAN_DO')->lockForUpdate()->firstOrFail();
             if ($leg->TrangThai === DeliveryStatus::Cancelled->dbValue()) {
-                throw ValidationException::withMessages(['booking' => 'Không thể bắt đầu kiểm kê trên phiếu đã hủy.']);
+                throw ValidationException::withMessages(['booking' => 'Không thể bắt đầu kiểm tra trên phiếu đã hủy.']);
             }
             if ($leg->NhanVienID === null || (int) $leg->NhanVienID !== $employeeId) {
-                throw ValidationException::withMessages(['booking' => 'Chỉ nhân viên được phân công mới có thể bắt đầu kiểm kê.']);
+                throw ValidationException::withMessages(['booking' => 'Chỉ nhân viên được phân công mới có thể bắt đầu kiểm tra.']);
             }
             if ($leg->TrangThai === DeliveryStatus::Pending->dbValue()) {
                 $leg->update([
@@ -233,15 +233,15 @@ class BookingService
             }
             if (! in_array($data['customer_accepted'] ?? null, [true, 1, '1', 'yes', 'on'], true)) {
                 throw ValidationException::withMessages([
-                    'customer_accepted' => 'Cần xác nhận khách hàng đã đồng ý với kết quả kiểm kê và tổng tiền thực tế.',
+                    'customer_accepted' => 'Cần xác nhận khách hàng đã đồng ý với kết quả kiểm tra và tổng tiền thực tế.',
                 ]);
             }
             if ($locked->TrangThai !== BookingStatus::Confirmed->value) {
-                throw ValidationException::withMessages(['booking' => 'Hãy xác nhận Booking trước khi kiểm kê và tạo đơn.']);
+                throw ValidationException::withMessages(['booking' => 'Hãy xác nhận đặt lịch trước khi kiểm tra và tạo đơn.']);
             }
             $employeeId = $this->requireAuthenticatedEmployeeId(
                 'booking',
-                'Tài khoản cần hồ sơ nhân viên đang hoạt động để kiểm kê.',
+                'Tài khoản cần hồ sơ nhân viên đang hoạt động để kiểm tra.',
             );
             $intake = BookingGiaoNhan::query()
                 ->where('BookingID', $locked->BookingID)
@@ -260,7 +260,7 @@ class BookingService
                 || BookingKiemKe::query()->where('BookingID', $locked->BookingID)->exists()
             ) {
                 throw ValidationException::withMessages([
-                    'booking' => 'Phiếu nhận không còn ở trạng thái cho phép kiểm kê và chốt đơn.',
+                    'booking' => 'Phiếu nhận không còn ở trạng thái cho phép kiểm tra và chốt đơn.',
                 ]);
             }
 
@@ -277,7 +277,7 @@ class BookingService
             $savedPromotionId = $locked->KhuyenMaiID === null ? null : (int) $locked->KhuyenMaiID;
             if ($savedPromotionId !== null && $promotionId !== $savedPromotionId) {
                 throw ValidationException::withMessages([
-                    'promotion_id' => 'Mã giảm giá đã được áp dụng cho booking và không thể thay đổi tại bước kiểm tra.',
+                    'promotion_id' => 'Mã giảm giá đã được áp dụng cho đặt lịch và không thể thay đổi tại bước kiểm tra.',
                 ]);
             }
             $pointsUsed = (int) ($data['points_used'] ?? $locked->DiemSuDung ?? 0);
@@ -353,15 +353,15 @@ class BookingService
             if ($changed && ! $draft) {
                 $accountId = $locked->khachHang?->taiKhoan?->TaiKhoanID;
                 if (! $accountId) {
-                    throw ValidationException::withMessages(['booking' => 'Khách hàng chưa có tài khoản mobile để nhận thông báo điều chỉnh kiểm kê.']);
+                    throw ValidationException::withMessages(['booking' => 'Khách hàng chưa có tài khoản mobile để nhận thông báo điều chỉnh kết quả kiểm tra.']);
                 }
 
                 $this->notificationService->create([
                     'TaiKhoanID' => $accountId,
                     'DonHangID' => $order->DonHangID,
                     'LoaiThongBao' => 'booking_inspection_updated',
-                    'TieuDe' => 'Cập nhật kiểm kê Booking',
-                    'NoiDung' => 'Nhân viên đã đối soát và điều chỉnh thông tin đồ thực tế cho Booking '.$locked->MaBooking.'. Đơn hàng '.$order->MaDonHang.' đã được tạo.',
+                    'TieuDe' => 'Cập nhật kết quả kiểm tra đặt lịch',
+                    'NoiDung' => 'Nhân viên đã đối soát và điều chỉnh thông tin đồ thực tế cho đặt lịch '.$locked->MaBooking.'. Đơn hàng '.$order->MaDonHang.' đã được tạo.',
                     'DaDoc' => false,
                 ], $locked);
             }
@@ -377,15 +377,15 @@ class BookingService
         return DB::transaction(function () use ($booking, $data): Booking {
             $locked = Booking::query()->lockForUpdate()->findOrFail($booking->BookingID);
             if ($locked->TrangThai !== BookingStatus::Confirmed->value || $this->hasConvertedOrder($locked)) {
-                throw ValidationException::withMessages(['booking' => 'Booking không còn ở trạng thái cho phép lưu kết quả kiểm kê.']);
+                throw ValidationException::withMessages(['booking' => 'Đặt lịch không còn ở trạng thái cho phép lưu kết quả kiểm tra.']);
             }
-            $employeeId = $this->requireAuthenticatedEmployeeId('booking', 'Cần nhân viên đang hoạt động để lưu kết quả kiểm kê.');
+            $employeeId = $this->requireAuthenticatedEmployeeId('booking', 'Cần nhân viên đang hoạt động để lưu kết quả kiểm tra.');
             $intake = BookingGiaoNhan::query()->where('BookingID', $locked->BookingID)->where('LoaiGiaoNhan', 'NHAN_DO')->lockForUpdate()->firstOrFail();
             $this->assertAssignedIntakeHandler($intake, $employeeId, allowManager: true);
             if (! in_array($intake->TrangThai, [DeliveryStatus::Pending->dbValue(), DeliveryStatus::Picking->dbValue()], true)
                 || $intake->ThoiGianThucTe !== null || $intake->DonHangID !== null || $intake->BookingKiemKeID !== null
                 || BookingKiemKe::query()->where('BookingID', $locked->BookingID)->exists()) {
-                throw ValidationException::withMessages(['booking' => 'Phiếu nhận không còn ở trạng thái cho phép lưu kiểm kê.']);
+                throw ValidationException::withMessages(['booking' => 'Phiếu nhận không còn ở trạng thái cho phép lưu kết quả kiểm tra.']);
             }
 
             $data['customer_id'] = $locked->KhachHangID;
@@ -491,7 +491,7 @@ class BookingService
     }
 
     /**
-     * Những Booking trong danh sách mà tài khoản hiện tại tới lượt kiểm kê.
+     * Những Booking trong danh sách mà tài khoản hiện tại tới lượt kiểm tra.
      *
      * Cột "Thao tác" ở danh sách cần biết điều này để hiển thị nút "Kiểm tra và
      * tạo đơn" mà vẫn dùng đúng một điều kiện với inspectionUnavailableReason(),
@@ -551,7 +551,7 @@ class BookingService
     private function inspectionUnavailableReason(Booking $booking): ?string
     {
         if ($booking->TrangThai !== BookingStatus::Confirmed->value || $this->hasConvertedOrder($booking)) {
-            return 'Booking không còn ở trạng thái cho phép kiểm kê.';
+            return 'Đặt lịch không còn ở trạng thái cho phép kiểm tra.';
         }
 
         $intake = BookingGiaoNhan::query()
@@ -563,7 +563,7 @@ class BookingService
             ! $this->intakeLegAllowsInspection($intake)
             || BookingKiemKe::query()->where('BookingID', $booking->BookingID)->exists()
         ) {
-            return 'Phiếu nhận không còn ở trạng thái cho phép kiểm kê.';
+            return 'Phiếu nhận không còn ở trạng thái cho phép kiểm tra.';
         }
         if ($intake->NhanVienID === null) {
             return 'Phiếu nhận chưa được phân công nhân viên phụ trách.';
@@ -571,7 +571,7 @@ class BookingService
 
         $employeeId = $this->activeEmployeeId();
         if ($employeeId === null) {
-            return 'Tài khoản cần hồ sơ nhân viên đang hoạt động để kiểm kê.';
+            return 'Tài khoản cần hồ sơ nhân viên đang hoạt động để kiểm tra.';
         }
         if (! auth()->user()?->isManager() && (int) $intake->NhanVienID !== $employeeId) {
             return 'Chỉ nhân viên được phân công mới có thể kiểm tra và xử lý phiếu nhận đồ.';
@@ -609,7 +609,7 @@ class BookingService
             $locked = Booking::query()->lockForUpdate()->findOrFail($booking->BookingID);
             if ($locked->TrangThai !== BookingStatus::Confirmed->value || $this->hasConvertedOrder($locked)) {
                 throw ValidationException::withMessages([
-                    'booking' => 'Chỉ Booking đã xác nhận, chưa tạo đơn mới có thể hủy do khách từ chối báo giá.',
+                    'booking' => 'Chỉ đặt lịch đã xác nhận, chưa tạo đơn mới có thể hủy do khách từ chối báo giá.',
                 ]);
             }
 
@@ -814,7 +814,7 @@ class BookingService
 
         $declared = $booking->chiTietBookings()->get();
         if ($declared->isEmpty()) {
-            return false; // Khách chọn để nhân viên kiểm kê và nhập toàn bộ đồ thực tế.
+            return false; // Khách chọn để nhân viên kiểm tra và nhập toàn bộ đồ thực tế.
         }
         $hasDeclaredCondition = $declared->contains(
             fn ($item): bool => trim((string) $item->getAttribute('TinhTrangTruocKhiGiat')) !== '',
@@ -877,7 +877,7 @@ class BookingService
 
             if ($lockedBooking->TrangThai === BookingStatus::Confirmed->value
                 && ! $hasConvertedOrder) {
-                throw ValidationException::withMessages(['booking' => 'Booking đã xác nhận chỉ được thay đổi qua kiểm kê thực tế.']);
+                throw ValidationException::withMessages(['booking' => 'Đặt lịch đã xác nhận chỉ được thay đổi qua kiểm tra thực tế.']);
             }
 
             if (
@@ -886,7 +886,7 @@ class BookingService
                 && (int) $data['staff_id'] !== (int) $lockedBooking->NhanVienID
             ) {
                 throw ValidationException::withMessages([
-                    'staff_id' => 'Không thể thay đổi nhân viên phụ trách sau khi Booking đã được chuyển thành đơn hàng.',
+                    'staff_id' => 'Không thể thay đổi nhân viên phụ trách sau khi đặt lịch đã được chuyển thành đơn hàng.',
                 ]);
             }
 
@@ -896,7 +896,7 @@ class BookingService
             } elseif (array_key_exists('staff_id', $data)) {
                 $assignedEmployeeId = $this->requireAuthenticatedEmployeeId(
                     'staff_id',
-                    'Tài khoản hiện tại chưa liên kết hồ sơ nhân viên để cập nhật Booking.',
+                    'Tài khoản hiện tại chưa liên kết hồ sơ nhân viên để cập nhật đặt lịch.',
                 );
                 unset($data['staff_id']);
             }
@@ -916,13 +916,13 @@ class BookingService
                 && $lockedBooking->TrangThai !== BookingStatus::Completed->value
             ) {
                 throw ValidationException::withMessages([
-                    'status' => 'Chỉ có thể hoàn thành Booking sau khi bàn giao thành công qua phiếu giao trả.',
+                    'status' => 'Chỉ có thể hoàn thành đặt lịch sau khi bàn giao thành công qua phiếu giao đồ.',
                 ]);
             }
 
             if ($hasConvertedOrder && array_key_exists('items', $data)) {
                 throw ValidationException::withMessages([
-                    'items' => 'Không thể sửa các dòng dịch vụ sau khi Booking đã được chuyển thành đơn hàng.',
+                    'items' => 'Không thể sửa các dòng dịch vụ sau khi đặt lịch đã được chuyển thành đơn hàng.',
                 ]);
             }
 
@@ -936,7 +936,7 @@ class BookingService
 
             if ($wasPending && $isBeingConfirmed) {
                 throw ValidationException::withMessages([
-                    'status' => 'Hãy dùng thao tác “Xác nhận Booking” để lập phiếu nhận trước khi kiểm kê.',
+                    'status' => 'Hãy dùng thao tác “Xác nhận đặt lịch” để lập phiếu nhận trước khi kiểm tra.',
                 ]);
             }
 
@@ -1052,7 +1052,7 @@ class BookingService
             $lockedBooking = Booking::query()->lockForUpdate()->findOrFail($booking->BookingID);
             $employeeId = $this->requireAuthenticatedEmployeeId(
                 'booking',
-                'Tài khoản hiện tại chưa liên kết hồ sơ nhân viên để xác nhận Booking.',
+                'Tài khoản hiện tại chưa liên kết hồ sơ nhân viên để xác nhận đặt lịch.',
             );
             $existing = $this->findOrderForBooking($lockedBooking);
             if ($existing !== null) {
@@ -1061,7 +1061,7 @@ class BookingService
 
             if ($lockedBooking->TrangThai !== BookingStatus::Confirmed->value) {
                 throw ValidationException::withMessages([
-                    'booking' => 'Hãy xác nhận Booking trước khi kiểm kê và tạo đơn.',
+                    'booking' => 'Hãy xác nhận đặt lịch trước khi kiểm tra và tạo đơn.',
                 ]);
             }
 
@@ -1072,17 +1072,17 @@ class BookingService
                     DeliveryStatus::Completed->dbValue(),
                     'Đã nhận',
                 ])->exists()) {
-                throw ValidationException::withMessages(['booking' => 'Phiếu nhận chưa ở trạng thái cho phép kiểm kê và tạo đơn.']);
+                throw ValidationException::withMessages(['booking' => 'Phiếu nhận chưa ở trạng thái cho phép kiểm tra và tạo đơn.']);
             }
 
             $inspection = BookingKiemKe::query()->where('BookingID', $lockedBooking->BookingID)->lockForUpdate()->first();
             $expectedSnapshot = $this->inspectionSnapshot(array_merge($bookingData, ['items' => $items]));
             if (! $inspection || $inspection->DuLieuThucTe != $expectedSnapshot) {
-                throw ValidationException::withMessages(['booking' => 'Bản kiểm kê chưa được lưu hoặc không khớp với dữ liệu đang tạo đơn.']);
+                throw ValidationException::withMessages(['booking' => 'Bản kiểm tra chưa được lưu hoặc không khớp với dữ liệu đang tạo đơn.']);
             }
             if ($recalculateDeliveryFee) {
                 throw ValidationException::withMessages([
-                    'recalculate_delivery_fee' => 'Phí giao nhận đã lưu từ Booking không được tính lại trong lúc kiểm kê.',
+                    'recalculate_delivery_fee' => 'Phí giao nhận đã lưu từ đặt lịch không được tính lại trong lúc kiểm tra.',
                 ]);
             }
 
@@ -1280,10 +1280,10 @@ class BookingService
         ?string $reason = null,
     ): void {
         $action = $before === []
-            ? 'Tạo Booking'
+            ? 'Tạo đặt lịch'
             : (($before['TrangThai'] ?? null) !== BookingStatus::Confirmed->value && ($after['TrangThai'] ?? null) === BookingStatus::Confirmed->value
-                ? 'Xác nhận Booking'
-                : 'Cập nhật Booking');
+                ? 'Xác nhận đặt lịch'
+                : 'Cập nhật đặt lịch');
 
         NhatKyHeThong::create([
             'TaiKhoanID' => auth()->id(),

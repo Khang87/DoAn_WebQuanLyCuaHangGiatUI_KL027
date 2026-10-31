@@ -135,7 +135,7 @@ class LuuBookingRequest extends FormRequest
             'method.required' => 'Hình thức nhận đồ là bắt buộc.',
             'return_method.required' => 'Vui lòng bổ sung hình thức giao.',
             'return_method.in' => 'Hình thức giao không hợp lệ.',
-            'return_address.required_if' => 'Vui lòng nhập địa chỉ trả đồ tại nhà.',
+            'return_address.required_if' => 'Vui lòng nhập địa chỉ giao đồ tại nhà.',
             'method.in' => 'Phương thức không hợp lệ. Chỉ chấp nhận: '.implode(', ', ReceiveMethod::values()).'.',
             'address.required_if' => 'Địa chỉ nhận đồ là bắt buộc khi chọn giao nhận tại nhà.',
             'address.max' => 'Địa chỉ không được vượt quá 255 ký tự.',

@@ -34,7 +34,7 @@ class FriendlyError
         }
 
         if ($isMissingRelation) {
-            return 'Không thể xác nhận Booking hoặc tạo đơn hàng vì CSDL Supabase đang thiếu một bảng được ứng dụng hoặc trigger tham chiếu. Giao dịch đã được hủy; vui lòng liên hệ quản trị viên kiểm tra schema và trigger.';
+            return 'Không thể xác nhận đặt lịch hoặc tạo đơn hàng vì CSDL Supabase đang thiếu một bảng được ứng dụng hoặc trigger tham chiếu. Giao dịch đã được hủy; vui lòng liên hệ quản trị viên kiểm tra schema và trigger.';
         }
 
         if ($sqlState === '42703') {

@@ -42,7 +42,7 @@
                 </div>
                 <div class="col-md-6">
                     <label class="form-label">Giá trị giảm giá <span class="text-danger">*</span></label>
-                    <input type="number" class="form-control @error('GiaTriGiam') is-invalid @enderror" name="GiaTriGiam" value="{{ old('GiaTriGiam', $coupon->GiaTriGiam) }}" min="0" step="0.01" required>
+                    <input type="number" class="form-control @error('GiaTriGiam') is-invalid @enderror" name="GiaTriGiam" value="{{ old('GiaTriGiam', $coupon->GiaTriGiam) }}" min="0.01" step="0.01" required>
                     @error('GiaTriGiam')
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror

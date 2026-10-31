@@ -433,7 +433,7 @@ class DeliveryService
                 ) {
                     NhatKyHeThong::create([
                         'TaiKhoanID' => auth()->id(),
-                        'HanhDong' => 'Phân công phiếu nhận Booking',
+                        'HanhDong' => 'Phân công phiếu nhận đặt lịch',
                         'BangDuLieu' => 'BookingGiaoNhan',
                         'BanGhiID' => $current->BookingGiaoNhanID,
                         'DuLieuCu' => ['NhanVienID' => $previousEmployeeId],
@@ -462,7 +462,7 @@ class DeliveryService
 
         if ((int) $current->BookingID !== (int) $bookingId || ! $this->canManageBookingIntake($current)) {
             throw ValidationException::withMessages([
-                'booking_delivery' => 'Chỉ có thể sửa hoặc hủy phiếu nhận đồ đang chờ, chưa nhận, chưa kiểm kê và chưa tạo đơn.',
+                'booking_delivery' => 'Chỉ có thể sửa hoặc hủy phiếu nhận đồ đang chờ, chưa nhận, chưa kiểm tra và chưa tạo đơn.',
             ]);
         }
 
@@ -510,7 +510,7 @@ class DeliveryService
                     $expectedFulfillment = $order->booking()->value('HinhThucTraDo');
                     if ($existingReturn->HinhThuc !== $expectedFulfillment) {
                         throw ValidationException::withMessages([
-                            'method' => 'Phiếu giao trả hiện có không khớp với hình thức đã chốt; cần đối soát trước khi tiếp tục.',
+                            'method' => 'Phiếu giao hiện có không khớp với hình thức đã chốt; cần đối soát trước khi tiếp tục.',
                         ]);
                     }
 
@@ -530,7 +530,7 @@ class DeliveryService
 
                 if ($returnPlan === null || $returnPlan->HinhThuc !== $attributes['HinhThuc']) {
                     throw ValidationException::withMessages([
-                        'booking' => 'Không tìm thấy kế hoạch trả đồ hợp lệ đã liên kết với đơn hàng.',
+                        'booking' => 'Không tìm thấy kế hoạch giao đồ hợp lệ đã liên kết với đơn hàng.',
                     ]);
                 }
 
@@ -615,7 +615,7 @@ class DeliveryService
             } elseif ($status === DeliveryStatus::Delivering
                 && in_array($order->statusEnum(), [OrderStatus::Delivering, OrderStatus::Delivered], true)) {
                 if (! $order->isLocked()) {
-                    throw ValidationException::withMessages(['payment' => 'Vui lòng thanh toán đơn hàng trước khi xác nhận trả đồ.']);
+                    throw ValidationException::withMessages(['payment' => 'Vui lòng thanh toán đơn hàng trước khi xác nhận giao đồ.']);
                 }
                 $current->update([
                     'TrangThai' => DeliveryStatus::Completed->dbValue(),
@@ -760,7 +760,7 @@ class DeliveryService
             && $previousStatus !== DeliveryStatus::Completed
             && DeliveryStatus::parseForLeg($validated['status'], $current->LoaiGiaoNhan) === DeliveryStatus::Completed
             && ! $order->isLocked()) {
-            throw ValidationException::withMessages(['payment' => 'Vui lòng thanh toán đơn hàng trước khi xác nhận trả đồ.']);
+            throw ValidationException::withMessages(['payment' => 'Vui lòng thanh toán đơn hàng trước khi xác nhận giao đồ.']);
         }
         if (
             $previousStatus !== DeliveryStatus::Completed
