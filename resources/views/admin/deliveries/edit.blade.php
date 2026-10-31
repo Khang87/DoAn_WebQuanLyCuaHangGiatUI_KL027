@@ -17,7 +17,8 @@
         background: transparent; color: var(--bs-body-color); text-align: left;
     }
     .delivery-employee-option:hover,
-    .delivery-employee-option:focus-visible {
+    .delivery-employee-option:focus-visible,
+    .delivery-employee-option[aria-selected="true"] {
         outline: none; background: var(--bs-primary-bg-subtle); color: var(--bs-primary-text-emphasis);
     }
     .delivery-employee-option:focus-visible { box-shadow: inset 0 0 0 2px var(--bs-primary); }
@@ -91,10 +92,7 @@
                                             data-employee-description="{{ $employeeDescription }}"
                                             data-employee-search-text="{{ $employee->HoTen }} {{ $employeeDescription }}">
                                         <span>
-                                            <span class="d-block">
-                                                @if((int) $employee->NhanVienID === (int) (auth()->user()?->NhanVienID ?? 0))Bản thân tôi — @endif
-                                                {{ $employee->HoTen }}{{ $employeeDescription ? ' · '.$employeeDescription : '' }}@if(($employeeNameCounts[$employeeNameKey] ?? 0) > 1) · {{ $employee->SoDienThoai ?: ($employee->Email ?: 'Mã NV '.$employee->NhanVienID) }}@endif
-                                            </span>
+                                            <span class="d-block">@if((int) $employee->NhanVienID === (int) (auth()->user()?->NhanVienID ?? 0))Bản thân tôi — @endif{{ $employee->HoTen }}{{ $employeeDescription ? ' · '.$employeeDescription : '' }}@if(($employeeNameCounts[$employeeNameKey] ?? 0) > 1) · {{ $employee->SoDienThoai ?: ($employee->Email ?: 'Mã NV '.$employee->NhanVienID) }}@endif</span>
                                         </span>
                                         <i class="bi bi-check2 text-primary" aria-hidden="true" hidden data-selected-indicator></i>
                                     </button>

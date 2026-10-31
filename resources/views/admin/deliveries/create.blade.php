@@ -91,18 +91,7 @@
                                 @foreach($employees as $employee)
                                     @php
                                         $employeeNameKey = mb_strtolower(trim((string) $employee->HoTen));
-                                        $employeeDisambiguators = array_filter([
-                                            $employee->ChucDanh,
-                                            $employee->SoDienThoai,
-                                            $employee->Email,
-                                            $employee->NgayVaoLam?->format('d/m/Y'),
-                                        ]);
-                                        $employeeDescription = implode(' · ', $employeeDisambiguators);
-                                        if (($employeeNameCounts[$employeeNameKey] ?? 0) > 1) {
-                                            if ($employeeDescription === '') {
-                                                $employeeDescription = 'Mã NV '.$employee->NhanVienID;
-                                            }
-                                        }
+                                        $employeeDescription = (string) ($employee->ChucDanh ?? '');
                                         $employeeSelected = $selectedEmployee
                                             && (int) $selectedEmployee->NhanVienID === (int) $employee->NhanVienID;
                                     @endphp
@@ -113,12 +102,7 @@
                                             data-employee-name="{{ $employee->HoTen }}"
                                             data-employee-description="{{ $employeeDescription }}"
                                             data-employee-search-text="{{ $employee->HoTen }} {{ $employeeDescription }}">
-                                        <span>
-                                            <span class="d-block">{{ $employee->HoTen }}</span>
-                                            @if(($employeeNameCounts[$employeeNameKey] ?? 0) > 1 || $employeeDescription !== '')
-                                                <span class="small text-muted">{{ $employeeDescription ?: 'Thông tin nhân viên chưa bổ sung' }}</span>
-                                            @endif
-                                        </span>
+                                        <span class="d-block">@if((int) $employee->NhanVienID === (int) (auth()->user()?->NhanVienID ?? 0))Bản thân tôi — @endif{{ $employee->HoTen }}{{ $employeeDescription ? ' · '.$employeeDescription : '' }}@if(($employeeNameCounts[$employeeNameKey] ?? 0) > 1) · {{ $employee->SoDienThoai ?: ($employee->Email ?: 'Mã NV '.$employee->NhanVienID) }}@endif</span>
                                         <i class="bi bi-check2 text-primary" aria-hidden="true" @if(! $employeeSelected) hidden @endif data-selected-indicator></i>
                                     </button>
                                 @endforeach

@@ -185,6 +185,17 @@ if (panel) {
                     ? 'Không áp dụng mã khuyến mãi'
                     : 'Chưa có mã khuyến mãi đủ điều kiện theo tổng dịch vụ hiện tại';
             }
+            const promotionHelp = form.querySelector('[data-promotion-help]');
+            if (promotionHelp) {
+                const minimums = [...promotionSelect.options]
+                    .filter(option => option.value && option.disabled)
+                    .map(option => Number(option.dataset.minimum || 0))
+                    .filter(minimum => minimum > 0);
+                const nextMinimum = minimums.length ? Math.min(...minimums) : null;
+                promotionHelp.textContent = nextMinimum === null
+                    ? 'Chỉ hiển thị mã khách hàng đủ điều kiện; chọn mã để tính lại tổng kết.'
+                    : `Tổng dịch vụ hiện tại ${money(subtotal)}. Mã khả dụng yêu cầu đơn tối thiểu từ ${money(nextMinimum)}; mã sẽ hiện khi đạt mức này.`;
+            }
         }
 
         const selectedPromotion = promotionSelect?.selectedOptions[0];

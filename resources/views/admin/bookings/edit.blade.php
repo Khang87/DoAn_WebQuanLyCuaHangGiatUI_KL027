@@ -452,7 +452,11 @@
                         </option>
                     @endforeach
                 </select>
-                @if($coupons->isEmpty())
+                @if($coupons->isEmpty() && $minimumPromotionThreshold !== null && ! $inspectionMode)
+                    <div class="form-text" role="status">
+                        Có mã đang hoạt động nhưng tổng dịch vụ hiện tại {{ number_format($currentCouponSubtotal, 0, ',', '.') }} VNĐ chưa đạt mức tối thiểu {{ number_format($minimumPromotionThreshold, 0, ',', '.') }} VNĐ.
+                    </div>
+                @elseif($coupons->isEmpty())
                     <div class="form-text" role="status">
                         Hiện không có mã phù hợp với khách hàng này. Mã hết hạn, tạm ngưng, hết lượt, đã dùng hoặc không thỏa điều kiện khách hàng sẽ không xuất hiện.
                     </div>

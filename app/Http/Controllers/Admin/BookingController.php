@@ -293,7 +293,12 @@ class BookingController extends Controller
                 PHP_FLOAT_MAX,
             ) === null)
             ->values();
+        $minimumPromotionThreshold = null;
         if (! $inspectionMode) {
+            $minimumPromotionThreshold = $coupons
+                ->filter(fn (KhuyenMai $coupon): bool => $coupon->GiaTriDonToiThieu !== null
+                    && $currentCouponSubtotal < (float) $coupon->GiaTriDonToiThieu)
+                ->min(fn (KhuyenMai $coupon): float => (float) $coupon->GiaTriDonToiThieu);
             $coupons = $coupons->filter(fn (KhuyenMai $coupon): bool =>
                 $coupon->GiaTriDonToiThieu === null
                 || $currentCouponSubtotal >= (float) $coupon->GiaTriDonToiThieu
@@ -312,6 +317,7 @@ class BookingController extends Controller
             'pricingUnitOptions',
             'coupons',
             'currentCouponSubtotal',
+            'minimumPromotionThreshold',
         ));
     }
 

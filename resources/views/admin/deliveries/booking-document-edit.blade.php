@@ -156,7 +156,8 @@
         }
 
         .delivery-employee-option:hover,
-        .delivery-employee-option:focus-visible {
+        .delivery-employee-option:focus-visible,
+        .delivery-employee-option[aria-selected="true"] {
             outline: none;
             background: var(--bs-primary-bg-subtle);
             color: var(--bs-primary-text-emphasis);

@@ -1273,20 +1273,26 @@ class BookingOrderConversionTest extends TestCase
         DB::table('KhuyenMai')->insert([
             [
                 'KhuyenMaiID' => 11, 'MaKhuyenMai' => 'ELIGIBLE10', 'TenKhuyenMai' => 'Giảm 10%',
-                'LoaiKhuyenMai' => 'Phần trăm', 'GiaTriGiam' => 10,
+                'LoaiKhuyenMai' => 'Phần trăm', 'GiaTriGiam' => 10, 'GiaTriDonToiThieu' => null,
                 'NgayBatDau' => today()->subDay()->toDateString(), 'NgayKetThuc' => today()->addDay()->toDateString(),
                 'SoLuongSuDung' => 5, 'TrangThai' => 'Hoạt động',
             ],
             [
                 'KhuyenMaiID' => 12, 'MaKhuyenMai' => 'SOLDOUT', 'TenKhuyenMai' => 'Hết lượt',
-                'LoaiKhuyenMai' => 'Tiền mặt', 'GiaTriGiam' => 1000,
+                'LoaiKhuyenMai' => 'Tiền mặt', 'GiaTriGiam' => 1000, 'GiaTriDonToiThieu' => null,
                 'NgayBatDau' => today()->subDay()->toDateString(), 'NgayKetThuc' => today()->addDay()->toDateString(),
                 'SoLuongSuDung' => 0, 'TrangThai' => 'Hoạt động',
             ],
             [
                 'KhuyenMaiID' => 13, 'MaKhuyenMai' => 'EXPIRED', 'TenKhuyenMai' => 'Hết hạn',
-                'LoaiKhuyenMai' => 'Tiền mặt', 'GiaTriGiam' => 1000,
+                'LoaiKhuyenMai' => 'Tiền mặt', 'GiaTriGiam' => 1000, 'GiaTriDonToiThieu' => null,
                 'NgayBatDau' => today()->subDays(4)->toDateString(), 'NgayKetThuc' => today()->subDay()->toDateString(),
+                'SoLuongSuDung' => null, 'TrangThai' => 'Hoạt động',
+            ],
+            [
+                'KhuyenMaiID' => 15, 'MaKhuyenMai' => 'MINIMUM20K', 'TenKhuyenMai' => 'Giảm khi đủ 20.000đ',
+                'LoaiKhuyenMai' => 'Tiền mặt', 'GiaTriGiam' => 15000, 'GiaTriDonToiThieu' => 20000,
+                'NgayBatDau' => today()->subDay()->toDateString(), 'NgayKetThuc' => today()->addDay()->toDateString(),
                 'SoLuongSuDung' => null, 'TrangThai' => 'Hoạt động',
             ],
         ]);
@@ -1297,6 +1303,8 @@ class BookingOrderConversionTest extends TestCase
 
         $this->get(route('bookings.inspection', $booking))->assertOk()
             ->assertSee('ELIGIBLE10 · 10%')
+            ->assertSee('MINIMUM20K')
+            ->assertSee('data-minimum="20000"', false)
             ->assertDontSee('SOLDOUT')
             ->assertDontSee('EXPIRED')
             ->assertSee('data-minimum="', false)
