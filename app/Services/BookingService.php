@@ -274,6 +274,12 @@ class BookingService
             $promotionId = array_key_exists('promotion_id', $data)
                 ? ($data['promotion_id'] === null ? null : (int) $data['promotion_id'])
                 : ($locked->KhuyenMaiID === null ? null : (int) $locked->KhuyenMaiID);
+            $savedPromotionId = $locked->KhuyenMaiID === null ? null : (int) $locked->KhuyenMaiID;
+            if ($savedPromotionId !== null && $promotionId !== $savedPromotionId) {
+                throw ValidationException::withMessages([
+                    'promotion_id' => 'Mã giảm giá đã được áp dụng cho booking và không thể thay đổi tại bước kiểm tra.',
+                ]);
+            }
             $pointsUsed = (int) ($data['points_used'] ?? $locked->DiemSuDung ?? 0);
             $estimate = $this->orderService->estimateBookingWithRewards($locked, $data['items'], $promotionId, $pointsUsed, true);
             if ($promotionId !== null && $estimate['promotion_warning'] !== null) {

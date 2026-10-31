@@ -436,12 +436,12 @@
                 </label>
                 <select class="form-select @error('promotion_id') is-invalid @enderror"
                         id="booking-promotion-select" name="promotion_id" data-booking-promotion
-                        @disabled($mobileAppliedPromotionId !== null)>
+                        @disabled($lockedPromotionId !== null)>
                     <option value="">{{ $coupons->isEmpty() ? 'Chưa có mã khuyến mãi đủ điều kiện' : 'Không áp dụng mã khuyến mãi' }}</option>
                     @foreach($coupons as $coupon)
                         @php
                             $couponMinimum = (float) ($coupon->GiaTriDonToiThieu ?? 0);
-                            $couponSelected = (string) old('promotion_id', $booking->KhuyenMaiID ?? '') === (string) $coupon->KhuyenMaiID;
+                            $couponSelected = (string) ($lockedPromotionId ?? old('promotion_id', $booking->KhuyenMaiID ?? '')) === (string) $coupon->KhuyenMaiID;
                         @endphp
                         <option value="{{ $coupon->KhuyenMaiID }}"
                                 data-discount-type="{{ $coupon->LoaiKhuyenMai }}"
@@ -453,10 +453,10 @@
                         </option>
                     @endforeach
                 </select>
-                @if($mobileAppliedPromotionId !== null)
-                    <input type="hidden" name="promotion_id" value="{{ $mobileAppliedPromotionId }}">
+                @if($lockedPromotionId !== null)
+                    <input type="hidden" name="promotion_id" value="{{ $lockedPromotionId }}">
                     <div class="form-text" role="status">
-                        Mã {{ $coupons->firstWhere('KhuyenMaiID', $mobileAppliedPromotionId)?->MaKhuyenMai }} đã được áp dụng trên ứng dụng nhân viên và khóa chỉnh sửa tại đây.
+                        Mã {{ $coupons->firstWhere('KhuyenMaiID', $lockedPromotionId)?->MaKhuyenMai }} đã được áp dụng cho booking và không thể thay đổi tại bước kiểm tra.
                     </div>
                 @elseif($coupons->isEmpty() && $minimumPromotionThreshold !== null && ! $inspectionMode)
                     <div class="form-text" role="status">

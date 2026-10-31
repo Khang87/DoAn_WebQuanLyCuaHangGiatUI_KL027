@@ -1366,7 +1366,7 @@ class BookingOrderConversionTest extends TestCase
             ->assertDontSee('đã sử dụng trong booking khác');
     }
 
-    public function test_inspection_promotion_selected_in_mobile_draft_is_locked_on_web(): void
+    public function test_inspection_promotion_saved_on_booking_is_locked_on_web(): void
     {
         $this->createInspectionCatalog();
         $this->createPromotionTable();
@@ -1384,22 +1384,29 @@ class BookingOrderConversionTest extends TestCase
             'TrangThai' => 'Hoạt động',
         ]);
         $booking->forceFill(['KhuyenMaiID' => 17])->saveQuietly();
-        DB::table('StaffBookingDraft')->insert([
-            'BookingID' => $booking->BookingID,
-            'Payload' => json_encode(['promotion_id' => 17, 'items' => $this->actualItems()]),
-            'CoChenhLech' => true,
-            'CapNhatLuc' => now(),
-        ]);
         $this->actingAsBookingEmployee();
         $this->prepareBookingForInspection($booking);
         $this->createPermissionTables();
         $this->withoutMiddleware([Authenticate::class, EnsureUserHasPermission::class, RejectCustomerRole::class, RestoreRememberedLogin::class]);
 
-        $this->get(route('bookings.inspection', $booking))->assertOk()
-            ->assertSee('data-booking-promotion', false)
-            ->assertSee('disabled', false)
+        $response = $this->get(route('bookings.inspection', $booking))->assertOk();
+        $this->assertMatchesRegularExpression(
+            '/<select\b(?=[^>]*id="booking-promotion-select")(?=[^>]*\bdisabled\b)[^>]*>/s',
+            $response->getContent(),
+        );
+        $response->assertSee('data-booking-promotion', false)
             ->assertSee('name="promotion_id" value="17"', false)
-            ->assertSee('MOBILECODE đã được áp dụng trên ứng dụng nhân viên và khóa chỉnh sửa tại đây.');
+            ->assertSee('MOBILECODE đã được áp dụng cho booking và không thể thay đổi tại bước kiểm tra.');
+
+        try {
+            $this->bookingService->submitInspection($booking, array_replace(
+                $this->inspectionPayload($booking, 1),
+                ['promotion_id' => 18, 'items' => $this->actualItems()],
+            ));
+            $this->fail('A saved booking promotion must not be replaceable during inspection.');
+        } catch (ValidationException $exception) {
+            $this->assertArrayHasKey('promotion_id', $exception->errors());
+        }
     }
 
     public function test_selecting_an_eligible_inspection_promotion_changes_the_order_discount(): void
