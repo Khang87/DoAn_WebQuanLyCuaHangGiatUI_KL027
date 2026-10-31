@@ -1265,6 +1265,89 @@ class BookingOrderConversionTest extends TestCase
             ->assertDontSee('name="DiemSuDung"', false);
     }
 
+    public function test_inspection_promotion_dropdown_lists_active_available_customer_eligible_codes(): void
+    {
+        $this->createInspectionCatalog();
+        $this->createPromotionTable();
+        $booking = $this->createBooking();
+        DB::table('KhuyenMai')->insert([
+            [
+                'KhuyenMaiID' => 11, 'MaKhuyenMai' => 'ELIGIBLE10', 'TenKhuyenMai' => 'Giảm 10%',
+                'LoaiKhuyenMai' => 'Phần trăm', 'GiaTriGiam' => 10,
+                'NgayBatDau' => today()->subDay()->toDateString(), 'NgayKetThuc' => today()->addDay()->toDateString(),
+                'SoLuongSuDung' => 5, 'TrangThai' => 'Hoạt động',
+            ],
+            [
+                'KhuyenMaiID' => 12, 'MaKhuyenMai' => 'SOLDOUT', 'TenKhuyenMai' => 'Hết lượt',
+                'LoaiKhuyenMai' => 'Tiền mặt', 'GiaTriGiam' => 1000,
+                'NgayBatDau' => today()->subDay()->toDateString(), 'NgayKetThuc' => today()->addDay()->toDateString(),
+                'SoLuongSuDung' => 0, 'TrangThai' => 'Hoạt động',
+            ],
+            [
+                'KhuyenMaiID' => 13, 'MaKhuyenMai' => 'EXPIRED', 'TenKhuyenMai' => 'Hết hạn',
+                'LoaiKhuyenMai' => 'Tiền mặt', 'GiaTriGiam' => 1000,
+                'NgayBatDau' => today()->subDays(4)->toDateString(), 'NgayKetThuc' => today()->subDay()->toDateString(),
+                'SoLuongSuDung' => null, 'TrangThai' => 'Hoạt động',
+            ],
+        ]);
+        $this->actingAsBookingEmployee();
+        $this->prepareBookingForInspection($booking);
+        $this->createPermissionTables();
+        $this->withoutMiddleware([Authenticate::class, EnsureUserHasPermission::class, RejectCustomerRole::class, RestoreRememberedLogin::class]);
+
+        $this->get(route('bookings.inspection', $booking))->assertOk()
+            ->assertSee('ELIGIBLE10 · 10%')
+            ->assertDontSee('SOLDOUT')
+            ->assertDontSee('EXPIRED')
+            ->assertSee('data-minimum="', false)
+            ->assertSee('option value=""', false);
+    }
+
+    public function test_inspection_promotion_dropdown_explains_when_no_code_is_eligible(): void
+    {
+        $this->createInspectionCatalog();
+        $this->createPromotionTable();
+        $booking = $this->createBooking();
+        $this->actingAsBookingEmployee();
+        $this->prepareBookingForInspection($booking);
+        $this->createPermissionTables();
+        $this->withoutMiddleware([Authenticate::class, EnsureUserHasPermission::class, RejectCustomerRole::class, RestoreRememberedLogin::class]);
+
+        $this->get(route('bookings.inspection', $booking))->assertOk()
+            ->assertSee('option value="">Chưa có mã khuyến mãi đủ điều kiện</option>', false)
+            ->assertSee('Mã hết hạn, tạm ngưng, hết lượt, đã dùng hoặc không thỏa điều kiện khách hàng sẽ không xuất hiện.');
+    }
+
+    public function test_selecting_an_eligible_inspection_promotion_changes_the_order_discount(): void
+    {
+        $this->createInspectionCatalog();
+        $this->createPromotionTable();
+        $booking = $this->createBooking();
+        DB::table('KhuyenMai')->insert([
+            'KhuyenMaiID' => 14,
+            'MaKhuyenMai' => 'APPLY10',
+            'TenKhuyenMai' => 'Giảm 10%',
+            'LoaiKhuyenMai' => 'Phần trăm',
+            'GiaTriGiam' => 10,
+            'GiaTriDonToiThieu' => 0,
+            'NgayBatDau' => today()->subDay()->toDateString(),
+            'NgayKetThuc' => today()->addDay()->toDateString(),
+            'SoLuongSuDung' => 2,
+            'TrangThai' => 'Hoạt động',
+        ]);
+        $this->actingAsBookingEmployee();
+
+        $order = $this->createOrderThroughInspection(
+            $booking,
+            $this->actualItems(),
+            ['promotion_id' => 14],
+        );
+
+        $this->assertSame(14, (int) $order->KhuyenMaiID);
+        $this->assertSame(3000.0, (float) $order->TienGiamKhuyenMai);
+        $this->assertSame(1, (int) DB::table('KhuyenMai')->where('KhuyenMaiID', 14)->value('SoLuongSuDung'));
+    }
+
     #[DataProvider('orderPaymentSummaryCases')]
     public function test_order_show_displays_saved_delivery_fee_in_payment_summary(int $fee, int $promotionDiscount, int $pointsDiscount, int $total): void
     {

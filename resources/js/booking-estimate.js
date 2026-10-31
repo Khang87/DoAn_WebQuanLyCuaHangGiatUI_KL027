@@ -177,6 +177,14 @@ if (panel) {
                     promotionSelect.value = '';
                 }
             });
+            const hasEligiblePromotion = [...promotionSelect.options]
+                .some(option => option.value !== '' && !option.hidden && !option.disabled);
+            const noPromotionOption = [...promotionSelect.options].find(option => option.value === '');
+            if (noPromotionOption) {
+                noPromotionOption.textContent = hasEligiblePromotion
+                    ? 'Không áp dụng mã khuyến mãi'
+                    : 'Chưa có mã khuyến mãi đủ điều kiện theo tổng dịch vụ hiện tại';
+            }
         }
 
         const selectedPromotion = promotionSelect?.selectedOptions[0];

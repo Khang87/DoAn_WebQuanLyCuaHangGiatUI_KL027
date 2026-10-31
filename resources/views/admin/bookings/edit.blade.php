@@ -436,7 +436,7 @@
                 </label>
                 <select class="form-select @error('promotion_id') is-invalid @enderror"
                         id="booking-promotion-select" name="promotion_id" data-booking-promotion>
-                    <option value="">Không áp dụng mã khuyến mãi</option>
+                    <option value="">{{ $coupons->isEmpty() ? 'Chưa có mã khuyến mãi đủ điều kiện' : 'Không áp dụng mã khuyến mãi' }}</option>
                     @foreach($coupons as $coupon)
                         @php
                             $couponMinimum = (float) ($coupon->GiaTriDonToiThieu ?? 0);
@@ -453,9 +453,13 @@
                     @endforeach
                 </select>
                 @if($coupons->isEmpty())
-                    <div class="form-text">Hiện không có mã khuyến mãi nào đủ điều kiện cho khách hàng này.</div>
+                    <div class="form-text" role="status">
+                        Hiện không có mã phù hợp với khách hàng này. Mã hết hạn, tạm ngưng, hết lượt, đã dùng hoặc không thỏa điều kiện khách hàng sẽ không xuất hiện.
+                    </div>
                 @else
-                    <div class="form-text">Chỉ hiển thị mã khách hàng đủ điều kiện. Khi chọn mã, tổng kết đơn hàng sẽ tự tính lại.</div>
+                    <div class="form-text" data-promotion-help>
+                        Chỉ hiển thị mã khách hàng đủ điều kiện. Mã yêu cầu giá trị đơn tối thiểu sẽ xuất hiện khi tổng dịch vụ đạt mức đó; chọn mã để tính lại tổng kết.
+                    </div>
                 @endif
                 @error('promotion_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
             </div>
