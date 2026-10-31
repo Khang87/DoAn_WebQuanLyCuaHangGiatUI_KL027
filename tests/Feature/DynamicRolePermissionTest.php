@@ -726,9 +726,14 @@ class DynamicRolePermissionTest extends TestCase
     {
         $owner = $this->createAccount($this->createRole('Chủ cửa hàng'));
         $role = $this->createRole('Kế toán');
+        $employee = NhanVien::query()->create([
+            'HoTen' => 'Nhân viên kế toán',
+            'SoDienThoai' => '0909000001',
+        ]);
         $member = User::query()->create([
             'TenDangNhap' => 'accountant',
             'Email' => 'accountant@example.test',
+            'NhanVienID' => $employee->getKey(),
             'TrangThai' => 'Hoạt động',
         ]);
 
@@ -763,6 +768,124 @@ class DynamicRolePermissionTest extends TestCase
             ->get(route('roles.edit', $role->getKey()))
             ->assertOk()
             ->assertSee('0 tài khoản được phân vào nhóm.');
+    }
+
+    public function test_add_member_dropdown_only_shows_active_accounts_with_the_matching_profile_type(): void
+    {
+        $owner = $this->createAccount($this->createRole('Chủ cửa hàng'));
+        $employeeRole = $this->createRole('Kế toán');
+        $customerRole = $this->createRole('Khách hàng');
+
+        $employeeProfile = NhanVien::query()->create([
+            'HoTen' => 'Hồ sơ nhân viên hợp lệ',
+            'SoDienThoai' => '0909000002',
+        ]);
+        $employee = User::query()->create([
+            'TenDangNhap' => 'eligible-employee',
+            'Email' => 'eligible-employee@example.test',
+            'NhanVienID' => $employeeProfile->getKey(),
+            'TrangThai' => 'Hoạt động',
+        ]);
+        $customerProfile = KhachHang::query()->create([
+            'HoTen' => 'Hồ sơ khách hàng hợp lệ',
+            'SoDienThoai' => '0909000003',
+        ]);
+        $customer = User::query()->create([
+            'TenDangNhap' => 'eligible-customer',
+            'Email' => 'eligible-customer@example.test',
+            'KhachHangID' => $customerProfile->getKey(),
+            'TrangThai' => 'Hoạt động',
+        ]);
+        $dualEmployeeProfile = NhanVien::query()->create([
+            'HoTen' => 'Hồ sơ kép nhân viên',
+            'SoDienThoai' => '0909000006',
+        ]);
+        $dualCustomerProfile = KhachHang::query()->create([
+            'HoTen' => 'Hồ sơ kép khách hàng',
+            'SoDienThoai' => '0909000007',
+        ]);
+        $dualProfileAccount = User::query()->create([
+            'TenDangNhap' => 'dual-profile',
+            'Email' => 'dual-profile@example.test',
+            'NhanVienID' => $dualEmployeeProfile->getKey(),
+            'KhachHangID' => $dualCustomerProfile->getKey(),
+            'TrangThai' => 'Hoạt động',
+        ]);
+        $suspendedProfile = NhanVien::query()->create([
+            'HoTen' => 'Hồ sơ nhân viên tạm ngưng',
+            'SoDienThoai' => '0909000004',
+        ]);
+        $suspendedEmployee = User::query()->create([
+            'TenDangNhap' => 'suspended-employee',
+            'Email' => 'suspended-employee@example.test',
+            'NhanVienID' => $suspendedProfile->getKey(),
+            'TrangThai' => 'Tạm ngưng',
+        ]);
+        $unlinked = User::query()->create([
+            'TenDangNhap' => 'unlinked-account',
+            'Email' => 'unlinked-account@example.test',
+            'TrangThai' => 'Hoạt động',
+        ]);
+
+        foreach ([$employeeRole, $customerRole] as $role) {
+            $response = $this->actingAs($owner)->get(route('roles.edit', $role->getKey()))->assertOk();
+            $response->assertViewHas('availableAccounts', function ($accounts) use ($role, $employeeRole, $employee, $customer): bool {
+                $expected = $role->getKey() === $employeeRole->getKey()
+                    ? [$employee->getKey()]
+                    : [$customer->getKey()];
+
+                return $accounts->modelKeys() === $expected;
+            });
+        }
+
+        $this->assertDatabaseHas('TaiKhoan', ['TaiKhoanID' => $suspendedEmployee->getKey()]);
+        $this->assertDatabaseHas('TaiKhoan', ['TaiKhoanID' => $unlinked->getKey()]);
+        $this->assertDatabaseHas('TaiKhoan', ['TaiKhoanID' => $dualProfileAccount->getKey()]);
+    }
+
+    public function test_role_member_endpoint_rejects_accounts_with_the_wrong_or_missing_profile_or_inactive_status(): void
+    {
+        $owner = $this->createAccount($this->createRole('Chủ cửa hàng'));
+        $role = $this->createRole('Kế toán');
+        $customerProfile = KhachHang::query()->create([
+            'HoTen' => 'Khách hàng không hợp lệ cho nhóm nội bộ',
+            'SoDienThoai' => '0909000005',
+        ]);
+        $customerAccount = User::query()->create([
+            'TenDangNhap' => 'wrong-profile',
+            'Email' => 'wrong-profile@example.test',
+            'KhachHangID' => $customerProfile->getKey(),
+            'TrangThai' => 'Hoạt động',
+        ]);
+        $unlinkedAccount = User::query()->create([
+            'TenDangNhap' => 'no-profile',
+            'Email' => 'no-profile@example.test',
+            'TrangThai' => 'Hoạt động',
+        ]);
+        $employeeProfile = NhanVien::query()->create([
+            'HoTen' => 'Nhân viên đã tạm ngưng',
+            'SoDienThoai' => '0909000008',
+        ]);
+        $inactiveEmployee = User::query()->create([
+            'TenDangNhap' => 'inactive-employee',
+            'Email' => 'inactive-employee@example.test',
+            'NhanVienID' => $employeeProfile->getKey(),
+            'TrangThai' => 'Tạm ngưng',
+        ]);
+
+        foreach ([$customerAccount, $unlinkedAccount, $inactiveEmployee] as $account) {
+            $this->actingAs($owner)
+                ->from(route('roles.edit', $role->getKey()))
+                ->post(route('roles.members.store', $role->getKey()), [
+                    'TaiKhoanID' => $account->getKey(),
+                ])
+                ->assertSessionHasErrors('TaiKhoanID');
+
+            $this->assertDatabaseMissing('TaiKhoan_VaiTro', [
+                'TaiKhoanID' => $account->getKey(),
+                'VaiTroID' => $role->getKey(),
+            ]);
+        }
     }
 
     public function test_member_actions_require_role_management_permission_and_protect_owner_role(): void

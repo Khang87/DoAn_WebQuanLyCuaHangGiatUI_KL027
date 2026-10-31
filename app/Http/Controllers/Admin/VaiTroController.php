@@ -4,10 +4,10 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Quyen;
-use App\Models\TaiKhoan;
 use App\Models\User;
 use App\Models\VaiTro;
 use App\Services\RoleService;
+use App\Support\InternalCommunicationPolicy;
 use App\Support\PermissionCache;
 use App\Support\QuyenMapper;
 use Illuminate\Contracts\View\View;
@@ -69,9 +69,18 @@ class VaiTroController extends Controller
         Gate::authorize('roles.manage');
 
         $vaiTro = $this->roleWithRelations($role);
-        $availableAccounts = TaiKhoan::query()
+        $availableAccounts = User::query()
             ->with(['nhanVien', 'khachHang'])
             ->where('TrangThai', 'Hoạt động')
+            ->when(InternalCommunicationPolicy::isCustomerRole($vaiTro->TenVaiTro), function ($query): void {
+                $query->whereNotNull('KhachHangID')
+                    ->whereNull('NhanVienID')
+                    ->whereHas('khachHang');
+            }, function ($query): void {
+                $query->whereNotNull('NhanVienID')
+                    ->whereNull('KhachHangID')
+                    ->whereHas('nhanVien');
+            })
             ->whereDoesntHave('vaiTros', fn ($query) => $query->where('VaiTro.VaiTroID', $vaiTro->getKey()))
             ->orderBy('TenDangNhap')
             ->get();
@@ -105,6 +114,19 @@ class VaiTroController extends Controller
 
         DB::transaction(function () use ($vaiTro, $accountId): void {
             $lockedAccount = User::query()->lockForUpdate()->findOrFail($accountId);
+
+            $isCustomerRole = InternalCommunicationPolicy::isCustomerRole($vaiTro->TenVaiTro);
+            $hasExpectedProfile = $isCustomerRole
+                ? $lockedAccount->KhachHangID !== null && $lockedAccount->NhanVienID === null && $lockedAccount->khachHang()->exists()
+                : $lockedAccount->NhanVienID !== null && $lockedAccount->KhachHangID === null && $lockedAccount->nhanVien()->exists();
+
+            if (! $lockedAccount->isActive() || ! $hasExpectedProfile) {
+                throw ValidationException::withMessages([
+                    'TaiKhoanID' => $isCustomerRole
+                        ? 'Chỉ có thể thêm tài khoản đang hoạt động, có hồ sơ khách hàng và không liên kết hồ sơ nhân viên.'
+                        : 'Chỉ có thể thêm tài khoản đang hoạt động, có hồ sơ nhân viên và không liên kết hồ sơ khách hàng.',
+                ]);
+            }
 
             if ($lockedAccount->isOwner()) {
                 throw ValidationException::withMessages([

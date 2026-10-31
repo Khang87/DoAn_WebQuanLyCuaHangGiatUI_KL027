@@ -248,7 +248,7 @@
                             </select>
                             @error('TaiKhoanID')<div class="invalid-feedback">{{ $message }}</div>@enderror
                             @if($availableAccounts->isEmpty())
-                                <div class="form-text">Không còn tài khoản đang hoạt động để thêm vào nhóm này.</div>
+                                <div class="form-text">Không có tài khoản đang hoạt động phù hợp hồ sơ để thêm vào nhóm này.</div>
                             @endif
                         </div>
                         <div class="modal-footer">
