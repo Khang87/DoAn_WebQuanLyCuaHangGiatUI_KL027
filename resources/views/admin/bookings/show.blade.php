@@ -103,7 +103,7 @@
             @endif
         </x-admin.detail.panel>
 
-        <x-admin.detail.panel title="Tạm tính" icon="bi-calculator" :iconClass="'bg-info-subtle text-info'">
+        <x-admin.detail.panel title="Tạm tính từ đặt lịch" icon="bi-calculator" :iconClass="'bg-info-subtle text-info'">
             @if($booking->KhuyenMaiID && $booking->khuyenMai)
                 <div class="d-flex align-items-center gap-2 mb-3">
                     <span class="badge bg-primary-subtle text-primary-emphasis border border-primary px-3 py-2 rounded-pill">
@@ -120,7 +120,7 @@
                         'TienGiamKhuyenMai' => 'Giảm từ mã khuyến mãi',
                         'TienGiamDoDiem' => 'Giảm từ điểm',
                         'TongDuocGiam' => 'Tổng tiền được giảm',
-                        'ThanhTien' => 'Tổng tiền thanh toán (ước tính)',
+                        'ThanhTien' => 'Tổng tiền thanh toán',
                     ];
                     $bookingAmounts['TongDuocGiam'] = (float) $bookingAmounts['TienGiamKhuyenMai'] + (float) $bookingAmounts['TienGiamDoDiem'];
                 @endphp
