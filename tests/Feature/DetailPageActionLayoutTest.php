@@ -130,6 +130,16 @@ class DetailPageActionLayoutTest extends TestCase
         foreach ($createViews as $view) {
             $source = (string) File::get($view);
             $label = dirname($view).'/create';
+            if (str_ends_with($view, '/admin/deliveries/create.blade.php')) {
+                $this->assertSame(
+                    preg_match_all('/<button\b[^>]*type="submit"/i', $source),
+                    substr_count($source, $capNhat),
+                    "{$label} phải dùng nhãn \"Cập nhật\" kèm icon dấu tích."
+                );
+
+                continue;
+            }
+
             $this->assertSame(
                 preg_match_all('/<button\b[^>]*type="submit"/i', $source),
                 substr_count($source, $themMoi),
