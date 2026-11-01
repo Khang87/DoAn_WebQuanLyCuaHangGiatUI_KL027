@@ -104,38 +104,48 @@
         </x-admin.detail.panel>
 
         <x-admin.detail.panel title="Tạm tính từ đặt lịch" icon="bi-calculator" :iconClass="'bg-info-subtle text-info'">
-            @if($booking->KhuyenMaiID && $booking->khuyenMai)
-                <div class="d-flex align-items-center gap-2 mb-3">
-                    <span class="badge bg-primary-subtle text-primary-emphasis border border-primary px-3 py-2 rounded-pill">
-                        <i class="fas fa-ticket me-1"></i>{{ $booking->khuyenMai->MaKhuyenMai }}
-                    </span>
-                    <span class="text-muted small">Đã áp dụng · {{ $booking->khuyenMai->discountValueLabel() }}</span>
-                </div>
-            @endif
+            <div class="d-flex justify-content-between gap-3 py-2">
+                <span>Phương thức thanh toán</span>
+                <span class="text-end">{{ $booking->PhuongThucThanhToan ?: 'Chưa chọn' }}</span>
+            </div>
             @if($bookingAmounts !== null)
                 @php
+                    $allBookingServiceQuantitiesKnown = $booking->requestedServices->isEmpty()
+                        && $legacyRequestedServices->isEmpty()
+                        && $booking->chiTietBookings->isNotEmpty()
+                        && $booking->chiTietBookings->every(fn ($item) => (float) ($item->SoLuong ?? 0) > 0 || (float) ($item->KhoiLuong ?? 0) > 0);
                     $bookingRows = [
-                        'TongTien' => 'Tạm tính các dịch vụ đã rõ số lượng',
-                        'PhiGiaoHang' => 'Tổng phí giao nhận',
+                        'TongTien' => $allBookingServiceQuantitiesKnown
+                            ? 'Tổng tiền các dịch vụ đã chọn'
+                            : 'Tạm tính các dịch vụ đã rõ số lượng',
                         'TienGiamKhuyenMai' => 'Giảm từ mã khuyến mãi',
-                        'TienGiamDoDiem' => 'Giảm từ điểm',
-                        'TongDuocGiam' => 'Tổng tiền được giảm',
+                        'TienGiamDoDiem' => 'Giảm từ điểm tích lũy',
                         'ThanhTien' => 'Tổng tiền thanh toán',
                     ];
-                    $bookingAmounts['TongDuocGiam'] = (float) $bookingAmounts['TienGiamKhuyenMai'] + (float) $bookingAmounts['TienGiamDoDiem'];
                 @endphp
                 <dl class="mb-0" data-booking-money-summary>
                     @foreach($bookingRows as $field => $label)
+                        @if($field === 'TienGiamKhuyenMai' && $booking->HinhThucNhanDo === 'Tại nhà')
+                            <div class="d-flex justify-content-between gap-3 py-2">
+                                <dt class="fw-normal">Phí nhận đồ · {{ number_format((int) $booking->PickupDistanceMeters / 1000, 1, '.', '') }} km</dt>
+                                <dd class="mb-0 text-end"><x-admin.detail.money :value="$booking->PickupDeliveryFee" /></dd>
+                            </div>
+                        @endif
+                        @if($field === 'TienGiamKhuyenMai' && $booking->HinhThucTraDo === 'Tại nhà')
+                            <div class="d-flex justify-content-between gap-3 py-2">
+                                <dt class="fw-normal">Phí giao đồ · {{ number_format((int) $booking->DeliveryDistanceMeters / 1000, 1, '.', '') }} km</dt>
+                                <dd class="mb-0 text-end"><x-admin.detail.money :value="$booking->DeliveryFee" /></dd>
+                            </div>
+                        @endif
                         <div class="d-flex justify-content-between gap-3 py-2 {{ $field === 'ThanhTien' ? 'border-top fw-bold' : '' }}">
                             <dt class="fw-normal">{{ $label }}</dt>
-                            <dd class="mb-0 text-end" data-booking-amount="{{ $field }}"><x-admin.detail.money :value="$bookingAmounts[$field]" :negative="in_array($field, ['TienGiamKhuyenMai', 'TienGiamDoDiem', 'TongDuocGiam'])" /></dd>
+                            <dd class="mb-0 text-end" data-booking-amount="{{ $field }}"><x-admin.detail.money :value="$bookingAmounts[$field]" :negative="in_array($field, ['TienGiamKhuyenMai', 'TienGiamDoDiem'])" /></dd>
                         </div>
                     @endforeach
                 </dl>
                 @if($bookingAmounts['promotion_warning'])<div class="alert alert-warning mt-3 mb-0" role="status">{{ $bookingAmounts['promotion_warning'] }}</div>@endif
             @endif
         </x-admin.detail.panel>
-        @include('admin.bookings.mobile-summary')
     </div>
 
     <div class="col-lg-4">
