@@ -65,6 +65,7 @@ class InvoiceService
             ->first()
             ?->load([
                 'donHang.khachHang',
+                'donHang.booking',
                 'donHang.chiTietDonHangs.dichVu',
                 'donHang.chiTietDonHangs.loaiDoGiat',
                 'donHang.thanhToans',
@@ -117,7 +118,7 @@ class InvoiceService
                 'NgayLap' => now()->toDateString(),
                 'TongTien' => $order->TongTien,
                 'GiamGia' => $order->discount_by_promotion + $order->discount_by_points,
-                'PhiGiaoHang' => 0,
+                'PhiGiaoHang' => $order->PhiGiaoHang,
                 'ThanhTien' => $order->ThanhTien,
                 'TrangThai' => InvoiceStatus::Unpaid->value,
                 'GhiChu' => $order->GhiChu,

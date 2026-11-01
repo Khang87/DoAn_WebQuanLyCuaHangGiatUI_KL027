@@ -8,11 +8,11 @@
     $order = $invoice->donHang;
     $customer = $order?->khachHang;
     $isPaid = $invoice->isPaid();
-    $hasDiscount = (float) $invoice->GiamGia > 0;
+    $paidPayments = $order?->thanhToans
+        ?->where('TrangThai', \App\Enums\PaymentStatus::Paid->value)
+        ?? collect();
+    $paidPayment = $paidPayments->sortByDesc('ThoiGian')->first();
 
-    // Tính trước: dấu ">" trong biểu thức thuộc tính của thẻ Blade sẽ làm hỏng
-    // trình phân tích thẻ, nên không được đặt trực tiếp trong class="...".
-    $balanceTextClass = $balance > 0 ? 'text-danger' : 'text-success';
 @endphp
 
 <div class="invoice-print-heading">
@@ -126,32 +126,16 @@
         {{-- Giữ nguyên khối "đầu hóa đơn" để CSS in ẩn/hiện đúng như cũ --}}
         <div class="invoice-header">
             <x-admin.detail.panel title="Tổng hợp" icon="bi-receipt-cutoff" :iconClass="'bg-success-subtle text-success'">
-                <div class="d-flex justify-content-between align-items-center py-2">
-                    <span class="detail-summary__label">Tạm tính</span>
-                    <x-admin.detail.money :value="$invoice->TongTien" class="fw-semibold" />
-                </div>
-                <div class="d-flex justify-content-between align-items-center py-2">
-                    <span class="detail-summary__label">Phí giao nhận</span>
-                    <x-admin.detail.money :value="$invoice->PhiGiaoHang" class="fw-semibold" />
-                </div>
-                <div class="d-flex justify-content-between align-items-center py-2">
-                    <span class="detail-summary__label">Tổng tiền được giảm</span>
-                    <x-admin.detail.money :value="$invoice->GiamGia" :negative="$hasDiscount" class="text-danger" />
-                </div>
-
-                <div class="detail-summary d-flex justify-content-between align-items-center">
-                    <span class="detail-summary__total">Tổng tiền thanh toán</span>
-                    <x-admin.detail.money :value="$invoice->ThanhTien" class="detail-summary__total text-primary" />
-                </div>
-
-                @if($totalPaid > 0)
-                    <div class="d-flex justify-content-between align-items-center py-2 mt-2">
-                        <span class="detail-summary__label">Tổng đã thu</span>
-                        <x-admin.detail.money :value="$totalPaid" class="text-success fw-semibold" />
-                    </div>
-                    <div class="d-flex justify-content-between align-items-center py-2">
-                        <span class="detail-summary__total">Còn nợ</span>
-                        <x-admin.detail.money :value="$balance" class="detail-summary__total {{ $balanceTextClass }}" />
+                @include('admin.orders.partials.payment-breakdown', ['order' => $order, 'invoice' => $invoice])
+                @if($paidPayment || $order?->booking?->PhuongThucThanhToan)
+                    <div class="border-top mt-3 pt-3">
+                        <small class="text-muted d-block mt-2">
+                            @if($paidPayment?->MaGiaoDich)
+                                Mã giao dịch: {{ $paidPayment->MaGiaoDich }}
+                            @else
+                                Hóa đơn đã được thanh toán.
+                            @endif
+                        </small>
                     </div>
                 @endif
             </x-admin.detail.panel>

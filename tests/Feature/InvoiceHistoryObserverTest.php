@@ -2,8 +2,13 @@
 
 namespace Tests\Feature;
 
+use App\Enums\OrderStatus;
+use App\Enums\PaymentStatus;
+use App\Models\Booking;
+use App\Models\DonHang;
 use App\Models\HoaDon;
 use App\Models\LichSuThayDoiHoaDon;
+use App\Models\ThanhToan;
 use App\Models\TinNhan;
 use App\Models\User;
 use App\Services\InvoiceService;
@@ -64,6 +69,20 @@ class InvoiceHistoryObserverTest extends TestCase
             $table->decimal('ThanhTien', 18, 2);
             $table->dateTime('NgayLap');
             $table->string('TrangThai');
+        });
+
+        Schema::create('DonHang', function (Blueprint $table): void {
+            $table->increments('DonHangID');
+            $table->string('MaDonHang');
+            $table->unsignedInteger('BookingID')->nullable();
+            $table->unsignedInteger('KhachHangID')->nullable();
+            $table->string('TrangThai');
+            $table->decimal('TongTien', 18, 2)->default(0);
+            $table->integer('DiemSuDung')->default(0);
+            $table->decimal('TienGiamDoDiem', 18, 2)->default(0);
+            $table->decimal('TienGiamKhuyenMai', 18, 2)->default(0);
+            $table->decimal('PhiGiaoHang', 18, 2)->default(0);
+            $table->decimal('ThanhTien', 18, 2)->default(0);
         });
 
         Schema::create('LichSuThayDoiHoaDon', function (Blueprint $table): void {
@@ -157,7 +176,8 @@ class InvoiceHistoryObserverTest extends TestCase
         $this->assertStringContainsString('Lịch sử thay đổi', $html);
         $this->assertStringContainsString('Trạng thái', $html);
         $this->assertStringContainsString('invoice-auditor', $html);
-        $this->assertStringContainsString('Tổng đã thu', $html);
+        $this->assertStringNotContainsString('Tổng đã thu', $html);
+        $this->assertStringNotContainsString('Còn nợ', $html);
         preg_match_all(
             '/<span\b[^>]*class="[^"]*\bbadge\b[^"]*"[^>]*>\s*(?:<i\b[^>]*><\/i>\s*)?'
                 .preg_quote('Đã thanh toán', '/').'\s*<\/span>/s',
@@ -166,6 +186,101 @@ class InvoiceHistoryObserverTest extends TestCase
         );
 
         $this->assertCount(1, $badges[0]);
+    }
+
+    public function test_invoice_summary_displays_mobile_payment_method_and_saved_delivery_fees(): void
+    {
+        $invoice = $this->createInvoice();
+        $invoice->forceFill([
+            'TongTien' => 75000,
+            'GiamGia' => 12000,
+            'PhiGiaoHang' => 52000,
+            'ThanhTien' => 115000,
+            'TrangThai' => 'Đã thanh toán',
+        ]);
+        $booking = new Booking;
+        $booking->forceFill([
+            'HinhThucNhanDo' => 'Tại nhà',
+            'HinhThucTraDo' => 'Tại nhà',
+            'PhuongThucThanhToan' => 'Tiền mặt',
+            'PickupDeliveryFee' => 26000,
+            'DeliveryFee' => 26000,
+            'PickupDistanceMeters' => 8100,
+            'DeliveryDistanceMeters' => 8100,
+        ]);
+        $order = new DonHang;
+        $order->forceFill([
+            'DonHangID' => 1,
+            'MaDonHang' => 'DH00000001',
+            'TrangThai' => OrderStatus::Delivered->value,
+            'TongTien' => 75000,
+            'TienGiamKhuyenMai' => 7000,
+            'TienGiamDoDiem' => 5000,
+            'DiemSuDung' => 5000,
+            'PhiGiaoHang' => 52000,
+            'ThanhTien' => 115000,
+        ]);
+        $order->setRelation('khachHang', null);
+        $order->setRelation('booking', $booking);
+        $order->setRelation('chiTietDonHangs', collect());
+        $order->setRelation('thanhToans', collect([
+            (new ThanhToan)->forceFill([
+                'PhuongThuc' => 'Tiền mặt',
+                'MaGiaoDich' => 'TM_DH00000001_20261101170642',
+                'TrangThai' => PaymentStatus::Paid->value,
+            ]),
+        ]));
+        $invoice->setRelation('donHang', $order);
+        $invoice->setRelation('lichSuThayDoiHoaDons', collect());
+
+        $html = view('admin.invoices.show', [
+            'invoice' => $invoice,
+            'totalPaid' => 115000,
+            'balance' => 0,
+        ])->render();
+
+        $this->assertStringNotContainsString('Thanh toán Tiền mặt', $html);
+        $this->assertStringContainsString('Tổng tiền đơn hàng theo bảng giá', $html);
+        $this->assertMatchesRegularExpression('/Phí nhận đồ\s*·\s*8\.1 km/u', $html);
+        $this->assertMatchesRegularExpression('/Phí giao đồ\s*·\s*8\.1 km/u', $html);
+        $this->assertStringContainsString('Giảm từ mã khuyến mãi', $html);
+        $this->assertStringContainsString('-7.000 VNĐ', $html);
+        $this->assertStringContainsString('Giảm từ điểm', $html);
+        $this->assertStringContainsString('(5.000 điểm)', $html);
+        $this->assertStringContainsString('-5.000 VNĐ', $html);
+        $this->assertStringContainsString('-12.000 VNĐ', $html);
+        $this->assertStringContainsString('115.000 VNĐ', $html);
+        $this->assertStringContainsString('Đã thanh toán', $html);
+        $this->assertStringContainsString('Mã giao dịch: TM_DH00000001_20261101170642', $html);
+        $this->assertSame(
+            1,
+            substr_count($html, 'badge status-badge bg-info-subtle text-info-emphasis border border-info rounded-pill px-3 py-2'),
+        );
+        $this->assertSame(1, substr_count($html, '<i class="fas fa-check-circle me-1"></i>'));
+        $this->assertStringNotContainsString('Tổng đã thu', $html);
+        $this->assertStringNotContainsString('Còn nợ', $html);
+    }
+
+    public function test_invoice_created_from_order_inherits_its_delivery_fee_and_discounts(): void
+    {
+        DB::table('DonHang')->insert([
+            'MaDonHang' => 'DH-INVOICE-FEE',
+            'TrangThai' => OrderStatus::Received->value,
+            'TongTien' => 75000,
+            'DiemSuDung' => 5000,
+            'TienGiamDoDiem' => 5000,
+            'TienGiamKhuyenMai' => 7000,
+            'PhiGiaoHang' => 52000,
+            'ThanhTien' => 115000,
+        ]);
+        $order = DonHang::query()->findOrFail(1);
+
+        $invoice = app(InvoiceService::class)->createFromOrder($order);
+
+        $this->assertSame(75000.0, $invoice->TongTien);
+        $this->assertSame(12000.0, $invoice->GiamGia);
+        $this->assertSame(52000.0, $invoice->PhiGiaoHang);
+        $this->assertSame(115000.0, $invoice->ThanhTien);
     }
 
     public function test_invoice_detail_keeps_print_layout_without_a_button_or_automatic_printing(): void
@@ -238,8 +353,8 @@ class InvoiceHistoryObserverTest extends TestCase
         $this->assertStringNotContainsString('Sửa hóa đơn chờ thu', $detailSource);
         $this->assertStringNotContainsString('Xóa hóa đơn chờ thu', $detailSource);
 
-        //Nút hóa đơn/thanh toán đã dời ra cột "Thao tác" của danh sách, màn chi
-        //tiết không còn khối thao tác nào nữa.
+        // Nút hóa đơn/thanh toán đã dời ra cột "Thao tác" của danh sách, màn chi
+        // tiết không còn khối thao tác nào nữa.
         $this->assertStringNotContainsString("route('payments.create', ['order_id' => \$order->getKey()])", $detailSource);
         $this->assertStringNotContainsString('@if($orderInvoice?->isPaid())', $detailSource);
         $this->assertStringContainsString('@elseif(! $orderInvoice && in_array($order->TrangThai,', $listSource);

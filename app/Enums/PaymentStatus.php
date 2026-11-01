@@ -28,7 +28,7 @@ enum PaymentStatus: string
     {
         return match ($this) {
             self::Pending => 'bg-warning-subtle text-warning-emphasis border border-warning',
-            self::Paid => 'bg-success-subtle text-success-emphasis border border-success',
+            self::Paid => 'bg-info-subtle text-info-emphasis border border-info',
             self::Failed => 'bg-danger-subtle text-danger-emphasis border border-danger',
             self::Refunded => 'bg-secondary-subtle text-secondary-emphasis border border-secondary',
         };

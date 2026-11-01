@@ -10,6 +10,7 @@ use App\Models\ChiTietBooking;
 use App\Models\DiemTichLuy;
 use App\Models\DonHang;
 use App\Models\KhachHang;
+use App\Models\KhuyenMai;
 use App\Models\User;
 use App\Services\BookingService;
 use App\Services\DeliveryFeeService;
@@ -379,6 +380,29 @@ class RewardPointTest extends TestCase
         $this->assertSame(1000, $amounts['DiemSuDung']);
         $this->assertSame(1000.0, $amounts['TienGiamDoDiem']);
         $this->assertSame(4000.0, $amounts['ThanhTien']);
+    }
+
+    public function test_promotion_and_points_discounts_cannot_make_total_negative(): void
+    {
+        DB::table('KhuyenMai')->insert([
+            'KhuyenMaiID' => 1,
+            'MaKhuyenMai' => 'OVERSIZE',
+            'TenKhuyenMai' => 'Giảm vượt giá trị đơn',
+            'LoaiKhuyenMai' => KhuyenMai::DISCOUNT_FIXED,
+            'GiaTriGiam' => 15000,
+            'NgayBatDau' => today()->subDay()->toDateString(),
+            'NgayKetThuc' => today()->addDay()->toDateString(),
+            'TrangThai' => 'Hoạt động',
+        ]);
+        $promotion = KhuyenMai::query()->findOrFail(1);
+
+        $amounts = app(OrderService::class)->calculateAmounts(10000, $promotion, 5000, 5000);
+
+        $this->assertSame(10000.0, $amounts['TienGiamKhuyenMai']);
+        $this->assertSame(0, $amounts['DiemSuDung']);
+        $this->assertSame(0.0, $amounts['TienGiamDoDiem']);
+        $this->assertSame(0.0, $amounts['ThanhTien']);
+        $this->assertGreaterThanOrEqual(0, $amounts['ThanhTien']);
     }
 
     public function test_order_creation_rolls_back_when_requested_points_exceed_the_balance(): void

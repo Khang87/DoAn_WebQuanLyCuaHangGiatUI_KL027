@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Enums\InvoiceStatus;
 use App\Enums\OrderStatus;
 use App\Enums\PaymentStatus;
 use App\Models\DiemTichLuy;
@@ -402,6 +403,15 @@ class OrderDeliveryProgressTest extends TestCase
             $this->assertSame($expectedClass, OrderStatus::badgeClassFor($status));
         }
         $this->assertCount(count(OrderStatus::cases()), array_unique(array_values($expectedClasses)));
+    }
+
+    public function test_all_paid_status_badges_use_the_info_color(): void
+    {
+        $expectedClass = 'bg-info-subtle text-info-emphasis border border-info';
+
+        $this->assertSame($expectedClass, OrderStatus::Paid->badgeClass());
+        $this->assertSame($expectedClass, InvoiceStatus::Paid->badgeClass());
+        $this->assertSame($expectedClass, PaymentStatus::Paid->badgeClass());
     }
 
     private function createOrder(int $id, ?int $bookingId = null): DonHang

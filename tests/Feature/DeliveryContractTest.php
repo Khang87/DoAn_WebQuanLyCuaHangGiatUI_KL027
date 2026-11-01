@@ -686,6 +686,9 @@ class DeliveryContractTest extends TestCase
         view()->share('errors', new ViewErrorBag);
 
         $response = $this->actingAs($manager)->withoutMiddleware()->get(route('deliveries.index'))->assertOk();
+        preg_match('/<select\b[^>]*id="filter-status"[^>]*>.*?<\/select>/s', $response->getContent(), $statusFilter);
+        $this->assertNotEmpty($statusFilter);
+        $this->assertStringNotContainsString('Đã nhận đồ', $statusFilter[0]);
         $response->assertSee(route('deliveries.edit', $pendingId), false)
             ->assertDontSee('action="'.route('deliveries.cancel-return', $pendingId).'"', false)
             ->assertSee('action="'.route('deliveries.advance-progress', $pendingId).'"', false)

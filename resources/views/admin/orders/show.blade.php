@@ -14,8 +14,7 @@
     $isOwner = auth()->user()?->isOwner() ?? false;
 
     // Tính trước để tránh dấu ">" trong biểu thức thuộc tính của thẻ Blade.
-    $hasPromotionDiscount = (float) $order->discount_by_promotion > 0;
-    $hasPointsDiscount = (float) $order->discount_by_points > 0;
+    $booking = $order->booking;
     $operationalStatus = $order->operationalStatusEnum();
     $statusKeys = array_keys($statusFlow);
     $currentStatusIndex = array_search($operationalStatus->value, $statusKeys, true);
@@ -447,44 +446,19 @@
     {{-- ============ CỘT PHỤ (4/12) ============ --}}
     <div class="col-lg-4 d-flex flex-column">
         <x-admin.detail.panel title="Tổng thanh toán" icon="bi-calculator" :iconClass="'bg-success-subtle text-success'">
-            <div class="d-flex justify-content-between align-items-center py-2">
-                <span class="detail-summary__label">Tạm tính</span>
-                <x-admin.detail.money :value="$order->subtotal" class="fw-semibold" />
-            </div>
-            <div class="d-flex justify-content-between align-items-center py-2">
-                <span class="detail-summary__label">Phí giao nhận</span>
-                <x-admin.detail.money :value="$order->PhiGiaoHang" class="fw-semibold" />
-            </div>
-            @if($hasPointsDiscount)
-                <div class="d-flex justify-content-between align-items-start py-2">
-                    <span class="detail-summary__label">
-                        Giảm từ điểm
-                        @if($order->points_used > 0)
-                            <small class="d-block">({{ number_format($order->points_used, 0, ',', '.') }} điểm)</small>
-                        @endif
-                    </span>
-                    <x-admin.detail.money :value="$order->discount_by_points" :negative="true" class="text-success fw-semibold" />
-                </div>
-            @endif
-            @if($hasPointsDiscount)
-                <div class="d-flex justify-content-between align-items-center py-2">
-                    <span class="detail-summary__label">Tổng tiền được giảm</span>
-                    <x-admin.detail.money :value="$order->discount_by_points" :negative="true" class="text-success fw-semibold" />
-                </div>
+            @include('admin.orders.partials.payment-breakdown', ['order' => $order])
+            @if($isReceiving)
+                <p class="text-muted small mt-3 mb-0">Giá cuối cùng có thể được điều chỉnh sau khi cửa hàng kiểm nhận đồ.</p>
             @endif
 
-            <div class="detail-summary d-flex justify-content-between align-items-center">
-                <span class="detail-summary__total">Tổng tiền thanh toán</span>
-                <x-admin.detail.money :value="$order->total_amount" class="detail-summary__total text-primary" />
-            </div>
-
-            @if($order->booking?->PhuongThucThanhToan === 'Chuyển khoản')
+            @if($booking?->PhuongThucThanhToan === 'Chuyển khoản')
                 <div class="border-top mt-3 pt-3" data-order-payment-status
                     data-status-url="{{ route('orders.payment-status', $order) }}"
                     data-paid="{{ $isPaid ? 'true' : 'false' }}">
                     <div class="d-flex justify-content-between align-items-center gap-2">
                         <span class="detail-summary__label">Thanh toán chuyển khoản</span>
-                        <span data-payment-status-label class="badge {{ $isPaid ? 'bg-success-subtle text-success-emphasis border border-success' : 'bg-warning-subtle text-warning-emphasis border border-warning' }} px-3 py-2 rounded-pill">
+                        <span data-payment-status-label class="badge {{ $isPaid ? 'bg-info-subtle text-info-emphasis border border-info' : 'bg-warning-subtle text-warning-emphasis border border-warning' }} px-3 py-2 rounded-pill">
+                            @if($isPaid)<i class="fas fa-check-circle me-1"></i>@endif
                             {{ $isPaid ? 'Đã thanh toán' : 'Chưa thanh toán' }}
                         </span>
                     </div>
@@ -536,8 +510,8 @@
                     if (!data.paid) return;
 
                     paymentStatus.dataset.paid = 'true';
-                    statusLabel.textContent = 'Đã thanh toán';
-                    statusLabel.className = 'badge bg-success-subtle text-success-emphasis border border-success px-3 py-2 rounded-pill';
+                    statusLabel.innerHTML = '<i class="fas fa-check-circle me-1"></i>Đã thanh toán';
+                    statusLabel.className = 'badge bg-info-subtle text-info-emphasis border border-info px-3 py-2 rounded-pill';
                     reference.textContent = data.transaction_code
                         ? 'Mã giao dịch: ' + data.transaction_code
                         : 'Giao dịch đã được xác nhận.';

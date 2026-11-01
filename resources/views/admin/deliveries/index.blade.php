@@ -31,7 +31,7 @@
         <x-admin.status-select
             name="status"
             id="filter-status"
-            :options="array_merge(\App\Enums\DeliveryStatus::options(), ['received' => 'Đã nhận đồ'])"
+            :options="\App\Enums\DeliveryStatus::options()"
             placeholder="Tất cả trạng thái"
             class="form-select form-select-sm filter-select shadow-sm rounded-3"
             submit

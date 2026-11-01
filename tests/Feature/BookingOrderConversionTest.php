@@ -1612,13 +1612,29 @@ class BookingOrderConversionTest extends TestCase
     }
 
     #[DataProvider('orderPaymentSummaryCases')]
-    public function test_order_show_displays_saved_delivery_fee_in_payment_summary(int $fee, int $promotionDiscount, int $pointsDiscount, int $total): void
-    {
+    public function test_order_show_displays_mobile_payment_details_and_correct_discount_total(
+        int $fee,
+        int $promotionDiscount,
+        int $pointsDiscount,
+        int $total,
+        string $paymentMethod,
+    ): void {
         DB::table('KhachHang')->insert(['KhachHangID' => 9]);
+        $booking = $this->createBooking();
+        $pickupFee = min(10000, $fee);
+        $booking->forceFill([
+            'HinhThucTraDo' => 'Tại nhà',
+            'PhuongThucThanhToan' => $paymentMethod,
+            'PickupDeliveryFee' => $pickupFee,
+            'DeliveryFee' => max(0, $fee - $pickupFee),
+            'PickupDistanceMeters' => 8100,
+            'DeliveryDistanceMeters' => 8100,
+        ])->saveQuietly();
         $order = DonHang::query()->create([
             'MaDonHang' => 'DH-PAYMENT-SUMMARY',
+            'BookingID' => $booking->BookingID,
             'KhachHangID' => 9,
-            'TrangThai' => OrderStatus::Received->value,
+            'TrangThai' => OrderStatus::Pending->value,
             'TongTien' => 700000,
             'PhiGiaoHang' => $fee,
             'TienGiamKhuyenMai' => $promotionDiscount,
@@ -1638,38 +1654,40 @@ class BookingOrderConversionTest extends TestCase
 
         $response = $this->get(route('orders.show', $order))->assertOk();
         $response->assertSeeTextInOrder([
-            'Tạm tính',
+            'Hình thức',
+            $paymentMethod,
+            'Tổng tiền đơn hàng theo bảng giá',
             '700.000 VNĐ',
-            'Phí giao nhận',
-            number_format($fee, 0, ',', '.').' VNĐ',
+            'Phí nhận đồ · 8.1 km',
+            number_format($pickupFee, 0, ',', '.').' VNĐ',
+            'Phí giao đồ · 8.1 km',
+            number_format(max(0, $fee - $pickupFee), 0, ',', '.').' VNĐ',
+            'Tổng tiền được giảm',
+            '-'.number_format($promotionDiscount + $pointsDiscount, 0, ',', '.').' VNĐ',
             'Tổng tiền thanh toán',
             number_format($total, 0, ',', '.').' VNĐ',
+            'Giá cuối cùng có thể được điều chỉnh sau khi cửa hàng kiểm nhận đồ.',
         ]);
 
         if ($promotionDiscount > 0) {
             $response->assertSeeText('Giảm từ mã khuyến mãi')->assertSeeText('-'.number_format($promotionDiscount, 0, ',', '.').' VNĐ');
-            $response->assertSeeText('Tổng tiền được giảm')->assertSeeText('-'.number_format($promotionDiscount + $pointsDiscount, 0, ',', '.').' VNĐ');
         } else {
             $response->assertDontSeeText('Giảm từ mã khuyến mãi');
         }
-
         if ($pointsDiscount > 0) {
             $response->assertSeeText('Giảm từ điểm')->assertSeeText('-'.number_format($pointsDiscount, 0, ',', '.').' VNĐ');
-            $response->assertSeeText('Tổng tiền được giảm')->assertSeeText('-'.number_format($promotionDiscount + $pointsDiscount, 0, ',', '.').' VNĐ');
         } else {
             $response->assertDontSeeText('Giảm từ điểm');
-        }
-        if ($promotionDiscount <= 0 && $pointsDiscount <= 0) {
-            $response->assertDontSeeText('Tổng tiền được giảm');
         }
     }
 
     public static function orderPaymentSummaryCases(): array
     {
         return [
-            'delivery fee without discounts' => [14000, 0, 0, 714000],
-            'no delivery fee' => [0, 0, 0, 700000],
-            'delivery fee with discounts' => [14000, 70000, 10000, 634000],
+            'cash payment without discounts' => [14000, 0, 0, 714000, 'Tiền mặt'],
+            'cash payment without delivery fee' => [0, 0, 0, 700000, 'Tiền mặt'],
+            'cash payment with discounts' => [14000, 70000, 10000, 634000, 'Tiền mặt'],
+            'bank transfer' => [14000, 0, 0, 714000, 'Chuyển khoản'],
         ];
     }
 
