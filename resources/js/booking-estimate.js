@@ -5,6 +5,9 @@ const panel = document.querySelector('[data-booking-estimate]');
 if (panel) {
     const form = document.querySelector('#booking-edit-form');
     const promotionSelect = form.querySelector('[data-booking-promotion]');
+    const pointsToggle = form.querySelector('[data-booking-points-toggle]');
+    const pointsInput = form.querySelector('[data-booking-points-value]');
+    const pointsStatus = form.querySelector('[data-booking-points-status]');
     const total = panel.querySelector('[data-estimate-total]');
     const details = panel.querySelector('[data-estimate-details]');
     const itemBreakdown = panel.querySelector('[data-estimate-items]');
@@ -170,11 +173,15 @@ if (panel) {
                 }
 
                 const eligible = subtotal >= Number(option.dataset.minimum || 0);
-                option.hidden = !eligible;
-                option.disabled = !eligible;
+                option.hidden = !eligible && !promotionSelect.disabled;
+                option.disabled = !eligible && !promotionSelect.disabled;
                 if (!eligible && option.selected) {
                     ineligiblePromotionWarning = `Đơn chưa đạt giá trị tối thiểu để dùng mã ${option.textContent.trim()}. Mã đã được bỏ chọn.`;
-                    promotionSelect.value = '';
+                    if (!promotionSelect.disabled) {
+                        promotionSelect.value = '';
+                    } else {
+                        ineligiblePromotionWarning = `Đơn chưa đạt giá trị tối thiểu để dùng mã ${option.textContent.trim()}.`;
+                    }
                 }
             });
             const hasEligiblePromotion = [...promotionSelect.options]
@@ -234,13 +241,19 @@ if (panel) {
         const returnFee = Number(estimateData.PhiGiaoDo);
         const remaining = Math.max(0, subtotal - promotionDiscount + pickupFee + returnFee);
         const pointValue = Number(estimateData.point_value);
+        const requestedPoints = pointsToggle?.checked
+            ? (pointsToggle.disabled ? Number(pointsInput.value) : Number(estimateData.available_points))
+            : 0;
         const pointsUsed = pointValue > 0
             ? Math.max(0, Math.min(
-                Number(estimateData.requested_points),
+                requestedPoints,
                 Number(estimateData.available_points),
                 Math.floor(remaining / pointValue),
             ))
             : 0;
+        if (pointsInput && !pointsToggle?.disabled) {
+            pointsInput.value = String(pointsUsed);
+        }
         const pointsDiscount = roundMoney(pointsUsed * pointValue);
         const amountDue = roundMoney(Math.max(0, remaining - pointsDiscount));
         const localEstimate = {
@@ -257,6 +270,13 @@ if (panel) {
         buildTotalsTable(localEstimate);
         buildItemsTable(items);
         warning.textContent = itemWarning || promotionWarning;
+        if (pointsStatus && pointsToggle && !pointsToggle.disabled) {
+            pointsStatus.textContent = pointsToggle.checked && pointsUsed > 0
+                ? `Đang bật — dùng ${pointsUsed} điểm, giảm ${money(pointsDiscount)}.`
+                : pointsToggle.checked
+                    ? 'Đơn hàng chưa đủ giá trị để dùng điểm.'
+                    : 'Đang tắt — không trừ điểm của khách.';
+        }
     }
 
     function currentEstimateSignature() {
@@ -269,7 +289,11 @@ if (panel) {
             row.querySelector('.booking-weight').value,
         ]);
 
-        return JSON.stringify({ items: rows, promotionId: promotionSelect?.value ?? '' });
+        return JSON.stringify({
+            items: rows,
+            promotionId: promotionSelect?.value ?? '',
+            usePoints: pointsToggle?.checked ?? false,
+        });
     }
 
     function refreshLocalEstimate() {

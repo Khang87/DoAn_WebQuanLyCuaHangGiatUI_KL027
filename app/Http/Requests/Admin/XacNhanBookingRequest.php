@@ -20,6 +20,7 @@ class XacNhanBookingRequest extends LuuBookingRequest
             'items' => ['required', 'array', 'min:1'],
             'items.*.TinhTrangTruocKhiGiat' => ['required', 'string', 'max:320'],
             'items.*.GhiChu' => ['nullable', 'string', 'max:160'],
+            'points_used' => ['nullable', 'integer', 'min:0'],
             'DiemSuDung' => ['prohibited'],
             'use_points' => ['prohibited'],
             'customer_accepted' => ['required', 'accepted'],

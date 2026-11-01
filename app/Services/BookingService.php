@@ -9,13 +9,12 @@ use App\Models\BangGia;
 use App\Models\Booking;
 use App\Models\BookingGiaoNhan;
 use App\Models\BookingKiemKe;
-use App\Models\StaffBookingDraft;
 use App\Models\DonHang;
 use App\Models\KhachHang;
 use App\Models\KhuyenMai;
 use App\Models\NhanVien;
 use App\Models\NhatKyHeThong;
-use App\Services\DeliveryFeeService;
+use App\Models\StaffBookingDraft;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -265,10 +264,12 @@ class BookingService
             }
 
             $data = $this->useOriginalBookingDetails($locked, $data);
+            $submittedRewardData = array_intersect_key($data, array_flip(['promotion_id', 'points_used']));
             $draft = StaffBookingDraft::query()->whereKey($locked->BookingID)->lockForUpdate()->first();
             if ($draft) {
                 $data = $draft->Payload;
                 $data['customer_accepted'] = true;
+                $data = array_replace($data, $submittedRewardData);
             }
             CatalogAvailability::assertItemsAvailable($data['items'], $locked);
             $promotionId = array_key_exists('promotion_id', $data)
@@ -276,11 +277,31 @@ class BookingService
                 : ($locked->KhuyenMaiID === null ? null : (int) $locked->KhuyenMaiID);
             $savedPromotionId = $locked->KhuyenMaiID === null ? null : (int) $locked->KhuyenMaiID;
             if ($savedPromotionId !== null && $promotionId !== $savedPromotionId) {
-                throw ValidationException::withMessages([
-                    'promotion_id' => 'Mã giảm giá đã được áp dụng cho đặt lịch và không thể thay đổi tại bước kiểm tra.',
-                ]);
+                $savedPromotion = KhuyenMai::find($savedPromotionId);
+                $customer = KhachHang::find($locked->KhachHangID);
+                $savedPromotionIsUnavailable = $savedPromotion === null
+                    || ($customer !== null && $savedPromotion->hasBeenUsedByCustomer(
+                        $customer,
+                        excludeBookingId: (int) $locked->BookingID,
+                    ));
+                if (! $savedPromotionIsUnavailable) {
+                    throw ValidationException::withMessages([
+                        'promotion_id' => 'Mã giảm giá đã được áp dụng cho đặt lịch và không thể thay đổi tại bước kiểm tra.',
+                    ]);
+                }
             }
             $pointsUsed = (int) ($data['points_used'] ?? $locked->DiemSuDung ?? 0);
+            $savedPointsUsed = (int) $locked->DiemSuDung;
+            if ($savedPointsUsed > 0 && $pointsUsed !== $savedPointsUsed) {
+                throw ValidationException::withMessages([
+                    'points_used' => 'Điểm đã được sử dụng cho đặt lịch và không thể thay đổi tại bước kiểm tra.',
+                ]);
+            }
+            if ($pointsUsed < 0) {
+                throw ValidationException::withMessages([
+                    'points_used' => 'Số điểm sử dụng không hợp lệ.',
+                ]);
+            }
             $estimate = $this->orderService->estimateBookingWithRewards($locked, $data['items'], $promotionId, $pointsUsed, true);
             if ($promotionId !== null && $estimate['promotion_warning'] !== null) {
                 throw ValidationException::withMessages(['promotion_id' => $estimate['promotion_warning']]);

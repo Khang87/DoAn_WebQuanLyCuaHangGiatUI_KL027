@@ -6,6 +6,7 @@
     const fulfillment = document.getElementById('fulfillment');
     const address = document.getElementById('address');
     const order = document.getElementById('order_id');
+    const scheduleHelp = document.getElementById('schedule-help');
     if (!method || !status || !date || !time) return;
     function prefillFromBooking() {
         if (!order || !method.form?.hasAttribute('data-booking-prefill')) return;
@@ -35,9 +36,11 @@
         address.classList.toggle('bg-light', address.disabled);
         address.classList.toggle('text-muted', address.disabled);
         address.classList.toggle('delivery-locked-control', address.disabled);
-        document.getElementById('schedule-help').textContent = required
-            ? 'Chặng nhận đồ hoặc chặng đang thực hiện cần đủ ngày và giờ.'
-            : 'Phiếu trả đang chờ có thể chưa đặt lịch. Khi đặt lịch, hãy nhập đủ ngày và giờ.';
+        if (scheduleHelp) {
+            scheduleHelp.textContent = required
+                ? 'Chặng nhận đồ hoặc chặng đang thực hiện cần đủ ngày và giờ.'
+                : 'Phiếu trả đang chờ có thể chưa đặt lịch. Khi đặt lịch, hãy nhập đủ ngày và giờ.';
+        }
     }
     [method, status, date, time, fulfillment].forEach(control => control.addEventListener('change', update));
     if (order && method.form?.hasAttribute('data-booking-prefill')) {

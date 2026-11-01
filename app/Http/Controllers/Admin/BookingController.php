@@ -10,10 +10,10 @@ use App\Http\Requests\Admin\LuuBookingRequest;
 use App\Http\Requests\Admin\XacNhanBookingRequest;
 use App\Models\BangGia;
 use App\Models\Booking;
-use App\Models\KhuyenMai;
 use App\Models\DichVu;
 use App\Models\DonViTinh;
 use App\Models\KhachHang;
+use App\Models\KhuyenMai;
 use App\Models\LoaiDichVu;
 use App\Models\LoaiDoGiat;
 use App\Models\NhanVien;
@@ -50,6 +50,7 @@ class BookingController extends Controller
         ]);
 
         $customers = KhachHang::orderBy('HoTen')->get();
+
         return view('admin.bookings.index', compact('bookings', 'customers'));
     }
 
@@ -141,7 +142,7 @@ class BookingController extends Controller
             return redirect()
                 ->route('bookings.show', $record)
                 ->with('success', 'Đã áp dụng mã giảm giá '.$khuyenMai->MaKhuyenMai.'.');
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             return back()->with('error', 'Không thể áp dụng mã giảm giá.')->withInput();
         }
     }
@@ -279,9 +280,25 @@ class BookingController extends Controller
 
         // The mobile inspection flow persists the selected code on the Booking.
         // Treat that saved code as authoritative even if a draft payload is missing/stale.
-        $lockedPromotionId = $inspectionMode && $booking->KhuyenMaiID !== null
-            ? (int) $booking->KhuyenMaiID
-            : null;
+        $lockedPromotionId = null;
+        $unavailableMobilePromotionMessage = null;
+        if ($inspectionMode && $booking->KhuyenMaiID !== null) {
+            $savedPromotion = KhuyenMai::find($booking->KhuyenMaiID);
+            $savedPromotionCustomer = $booking->khachHang;
+            if ($savedPromotion === null) {
+                $unavailableMobilePromotionMessage = 'Mã khuyến mãi đã lưu từ mobile không còn tồn tại. Bạn có thể chọn mã khác hoặc không áp dụng.';
+            } elseif ($savedPromotionCustomer !== null && $savedPromotion->hasBeenUsedByCustomer(
+                $savedPromotionCustomer,
+                excludeBookingId: (int) $booking->BookingID,
+            )) {
+                $unavailableMobilePromotionMessage = 'Mã '.$savedPromotion->MaKhuyenMai.' đã được khách sử dụng trước đó và không thể áp dụng lần nữa. Bạn có thể chọn mã khác hoặc không áp dụng.';
+            } else {
+                $lockedPromotionId = (int) $savedPromotion->KhuyenMaiID;
+            }
+        }
+        $availablePoints = $inspectionMode
+            ? ($booking->khachHang?->points() ?? 0) + ($booking->DiemDaTru ? (int) $booking->DiemSuDung : 0)
+            : 0;
 
         // SoLuongSuDung là số lượt đã dùng, không phải số lượt còn lại hay hạn mức.
         // Mã đã lưu trong bản kiểm tra mobile vẫn cần có option để hiển thị và tính tổng.
@@ -311,8 +328,7 @@ class BookingController extends Controller
                 ->filter(fn (KhuyenMai $coupon): bool => $coupon->GiaTriDonToiThieu !== null
                     && $currentCouponSubtotal < (float) $coupon->GiaTriDonToiThieu)
                 ->min(fn (KhuyenMai $coupon): float => (float) $coupon->GiaTriDonToiThieu);
-            $coupons = $coupons->filter(fn (KhuyenMai $coupon): bool =>
-                $coupon->GiaTriDonToiThieu === null
+            $coupons = $coupons->filter(fn (KhuyenMai $coupon): bool => $coupon->GiaTriDonToiThieu === null
                 || $currentCouponSubtotal >= (float) $coupon->GiaTriDonToiThieu
             )->values();
         }
@@ -331,6 +347,8 @@ class BookingController extends Controller
             'currentCouponSubtotal',
             'minimumPromotionThreshold',
             'lockedPromotionId',
+            'unavailableMobilePromotionMessage',
+            'availablePoints',
         ));
     }
 

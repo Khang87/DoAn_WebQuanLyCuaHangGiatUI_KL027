@@ -571,7 +571,7 @@ class OrderService
         }
 
         $sortMap = [
-            'latest' => ['NgayTao', 'desc'],
+            'latest' => ['DonHangID', 'desc'],
             'oldest' => ['NgayTao', 'asc'],
             'code_asc' => ['MaDonHang', 'asc'],
             'code_desc' => ['MaDonHang', 'desc'],
@@ -579,7 +579,7 @@ class OrderService
             'total_asc' => ['ThanhTien', 'asc'],
         ];
         $sort = $filters['sort'] ?? 'latest';
-        [$sortBy, $sortOrder] = $sortMap[$sort] ?? ['NgayTao', 'desc'];
+        [$sortBy, $sortOrder] = $sortMap[$sort] ?? $sortMap['latest'];
 
         return $query->withExists([
             'hoaDons as has_paid_invoice' => fn ($invoiceQuery) => $invoiceQuery

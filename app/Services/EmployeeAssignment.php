@@ -6,8 +6,8 @@ use App\Models\NhanVien;
 use App\Models\User;
 use App\Models\VaiTro;
 use App\Support\QuyenMapper;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Exists;
 use Illuminate\Validation\Rules\In;
@@ -54,6 +54,12 @@ class EmployeeAssignment
         return $user === null
             || $user->isManager()
             || $user->canPermission('deliveries.edit');
+    }
+
+    public static function canAssignNewDelivery(?User $user): bool
+    {
+        return self::canManageAssignments($user)
+            || ($user !== null && $user->canPermission('deliveries.create'));
     }
 
     public static function bookingIntakeCandidates(): Builder

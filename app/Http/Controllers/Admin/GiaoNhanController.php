@@ -61,8 +61,8 @@ class GiaoNhanController extends Controller
     public function create()
     {
         $user = auth()->user();
-        $this->requireActiveEmployeeForStaff($user);
-        $canAssignEmployee = EmployeeAssignment::canManageAssignments($user);
+        $this->requireActiveEmployeeForNewDelivery($user);
+        $canAssignEmployee = EmployeeAssignment::canAssignNewDelivery($user);
         $linkedEmployee = $user?->nhanVien;
         if ($linkedEmployee?->TrangThai !== 'Hoạt động') {
             $linkedEmployee = null;
@@ -104,7 +104,7 @@ class GiaoNhanController extends Controller
     public function assignForOrder(Request $request, DonHang $order)
     {
         $user = $request->user();
-        $this->requireActiveEmployeeForStaff($user);
+        $this->requireActiveEmployeeForNewDelivery($user);
         $order->load(['booking', 'giaoNhans']);
         $returnLegs = $order->giaoNhans
             ->where('LoaiGiaoNhan', 'GIAO_DO')
@@ -160,7 +160,7 @@ class GiaoNhanController extends Controller
         if ($linkedEmployee?->TrangThai !== 'Hoạt động') {
             $linkedEmployee = null;
         }
-        $canAssignEmployee = EmployeeAssignment::canManageAssignments($user);
+        $canAssignEmployee = EmployeeAssignment::canAssignNewDelivery($user);
         $employees = $canAssignEmployee
             ? $this->assignableEmployees() : new Collection([$linkedEmployee]);
         $employeeNameCounts = $employees->countBy(fn ($employee) => mb_strtolower(trim((string) $employee->HoTen)));
@@ -509,6 +509,13 @@ class GiaoNhanController extends Controller
             })
             ->orderByDesc('NgayTao')
             ->get();
+    }
+
+    private function requireActiveEmployeeForNewDelivery(?User $user): void
+    {
+        if ($user && ! EmployeeAssignment::canAssignNewDelivery($user)) {
+            abort_unless($user->nhanVien?->TrangThai === 'Hoạt động', 403, 'Tài khoản chưa liên kết với nhân viên đang hoạt động.');
+        }
     }
 
     private function requireActiveEmployeeForStaff(?User $user): void

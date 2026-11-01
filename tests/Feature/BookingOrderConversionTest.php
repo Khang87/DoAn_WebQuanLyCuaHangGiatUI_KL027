@@ -405,6 +405,32 @@ class BookingOrderConversionTest extends TestCase
         $this->assertSame(1, DonHang::query()->where('BookingID', $booking->BookingID)->count());
     }
 
+    public function test_web_inspection_confirmation_accepts_selected_points(): void
+    {
+        $this->createInspectionCatalog();
+        DB::table('DiemTichLuy')->insert([
+            'KhachHangID' => 9,
+            'DiemHienTai' => 500,
+        ]);
+        $booking = $this->createBooking();
+        $this->actingAsBookingEmployee();
+        $this->prepareBookingForInspection($booking);
+        $this->createPermissionTables();
+        $this->withoutMiddleware([EnsureUserHasPermission::class, RejectCustomerRole::class]);
+
+        $response = $this->post(route('bookings.confirm', $booking), [
+            ...$this->inspectionPayload($booking, 1),
+            'items' => $this->actualItems(),
+            'points_used' => 100,
+        ]);
+        $order = DonHang::query()->where('BookingID', $booking->BookingID)->firstOrFail();
+
+        $response->assertRedirect(route('orders.show', $order));
+        $this->assertSame(100, (int) $order->DiemSuDung);
+        $this->assertSame(100.0, (float) $order->TienGiamDoDiem);
+        $this->assertSame(400, (int) DB::table('DiemTichLuy')->where('KhachHangID', 9)->value('DiemHienTai'));
+    }
+
     public function test_unassigned_employee_cannot_inspect_another_employees_intake(): void
     {
         $this->createInspectionCatalog();
@@ -1231,7 +1257,7 @@ class BookingOrderConversionTest extends TestCase
             ->assertJsonPath('promotion_context.value', 10);
     }
 
-    public function test_booking_inspection_shows_saved_rewards_as_read_only(): void
+    public function test_booking_inspection_locks_rewards_already_saved_from_mobile(): void
     {
         $this->createInspectionCatalog();
         $this->createPromotionTable();
@@ -1254,12 +1280,17 @@ class BookingOrderConversionTest extends TestCase
         $this->createPermissionTables();
         $this->withoutMiddleware([Authenticate::class, EnsureUserHasPermission::class, RejectCustomerRole::class, RestoreRememberedLogin::class]);
 
-        $this->get(route('bookings.inspection', $booking))->assertOk()
+        $response = $this->get(route('bookings.inspection', $booking))->assertOk()
             ->assertSee('BOOKING10')
-            ->assertSee('id="booking-promotion-select" name="promotion_id" data-booking-promotion', false)
-            ->assertSeeInOrder(['Áp dụng mã giảm giá', 'Tổng kết đơn hàng'])
-            ->assertDontSee('Áp dụng</button>')
-            ->assertSee('50 điểm (50 VNĐ)')
+            ->assertSee('id="booking-promotion-select"', false)
+            ->assertSee('name="promotion_id"', false)
+            ->assertSee('data-booking-promotion', false)
+            ->assertSeeInOrder(['Mã giảm giá', 'Dùng điểm tích lũy', 'Tổng kết đơn hàng'])
+            ->assertSee('name="promotion_id" value="3"', false)
+            ->assertSee('name="points_used" value="50"', false)
+            ->assertSee('data-booking-points-toggle', false)
+            ->assertDontSee('Áp dụng mã giảm giá')
+            ->assertSee('50 điểm đã áp dụng từ mobile')
             ->assertDontSee('Tính lại phí giao nhận')
             ->assertSee('booking-items-table', false)
             ->assertSee('Tình trạng trước khi giặt')
@@ -1274,12 +1305,30 @@ class BookingOrderConversionTest extends TestCase
             ], false)
             ->assertDontSee('name="use_points"', false)
             ->assertDontSee('name="DiemSuDung"', false);
+        $this->assertMatchesRegularExpression(
+            '/<input\b(?=[^>]*id="booking-points-toggle")(?=[^>]*\bdisabled\b)[^>]*>/s',
+            $response->getContent(),
+        );
+
+        try {
+            $this->bookingService->submitInspection($booking, array_replace(
+                $this->inspectionPayload($booking, 1),
+                ['promotion_id' => 3, 'points_used' => 25],
+            ));
+            $this->fail('Points already saved from mobile must not be changed during inspection.');
+        } catch (ValidationException $exception) {
+            $this->assertArrayHasKey('points_used', $exception->errors());
+        }
     }
 
     public function test_inspection_promotion_dropdown_lists_active_available_customer_eligible_codes(): void
     {
         $this->createInspectionCatalog();
         $this->createPromotionTable();
+        DB::table('DiemTichLuy')->insert([
+            'KhachHangID' => 9,
+            'DiemHienTai' => 500,
+        ]);
         $booking = $this->createBooking();
         DB::table('KhuyenMai')->insert([
             [
@@ -1312,7 +1361,7 @@ class BookingOrderConversionTest extends TestCase
         $this->createPermissionTables();
         $this->withoutMiddleware([Authenticate::class, EnsureUserHasPermission::class, RejectCustomerRole::class, RestoreRememberedLogin::class]);
 
-        $this->get(route('bookings.inspection', $booking))->assertOk()
+        $response = $this->get(route('bookings.inspection', $booking))->assertOk()
             ->assertSee('ELIGIBLE10 · 10%')
             ->assertSee('USEDZERO')
             ->assertSee('MINIMUM20K')
@@ -1320,6 +1369,14 @@ class BookingOrderConversionTest extends TestCase
             ->assertDontSee('EXPIRED')
             ->assertSee('data-minimum="', false)
             ->assertSee('option value=""', false);
+        $this->assertMatchesRegularExpression(
+            '/<select\b(?=[^>]*id="booking-promotion-select")(?!(?:(?!>).)*\bdisabled\b)[^>]*>/s',
+            $response->getContent(),
+        );
+        $this->assertMatchesRegularExpression(
+            '/<input\b(?=[^>]*id="booking-points-toggle")(?!(?:(?!>).)*\bdisabled\b)[^>]*>/s',
+            $response->getContent(),
+        );
     }
 
     public function test_inspection_promotion_dropdown_explains_when_no_code_is_eligible(): void
@@ -1334,7 +1391,7 @@ class BookingOrderConversionTest extends TestCase
 
         $this->get(route('bookings.inspection', $booking))->assertOk()
             ->assertSee('option value="">Chưa có mã khuyến mãi đủ điều kiện</option>', false)
-            ->assertSee('Hiện không có mã phù hợp. Hãy kiểm tra trạng thái, thời hạn, điều kiện áp dụng và tổng giá trị dịch vụ.');
+            ->assertSee('Hiện không có mã giảm giá đủ điều kiện.');
     }
 
     public function test_inspection_promotion_dropdown_hides_code_reserved_for_same_customer(): void
@@ -1369,6 +1426,10 @@ class BookingOrderConversionTest extends TestCase
     {
         $this->createInspectionCatalog();
         $this->createPromotionTable();
+        DB::table('DiemTichLuy')->insert([
+            'KhachHangID' => 9,
+            'DiemHienTai' => 500,
+        ]);
         $booking = $this->createBooking();
         DB::table('KhuyenMai')->insert([
             'KhuyenMaiID' => 17,
@@ -1395,7 +1456,11 @@ class BookingOrderConversionTest extends TestCase
         );
         $response->assertSee('data-booking-promotion', false)
             ->assertSee('name="promotion_id" value="17"', false)
-            ->assertSee('MOBILECODE đã được áp dụng cho booking và không thể thay đổi tại bước kiểm tra.');
+            ->assertSee('MOBILECODE đã áp dụng từ mobile và không thể thay đổi tại bước kiểm tra.');
+        $this->assertMatchesRegularExpression(
+            '/<input\b(?=[^>]*id="booking-points-toggle")(?!(?:(?!>).)*\bdisabled\b)[^>]*>/s',
+            $response->getContent(),
+        );
 
         try {
             $this->bookingService->submitInspection($booking, array_replace(
@@ -1406,12 +1471,117 @@ class BookingOrderConversionTest extends TestCase
         } catch (ValidationException $exception) {
             $this->assertArrayHasKey('promotion_id', $exception->errors());
         }
+
+    }
+
+    public function test_mobile_saved_promotion_already_used_by_customer_is_hidden_and_can_be_removed(): void
+    {
+        $this->createInspectionCatalog();
+        $this->createPromotionTable();
+        DB::table('KhuyenMai')->insert([
+            'KhuyenMaiID' => 20,
+            'MaKhuyenMai' => 'ONETIME',
+            'TenKhuyenMai' => 'Mã chỉ dùng một lần',
+            'LoaiKhuyenMai' => 'Tiền mặt',
+            'GiaTriGiam' => 5000,
+            'GiaTriDonToiThieu' => 0,
+            'NgayBatDau' => today()->subDay()->toDateString(),
+            'NgayKetThuc' => today()->addDay()->toDateString(),
+            'SoLuongSuDung' => null,
+            'TrangThai' => 'Hoạt động',
+        ]);
+        DB::table('DonHang')->insert([
+            'MaDonHang' => 'DH-USED-ONETIME',
+            'KhachHangID' => 9,
+            'TrangThai' => OrderStatus::Received->value,
+            'KhuyenMaiID' => 20,
+        ]);
+        $booking = $this->createBooking();
+        $booking->forceFill(['KhuyenMaiID' => 20])->saveQuietly();
+        $this->actingAsBookingEmployee();
+        $this->prepareBookingForInspection($booking);
+        $this->createPermissionTables();
+        $this->withoutMiddleware([Authenticate::class, EnsureUserHasPermission::class, RejectCustomerRole::class, RestoreRememberedLogin::class]);
+
+        $response = $this->get(route('bookings.inspection', $booking))->assertOk()
+            ->assertDontSee('<option value="20"', false)
+            ->assertDontSee('name="promotion_id" value="20"', false)
+            ->assertSee('Mã ONETIME đã được khách sử dụng trước đó và không thể áp dụng lần nữa.');
+        $this->assertMatchesRegularExpression(
+            '/<select\b(?=[^>]*id="booking-promotion-select")(?!(?:(?!>).)*\bdisabled\b)[^>]*>/s',
+            $response->getContent(),
+        );
+
+        try {
+            $this->bookingService->submitInspection($booking, array_replace(
+                $this->inspectionPayload($booking, 1),
+                ['promotion_id' => 20, 'items' => $this->actualItems()],
+            ));
+            $this->fail('A customer must not be able to reuse a promotion.');
+        } catch (ValidationException $exception) {
+            $this->assertArrayHasKey('promotion_id', $exception->errors());
+        }
+
+        $order = $this->bookingService->submitInspection($booking, array_replace(
+            $this->inspectionPayload($booking, 1),
+            ['promotion_id' => null, 'items' => $this->actualItems()],
+        ));
+
+        $this->assertNull($order->KhuyenMaiID);
+        $this->assertSame(0.0, (float) $order->TienGiamKhuyenMai);
+    }
+
+    public function test_mobile_saved_points_do_not_lock_the_web_promotion_selector(): void
+    {
+        $this->createInspectionCatalog();
+        $this->createPromotionTable();
+        DB::table('DiemTichLuy')->insert([
+            'KhachHangID' => 9,
+            'DiemHienTai' => 500,
+        ]);
+        DB::table('KhuyenMai')->insert([
+            'KhuyenMaiID' => 19,
+            'MaKhuyenMai' => 'WEBSELECT',
+            'TenKhuyenMai' => 'Mã chọn tại web',
+            'LoaiKhuyenMai' => 'Tiền mặt',
+            'GiaTriGiam' => 5000,
+            'GiaTriDonToiThieu' => 0,
+            'NgayBatDau' => today()->subDay()->toDateString(),
+            'NgayKetThuc' => today()->addDay()->toDateString(),
+            'SoLuongSuDung' => null,
+            'TrangThai' => 'Hoạt động',
+        ]);
+        $booking = $this->createBooking([
+            'DiemSuDung' => 50,
+            'TienGiamDoDiem' => 50,
+        ]);
+        $this->actingAsBookingEmployee();
+        $this->prepareBookingForInspection($booking);
+        $this->createPermissionTables();
+        $this->withoutMiddleware([Authenticate::class, EnsureUserHasPermission::class, RejectCustomerRole::class, RestoreRememberedLogin::class]);
+
+        $response = $this->get(route('bookings.inspection', $booking))->assertOk();
+
+        $this->assertMatchesRegularExpression(
+            '/<select\b(?=[^>]*id="booking-promotion-select")(?!(?:(?!>).)*\bdisabled\b)[^>]*>/s',
+            $response->getContent(),
+        );
+        $this->assertMatchesRegularExpression(
+            '/<input\b(?=[^>]*id="booking-points-toggle")(?=[^>]*\bdisabled\b)[^>]*>/s',
+            $response->getContent(),
+        );
+        $response->assertSee('name="points_used" value="50"', false)
+            ->assertSee('WEBSELECT ·', false);
     }
 
     public function test_selecting_an_eligible_inspection_promotion_changes_the_order_discount(): void
     {
         $this->createInspectionCatalog();
         $this->createPromotionTable();
+        DB::table('DiemTichLuy')->insert([
+            'KhachHangID' => 9,
+            'DiemHienTai' => 500,
+        ]);
         $booking = $this->createBooking();
         DB::table('KhuyenMai')->insert([
             'KhuyenMaiID' => 14,
@@ -1425,19 +1595,20 @@ class BookingOrderConversionTest extends TestCase
             'SoLuongSuDung' => 2,
             'TrangThai' => 'Hoạt động',
         ]);
-        $priorBooking = $this->createBooking();
-        $priorBooking->forceFill(['KhuyenMaiID' => 14])->saveQuietly();
         $this->actingAsBookingEmployee();
 
         $order = $this->createOrderThroughInspection(
             $booking,
             $this->actualItems(),
-            ['promotion_id' => 14],
+            ['promotion_id' => 14, 'points_used' => 500],
         );
 
         $this->assertSame(14, (int) $order->KhuyenMaiID);
         $this->assertSame(3000.0, (float) $order->TienGiamKhuyenMai);
+        $this->assertSame(500, (int) $order->DiemSuDung);
+        $this->assertSame(500.0, (float) $order->TienGiamDoDiem);
         $this->assertSame(1, (int) DB::table('KhuyenMai')->where('KhuyenMaiID', 14)->value('SoLuongSuDung'));
+        $this->assertSame(0, (int) DB::table('DiemTichLuy')->where('KhachHangID', 9)->value('DiemHienTai'));
     }
 
     #[DataProvider('orderPaymentSummaryCases')]

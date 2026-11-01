@@ -614,9 +614,6 @@ class DeliveryService
                 }
             } elseif ($status === DeliveryStatus::Delivering
                 && in_array($order->statusEnum(), [OrderStatus::Delivering, OrderStatus::Delivered], true)) {
-                if (! $order->isLocked()) {
-                    throw ValidationException::withMessages(['payment' => 'Vui lòng thanh toán đơn hàng trước khi xác nhận giao đồ.']);
-                }
                 $current->update([
                     'TrangThai' => DeliveryStatus::Completed->dbValue(),
                     'ThoiGianThucTe' => now(),
@@ -756,12 +753,6 @@ class DeliveryService
             unset($attributes['ThoiGianDuKien']);
         }
         $previousStatus = DeliveryStatus::parseForLeg($current->TrangThai, $current->LoaiGiaoNhan);
-        if ($current->LoaiGiaoNhan === 'GIAO_DO'
-            && $previousStatus !== DeliveryStatus::Completed
-            && DeliveryStatus::parseForLeg($validated['status'], $current->LoaiGiaoNhan) === DeliveryStatus::Completed
-            && ! $order->isLocked()) {
-            throw ValidationException::withMessages(['payment' => 'Vui lòng thanh toán đơn hàng trước khi xác nhận giao đồ.']);
-        }
         if (
             $previousStatus !== DeliveryStatus::Completed
             && DeliveryStatus::parseForLeg($validated['status'], $current->LoaiGiaoNhan) === DeliveryStatus::Completed

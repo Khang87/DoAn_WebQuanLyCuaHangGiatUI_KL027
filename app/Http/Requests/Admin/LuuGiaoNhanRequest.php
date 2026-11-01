@@ -5,6 +5,7 @@ namespace App\Http\Requests\Admin;
 use App\Enums\DeliveryStatus;
 use App\Models\GiaoNhan;
 use App\Models\NhanVien;
+use App\Models\User;
 use App\Services\DeliveryRules;
 use App\Services\EmployeeAssignment;
 use Illuminate\Foundation\Http\FormRequest;
@@ -17,7 +18,7 @@ class LuuGiaoNhanRequest extends FormRequest
     public function authorize(): bool
     {
         $user = $this->user();
-        if (EmployeeAssignment::canManageAssignments($user)) {
+        if ($this->canSelectEmployee($user)) {
             return true;
         }
 
@@ -40,7 +41,7 @@ class LuuGiaoNhanRequest extends FormRequest
             $this->merge(['fulfillment' => $this->input('fulfillment', 'Tại nhà')]);
         }
 
-        if ($this->user() && ! EmployeeAssignment::canManageAssignments($this->user()) && ! $this->has('employee_id')) {
+        if ($this->user() && ! $this->canSelectEmployee($this->user()) && ! $this->has('employee_id')) {
             $this->merge(['employee_id' => $this->user()->NhanVienID]);
         }
     }
@@ -51,7 +52,7 @@ class LuuGiaoNhanRequest extends FormRequest
             'order_id' => ['required', 'exists:DonHang,DonHangID'],
             'employee_id' => [
                 'required', 'integer', EmployeeAssignment::rule($this->currentDelivery()?->NhanVienID),
-                ...($this->user() && ! EmployeeAssignment::canManageAssignments($this->user()) ? [Rule::in([(int) $this->user()->NhanVienID])] : []),
+                ...($this->user() && ! $this->canSelectEmployee($this->user()) ? [Rule::in([(int) $this->user()->NhanVienID])] : []),
             ],
             'employee_search' => ['sometimes', 'string', 'max:255'],
             'method' => ['required', 'in:nhan_do,giao_do'],
@@ -79,7 +80,7 @@ class LuuGiaoNhanRequest extends FormRequest
                 $isAssignableEmployee = EmployeeAssignment::deliveryCandidates()
                     ->whereKey((int) $employeeId)->exists();
 
-                if (EmployeeAssignment::canManageAssignments($this->user()) && ! $isAssignableEmployee) {
+                if ($this->canSelectEmployee($this->user()) && ! $isAssignableEmployee) {
                     $validator->errors()->add('employee_id', 'Chỉ được phân công nhân viên có tài khoản nội bộ được cấp quyền xử lý giao nhận.');
                 }
 
@@ -108,9 +109,17 @@ class LuuGiaoNhanRequest extends FormRequest
         if ($this->isMethod('POST')) {
             return null;
         }
+
         $delivery = $this->route('delivery');
 
         return $delivery instanceof GiaoNhan ? $delivery : ($delivery ? GiaoNhan::find($delivery) : null);
+    }
+
+    private function canSelectEmployee(?User $user): bool
+    {
+        return $this->isMethod('POST')
+            ? EmployeeAssignment::canAssignNewDelivery($user)
+            : EmployeeAssignment::canManageAssignments($user);
     }
 
     public function messages(): array

@@ -1688,6 +1688,48 @@ class DeliveryContractTest extends TestCase
         $this->assertSame(0, GiaoNhan::count());
     }
 
+    public function test_delivery_create_permission_can_assign_the_new_slip_to_another_employee(): void
+    {
+        DB::table('NhanVien')->insert([
+            'NhanVienID' => 3,
+            'HoTen' => 'Nhân viên được chọn',
+            'TrangThai' => 'Hoạt động',
+        ]);
+        DB::table('TaiKhoan')->insert([
+            'TaiKhoanID' => 153,
+            'NhanVienID' => 3,
+            'TrangThai' => 'Hoạt động',
+        ]);
+        DB::table('TaiKhoan_VaiTro')->insert([
+            'TaiKhoanID' => 153,
+            'VaiTroID' => 50,
+        ]);
+        $admin = Mockery::mock(User::class)->makePartial();
+        $admin->TaiKhoanID = 199;
+        $admin->NhanVienID = 1;
+        $admin->shouldReceive('isManager')->andReturn(false);
+        $admin->shouldReceive('canPermission')
+            ->andReturnUsing(fn (string $permission): bool => $permission === 'deliveries.create');
+        $request = Request::create(route('orders.delivery-assignment', 1), 'GET');
+        $request->setUserResolver(fn (): User => $admin);
+        $this->actingAs($admin)->withoutMiddleware();
+        view()->share('errors', new ViewErrorBag);
+
+        $assignmentPage = app(GiaoNhanController::class)->assignForOrder($request, DonHang::findOrFail(1));
+        $this->assertInstanceOf(View::class, $assignmentPage);
+        $this->assertTrue($assignmentPage->getData()['canAssignEmployee']);
+        $this->assertStringContainsString('data-employee-toggle', $assignmentPage->render());
+        $this->assertStringContainsString('Nhân viên được chọn', $assignmentPage->render());
+
+        $this->post(route('deliveries.store'), $this->data([
+            'employee_id' => 3,
+            'employee_search' => 'Nhân viên được chọn',
+        ]))->assertRedirect()
+            ->assertSessionHasNoErrors();
+
+        $this->assertSame(3, (int) GiaoNhan::firstOrFail()->NhanVienID);
+    }
+
     public function test_booking_store_return_assignment_screen_uses_store_fulfillment_without_an_address(): void
     {
         DB::table('Booking')->where('BookingID', 1)->update([
@@ -1880,7 +1922,7 @@ class DeliveryContractTest extends TestCase
         $this->assertSame(1, DB::table('ThanhToan')->where('DonHangID', 1)->count());
     }
 
-    public function test_return_delivery_requires_payment_before_completion(): void
+    public function test_return_delivery_can_be_completed_before_payment(): void
     {
         DB::table('NhanVien')->insert(['NhanVienID' => 3, 'TrangThai' => 'Hoạt động']);
         $service = app(DeliveryService::class);
@@ -1891,16 +1933,28 @@ class DeliveryContractTest extends TestCase
             'pickup_time' => '10:00',
         ]);
 
-        $this->reject(fn () => $service->advanceProgress($delivery), 'payment');
-        $this->reject(fn () => $service->update($delivery, ['status' => 'completed']), 'payment');
-        $this->assertSame('Đang thực hiện', $delivery->fresh()->TrangThai);
-
-        DB::table('ThanhToan')->insert([
-            'DonHangID' => 1,
-            'TrangThai' => PaymentStatus::Paid->value,
-            'SoTien' => 10000,
-        ]);
         $this->assertSame('Hoàn thành', $service->advanceProgress($delivery)->TrangThai);
+        $this->assertSame(OrderStatus::Delivered->value, DB::table('DonHang')->where('DonHangID', 1)->value('TrangThai'));
+        $this->assertSame(0, DB::table('ThanhToan')->where('DonHangID', 1)->count());
+    }
+
+    public function test_booking_return_delivery_can_be_completed_before_payment(): void
+    {
+        DB::table('NhanVien')->insert(['NhanVienID' => 3, 'TrangThai' => 'Hoạt động']);
+        DB::table('BookingGiaoNhan')->where('BookingID', 1)->update(['NhanVienID' => 3]);
+        $service = app(DeliveryService::class);
+        $delivery = BookingGiaoNhan::query()->where('BookingID', 1)->firstOrFail();
+
+        $delivery = $service->advanceBookingDelivery($delivery);
+        $this->assertSame('Đang thực hiện', $delivery->TrangThai);
+        $this->assertSame(OrderStatus::Delivering->value, DB::table('DonHang')->where('DonHangID', 1)->value('TrangThai'));
+        $this->assertSame(0, DB::table('ThanhToan')->where('DonHangID', 1)->count());
+
+        $delivery = $service->advanceBookingDelivery($delivery);
+        $this->assertSame('Hoàn thành', $delivery->TrangThai);
+        $this->assertSame(OrderStatus::Delivered->value, DB::table('DonHang')->where('DonHangID', 1)->value('TrangThai'));
+        $this->assertSame(BookingStatus::Completed->value, DB::table('Booking')->where('BookingID', 1)->value('TrangThai'));
+        $this->assertSame(0, DB::table('ThanhToan')->where('DonHangID', 1)->count());
     }
 
     public function test_progress_action_advances_pickup_to_completion_and_rejects_terminal_slip(): void

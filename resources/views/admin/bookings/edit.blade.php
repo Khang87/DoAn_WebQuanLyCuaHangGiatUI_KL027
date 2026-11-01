@@ -28,6 +28,10 @@
 @section('content')
 @php
     $inspectionMode = $inspectionMode ?? false;
+    $lockedPointsUsed = $inspectionMode && (int) $booking->DiemSuDung > 0;
+    $pointsUsedValue = $lockedPointsUsed
+        ? (int) $booking->DiemSuDung
+        : (int) old('points_used', $booking->DiemSuDung ?? 0);
     $customer = $booking->khachHang;
     $customerAccount = $customer?->taiKhoan;
     $customerName = $customer?->HoTen ?: $customerAccount?->TenDangNhap;
@@ -402,14 +406,77 @@
                     <div class="col-12">
                         <div class="border rounded-3 p-3">
                             <h6 class="mb-2">Ưu đãi từ đặt lịch</h6>
-                            <div class="row g-3">
+                            <div class="row g-3 align-items-start">
                                 <div class="col-md-6">
-                                    <label class="form-label" for="booking-promotion">Mã giảm giá</label>
-                                    <input class="form-control booking-main-control" id="booking-promotion" value="{{ $booking->khuyenMai?->MaKhuyenMai ?: 'Không có mã giảm giá' }}" readonly>
+                                    <label class="form-label" for="booking-promotion-select">Mã giảm giá</label>
+                                    <select
+                                        class="form-select @error('promotion_id') is-invalid @enderror"
+                                        id="booking-promotion-select"
+                                        name="promotion_id"
+                                        data-booking-promotion
+                                        @disabled($lockedPromotionId !== null)
+                                    >
+                                        <option value="">{{ $coupons->isEmpty() ? 'Chưa có mã khuyến mãi đủ điều kiện' : 'Không áp dụng mã khuyến mãi' }}</option>
+                                        @foreach($coupons as $coupon)
+                                            @php
+                                                $couponMinimum = (float) ($coupon->GiaTriDonToiThieu ?? 0);
+                                                $couponSelected = (string) ($lockedPromotionId ?? old('promotion_id', $booking->KhuyenMaiID ?? '')) === (string) $coupon->KhuyenMaiID;
+                                            @endphp
+                                            <option value="{{ $coupon->KhuyenMaiID }}"
+                                                    data-discount-type="{{ $coupon->LoaiKhuyenMai }}"
+                                                    data-discount-value="{{ $coupon->GiaTriGiam }}"
+                                                    data-minimum="{{ $couponMinimum }}"
+                                                    data-maximum="{{ $coupon->MucGiamToiDa ?? '' }}"
+                                                    @selected($couponSelected && ($inspectionMode || $couponMinimum <= $currentCouponSubtotal))>
+                                                {{ $coupon->MaKhuyenMai }} · {{ $coupon->discountValueLabel() }}@if($couponMinimum > 0) · Đơn tối thiểu {{ number_format($couponMinimum, 0, ',', '.') }} VNĐ@endif
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                    @if($lockedPromotionId !== null)
+                                        <input type="hidden" name="promotion_id" value="{{ $lockedPromotionId }}">
+                                        <div class="form-text" role="status">
+                                            Mã {{ $coupons->firstWhere('KhuyenMaiID', $lockedPromotionId)?->MaKhuyenMai }} đã áp dụng từ mobile và không thể thay đổi tại bước kiểm tra.
+                                        </div>
+                                    @elseif($coupons->isEmpty())
+                                        <div class="form-text" role="status">Hiện không có mã giảm giá đủ điều kiện.</div>
+                                    @else
+                                        <div class="form-text" data-promotion-help>
+                                            Chọn mã giảm giá để áp dụng vào đơn hàng.
+                                        </div>
+                                    @endif
+                                    @if($unavailableMobilePromotionMessage)
+                                        <div class="form-text text-warning" role="status">{{ $unavailableMobilePromotionMessage }}</div>
+                                    @endif
+                                    @error('promotion_id')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
                                 </div>
                                 <div class="col-md-6">
-                                    <label class="form-label" for="booking-points">Điểm đã sử dụng</label>
-                                    <input class="form-control booking-main-control" id="booking-points" value="{{ number_format((int) $booking->DiemSuDung, 0, ',', '.') }} điểm ({{ number_format((float) $booking->TienGiamDoDiem, 0, ',', '.') }} VNĐ)" readonly>
+                                    <input type="hidden" name="points_used" value="{{ $pointsUsedValue }}" data-booking-points-value>
+                                    <div class="form-check form-switch mb-1">
+                                        <input
+                                            class="form-check-input"
+                                            type="checkbox"
+                                            role="switch"
+                                            id="booking-points-toggle"
+                                            data-booking-points-toggle
+                                            aria-describedby="booking-points-summary booking-points-status"
+                                            @checked($pointsUsedValue > 0)
+                                            @disabled($lockedPointsUsed || $availablePoints < 1)
+                                        >
+                                        <label class="form-check-label fw-semibold" for="booking-points-toggle">Dùng điểm tích lũy</label>
+                                    </div>
+                                    <div class="d-flex flex-wrap justify-content-between gap-1 small text-muted">
+                                        <span id="booking-points-summary">Khách đang có {{ number_format($availablePoints, 0, ',', '.') }} điểm (tương đương {{ number_format($availablePoints, 0, ',', '.') }} VNĐ)</span>
+                                        <span id="booking-points-status" data-booking-points-status aria-live="polite">
+                                            @if($lockedPointsUsed)
+                                                {{ number_format($pointsUsedValue, 0, ',', '.') }} điểm đã áp dụng từ mobile và không thể thay đổi.
+                                            @elseif($availablePoints < 1)
+                                                Khách chưa có điểm để sử dụng.
+                                            @else
+                                                Đang tắt — không trừ điểm của khách.
+                                            @endif
+                                        </span>
+                                    </div>
+                                    @error('points_used')<div class="text-danger small mt-1">{{ $message }}</div>@enderror
                                 </div>
                             </div>
                         </div>
@@ -423,6 +490,7 @@
                 </div>
 
             </div>
+            @unless($inspectionMode)
             <div class="mt-3 p-3 border rounded-3">
                 <label class="form-label fw-semibold" for="booking-promotion-select">
                     <i class="bi bi-ticket-perforated me-1 text-primary" aria-hidden="true"></i>Áp dụng mã giảm giá
@@ -466,6 +534,7 @@
                 @endif
                 @error('promotion_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
             </div>
+            @endunless
             @if($inspectionMode)
                 <div
                     class="card border-0 bg-light mt-3"
@@ -474,6 +543,7 @@
                     data-service-options="{{ $serviceOptions->toJson(JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) }}"
                     data-garment-options="{{ $garmentOptions->toJson(JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) }}"
                     data-minimum-weight="{{ config('giatui.khoi_luong_toi_thieu', 3.0) }}"
+                    data-available-points="{{ $availablePoints }}"
                 >
                     <div class="card-body">
                         <h6 class="mb-0">Tổng kết đơn hàng</h6>

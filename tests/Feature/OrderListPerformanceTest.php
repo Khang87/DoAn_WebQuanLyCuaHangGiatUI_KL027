@@ -226,12 +226,44 @@ class OrderListPerformanceTest extends TestCase
         }
         $latest = app(OrderService::class)->getAll();
         $this->assertSame(12, $latest->first()->DonHangID, 'Newest IDs break ties when creation timestamps match.');
+        $unknownSort = app(OrderService::class)->getAll(['sort' => 'unknown']);
+        $this->assertSame($latest->pluck('DonHangID')->all(), $unknownSort->pluck('DonHangID')->all());
 
         $page = app(OrderService::class)->getAll(['sort' => 'code_desc']);
         $this->assertSame(12, $page->total());
         $this->assertSame(10, $page->count());
         $this->assertSame('DH-12', $page->first()->MaDonHang);
         $this->assertSame(2, $page->lastPage());
+    }
+
+    public function test_order_status_filter_matches_every_database_status(): void
+    {
+        foreach (OrderStatus::cases() as $index => $status) {
+            $orderId = $index + 1;
+            $this->seedOrder($orderId, $status);
+
+            $orders = app(OrderService::class)->getAll(['status' => $status->value]);
+
+            $this->assertSame([$orderId], $orders->pluck('DonHangID')->all(), $status->label());
+        }
+    }
+
+    public function test_latest_order_sort_uses_creation_sequence_when_timestamps_are_out_of_order(): void
+    {
+        $this->seedOrder(1, OrderStatus::Received);
+        $this->seedOrder(2, OrderStatus::Received);
+        $this->seedOrder(3, OrderStatus::Received);
+        DB::table('DonHang')->where('DonHangID', 1)->update(['NgayTao' => '2026-10-08 12:00:00']);
+        DB::table('DonHang')->where('DonHangID', 2)->update(['NgayTao' => '2026-10-08 10:00:00']);
+        DB::table('DonHang')->where('DonHangID', 3)->update(['NgayTao' => '2026-10-08 11:00:00']);
+
+        $latest = app(OrderService::class)->getAll();
+        $oldest = app(OrderService::class)->getAll(['sort' => 'oldest']);
+        $unknownSort = app(OrderService::class)->getAll(['sort' => 'unknown']);
+
+        $this->assertSame([3, 2, 1], $latest->pluck('DonHangID')->all());
+        $this->assertSame([2, 3, 1], $oldest->pluck('DonHangID')->all());
+        $this->assertSame([3, 2, 1], $unknownSort->pluck('DonHangID')->all());
     }
 
     private function seedOrder(int $id, OrderStatus $status, int $customerId = 1): void
