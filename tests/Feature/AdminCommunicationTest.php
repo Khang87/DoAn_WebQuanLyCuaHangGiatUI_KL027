@@ -33,6 +33,7 @@ class AdminCommunicationTest extends TestCase
             $table->increments('TaiKhoanID');
             $table->string('TenDangNhap');
             $table->string('MatKhau')->nullable();
+            $table->string('Email')->nullable();
             $table->unsignedInteger('KhachHangID')->nullable();
             $table->unsignedInteger('NhanVienID')->nullable();
             $table->string('AvatarURL')->nullable();
@@ -42,6 +43,7 @@ class AdminCommunicationTest extends TestCase
         Schema::create('NhanVien', function (Blueprint $table): void {
             $table->increments('NhanVienID');
             $table->string('HoTen');
+            $table->string('SoDienThoai')->nullable();
         });
 
         Schema::create('KhachHang', function (Blueprint $table): void {
@@ -519,7 +521,13 @@ class AdminCommunicationTest extends TestCase
 
     public function test_notification_forms_do_not_allow_manual_send_time(): void
     {
-        $account = $this->createAccount('notification-form-user');
+        $customer = KhachHang::query()->create([
+            'HoTen' => 'Người nhận thử nghiệm',
+            'SoDienThoai' => '0901234567',
+        ]);
+        $account = $this->createAccount('notification-form-user', $customer->KhachHangID);
+        $account->Email = 'notification-form-user@example.com';
+        $account->save();
         $notification = ThongBao::query()->create([
             'TaiKhoanID' => $account->TaiKhoanID,
             'TieuDe' => 'Thông báo cần sửa',
@@ -534,6 +542,13 @@ class AdminCommunicationTest extends TestCase
             ->assertSee('name="TieuDe"', false)
             ->assertSee('all_customers')
             ->assertSee('all_staff')
+            ->assertSee('Người nhận thử nghiệm')
+            ->assertSee('notification-form-user@example.com')
+            ->assertSee('0901234567')
+            ->assertSee('col-12 col-md-6')
+            ->assertDontSee('name="LoaiThongBao"', false)
+            ->assertSee('Quay lại')
+            ->assertSee(route('notifications.index'))
             ->assertDontSee('name="ThoiGianGui"', false);
 
         $this->get(route('notifications.edit', $notification->ThongBaoID))

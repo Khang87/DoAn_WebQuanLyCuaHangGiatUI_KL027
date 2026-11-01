@@ -8,8 +8,8 @@ use App\Enums\OrderStatus;
 use App\Exceptions\SettledOrderException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\LuuGiaoNhanRequest;
-use App\Models\BookingGiaoNhan;
 use App\Models\Booking;
+use App\Models\BookingGiaoNhan;
 use App\Models\DonHang;
 use App\Models\GiaoNhan;
 use App\Models\KhachHang;
@@ -395,7 +395,10 @@ class GiaoNhanController extends Controller
         $orders = $this->orderOptions($delivery->DonHangID);
         $statusOptions = DeliveryStatus::options();
         unset($statusOptions[$delivery->LoaiGiaoNhan === 'GIAO_DO' ? DeliveryStatus::Picking->value : DeliveryStatus::Delivering->value]);
-        if ($delivery->LoaiGiaoNhan === 'GIAO_DO') {
+        $canCancelReturnDelivery = $delivery->LoaiGiaoNhan === 'GIAO_DO'
+            && auth()->user()?->canPermission('deliveries.delete')
+            && $this->deliveryService->canCancelReturnDelivery($delivery);
+        if ($delivery->LoaiGiaoNhan === 'GIAO_DO' && ! $canCancelReturnDelivery) {
             unset($statusOptions[DeliveryStatus::Cancelled->value]);
         }
 
@@ -416,9 +419,20 @@ class GiaoNhanController extends Controller
             403,
             'Lịch giao đồ không còn ở trạng thái có thể chỉnh sửa.',
         );
+        if ($request->input('status') === DeliveryStatus::Cancelled->value) {
+            abort_unless($request->user()?->canPermission('deliveries.delete'), 403);
+        }
 
         try {
-            $this->deliveryService->update($delivery, $request->validated());
+            $data = $request->validated();
+            if (($data['status'] ?? null) === DeliveryStatus::Cancelled->value) {
+                $this->deliveryService->cancelReturnDelivery($delivery);
+
+                return redirect()->route('deliveries.index')
+                    ->with('success', 'Đã hủy lịch giao. Đơn hàng và trạng thái thanh toán không thay đổi.');
+            }
+
+            $this->deliveryService->update($delivery, $data);
 
             return redirect()->route('deliveries.show', $delivery)->with('success', 'Giao nhận đã được cập nhật.');
         } catch (ValidationException $e) {

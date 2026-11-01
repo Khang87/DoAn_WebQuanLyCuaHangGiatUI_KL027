@@ -13,6 +13,8 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Mockery;
+use PhpOffice\PhpSpreadsheet\Cell\DataType;
+use PhpOffice\PhpSpreadsheet\IOFactory;
 use Tests\TestCase;
 
 class ReportsServiceTest extends TestCase
@@ -377,6 +379,77 @@ class ReportsServiceTest extends TestCase
             ->assertSee('Báo cáo', false)
             ->assertSee('order-status-badges d-inline-flex align-items-center flex-nowrap gap-1 text-nowrap', false)
             ->assertSee('formatter: value => formatCurrency(value)', false);
+    }
+
+    public function test_reports_export_contains_two_requested_sheets_and_excel_typed_values(): void
+    {
+        $additionalOrders = [];
+        for ($index = 1; $index <= 11; $index++) {
+            $additionalOrders[] = [
+                'MaDonHang' => 'DH-EXPORT-'.$index,
+                'KhachHangID' => 1,
+                'TrangThai' => OrderStatus::Pending->value,
+                'ThanhTien' => 0,
+                'NgayTao' => '2026-01-10 08:00:00',
+            ];
+        }
+        DB::table('DonHang')->insert($additionalOrders);
+
+        $response = $this->actingAs($this->reportOwner())
+            ->get('/reports/export?filter=all_time')
+            ->assertOk()
+            ->assertDownload();
+
+        $temporaryFile = tempnam(sys_get_temp_dir(), 'reports-export-');
+        $this->assertNotFalse($temporaryFile);
+        if ($temporaryFile === false) {
+            return;
+        }
+
+        file_put_contents($temporaryFile, $response->streamedContent());
+
+        try {
+            $workbook = IOFactory::load($temporaryFile);
+            $this->assertSame(['Tong_Quan_Thong_Ke', 'Danh_Sach_Don_Hang'], $workbook->getSheetNames());
+
+            $summary = $workbook->getSheet(0);
+            $this->assertSame('Sky Laundry', $summary->getCell('B1')->getValue());
+            $this->assertSame('BÁO CÁO & THỐNG KÊ KINH DOANH GIẶT ỦI', $summary->getCell('B2')->getValue());
+            $this->assertSame('Toàn thời gian', $summary->getCell('B3')->getValue());
+            $this->assertStringNotContainsString('UTC', $summary->getCell('B3')->getValue());
+            $this->assertEquals(255000, $summary->getCell('B6')->getValue());
+            $this->assertSame(DataType::TYPE_NUMERIC, $summary->getCell('B6')->getDataType());
+            $this->assertSame('#,##0', $summary->getStyle('B6')->getNumberFormat()->getFormatCode());
+            $this->assertSame('Dịch vụ', $summary->getCell('B15')->getValue());
+            $this->assertSame('center', $summary->getStyle('B5')->getAlignment()->getHorizontal());
+            $this->assertSame('center', $summary->getStyle('A15')->getAlignment()->getHorizontal());
+            $this->assertSame('center', $summary->getStyle('A16')->getAlignment()->getHorizontal());
+            $this->assertSame('right', $summary->getStyle('B6')->getAlignment()->getHorizontal());
+            $this->assertSame('1E3A8A', $summary->getStyle('A14')->getFill()->getStartColor()->getRGB());
+            $this->assertSame('E2E8F0', $summary->getStyle('A18')->getFill()->getStartColor()->getRGB());
+            $this->assertEquals(100000, $summary->getCell('E16')->getValue());
+            $this->assertEquals(255000, $summary->getCell('D25')->getValue());
+            $this->assertEquals(1, $summary->getCell('E25')->getValue());
+
+            $orders = $workbook->getSheet(1);
+            $this->assertSame('STT', $orders->getCell('A1')->getValue());
+            $this->assertSame(16, $orders->getHighestRow());
+            $this->assertNotSame('Tổng cộng doanh thu', $orders->getCell('E16')->getValue());
+            $this->assertSame('#,##0', $orders->getStyle('F2')->getNumberFormat()->getFormatCode());
+            $this->assertSame('dd/mm/yyyy hh:mm', $orders->getStyle('G2')->getNumberFormat()->getFormatCode());
+            $this->assertSame('10/01/2026 16:00', $orders->getCell('G5')->getFormattedValue());
+            $this->assertGreaterThan(10, $orders->getColumnDimension('B')->getWidth());
+            $this->assertSame('center', $orders->getStyle('A1')->getAlignment()->getHorizontal());
+            $this->assertSame('center', $orders->getStyle('A2')->getAlignment()->getHorizontal());
+            $this->assertSame('right', $orders->getStyle('F2')->getAlignment()->getHorizontal());
+            $this->assertSame('1E3A8A', $orders->getStyle('A1')->getFont()->getColor()->getRGB());
+            $this->assertSame('A1:G1', $orders->getAutoFilter()->getRange());
+        } finally {
+            if (isset($workbook)) {
+                $workbook->disconnectWorksheets();
+            }
+            unlink($temporaryFile);
+        }
     }
 
     public function test_total_order_status_badges_match_dashboard_styles_and_full_labels(): void

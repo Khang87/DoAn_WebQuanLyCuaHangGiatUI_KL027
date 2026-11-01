@@ -361,6 +361,37 @@ class ReportsService
             ->withQueryString();
     }
 
+    /**
+     * Lấy toàn bộ đơn trong kỳ để xuất báo cáo, không giới hạn phân trang.
+     *
+     * @return BaseCollection<int, DonHang>
+     */
+    public function getOrdersForExport(array $filters): BaseCollection
+    {
+        $dates = $this->getDateRange($filters);
+
+        return DonHang::query()
+            ->select([
+                'DonHangID',
+                'MaDonHang',
+                'KhachHangID',
+                'TrangThai',
+                'ThanhTien',
+                'NgayTao',
+            ])
+            ->with([
+                'khachHang:KhachHangID,HoTen',
+                'chiTietDonHangs:ChiTietDonHangID,DonHangID,DichVuID',
+                'chiTietDonHangs.dichVu:DichVuID,TenDichVu',
+            ])
+            ->when(
+                $dates['from'] !== null && $dates['to'] !== null,
+                fn ($query) => $query->whereBetween('NgayTao', [$dates['from'], $dates['to']]),
+            )
+            ->orderByDesc('NgayTao')
+            ->get();
+    }
+
     private function localTimestampExpression(string $column): string
     {
         return DB::connection()->getDriverName() === 'sqlite'

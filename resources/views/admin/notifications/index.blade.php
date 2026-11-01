@@ -14,7 +14,7 @@
     <div class="page-toolbar__actions ms-auto">
         <form action="{{ route('notifications.mark-all-read') }}" method="POST" class="d-inline">
             @csrf
-            <button type="submit" class="btn btn-outline-secondary btn-sm" title="Đánh dấu tất cả thông báo của tài khoản hiện tại là đã đọc">
+            <button type="submit" class="btn btn-outline-secondary btn-sm notification-mark-read-button" title="Đánh dấu tất cả thông báo của tài khoản hiện tại là đã đọc">
                 <i class="bi bi-check2-all"></i> Đánh dấu tất cả đã đọc
             </button>
         </form>
@@ -46,7 +46,7 @@
             {{-- Chưa đọc: in đậm + nền nhấn mạnh. Đã đọc: chữ thường, màu nhạt. --}}
             <a href="{{ route('notifications.show', $notification->ThongBaoID) }}"
                id="notification-{{ $notification->ThongBaoID }}"
-               class="list-group-item notification-row px-0 d-flex gap-3 {{ $notification->DaDoc ? 'is-read' : 'is-unread' }} notification-link">
+               class="list-group-item notification-row d-flex gap-3 {{ $notification->DaDoc ? 'is-read' : 'is-unread' }} notification-link">
                 <i class="bi bi-bell-fill fs-4 {{ $notification->DaDoc ? 'notification-icon-read' : 'notification-icon-unread' }}"></i>
                 <div class="flex-grow-1">
                     <small class="text-muted d-block">STT {{ $notifications->firstItem() + $loop->index }}</small>
@@ -54,7 +54,7 @@
                     <small class="notification-body d-block">{{ Str::limit($notification->NoiDung, 80) }}</small>
                 </div>
                 <div class="text-end">
-                    <small class="text-muted">{{ $notification->ThoiGianGui?->format('d/m H:i') }}</small>
+                    <small class="text-muted">{{ $notification->ThoiGianGui?->format('d/m/Y H:i') }}</small>
                     @if(! $notification->DaDoc)
                         <span class="badge bg-warning-subtle text-warning-emphasis border border-warning ms-2">Mới</span>
                     @endif

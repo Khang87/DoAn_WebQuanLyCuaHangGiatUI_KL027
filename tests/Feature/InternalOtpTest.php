@@ -107,8 +107,20 @@ class InternalOtpTest extends TestCase
 
     private function reset(?string $otp = null)
     {
-        return $this->post(route('internal-password.update'), ['email' => strtoupper($this->staff->Email),
-            'otp' => $otp ?? $this->otp, 'password' => 'NewPassword123', 'password_confirmation' => 'NewPassword123']);
+        return $this->post(route('internal-password.update'), [
+            'otp' => $otp ?? $this->otp,
+            'password' => 'NewPassword123',
+            'password_confirmation' => 'NewPassword123',
+        ]);
+    }
+
+    public function test_internal_reset_page_does_not_request_account_email(): void
+    {
+        $this->get(route('internal-password.reset'))
+            ->assertOk()
+            ->assertDontSee('Email tài khoản')
+            ->assertDontSee('name="email"', false)
+            ->assertSee('name="otp"', false);
     }
 
     public function test_admin_sends_same_otp_by_mail_and_private_database_notification(): void
@@ -146,16 +158,15 @@ class InternalOtpTest extends TestCase
         $this->assertTrue(Hash::check('OldPassword123', $this->staff->fresh()->MatKhau));
     }
 
-    public function test_five_wrong_attempts_invalidate_code_without_extending_expiry(): void
+    public function test_wrong_otps_do_not_consume_the_issued_code(): void
     {
         $this->issue();
         $wrong = $this->otp === '100000' ? '100001' : '100000';
         for ($i = 0; $i < 5; $i++) {
             $this->reset($wrong)->assertSessionHas('error');
         }
-        $this->reset()->assertSessionHas('error');
-        $this->assertDatabaseCount('ThongBao', 0);
-        $this->assertTrue(Hash::check('OldPassword123', $this->staff->fresh()->MatKhau));
+        $this->reset()->assertRedirect(route('login'));
+        $this->assertTrue(Hash::check('NewPassword123', $this->staff->fresh()->MatKhau));
     }
 
     public function test_resend_is_throttled_and_rotates_previous_code_after_cooldown(): void
@@ -197,7 +208,7 @@ class InternalOtpTest extends TestCase
         $this->staff->update(['TrangThai' => 'Khóa']);
         $this->reset()->assertSessionHas('error');
         $this->staff->update(['TrangThai' => 'Hoạt động', 'Email' => 'changed@example.test']);
-        $this->post(route('internal-password.update'), ['email' => 'staff@example.test', 'otp' => $this->otp,
+        $this->post(route('internal-password.update'), ['otp' => $this->otp,
             'password' => 'NewPassword123', 'password_confirmation' => 'NewPassword123'])->assertSessionHas('error');
     }
 

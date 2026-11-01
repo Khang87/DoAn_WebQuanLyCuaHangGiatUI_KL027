@@ -4,16 +4,11 @@
 @section('page-title', 'Nhóm quyền')
 
 @section('content')
-<div class="page-toolbar d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
-    <div>
-        <h2 class="h5 mb-1">Quản lý nhóm quyền</h2>
-        <p class="text-muted mb-0">Xem quyền hạn và thành viên được phân vào từng nhóm.</p>
-    </div>
-    <div class="d-flex flex-wrap gap-2">
-        <a href="{{ route('roles.create') }}" class="btn btn-primary">
-            <i class="bi bi-plus-lg me-1"></i>Thêm nhóm quyền
-        </a>
-    </div>
+<div class="page-toolbar">
+    <a href="{{ route('roles.create') }}" class="btn btn-create">
+        <i class="bi bi-plus-lg"></i>Thêm nhóm quyền
+    </a>
+    <p class="text-muted page-toolbar__desc">Xem quyền hạn và thành viên được phân vào từng nhóm.</p>
 </div>
 
 <div class="row g-3 mb-4">

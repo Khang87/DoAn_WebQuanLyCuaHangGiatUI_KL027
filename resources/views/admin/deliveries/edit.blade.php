@@ -50,7 +50,7 @@
             <i class="bi bi-arrow-left me-1"></i>Quay lại
         </a>
     </div>
-    <form action="{{ route('deliveries.update', $delivery) }}" method="POST">@csrf @method('PUT')
+    <form action="{{ route('deliveries.update', $delivery) }}" method="POST" data-delivery-edit-form>@csrf @method('PUT')
         <input type="hidden" name="order_id" value="{{ $delivery->DonHangID }}">
         <input type="hidden" name="method" value="{{ strtolower($delivery->LoaiGiaoNhan) }}">
         <input type="hidden" name="fulfillment" value="{{ $delivery->HinhThuc }}">
@@ -132,4 +132,49 @@
 
 @push('scripts')
 <script src="{{ asset('assets/js/delivery-schedule.js') }}"></script>
+<script>
+    document.addEventListener('submit', function (event) {
+        var form = event.target;
+
+        if (!form.matches('[data-delivery-edit-form]') || form.elements.status.value !== 'cancelled') {
+            return;
+        }
+
+        if (form.dataset.cancelConfirmed === '1') {
+            delete form.dataset.cancelConfirmed;
+            return;
+        }
+
+        event.preventDefault();
+
+        function submitCancellation() {
+            form.dataset.cancelConfirmed = '1';
+            form.requestSubmit();
+        }
+
+        if (typeof Swal === 'undefined') {
+            if (window.confirm('Hủy lịch giao?\nPhiếu được giữ lại làm lịch sử; đơn hàng và trạng thái thanh toán không thay đổi.')) {
+                submitCancellation();
+            }
+
+            return;
+        }
+
+        Swal.fire({
+            title: 'Hủy lịch giao?',
+            text: 'Phiếu được giữ lại làm lịch sử; đơn hàng và trạng thái thanh toán không thay đổi.',
+            icon: 'warning',
+            showCancelButton: true,
+            reverseButtons: true,
+            confirmButtonColor: '#dc2626',
+            cancelButtonColor: '#64748b',
+            confirmButtonText: 'Hủy lịch giao',
+            cancelButtonText: 'Quay lại',
+        }).then(function (result) {
+            if (result.isConfirmed) {
+                submitCancellation();
+            }
+        });
+    });
+</script>
 @endpush

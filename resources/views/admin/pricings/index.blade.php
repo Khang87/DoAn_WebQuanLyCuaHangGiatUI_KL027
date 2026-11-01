@@ -125,6 +125,7 @@
                     text: 'Hành động này không thể hoàn tác.',
                     icon: 'warning',
                     showCancelButton: true,
+                    reverseButtons: true,
                     confirmButtonColor: '#dc2626',
                     cancelButtonColor: '#64748b',
                     confirmButtonText: 'Xóa',

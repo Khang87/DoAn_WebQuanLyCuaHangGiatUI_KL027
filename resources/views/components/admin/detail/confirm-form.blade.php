@@ -82,6 +82,7 @@
                 text: text,
                 icon: icon,
                 showCancelButton: true,
+                reverseButtons: true,
                 confirmButtonColor: color,
                 cancelButtonColor: '#64748b',
                 confirmButtonText: label,

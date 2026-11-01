@@ -723,6 +723,12 @@ body {
     max-width: 100%;
 }
 
+.notification-mark-read-button {
+    width: 160px;
+    font-size: 0.75rem;
+    white-space: nowrap;
+}
+
 /* Nút thao tác "Thêm" - Primary Blue #3b82f6, hover #2563eb */
 .btn-create {
     display: inline-flex;

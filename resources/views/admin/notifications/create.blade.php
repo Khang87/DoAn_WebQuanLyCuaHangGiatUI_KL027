@@ -6,32 +6,56 @@
     <div class="card-body">
         <form action="{{ route('notifications.store') }}" method="POST">
             @csrf
-            <h5 class="mb-4">Nội dung thông báo</h5>
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h5 class="mb-0">Nội dung thông báo</h5>
+                <a href="{{ route('notifications.index') }}" class="btn btn-outline-secondary btn-sm">
+                    <i class="bi bi-arrow-left me-1"></i>Quay lại
+                </a>
+            </div>
 
-            <div class="mb-3">
-                <label for="recipient" class="form-label">Người nhận <span class="text-danger ms-1">*</span></label>
-                <select class="form-select @error('recipient') is-invalid @enderror" id="recipient" name="recipient" required>
-                    <option value="">Chọn nhóm hoặc tài khoản</option>
-                    @foreach($recipientGroups as $value => $label)
-                        <option value="{{ $value }}" @selected(old('recipient') === $value)>{{ $label }}</option>
-                    @endforeach
-                    <optgroup label="Tài khoản cụ thể">
-                        @foreach($users as $user)
-                            <option value="{{ $user->TaiKhoanID }}" @selected((string) old('recipient') === (string) $user->TaiKhoanID)>
-                                {{ $user->TenDangNhap }} ({{ $user->HoTen ?? $user->Email }})
+            <div class="row g-3 mb-3">
+                <div class="col-12 col-md-6">
+                    <label for="recipient" class="form-label">Người nhận <span class="text-danger ms-1">*</span></label>
+                    <select class="form-select @error('recipient') is-invalid @enderror" id="recipient" name="recipient" required>
+                        <option value="">Chọn nhóm hoặc tài khoản</option>
+                        @foreach($recipientGroups as $value => $label)
+                            <option value="{{ $value }}" @selected(old('recipient') === $value)>{{ $label }}</option>
+                        @endforeach
+                        <optgroup label="Tài khoản cụ thể">
+                            @foreach($users as $user)
+                                @php
+                                    $recipientName = $user->nhanVien?->HoTen ?? $user->khachHang?->HoTen ?? 'Chưa cập nhật họ tên';
+                                    $recipientPhone = $user->nhanVien?->SoDienThoai ?? $user->khachHang?->SoDienThoai;
+                                @endphp
+                                <option value="{{ $user->TaiKhoanID }}" @selected((string) old('recipient') === (string) $user->TaiKhoanID)>
+                                    {{ $recipientName }}
+                                    @if($user->Email)
+                                        ({{ $user->Email }})
+                                    @endif
+                                    @if($recipientPhone)
+                                        - {{ $recipientPhone }}
+                                    @endif
+                                </option>
+                            @endforeach
+                        </optgroup>
+                    </select>
+                    @error('recipient')
+                        <div class="invalid-feedback">{{ $message }}</div>
+                    @enderror
+                </div>
+                <div class="col-12 col-md-6">
+                    <label for="DonHangID" class="form-label">Đơn hàng liên quan</label>
+                    <select class="form-select" id="DonHangID" name="DonHangID">
+                        <option value="">Chọn đơn hàng</option>
+                        @foreach($orders as $order)
+                            <option value="{{ $order->DonHangID }}" @selected((string) old('DonHangID') === (string) $order->DonHangID)>
+                                {{ $order->MaDonHang }}
                             </option>
                         @endforeach
-                    </optgroup>
-                </select>
-                @error('recipient')
-                    <div class="invalid-feedback">{{ $message }}</div>
-                @enderror
+                    </select>
+                </div>
             </div>
 
-            <div class="mb-3">
-                <label for="LoaiThongBao" class="form-label">Loại thông báo</label>
-                <input class="form-control" id="LoaiThongBao" name="LoaiThongBao" maxlength="100" value="{{ old('LoaiThongBao') }}">
-            </div>
             <div class="mb-3">
                 <label for="TieuDe" class="form-label">Tiêu đề <span class="text-danger ms-1">*</span></label>
                 <input class="form-control @error('TieuDe') is-invalid @enderror" id="TieuDe" name="TieuDe" value="{{ old('TieuDe') }}" required>
@@ -46,20 +70,7 @@
                     <div class="invalid-feedback">{{ $message }}</div>
                 @enderror
             </div>
-            <div class="mb-3">
-                <label for="DonHangID" class="form-label">Đơn hàng liên quan</label>
-                <select class="form-select" id="DonHangID" name="DonHangID">
-                    <option value="">Chọn đơn hàng</option>
-                    @foreach($orders as $order)
-                        <option value="{{ $order->DonHangID }}" @selected((string) old('DonHangID') === (string) $order->DonHangID)>
-                            {{ $order->MaDonHang }}
-                        </option>
-                    @endforeach
-                </select>
-            </div>
-
             <div class="d-flex justify-content-end gap-2 mt-4">
-                <a href="{{ route('notifications.index') }}" class="btn btn-outline-secondary">Hủy</a>
                 <button type="submit" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i>Thêm mới</button>
             </div>
         </form>

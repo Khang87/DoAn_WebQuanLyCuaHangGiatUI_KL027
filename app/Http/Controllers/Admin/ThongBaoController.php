@@ -59,7 +59,13 @@ class ThongBaoController extends Controller
 
     public function create()
     {
-        $users = TaiKhoan::where('TrangThai', 'Hoạt động')->orderBy('TenDangNhap')->get();
+        $users = TaiKhoan::with([
+            'nhanVien:NhanVienID,HoTen,SoDienThoai',
+            'khachHang:KhachHangID,HoTen,SoDienThoai',
+        ])
+            ->where('TrangThai', 'Hoạt động')
+            ->orderBy('TenDangNhap')
+            ->get();
         $orders = DonHang::orderBy('NgayTao', 'desc')->get();
         $recipientGroups = NotificationService::RECIPIENT_GROUPS;
 

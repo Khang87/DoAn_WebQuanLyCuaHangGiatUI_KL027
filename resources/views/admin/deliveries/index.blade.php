@@ -69,11 +69,6 @@
                             $isMutableBookingIntake = $isBookingDocument && (int) $delivery->intake_mutable === 1;
                             $isReturnIntake = $isBookingDocument && $delivery->task_type === 'GIAO_DO';
                             $deliveryStatus = \App\Enums\DeliveryStatus::parseForLeg($delivery->raw_status, $delivery->task_type);
-                            $canManageOperationalReturn = ! $isBookingDocument
-                                && $delivery->task_type === 'GIAO_DO'
-                                && ! in_array($deliveryStatus, [\App\Enums\DeliveryStatus::Completed, \App\Enums\DeliveryStatus::Cancelled], true)
-                                && in_array($delivery->order_status, [\App\Enums\OrderStatus::Washed->value, \App\Enums\OrderStatus::Delivering->value], true)
-                                && $delivery->booking_status !== \App\Enums\BookingStatus::Cancelled->value;
                             $canEditOperationalDelivery = ! $isBookingDocument
                                 && ($delivery->task_type !== 'GIAO_DO'
                                     || (
@@ -254,21 +249,6 @@
                                                    class="btn btn-order-action edit" title="Sửa">
                                                     <i class="bi bi-pencil"></i>
                                                 </a>
-                                            @endcan
-                                        @endif
-                                        @if($canManageOperationalReturn)
-                                            @can('deliveries.delete')
-                                                <x-admin.detail.confirm-form
-                                                    :action="route('deliveries.cancel-return', $delivery->source_id)"
-                                                    method="POST"
-                                                    title="Hủy lịch giao?"
-                                                    text="Phiếu được giữ lại làm lịch sử; đơn hàng và trạng thái thanh toán không thay đổi."
-                                                    label="Hủy lịch giao"
-                                                    icon="bi bi-x-circle"
-                                                    variant="btn-order-action delete"
-                                                    size=""
-                                                    iconOnly
-                                                />
                                             @endcan
                                         @endif
                                     @endif

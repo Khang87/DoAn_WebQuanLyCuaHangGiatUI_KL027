@@ -18,6 +18,7 @@ use App\Services\BookingService;
 use App\Services\DeliveryService;
 use App\Services\EmployeeAssignment;
 use App\Services\OrderService;
+use App\Support\OrderWorkflow;
 use DOMDocument;
 use DOMXPath;
 use Illuminate\Database\Schema\Blueprint;
@@ -686,12 +687,12 @@ class DeliveryContractTest extends TestCase
 
         $response = $this->actingAs($manager)->withoutMiddleware()->get(route('deliveries.index'))->assertOk();
         $response->assertSee(route('deliveries.edit', $pendingId), false)
-            ->assertSee('action="'.route('deliveries.cancel-return', $pendingId).'"', false)
+            ->assertDontSee('action="'.route('deliveries.cancel-return', $pendingId).'"', false)
             ->assertSee('action="'.route('deliveries.advance-progress', $pendingId).'"', false)
             ->assertSee('Bắt đầu giao đồ')
             ->assertSee('data-confirm-form', false)
             ->assertSee('method="POST"', false)
-            ->assertSee('title="Hủy lịch giao"', false)
+            ->assertDontSee('title="Hủy lịch giao"', false)
             ->assertDontSee(route('deliveries.edit', $completedId), false)
             ->assertDontSee('deliveries/booking-documents/1/edit', false)
             ->assertDontSee('deleteDeliveryForm', false)
@@ -1730,7 +1731,7 @@ class DeliveryContractTest extends TestCase
         );
 
         $this->assertSame(
-            route('deliveries.edit', [$delivery] + \App\Support\OrderWorkflow::listReturnParams()),
+            route('deliveries.edit', [$delivery] + OrderWorkflow::listReturnParams()),
             $response->getTargetUrl(),
         );
         $this->assertSame(1, GiaoNhan::count());
@@ -2039,11 +2040,15 @@ class DeliveryContractTest extends TestCase
         $editor->shouldReceive('isManager')->andReturn(true);
         $editor->shouldReceive('isActive')->andReturn(true);
         $editor->shouldReceive('isCustomer')->andReturn(false);
+        $editor->shouldReceive('isOwner')->andReturn(false);
         $editor->shouldReceive('canPermission')
             ->andReturnUsing(fn (string $permission): bool => $permission === 'deliveries.edit');
         $this->actingAs($editor)
             ->put(route('deliveries.update', $delivery), $this->data(['status' => 'cancelled']))
-            ->assertSessionHasErrors('status');
+            ->assertForbidden();
+        $this->get(route('deliveries.edit', $delivery))
+            ->assertOk()
+            ->assertDontSee('value="cancelled"', false);
         $this->assertSame('Đang thực hiện', $delivery->fresh()->TrangThai);
 
         $unauthorized = Mockery::mock(User::class)->makePartial();
@@ -2062,10 +2067,17 @@ class DeliveryContractTest extends TestCase
         $manager->shouldReceive('isCustomer')->andReturn(false);
         $manager->shouldReceive('isOwner')->andReturn(false);
         $manager->shouldReceive('canPermission')->andReturnUsing(
-            fn (string $permission): bool => in_array($permission, ['deliveries.delete', 'deliveries.view'], true),
+            fn (string $permission): bool => in_array($permission, ['deliveries.delete', 'deliveries.edit', 'deliveries.view'], true),
         );
         $this->actingAs($manager)
-            ->post(route('deliveries.cancel-return', $delivery))
+            ->get(route('deliveries.edit', $delivery))
+            ->assertOk()
+            ->assertSee('value="cancelled"', false);
+        $this->put(route('deliveries.update', $delivery), $this->data([
+            'status' => 'cancelled',
+            'pickup_date' => '2026-10-08',
+            'pickup_time' => '10:00',
+        ]))
             ->assertRedirect(route('deliveries.index'))
             ->assertSessionHas('success');
 

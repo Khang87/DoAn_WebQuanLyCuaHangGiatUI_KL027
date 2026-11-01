@@ -164,7 +164,7 @@
                                             method="POST"
                                             title="Gửi mã đặt lại mật khẩu?"
                                             text="Gửi OTP qua email và thông báo riêng. Mã có hiệu lực trong 10 phút để người dùng tự đặt mật khẩu mới."
-                                            label="Gửi mã đặt lại mật khẩu"
+                                            label="Gửi OTP"
                                             icon="bi-key"
                                             variant="btn-order-action"
                                             size=""
