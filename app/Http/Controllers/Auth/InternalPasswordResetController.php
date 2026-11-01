@@ -37,12 +37,11 @@ class InternalPasswordResetController extends Controller
                 ->with('error', 'OTP không hợp lệ, đã hết hạn hoặc đã vượt quá số lần thử.');
         }
 
-        if ($request->user()?->is($account)) {
-            Auth::logout();
-            $request->session()->invalidate();
-            $request->session()->regenerateToken();
-        }
+        Auth::logout();
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
 
-        return redirect()->route('login')->with('success', 'Mật khẩu đã được cập nhật. Vui lòng đăng nhập lại.');
+        return redirect()->route('login')
+            ->with('success', 'Mật khẩu đã được thay đổi thành công. Vui lòng đăng nhập lại với mật khẩu mới.');
     }
 }

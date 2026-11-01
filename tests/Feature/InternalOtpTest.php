@@ -120,7 +120,9 @@ class InternalOtpTest extends TestCase
             ->assertOk()
             ->assertDontSee('Email tài khoản')
             ->assertDontSee('name="email"', false)
-            ->assertSee('name="otp"', false);
+            ->assertSee('name="otp"', false)
+            ->assertSee('data-toggle-password="password"', false)
+            ->assertSee('data-toggle-password="password_confirmation"', false);
     }
 
     public function test_admin_sends_same_otp_by_mail_and_private_database_notification(): void
@@ -143,7 +145,10 @@ class InternalOtpTest extends TestCase
     {
         $this->issue();
         auth()->logout();
-        $this->reset()->assertRedirect(route('login'));
+        $this->reset()
+            ->assertRedirect(route('login'))
+            ->assertSessionHas('success', 'Mật khẩu đã được thay đổi thành công. Vui lòng đăng nhập lại với mật khẩu mới.');
+        $this->assertGuest();
         $this->assertTrue(Hash::check('NewPassword123', $this->staff->fresh()->MatKhau));
         $this->assertDatabaseCount('ThongBao', 0);
         $this->reset()->assertSessionHas('error');
@@ -351,7 +356,9 @@ class InternalOtpTest extends TestCase
     {
         $this->issue();
         $this->actingAs($this->staff);
-        $this->reset()->assertRedirect(route('login'));
+        $this->reset()
+            ->assertRedirect(route('login'))
+            ->assertSessionHas('success', 'Mật khẩu đã được thay đổi thành công. Vui lòng đăng nhập lại với mật khẩu mới.');
         $this->assertGuest();
     }
 
