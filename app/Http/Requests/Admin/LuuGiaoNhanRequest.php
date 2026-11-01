@@ -59,11 +59,11 @@ class LuuGiaoNhanRequest extends FormRequest
             'fulfillment' => ['sometimes', 'in:Tại cửa hàng,Tại nhà'],
             'address' => ['nullable', 'required_if:fulfillment,Tại nhà', 'string', 'max:255'],
             'pickup_date' => ['nullable', Rule::requiredIf(
-                $this->input('method') === 'nhan_do'
+                $this->requiresSchedule()
                 || ($this->input('fulfillment') === 'Tại nhà' && in_array($this->input('status'), ['delivering', 'completed'], true))
             ), 'required_with:pickup_time', 'date_format:Y-m-d'],
             'pickup_time' => ['nullable', Rule::requiredIf(
-                $this->input('method') === 'nhan_do'
+                $this->requiresSchedule()
                 || ($this->input('fulfillment') === 'Tại nhà' && in_array($this->input('status'), ['delivering', 'completed'], true))
             ), 'required_with:pickup_date', 'date_format:H:i'],
             'status' => ['nullable', 'in:'.implode(',', DeliveryStatus::values())],
@@ -120,6 +120,21 @@ class LuuGiaoNhanRequest extends FormRequest
         return $this->isMethod('POST')
             ? EmployeeAssignment::canAssignNewDelivery($user)
             : EmployeeAssignment::canManageAssignments($user);
+    }
+
+    private function requiresSchedule(): bool
+    {
+        $current = $this->currentDelivery();
+        if ($this->input('method') !== 'nhan_do' || $current === null) {
+            return $this->input('method') === 'nhan_do';
+        }
+
+        $currentStatus = DeliveryStatus::parseForLeg($current->TrangThai, $current->LoaiGiaoNhan)->value;
+        $requestedStatus = $this->input('status', $currentStatus);
+        $startsIntake = in_array($requestedStatus, [DeliveryStatus::Picking->value, DeliveryStatus::Completed->value], true)
+            && $requestedStatus !== $currentStatus;
+
+        return $current->ThoiGianDuKien !== null || $startsIntake;
     }
 
     public function messages(): array

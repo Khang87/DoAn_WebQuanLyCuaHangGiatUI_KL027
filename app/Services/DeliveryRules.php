@@ -33,6 +33,14 @@ class DeliveryRules
     {
         $data = array_merge($current ? self::inputFor($current) : ['status' => 'pending', 'fulfillment' => 'Tại nhà'], $data);
         $data['status'] = $data['status'] ?: 'pending';
+        $currentStatus = $current
+            ? DeliveryStatus::parseForLeg($current->TrangThai, $current->LoaiGiaoNhan)->value
+            : null;
+        $requiresIntakeSchedule = ($data['method'] ?? null) === 'nhan_do' && (
+            $current === null
+            || $current->ThoiGianDuKien !== null
+            || (in_array($data['status'], ['picking', 'completed'], true) && $data['status'] !== $currentStatus)
+        );
         Validator::make($data, [
             'order_id' => ['required', 'integer'],
             'method' => ['required', 'in:nhan_do,giao_do'],
@@ -41,11 +49,11 @@ class DeliveryRules
             'employee_id' => ['required', 'integer', EmployeeAssignment::rule($current?->NhanVienID)],
             'status' => ['required', 'in:'.implode(',', DeliveryStatus::values())],
             'pickup_date' => ['nullable', Rule::requiredIf(
-                ($data['method'] ?? null) === 'nhan_do'
+                $requiresIntakeSchedule
                 || ($data['fulfillment'] === 'Tại nhà' && in_array($data['status'], ['delivering', 'completed'], true))
             ), 'required_with:pickup_time', 'date_format:Y-m-d'],
             'pickup_time' => ['nullable', Rule::requiredIf(
-                ($data['method'] ?? null) === 'nhan_do'
+                $requiresIntakeSchedule
                 || ($data['fulfillment'] === 'Tại nhà' && in_array($data['status'], ['delivering', 'completed'], true))
             ), 'required_with:pickup_date', 'date_format:H:i'],
             'notes' => ['nullable', 'string', 'max:500'],
