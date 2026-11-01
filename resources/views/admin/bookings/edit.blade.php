@@ -52,7 +52,9 @@
 <div class="card">
     <div class="card-body">
         <div class="d-flex justify-content-between align-items-center mb-4"><h5 class="mb-0">{{ $inspectionMode ? 'Kiểm tra thực tế trước khi tạo đơn' : 'Chỉnh sửa đặt lịch' }}</h5><a href="{{ request()->routeIs('bookings.inspection') ? route('deliveries.index') : route('bookings.index') }}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left me-1"></i>Quay lại</a></div>
-        @include('admin.bookings.mobile-summary')
+        @unless($inspectionMode)
+            @include('admin.bookings.mobile-summary')
+        @endunless
         <div data-booking-row-status class="form-text mb-2" role="status"></div>
         <form id="booking-edit-form" action="{{ route($inspectionMode ? 'bookings.confirm' : 'bookings.update', $booking) }}" method="POST">
             @csrf @if(! $inspectionMode) @method('PUT') @endif

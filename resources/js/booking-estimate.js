@@ -74,10 +74,10 @@ if (panel) {
         const body = table.createTBody();
         const rows = [
             ['Tổng tiền dịch vụ:', money(estimate.TongTien)],
-            ['Giảm từ mã:', `−${money(estimate.TienGiamKhuyenMai)}`],
-            [`Điểm đã dùng (${estimate.DiemSuDung} điểm):`, `−${money(estimate.TienGiamDoDiem)}`],
             ['Phí nhận đồ:', money(estimate.PhiNhanDo)],
             ['Phí giao đồ:', money(estimate.PhiGiaoDo)],
+            ['Giảm từ mã khuyến mãi:', `−${money(estimate.TienGiamKhuyenMai)}`],
+            ['Giảm từ điểm tích lũy:', `−${money(estimate.TienGiamDoDiem)}`],
         ];
 
         for (const [label, value] of rows) {
