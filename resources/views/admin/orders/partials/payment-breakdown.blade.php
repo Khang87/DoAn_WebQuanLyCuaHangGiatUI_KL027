@@ -23,11 +23,11 @@
 @endphp
 
 <div class="d-flex justify-content-between align-items-center py-2">
-    <span class="detail-summary__label">Hình thức</span>
+    <span class="detail-summary__label">Phương thức thanh toán</span>
     <span class="detail-money fw-semibold">{{ $summaryPaymentMethod }}</span>
 </div>
 <div class="d-flex justify-content-between align-items-center py-2">
-    <span class="detail-summary__label">Tổng tiền đơn hàng theo bảng giá</span>
+    <span class="detail-summary__label">{{ $summaryOrder ? 'Tổng tiền đơn hàng' : 'Tổng tiền đơn hàng theo bảng giá' }}</span>
     <x-admin.detail.money :value="$summarySubtotal" class="fw-semibold" />
 </div>
 @if($hasSavedDeliveryFeeBreakdown)
@@ -68,18 +68,17 @@
 @if($summaryPointsDiscount > 0)
     <div class="d-flex justify-content-between align-items-start py-2">
         <span class="detail-summary__label">
-            Giảm từ điểm
-            @if($summaryOrder?->points_used > 0)
-                <small class="d-block">({{ number_format($summaryOrder->points_used, 0, ',', '.') }} điểm)</small>
-            @endif
+            Giảm từ điểm tích lũy
         </span>
         <x-admin.detail.money :value="$summaryPointsDiscount" :negative="true" class="text-success fw-semibold" />
     </div>
 @endif
-<div class="d-flex justify-content-between align-items-center py-2">
-    <span class="detail-summary__label">Tổng tiền được giảm</span>
-    <x-admin.detail.money :value="$summaryTotalDiscount" :negative="true" class="text-success fw-semibold" />
-</div>
+@if(! $summaryOrder)
+    <div class="d-flex justify-content-between align-items-center py-2">
+        <span class="detail-summary__label">Tổng tiền được giảm</span>
+        <x-admin.detail.money :value="$summaryTotalDiscount" :negative="true" class="text-success fw-semibold" />
+    </div>
+@endif
 
 <div class="detail-summary d-flex justify-content-between align-items-center">
     <span class="detail-summary__total">Tổng tiền thanh toán</span>
