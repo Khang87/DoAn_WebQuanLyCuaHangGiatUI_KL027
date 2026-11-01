@@ -280,7 +280,6 @@ Route::middleware(['auth', 'reject.customer'])->group(function () {
     Route::post('bookings/{booking}/confirm', [BookingController::class, 'confirm'])
         ->name('bookings.confirm');
     Route::post('bookings/{booking}/refuse-quote', [BookingController::class, 'refuseQuote'])
-        ->middleware('permission:bookings.confirm')
         ->name('bookings.refuse-quote');
 
     Route::post('payments/bank-transfer', [ThanhToanController::class, 'startBankTransfer'])

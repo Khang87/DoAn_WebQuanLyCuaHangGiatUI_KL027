@@ -590,11 +590,12 @@ class BookingService
             return 'Phiếu nhận chưa được phân công nhân viên phụ trách.';
         }
 
+        $user = auth()->user();
         $employeeId = $this->activeEmployeeId();
-        if ($employeeId === null) {
+        if ($employeeId === null && ! $user?->isManager()) {
             return 'Tài khoản cần hồ sơ nhân viên đang hoạt động để kiểm tra.';
         }
-        if (! auth()->user()?->isManager() && (int) $intake->NhanVienID !== $employeeId) {
+        if (! $user?->isManager() && (int) $intake->NhanVienID !== $employeeId) {
             return 'Chỉ nhân viên được phân công mới có thể kiểm tra và xử lý phiếu nhận đồ.';
         }
 
@@ -627,6 +628,9 @@ class BookingService
     public function refuseQuote(Booking $booking, array $data): Booking
     {
         return DB::transaction(function () use ($booking, $data): Booking {
+            $user = auth()->user();
+            abort_unless($user?->isActive(), 403);
+            $isManager = $user->isManager();
             $locked = Booking::query()->lockForUpdate()->findOrFail($booking->BookingID);
             if ($locked->TrangThai !== BookingStatus::Confirmed->value || $this->hasConvertedOrder($locked)) {
                 throw ValidationException::withMessages([
@@ -634,16 +638,20 @@ class BookingService
                 ]);
             }
 
-            $employeeId = $this->requireAuthenticatedEmployeeId(
-                'booking',
-                'Tài khoản cần hồ sơ nhân viên đang hoạt động để xử lý từ chối báo giá.',
-            );
+            $employeeId = $isManager
+                ? $this->activeEmployeeId()
+                : $this->requireAuthenticatedEmployeeId(
+                    'booking',
+                    'Tài khoản cần hồ sơ nhân viên đang hoạt động để xử lý từ chối báo giá.',
+                );
             $intake = BookingGiaoNhan::query()
                 ->where('BookingID', $locked->BookingID)
                 ->where('LoaiGiaoNhan', 'NHAN_DO')
                 ->lockForUpdate()
                 ->firstOrFail();
-            $this->assertAssignedIntakeHandler($intake, $employeeId);
+            if (! $isManager) {
+                $this->assertAssignedIntakeHandler($intake, $employeeId);
+            }
             if (
                 ! in_array($intake->TrangThai, [
                     DeliveryStatus::Pending->dbValue(),
@@ -677,7 +685,8 @@ class BookingService
                 'customer_accepted' => false,
                 'reason' => $reason,
                 'employee_id' => $employeeId,
-                'employee_name' => auth()->user()?->nhanVien?->HoTen,
+                'employee_name' => $user->nhanVien?->HoTen ?? $user->name,
+                'account_id' => $user->getKey(),
                 'decided_at' => $timestamp->toISOString(),
                 'charged_total' => 0,
             ];
