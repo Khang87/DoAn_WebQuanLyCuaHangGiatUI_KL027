@@ -19,7 +19,8 @@ class DichVu extends Model
     public const CREATED_AT = 'NgayTao';
 
     protected $fillable = [
-        'LoaiDichVuID', 'TenDichVu', 'MoTa', 'ThoiGianDuKien', 'TrangThai', 'NgayTao', 'DichVuID'];
+        'LoaiDichVuID', 'TenDichVu', 'MoTa', 'ThoiGianDuKien', 'TrangThai', 'NgayTao', 'DichVuID', 'Icon',
+    ];
 
     protected $casts = [
         'LoaiDichVuID' => 'integer',

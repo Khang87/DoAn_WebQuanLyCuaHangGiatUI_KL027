@@ -1,4 +1,4 @@
-const debounceDelay = 400;
+const debounceDelay = 1000;
 
 document.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('[data-address-autocomplete]').forEach(input => {
@@ -106,7 +106,7 @@ document.addEventListener('DOMContentLoaded', () => {
             cancelSuggestions();
 
             const query = input.value.trim();
-            if (input.disabled || query.length < 3) {
+            if (input.disabled || input.offsetParent === null || query.length < 3) {
                 status.textContent = query.length > 0 && !input.disabled
                     ? 'Nhập ít nhất 3 ký tự để tìm địa chỉ.'
                     : '';
@@ -137,13 +137,11 @@ document.addEventListener('DOMContentLoaded', () => {
             cancelSuggestions(true);
         });
 
-        input.form.querySelectorAll('#booking-method, #booking-return-method').forEach(method => {
-            method.addEventListener('change', () => {
-                queueMicrotask(() => {
-                    if (input.disabled) {
-                        cancelSuggestions(true);
-                    }
-                });
+        input.form.addEventListener('change', () => {
+            queueMicrotask(() => {
+                if (input.disabled || input.offsetParent === null) {
+                    cancelSuggestions(true);
+                }
             });
         });
 

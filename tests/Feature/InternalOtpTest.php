@@ -102,7 +102,8 @@ class InternalOtpTest extends TestCase
     private function issue(): void
     {
         $this->actingAs($this->owner)->post(route('accounts.reset-password', $this->staff))
-            ->assertRedirect(route('accounts.show', $this->staff))->assertSessionHas('success');
+            ->assertRedirect(route('accounts.show', $this->staff))
+            ->assertSessionHas('success', 'Đã gửi OTP qua email và thông báo riêng của tài khoản. Mã có hiệu lực trong 10 phút.');
     }
 
     private function reset(?string $otp = null)

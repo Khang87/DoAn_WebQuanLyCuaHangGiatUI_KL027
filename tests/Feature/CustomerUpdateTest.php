@@ -240,6 +240,8 @@ class CustomerUpdateTest extends TestCase
             ->assertSee('name="SoDienThoai"', false)
             ->assertSee('name="Email" value="" placeholder="Nhập email" required', false)
             ->assertSee('name="SoDienThoai" value="" placeholder="Nhập số điện thoại" pattern="0[0-9]{9,10}" maxlength="30" required', false)
+            ->assertSee('data-address-autocomplete', false)
+            ->assertSee('customer-address-suggestions', false)
             ->assertDontSee('setCustomValidity', false);
     }
 

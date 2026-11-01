@@ -129,6 +129,8 @@ class DeliverySchedulingTest extends TestCase
         $this->assertMatchesRegularExpression('/id="method_display" value="Giao đồ" readonly/', $html);
         $this->assertMatchesRegularExpression('/id="fulfillment_display" value="Tại cửa hàng" readonly/', $html);
         $this->assertStringContainsString('name="fulfillment"', $html);
+        $this->assertStringContainsString('data-address-autocomplete', $html);
+        $this->assertStringContainsString('delivery-address-suggestions', $html);
     }
 
     public function test_active_delivery_badge_status_is_resolved_from_its_leg(): void
@@ -171,6 +173,8 @@ class DeliverySchedulingTest extends TestCase
         $this->assertStringContainsString('data-return-method="Tại cửa hàng"', $html);
         $this->assertStringContainsString('data-pickup-date="2026-10-08"', $html);
         $this->assertStringContainsString('data-pickup-time="10:30"', $html);
+        $this->assertStringContainsString('data-address-autocomplete', $html);
+        $this->assertStringContainsString('delivery-address-suggestions', $html);
     }
 
     private function deliveryValidator(string $date, string $time): \Illuminate\Validation\Validator

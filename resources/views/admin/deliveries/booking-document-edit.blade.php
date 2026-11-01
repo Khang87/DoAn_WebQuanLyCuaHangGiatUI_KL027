@@ -100,7 +100,11 @@
                     @if($bookingDocument->HinhThuc === 'Tại nhà')
                         <div class="col-12">
                             <label class="form-label" for="address">Địa chỉ nhận đồ <span class="text-danger">*</span></label>
-                            <input class="form-control" id="address" name="address" value="{{ old('address', $bookingDocument->DiaChi) }}" required maxlength="255">
+                            <div class="position-relative">
+                                <input class="form-control" id="address" name="address" value="{{ old('address', $bookingDocument->DiaChi) }}" required maxlength="255" data-address-autocomplete data-autocomplete-url="{{ route('bookings.address-autocomplete') }}" aria-autocomplete="list" aria-controls="booking-document-address-suggestions" aria-expanded="false" autocomplete="off">
+                                <div id="booking-document-address-suggestions" class="list-group address-autocomplete-suggestions position-absolute top-100 start-0 w-100 shadow d-none" role="listbox" aria-label="Gợi ý địa chỉ nhận đồ"></div>
+                                <div class="form-text" data-address-autocomplete-status role="status" aria-live="polite"></div>
+                            </div>
                             @error('address')<div class="text-danger small mt-1">{{ $message }}</div>@enderror
                         </div>
                     @endif
@@ -170,6 +174,7 @@
 @endpush
 
 @push('scripts')
+@vite('resources/js/booking-address-autocomplete.js')
     <script>
         (function () {
             const employeePicker = document.querySelector('[data-employee-picker]');

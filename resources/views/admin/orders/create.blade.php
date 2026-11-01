@@ -181,15 +181,25 @@
                                     Địa chỉ nhận đồ
                                 </label>
 
-                                <input
-                                    type="text"
-                                    class="form-control"
-                                    id="DiaChiNhan"
-                                    name="DiaChiNhan"
-                                    value="{{ old('DiaChiNhan') ?: '140 Lê Trọng Tấn, Tây Thạnh, Hồ Chí Minh 700000, Việt Nam' }}"
-                                    maxlength="255"
-                                    placeholder="Số nhà, đường, phường/xã, thành phố"
-                                >
+                                <div class="position-relative">
+                                    <input
+                                        type="text"
+                                        class="form-control"
+                                        id="DiaChiNhan"
+                                        name="DiaChiNhan"
+                                        value="{{ old('DiaChiNhan') ?: '140 Lê Trọng Tấn, Tây Thạnh, Hồ Chí Minh 700000, Việt Nam' }}"
+                                        maxlength="255"
+                                        placeholder="Số nhà, đường, phường/xã, thành phố"
+                                        data-address-autocomplete
+                                        data-autocomplete-url="{{ route('bookings.address-autocomplete') }}"
+                                        aria-autocomplete="list"
+                                        aria-controls="order-pickup-address-suggestions"
+                                        aria-expanded="false"
+                                        autocomplete="off"
+                                    >
+                                    <div id="order-pickup-address-suggestions" class="list-group address-autocomplete-suggestions position-absolute top-100 start-0 w-100 shadow d-none" role="listbox" aria-label="Gợi ý địa chỉ nhận đồ"></div>
+                                    <div class="form-text" data-address-autocomplete-status role="status" aria-live="polite"></div>
+                                </div>
 
                                 @error('DiaChiNhan')
                                     <div class="text-danger small mt-1">{{ $message }}</div>
@@ -231,15 +241,25 @@
                                     Địa chỉ giao đồ sạch
                                 </label>
 
-                                <input
-                                    type="text"
-                                    class="form-control"
-                                    id="DiaChiTra"
-                                    name="DiaChiTra"
-                                    value="{{ old('DiaChiTra') ?: '140 Lê Trọng Tấn, Tây Thạnh, Hồ Chí Minh 700000, Việt Nam' }}"
-                                    maxlength="255"
-                                    placeholder="Số nhà, đường, phường/xã, thành phố"
-                                >
+                                <div class="position-relative">
+                                    <input
+                                        type="text"
+                                        class="form-control"
+                                        id="DiaChiTra"
+                                        name="DiaChiTra"
+                                        value="{{ old('DiaChiTra') ?: '140 Lê Trọng Tấn, Tây Thạnh, Hồ Chí Minh 700000, Việt Nam' }}"
+                                        maxlength="255"
+                                        placeholder="Số nhà, đường, phường/xã, thành phố"
+                                        data-address-autocomplete
+                                        data-autocomplete-url="{{ route('bookings.address-autocomplete') }}"
+                                        aria-autocomplete="list"
+                                        aria-controls="order-return-address-suggestions"
+                                        aria-expanded="false"
+                                        autocomplete="off"
+                                    >
+                                    <div id="order-return-address-suggestions" class="list-group address-autocomplete-suggestions position-absolute top-100 start-0 w-100 shadow d-none" role="listbox" aria-label="Gợi ý địa chỉ giao đồ sạch"></div>
+                                    <div class="form-text" data-address-autocomplete-status role="status" aria-live="polite"></div>
+                                </div>
 
                                 @error('DiaChiTra')
                                     <div class="text-danger small mt-1">{{ $message }}</div>
@@ -621,6 +641,7 @@
 @endsection
 
 @push('scripts')
+@vite('resources/js/booking-address-autocomplete.js')
 <script src="{{ asset('assets/js/customer-autocomplete.js') }}"></script>
 <script src="{{ asset('assets/js/order-item-pricing.js') }}"></script>
 

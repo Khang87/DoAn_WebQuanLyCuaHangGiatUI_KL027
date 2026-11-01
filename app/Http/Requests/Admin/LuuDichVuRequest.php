@@ -3,7 +3,9 @@
 namespace App\Http\Requests\Admin;
 
 use App\Enums\RecordStatus;
+use App\Support\ServiceIcon;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\Rule;
 
 class LuuDichVuRequest extends FormRequest
@@ -22,13 +24,19 @@ class LuuDichVuRequest extends FormRequest
             $uniqueName->ignore($id, 'DichVuID');
         }
 
-        return [
+        $rules = [
             'TenDichVu' => ['required', 'string', 'min:3', 'max:150', $uniqueName],
             'LoaiDichVuID' => ['required', 'integer', 'exists:LoaiDichVu,LoaiDichVuID'],
             'MoTa' => ['nullable', 'string', 'max:500'],
             'ThoiGianDuKien' => ['nullable', 'integer', 'min:0'],
             'TrangThai' => ['required', Rule::in(RecordStatus::databaseValues())],
         ];
+
+        if (Schema::hasColumn('DichVu', 'Icon')) {
+            $rules['Icon'] = ['required', 'string', Rule::in(array_keys(ServiceIcon::options()))];
+        }
+
+        return $rules;
     }
 
     public function messages(): array
@@ -45,6 +53,8 @@ class LuuDichVuRequest extends FormRequest
             'ThoiGianDuKien.min' => 'Thời gian dự kiến không được nhỏ hơn 0.',
             'TrangThai.required' => 'Trạng thái là bắt buộc.',
             'TrangThai.in' => 'Trạng thái không hợp lệ.',
+            'Icon.required' => 'Biểu tượng dịch vụ là bắt buộc.',
+            'Icon.in' => 'Biểu tượng dịch vụ không hợp lệ.',
         ];
     }
 }

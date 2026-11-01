@@ -1855,9 +1855,16 @@ class BookingOrderConversionTest extends TestCase
             'garmentOptions' => collect(),
             'units' => collect(),
             'pricingUnitOptions' => collect(),
+            'coupons' => collect(),
+            'currentCouponSubtotal' => 0,
+            'lockedPromotionId' => null,
+            'minimumPromotionThreshold' => null,
             'errors' => new ViewErrorBag,
         ])->render();
 
+        $this->assertStringContainsString('data-address-autocomplete', $content);
+        $this->assertStringContainsString('booking-pickup-address-suggestions', $content);
+        $this->assertStringContainsString('booking-return-address-suggestions', $content);
         $this->assertStringContainsString('value="Khách hàng liên kết" disabled', $content);
         $this->assertStringContainsString('value="0901234567" disabled', $content);
         $this->assertStringContainsString('value="customer@example.test" disabled', $content);
@@ -3785,6 +3792,8 @@ class BookingOrderConversionTest extends TestCase
         $this->withoutMiddleware([Authenticate::class, EnsureUserHasPermission::class, RejectCustomerRole::class, RestoreRememberedLogin::class]);
         $response = $this->get(route('orders.create'))->assertOk();
         $response->assertSee('Đơn vị tính')->assertSee('order-item-pricing.js');
+        $response->assertSee('order-pickup-address-suggestions', false)
+            ->assertSee('order-return-address-suggestions', false);
         $this->assertMatchesRegularExpression('/<select[^>]*item-unit-value[^>]*name="items\[0\]\[DonViTinhID\]"/', $response->getContent());
         $this->assertMatchesRegularExpression('/<input[^>]*item-price[^>]*readonly/', $response->getContent());
     }

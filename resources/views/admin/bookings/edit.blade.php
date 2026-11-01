@@ -110,22 +110,22 @@
                             name="address"
                             value="{{ old('address', $booking->DiaChiNhan) }}"
                             maxlength="255"
-                            @if($inspectionMode)
+                            @unless($inspectionMode)
                                 data-address-autocomplete
                                 data-autocomplete-url="{{ route('bookings.address-autocomplete') }}"
                                 aria-autocomplete="list"
                                 aria-controls="booking-pickup-address-suggestions"
                                 aria-expanded="false"
                                 autocomplete="off"
-                            @endif
+                            @endunless
                             @required(old('method', $booking->HinhThucNhanDo) === \App\Enums\ReceiveMethod::Home->value)
                             @disabled(old('method', $booking->HinhThucNhanDo) !== \App\Enums\ReceiveMethod::Home->value)
                             @readonly($inspectionMode)
                         >
-                        @if($inspectionMode)
+                        @unless($inspectionMode)
                             <div id="booking-pickup-address-suggestions" class="list-group booking-address-suggestions position-absolute top-100 start-0 w-100 shadow d-none" role="listbox" aria-label="Gợi ý địa chỉ nhận đồ"></div>
                             <div class="form-text" data-address-autocomplete-status role="status" aria-live="polite"></div>
-                        @endif
+                        @endunless
                         @error('address')<div class="invalid-feedback">{{ $message }}</div>@enderror
                     </div>
                 </div>
@@ -152,22 +152,22 @@
                             name="return_address"
                             value="{{ old('return_address', $booking->DiaChiTra) }}"
                             maxlength="255"
-                            @if($inspectionMode)
+                            @unless($inspectionMode)
                                 data-address-autocomplete
                                 data-autocomplete-url="{{ route('bookings.address-autocomplete') }}"
                                 aria-autocomplete="list"
                                 aria-controls="booking-return-address-suggestions"
                                 aria-expanded="false"
                                 autocomplete="off"
-                            @endif
+                            @endunless
                             @required(old('return_method', $booking->HinhThucTraDo) === \App\Enums\ReturnMethod::Home->value)
                             @disabled(old('return_method', $booking->HinhThucTraDo) !== \App\Enums\ReturnMethod::Home->value)
                             @readonly($inspectionMode)
                         >
-                        @if($inspectionMode)
+                        @unless($inspectionMode)
                             <div id="booking-return-address-suggestions" class="list-group booking-address-suggestions position-absolute top-100 start-0 w-100 shadow d-none" role="listbox" aria-label="Gợi ý địa chỉ giao đồ"></div>
                             <div class="form-text" data-address-autocomplete-status role="status" aria-live="polite"></div>
-                        @endif
+                        @endunless
                         @error('return_address')<div class="invalid-feedback">{{ $message }}</div>@enderror
                     </div>
                 </div>
@@ -778,5 +778,7 @@
     @if($inspectionMode)
         <script src="{{ asset('assets/js/order-item-pricing.js') }}"></script>
         @vite('resources/js/booking-estimate.js')
+    @else
+        @vite('resources/js/booking-address-autocomplete.js')
     @endif
 @endpush

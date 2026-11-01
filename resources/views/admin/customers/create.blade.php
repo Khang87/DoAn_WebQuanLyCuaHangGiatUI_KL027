@@ -40,7 +40,11 @@
                 </div>
                 <div class="col-12">
                     <label class="form-label">Địa chỉ</label>
-                    <textarea class="form-control @error('DiaChi') is-invalid @enderror" name="DiaChi" rows="3" placeholder="Nhập địa chỉ"></textarea>
+                    <div class="position-relative">
+                        <textarea class="form-control @error('DiaChi') is-invalid @enderror" name="DiaChi" rows="3" placeholder="Nhập địa chỉ" data-address-autocomplete data-autocomplete-url="{{ route('bookings.address-autocomplete') }}" aria-autocomplete="list" aria-controls="customer-address-suggestions" aria-expanded="false" autocomplete="off"></textarea>
+                        <div id="customer-address-suggestions" class="list-group address-autocomplete-suggestions position-absolute top-100 start-0 w-100 shadow d-none" role="listbox" aria-label="Gợi ý địa chỉ"></div>
+                        <div class="form-text" data-address-autocomplete-status role="status" aria-live="polite"></div>
+                    </div>
                     @error('DiaChi')
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
@@ -56,3 +60,7 @@
     </div>
 </div>
 @endsection
+
+@push('scripts')
+    @vite('resources/js/booking-address-autocomplete.js')
+@endpush

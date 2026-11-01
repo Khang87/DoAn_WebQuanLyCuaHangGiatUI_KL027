@@ -66,8 +66,16 @@
         <div class="card h-100">
             <div class="card-body">
                 <div class="d-flex align-items-center mb-3">
-                    <div class="rounded-3 d-flex align-items-center justify-content-center text-white me-3" style="width: 48px; height: 48px; background-color: #00c4cc; flex-shrink: 0;">
-                        <i class="bi bi-water fs-4"></i>
+                    @php
+                        $serviceIcon = \App\Support\ServiceIcon::resolve(
+                            $service->Icon,
+                            $service->TenDichVu,
+                            $service->loaiDichVu?->TenLoaiDichVu,
+                        );
+                        $serviceIconColors = \App\Support\ServiceIcon::colors($serviceIcon);
+                    @endphp
+                    <div class="rounded-3 d-flex align-items-center justify-content-center me-3" style="width: 48px; height: 48px; flex-shrink: 0; color: {{ $serviceIconColors['color'] }}; background-color: {{ $serviceIconColors['background'] }};">
+                        <x-admin.service-icon :icon="$serviceIcon" class="fs-4" />
                     </div>
                     <div>
                         <span class="small text-muted">STT {{ $services->firstItem() + $loop->index }}</span>

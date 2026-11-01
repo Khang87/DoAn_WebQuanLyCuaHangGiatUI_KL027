@@ -129,7 +129,14 @@
             </div>
             <div class="col-12"><label class="form-label" for="method">Loại giao nhận <span class="text-danger ms-1">*</span></label><select class="form-select {{ $lockDeliveryType ? 'delivery-locked-control' : '' }}" id="method" name="method" required @disabled($lockDeliveryType)><option value="nhan_do" @selected($selectedMethod === 'nhan_do')>Nhận đồ</option><option value="giao_do" @selected($selectedMethod === 'giao_do')>Giao đồ</option></select>@if($lockDeliveryType)<input type="hidden" name="method" value="{{ $selectedMethod }}">@endif</div>
             <div class="col-12"><label class="form-label" for="fulfillment">Hình thức nhân viên {{ $selectedMethod === 'giao_do' ? 'giao đồ' : 'nhận đồ' }}</label><select class="form-select" id="fulfillment" name="fulfillment" required><option value="Tại cửa hàng" @selected($selectedFulfillment === 'Tại cửa hàng')>Tại cửa hàng</option><option value="Tại nhà" @selected($selectedFulfillment === 'Tại nhà')>Tại nhà</option></select></div>
-            <div class="col-12"><label class="form-label" for="address">Địa chỉ nhân viên {{ $selectedMethod === 'giao_do' ? 'giao đồ' : 'nhận đồ' }} (bắt buộc khi tại nhà)</label><input type="text" class="form-control {{ $selectedFulfillment === 'Tại cửa hàng' ? 'delivery-locked-control bg-light text-muted' : '' }}" id="address" name="address" value="{{ $selectedAddress }}" placeholder="Nhập địa chỉ nhận/giao đồ" @required($selectedFulfillment === 'Tại nhà') @disabled($selectedFulfillment === 'Tại cửa hàng')></div>
+            <div class="col-12">
+                <label class="form-label" for="address">Địa chỉ nhân viên {{ $selectedMethod === 'giao_do' ? 'giao đồ' : 'nhận đồ' }} (bắt buộc khi tại nhà)</label>
+                <div class="position-relative">
+                    <input type="text" class="form-control {{ $selectedFulfillment === 'Tại cửa hàng' ? 'delivery-locked-control bg-light text-muted' : '' }}" id="address" name="address" value="{{ $selectedAddress }}" placeholder="Nhập địa chỉ nhận/giao đồ" data-address-autocomplete data-autocomplete-url="{{ route('bookings.address-autocomplete') }}" aria-autocomplete="list" aria-controls="delivery-address-suggestions" aria-expanded="false" autocomplete="off" @required($selectedFulfillment === 'Tại nhà') @disabled($selectedFulfillment === 'Tại cửa hàng')>
+                    <div id="delivery-address-suggestions" class="list-group address-autocomplete-suggestions position-absolute top-100 start-0 w-100 shadow d-none" role="listbox" aria-label="Gợi ý địa chỉ giao nhận"></div>
+                    <div class="form-text" data-address-autocomplete-status role="status" aria-live="polite"></div>
+                </div>
+            </div>
             <div class="col-md-6"><label class="form-label" for="pickup_date">Ngày {{ $selectedMethod === 'giao_do' ? 'giao' : 'nhận' }} đồ dự kiến</label><input type="date" class="form-control" id="pickup_date" name="pickup_date" value="{{ old('pickup_date') }}">@error('pickup_date')<div class="text-danger small">{{ $message }}</div>@enderror</div>
             <div class="col-md-6"><label class="form-label" for="pickup_time">Giờ {{ $selectedMethod === 'giao_do' ? 'giao' : 'nhận' }} đồ dự kiến</label><input type="time" class="form-control" id="pickup_time" name="pickup_time" value="{{ old('pickup_time') }}">@error('pickup_time')<div class="text-danger small">{{ $message }}</div>@enderror</div>
             <div class="col-md-6"><label class="form-label" for="status">Trạng thái</label><x-admin.status-select name="status" id="status" :options="$statusOptions" selected="pending" class="form-select" /></div>
@@ -143,5 +150,6 @@
 @endsection
 
 @push('scripts')
+@vite('resources/js/booking-address-autocomplete.js')
 <script src="{{ asset('assets/js/delivery-schedule.js') }}"></script>
 @endpush

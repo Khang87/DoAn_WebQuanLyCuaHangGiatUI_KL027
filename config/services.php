@@ -62,6 +62,7 @@ return [
         ),
     ],
     'osm' => [
+        'autocomplete_context' => env('OSM_AUTOCOMPLETE_CONTEXT', 'Hồ Chí Minh'),
         'store_address' => env(
             'OSM_STORE_ADDRESS',
             '140 Lê Trọng Tấn, Tây Thạnh, Hồ Chí Minh, Việt Nam'

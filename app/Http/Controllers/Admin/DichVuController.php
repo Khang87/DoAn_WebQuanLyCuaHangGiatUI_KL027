@@ -34,8 +34,9 @@ class DichVuController extends Controller
     public function create()
     {
         $categories = LoaiDichVu::where('TrangThai', 'Hoạt động')->orderBy('TenLoaiDichVu')->get();
+        $supportsServiceIcons = $this->serviceService->supportsServiceIcons();
 
-        return view('admin.services.create', compact('categories'));
+        return view('admin.services.create', compact('categories', 'supportsServiceIcons'));
     }
 
     public function store(LuuDichVuRequest $request)
@@ -69,8 +70,9 @@ class DichVuController extends Controller
         }
 
         $categories = LoaiDichVu::where('TrangThai', 'Hoạt động')->orderBy('TenLoaiDichVu')->get();
+        $supportsServiceIcons = $this->serviceService->supportsServiceIcons();
 
-        return view('admin.services.edit', compact('service', 'categories'));
+        return view('admin.services.edit', compact('service', 'categories', 'supportsServiceIcons'));
     }
 
     public function update(LuuDichVuRequest $request, int $id)

@@ -59,6 +59,53 @@ class BookingAddressAutocompleteTest extends TestCase
         Http::assertNothingSent();
     }
 
+    public function test_numeric_queries_return_address_suggestions(): void
+    {
+        Http::fake([
+            'https://nominatim.openstreetmap.org/search*' => Http::response([
+                [
+                    'place_id' => 1401,
+                    'display_name' => '140 Lê Trọng Tấn, Tây Thạnh, Thành phố Hồ Chí Minh, Việt Nam',
+                    'lat' => '10.8000',
+                    'lon' => '106.6200',
+                    'address' => [
+                        'house_number' => '140',
+                        'road' => 'Lê Trọng Tấn',
+                        'neighbourhood' => 'Tây Thạnh',
+                        'city' => 'Thành phố Hồ Chí Minh',
+                        'country' => 'Việt Nam',
+                    ],
+                ],
+                [
+                    'place_id' => 1402,
+                    'display_name' => '140 Thoại Ngọc Hầu, Tân Phú, Thành phố Hồ Chí Minh, Việt Nam',
+                    'lat' => '10.7900',
+                    'lon' => '106.6300',
+                    'address' => [
+                        'house_number' => '140',
+                        'road' => 'Thoại Ngọc Hầu',
+                        'suburb' => 'Tân Phú',
+                        'city' => 'Thành phố Hồ Chí Minh',
+                        'country' => 'Việt Nam',
+                    ],
+                ],
+            ]),
+        ]);
+
+        $this->withoutMiddleware()
+            ->getJson('/api/osm/autocomplete?input=140')
+            ->assertOk()
+            ->assertJsonCount(2)
+            ->assertJsonPath('0.description', '140 Lê Trọng Tấn, Tây Thạnh, Thành phố Hồ Chí Minh, Việt Nam')
+            ->assertJsonPath('1.description', '140 Thoại Ngọc Hầu, Tân Phú, Thành phố Hồ Chí Minh, Việt Nam');
+
+        Http::assertSent(function ($request): bool {
+            parse_str((string) parse_url($request->url(), PHP_URL_QUERY), $query);
+
+            return ($query['q'] ?? null) === '140 Hồ Chí Minh';
+        });
+    }
+
     public function test_address_autocomplete_supports_hosts_that_strip_the_api_prefix(): void
     {
         Http::fake([

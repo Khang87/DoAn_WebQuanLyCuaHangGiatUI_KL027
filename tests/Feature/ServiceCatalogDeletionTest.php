@@ -216,6 +216,36 @@ class ServiceCatalogDeletionTest extends TestCase
         $this->assertNotNull($service->fresh());
     }
 
+    public function test_service_can_be_updated_when_database_has_no_icon_column(): void
+    {
+        $service = $this->createService($this->createCategory());
+
+        $updated = app(ServiceService::class)->update($service, [
+            'TenDichVu' => 'Tẩy trắng siêu cấp',
+            'Icon' => 'material:cleaning_services_outlined',
+        ]);
+
+        $this->assertFalse(Schema::hasColumn('DichVu', 'Icon'));
+        $this->assertSame('Tẩy trắng siêu cấp', $updated->TenDichVu);
+    }
+
+    public function test_service_icon_is_saved_when_database_has_icon_column(): void
+    {
+        Schema::table('DichVu', function (Blueprint $table): void {
+            $table->string('Icon')->nullable();
+        });
+        $service = $this->createService($this->createCategory());
+        $icon = 'material:cleaning_services_outlined';
+
+        $updated = app(ServiceService::class)->update($service, [
+            'TenDichVu' => 'Tẩy trắng siêu cấp',
+            'Icon' => $icon,
+        ]);
+
+        $this->assertTrue(Schema::hasColumn('DichVu', 'Icon'));
+        $this->assertSame($icon, $updated->Icon);
+    }
+
     public function test_hard_delete_rolls_back_prices_if_record_deletion_fails(): void
     {
         $service = $this->createService($this->createCategory());
@@ -329,6 +359,7 @@ class ServiceCatalogDeletionTest extends TestCase
         $this->assertStringContainsString(route('services.index'), $html);
         $this->assertSame(1, substr_count($html, 'Quay lại'));
         $this->assertStringContainsString('Cập nhật', $html);
+        $this->assertStringContainsString('Chưa thể chọn biểu tượng', $html);
         $this->assertStringNotContainsString('>Hủy</a>', $html);
         $this->assertStringContainsString(route('services.update', $service->getKey()), $html);
         $this->assertStringContainsString('name="_method" value="PUT"', $html);

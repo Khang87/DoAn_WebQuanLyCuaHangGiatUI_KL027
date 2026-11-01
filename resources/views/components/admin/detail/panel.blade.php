@@ -29,7 +29,7 @@
         <div class="card-header detail-panel__header d-flex flex-wrap justify-content-between align-items-center gap-2">
             <div class="d-flex align-items-center gap-3">
                 @if($icon)
-                    <span class="detail-panel__icon {{ $iconClass }}"><i class="{{ $icon }}"></i></span>
+                    <span class="detail-panel__icon {{ $iconClass }}"><x-admin.service-icon :icon="$icon" /></span>
                 @endif
                 <div class="flex-grow-1">
                     <h5 class="detail-panel__title">{{ $title }}</h5>

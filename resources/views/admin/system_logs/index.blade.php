@@ -81,7 +81,7 @@
                         <th style="width: 170px;">Tài khoản</th>
                         <th style="width: 210px;">Bảng dữ liệu</th>
                         <th>Hành động</th>
-                        <th style="width: 110px;">Chi tiết</th>
+                        <th style="width: 110px;">Thao tác</th>
                     </tr>
                 </thead>
                 <tbody>

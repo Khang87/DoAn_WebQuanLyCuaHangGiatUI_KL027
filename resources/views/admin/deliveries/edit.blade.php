@@ -119,7 +119,14 @@
                 <label class="form-label" for="fulfillment_display">Hình thức nhân viên {{ $deliveryLegLabel }}</label>
                 <input class="form-control delivery-fixed-field" id="fulfillment_display" value="{{ $delivery->HinhThuc }}" readonly aria-readonly="true">
             </div>
-            <div class="col-12"><label class="form-label" for="address">Địa chỉ nhân viên {{ $deliveryLegLabel }} (bắt buộc khi tại nhà)</label><input type="text" class="form-control" id="address" name="address" value="{{ old('address', $delivery->DiaChi) }}" @required(old('fulfillment', $delivery->HinhThuc) === 'Tại nhà') @disabled(old('fulfillment', $delivery->HinhThuc) === 'Tại cửa hàng')></div>
+            <div class="col-12">
+                <label class="form-label" for="address">Địa chỉ nhân viên {{ $deliveryLegLabel }} (bắt buộc khi tại nhà)</label>
+                <div class="position-relative">
+                    <input type="text" class="form-control" id="address" name="address" value="{{ old('address', $delivery->DiaChi) }}" data-address-autocomplete data-autocomplete-url="{{ route('bookings.address-autocomplete') }}" aria-autocomplete="list" aria-controls="delivery-address-suggestions" aria-expanded="false" autocomplete="off" @required(old('fulfillment', $delivery->HinhThuc) === 'Tại nhà') @disabled(old('fulfillment', $delivery->HinhThuc) === 'Tại cửa hàng')>
+                    <div id="delivery-address-suggestions" class="list-group address-autocomplete-suggestions position-absolute top-100 start-0 w-100 shadow d-none" role="listbox" aria-label="Gợi ý địa chỉ giao nhận"></div>
+                    <div class="form-text" data-address-autocomplete-status role="status" aria-live="polite"></div>
+                </div>
+            </div>
             <div class="col-md-6"><label class="form-label" for="pickup_date">Ngày {{ $deliveryLegLabel }} dự kiến</label><input type="date" class="form-control" id="pickup_date" name="pickup_date" value="{{ old('pickup_date', $delivery->ThoiGianDuKien?->format('Y-m-d')) }}">@error('pickup_date')<div class="text-danger small">{{ $message }}</div>@enderror</div>
             <div class="col-md-6"><label class="form-label" for="pickup_time">Giờ {{ $deliveryLegLabel }} dự kiến</label><input type="time" class="form-control" id="pickup_time" name="pickup_time" value="{{ old('pickup_time', $delivery->ThoiGianDuKien?->format('H:i')) }}">@error('pickup_time')<div class="text-danger small">{{ $message }}</div>@enderror</div>
             <div class="col-12"><label class="form-label" for="status">Trạng thái</label><x-admin.status-select name="status" id="status" :options="$statusOptions" :selected="\App\Enums\DeliveryStatus::parseForLeg($delivery->TrangThai, $delivery->LoaiGiaoNhan)->value" class="form-select" /></div>
@@ -131,6 +138,7 @@
 @endsection
 
 @push('scripts')
+@vite('resources/js/booking-address-autocomplete.js')
 <script src="{{ asset('assets/js/delivery-schedule.js') }}"></script>
 <script>
     document.addEventListener('submit', function (event) {

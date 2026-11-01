@@ -53,7 +53,11 @@
     </div>
 
     <div class="col-lg-4 d-flex flex-column">
-        <x-admin.detail.panel title="Thông tin dịch vụ" icon="bi bi-water" iconClass="bg-info text-white">
+        <x-admin.detail.panel
+            title="Thông tin dịch vụ"
+            :icon="\App\Support\ServiceIcon::resolve($service->Icon, $service->TenDichVu, $service->loaiDichVu?->TenLoaiDichVu)"
+            iconClass="bg-info text-white"
+        >
             <x-admin.detail.info-grid :columns="2">
                 <x-admin.detail.info-item label="Tên dịch vụ" :value="$service->TenDichVu" />
                 <x-admin.detail.info-item label="Danh mục" :value="$service->loaiDichVu?->TenLoaiDichVu ?: 'Chưa phân loại'" />

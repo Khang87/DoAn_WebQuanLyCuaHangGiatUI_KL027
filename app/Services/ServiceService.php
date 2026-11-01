@@ -7,6 +7,7 @@ use App\Models\LoaiDichVu;
 use App\Models\LoaiDoGiat;
 use App\Support\CatalogCache;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\Schema;
 
 class ServiceService
 {
@@ -62,14 +63,27 @@ class ServiceService
 
     public function create(array $data): DichVu
     {
+        if (! $this->supportsServiceIcons()) {
+            unset($data['Icon']);
+        }
+
         return DichVu::create($data);
     }
 
     public function update(DichVu $service, array $data): DichVu
     {
+        if (! $this->supportsServiceIcons()) {
+            unset($data['Icon']);
+        }
+
         $service->update($data);
 
         return $service->fresh(['loaiDichVu']);
+    }
+
+    public function supportsServiceIcons(): bool
+    {
+        return Schema::hasColumn('DichVu', 'Icon');
     }
 
     public function delete(DichVu $service): bool

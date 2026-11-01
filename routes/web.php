@@ -263,10 +263,10 @@ Route::middleware(['auth', 'reject.customer'])->group(function () {
         ->middleware('permission:bookings.edit')
         ->name('bookings.apply-coupon');
     Route::get('osm/autocomplete', BookingAddressAutocompleteController::class)
-        ->middleware(['permission:bookings.confirm', 'throttle:30,1'])
+        ->middleware(['permission:bookings.confirm|bookings.edit|deliveries.create|deliveries.edit|orders.create|customers.create|customers.edit', 'throttle:30,1'])
         ->name('bookings.address-autocomplete');
     Route::get('api/osm/autocomplete', BookingAddressAutocompleteController::class)
-        ->middleware(['permission:bookings.confirm', 'throttle:30,1'])
+        ->middleware(['permission:bookings.confirm|bookings.edit|deliveries.create|deliveries.edit|orders.create|customers.create|customers.edit', 'throttle:30,1'])
         ->name('bookings.address-autocomplete-api');
     Route::post('bookings/{booking}/approve', [BookingController::class, 'approve'])
         ->middleware('permission:bookings.confirm')->name('bookings.approve');
