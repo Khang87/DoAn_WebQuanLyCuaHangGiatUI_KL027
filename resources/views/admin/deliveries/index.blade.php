@@ -71,6 +71,10 @@
                             $isMutableBookingIntake = $isBookingDocument && (int) $delivery->intake_mutable === 1;
                             $isReturnIntake = $isBookingDocument && $delivery->task_type === 'GIAO_DO';
                             $deliveryStatus = \App\Enums\DeliveryStatus::parseForLeg($delivery->raw_status, $delivery->task_type);
+                            $isDirectReturnWaitingForIntake = ! $isBookingDocument
+                                && $delivery->booking_id === null
+                                && $delivery->task_type === 'GIAO_DO'
+                                && ! (bool) $delivery->intake_completed;
                             $canEditOperationalDelivery = ! $isBookingDocument
                                 && ($delivery->task_type !== 'GIAO_DO'
                                     || (
@@ -220,7 +224,7 @@
                                                 && ($deliveryStatus === \App\Enums\DeliveryStatus::Delivering || $delivery->fulfillment === 'Tại cửa hàng')
                                                 && ! $order?->isLocked();
                                         @endphp
-                                        @if($progressAction)
+                                        @if($progressAction && ! $isDirectReturnWaitingForIntake)
                                             @can('deliveries.edit')
                                                 @if($paymentNotDone)
                                                     @can('payments.create')

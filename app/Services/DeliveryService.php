@@ -132,6 +132,15 @@ class DeliveryService
                 END as status_key",
                 ['Chờ thực hiện', 'Đang thực hiện', 'Đang thực hiện', 'Hoàn thành', 'Đã hủy'],
             )
+            ->selectRaw(
+                "CASE WHEN NOT EXISTS (
+                    SELECT 1 FROM \"GiaoNhan\" AS \"intake\"
+                    WHERE \"intake\".\"DonHangID\" = \"g\".\"DonHangID\"
+                        AND \"intake\".\"LoaiGiaoNhan\" = 'NHAN_DO'
+                        AND \"intake\".\"TrangThai\" != ?
+                ) THEN 1 ELSE 0 END as intake_completed",
+                [DeliveryStatus::Completed->dbValue()],
+            )
             ->selectRaw('NULL as booking_status');
 
         // Older Booking conversions may contain a duplicate operational pickup.
@@ -200,6 +209,7 @@ class DeliveryService
                 END as status_key",
                 ['Đã nhận', 'Chờ thực hiện', 'Đang thực hiện', 'Đang thực hiện', 'Hoàn thành', 'Đã hủy'],
             )
+            ->selectRaw('1 as intake_completed')
             ->addSelect('b.TrangThai as booking_status');
 
         // Prefer the operational return slip while it is active; otherwise the Booking plan duplicates it.

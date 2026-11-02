@@ -117,6 +117,21 @@ class DeliveryRules
                     'method' => 'Hình thức phiếu giao đồ phải khớp với hình thức giao đã xác nhận.',
                 ]);
             }
+            if (
+                $current !== null
+                && ! $isBookingReturn
+                && $target !== $previous
+                && in_array($target, [DeliveryStatus::Delivering, DeliveryStatus::Completed], true)
+                && GiaoNhan::query()
+                    ->where('DonHangID', $order->DonHangID)
+                    ->where('LoaiGiaoNhan', 'NHAN_DO')
+                    ->where('TrangThai', '!=', DeliveryStatus::Completed->dbValue())
+                    ->exists()
+            ) {
+                throw ValidationException::withMessages([
+                    'status' => 'Phiếu nhận đồ phải hoàn tất trước khi tiếp tục phiếu giao đồ.',
+                ]);
+            }
             if (! $current && $target !== DeliveryStatus::Pending) {
                 throw ValidationException::withMessages([
                     'status' => 'Phiếu giao đồ mới phải được lưu ở trạng thái chờ trước khi bắt đầu giao.',

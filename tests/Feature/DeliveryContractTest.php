@@ -717,6 +717,56 @@ class DeliveryContractTest extends TestCase
             ->assertSee('Chờ xác nhận');
     }
 
+    public function test_direct_order_return_action_waits_for_intake_completion(): void
+    {
+        DB::table('DonHang')->where('DonHangID', 1)->update([
+            'BookingID' => null,
+            'TrangThai' => OrderStatus::Washed->value,
+        ]);
+        $intakeId = DB::table('GiaoNhan')->insertGetId([
+            'DonHangID' => 1,
+            'NhanVienID' => 1,
+            'LoaiGiaoNhan' => 'NHAN_DO',
+            'HinhThuc' => 'Tại nhà',
+            'DiaChi' => '12 Nguyễn Huệ',
+            'TrangThai' => DeliveryStatus::Pending->dbValue(),
+        ], 'GiaoNhanID');
+        $returnId = DB::table('GiaoNhan')->insertGetId([
+            'DonHangID' => 1,
+            'NhanVienID' => 1,
+            'LoaiGiaoNhan' => 'GIAO_DO',
+            'HinhThuc' => 'Tại nhà',
+            'DiaChi' => '12 Nguyễn Huệ',
+            'TrangThai' => DeliveryStatus::Pending->dbValue(),
+        ], 'GiaoNhanID');
+
+        $manager = Mockery::mock(User::class)->makePartial();
+        $manager->shouldReceive('isManager')->andReturn(true);
+        $manager->shouldReceive('isActive')->andReturn(true);
+        $manager->shouldReceive('isOwner')->andReturn(false);
+        $manager->shouldReceive('canPermission')->andReturnUsing(
+            fn (string $permission): bool => in_array($permission, ['deliveries.view', 'deliveries.edit'], true),
+        );
+        view()->share('errors', new ViewErrorBag);
+
+        $this->actingAs($manager)->withoutMiddleware()->get(route('deliveries.index'))
+            ->assertOk()
+            ->assertSee('action="'.route('deliveries.advance-progress', $intakeId).'"', false)
+            ->assertDontSee('action="'.route('deliveries.advance-progress', $returnId).'"', false)
+            ->assertSee('Bắt đầu nhận đồ')
+            ->assertDontSee('Bắt đầu giao đồ');
+
+        DB::table('GiaoNhan')->where('GiaoNhanID', $intakeId)
+            ->update(['TrangThai' => DeliveryStatus::Completed->dbValue()]);
+
+        $this->get(route('deliveries.index'))
+            ->assertOk()
+            ->assertSee('action="'.route('deliveries.advance-progress', $returnId).'"', false)
+            ->assertSee('Bắt đầu giao đồ');
+
+        $this->assertSame(DeliveryStatus::Delivering->badgeClass(), DeliveryStatus::Picking->badgeClass());
+    }
+
     public function test_booking_intake_can_be_edited_but_has_no_separate_cancellation_route_or_action(): void
     {
         DB::table('Booking')->insert([
@@ -1993,6 +2043,38 @@ class DeliveryContractTest extends TestCase
 
         $this->assertSame('Đang thực hiện', $delivery->fresh()->TrangThai);
         $this->assertSame(OrderStatus::Delivering->value, DB::table('DonHang')->where('DonHangID', 1)->value('TrangThai'));
+    }
+
+    public function test_direct_order_return_cannot_progress_before_intake_is_complete(): void
+    {
+        DB::table('DonHang')->where('DonHangID', 1)->update([
+            'BookingID' => null,
+            'TrangThai' => OrderStatus::Washed->value,
+        ]);
+        DB::table('GiaoNhan')->insert([
+            'DonHangID' => 1,
+            'NhanVienID' => 1,
+            'LoaiGiaoNhan' => 'NHAN_DO',
+            'HinhThuc' => 'Tại nhà',
+            'DiaChi' => '12 Nguyễn Huệ',
+            'TrangThai' => DeliveryStatus::Pending->dbValue(),
+        ]);
+        $returnId = DB::table('GiaoNhan')->insertGetId([
+            'DonHangID' => 1,
+            'NhanVienID' => 1,
+            'LoaiGiaoNhan' => 'GIAO_DO',
+            'HinhThuc' => 'Tại nhà',
+            'DiaChi' => '12 Nguyễn Huệ',
+            'ThoiGianDuKien' => '2026-10-08 10:00:00',
+            'TrangThai' => DeliveryStatus::Pending->dbValue(),
+        ], 'GiaoNhanID');
+
+        $delivery = GiaoNhan::query()->findOrFail($returnId);
+        $this->reject(fn () => app(DeliveryService::class)->advanceProgress($delivery), 'status');
+        $this->assertSame(
+            DeliveryStatus::Pending->dbValue(),
+            DB::table('GiaoNhan')->where('GiaoNhanID', $returnId)->value('TrangThai'),
+        );
     }
 
     public function test_progress_action_reports_missing_return_schedule_without_changing_status(): void

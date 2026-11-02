@@ -31,7 +31,7 @@ enum DeliveryStatus: string
     {
         return match ($this) {
             self::Pending => 'bg-warning-subtle text-warning-emphasis border border-warning',
-            self::Picking => 'bg-indigo-subtle text-indigo-emphasis border border-indigo',
+            self::Picking => 'bg-primary-subtle text-primary-emphasis border border-primary',
             self::Delivering => 'bg-primary-subtle text-primary-emphasis border border-primary',
             self::Completed => 'bg-success-subtle text-success-emphasis border border-success',
             self::Cancelled => 'bg-danger-subtle text-danger-emphasis border border-danger',
