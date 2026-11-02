@@ -31,6 +31,11 @@ use Illuminate\Validation\ValidationException;
 
 class StaffMobileController extends ApiController
 {
+    private const STAFF_NOTIFICATION_TYPES = [
+        'staff_assignment_pickup',
+        'staff_assignment_delivery',
+    ];
+
     public function __construct(private BookingService $bookings, private OrderService $orders, private DeliveryService $deliveries) {}
 
     public function login(Request $request): JsonResponse
@@ -204,7 +209,9 @@ class StaffMobileController extends ApiController
 
     private function staffNotificationsQuery(): Builder
     {
-        return ThongBao::query()->where('TaiKhoanID', Auth::id());
+        return ThongBao::query()
+            ->where('TaiKhoanID', Auth::id())
+            ->whereIn('LoaiThongBao', self::STAFF_NOTIFICATION_TYPES);
     }
 
     private function profileData(User $user): array
