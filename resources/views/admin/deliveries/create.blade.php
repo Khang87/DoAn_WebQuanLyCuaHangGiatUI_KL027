@@ -60,7 +60,7 @@
     $selectedFulfillment ??= old('fulfillment', 'Tại nhà');
     $selectedAddress ??= old('address');
     $lockDeliveryType ??= false;
-    $statusOptions ??= \App\Enums\DeliveryStatus::options();
+    $statusOptions ??= \App\Enums\DeliveryStatus::optionsForLeg($selectedMethod === 'giao_do' ? 'GIAO_DO' : 'NHAN_DO');
     $backUrl ??= route('deliveries.index');
 @endphp
 <div class="card"><div class="card-body">

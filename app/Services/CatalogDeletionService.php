@@ -97,7 +97,7 @@ class CatalogDeletionService
         $inspection = DB::table('BookingKiemKe');
         if (DB::connection()->getDriverName() === 'pgsql') {
             // Recursive matching also protects rejected inspections and their previous versions.
-            $inspection->whereRaw('jsonb_path_exists("DuLieuThucTe", ?::jsonpath, ?::jsonb)', [
+            $inspection->whereRaw('jsonb_path_exists("DuLieuThucTe"::jsonb, ?::jsonpath, ?::jsonb)', [
                 '$.**."'.$column.'" ? (@ == $ids[*] || @ == $stringIds[*])',
                 json_encode(['ids' => array_map('intval', $ids), 'stringIds' => array_map('strval', $ids)]),
             ]);

@@ -33,7 +33,7 @@
         <x-admin.status-select
             name="status"
             id="filter-status"
-            :options="\App\Enums\DeliveryStatus::options()"
+            :options="\App\Enums\DeliveryStatus::filterOptions()"
             placeholder="Tất cả trạng thái"
             class="form-select form-select-sm filter-select shadow-sm rounded-3"
             submit
@@ -143,6 +143,7 @@
                                     <x-admin.status-badge
                                         :status="$deliveryStatus"
                                         :enum="\App\Enums\DeliveryStatus::class"
+                                        :deliveryType="$delivery->task_type"
                                     />
                                 @endif
                             </td>

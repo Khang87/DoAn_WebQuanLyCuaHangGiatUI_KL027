@@ -86,6 +86,32 @@ enum DeliveryStatus: string
         return $options;
     }
 
+    /**
+     * @return array<string, string>
+     */
+    public static function filterOptions(): array
+    {
+        return [
+            'pending_pickup' => 'Chờ lấy đồ',
+            'pending_delivery' => 'Chờ giao đồ',
+            self::Picking->value => self::Picking->label(),
+            self::Delivering->value => self::Delivering->label(),
+            self::Completed->value => self::Completed->label(),
+            self::Cancelled->value => self::Cancelled->label(),
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public static function optionsForLeg(string $deliveryType): array
+    {
+        $options = self::options();
+        $options[self::Pending->value] = self::labelForLeg(self::Pending, $deliveryType);
+
+        return $options;
+    }
+
     public static function parse(mixed $value, self $default = self::Pending): self
     {
         if ($value instanceof self) {
@@ -118,6 +144,17 @@ enum DeliveryStatus: string
     public static function labelFor(mixed $value, self $default = self::Pending): string
     {
         return self::parse($value, $default)->label();
+    }
+
+    public static function labelForLeg(mixed $value, string $deliveryType, self $default = self::Pending): string
+    {
+        $status = self::parseForLeg($value, $deliveryType, $default);
+
+        if ($status === self::Pending) {
+            return mb_strtoupper($deliveryType) === 'NHAN_DO' ? 'Chờ lấy đồ' : 'Chờ giao đồ';
+        }
+
+        return $status->label();
     }
 
     public static function badgeClassFor(mixed $value, self $default = self::Pending): string

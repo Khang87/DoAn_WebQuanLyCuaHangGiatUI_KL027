@@ -41,7 +41,7 @@
     $employeeOptions = $employees ?? collect();
     $employeeNameCounts = $employeeOptions->countBy(fn ($employee) => mb_strtolower(trim((string) $employee->HoTen)));
     $selectedEmployee = $employeeOptions->firstWhere('NhanVienID', (int) old('employee_id', $delivery->NhanVienID));
-    $statusOptions ??= \App\Enums\DeliveryStatus::options();
+    $statusOptions ??= \App\Enums\DeliveryStatus::optionsForLeg($delivery->LoaiGiaoNhan);
 @endphp
 <div class="delivery-form-shell"><div class="card"><div class="card-body">
     <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">

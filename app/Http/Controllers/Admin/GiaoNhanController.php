@@ -82,7 +82,7 @@ class GiaoNhanController extends Controller
         $selectedMethod = request()->input('method', 'nhan_do');
         $selectedFulfillment = request()->input('fulfillment', 'Tại nhà');
         $selectedAddress = request()->input('address');
-        $statusOptions = DeliveryStatus::options();
+        $statusOptions = DeliveryStatus::optionsForLeg($selectedMethod === 'giao_do' ? 'GIAO_DO' : 'NHAN_DO');
         $orders = $this->orderOptions($selectedOrderId);
 
         return view('admin.deliveries.create', compact(
@@ -192,7 +192,7 @@ class GiaoNhanController extends Controller
             'selectedFulfillment' => $selectedFulfillment,
             'selectedAddress' => $selectedAddress,
             'lockDeliveryType' => true,
-            'statusOptions' => ['pending' => DeliveryStatus::Pending->label()],
+            'statusOptions' => DeliveryStatus::optionsForLeg('GIAO_DO'),
             'backUrl' => route('orders.index'),
         ]);
     }
@@ -348,7 +348,7 @@ class GiaoNhanController extends Controller
         $status = DeliveryStatus::parseForLeg($delivery->TrangThai, $delivery->LoaiGiaoNhan);
 
         return redirect()->route('deliveries.show', $delivery)
-            ->with('success', 'Đã xác nhận tiến độ: '.$status->label().'.');
+            ->with('success', 'Đã xác nhận tiến độ: '.DeliveryStatus::labelForLeg($status, $delivery->LoaiGiaoNhan).'.');
     }
 
     public function advanceBookingDocument(int $bookingDelivery): RedirectResponse
@@ -393,7 +393,7 @@ class GiaoNhanController extends Controller
         $employees = $canAssignEmployee
             ? $this->assignableEmployees() : new Collection([$assignedEmployee]);
         $orders = $this->orderOptions($delivery->DonHangID);
-        $statusOptions = DeliveryStatus::options();
+        $statusOptions = DeliveryStatus::optionsForLeg($delivery->LoaiGiaoNhan);
         unset($statusOptions[$delivery->LoaiGiaoNhan === 'GIAO_DO' ? DeliveryStatus::Picking->value : DeliveryStatus::Delivering->value]);
         $canCancelReturnDelivery = $delivery->LoaiGiaoNhan === 'GIAO_DO'
             && auth()->user()?->canPermission('deliveries.delete')

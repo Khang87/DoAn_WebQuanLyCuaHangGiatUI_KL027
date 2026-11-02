@@ -30,7 +30,7 @@
                 label="Đã nhận đồ"
             />
         @else
-            <x-admin.status-badge :status="\App\Enums\DeliveryStatus::parseForLeg($statusValue, $bookingDocument->LoaiGiaoNhan)" :enum="\App\Enums\DeliveryStatus::class" />
+            <x-admin.status-badge :status="\App\Enums\DeliveryStatus::parseForLeg($statusValue, $bookingDocument->LoaiGiaoNhan)" :enum="\App\Enums\DeliveryStatus::class" :deliveryType="$bookingDocument->LoaiGiaoNhan" />
         @endif
     </x-slot:badge>
 </x-admin.detail.page-header>

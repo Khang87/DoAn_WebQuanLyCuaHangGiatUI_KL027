@@ -5,6 +5,7 @@
     'pill' => true,
     'icon' => true,
     'label' => null,
+    'deliveryType' => null,
 ])
 
 {{--
@@ -26,8 +27,13 @@
     if (!preg_match('/\bborder\b/', $badgeClass) && preg_match('/\bborder-([a-z0-9-]+)$/', $badgeClass, $matches)) {
         $badgeClass .= ' border border-' . $matches[1];
     }
+    $displayLabel = $label ?? (
+        $deliveryType !== null && method_exists($enum, 'labelForLeg')
+            ? $enum::labelForLeg($status, $deliveryType)
+            : $enum::labelFor($status)
+    );
 @endphp
 
 <span {{ $attributes->merge(['class' => 'badge status-badge ' . $badgeClass . ' ' . ($pill ? 'rounded-pill ' : '') . $size]) }}>
-    @if($icon)<i class="fas fa-{{ $enum::iconFor($status) }} me-1"></i>@endif{{ $label ?? $enum::labelFor($status) }}
+    @if($icon)<i class="fas fa-{{ $enum::iconFor($status) }} me-1"></i>@endif{{ $displayLabel }}
 </span>

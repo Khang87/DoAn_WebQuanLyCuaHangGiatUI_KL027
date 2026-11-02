@@ -415,7 +415,7 @@
                             </x-admin.detail.info-item>
                             <x-admin.detail.info-item label="Hình thức" :value="$delivery->HinhThuc" />
                             <x-admin.detail.info-item label="Trạng thái">
-                                <x-admin.status-badge :status="$delivery->TrangThai" :enum="\App\Enums\DeliveryStatus::class" />
+                                <x-admin.status-badge :status="$delivery->TrangThai" :enum="\App\Enums\DeliveryStatus::class" :deliveryType="$delivery->LoaiGiaoNhan" />
                             </x-admin.detail.info-item>
                             <x-admin.detail.info-item label="Thời gian dự kiến" :value="$delivery->ThoiGianDuKien?->format('d/m/Y H:i')" />
                             <x-admin.detail.info-item label="Địa chỉ" :value="$delivery->DiaChi ?: '—'" />

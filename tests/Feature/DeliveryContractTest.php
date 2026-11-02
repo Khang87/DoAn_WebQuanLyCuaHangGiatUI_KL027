@@ -715,7 +715,7 @@ class DeliveryContractTest extends TestCase
         $this->assertSame(2, substr_count($response->getContent(), $successBadge));
         $response->assertSee('Đã nhận đồ')->assertSee('Hoàn thành')
             ->assertSee('badge status-badge bg-warning-subtle text-warning-emphasis border border-warning rounded-pill px-3 py-2', false)
-            ->assertSee('Chờ xác nhận');
+            ->assertSee('Chờ giao đồ');
     }
 
     public function test_direct_order_return_action_waits_for_intake_completion(): void
@@ -1586,6 +1586,50 @@ class DeliveryContractTest extends TestCase
         $this->assertSame(1, $bookingDocuments->total());
         $this->assertSame('page', $deliveries->getPageName());
         $this->assertSame('booking_page', $bookingDocuments->getPageName());
+    }
+
+    public function test_pending_status_filter_separates_pickup_and_return_documents(): void
+    {
+        DB::table('DonHang')->where('DonHangID', 1)->update(['BookingID' => null]);
+        DB::table('GiaoNhan')->insert([
+            [
+                'DonHangID' => 1,
+                'NhanVienID' => 1,
+                'LoaiGiaoNhan' => 'NHAN_DO',
+                'HinhThuc' => 'Tại nhà',
+                'TrangThai' => DeliveryStatus::Pending->dbValue(),
+            ],
+            [
+                'DonHangID' => 1,
+                'NhanVienID' => 1,
+                'LoaiGiaoNhan' => 'GIAO_DO',
+                'HinhThuc' => 'Tại nhà',
+                'TrangThai' => DeliveryStatus::Pending->dbValue(),
+            ],
+        ]);
+        DB::table('BookingGiaoNhan')->insert([
+            'BookingID' => 1,
+            'LoaiGiaoNhan' => 'NHAN_DO',
+            'HinhThuc' => 'Tại cửa hàng',
+            'TrangThai' => DeliveryStatus::Pending->dbValue(),
+        ]);
+
+        $pickupRows = collect(app(DeliveryService::class)->getUnifiedDeliveries(['status' => 'pending_pickup'])->items());
+        $returnRows = collect(app(DeliveryService::class)->getUnifiedDeliveries(['status' => 'pending_delivery'])->items());
+
+        $this->assertCount(2, $pickupRows);
+        $this->assertSame(['NHAN_DO', 'NHAN_DO'], $pickupRows->pluck('task_type')->all());
+        $this->assertCount(1, $returnRows);
+        $this->assertSame('GIAO_DO', $returnRows->first()->task_type);
+
+        $this->assertSame(
+            1,
+            app(DeliveryService::class)->getBookingDocuments(['status' => 'pending_pickup'])->total(),
+        );
+        $this->assertSame(
+            1,
+            app(DeliveryService::class)->getBookingDocuments(['status' => 'pending_delivery'])->total(),
+        );
     }
 
     public function test_booking_document_detail_route_rejects_users_without_delivery_view_permission(): void

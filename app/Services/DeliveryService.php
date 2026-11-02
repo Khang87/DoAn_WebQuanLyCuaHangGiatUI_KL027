@@ -242,7 +242,10 @@ class DeliveryService
                 $query->where('task_type', $method);
             }
         }
-        if (! empty($filters['status']) && in_array($filters['status'], [...DeliveryStatus::values(), 'received'], true)) {
+        if (in_array($filters['status'] ?? null, ['pending_pickup', 'pending_delivery'], true)) {
+            $query->where('status_key', 'pending')
+                ->where('task_type', $filters['status'] === 'pending_pickup' ? 'NHAN_DO' : 'GIAO_DO');
+        } elseif (! empty($filters['status']) && in_array($filters['status'], [...DeliveryStatus::values(), 'received'], true)) {
             $query->where('status_key', $filters['status']);
         }
         if (! empty($filters['search'])) {
@@ -320,7 +323,10 @@ class DeliveryService
         }
 
         if (! empty($filters['status'])) {
-            if ($filters['status'] === 'received') {
+            if (in_array($filters['status'], ['pending_pickup', 'pending_delivery'], true)) {
+                $query->where('LoaiGiaoNhan', $filters['status'] === 'pending_pickup' ? 'NHAN_DO' : 'GIAO_DO')
+                    ->where('TrangThai', DeliveryStatus::Pending->dbValue());
+            } elseif ($filters['status'] === 'received') {
                 $query->where('LoaiGiaoNhan', 'NHAN_DO')->where('TrangThai', 'Đã nhận');
             } else {
                 $status = DeliveryStatus::parse($filters['status']);

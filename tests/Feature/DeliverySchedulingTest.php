@@ -147,6 +147,31 @@ class DeliverySchedulingTest extends TestCase
         $this->assertStringNotContainsString('Đang giao đồ', $html);
     }
 
+    public function test_pending_delivery_labels_follow_the_delivery_leg(): void
+    {
+        $this->assertSame('Chờ lấy đồ', DeliveryStatus::labelForLeg(DeliveryStatus::Pending, 'NHAN_DO'));
+        $this->assertSame('Chờ giao đồ', DeliveryStatus::labelForLeg(DeliveryStatus::Pending, 'GIAO_DO'));
+        $this->assertSame('Chờ xác nhận', DeliveryStatus::options()['pending']);
+        $this->assertSame('Chờ lấy đồ', DeliveryStatus::filterOptions()['pending_pickup']);
+        $this->assertSame('Chờ giao đồ', DeliveryStatus::filterOptions()['pending_delivery']);
+        $this->assertSame('Chờ lấy đồ', DeliveryStatus::optionsForLeg('NHAN_DO')['pending']);
+        $this->assertSame('Chờ giao đồ', DeliveryStatus::optionsForLeg('GIAO_DO')['pending']);
+
+        $pickupBadge = view('components.admin.status-badge', [
+            'status' => DeliveryStatus::Pending,
+            'enum' => DeliveryStatus::class,
+            'deliveryType' => 'NHAN_DO',
+        ])->render();
+        $returnBadge = view('components.admin.status-badge', [
+            'status' => DeliveryStatus::Pending,
+            'enum' => DeliveryStatus::class,
+            'deliveryType' => 'GIAO_DO',
+        ])->render();
+
+        $this->assertStringContainsString('Chờ lấy đồ', $pickupBadge);
+        $this->assertStringContainsString('Chờ giao đồ', $returnBadge);
+    }
+
     public function test_manual_delivery_form_carries_booking_details_for_prefill(): void
     {
         $booking = new Booking([

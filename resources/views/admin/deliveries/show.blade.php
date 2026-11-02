@@ -12,9 +12,10 @@
     $deliveryProgressSteps = [
         [
             'status' => \App\Enums\DeliveryStatus::Pending,
-            'label' => $delivery->LoaiGiaoNhan === 'GIAO_DO' && $delivery->HinhThuc === 'Tại cửa hàng'
-                ? 'Chờ khách đến nhận tại cửa hàng'
-                : 'Chờ xác nhận',
+            'label' => \App\Enums\DeliveryStatus::labelForLeg(
+                \App\Enums\DeliveryStatus::Pending,
+                $delivery->LoaiGiaoNhan,
+            ),
         ],
         ['status' => $activeDeliveryStatus, 'label' => $activeDeliveryStatus->label()],
         ['status' => \App\Enums\DeliveryStatus::Completed, 'label' => 'Hoàn thành'],
@@ -82,7 +83,7 @@
     backUrl="{{ \App\Support\OrderWorkflow::listBackUrl(route('deliveries.index')) }}"
 >
     <x-slot:badge>
-        <x-admin.status-badge :status="\App\Enums\DeliveryStatus::parseForLeg($delivery->TrangThai, $delivery->LoaiGiaoNhan)" :enum="\App\Enums\DeliveryStatus::class" />
+        <x-admin.status-badge :status="$deliveryStatus" :enum="\App\Enums\DeliveryStatus::class" :deliveryType="$delivery->LoaiGiaoNhan" />
     </x-slot:badge>
 </x-admin.detail.page-header>
 
@@ -118,7 +119,7 @@
                     @endif
                 </x-admin.detail.info-item>
                 <x-admin.detail.info-item :label="$delivery->LoaiGiaoNhan === 'NHAN_DO' ? 'Trạng thái phiếu nhận đồ' : 'Trạng thái phiếu giao đồ'">
-                    <x-admin.status-badge :status="\App\Enums\DeliveryStatus::parseForLeg($delivery->TrangThai, $delivery->LoaiGiaoNhan)" :enum="\App\Enums\DeliveryStatus::class" />
+                    <x-admin.status-badge :status="$deliveryStatus" :enum="\App\Enums\DeliveryStatus::class" :deliveryType="$delivery->LoaiGiaoNhan" />
                 </x-admin.detail.info-item>
             </x-admin.detail.info-grid>
 
