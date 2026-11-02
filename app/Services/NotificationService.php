@@ -49,11 +49,8 @@ class NotificationService
         }
 
         return $query->with(['taiKhoan', 'donHang'])
-            // Thông báo chưa đọc luôn được ưu tiên đẩy lên trên, đã đọc nằm sau.
-            // `DaDoc` là kiểu boolean nên so sánh với FALSE chứ không phải 0, và cần
-            // nháy kép vì raw SQL không qua wrapper của Eloquent.
-            ->orderByRaw('CASE WHEN "DaDoc" = FALSE THEN 0 ELSE 1 END')
             ->orderByDesc('ThoiGianGui')
+            ->orderByDesc('ThongBaoID')
             ->paginate(10);
     }
 
