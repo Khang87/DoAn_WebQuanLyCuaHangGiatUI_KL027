@@ -41,6 +41,8 @@ Route::middleware('staff.api')->prefix('v1/staff')->group(function () {
     Route::post('profile/avatar/upload-url', [TaiKhoanController::class, 'createAvatarUploadUrl']);
     Route::post('profile/avatar', [TaiKhoanController::class, 'completeAvatarUpload']);
     Route::get('notifications', [StaffMobileController::class, 'notifications']);
+    Route::post('notifications/device-token', [StaffMobileController::class, 'registerNotificationDeviceToken']);
+    Route::delete('notifications/device-token', [StaffMobileController::class, 'unregisterNotificationDeviceToken']);
     Route::get('notifications/unread-count', [StaffMobileController::class, 'unreadNotificationCount']);
     Route::patch('notifications/read-all', [StaffMobileController::class, 'markAllNotificationsRead']);
     Route::patch('notifications/read', [StaffMobileController::class, 'markSelectedNotificationsRead']);

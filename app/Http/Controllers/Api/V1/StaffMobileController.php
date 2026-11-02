@@ -144,6 +144,35 @@ class StaffMobileController extends ApiController
         ]);
     }
 
+    public function registerNotificationDeviceToken(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'token' => ['required', 'string', 'min:20', 'max:4096'],
+            'platform' => ['required', 'in:android,ios'],
+        ]);
+
+        DB::table('push_device_tokens')->where('token', $data['token'])->delete();
+        DB::table('push_device_tokens')->insert([
+            'token' => $data['token'],
+            'TaiKhoanID' => Auth::id(),
+            'platform' => $data['platform'],
+            'updated_at' => now(),
+        ]);
+
+        return response()->json(['success' => true]);
+    }
+
+    public function unregisterNotificationDeviceToken(Request $request): JsonResponse
+    {
+        $data = $request->validate(['token' => ['required', 'string', 'min:20', 'max:4096']]);
+        DB::table('push_device_tokens')
+            ->where('token', $data['token'])
+            ->where('TaiKhoanID', Auth::id())
+            ->delete();
+
+        return response()->json(['success' => true]);
+    }
+
     public function unreadNotificationCount(): JsonResponse
     {
         return response()->json([
