@@ -40,6 +40,15 @@ Route::middleware('staff.api')->prefix('v1/staff')->group(function () {
     Route::put('profile', [StaffMobileController::class, 'updateProfile']);
     Route::post('profile/avatar/upload-url', [TaiKhoanController::class, 'createAvatarUploadUrl']);
     Route::post('profile/avatar', [TaiKhoanController::class, 'completeAvatarUpload']);
+    Route::get('notifications', [StaffMobileController::class, 'notifications']);
+    Route::get('notifications/unread-count', [StaffMobileController::class, 'unreadNotificationCount']);
+    Route::patch('notifications/read-all', [StaffMobileController::class, 'markAllNotificationsRead']);
+    Route::patch('notifications/read', [StaffMobileController::class, 'markSelectedNotificationsRead']);
+    Route::patch('notifications/unread', [StaffMobileController::class, 'markSelectedNotificationsUnread']);
+    Route::delete('notifications/selected', [StaffMobileController::class, 'deleteSelectedNotifications']);
+    Route::patch('notifications/{id}/read', [StaffMobileController::class, 'markNotificationRead']);
+    Route::patch('notifications/{id}/unread', [StaffMobileController::class, 'markNotificationUnread']);
+    Route::delete('notifications/{id}', [StaffMobileController::class, 'deleteNotification']);
     Route::get('orders', [StaffMobileController::class, 'orders']);
     Route::patch('orders/{id}/status', [StaffMobileController::class, 'updateOrderStatus']);
     Route::post('orders/{id}/delivery-progress', [StaffMobileController::class, 'advanceDelivery']);

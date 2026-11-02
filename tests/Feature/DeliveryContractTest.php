@@ -17,6 +17,7 @@ use App\Models\User;
 use App\Services\BookingService;
 use App\Services\DeliveryService;
 use App\Services\EmployeeAssignment;
+use App\Services\NotificationService;
 use App\Services\OrderService;
 use App\Support\OrderWorkflow;
 use DOMDocument;
@@ -2118,7 +2119,7 @@ class DeliveryContractTest extends TestCase
         $orderService->shouldReceive('syncStatusFromDelivery')
             ->once()
             ->andThrow(new RuntimeException('Simulated sync failure.'));
-        $service = new DeliveryService($orderService);
+        $service = new DeliveryService($orderService, app(NotificationService::class));
 
         try {
             $service->update($delivery, [

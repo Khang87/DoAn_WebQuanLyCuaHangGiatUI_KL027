@@ -132,6 +132,39 @@ class NotificationService
         return $createdCount;
     }
 
+    public function notifyEmployeeAssignment(
+        int $employeeId,
+        string $type,
+        string $title,
+        string $body,
+        ?int $orderId = null,
+        ?int $bookingId = null,
+    ): int {
+        $accountIds = TaiKhoan::query()
+            ->where('NhanVienID', $employeeId)
+            ->where('TrangThai', 'Hoạt động')
+            ->pluck('TaiKhoanID');
+
+        if ($accountIds->isEmpty()) {
+            return 0;
+        }
+
+        $rows = $accountIds->map(fn (int $accountId): array => [
+            'TaiKhoanID' => $accountId,
+            'DonHangID' => $orderId,
+            'BookingID' => $bookingId,
+            'LoaiThongBao' => $type,
+            'TieuDe' => $title,
+            'NoiDung' => $body,
+            'ThoiGianGui' => now()->toDateTimeString(),
+            'DaDoc' => false,
+        ])->all();
+
+        DB::table('ThongBao')->insert($rows);
+
+        return count($rows);
+    }
+
     public function notifyManagement(
         string $type,
         string $title,

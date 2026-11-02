@@ -11,13 +11,14 @@ use App\Models\BookingGiaoNhan;
 use App\Models\DichVu;
 use App\Models\DonHang;
 use App\Models\GiaoNhan;
-use App\Models\LoaiDoGiat;
 use App\Models\KhuyenMai;
+use App\Models\LoaiDoGiat;
 use App\Models\StaffBookingDraft;
+use App\Models\ThongBao;
 use App\Models\User;
 use App\Services\BookingService;
-use App\Services\DeliveryService;
 use App\Services\DeliveryFeeService;
+use App\Services\DeliveryService;
 use App\Services\OrderService;
 use App\Services\PricingService;
 use Illuminate\Database\Eloquent\Builder;
@@ -104,6 +105,106 @@ class StaffMobileController extends ApiController
             ->where('TokenHash', '<>', $request->attributes->get('staff_api_token_hash'))->delete();
 
         return response()->json(['success' => true]);
+    }
+
+    public function notifications(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'page' => ['sometimes', 'integer', 'min:1'],
+            'per_page' => ['sometimes', 'integer', 'min:1', 'max:50'],
+        ]);
+        $query = $this->staffNotificationsQuery();
+        $unreadCount = (clone $query)->where('DaDoc', false)->count();
+        $page = $query->orderByDesc('ThoiGianGui')
+            ->orderByDesc('ThongBaoID')
+            ->paginate($data['per_page'] ?? 20);
+
+        return response()->json([
+            'data' => collect($page->items())->map(fn (ThongBao $notification): array => [
+                'id' => (int) $notification->ThongBaoID,
+                'title' => $notification->TieuDe,
+                'message' => $notification->NoiDung,
+                'sent_at' => $notification->ThoiGianGui?->toIso8601String(),
+                'is_read' => (bool) $notification->DaDoc,
+                'order_id' => $notification->DonHangID,
+                'booking_id' => $notification->BookingID,
+                'type' => $notification->LoaiThongBao,
+            ])->values(),
+            'meta' => [
+                'page' => $page->currentPage(),
+                'last_page' => $page->lastPage(),
+                'total_count' => $page->total(),
+                'unread_count' => $unreadCount,
+            ],
+        ]);
+    }
+
+    public function unreadNotificationCount(): JsonResponse
+    {
+        return response()->json([
+            'data' => ['unread_count' => $this->staffNotificationsQuery()->where('DaDoc', false)->count()],
+        ]);
+    }
+
+    public function markNotificationRead(int $id): JsonResponse
+    {
+        $notification = $this->staffNotificationsQuery()->findOrFail($id);
+        $notification->forceFill(['DaDoc' => true])->save();
+
+        return response()->json(['success' => true]);
+    }
+
+    public function markNotificationUnread(int $id): JsonResponse
+    {
+        $notification = $this->staffNotificationsQuery()->findOrFail($id);
+        $notification->forceFill(['DaDoc' => false])->save();
+
+        return response()->json(['success' => true]);
+    }
+
+    public function markAllNotificationsRead(): JsonResponse
+    {
+        $count = $this->staffNotificationsQuery()->where('DaDoc', false)->update(['DaDoc' => true]);
+
+        return response()->json(['data' => ['updated_count' => $count]]);
+    }
+
+    public function markSelectedNotificationsRead(Request $request): JsonResponse
+    {
+        return $this->updateSelectedNotifications($request, true);
+    }
+
+    public function markSelectedNotificationsUnread(Request $request): JsonResponse
+    {
+        return $this->updateSelectedNotifications($request, false);
+    }
+
+    public function deleteNotification(int $id): JsonResponse
+    {
+        $this->staffNotificationsQuery()->findOrFail($id)->delete();
+
+        return response()->json(['success' => true]);
+    }
+
+    public function deleteSelectedNotifications(Request $request): JsonResponse
+    {
+        $data = $request->validate(['ids' => ['required', 'array', 'min:1', 'max:100'], 'ids.*' => ['required', 'integer', 'distinct']]);
+        $count = $this->staffNotificationsQuery()->whereIn('ThongBaoID', $data['ids'])->delete();
+
+        return response()->json(['data' => ['deleted_count' => $count]]);
+    }
+
+    private function updateSelectedNotifications(Request $request, bool $read): JsonResponse
+    {
+        $data = $request->validate(['ids' => ['required', 'array', 'min:1', 'max:100'], 'ids.*' => ['required', 'integer', 'distinct']]);
+        $count = $this->staffNotificationsQuery()->whereIn('ThongBaoID', $data['ids'])->update(['DaDoc' => $read]);
+
+        return response()->json(['data' => ['updated_count' => $count]]);
+    }
+
+    private function staffNotificationsQuery(): Builder
+    {
+        return ThongBao::query()->where('TaiKhoanID', Auth::id());
     }
 
     private function profileData(User $user): array

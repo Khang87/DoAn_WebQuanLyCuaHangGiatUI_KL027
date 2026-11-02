@@ -19,7 +19,10 @@ use Illuminate\Validation\ValidationException;
 
 class DeliveryService
 {
-    public function __construct(private OrderService $orderService) {}
+    public function __construct(
+        private OrderService $orderService,
+        private NotificationService $notificationService,
+    ) {}
 
     public function getAll(array $filters = []): LengthAwarePaginator
     {
@@ -453,6 +456,9 @@ class DeliveryService
                         'IPAddress' => request()->ip(),
                         'UserAgent' => request()->userAgent(),
                     ]);
+                    if ($current->NhanVienID !== null) {
+                        $this->notifyBookingPickupAssignment($current);
+                    }
                 }
             }
 
@@ -551,7 +557,12 @@ class DeliveryService
                 $attributes['NgayTao'] ??= now();
             }
 
-            return GiaoNhan::create($attributes);
+            $delivery = GiaoNhan::create($attributes);
+            if ($delivery->NhanVienID !== null) {
+                $this->notifyDeliveryAssignment($delivery, $order);
+            }
+
+            return $delivery;
         });
     }
 
@@ -763,6 +774,7 @@ class DeliveryService
             unset($attributes['ThoiGianDuKien']);
         }
         $previousStatus = DeliveryStatus::parseForLeg($current->TrangThai, $current->LoaiGiaoNhan);
+        $previousEmployeeId = $current->NhanVienID;
         if (
             $previousStatus !== DeliveryStatus::Completed
             && DeliveryStatus::parseForLeg($validated['status'], $current->LoaiGiaoNhan) === DeliveryStatus::Completed
@@ -770,6 +782,13 @@ class DeliveryService
             $attributes['ThoiGianThucTe'] = now();
         }
         $current->update($attributes);
+        if (
+            array_key_exists('NhanVienID', $attributes)
+            && (int) $previousEmployeeId !== (int) $current->NhanVienID
+            && $current->NhanVienID !== null
+        ) {
+            $this->notifyDeliveryAssignment($current, $order);
+        }
         $targetStatus = DeliveryStatus::parseForLeg($current->TrangThai, $current->LoaiGiaoNhan);
 
         if (
@@ -802,6 +821,63 @@ class DeliveryService
         }
 
         return $current->fresh();
+    }
+
+    private function notifyBookingPickupAssignment(BookingGiaoNhan $document): void
+    {
+        $booking = $document->booking()->with('khachHang')->first();
+        if ($booking === null || $document->NhanVienID === null) {
+            return;
+        }
+
+        $bookingCode = $booking->MaBooking ?: '#'.$booking->BookingID;
+        $customerName = $booking->khachHang?->HoTen ?? 'khách hàng';
+        $details = [];
+        if ($document->ThoiGianDuKien !== null) {
+            $details[] = 'dự kiến '.$document->ThoiGianDuKien->format('d/m/Y H:i');
+        }
+        if ($document->DiaChi !== null && $document->DiaChi !== '') {
+            $details[] = 'địa chỉ '.$document->DiaChi;
+        }
+
+        $this->notificationService->notifyEmployeeAssignment(
+            (int) $document->NhanVienID,
+            'staff_assignment_pickup',
+            'Bạn được phân công nhận đồ',
+            "Bạn được phân công nhận đồ cho lịch {$bookingCode} của {$customerName}.".
+                ($details === [] ? '' : ' '.implode('; ', $details).'.'),
+            $document->DonHangID,
+            (int) $booking->BookingID,
+        );
+    }
+
+    private function notifyDeliveryAssignment(GiaoNhan $delivery, DonHang $order): void
+    {
+        if ($delivery->NhanVienID === null) {
+            return;
+        }
+
+        $order->loadMissing('khachHang');
+        $isPickup = $delivery->LoaiGiaoNhan === 'NHAN_DO';
+        $customerName = $order->khachHang?->HoTen ?? 'khách hàng';
+        $details = [];
+        if ($delivery->ThoiGianDuKien !== null) {
+            $details[] = 'dự kiến '.$delivery->ThoiGianDuKien->format('d/m/Y H:i');
+        }
+        if ($delivery->DiaChi !== null && $delivery->DiaChi !== '') {
+            $details[] = 'địa chỉ '.$delivery->DiaChi;
+        }
+
+        $this->notificationService->notifyEmployeeAssignment(
+            (int) $delivery->NhanVienID,
+            $isPickup ? 'staff_assignment_pickup' : 'staff_assignment_delivery',
+            $isPickup ? 'Bạn được phân công nhận đồ' : 'Bạn được phân công giao đồ',
+            'Bạn được phân công '.($isPickup ? 'nhận' : 'giao').
+                " đồ cho đơn {$order->MaDonHang} của {$customerName}.".
+                ($details === [] ? '' : ' '.implode('; ', $details).'.'),
+            (int) $order->DonHangID,
+            $order->BookingID === null ? null : (int) $order->BookingID,
+        );
     }
 
     private function mapAttributes(array $data): array
