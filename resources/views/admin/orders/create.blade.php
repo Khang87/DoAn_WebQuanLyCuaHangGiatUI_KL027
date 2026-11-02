@@ -148,7 +148,7 @@
                         <div class="row g-3">
                             <div class="col-md-6">
                                 <label for="HinhThucNhanDo" class="form-label">
-                                    Nhận đồ bẩn
+                                    Hình thức nhân viên nhận đồ
                                 </label>
 
                                 <select
@@ -161,7 +161,7 @@
                                         value="Tại cửa hàng"
                                         @selected(old('HinhThucNhanDo', 'Tại cửa hàng') === 'Tại cửa hàng')
                                     >
-                                        Khách mang đồ đến tiệm
+                                        Nhân viên nhận đồ tại tiệm
                                     </option>
                                     <option
                                         value="Tại nhà"
@@ -187,7 +187,7 @@
                                         class="form-control"
                                         id="DiaChiNhan"
                                         name="DiaChiNhan"
-                                        value="{{ old('DiaChiNhan', '') }}"
+                                        value="{{ old('HinhThucNhanDo', 'Tại cửa hàng') === 'Tại nhà' ? old('DiaChiNhan', '') : '140 Lê Trọng Tấn, Tây Thạnh, Hồ Chí Minh 700000, Việt Nam' }}"
                                         maxlength="255"
                                         placeholder="Số nhà, đường, phường/xã, thành phố"
                                         data-address-autocomplete
@@ -210,7 +210,7 @@
 
                             <div class="col-md-6">
                                 <label for="HinhThucTraDo" class="form-label">
-                                    Giao đồ sạch
+                                    Hình thức nhân viên giao đồ
                                 </label>
 
                                 <select
@@ -223,13 +223,13 @@
                                         value="Tại cửa hàng"
                                         @selected(old('HinhThucTraDo', 'Tại cửa hàng') === 'Tại cửa hàng')
                                     >
-                                        Khách đến tiệm nhận đồ
+                                        Nhân viên giao đồ tại tiệm
                                     </option>
                                     <option
                                         value="Tại nhà"
                                         @selected(old('HinhThucTraDo') === 'Tại nhà')
                                     >
-                                        Giao đồ sạch đến nhà
+                                        Nhân viên giao đồ đến nhà
                                     </option>
                                 </select>
 
@@ -249,7 +249,7 @@
                                         class="form-control"
                                         id="DiaChiTra"
                                         name="DiaChiTra"
-                                        value="{{ old('DiaChiTra', '') }}"
+                                        value="{{ old('HinhThucTraDo', 'Tại cửa hàng') === 'Tại nhà' ? old('DiaChiTra', '') : '140 Lê Trọng Tấn, Tây Thạnh, Hồ Chí Minh 700000, Việt Nam' }}"
                                         maxlength="255"
                                         placeholder="Số nhà, đường, phường/xã, thành phố"
                                         data-address-autocomplete
@@ -681,6 +681,8 @@
     const returnMethod = document.getElementById('HinhThucTraDo');
     const pickupAddress = document.getElementById('DiaChiNhan');
     const returnAddress = document.getElementById('DiaChiTra');
+    const pickupAddressGroup = document.getElementById('pickupAddressGroup');
+    const returnAddressGroup = document.getElementById('returnAddressGroup');
     const quoteButton = document.getElementById('quoteDeliveryFee');
     const quoteStatus = document.getElementById('deliveryQuoteStatus');
     const quoteResult = document.getElementById('deliveryQuoteResult');
@@ -801,11 +803,13 @@
 
     receiveMethod.addEventListener('change', () => {
         updateDeliveryFields();
+        pickupAddress.value = receiveMethod.value === 'Tại nhà' ? '' : '140 Lê Trọng Tấn, Tây Thạnh, Hồ Chí Minh 700000, Việt Nam';
         invalidateDeliveryQuote();
     });
 
     returnMethod.addEventListener('change', () => {
         updateDeliveryFields();
+        returnAddress.value = returnMethod.value === 'Tại nhà' ? '' : '140 Lê Trọng Tấn, Tây Thạnh, Hồ Chí Minh 700000, Việt Nam';
         invalidateDeliveryQuote();
     });
 
