@@ -116,7 +116,7 @@
                 </div>
 
                 <div class="col-md-6">
-                    <label class="form-label" for="employee_name">Nhân viên phụ trách</label>
+                    <label class="form-label" for="employee_name">Nhân viên phụ trách tạo thành đơn hàng</label>
                     <input
                         type="text"
                         class="form-control bg-light text-muted"
@@ -187,7 +187,7 @@
                                         class="form-control"
                                         id="DiaChiNhan"
                                         name="DiaChiNhan"
-                                        value="{{ old('DiaChiNhan') ?: '140 Lê Trọng Tấn, Tây Thạnh, Hồ Chí Minh 700000, Việt Nam' }}"
+                                        value="{{ old('DiaChiNhan', '') }}"
                                         maxlength="255"
                                         placeholder="Số nhà, đường, phường/xã, thành phố"
                                         data-address-autocomplete
@@ -196,6 +196,8 @@
                                         aria-controls="order-pickup-address-suggestions"
                                         aria-expanded="false"
                                         autocomplete="off"
+                                        @disabled(old('HinhThucNhanDo', 'Tại cửa hàng') !== 'Tại nhà')
+                                        @class(['bg-light text-muted' => old('HinhThucNhanDo', 'Tại cửa hàng') !== 'Tại nhà'])
                                     >
                                     <div id="order-pickup-address-suggestions" class="list-group address-autocomplete-suggestions position-absolute top-100 start-0 w-100 shadow d-none" role="listbox" aria-label="Gợi ý địa chỉ nhận đồ"></div>
                                     <div class="form-text" data-address-autocomplete-status role="status" aria-live="polite"></div>
@@ -247,7 +249,7 @@
                                         class="form-control"
                                         id="DiaChiTra"
                                         name="DiaChiTra"
-                                        value="{{ old('DiaChiTra') ?: '140 Lê Trọng Tấn, Tây Thạnh, Hồ Chí Minh 700000, Việt Nam' }}"
+                                        value="{{ old('DiaChiTra', '') }}"
                                         maxlength="255"
                                         placeholder="Số nhà, đường, phường/xã, thành phố"
                                         data-address-autocomplete
@@ -256,6 +258,8 @@
                                         aria-controls="order-return-address-suggestions"
                                         aria-expanded="false"
                                         autocomplete="off"
+                                        @disabled(old('HinhThucTraDo', 'Tại cửa hàng') !== 'Tại nhà')
+                                        @class(['bg-light text-muted' => old('HinhThucTraDo', 'Tại cửa hàng') !== 'Tại nhà'])
                                     >
                                     <div id="order-return-address-suggestions" class="list-group address-autocomplete-suggestions position-absolute top-100 start-0 w-100 shadow d-none" role="listbox" aria-label="Gợi ý địa chỉ giao đồ sạch"></div>
                                     <div class="form-text" data-address-autocomplete-status role="status" aria-live="polite"></div>
@@ -677,8 +681,6 @@
     const returnMethod = document.getElementById('HinhThucTraDo');
     const pickupAddress = document.getElementById('DiaChiNhan');
     const returnAddress = document.getElementById('DiaChiTra');
-    const pickupAddressGroup = document.getElementById('pickupAddressGroup');
-    const returnAddressGroup = document.getElementById('returnAddressGroup');
     const quoteButton = document.getElementById('quoteDeliveryFee');
     const quoteStatus = document.getElementById('deliveryQuoteStatus');
     const quoteResult = document.getElementById('deliveryQuoteResult');
@@ -787,11 +789,14 @@
         const pickupAtHome = receiveMethod.value === 'Tại nhà';
         const returnAtHome = returnMethod.value === 'Tại nhà';
 
-        pickupAddressGroup.classList.toggle('d-none', !pickupAtHome);
-        returnAddressGroup.classList.toggle('d-none', !returnAtHome);
-
         pickupAddress.required = pickupAtHome;
         returnAddress.required = returnAtHome;
+        pickupAddress.disabled = !pickupAtHome;
+        returnAddress.disabled = !returnAtHome;
+        pickupAddress.classList.toggle('bg-light', !pickupAtHome);
+        pickupAddress.classList.toggle('text-muted', !pickupAtHome);
+        returnAddress.classList.toggle('bg-light', !returnAtHome);
+        returnAddress.classList.toggle('text-muted', !returnAtHome);
     }
 
     receiveMethod.addEventListener('change', () => {
@@ -803,6 +808,8 @@
         updateDeliveryFields();
         invalidateDeliveryQuote();
     });
+
+    updateDeliveryFields();
 
     pickupAddress.addEventListener('input', invalidateDeliveryQuote);
     returnAddress.addEventListener('input', invalidateDeliveryQuote);
