@@ -306,12 +306,12 @@
                                     <hr>
 
                                     <div class="d-flex justify-content-between gap-3">
-                                        <span>Quãng đường giao đồ sạch</span>
+                                        <span>Quãng đường giao đồ</span>
                                         <strong id="returnDistanceText">—</strong>
                                     </div>
 
                                     <div class="d-flex justify-content-between gap-3">
-                                        <span>Phí giao đồ sạch</span>
+                                        <span>Phí giao đồ</span>
                                         <strong id="returnFeeText">0đ</strong>
                                     </div>
 
