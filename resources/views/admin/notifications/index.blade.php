@@ -10,14 +10,16 @@
             <i class="bi bi-plus-lg"></i>Thêm thông báo
         </a>
     @endcan
-    <p class="text-muted page-toolbar__desc">Các cập nhật mới từ hoạt động cửa hàng.</p>
-    <div class="page-toolbar__actions ms-auto">
-        <form action="{{ route('notifications.mark-all-read') }}" method="POST" class="d-inline">
-            @csrf
-            <button type="submit" class="btn btn-outline-secondary btn-sm notification-mark-read-button" title="Đánh dấu tất cả thông báo của tài khoản hiện tại là đã đọc">
-                <i class="bi bi-check2-all"></i> Đánh dấu tất cả đã đọc
-            </button>
-        </form>
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 w-100">
+        <p class="text-muted mb-0">Các cập nhật mới từ hoạt động cửa hàng.</p>
+        <div class="page-toolbar__actions">
+            <form action="{{ route('notifications.mark-all-read') }}" method="POST" class="d-inline">
+                @csrf
+                <button type="submit" class="btn btn-outline-secondary btn-sm notification-mark-read-button" title="Đánh dấu tất cả thông báo của tài khoản hiện tại là đã đọc">
+                    <i class="bi bi-check2-all"></i> Đánh dấu tất cả đã đọc
+                </button>
+            </form>
+        </div>
     </div>
 </div>
 
