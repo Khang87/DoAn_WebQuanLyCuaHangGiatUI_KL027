@@ -35,23 +35,6 @@
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
                 </div>
-                @if($supportsServiceIcons ?? false)
-                    <div class="col-md-6">
-                        <x-admin.icon-picker
-                            name="Icon"
-                            label="Biểu tượng dịch vụ"
-                            :value="\App\Support\ServiceIcon::DEFAULT"
-                            :default="\App\Support\ServiceIcon::DEFAULT"
-                            :options="\App\Support\ServiceIcon::options()"
-                        />
-                    </div>
-                @else
-                    <div class="col-12">
-                        <div class="alert alert-info mb-0" role="status">
-                            Chưa thể chọn biểu tượng vì cơ sở dữ liệu chưa hỗ trợ trường này.
-                        </div>
-                    </div>
-                @endif
                 <div class="col-md-6">
                     <label class="form-label fw-semibold">Thời gian dự kiến (phút)</label>
                     <input type="number" class="form-control @error('ThoiGianDuKien') is-invalid @enderror" name="ThoiGianDuKien" value="{{ old('ThoiGianDuKien') }}" min="0">
@@ -71,6 +54,23 @@
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
                 </div>
+                @if($supportsServiceIcons ?? false)
+                    <div class="col-12">
+                        <x-admin.icon-picker
+                            name="Icon"
+                            label="Biểu tượng dịch vụ"
+                            :value="\App\Support\ServiceIcon::DEFAULT"
+                            :default="\App\Support\ServiceIcon::DEFAULT"
+                            :options="\App\Support\ServiceIcon::options()"
+                        />
+                    </div>
+                @else
+                    <div class="col-12">
+                        <div class="alert alert-info mb-0" role="status">
+                            Chưa thể chọn biểu tượng vì cơ sở dữ liệu chưa hỗ trợ trường này.
+                        </div>
+                    </div>
+                @endif
                 <div class="col-12">
                     <label class="form-label">Mô tả chi tiết</label>
                     <textarea class="form-control @error('MoTa') is-invalid @enderror" name="MoTa" maxlength="500" rows="3" placeholder="Nhập mô tả chi tiết về dịch vụ...">{{ old('MoTa') }}</textarea>

@@ -72,8 +72,7 @@
         <x-admin.detail.panel title="Thông tin gửi" icon="bi-clock-history" :iconClass="'bg-secondary-subtle text-secondary'">
             <x-admin.detail.info-grid :columns="1">
                 <x-admin.detail.info-item label="Người nhận" :value="$notification->taiKhoan?->tenHienThi ?? 'Tất cả nhân viên'" />
-                <x-admin.detail.info-item label="Ngày gửi" :value="$notification->ThoiGianGui?->format('d/m/Y H:i')" />
-                <x-admin.detail.info-item label="Ngày đọc" :value="$notification->DaDoc ? $notification->ThoiGianGui?->format('d/m/Y H:i') : '—'" />
+                <x-admin.detail.info-item label="Thời gian gửi" :value="$notification->ThoiGianGui?->format('d/m/Y H:i')" />
             </x-admin.detail.info-grid>
 
             @can('messages.view')
