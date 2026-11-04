@@ -4,41 +4,42 @@
 
 @section('content')
 <!-- Page Actions: nút "Thêm" luôn nằm góc trên bên trái -->
-<div class="page-toolbar notification-page-toolbar">
-    <div class="notification-page-toolbar__primary">
-        @can('notifications.create')
-            <a href="{{ route('notifications.create') }}" class="btn btn-create">
-                <i class="bi bi-plus-lg"></i>Thêm thông báo
-            </a>
-        @endcan
-        <p class="text-muted page-toolbar__desc">Các cập nhật mới từ hoạt động cửa hàng.</p>
-    </div>
-    <div class="notification-list-mark-read">
-        <form action="{{ route('notifications.mark-all-read') }}" method="POST" class="notification-mark-read-form">
-            @csrf
-            <button type="submit" class="btn btn-outline-secondary btn-sm notification-mark-read-button" title="Đánh dấu tất cả thông báo của tài khoản hiện tại là đã đọc">
-                <i class="bi bi-check2-all"></i> Đánh dấu tất cả đã đọc
-            </button>
-        </form>
+<div class="page-toolbar">
+    @can('notifications.create')
+        <a href="{{ route('notifications.create') }}" class="btn btn-create">
+            <i class="bi bi-plus-lg"></i>Thêm thông báo
+        </a>
+    @endcan
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 w-100">
+        <p class="text-muted mb-0">Các cập nhật mới từ hoạt động cửa hàng.</p>
+        <div class="page-toolbar__actions">
+            <form action="{{ route('notifications.mark-all-read') }}" method="POST" class="d-inline">
+                @csrf
+                <button type="submit" class="btn btn-outline-secondary btn-sm notification-mark-read-button" title="Đánh dấu tất cả thông báo của tài khoản hiện tại là đã đọc">
+                    <i class="bi bi-check2-all"></i> Đánh dấu tất cả đã đọc
+                </button>
+            </form>
+        </div>
     </div>
 </div>
-<div class="notification-list-controls mb-4">
-    <form action="{{ url()->current() }}" method="GET" class="notification-list-search">
+
+<form action="{{ url()->current() }}" method="GET" class="row g-3 align-items-center mb-4">
+    <div class="col-12 col-md-auto flex-grow-1">
         <div class="input-group input-group-sm shadow-sm rounded-3 overflow-hidden filter-search">
             <span class="input-group-text bg-white border-end-0 ps-3">
                 <i class="fas fa-search text-muted"></i>
             </span>
             <input type="text" name="search" class="form-control form-control-sm border-start-0 ps-2" placeholder="Tìm thông báo..." value="{{ request('search') }}">
         </div>
-    </form>
-    <form action="{{ url()->current() }}" method="GET" class="notification-list-status">
+    </div>
+    <div class="col-12 col-sm-6 col-md-auto">
         <select name="read" class="form-select form-select-sm filter-select shadow-sm rounded-3" onchange="this.form.submit()">
             <option value="">Tất cả trạng thái</option>
             <option value="unread" @selected(request('read') === 'unread')>Chưa đọc</option>
             <option value="read" @selected(request('read') === 'read')>Đã đọc</option>
         </select>
-    </form>
-</div>
+    </div>
+</form>
 
 <div class="card">
     <div class="card-body p-0">
