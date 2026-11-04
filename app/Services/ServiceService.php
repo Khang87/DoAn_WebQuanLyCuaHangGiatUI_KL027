@@ -39,10 +39,6 @@ class ServiceService
             'created_at_asc' => ['NgayTao', 'asc'],
             'name_asc' => ['TenDichVu', 'asc'],
             'name_desc' => ['TenDichVu', 'desc'],
-            'duration_asc' => ['ThoiGianDuKien', 'asc'],
-            'duration_desc' => ['ThoiGianDuKien', 'desc'],
-            'status_asc' => ['TrangThai', 'asc'],
-            'status_desc' => ['TrangThai', 'desc'],
         ];
         $sort = $filters['sort'] ?? 'latest';
         [$sortBy, $sortOrder] = $sortMap[$sort] ?? ['NgayTao', 'desc'];

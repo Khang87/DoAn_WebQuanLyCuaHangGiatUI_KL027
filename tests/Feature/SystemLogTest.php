@@ -22,6 +22,8 @@ class SystemLogTest extends TestCase
             $table->increments('TaiKhoanID');
             $table->string('TenDangNhap');
             $table->string('MatKhau')->nullable();
+            $table->string('Email')->nullable();
+            $table->string('SoDienThoai')->nullable();
             $table->unsignedInteger('NhanVienID')->nullable();
             $table->unsignedInteger('KhachHangID')->nullable();
             $table->string('AvatarURL')->nullable();
@@ -31,11 +33,15 @@ class SystemLogTest extends TestCase
         Schema::create('NhanVien', function (Blueprint $table): void {
             $table->increments('NhanVienID');
             $table->string('HoTen');
+            $table->string('Email')->nullable();
+            $table->string('SoDienThoai')->nullable();
         });
 
         Schema::create('KhachHang', function (Blueprint $table): void {
             $table->increments('KhachHangID');
             $table->string('HoTen');
+            $table->string('Email')->nullable();
+            $table->string('SoDienThoai')->nullable();
             $table->string('AvatarUrl')->nullable();
         });
 
@@ -162,6 +168,14 @@ class SystemLogTest extends TestCase
         $account = $this->createAccount('dropdown-account');
         $staffAccount = $this->createAccountWithStaff('login-account', 'Nhân viên kế toán');
         $mobileAccount = $this->createAccountWithCustomer('auth-0be30498-4fa2-4a4b-8e47-473b641ca000', 'Khoa Võ');
+        DB::table('NhanVien')->where('HoTen', 'Nhân viên kế toán')->update([
+            'Email' => 'staff@example.test',
+            'SoDienThoai' => '0901234567',
+        ]);
+        DB::table('KhachHang')->where('HoTen', 'Khoa Võ')->update([
+            'Email' => 'khoa@example.test',
+            'SoDienThoai' => '0907654321',
+        ]);
 
         $response = $this->actingAs($owner)->get(route('admin.system-logs.index'));
 
@@ -170,13 +184,19 @@ class SystemLogTest extends TestCase
                 $dropdownAccount = $accounts->firstWhere('TaiKhoanID', $account->TaiKhoanID);
 
                 return $dropdownAccount !== null
-                    && $dropdownAccount->TenDangNhap === 'dropdown-account'
-                    && array_keys($dropdownAccount->getAttributes()) === ['TaiKhoanID', 'TenDangNhap', 'NhanVienID', 'KhachHangID', 'AvatarURL'];
+                    && array_keys($dropdownAccount->getAttributes()) === [
+                        'TaiKhoanID',
+                        'Email',
+                        'SoDienThoai',
+                        'NhanVienID',
+                        'KhachHangID',
+                    ];
             })
-            ->assertSee('dropdown-account')
-            ->assertSee('Nhân viên kế toán (login-account)')
-            ->assertSee('Khoa Võ (auth-0be30498…)')
-            ->assertDontSee('auth-0be30498-4fa2-4a4b-8e47-473b641ca000)')
+            ->assertSee('Chưa có tên')
+            ->assertSee('Nhân viên kế toán · staff@example.test · 0901234567')
+            ->assertSee('Khoa Võ · khoa@example.test · 0907654321')
+            ->assertDontSee('login-account')
+            ->assertDontSee('auth-0be30498')
             ->assertSee('name="TaiKhoanID"', false);
 
         $log = $this->createLog($staffAccount->TaiKhoanID, 'Account display action');

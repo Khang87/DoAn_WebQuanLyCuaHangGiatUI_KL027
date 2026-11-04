@@ -56,17 +56,15 @@ class TaiKhoan extends Model
 
     public function dropdownLabel(): string
     {
-        $name = $this->tenHienThi;
-        if ($name === $this->TenDangNhap) {
-            return $name;
-        }
+        $name = $this->nhanVien?->HoTen ?: $this->khachHang?->HoTen ?: 'Chưa có tên';
+        $email = $this->nhanVien?->Email ?: $this->khachHang?->Email ?: $this->Email;
+        $phone = $this->nhanVien?->SoDienThoai ?: $this->khachHang?->SoDienThoai ?: $this->SoDienThoai;
+        $details = array_filter([
+            $email,
+            $phone,
+        ], fn (?string $value): bool => $value !== null && $value !== '');
 
-        // Tài khoản mobile sinh TenDangNhap dạng auth-<UUID>; chỉ giữ đoạn đầu cho dễ đọc.
-        $username = preg_match('/^auth-[0-9a-f]{8}/i', $this->TenDangNhap)
-            ? substr($this->TenDangNhap, 0, 13).'…'
-            : $this->TenDangNhap;
-
-        return $name.' ('.$username.')';
+        return implode(' · ', [$name, ...$details]);
     }
 
     public function taiKhoanVaiTros()

@@ -42,8 +42,7 @@
     </div>
     <div class="col-12 col-sm-6 col-md-auto">
         <select name="sort" class="form-select form-select-sm filter-select shadow-sm rounded-3" onchange="this.form.submit()">
-            <option value="">Tất cả cách sắp xếp</option>
-            <option value="created_at_desc" @selected(request('sort') === 'created_at_desc')>Mới nhất</option>
+            <option value="created_at_desc" @selected(request('sort', 'created_at_desc') === 'created_at_desc')>Mới nhất</option>
             <option value="created_at_asc" @selected(request('sort') === 'created_at_asc')>Cũ nhất</option>
             <option value="amount_desc" @selected(request('sort') === 'amount_desc')>Số tiền cao nhất</option>
             <option value="amount_asc" @selected(request('sort') === 'amount_asc')>Số tiền thấp nhất</option>

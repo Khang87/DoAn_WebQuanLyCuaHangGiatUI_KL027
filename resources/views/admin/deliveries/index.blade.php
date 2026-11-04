@@ -41,8 +41,8 @@
     </div>
     <div class="col-12 col-sm-6 col-md-auto">
         <select name="sort_order" class="form-select form-select-sm filter-select shadow-sm rounded-3" onchange="this.form.submit()">
-            <option value="desc" @selected(request('sort_order', 'desc') !== 'asc')>Mới nhất trước</option>
-            <option value="asc" @selected(request('sort_order') === 'asc')>Cũ nhất trước</option>
+            <option value="desc" @selected(request('sort_order', 'desc') !== 'asc')>Mới nhất</option>
+            <option value="asc" @selected(request('sort_order') === 'asc')>Cũ nhất</option>
         </select>
     </div>
 </form>

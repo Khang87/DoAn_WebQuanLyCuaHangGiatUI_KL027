@@ -45,15 +45,10 @@
     </div>
     <div class="col-12 col-sm-6 col-md-auto">
         <select name="sort" class="form-select form-select-sm filter-select shadow-sm rounded-3" onchange="this.form.submit()">
-            <option value="">Tất cả cách sắp xếp</option>
-            <option value="created_at_desc" @selected(request('sort') === 'created_at_desc')>Mới nhất</option>
+            <option value="created_at_desc" @selected(request('sort', 'created_at_desc') === 'created_at_desc')>Mới nhất</option>
             <option value="created_at_asc" @selected(request('sort') === 'created_at_asc')>Cũ nhất</option>
-            <option value="duration_asc" @selected(request('sort') === 'duration_asc')>Thời gian tăng dần</option>
-            <option value="duration_desc" @selected(request('sort') === 'duration_desc')>Thời gian giảm dần</option>
             <option value="name_asc" @selected(request('sort') === 'name_asc')>Tên A-Z</option>
             <option value="name_desc" @selected(request('sort') === 'name_desc')>Tên Z-A</option>
-            <option value="status_asc" @selected(request('sort') === 'status_asc')>Trạng thái A-Z</option>
-            <option value="status_desc" @selected(request('sort') === 'status_desc')>Trạng thái Z-A</option>
         </select>
     </div>
 </form>

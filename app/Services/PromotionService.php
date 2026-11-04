@@ -33,6 +33,8 @@ class PromotionService
         }
 
         $sortMap = [
+            'latest' => ['NgayBatDau', 'desc'],
+            'oldest' => ['NgayBatDau', 'asc'],
             'created_at_desc' => ['NgayBatDau', 'desc'],
             'created_at_asc' => ['NgayBatDau', 'asc'],
             'name_asc' => ['TenKhuyenMai', 'asc'],

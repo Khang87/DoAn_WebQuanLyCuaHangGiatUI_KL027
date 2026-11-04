@@ -52,8 +52,8 @@ class SystemLogController extends Controller
             'filters' => $filters,
             'accounts' => TaiKhoan::query()
                 ->with(['nhanVien', 'khachHang'])
-                ->select(['TaiKhoanID', 'TenDangNhap', 'NhanVienID', 'KhachHangID', 'AvatarURL'])
-                ->orderBy('TenDangNhap')
+                ->select(['TaiKhoanID', 'Email', 'SoDienThoai', 'NhanVienID', 'KhachHangID'])
+                ->orderBy('TaiKhoanID')
                 ->get(),
             'tables' => NhatKyHeThong::query()->select('BangDuLieu')->distinct()->orderBy('BangDuLieu')->pluck('BangDuLieu'),
         ]);

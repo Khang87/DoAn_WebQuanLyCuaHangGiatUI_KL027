@@ -49,6 +49,8 @@ class UserService
         }
 
         $sortMap = [
+            'latest' => ['NgayTao', 'desc'],
+            'oldest' => ['NgayTao', 'asc'],
             'created_at_desc' => ['NgayTao', 'desc'],
             'created_at_asc' => ['NgayTao', 'asc'],
             'name_asc' => ['TenDangNhap', 'asc'],
