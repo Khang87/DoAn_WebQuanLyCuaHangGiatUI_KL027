@@ -25,6 +25,9 @@ class ServiceIconPickerTest extends TestCase
 
         $this->assertStringContainsString('Sấy khô', $html);
         $this->assertStringContainsString('Tẩy trắng', $html);
+        $this->assertStringNotContainsString('js-icon-search', $html);
+        $this->assertStringNotContainsString('Tìm icon...', $html);
+        $this->assertStringContainsString('js-icon-option', $html);
         $this->assertStringContainsString('value="material:cleaning_services_outlined"', $html);
         $this->assertStringContainsString('js-icon-current-preview', $html);
         $this->assertStringContainsString('js-icon-option-preview', $html);

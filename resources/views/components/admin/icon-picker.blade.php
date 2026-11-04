@@ -38,10 +38,6 @@
             <i class="bi bi-chevron-down"></i>
         </button>
         <ul class="dropdown-menu dropdown-menu-end w-100" style="max-height: 300px; overflow-y: auto;">
-            <li>
-                <input type="text" class="form-control form-control-sm px-2 py-1 js-icon-search" placeholder="Tìm icon...">
-            </li>
-            <li><hr class="dropdown-divider"></li>
             @foreach($icons as $class => $labelText)
             @php($iconColors = \App\Support\ServiceIcon::colors($class))
             <li>
@@ -84,20 +80,6 @@
             const toggle = menu.previousElementSibling;
             const dropdown = bootstrap.Dropdown.getInstance(toggle);
             if (dropdown) dropdown.hide();
-        });
-
-        document.addEventListener('input', function (e) {
-            if (!e.target.classList.contains('js-icon-search')) return;
-
-            const query = e.target.value.toLowerCase();
-            const menu = e.target.closest('.dropdown-menu');
-
-            menu.querySelectorAll('.js-icon-option').forEach(option => {
-                const label = option.dataset.label.toLowerCase();
-                const iconClass = option.dataset.icon.toLowerCase();
-                const matched = label.includes(query) || iconClass.includes(query);
-                option.style.display = matched ? '' : 'none';
-            });
         });
     </script>
     @endpush

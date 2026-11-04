@@ -778,6 +778,42 @@ class AdminCommunicationTest extends TestCase
             ->assertDontSee('navbar-action-badge');
     }
 
+    public function test_notification_detail_shows_the_recipient_full_name(): void
+    {
+        $staff = $this->createAccount('notification-staff');
+        DB::table('NhanVien')->insert([
+            'NhanVienID' => 1,
+            'HoTen' => 'Nguyễn Văn Nhận',
+        ]);
+        DB::table('TaiKhoan')->where('TaiKhoanID', $staff->TaiKhoanID)->update(['NhanVienID' => 1]);
+        $this->assignRole($staff, 'Owner');
+        $roleId = DB::table('TaiKhoan_VaiTro')
+            ->where('TaiKhoanID', $staff->TaiKhoanID)
+            ->value('VaiTroID');
+        $permissionId = DB::table('Quyen')->insertGetId([
+            'MaQuyen' => 'NOTIFICATIONS_VIEW',
+            'TrangThai' => 'Hoạt động',
+        ], 'QuyenID');
+        DB::table('VaiTro_Quyen')->insert([
+            'VaiTroID' => $roleId,
+            'QuyenID' => $permissionId,
+        ]);
+
+        $notification = ThongBao::query()->create([
+            'TaiKhoanID' => $staff->TaiKhoanID,
+            'LoaiThongBao' => 'system',
+            'TieuDe' => 'Thông báo kiểm thử',
+            'NoiDung' => 'Nội dung kiểm thử.',
+            'ThoiGianGui' => now(),
+            'DaDoc' => false,
+        ]);
+
+        $this->actingAs($staff)
+            ->get(route('notifications.show', $notification->ThongBaoID))
+            ->assertOk()
+            ->assertSee('Nguyễn Văn Nhận');
+    }
+
     public function test_customer_message_notification_links_to_the_matching_chat_thread(): void
     {
         $staff = $this->createAccount('notification-staff');
