@@ -19,12 +19,20 @@ class LuuDonHangRequest extends FormRequest
             $this->merge(['MaDonHang' => trim($orderCode) ?: null]);
         }
 
-        // Tương thích với request tạo đơn cũ chưa có phương thức nhận/trả đồ.
-        // Nếu người dùng có gửi phương thức, rules() vẫn sẽ kiểm tra giá trị đó.
+        // Direct order creation always receives items at the store.
         $this->merge([
-            'HinhThucNhanDo' => $this->input('HinhThucNhanDo', 'Tại cửa hàng'),
+            'HinhThucNhanDo' => $this->isMethod('POST')
+                ? 'Tại cửa hàng'
+                : $this->input('HinhThucNhanDo', 'Tại cửa hàng'),
             'HinhThucTraDo' => $this->input('HinhThucTraDo', 'Tại cửa hàng'),
+            'DiaChiNhan' => $this->isMethod('POST') ? null : $this->input('DiaChiNhan'),
         ]);
+
+        if ($this->isMethod('POST')) {
+            $this->merge([
+                'PhuongThucThanhToan' => $this->input('PhuongThucThanhToan', 'Tiền mặt'),
+            ]);
+        }
 
         $items = $this->input('items');
 
@@ -90,6 +98,9 @@ class LuuDonHangRequest extends FormRequest
                 'string',
                 'max:255',
             ],
+            'PhuongThucThanhToan' => $isCreating
+                ? ['required', Rule::in(['Tiền mặt', 'Chuyển khoản / QR'])]
+                : ['prohibited'],
             // Không dùng PhiGiaoHang do trình duyệt gửi lên làm nguồn tính tiền.
 
             'TrangThai' => [
@@ -99,7 +110,7 @@ class LuuDonHangRequest extends FormRequest
                     : array_values(array_diff(OrderStatus::values(), [OrderStatus::Paid->value]))),
             ],
             'cancellation_reason' => ['nullable', 'required_if:TrangThai,Đã hủy', 'string', 'max:500'],
-            'GhiChu' => ['nullable', 'string', 'max:500'],
+            'GhiChu' => ['nullable', 'string', 'max:'.($isCreating ? 450 : 500)],
             'items' => $isCreating ? ['required', 'array', 'min:1'] : ['nullable', 'array'],
             'items.*.DichVuID' => ['required', 'integer', 'exists:DichVu,DichVuID'],
             'items.*.LoaiDoGiatID' => ['required', 'integer', 'exists:LoaiDoGiat,LoaiDoGiatID'],

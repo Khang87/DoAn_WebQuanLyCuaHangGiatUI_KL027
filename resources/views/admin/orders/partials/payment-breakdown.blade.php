@@ -62,7 +62,7 @@
 @if($summaryPromotionDiscount > 0)
     <div class="d-flex justify-content-between align-items-center py-2">
         <span class="detail-summary__label">Giảm từ mã khuyến mãi</span>
-        <x-admin.detail.money :value="$summaryPromotionDiscount" :negative="true" class="text-success fw-semibold" />
+        <x-admin.detail.money :value="$summaryPromotionDiscount" :negative="true" class="fw-semibold" />
     </div>
 @endif
 @if($summaryPointsDiscount > 0)
@@ -70,13 +70,13 @@
         <span class="detail-summary__label">
             Giảm từ điểm tích lũy
         </span>
-        <x-admin.detail.money :value="$summaryPointsDiscount" :negative="true" class="text-success fw-semibold" />
+        <x-admin.detail.money :value="$summaryPointsDiscount" :negative="true" class="fw-semibold" />
     </div>
 @endif
 @if(! $summaryOrder)
     <div class="d-flex justify-content-between align-items-center py-2">
         <span class="detail-summary__label">Tổng tiền được giảm</span>
-        <x-admin.detail.money :value="$summaryTotalDiscount" :negative="true" class="text-success fw-semibold" />
+        <x-admin.detail.money :value="$summaryTotalDiscount" :negative="true" class="fw-semibold" />
     </div>
 @endif
 

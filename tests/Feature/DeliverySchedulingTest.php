@@ -128,6 +128,8 @@ class DeliverySchedulingTest extends TestCase
         $this->assertMatchesRegularExpression('/<input type="hidden" name="method" value="giao_do">/', $html);
         $this->assertMatchesRegularExpression('/id="method_display" value="Giao đồ" readonly/', $html);
         $this->assertMatchesRegularExpression('/id="fulfillment_display" value="Tại cửa hàng" readonly/', $html);
+        $this->assertMatchesRegularExpression('/name="pickup_date"[^>]*required/', $html);
+        $this->assertMatchesRegularExpression('/name="pickup_time"[^>]*required/', $html);
         $this->assertStringContainsString('name="fulfillment"', $html);
         $this->assertStringContainsString('data-address-autocomplete', $html);
         $this->assertStringContainsString('delivery-address-suggestions', $html);
@@ -149,12 +151,12 @@ class DeliverySchedulingTest extends TestCase
 
     public function test_pending_delivery_labels_follow_the_delivery_leg(): void
     {
-        $this->assertSame('Chờ lấy đồ', DeliveryStatus::labelForLeg(DeliveryStatus::Pending, 'NHAN_DO'));
+        $this->assertSame('Chờ nhận đồ', DeliveryStatus::labelForLeg(DeliveryStatus::Pending, 'NHAN_DO'));
         $this->assertSame('Chờ giao đồ', DeliveryStatus::labelForLeg(DeliveryStatus::Pending, 'GIAO_DO'));
         $this->assertSame('Chờ xác nhận', DeliveryStatus::options()['pending']);
-        $this->assertSame('Chờ lấy đồ', DeliveryStatus::filterOptions()['pending_pickup']);
+        $this->assertSame('Chờ nhận đồ', DeliveryStatus::filterOptions()['pending_pickup']);
         $this->assertSame('Chờ giao đồ', DeliveryStatus::filterOptions()['pending_delivery']);
-        $this->assertSame('Chờ lấy đồ', DeliveryStatus::optionsForLeg('NHAN_DO')['pending']);
+        $this->assertSame('Chờ nhận đồ', DeliveryStatus::optionsForLeg('NHAN_DO')['pending']);
         $this->assertSame('Chờ giao đồ', DeliveryStatus::optionsForLeg('GIAO_DO')['pending']);
 
         $pickupBadge = view('components.admin.status-badge', [

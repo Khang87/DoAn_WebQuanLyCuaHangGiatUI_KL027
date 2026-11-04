@@ -37,7 +37,7 @@ class DashboardController extends Controller
 
         $revenueChartData = $this->buildRevenueChartData($dashboardFilter, $from, $until);
         $totalRevenue = (float) array_sum($revenueChartData['data']);
-        $orders = $this->inPeriod(DonHang::query(), 'NgayTao', $from, $until);
+        $orders = $this->ordersInPeriod(DonHang::query(), $from, $until);
         $statusRollup = OrderStatusRollup::counts($orders);
         $statusDistribution = $statusRollup['distribution'];
         $totalOrders = $statusRollup['total'];
@@ -56,8 +56,8 @@ class DashboardController extends Controller
         $topServices = DichVu::query()
             ->withCount(['chiTietDonHangs as orders_count' => fn (Builder $details) => $details
                 ->select(DB::raw('COUNT(DISTINCT "DonHangID")'))
-                ->whereHas('donHang', fn (Builder $query) => $this->inPeriod($query, 'NgayTao', $from, $until))])
-            ->whereHas('chiTietDonHangs.donHang', fn (Builder $query) => $this->inPeriod($query, 'NgayTao', $from, $until))
+                ->whereHas('donHang', fn (Builder $query) => $this->ordersInPeriod($query, $from, $until))])
+            ->whereHas('chiTietDonHangs.donHang', fn (Builder $query) => $this->ordersInPeriod($query, $from, $until))
             ->orderByDesc('orders_count')->orderBy('DichVuID')->limit(5)->get()
             ->map(fn (DichVu $service): array => [
                 'name' => $service->TenDichVu,
@@ -170,7 +170,7 @@ class DashboardController extends Controller
             }
         } elseif ($groupBy === 'day') {
             for ($date = $from->copy(); $date->lt($until); $date->addDay()) {
-                $labels[] = $date->format('d/m');
+                $labels[] = $date->format('d/m/Y');
                 $periodKeys[] = $date->toDateString();
             }
         }
@@ -193,12 +193,52 @@ class DashboardController extends Controller
             : $query;
     }
 
+    private function ordersInPeriod(Builder $query, ?Carbon $from, ?Carbon $until): Builder
+    {
+        if ($from === null || $until === null) {
+            return $query;
+        }
+
+        return $query->where(function (Builder $period) use ($from, $until): void {
+            $period->where(function (Builder $utc) use ($from, $until): void {
+                $utc->whereNotNull('BookingID')
+                    ->where('NgayTao', '>=', $from->copy()->utc())
+                    ->where('NgayTao', '<', $until->copy()->utc());
+            })->orWhere(function (Builder $local) use ($from, $until): void {
+                $local->whereNull('BookingID')
+                    ->where('NgayTao', '>=', $from)
+                    ->where('NgayTao', '<', $until);
+            });
+        });
+    }
+
+    private function paymentsInPeriod(Builder $query, ?Carbon $from, ?Carbon $until): Builder
+    {
+        if ($from === null || $until === null) {
+            return $query;
+        }
+
+        return $query->where(function (Builder $period) use ($from, $until): void {
+            $period->where(function (Builder $utc) use ($from, $until): void {
+                $utc->where('MaGiaoDich', 'like', 'RPC-%')
+                    ->where('ThoiGian', '>=', $from->copy()->utc())
+                    ->where('ThoiGian', '<', $until->copy()->utc());
+            })->orWhere(function (Builder $local) use ($from, $until): void {
+                $local->where(function (Builder $source): void {
+                    $source->whereNull('MaGiaoDich')
+                        ->orWhere('MaGiaoDich', 'not like', 'RPC-%');
+                })->where('ThoiGian', '>=', $from)
+                    ->where('ThoiGian', '<', $until);
+            });
+        });
+    }
+
     private function getGroupedRevenueTotals(?Carbon $from, ?Carbon $until, string $groupBy): array
     {
         $sqlite = DB::connection()->getDriverName() === 'sqlite';
         $localTimestamp = $sqlite
-            ? 'datetime("ThoiGian", \'+7 hours\')'
-            : '("ThoiGian" + INTERVAL \'7 hours\')';
+            ? 'CASE WHEN "MaGiaoDich" LIKE \'RPC-%\' THEN datetime("ThoiGian", \'+7 hours\') ELSE "ThoiGian" END'
+            : 'CASE WHEN "MaGiaoDich" LIKE \'RPC-%\' THEN ("ThoiGian" + INTERVAL \'7 hours\') ELSE "ThoiGian" END';
         $groupExpression = match ($groupBy) {
             'hour' => $sqlite
                 ? 'CAST(strftime(\'%H\', '.$localTimestamp.') AS INTEGER)'
@@ -209,7 +249,7 @@ class DashboardController extends Controller
             default => 'DATE('.$localTimestamp.')',
         };
 
-        return $this->inPeriod($this->collectedRevenueService->query(), 'ThoiGian', $from, $until)
+        return $this->paymentsInPeriod($this->collectedRevenueService->query(), $from, $until)
             ->selectRaw($groupExpression.' AS period_key, SUM("SoTien") AS total')
             ->groupByRaw($groupExpression)->orderBy('period_key')->get()
             ->mapWithKeys(fn ($row): array => [

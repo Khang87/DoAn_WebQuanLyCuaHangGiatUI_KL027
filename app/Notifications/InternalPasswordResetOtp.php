@@ -10,7 +10,7 @@ use Illuminate\Notifications\Notification;
 /** Synchronous delivery: never serialize a plaintext OTP into a queued job. */
 class InternalPasswordResetOtp extends Notification
 {
-    public function __construct(public readonly string $otp) {}
+    public function __construct(public readonly string $otp, public readonly int $lifetimeMinutes) {}
 
     public function via(object $notifiable): array
     {
@@ -23,7 +23,7 @@ class InternalPasswordResetOtp extends Notification
             ->subject('Mã OTP đặt lại mật khẩu nội bộ')
             ->line('Quản trị viên đã yêu cầu đặt lại mật khẩu cho tài khoản của bạn.')
             ->line('Mã OTP: '.$this->otp)
-            ->line('Mã có hiệu lực trong 10 phút và chỉ được sử dụng một lần.')
+            ->line("Mã có hiệu lực trong {$this->lifetimeMinutes} phút và chỉ được sử dụng một lần.")
             ->action('Đặt lại mật khẩu', route('internal-password.reset'));
     }
 
@@ -33,7 +33,7 @@ class InternalPasswordResetOtp extends Notification
             'TaiKhoanID' => $notifiable->getKey(),
             'LoaiThongBao' => 'internal_password_otp',
             'TieuDe' => 'OTP đặt lại mật khẩu nội bộ',
-            'NoiDung' => 'Mã OTP: '.$this->otp.'. Có hiệu lực trong 10 phút, chỉ dùng một lần. Đặt lại mật khẩu tại '.route('internal-password.reset'),
+            'NoiDung' => "Mã OTP: {$this->otp}. Có hiệu lực trong {$this->lifetimeMinutes} phút, chỉ dùng một lần. Đặt lại mật khẩu tại ".route('internal-password.reset'),
             'ThoiGianGui' => now(),
             'DaDoc' => false,
         ];

@@ -46,7 +46,7 @@ class ThongBaoController extends Controller
 
         return response()->json([
             'unread_count' => (clone $query)->where('DaDoc', false)->count(),
-            'notifications' => $query->orderByDesc('ThoiGianGui')->orderByDesc('ThongBaoID')->limit(5)->get()
+            'notifications' => $query->orderByNewest()->limit(5)->get()
                 ->map(fn ($notification): array => [
                     'id' => (int) $notification->getKey(),
                     'title' => (string) $notification->TieuDe,

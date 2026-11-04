@@ -11,8 +11,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
-use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 
 /**
  * Tài khoản đăng nhập, ánh xạ tới bảng `TaiKhoan` của Supabase.
@@ -71,6 +72,19 @@ class User extends Authenticatable
             'KhachHangID' => 'integer',
             'NgayTao' => 'datetime',
         ];
+    }
+
+    public function getNgayTaoAttribute(?string $value): ?Carbon
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        $isSupabaseAuthAccount = str_starts_with((string) ($this->attributes['TenDangNhap'] ?? ''), 'auth-')
+            && ($this->attributes['UserAuthId'] ?? null) !== null;
+        $storageTimezone = $isSupabaseAuthAccount ? 'UTC' : config('app.timezone');
+
+        return Carbon::parse($value, $storageTimezone)->setTimezone(config('app.timezone'));
     }
 
     /**

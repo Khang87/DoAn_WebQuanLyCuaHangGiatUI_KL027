@@ -34,6 +34,7 @@ document.addEventListener('DOMContentLoaded', function () {
     document.querySelectorAll('input[type="date"], input[type="datetime-local"]').forEach(function (input) {
         const includesTime = input.type === 'datetime-local';
         const displayFormat = includesTime ? 'd/m/Y H:i' : 'd/m/Y';
+        const displayPlaceholder = includesTime ? 'Ngày/tháng/năm giờ:phút' : 'Ngày/tháng/năm';
         const dateFormat = includesTime ? 'Y-m-d\\TH:i' : 'Y-m-d';
         const picker = initPicker(input, {
             allowInput: !input.readOnly,
@@ -45,7 +46,7 @@ document.addEventListener('DOMContentLoaded', function () {
             showMonthsShort: false, // Full month names instead of abbreviated
             nativeInputOffsetForJqueryUI: [0, 0],
             onReady: function (_dates, _dateString, instance) {
-                instance.altInput.placeholder = displayFormat;
+                instance.altInput.placeholder = displayPlaceholder;
                 instance.altInput.setAttribute('inputmode', 'numeric');
                 if (input.readOnly) {
                     instance.altInput.readOnly = true;
@@ -72,8 +73,8 @@ document.addEventListener('DOMContentLoaded', function () {
             if (!parsedDate || picker.formatDate(parsedDate, displayFormat) !== visibleValue) {
                 picker.altInput.setCustomValidity(
                     includesTime
-                        ? 'Vui lòng nhập ngày và giờ hợp lệ theo định dạng dd/MM/yyyy HH:mm.'
-                        : 'Vui lòng nhập ngày hợp lệ theo định dạng dd/MM/yyyy.',
+                        ? 'Vui lòng nhập ngày theo dạng ngày/tháng/năm giờ:phút hợp lệ.'
+                        : 'Vui lòng nhập ngày theo dạng ngày/tháng/năm hợp lệ.',
                 );
                 event.preventDefault();
                 picker.altInput.reportValidity();
@@ -94,6 +95,7 @@ document.addEventListener('DOMContentLoaded', function () {
     document.querySelectorAll('input[data-date-picker]').forEach(function (input) {
         const minDate = input.dataset.minDate || null;
         const displayFormat = 'd/m/Y';
+        const displayPlaceholder = 'Ngày/tháng/năm';
         initPicker(input, {
             allowInput: true,
             altInput: false,
@@ -102,7 +104,7 @@ document.addEventListener('DOMContentLoaded', function () {
             disableMobile: true,
             minDate: minDate === 'today' ? new Date() : minDate,
             onReady: function (_dates, _dateString, instance) {
-                instance.input.placeholder = displayFormat;
+                instance.input.placeholder = displayPlaceholder;
                 instance.input.setAttribute('inputmode', 'numeric');
             },
         });

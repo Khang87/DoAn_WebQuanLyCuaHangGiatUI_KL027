@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\ReviewStatus;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Carbon;
 
 class DanhGia extends Model
 {
@@ -35,6 +36,15 @@ class DanhGia extends Model
         'SoSao' => 'integer',
         'NgayDanhGia' => 'datetime',
     ];
+
+    public function getNgayDanhGiaAttribute(?string $value): ?Carbon
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        return Carbon::parse($value, 'UTC')->setTimezone(config('app.timezone'));
+    }
 
     public function getStatusAttribute(): string
     {

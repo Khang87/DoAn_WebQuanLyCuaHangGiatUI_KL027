@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Support\CatalogCache;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Carbon;
 
 class DanhMucLoaiDoGiat extends Model
 {
@@ -26,6 +27,15 @@ class DanhMucLoaiDoGiat extends Model
         'DanhMucID' => 'integer',
         'NgayTao' => 'datetime',
     ];
+
+    public function getNgayTaoAttribute(?string $value): ?Carbon
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        return Carbon::parse($value)->setTimezone(config('app.timezone'));
+    }
 
     protected static function booted(): void
     {

@@ -60,4 +60,17 @@ class OrderStatusSchemaTest extends TestCase
             $this->assertNull($status->nextProcessStatus());
         }
     }
+
+    public function test_process_statuses_can_return_to_any_earlier_process_status(): void
+    {
+        $this->assertTrue(OrderStatus::Washing->canTransitionTo(OrderStatus::Received));
+        $this->assertTrue(OrderStatus::Washed->canTransitionTo(OrderStatus::Received));
+        $this->assertTrue(OrderStatus::Washed->canTransitionTo(OrderStatus::Washing));
+        $this->assertTrue(OrderStatus::Delivered->canTransitionTo(OrderStatus::Received));
+        $this->assertTrue(OrderStatus::Delivered->canTransitionTo(OrderStatus::Delivering));
+
+        $this->assertFalse(OrderStatus::Received->canTransitionTo(OrderStatus::Pending));
+        $this->assertFalse(OrderStatus::Paid->canTransitionTo(OrderStatus::Delivered));
+        $this->assertFalse(OrderStatus::Cancelled->canTransitionTo(OrderStatus::Washing));
+    }
 }

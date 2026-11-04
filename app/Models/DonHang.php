@@ -9,6 +9,7 @@ use App\Enums\PaymentStatus;
 use App\Enums\ReturnMethod;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Carbon;
 
 class DonHang extends Model
 {
@@ -46,6 +47,20 @@ class DonHang extends Model
         'NgayTao' => 'datetime',
         'NgayCapNhat' => 'datetime',
     ];
+
+    public function getNgayTaoAttribute(?string $value): ?Carbon
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        // Booking-converted orders use the database UTC default; manual web orders store Vietnam time.
+        $storageTimezone = ($this->attributes['BookingID'] ?? null) !== null
+            ? 'UTC'
+            : config('app.timezone');
+
+        return Carbon::parse($value, $storageTimezone)->setTimezone(config('app.timezone'));
+    }
 
     public function booking()
     {

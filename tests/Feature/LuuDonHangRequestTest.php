@@ -121,6 +121,29 @@ class LuuDonHangRequestTest extends TestCase
         $this->assertTrue($validator->errors()->has('use_points'));
     }
 
+    public function test_manual_order_payment_method_is_validated_only_on_creation(): void
+    {
+        $createRules = $this->orderRequestRules(0, 'POST');
+        $updateRules = $this->orderRequestRules(7);
+
+        $this->assertTrue(Validator::make(
+            ['PhuongThucThanhToan' => 'Chuyển khoản / QR'],
+            ['PhuongThucThanhToan' => $createRules['PhuongThucThanhToan']],
+        )->passes());
+
+        $invalidMethod = Validator::make(
+            ['PhuongThucThanhToan' => 'Ví điện tử'],
+            ['PhuongThucThanhToan' => $createRules['PhuongThucThanhToan']],
+        );
+        $this->assertTrue($invalidMethod->fails());
+
+        $updateMethod = Validator::make(
+            ['PhuongThucThanhToan' => 'Tiền mặt'],
+            ['PhuongThucThanhToan' => $updateRules['PhuongThucThanhToan']],
+        );
+        $this->assertTrue($updateMethod->fails());
+    }
+
     private function orderRequestRules(int $orderId, string $method = 'PUT'): array
     {
         $route = new Route([$method], '/orders/{order}', []);

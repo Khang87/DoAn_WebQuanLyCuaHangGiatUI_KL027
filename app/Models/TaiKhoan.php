@@ -6,6 +6,7 @@ use App\Support\PermissionCache;
 use App\Support\QuyenMapper;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 
 /**
@@ -37,6 +38,19 @@ class TaiKhoan extends Model
         'KhachHangID' => 'integer',
         'NgayTao' => 'datetime',
     ];
+
+    public function getNgayTaoAttribute(?string $value): ?Carbon
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        $isSupabaseAuthAccount = str_starts_with((string) ($this->attributes['TenDangNhap'] ?? ''), 'auth-')
+            && ($this->attributes['UserAuthId'] ?? null) !== null;
+        $storageTimezone = $isSupabaseAuthAccount ? 'UTC' : config('app.timezone');
+
+        return Carbon::parse($value, $storageTimezone)->setTimezone(config('app.timezone'));
+    }
 
     public function nhanVien()
     {

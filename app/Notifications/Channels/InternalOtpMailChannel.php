@@ -11,6 +11,6 @@ class InternalOtpMailChannel
 
     public function send(object $notifiable, InternalPasswordResetOtp $notification): void
     {
-        $this->mailer->send($notifiable->Email, $notification->otp, 10);
+        $this->mailer->send($notifiable->Email, $notification->otp, $notification->lifetimeMinutes, true);
     }
 }

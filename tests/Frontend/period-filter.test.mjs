@@ -5,7 +5,14 @@ import vm from 'node:vm';
 
 const source = readFileSync(new URL('../../resources/js/admin-period-filter.js', import.meta.url), 'utf8');
 
-function harness({url = '/admin/dashboard', filter = 'this_week', hasFilter = true} = {}) {
+function harness({
+    url = '/admin/dashboard',
+    filter = 'this_week',
+    hasFilter = true,
+    customRange = false,
+    dateFrom = '',
+    dateTo = '',
+} = {}) {
     const selectEvents = {};
     const windowEvents = {};
     const submissions = [];
@@ -13,9 +20,29 @@ function harness({url = '/admin/dashboard', filter = 'this_week', hasFilter = tr
     const location = {href: new URL(url, 'https://laundry.test').toString()};
     const select = {
         value: filter,
-        dataset: {activeFilter: filter},
+        dataset: {activeFilter: filter, allowCustom: String(customRange)},
         addEventListener: (name, callback) => { selectEvents[name] = callback; },
     };
+    const dateEvents = {};
+    const dateRangeFields = {
+        classList: {
+            contains: name => dateRangeFields.hidden && name === 'd-none',
+            toggle: (name, hidden) => { dateRangeFields.hidden = name === 'd-none' && hidden; },
+        },
+        setAttribute: (name, value) => { dateRangeFields[name] = value; },
+        hidden: filter !== 'all_time',
+    };
+    const fromInput = {
+        value: dateFrom,
+        dataset: {activeDate: dateFrom},
+        addEventListener: (name, callback) => { dateEvents[`from:${name}`] = callback; },
+    };
+    const toInput = {
+        value: dateTo,
+        dataset: {activeDate: dateTo},
+        addEventListener: (name, callback) => { dateEvents[`to:${name}`] = callback; },
+    };
+    const applyButton = {disabled: true};
     const form = {
         requestSubmit: () => submissions.push(select.value),
     };
@@ -26,6 +53,12 @@ function harness({url = '/admin/dashboard', filter = 'this_week', hasFilter = tr
             getElementById: id => hasFilter ? ({
                 'period-filter-select': select,
                 'period-filter-form': form,
+                ...(customRange ? {
+                    'period-date-range-fields': dateRangeFields,
+                    'period-date-from': fromInput,
+                    'period-date-to': toInput,
+                    'period-filter-apply': applyButton,
+                } : {}),
             })[id] ?? null : null,
         },
         window: {
@@ -41,7 +74,19 @@ function harness({url = '/admin/dashboard', filter = 'this_week', hasFilter = tr
         fetch: () => assert.fail('Filtering must navigate the whole Dashboard, not fetch a chart alone.'),
     });
 
-    return {select, selectEvents, windowEvents, submissions, historyCalls, location};
+    return {
+        select,
+        selectEvents,
+        windowEvents,
+        submissions,
+        historyCalls,
+        location,
+        dateEvents,
+        dateRangeFields,
+        fromInput,
+        toInput,
+        applyButton,
+    };
 }
 
 test('each period submits the global GET form without requiring a revenue chart', () => {
@@ -107,4 +152,53 @@ test('pages without the period filter do not install event handlers', () => {
     const page = harness({hasFilter: false});
     assert.deepEqual(page.selectEvents, {});
     assert.deepEqual(page.windowEvents, {});
+});
+
+test('all-time date range controls are optional and apply only when both dates are valid', () => {
+    const page = harness({url: '/reports', filter: 'all_time', customRange: true});
+
+    assert.equal(page.dateRangeFields.hidden, false);
+    assert.equal(page.dateRangeFields['aria-hidden'], 'false');
+    assert.equal(page.fromInput.disabled, false);
+    assert.equal(page.fromInput.required, false);
+    assert.equal(page.applyButton.disabled, true);
+    assert.deepEqual(page.submissions, []);
+
+    page.fromInput.value = '2026-01-10';
+    page.dateEvents['from:input']();
+    assert.equal(page.applyButton.disabled, true);
+
+    page.toInput.value = '2026-01-09';
+    page.dateEvents['to:input']();
+    assert.equal(page.applyButton.disabled, true);
+
+    page.toInput.value = '2026-01-10';
+    page.dateEvents['to:input']();
+    assert.equal(page.applyButton.disabled, false);
+});
+
+test('all-time with no dates means all data and changing period disables the date inputs', () => {
+    const page = harness({url: '/reports?filter=all_time', filter: 'all_time', customRange: true});
+    assert.equal(page.dateRangeFields.hidden, false);
+    assert.equal(page.applyButton.disabled, true);
+
+    page.select.value = 'this_month';
+    page.selectEvents.change();
+
+    assert.equal(page.dateRangeFields.hidden, true);
+    assert.equal(page.fromInput.disabled, true);
+    assert.equal(page.toInput.disabled, true);
+    assert.deepEqual(page.submissions, ['this_month']);
+});
+
+test('Back and Forward restore the dates matching the rendered all-time report', () => {
+    const page = harness({filter: 'all_time', customRange: true, dateFrom: '2026-01-01', dateTo: '2026-01-10'});
+    page.select.value = 'this_month';
+    page.fromInput.value = '2026-02-01';
+    page.toInput.value = '2026-02-10';
+    page.windowEvents.pageshow();
+
+    assert.equal(page.select.value, 'all_time');
+    assert.equal(page.fromInput.value, '2026-01-01');
+    assert.equal(page.toInput.value, '2026-01-10');
 });

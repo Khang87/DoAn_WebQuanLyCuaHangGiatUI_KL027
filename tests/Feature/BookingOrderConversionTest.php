@@ -1809,7 +1809,7 @@ class BookingOrderConversionTest extends TestCase
         });
         try {
             $this->withoutMiddleware([Authenticate::class, EnsureUserHasPermission::class, RejectCustomerRole::class, RestoreRememberedLogin::class]);
-            $this->get(route('orders.create'))
+            $response = $this->get(route('orders.create'))
                 ->assertOk()
                 ->assertSee('name="items[0][TinhTrangTruocKhiGiat]"', false)
                 ->assertSee('name="items[${index}][TinhTrangTruocKhiGiat]"', false)
@@ -1817,9 +1817,31 @@ class BookingOrderConversionTest extends TestCase
                 ->assertSee('value="Đã tiếp nhận" selected', false)
                 ->assertSee('value="Đang giặt"  disabled', false)
                 ->assertSee('id="employee_name"', false)
+                ->assertSee('name="PhuongThucThanhToan"', false)
+                ->assertSee('value="Tiền mặt" selected', false)
+                ->assertSee('value="Chuyển khoản / QR"', false)
                 ->assertSee('Chưa có hồ sơ nhân viên đang hoạt động')
                 ->assertDontSee('name="NhanVienID"', false)
                 ->assertDontSee('<input type="hidden" name="TrangThai"', false);
+            $this->assertMatchesRegularExpression(
+                '/<option[^>]*value="Tại cửa hàng"[^>]*disabled[^>]*class="text-muted"[^>]*>\\s*Nhân viên nhận đồ tại tiệm/',
+                $response->getContent(),
+            );
+            $this->assertMatchesRegularExpression(
+                '/<select(?=[^>]*id="HinhThucNhanDo")(?=[^>]*disabled)(?=[^>]*receive-method-locked)[^>]*>/',
+                $response->getContent(),
+            );
+            $response->assertSee('background-image: none !important;', false)
+                ->assertSee('background-color: #e9ecef !important;', false);
+            $this->assertMatchesRegularExpression(
+                '/<option(?=[^>]*value="Tại cửa hàng")(?=[^>]*selected)[^>]*>/',
+                $response->getContent(),
+            );
+            $response->assertSee('type="hidden" name="HinhThucNhanDo" value="Tại cửa hàng"', false);
+            $this->assertMatchesRegularExpression(
+                '/<option[^>]*value="Tại nhà"[^>]*>\\s*Nhân viên đến nhà nhận đồ/',
+                $response->getContent(),
+            );
         } finally {
             Schema::dropIfExists('KhuyenMai');
         }
@@ -1864,14 +1886,21 @@ class BookingOrderConversionTest extends TestCase
             'NhanVienID' => 2,
             'staff_id' => 2,
             'TrangThai' => OrderStatus::Received->value,
+            'PhuongThucThanhToan' => 'Chuyển khoản / QR',
+            'HinhThucNhanDo' => 'Tại nhà',
+            'DiaChiNhan' => 'Địa chỉ không được chấp nhận',
+            'GhiChu' => 'Khách yêu cầu thanh toán qua QR',
             'items' => [['DichVuID' => 1, 'LoaiDoGiatID' => 2, 'DonViTinhID' => 2, 'SoLuong' => 2, 'TinhTrangTruocKhiGiat' => '  Ố nhẹ ở cổ áo  ']],
         ])->assertSessionHasNoErrors();
         $order = DonHang::query()->sole();
         $this->assertNull($order->BookingID);
         $this->assertSame(1, $order->NhanVienID);
         $this->assertSame(OrderStatus::Received->value, $order->TrangThai);
+        $this->assertSame('Hình thức thanh toán: Chuyển khoản / QR | Khách yêu cầu thanh toán qua QR', $order->GhiChu);
         $this->assertSame('Ố nhẹ ở cổ áo', $order->chiTietDonHangs()->sole()->TinhTrangTruocKhiGiat);
         $this->assertSame(20000.0, $order->ThanhTien);
+        $this->assertSame(0.0, (float) $order->PhiGiaoHang);
+        $this->assertDatabaseCount('GiaoNhan', 0);
         app(OrderService::class)->updateStatus($order, OrderStatus::Washing->value);
         $this->assertSame(OrderStatus::Washing->value, $order->fresh()->TrangThai);
     }

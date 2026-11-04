@@ -35,6 +35,25 @@
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
                 </div>
+                <div class="col-md-6">
+                    <label class="form-label">Trạng thái</label>
+                    <x-admin.status-select
+                        name="TrangThai"
+                        :options="\App\Enums\RecordStatus::databaseOptions()"
+                        selected="Hoạt động"
+                        class="form-select @error('TrangThai') is-invalid @enderror"
+                    />
+                    @error('TrangThai')
+                        <div class="invalid-feedback">{{ $message }}</div>
+                    @enderror
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold">Thời gian dự kiến (phút)</label>
+                    <input type="number" class="form-control @error('ThoiGianDuKien') is-invalid @enderror" name="ThoiGianDuKien" value="{{ old('ThoiGianDuKien') }}" min="0">
+                    @error('ThoiGianDuKien')
+                        <div class="invalid-feedback">{{ $message }}</div>
+                    @enderror
+                </div>
                 @if($supportsServiceIcons ?? false)
                     <div class="col-md-6">
                         <x-admin.icon-picker
@@ -52,25 +71,6 @@
                         </div>
                     </div>
                 @endif
-                <div class="col-md-6">
-                    <label class="form-label fw-semibold">Thời gian dự kiến (phút)</label>
-                    <input type="number" class="form-control @error('ThoiGianDuKien') is-invalid @enderror" name="ThoiGianDuKien" value="{{ old('ThoiGianDuKien') }}" min="0">
-                    @error('ThoiGianDuKien')
-                        <div class="invalid-feedback">{{ $message }}</div>
-                    @enderror
-                </div>
-                <div class="col-md-6">
-                    <label class="form-label">Trạng thái</label>
-                    <x-admin.status-select
-                        name="TrangThai"
-                        :options="\App\Enums\RecordStatus::databaseOptions()"
-                        selected="Hoạt động"
-                        class="form-select @error('TrangThai') is-invalid @enderror"
-                    />
-                    @error('TrangThai')
-                        <div class="invalid-feedback">{{ $message }}</div>
-                    @enderror
-                </div>
                 <div class="col-12">
                     <label class="form-label">Mô tả chi tiết</label>
                     <textarea class="form-control @error('MoTa') is-invalid @enderror" name="MoTa" maxlength="500" rows="3" placeholder="Nhập mô tả chi tiết về dịch vụ...">{{ old('MoTa') }}</textarea>

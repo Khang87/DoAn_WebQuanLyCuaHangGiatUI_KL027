@@ -811,7 +811,9 @@ class AdminCommunicationTest extends TestCase
         $this->actingAs($staff)
             ->get(route('notifications.show', $notification->ThongBaoID))
             ->assertOk()
-            ->assertSee('Nguyễn Văn Nhận');
+            ->assertSee('Nguyễn Văn Nhận')
+            ->assertDontSee('Loại thông báo')
+            ->assertDontSee('Ngày đọc');
     }
 
     public function test_customer_message_notification_links_to_the_matching_chat_thread(): void

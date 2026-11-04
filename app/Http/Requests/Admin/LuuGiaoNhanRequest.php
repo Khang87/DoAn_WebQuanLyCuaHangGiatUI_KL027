@@ -125,16 +125,11 @@ class LuuGiaoNhanRequest extends FormRequest
     private function requiresSchedule(): bool
     {
         $current = $this->currentDelivery();
-        if ($this->input('method') !== 'nhan_do' || $current === null) {
-            return $this->input('method') === 'nhan_do';
+        if ($current !== null) {
+            return true;
         }
 
-        $currentStatus = DeliveryStatus::parseForLeg($current->TrangThai, $current->LoaiGiaoNhan)->value;
-        $requestedStatus = $this->input('status', $currentStatus);
-        $startsIntake = in_array($requestedStatus, [DeliveryStatus::Picking->value, DeliveryStatus::Completed->value], true)
-            && $requestedStatus !== $currentStatus;
-
-        return $current->ThoiGianDuKien !== null || $startsIntake;
+        return $this->input('method') === 'nhan_do';
     }
 
     public function messages(): array

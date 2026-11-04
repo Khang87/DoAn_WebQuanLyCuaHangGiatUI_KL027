@@ -110,15 +110,15 @@
                     @endif
 
                     <div class="col-md-6">
-                        <label class="form-label" for="pickup_date">Ngày nhận đồ dự kiến</label>
+                        <label class="form-label" for="pickup_date">Ngày nhận đồ dự kiến <span class="text-danger">*</span></label>
                         <input type="date" class="form-control" id="pickup_date" name="pickup_date"
-                               value="{{ old('pickup_date', $bookingDocument->ThoiGianDuKien?->format('Y-m-d')) }}">
+                               value="{{ old('pickup_date', $bookingDocument->ThoiGianDuKien?->format('Y-m-d')) }}" required>
                         @error('pickup_date')<div class="text-danger small mt-1">{{ $message }}</div>@enderror
                     </div>
                     <div class="col-md-6">
-                        <label class="form-label" for="pickup_time">Giờ nhận đồ dự kiến</label>
+                        <label class="form-label" for="pickup_time">Giờ nhận đồ dự kiến <span class="text-danger">*</span></label>
                         <input type="time" class="form-control" id="pickup_time" name="pickup_time"
-                               value="{{ old('pickup_time', $bookingDocument->ThoiGianDuKien?->format('H:i')) }}">
+                               value="{{ old('pickup_time', $bookingDocument->ThoiGianDuKien?->format('H:i')) }}" required>
                         @error('pickup_time')<div class="text-danger small mt-1">{{ $message }}</div>@enderror
                     </div>
                 </div>

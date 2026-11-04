@@ -264,7 +264,7 @@
                                 <td>{{ $booking->khachHang?->HoTen ?: '-' }}</td>
                                 <td>{{ $booking->khachHang?->SoDienThoai ?: '-' }}</td>
                                 <td>
-                                    {{ $booking->NgayHen?->format('d/m') }}
+                                    {{ $booking->NgayHen?->format('d/m/Y') }}
                                     <small class="text-muted">{{ $booking->GioHen?->format('H:i') }}</small>
                                 </td>
                                 <td>{{ $booking->method_label }}</td>

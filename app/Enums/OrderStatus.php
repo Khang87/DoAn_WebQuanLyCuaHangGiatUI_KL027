@@ -99,6 +99,10 @@ enum OrderStatus: string
             return true;
         }
 
+        if ($this->canRollBackTo($target)) {
+            return true;
+        }
+
         return match ($this) {
             self::Pending => $target === self::Cancelled,
             self::Received => in_array($target, [self::Washing, self::Cancelled], true),
@@ -108,6 +112,23 @@ enum OrderStatus: string
             self::Delivered => false,
             default => false,
         };
+    }
+
+    public function canRollBackTo(self $target): bool
+    {
+        $processStatuses = [
+            self::Received,
+            self::Washing,
+            self::Washed,
+            self::Delivering,
+            self::Delivered,
+        ];
+        $currentIndex = array_search($this, $processStatuses, true);
+        $targetIndex = array_search($target, $processStatuses, true);
+
+        return $currentIndex !== false
+            && $targetIndex !== false
+            && $targetIndex < $currentIndex;
     }
 
     /**

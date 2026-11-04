@@ -138,6 +138,30 @@ class OrderDeliveryProgressTest extends TestCase
         $this->assertSame(OrderStatus::Washed->value, DB::table('DonHang')->where('DonHangID', 2)->value('TrangThai'));
     }
 
+    public function test_order_can_return_to_an_earlier_processing_status_before_delivery(): void
+    {
+        $order = $this->createOrder(12);
+
+        $updatedOrder = app(OrderService::class)->updateStatus($order, OrderStatus::Received->value);
+
+        $this->assertSame(OrderStatus::Received->value, $updatedOrder->TrangThai);
+    }
+
+    public function test_order_cannot_roll_back_after_delivery_has_started(): void
+    {
+        foreach ([OrderStatus::Delivering, OrderStatus::Delivered] as $index => $status) {
+            $order = $this->createOrder(13 + $index);
+            $order->update(['TrangThai' => $status->value]);
+
+            try {
+                app(OrderService::class)->updateStatus($order->fresh(), OrderStatus::Washed->value);
+                $this->fail('Delivery progress must not be rolled back through the order status.');
+            } catch (ValidationException $exception) {
+                $this->assertArrayHasKey('TrangThai', $exception->errors());
+            }
+        }
+    }
+
     public function test_store_return_order_can_be_completed_without_delivery_leg(): void
     {
         $order = $this->createOrder(3);

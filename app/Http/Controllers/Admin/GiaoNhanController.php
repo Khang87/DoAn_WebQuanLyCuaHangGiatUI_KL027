@@ -293,8 +293,8 @@ class GiaoNhanController extends Controller
         abort_if($request->exists('employee_id') && ! $canAssignEmployee, 403);
 
         $rules = [
-            'pickup_date' => ['nullable', 'date_format:Y-m-d', 'required_with:pickup_time'],
-            'pickup_time' => ['nullable', 'date_format:H:i', 'required_with:pickup_date'],
+            'pickup_date' => ['required', 'date_format:Y-m-d'],
+            'pickup_time' => ['required', 'date_format:H:i'],
             'address' => [
                 $bookingDocument->HinhThuc === 'Tại nhà' ? 'required' : 'nullable',
                 'string',
@@ -314,8 +314,10 @@ class GiaoNhanController extends Controller
             'employee_id.integer' => 'Nhân viên phụ trách không hợp lệ.',
             'employee_id.exists' => 'Vui lòng chọn nhân viên đang hoạt động.',
             'employee_id.in' => 'Nhân viên được chọn không thuộc phạm vi phân công hợp lệ.',
-            'pickup_date.required_with' => 'Ngày và giờ dự kiến phải được nhập cùng nhau.',
-            'pickup_time.required_with' => 'Ngày và giờ dự kiến phải được nhập cùng nhau.',
+            'pickup_date.required' => 'Vui lòng chọn ngày nhận đồ dự kiến.',
+            'pickup_time.required' => 'Vui lòng chọn giờ nhận đồ dự kiến.',
+            'pickup_date.date_format' => 'Ngày nhận đồ không hợp lệ.',
+            'pickup_time.date_format' => 'Giờ nhận đồ không hợp lệ.',
             'address.required' => 'Vui lòng nhập địa chỉ nhận đồ tại nhà.',
         ]);
 

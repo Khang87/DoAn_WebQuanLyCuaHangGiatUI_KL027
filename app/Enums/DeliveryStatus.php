@@ -92,7 +92,7 @@ enum DeliveryStatus: string
     public static function filterOptions(): array
     {
         return [
-            'pending_pickup' => 'Chờ lấy đồ',
+            'pending_pickup' => 'Chờ nhận đồ',
             'pending_delivery' => 'Chờ giao đồ',
             self::Picking->value => self::Picking->label(),
             self::Delivering->value => self::Delivering->label(),

@@ -273,7 +273,7 @@
                         <small class="text-muted">{{ Str::limit($review->BinhLuan ?: '', 100) }}</small>
                     </div>
                     <div class="text-end">
-                        <small class="text-muted">{{ $review->NgayDanhGia?->copy()->shiftTimezone('UTC')->setTimezone(config('app.timezone'))->format('d/m H:i') }}</small>
+                        <small class="text-muted">{{ $review->NgayDanhGia?->format('d/m H:i') }}</small>
                     </div>
                 </div>
                 @empty

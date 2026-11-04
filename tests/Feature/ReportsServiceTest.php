@@ -108,7 +108,7 @@ class ReportsServiceTest extends TestCase
         DB::connection()->flushQueryLog();
         $chart = $service->getRevenueChartData($filters);
         $this->assertCount(1, DB::connection()->getQueryLog());
-        $this->assertSame(['10/01'], $chart['labels']);
+        $this->assertSame(['10/01/2026'], $chart['labels']);
         $this->assertEquals([255000], $chart['revenue']);
     }
 
@@ -124,7 +124,7 @@ class ReportsServiceTest extends TestCase
         $chart = $service->getRevenueChartData($filters);
         $composition = $service->getServiceComposition($filters);
 
-        $this->assertSame(['10/01'], $chart['labels']);
+        $this->assertSame(['10/01/2026'], $chart['labels']);
         $this->assertEquals([255000], $chart['revenue']);
         $this->assertSame(['Giặt sấy', 'Giặt hấp'], $composition['labels']);
         $this->assertEquals([100000, 25000], $composition['revenue']);
@@ -143,7 +143,7 @@ class ReportsServiceTest extends TestCase
         $service = app(ReportsService::class);
         $chart = $service->getRevenueChartData($filters);
 
-        $this->assertSame(['10/01', '11/01', '12/01', '13/01'], $chart['labels']);
+        $this->assertSame(['10/01/2026', '11/01/2026', '12/01/2026', '13/01/2026'], $chart['labels']);
         $this->assertEquals([255000, 400000, 100000, 0], $chart['revenue']);
         $this->assertEquals($service->getKpiMetrics($filters)['total_revenue'], array_sum($chart['revenue']));
     }
@@ -173,6 +173,7 @@ class ReportsServiceTest extends TestCase
             'DonHangID' => 2,
             'SoTien' => 50000,
             'PhuongThuc' => 'Tiền mặt',
+            'MaGiaoDich' => 'RPC-fixture-boundary',
             'ThoiGian' => '2026-01-09 18:00:00',
             'TrangThai' => PaymentStatus::Paid->value,
         ]);
@@ -189,8 +190,65 @@ class ReportsServiceTest extends TestCase
         ]);
 
         $this->assertEquals(305000, $metrics['total_revenue']);
-        $this->assertSame(['10/01'], $chart['labels']);
+        $this->assertSame(['10/01/2026'], $chart['labels']);
         $this->assertEquals([305000], $chart['revenue']);
+    }
+
+    public function test_custom_reports_include_utc_and_vietnam_local_orders_and_payments_on_the_local_day(): void
+    {
+        DB::table('DonHang')->insert([
+            [
+                'DonHangID' => 5,
+                'MaDonHang' => 'DH-005',
+                'BookingID' => 105,
+                'KhachHangID' => 1,
+                'TrangThai' => OrderStatus::Washing->value,
+                'ThanhTien' => 11000,
+                'NgayTao' => '2026-01-09 18:00:00',
+            ],
+            [
+                'DonHangID' => 6,
+                'MaDonHang' => 'DH-006',
+                'BookingID' => null,
+                'KhachHangID' => 1,
+                'TrangThai' => OrderStatus::Washing->value,
+                'ThanhTien' => 12000,
+                'NgayTao' => '2026-01-10 01:00:00',
+            ],
+        ]);
+        DB::table('ThanhToan')->insert([
+            [
+                'DonHangID' => 5,
+                'SoTien' => 11000,
+                'PhuongThuc' => 'Tiền mặt',
+                'MaGiaoDich' => 'RPC-local-day',
+                'ThoiGian' => '2026-01-09 18:00:00',
+                'TrangThai' => PaymentStatus::Paid->value,
+            ],
+            [
+                'DonHangID' => 6,
+                'SoTien' => 12000,
+                'PhuongThuc' => 'Tiền mặt',
+                'MaGiaoDich' => 'TM-local-day',
+                'ThoiGian' => '2026-01-10 01:00:00',
+                'TrangThai' => PaymentStatus::Paid->value,
+            ],
+        ]);
+
+        $filters = [
+            'range' => 'custom',
+            'date_from' => '2026-01-10',
+            'date_to' => '2026-01-10',
+        ];
+        $service = app(ReportsService::class);
+
+        $this->assertEquals(278000, $service->getKpiMetrics($filters)['total_revenue']);
+        $this->assertSame(6, $service->getRecentOrders($filters)->total());
+        $this->assertCount(6, $service->getOrdersForExport($filters));
+        $this->assertEquals(
+            [278000],
+            $service->getRevenueChartData($filters)['revenue'],
+        );
     }
 
     public function test_all_time_filter_includes_existing_data_and_groups_chart_by_month(): void
@@ -218,7 +276,7 @@ class ReportsServiceTest extends TestCase
         $revenue = $service->getRevenueChartData($filters);
         $composition = $service->getServiceComposition($filters);
 
-        $this->assertSame(['11/01'], $revenue['labels']);
+        $this->assertSame(['11/01/2026'], $revenue['labels']);
         $this->assertSame([0], $revenue['revenue']);
         $this->assertSame([], $composition['labels']);
         $this->assertSame([], $composition['revenue']);
@@ -374,11 +432,41 @@ class ReportsServiceTest extends TestCase
 
     public function test_reports_page_renders_for_owner_with_isolated_fixtures(): void
     {
-        $this->actingAs($this->reportOwner())->get('/reports')
+        $response = $this->actingAs($this->reportOwner())->get('/reports')
             ->assertOk()
             ->assertSee('Báo cáo', false)
+            ->assertSee('Giá trị dịch vụ (Chưa gồm phí ship &amp; giảm giá)', false)
+            ->assertSee('Số lượng bán')
+            ->assertSee('Số giao dịch')
             ->assertSee('order-status-badges d-inline-flex align-items-center flex-nowrap gap-1 text-nowrap', false)
             ->assertSee('formatter: value => formatCurrency(value)', false);
+
+        $this->assertMatchesRegularExpression(
+            '/<th(?=[^>]*style="width: 130px;")(?=[^>]*class="fw-bold text-dark text-center text-nowrap")[^>]*>Số lượng bán<\\/th>/',
+            $response->getContent(),
+        );
+        $this->assertMatchesRegularExpression(
+            '/<th(?=[^>]*style="width: 130px;")(?=[^>]*class="fw-bold text-dark text-center text-nowrap")[^>]*>Số giao dịch<\\/th>/',
+            $response->getContent(),
+        );
+
+        preg_match(
+            '/<!-- Top 5 Services -->(.*?)<!-- Revenue by Payment Method -->/s',
+            $response->getContent(),
+            $topServicesSection,
+        );
+
+        $this->assertNotEmpty($topServicesSection);
+        $this->assertStringContainsString(
+            '<span class="fw-semibold">Giặt thường</span>',
+            $topServicesSection[1],
+        );
+        $this->assertMatchesRegularExpression(
+            '/<span class="fw-semibold">Giặt thường<\\/span>\\s*<\\/td>\\s*<td class="text-center">4<\\/td>/',
+            $topServicesSection[1],
+        );
+        $this->assertStringNotContainsString('Nhiều ĐVT', $topServicesSection[1]);
+        $this->assertStringNotContainsString('(kg)', $topServicesSection[1]);
     }
 
     public function test_reports_export_contains_two_requested_sheets_and_excel_typed_values(): void
@@ -501,6 +589,75 @@ class ReportsServiceTest extends TestCase
         }
     }
 
+    public function test_all_time_date_range_filters_reports_and_is_preserved_in_excel_export(): void
+    {
+        $staff = $this->reportOwner();
+        $query = 'filter=all_time&date_from=2026-01-10&date_to=2026-01-10';
+
+        $this->actingAs($staff)
+            ->get('/reports?'.$query)
+            ->assertOk()
+            ->assertSee('data-active-filter="all_time"', false)
+            ->assertDontSee('Khoảng ngày tùy chọn')
+            ->assertDontSee('<option value="custom"', false)
+            ->assertSee('Số liệu · Từ 10/01/2026 đến 10/01/2026')
+            ->assertSee('value="2026-01-10"', false)
+            ->assertSee('Từ ngày', false)
+            ->assertSee(htmlspecialchars(route('reports.export', [
+                'filter' => 'all_time',
+                'date_from' => '2026-01-10',
+                'date_to' => '2026-01-10',
+            ]), ENT_QUOTES, 'UTF-8'), false);
+
+        $response = $this->get('/reports/export?'.$query)->assertOk()->assertDownload();
+        $temporaryFile = tempnam(sys_get_temp_dir(), 'reports-date-range-export-');
+        $this->assertNotFalse($temporaryFile);
+        if ($temporaryFile === false) {
+            return;
+        }
+
+        file_put_contents($temporaryFile, $response->streamedContent());
+
+        try {
+            $workbook = IOFactory::load($temporaryFile);
+            $summary = $workbook->getSheet(0);
+
+            $this->assertSame('Từ 10/01/2026 đến 10/01/2026', $summary->getCell('B3')->getValue());
+            $this->assertEquals(255000, $summary->getCell('B6')->getValue());
+        } finally {
+            if (isset($workbook)) {
+                $workbook->disconnectWorksheets();
+            }
+            unlink($temporaryFile);
+        }
+    }
+
+    public function test_all_time_date_range_requires_both_valid_ordered_dates(): void
+    {
+        $this->actingAs($this->reportOwner())
+            ->get('/reports?filter=all_time&date_from=2026-01-11&date_to=2026-01-10')
+            ->assertSessionHasErrors(['date_to']);
+
+        $this->get('/reports?filter=all_time&date_from=2026-01-10')
+            ->assertSessionHasErrors(['date_to']);
+    }
+
+    public function test_all_time_without_dates_remains_unbounded(): void
+    {
+        $dates = app(ReportsService::class)->getDateRange(['range' => 'all_time']);
+
+        $this->assertNull($dates['from']);
+        $this->assertNull($dates['to']);
+
+        $this->actingAs($this->reportOwner())
+            ->get('/reports?filter=all_time')
+            ->assertOk()
+            ->assertSee('data-active-filter="all_time"', false)
+            ->assertSee('id="period-date-range-fields"', false)
+            ->assertSee('id="period-date-from"', false)
+            ->assertSee('id="period-date-to"', false);
+    }
+
     public function test_this_week_starts_on_monday_of_the_vietnamese_calendar(): void
     {
         Carbon::setTestNow(Carbon::parse('2026-01-10 12:00:00', 'Asia/Ho_Chi_Minh'));
@@ -538,6 +695,7 @@ class ReportsServiceTest extends TestCase
         Schema::create('DonHang', function (Blueprint $table): void {
             $table->increments('DonHangID');
             $table->string('MaDonHang');
+            $table->integer('BookingID')->nullable();
             $table->integer('KhachHangID');
             $table->string('TrangThai');
             $table->decimal('ThanhTien', 18, 2)->default(0);
@@ -557,6 +715,7 @@ class ReportsServiceTest extends TestCase
             $table->integer('DonHangID');
             $table->decimal('SoTien', 18, 2);
             $table->string('PhuongThuc');
+            $table->string('MaGiaoDich')->nullable();
             $table->timestamp('ThoiGian');
             $table->string('TrangThai');
         });
@@ -620,10 +779,10 @@ class ReportsServiceTest extends TestCase
         ]);
 
         DB::table('DonHang')->insert([
-            ['DonHangID' => 1, 'MaDonHang' => 'DH-001', 'KhachHangID' => 1, 'TrangThai' => OrderStatus::Paid->value, 'ThanhTien' => 125000, 'NgayTao' => '2026-01-10 09:00:00'],
-            ['DonHangID' => 2, 'MaDonHang' => 'DH-002', 'KhachHangID' => 1, 'TrangThai' => OrderStatus::Washing->value, 'ThanhTien' => 50000, 'NgayTao' => '2026-01-10 10:00:00'],
-            ['DonHangID' => 4, 'MaDonHang' => 'DH-004', 'KhachHangID' => 1, 'TrangThai' => OrderStatus::Washed->value, 'ThanhTien' => 50000, 'NgayTao' => '2026-01-10 10:30:00'],
-            ['DonHangID' => 3, 'MaDonHang' => 'DH-003', 'KhachHangID' => 1, 'TrangThai' => OrderStatus::Cancelled->value, 'ThanhTien' => 30000, 'NgayTao' => '2026-01-10 11:00:00'],
+            ['DonHangID' => 1, 'MaDonHang' => 'DH-001', 'BookingID' => 101, 'KhachHangID' => 1, 'TrangThai' => OrderStatus::Paid->value, 'ThanhTien' => 125000, 'NgayTao' => '2026-01-10 09:00:00'],
+            ['DonHangID' => 2, 'MaDonHang' => 'DH-002', 'BookingID' => 102, 'KhachHangID' => 1, 'TrangThai' => OrderStatus::Washing->value, 'ThanhTien' => 50000, 'NgayTao' => '2026-01-10 10:00:00'],
+            ['DonHangID' => 4, 'MaDonHang' => 'DH-004', 'BookingID' => 104, 'KhachHangID' => 1, 'TrangThai' => OrderStatus::Washed->value, 'ThanhTien' => 50000, 'NgayTao' => '2026-01-10 10:30:00'],
+            ['DonHangID' => 3, 'MaDonHang' => 'DH-003', 'BookingID' => 103, 'KhachHangID' => 1, 'TrangThai' => OrderStatus::Cancelled->value, 'ThanhTien' => 30000, 'NgayTao' => '2026-01-10 11:00:00'],
         ]);
 
         DB::table('HoaDon')->insert([
@@ -632,13 +791,13 @@ class ReportsServiceTest extends TestCase
         ]);
 
         DB::table('ThanhToan')->insert([
-            ['ThanhToanID' => 1, 'DonHangID' => 1, 'SoTien' => 100000, 'PhuongThuc' => 'Tiền mặt', 'ThoiGian' => '2026-01-10 12:05:00', 'TrangThai' => PaymentStatus::Paid->value],
-            ['ThanhToanID' => 2, 'DonHangID' => 1, 'SoTien' => 25000, 'PhuongThuc' => 'Chuyển khoản', 'ThoiGian' => '2026-01-10 12:06:00', 'TrangThai' => PaymentStatus::Paid->value],
-            ['ThanhToanID' => 3, 'DonHangID' => 3, 'SoTien' => 30000, 'PhuongThuc' => 'Tiền mặt', 'ThoiGian' => '2026-01-10 12:07:00', 'TrangThai' => PaymentStatus::Paid->value],
-            ['ThanhToanID' => 4, 'DonHangID' => 2, 'SoTien' => 50000, 'PhuongThuc' => 'Tiền mặt', 'ThoiGian' => '2026-01-09 18:00:00', 'TrangThai' => PaymentStatus::Paid->value],
-            ['ThanhToanID' => 5, 'DonHangID' => 2, 'SoTien' => 50000, 'PhuongThuc' => 'Tiền mặt', 'ThoiGian' => '2026-01-10 12:08:00', 'TrangThai' => PaymentStatus::Pending->value],
-            ['ThanhToanID' => 6, 'DonHangID' => 2, 'SoTien' => 50000, 'PhuongThuc' => 'Tiền mặt', 'ThoiGian' => '2026-01-10 12:09:00', 'TrangThai' => PaymentStatus::Failed->value],
-            ['ThanhToanID' => 7, 'DonHangID' => 2, 'SoTien' => 50000, 'PhuongThuc' => 'Tiền mặt', 'ThoiGian' => '2026-01-10 12:10:00', 'TrangThai' => PaymentStatus::Refunded->value],
+            ['ThanhToanID' => 1, 'DonHangID' => 1, 'SoTien' => 100000, 'PhuongThuc' => 'Tiền mặt', 'MaGiaoDich' => 'RPC-fixture-1', 'ThoiGian' => '2026-01-10 12:05:00', 'TrangThai' => PaymentStatus::Paid->value],
+            ['ThanhToanID' => 2, 'DonHangID' => 1, 'SoTien' => 25000, 'PhuongThuc' => 'Chuyển khoản', 'MaGiaoDich' => 'RPC-fixture-2', 'ThoiGian' => '2026-01-10 12:06:00', 'TrangThai' => PaymentStatus::Paid->value],
+            ['ThanhToanID' => 3, 'DonHangID' => 3, 'SoTien' => 30000, 'PhuongThuc' => 'Tiền mặt', 'MaGiaoDich' => 'RPC-fixture-3', 'ThoiGian' => '2026-01-10 12:07:00', 'TrangThai' => PaymentStatus::Paid->value],
+            ['ThanhToanID' => 4, 'DonHangID' => 2, 'SoTien' => 50000, 'PhuongThuc' => 'Tiền mặt', 'MaGiaoDich' => 'RPC-fixture', 'ThoiGian' => '2026-01-09 18:00:00', 'TrangThai' => PaymentStatus::Paid->value],
+            ['ThanhToanID' => 5, 'DonHangID' => 2, 'SoTien' => 50000, 'PhuongThuc' => 'Tiền mặt', 'MaGiaoDich' => 'RPC-fixture-5', 'ThoiGian' => '2026-01-10 12:08:00', 'TrangThai' => PaymentStatus::Pending->value],
+            ['ThanhToanID' => 6, 'DonHangID' => 2, 'SoTien' => 50000, 'PhuongThuc' => 'Tiền mặt', 'MaGiaoDich' => 'RPC-fixture-6', 'ThoiGian' => '2026-01-10 12:09:00', 'TrangThai' => PaymentStatus::Failed->value],
+            ['ThanhToanID' => 7, 'DonHangID' => 2, 'SoTien' => 50000, 'PhuongThuc' => 'Tiền mặt', 'MaGiaoDich' => 'RPC-fixture-7', 'ThoiGian' => '2026-01-10 12:10:00', 'TrangThai' => PaymentStatus::Refunded->value],
         ]);
 
         DB::table('Booking')->insert([

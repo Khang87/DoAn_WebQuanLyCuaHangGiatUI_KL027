@@ -49,8 +49,7 @@ class NotificationService
         }
 
         return $query->with(['taiKhoan', 'donHang'])
-            ->orderByDesc('ThoiGianGui')
-            ->orderByDesc('ThongBaoID')
+            ->orderByNewest()
             ->paginate(10);
     }
 

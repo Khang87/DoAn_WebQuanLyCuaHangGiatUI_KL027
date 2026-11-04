@@ -33,14 +33,7 @@ class DeliveryRules
     {
         $data = array_merge($current ? self::inputFor($current) : ['status' => 'pending', 'fulfillment' => 'Tại nhà'], $data);
         $data['status'] = $data['status'] ?: 'pending';
-        $currentStatus = $current
-            ? DeliveryStatus::parseForLeg($current->TrangThai, $current->LoaiGiaoNhan)->value
-            : null;
-        $requiresIntakeSchedule = ($data['method'] ?? null) === 'nhan_do' && (
-            $current === null
-            || $current->ThoiGianDuKien !== null
-            || (in_array($data['status'], ['picking', 'completed'], true) && $data['status'] !== $currentStatus)
-        );
+        $requiresIntakeSchedule = $current !== null || ($data['method'] ?? null) === 'nhan_do';
         Validator::make($data, [
             'order_id' => ['required', 'integer'],
             'method' => ['required', 'in:nhan_do,giao_do'],

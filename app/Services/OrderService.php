@@ -632,8 +632,7 @@ class OrderService
         float $subtotal,
         ?int $excludeOrderId = null,
         ?int $excludeBookingId = null,
-    ): ?KhuyenMai
-    {
+    ): ?KhuyenMai {
         $this->promotionRejection = null;
 
         if (! $promotion) {
@@ -665,6 +664,7 @@ class OrderService
         // Tương thích với các nơi gọi create() chưa truyền phương thức nhận/trả đồ.
         $data['HinhThucNhanDo'] ??= 'Tại cửa hàng';
         $data['HinhThucTraDo'] ??= 'Tại cửa hàng';
+        $data['PhuongThucThanhToan'] ??= 'Tiền mặt';
         // Direct callers must obey the same inspection boundary as the Web form.
         Validator::make($data, [
             'NhanVienID' => ['required', 'integer', EmployeeAssignment::rule()],
@@ -695,11 +695,18 @@ class OrderService
                 'string',
                 'max:255',
             ],
+            'PhuongThucThanhToan' => ['required', 'in:Tiền mặt,Chuyển khoản / QR'],
+            'GhiChu' => ['nullable', 'string', 'max:450'],
 
         ], [
             'BookingID.prohibited' => 'Hãy tạo đơn từ màn hình kiểm tra đặt lịch.',
             'TrangThai.in' => 'Đơn mới chỉ được tạo ở trạng thái Đã tiếp nhận sau khi kiểm tra.',
         ])->validate();
+        $customerNote = trim((string) ($data['GhiChu'] ?? ''));
+        $data['GhiChu'] = 'Hình thức thanh toán: '.$data['PhuongThucThanhToan']
+            .($customerNote !== '' ? ' | '.$customerNote : '');
+        unset($data['PhuongThucThanhToan']);
+
         foreach ($data['items'] as &$item) {
             $item['TinhTrangTruocKhiGiat'] = trim($item['TinhTrangTruocKhiGiat']);
         }
@@ -1339,6 +1346,14 @@ class OrderService
         ) {
             throw ValidationException::withMessages([
                 'TrangThai' => 'Hãy hoàn tất phiếu giao đồ để đồng bộ trạng thái đơn hàng.',
+            ]);
+        }
+        if (
+            $current->canRollBackTo($target)
+            && in_array($current, [OrderStatus::Delivering, OrderStatus::Delivered], true)
+        ) {
+            throw ValidationException::withMessages([
+                'TrangThai' => 'Không thể quay ngược trạng thái sau khi bắt đầu giao hàng; hãy xử lý qua phiếu giao đồ.',
             ]);
         }
         if (! $current->canTransitionTo($target) && ! ($overrideSettled && $current === OrderStatus::Paid && $target === OrderStatus::Delivered)) {

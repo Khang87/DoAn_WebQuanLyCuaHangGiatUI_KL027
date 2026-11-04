@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\InvoiceStatus;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Carbon;
 
 class HoaDon extends Model
 {
@@ -30,6 +31,15 @@ class HoaDon extends Model
         'ThanhTien' => 'float',
         'NgayLap' => 'datetime',
     ];
+
+    public function getNgayLapAttribute(?string $value): ?Carbon
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        return Carbon::parse($value, 'UTC')->setTimezone(config('app.timezone'));
+    }
 
     public function donHang()
     {

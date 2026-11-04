@@ -2,10 +2,26 @@
 
 namespace App\Models;
 
+use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use LogicException;
 
 class ThongBao extends Model
 {
+    private const UTC_NOTIFICATION_TYPES = [
+        'booking_cancelled',
+        'booking_status_updated',
+        'booking_updated',
+        'new_booking',
+        'new_message',
+        'new_promotion',
+        'order_cancelled',
+        'order_created',
+        'order_status_updated',
+        'order_updated',
+    ];
+
     protected static function booted(): void
     {
         // Expired OTPs disappear from the inbox and header even without a scheduler.
@@ -13,7 +29,7 @@ class ThongBao extends Model
             $query->where(function ($q): void {
                 $q->whereNull('LoaiThongBao')
                     ->orWhere('LoaiThongBao', '!=', 'internal_password_otp')
-                    ->orWhere('ThoiGianGui', '>', now()->subMinutes(10));
+                    ->orWhere('ThoiGianGui', '>', now()->subMinutes(3)->toDateTimeString());
             });
         });
     }
@@ -64,6 +80,53 @@ class ThongBao extends Model
     public function getReadAtAttribute(): mixed
     {
         return $this->DaDoc ? $this->ThoiGianGui : null;
+    }
+
+    public function getThoiGianGuiAttribute(?string $value): ?Carbon
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        $timezone = config('app.timezone');
+        $storageTimezone = in_array(
+            $this->attributes['LoaiThongBao'] ?? null,
+            self::UTC_NOTIFICATION_TYPES,
+            true,
+        ) ? 'UTC' : $timezone;
+
+        return Carbon::parse($value, $storageTimezone)->setTimezone($timezone);
+    }
+
+    public function scopeOrderByNewest(Builder $query): Builder
+    {
+        $grammar = $query->getQuery()->getGrammar();
+        $typeColumn = $grammar->wrap($query->getModel()->qualifyColumn('LoaiThongBao'));
+        $timestampColumn = $grammar->wrap($query->getModel()->qualifyColumn('ThoiGianGui'));
+        $typePlaceholders = implode(', ', array_fill(0, count(self::UTC_NOTIFICATION_TYPES), '?'));
+        $bindings = self::UTC_NOTIFICATION_TYPES;
+        $driver = $query->getQuery()->getConnection()->getDriverName();
+
+        if ($driver === 'pgsql') {
+            $timestampExpression = "({$timestampColumn} AT TIME ZONE 'UTC') AT TIME ZONE ?";
+            $bindings[] = config('app.timezone');
+        } elseif ($driver === 'sqlite') {
+            $timestampExpression = "datetime({$timestampColumn}, ?)";
+            $bindings[] = Carbon::now(config('app.timezone'))->format('P');
+        } elseif (in_array($driver, ['mysql', 'mariadb'], true)) {
+            $timestampExpression = "CONVERT_TZ({$timestampColumn}, '+00:00', ?)";
+            $bindings[] = Carbon::now(config('app.timezone'))->format('P');
+        } elseif ($driver === 'sqlsrv') {
+            $timestampExpression = "DATEADD(MINUTE, ?, {$timestampColumn})";
+            $bindings[] = Carbon::now(config('app.timezone'))->utcOffset();
+        } else {
+            throw new LogicException("Notification ordering does not support the [{$driver}] database driver.");
+        }
+
+        return $query->orderByRaw(
+            "CASE WHEN {$typeColumn} IN ({$typePlaceholders}) THEN {$timestampExpression} ELSE {$timestampColumn} END DESC",
+            $bindings,
+        )->orderByDesc('ThongBaoID');
     }
 
     public function getBodyAttribute(): ?string

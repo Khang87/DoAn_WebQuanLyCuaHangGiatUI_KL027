@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Carbon;
 
 class KhachHang extends Model
 {
@@ -23,6 +24,15 @@ class KhachHang extends Model
     protected $casts = [
         'NgayTao' => 'datetime',
     ];
+
+    public function getNgayTaoAttribute(?string $value): ?Carbon
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        return Carbon::parse($value, 'UTC')->setTimezone(config('app.timezone'));
+    }
 
     public function donHangs()
     {

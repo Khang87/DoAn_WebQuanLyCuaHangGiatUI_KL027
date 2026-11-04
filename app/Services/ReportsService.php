@@ -11,6 +11,7 @@ use App\Support\OrderStatusRollup;
 use Carbon\Carbon;
 use Carbon\CarbonPeriod;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection as BaseCollection;
 use Illuminate\Support\Facades\DB;
 
@@ -83,7 +84,7 @@ class ReportsService
         };
 
         return [
-            // Supabase timestamps are WITHOUT TIME ZONE and contain UTC wall time.
+            // UTC-created records use naive UTC columns; local writers are filtered separately.
             'from' => $localDates['from']->copy()->utc(),
             'to' => $localDates['to']->copy()->utc(),
             'local_from' => $localDates['from'],
@@ -104,10 +105,8 @@ class ReportsService
         $base = DonHang::query();
         $paidPayments = $this->collectedRevenueService->query();
 
-        if ($from !== null && $to !== null) {
-            $base->whereBetween('NgayTao', [$from, $to]);
-            $paidPayments->whereBetween('ThoiGian', [$from, $to]);
-        }
+        $this->ordersInRange($base, $dates);
+        $this->paymentsInRange($paidPayments, $dates);
 
         $totalRevenue = (float) (clone $paidPayments)->sum('SoTien');
 
@@ -156,9 +155,7 @@ class ReportsService
 
         $query = $this->collectedRevenueService->query();
 
-        if ($from !== null && $to !== null) {
-            $query->whereBetween('ThoiGian', [$from, $to]);
-        }
+        $this->paymentsInRange($query, $dates);
 
         $localTimestamp = $this->localTimestampExpression('"ThoiGian"');
 
@@ -191,7 +188,7 @@ class ReportsService
             foreach (CarbonPeriod::create($localFrom, $localTo) as $date) {
                 $item = $dataByDate->get($date->format('Y-m-d'));
 
-                $labels[] = $date->format('d/m');
+                $labels[] = $date->format('d/m/Y');
                 $revenue[] = $item ? (float) $item->revenue : 0;
                 $orders[] = $item ? (int) $item->order_count : 0;
             }
@@ -201,7 +198,7 @@ class ReportsService
             while ($current->lte($localTo)) {
                 $item = $dataByWeek->get((int) $current->format('oW'));
 
-                $labels[] = $current->format('d/m').'-'.$current->copy()->endOfWeek()->format('d/m');
+                $labels[] = $current->format('d/m/Y').'-'.$current->copy()->endOfWeek()->format('d/m/Y');
                 $revenue[] = $item ? (float) $item->revenue : 0;
                 $orders[] = $item ? (int) $item->order_count : 0;
 
@@ -242,7 +239,7 @@ class ReportsService
             ->orderByDesc('revenue')
             ->when($from !== null && $to !== null, fn ($query) => $query->whereIn(
                 'DonHang.DonHangID',
-                $this->collectedRevenueService->query()->whereBetween('ThoiGian', [$from, $to])->select('DonHangID'),
+                $this->paymentsInRange($this->collectedRevenueService->query(), $dates)->select('DonHangID'),
             ))
             ->get();
 
@@ -283,7 +280,7 @@ class ReportsService
             ->limit($limit)
             ->when($from !== null && $to !== null, fn ($query) => $query->whereIn(
                 'DonHang.DonHangID',
-                $this->collectedRevenueService->query()->whereBetween('ThoiGian', [$from, $to])->select('DonHangID'),
+                $this->paymentsInRange($this->collectedRevenueService->query(), $dates)->select('DonHangID'),
             ))
             ->get()
             // Trả về object thuần với đúng key view dùng: name, unit, total_qty,
@@ -310,7 +307,7 @@ class ReportsService
             ->groupBy('method');
 
         if ($from !== null && $to !== null) {
-            $query->whereBetween('ThanhToan.ThoiGian', [$from, $to]);
+            $this->paymentsInRange($query, $dates);
         }
 
         return $query
@@ -335,6 +332,7 @@ class ReportsService
             ->select([
                 'DonHangID',
                 'MaDonHang',
+                'BookingID',
                 'KhachHangID',
                 'TrangThai',
                 'ThanhTien',
@@ -343,20 +341,19 @@ class ReportsService
             ->withExists([
                 'hoaDons as has_paid_invoice' => fn ($invoiceQuery) => $invoiceQuery
                     ->where('TrangThai', InvoiceStatus::Paid->value),
-            ])
+            ]);
+
+        $this->ordersInRange($query, $dates);
+
+        return $query
             ->with([
                 'khachHang:KhachHangID,HoTen,AvatarUrl',
                 'khachHang.taiKhoan:TaiKhoanID,KhachHangID,AvatarURL',
                 'chiTietDonHangs:ChiTietDonHangID,DonHangID,DichVuID',
                 'chiTietDonHangs.dichVu:DichVuID,TenDichVu',
                 'statusChanges',
-            ]);
-
-        if ($from !== null && $to !== null) {
-            $query->whereBetween('NgayTao', [$from, $to]);
-        }
-
-        return $query->orderByDesc('NgayTao')
+            ])
+            ->orderByDesc('NgayTao')
             ->paginate(10)
             ->withQueryString();
     }
@@ -370,10 +367,11 @@ class ReportsService
     {
         $dates = $this->getDateRange($filters);
 
-        return DonHang::query()
+        $query = DonHang::query()
             ->select([
                 'DonHangID',
                 'MaDonHang',
+                'BookingID',
                 'KhachHangID',
                 'TrangThai',
                 'ThanhTien',
@@ -383,20 +381,65 @@ class ReportsService
                 'khachHang:KhachHangID,HoTen',
                 'chiTietDonHangs:ChiTietDonHangID,DonHangID,DichVuID',
                 'chiTietDonHangs.dichVu:DichVuID,TenDichVu',
-            ])
-            ->when(
-                $dates['from'] !== null && $dates['to'] !== null,
-                fn ($query) => $query->whereBetween('NgayTao', [$dates['from'], $dates['to']]),
-            )
-            ->orderByDesc('NgayTao')
-            ->get();
+            ]);
+
+        $this->ordersInRange($query, $dates);
+
+        return $query->orderByDesc('NgayTao')->get();
+    }
+
+    /**
+     * Order timestamps from booking conversion use UTC database defaults; manually
+     * entered web orders use the application's Vietnam-local clock.
+     *
+     * @param  array{from: Carbon|null, to: Carbon|null, local_from: Carbon|null, local_to: Carbon|null, range: string}  $dates
+     */
+    private function ordersInRange(Builder $query, array $dates): Builder
+    {
+        if ($dates['from'] === null || $dates['to'] === null) {
+            return $query;
+        }
+
+        return $query->where(function (Builder $range) use ($dates): void {
+            $range->where(function (Builder $utc) use ($dates): void {
+                $utc->whereNotNull('DonHang.BookingID')
+                    ->whereBetween('DonHang.NgayTao', [$dates['from'], $dates['to']]);
+            })->orWhere(function (Builder $local) use ($dates): void {
+                $local->whereNull('DonHang.BookingID')
+                    ->whereBetween('DonHang.NgayTao', [$dates['local_from'], $dates['local_to']]);
+            });
+        });
+    }
+
+    /**
+     * RPC payments use UTC defaults; web-entered payments store Vietnam-local time.
+     *
+     * @param  array{from: Carbon|null, to: Carbon|null, local_from: Carbon|null, local_to: Carbon|null, range: string}  $dates
+     */
+    private function paymentsInRange(Builder $query, array $dates): Builder
+    {
+        if ($dates['from'] === null || $dates['to'] === null) {
+            return $query;
+        }
+
+        return $query->where(function (Builder $range) use ($dates): void {
+            $range->where(function (Builder $utc) use ($dates): void {
+                $utc->where('ThanhToan.MaGiaoDich', 'like', 'RPC-%')
+                    ->whereBetween('ThanhToan.ThoiGian', [$dates['from'], $dates['to']]);
+            })->orWhere(function (Builder $local) use ($dates): void {
+                $local->where(function (Builder $source): void {
+                    $source->whereNull('ThanhToan.MaGiaoDich')
+                        ->orWhere('ThanhToan.MaGiaoDich', 'not like', 'RPC-%');
+                })->whereBetween('ThanhToan.ThoiGian', [$dates['local_from'], $dates['local_to']]);
+            });
+        });
     }
 
     private function localTimestampExpression(string $column): string
     {
         return DB::connection()->getDriverName() === 'sqlite'
-            ? "datetime({$column}, '+7 hours')"
-            : "({$column} + INTERVAL '7 hours')";
+            ? "CASE WHEN \"MaGiaoDich\" LIKE 'RPC-%' THEN datetime({$column}, '+7 hours') ELSE {$column} END"
+            : "CASE WHEN \"MaGiaoDich\" LIKE 'RPC-%' THEN ({$column} + INTERVAL '7 hours') ELSE {$column} END";
     }
 
     private function localDateExpression(string $timestamp): string

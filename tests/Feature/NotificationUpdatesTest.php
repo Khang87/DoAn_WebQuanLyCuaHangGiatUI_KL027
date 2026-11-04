@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\User;
+use App\Services\NotificationService;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -47,6 +48,9 @@ class NotificationUpdatesTest extends TestCase
             $table->dateTime('ThoiGianGui');
             $table->boolean('DaDoc')->default(false);
         });
+        Schema::create('DonHang', function (Blueprint $table): void {
+            $table->increments('DonHangID');
+        });
         DB::table('TaiKhoan')->insert([
             ['TaiKhoanID' => 1, 'TenDangNhap' => 'Staff'],
             ['TaiKhoanID' => 2, 'TenDangNhap' => 'Other user'],
@@ -80,7 +84,8 @@ class NotificationUpdatesTest extends TestCase
             ->assertJsonPath('notifications.0.id', $id)
             ->assertJsonPath('notifications.0.title', '<img src=x onerror=alert(1)>')
             ->assertJsonPath('notifications.0.is_read', false)
-            ->assertJsonPath('notifications.0.url', route('notifications.show', $id));
+            ->assertJsonPath('notifications.0.url', route('notifications.show', $id))
+            ->assertJsonPath('notifications.0.time', '09/10/2026 12:00');
         $this->assertEqualsCanonicalizing(['unread_count', 'notifications'], array_keys($response->json()));
         $this->assertEqualsCanonicalizing(['id', 'title', 'is_read', 'url', 'time'], array_keys($response->json('notifications.0')));
         $this->assertIsString($response->json('notifications.0.time'));
@@ -98,11 +103,60 @@ class NotificationUpdatesTest extends TestCase
             ->assertJsonPath('notifications.4.id', 4);
     }
 
+    public function test_notification_times_use_source_timezone_without_a_seven_hour_shift(): void
+    {
+        $localTime = now()->setTime(15, 16);
+        $localNotification = $this->notification([
+            'LoaiThongBao' => 'new_order',
+            'ThoiGianGui' => $localTime->toDateTimeString(),
+        ]);
+        $utcNotification = $this->notification([
+            'LoaiThongBao' => 'new_message',
+            'ThoiGianGui' => $localTime->copy()->utc()->toDateTimeString(),
+        ]);
+
+        $this->actingAs($this->staff())->getJson('/notifications/updates')
+            ->assertOk()
+            ->assertJsonFragment([
+                'id' => $localNotification,
+                'time' => $localTime->format('d/m/Y H:i'),
+            ])
+            ->assertJsonFragment([
+                'id' => $utcNotification,
+                'time' => $localTime->format('d/m/Y H:i'),
+            ]);
+    }
+
+    public function test_updates_sort_mixed_source_timezones_by_latest_local_time(): void
+    {
+        $localNotification = $this->notification([
+            'LoaiThongBao' => 'system',
+            'ThoiGianGui' => '2026-10-09 15:55:00',
+        ]);
+        $utcNotification = $this->notification([
+            'LoaiThongBao' => 'new_message',
+            'ThoiGianGui' => '2026-10-09 11:15:00',
+        ]);
+
+        $this->actingAs($this->staff())->getJson('/notifications/updates')
+            ->assertOk()
+            ->assertJsonPath('notifications.0.id', $utcNotification)
+            ->assertJsonPath('notifications.0.time', '09/10/2026 18:15')
+            ->assertJsonPath('notifications.1.id', $localNotification)
+            ->assertJsonPath('notifications.1.time', '09/10/2026 15:55');
+
+        $notifications = app(NotificationService::class)->getAll(['user_id' => 1])->getCollection();
+        $this->assertSame(
+            [$utcNotification, $localNotification],
+            $notifications->pluck('ThongBaoID')->all(),
+        );
+    }
+
     public function test_expired_otp_is_excluded_from_both_dropdown_and_unread_count(): void
     {
-        $this->notification(['LoaiThongBao' => 'internal_password_otp', 'ThoiGianGui' => now()->subMinutes(11)->toDateTimeString()]);
-        $this->notification(['LoaiThongBao' => 'internal_password_otp', 'ThoiGianGui' => now()->subMinutes(10)->toDateTimeString()]);
-        $active = $this->notification(['LoaiThongBao' => 'internal_password_otp', 'ThoiGianGui' => now()->subMinutes(9)->toDateTimeString()]);
+        $this->notification(['LoaiThongBao' => 'internal_password_otp', 'ThoiGianGui' => now()->subMinutes(4)->toDateTimeString()]);
+        $this->notification(['LoaiThongBao' => 'internal_password_otp', 'ThoiGianGui' => now()->subMinutes(3)->toDateTimeString()]);
+        $active = $this->notification(['LoaiThongBao' => 'internal_password_otp', 'ThoiGianGui' => now()->subMinutes(2)->toDateTimeString()]);
         $this->notification(['ThoiGianGui' => now()->subDay()->toDateTimeString()]);
         $this->actingAs($this->staff())->getJson('/notifications/updates')
             ->assertOk()->assertJsonPath('unread_count', 2)->assertJsonCount(2, 'notifications')

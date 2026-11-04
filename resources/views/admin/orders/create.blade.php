@@ -4,6 +4,20 @@
 @section('title', 'Tạo đơn hàng mới - Sky Laundry')
 @section('page-title', 'Tạo đơn hàng mới')
 
+@push('styles')
+    <style>
+        #HinhThucNhanDo.receive-method-locked,
+        #HinhThucNhanDo.receive-method-locked:disabled {
+            padding-right: 0.75rem !important;
+            color: #6c757d !important;
+            background-color: #e9ecef !important;
+            background-image: none !important;
+            cursor: not-allowed;
+            opacity: 1;
+        }
+    </style>
+@endpush
+
 @section('content')
 <div class="card">
     <div class="card-body">
@@ -140,6 +154,23 @@
                     @error('TrangThai')<div class="invalid-feedback">{{ $message }}</div>@enderror
                 </div>
 
+                <div class="col-md-6">
+                    <label class="form-label" for="PhuongThucThanhToan">
+                        Hình thức thanh toán <span class="text-danger ms-1">*</span>
+                    </label>
+                    <select
+                        class="form-select @error('PhuongThucThanhToan') is-invalid @enderror"
+                        id="PhuongThucThanhToan"
+                        name="PhuongThucThanhToan"
+                        required
+                    >
+                        <option value="Tiền mặt" @selected(old('PhuongThucThanhToan', 'Tiền mặt') === 'Tiền mặt')>Tiền mặt</option>
+                        <option value="Chuyển khoản / QR" @selected(old('PhuongThucThanhToan') === 'Chuyển khoản / QR')>Chuyển khoản / QR</option>
+                    </select>
+                    <div class="form-text">Lựa chọn sẽ được ghi vào ghi chú đơn hàng; chưa ghi nhận thanh toán.</div>
+                    @error('PhuongThucThanhToan')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                </div>
+
                 {{-- ======== Thông tin nhận và giao đồ ======== --}}
                 <div class="col-12">
                     <div class="border rounded-3 p-3">
@@ -152,14 +183,17 @@
                                 </label>
 
                                 <select
-                                    class="form-select"
+                                    class="form-select receive-method-locked"
                                     id="HinhThucNhanDo"
-                                    name="HinhThucNhanDo"
+                                    disabled
                                     required
+                                    aria-disabled="true"
                                 >
                                     <option
                                         value="Tại cửa hàng"
                                         @selected(old('HinhThucNhanDo', 'Tại cửa hàng') === 'Tại cửa hàng')
+                                        disabled
+                                        class="text-muted"
                                     >
                                         Nhân viên nhận đồ tại tiệm
                                     </option>
@@ -170,6 +204,7 @@
                                         Nhân viên đến nhà nhận đồ
                                     </option>
                                 </select>
+                                <input type="hidden" name="HinhThucNhanDo" value="Tại cửa hàng">
 
                                 @error('HinhThucNhanDo')
                                     <div class="text-danger small mt-1">{{ $message }}</div>
@@ -630,7 +665,9 @@
                         id="notes"
                         name="GhiChu"
                         rows="3"
+                        maxlength="450"
                     >{{ old('GhiChu') }}</textarea>
+                    <div class="form-text">Tối đa 450 ký tự để dành chỗ lưu hình thức thanh toán.</div>
                 </div>
             </div>
 

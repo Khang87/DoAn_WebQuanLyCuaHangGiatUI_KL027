@@ -319,7 +319,7 @@ class TaiKhoanController extends Controller
             }
             $otpService->send($account);
 
-            return redirect()->route('accounts.show', $account)->with('success', 'Đã gửi OTP qua email và thông báo riêng của tài khoản. Mã có hiệu lực trong 10 phút.');
+            return redirect()->route('accounts.show', $account)->with('success', 'Đã gửi OTP qua email và thông báo riêng của tài khoản. Mã có hiệu lực trong 3 phút.');
         } catch (PasswordResetOtpException $e) {
             return redirect()->route('accounts.show', $account)->with('error', $e->getMessage());
         } catch (Throwable $e) {

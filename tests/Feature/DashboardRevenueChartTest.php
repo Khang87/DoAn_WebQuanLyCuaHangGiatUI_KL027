@@ -29,6 +29,7 @@ class DashboardRevenueChartTest extends TestCase
 
         Schema::create('DonHang', function (Blueprint $table): void {
             $table->increments('DonHangID');
+            $table->unsignedInteger('BookingID')->nullable();
             $table->string('TrangThai');
             $table->decimal('ThanhTien', 12, 2);
             $table->dateTime('NgayTao');
@@ -59,6 +60,7 @@ class DashboardRevenueChartTest extends TestCase
             $table->unsignedInteger('DonHangID');
             $table->decimal('SoTien', 12, 2);
             $table->string('PhuongThuc')->nullable();
+            $table->string('MaGiaoDich')->nullable();
             $table->dateTime('ThoiGian');
             $table->string('TrangThai');
         });
@@ -118,9 +120,9 @@ class DashboardRevenueChartTest extends TestCase
             ['HoaDonID' => 4, 'DonHangID' => 4, 'TrangThai' => InvoiceStatus::Paid->value, 'ThanhTien' => 300, 'NgayLap' => '2026-10-02 15:00:00'],
         ]);
         DB::table('ThanhToan')->insert([
-            ['ThanhToanID' => 1, 'DonHangID' => 1, 'TrangThai' => PaymentStatus::Paid->value, 'SoTien' => 500, 'ThoiGian' => '2026-10-04 09:15:00'],
-            ['ThanhToanID' => 2, 'DonHangID' => 2, 'TrangThai' => PaymentStatus::Paid->value, 'SoTien' => 700, 'ThoiGian' => '2026-10-04 12:30:00'],
-            ['ThanhToanID' => 3, 'DonHangID' => 4, 'TrangThai' => PaymentStatus::Paid->value, 'SoTien' => 300, 'ThoiGian' => '2026-10-02 15:00:00'],
+            ['ThanhToanID' => 1, 'DonHangID' => 1, 'TrangThai' => PaymentStatus::Paid->value, 'SoTien' => 500, 'MaGiaoDich' => 'RPC-fixture-1', 'ThoiGian' => '2026-10-04 09:15:00'],
+            ['ThanhToanID' => 2, 'DonHangID' => 2, 'TrangThai' => PaymentStatus::Paid->value, 'SoTien' => 700, 'MaGiaoDich' => 'RPC-fixture-2', 'ThoiGian' => '2026-10-04 12:30:00'],
+            ['ThanhToanID' => 3, 'DonHangID' => 4, 'TrangThai' => PaymentStatus::Paid->value, 'SoTien' => 300, 'MaGiaoDich' => 'RPC-fixture-3', 'ThoiGian' => '2026-10-02 15:00:00'],
         ]);
 
         config(['app.timezone' => 'Asia/Ho_Chi_Minh']);
@@ -150,8 +152,8 @@ class DashboardRevenueChartTest extends TestCase
         $hourly[19] = 700;
         $periods = [
             'today' => [array_map(fn (int $hour): string => sprintf('%02d:00', $hour), range(0, 23)), $hourly],
-            'this_week' => [['28/09', '29/09', '30/09', '01/10', '02/10', '03/10', '04/10'], [0, 0, 0, 0, 300, 0, 1200]],
-            'this_month' => [['01/10', '02/10', '03/10', '04/10'], [0, 300, 0, 1200]],
+            'this_week' => [['28/09/2026', '29/09/2026', '30/09/2026', '01/10/2026', '02/10/2026', '03/10/2026', '04/10/2026'], [0, 0, 0, 0, 300, 0, 1200]],
+            'this_month' => [['01/10/2026', '02/10/2026', '03/10/2026', '04/10/2026'], [0, 300, 0, 1200]],
             'all_time' => [['10/2026'], [1500]],
         ];
 
@@ -187,7 +189,7 @@ class DashboardRevenueChartTest extends TestCase
             $this->assertSame('this_week', $chart['filter']);
             $this->assertSame('this_week', $dashboard['dashboardFilter']);
             $this->assertEquals($chart, $dashboard['revenueChartData']);
-            $this->assertSame(['28/09', '29/09', '30/09', '01/10', '02/10', '03/10', '04/10'], $chart['labels']);
+            $this->assertSame(['28/09/2026', '29/09/2026', '30/09/2026', '01/10/2026', '02/10/2026', '03/10/2026', '04/10/2026'], $chart['labels']);
             $this->assertEquals([0, 0, 0, 0, 300, 0, 1200], $chart['data']);
             $this->assertSame(1500.0, $dashboard['totalRevenue']);
         }
@@ -331,10 +333,10 @@ class DashboardRevenueChartTest extends TestCase
     public function test_this_week_starts_on_monday_across_month_and_year_boundaries_not_a_rolling_week(): void
     {
         $periods = [
-            '2026-06-01 12:00:00' => ['01/06'],
-            '2026-10-01 12:00:00' => ['28/09', '29/09', '30/09', '01/10'],
-            '2027-01-01 12:00:00' => ['28/12', '29/12', '30/12', '31/12', '01/01'],
-            '2027-01-04 12:00:00' => ['04/01'],
+            '2026-06-01 12:00:00' => ['01/06/2026'],
+            '2026-10-01 12:00:00' => ['28/09/2026', '29/09/2026', '30/09/2026', '01/10/2026'],
+            '2027-01-01 12:00:00' => ['28/12/2026', '29/12/2026', '30/12/2026', '31/12/2026', '01/01/2027'],
+            '2027-01-04 12:00:00' => ['04/01/2027'],
         ];
 
         foreach ($periods as $now => $labels) {
@@ -639,6 +641,7 @@ class DashboardRevenueChartTest extends TestCase
 
         DB::table('DonHang')->insert([
             'DonHangID' => $id,
+            'BookingID' => $id,
             'TrangThai' => $status->value,
             'ThanhTien' => $amount,
             'NgayTao' => $utcTimestamp,
@@ -655,6 +658,7 @@ class DashboardRevenueChartTest extends TestCase
         DB::table('ThanhToan')->insert([
             'DonHangID' => $id,
             'SoTien' => $amount,
+            'MaGiaoDich' => 'RPC-fixture-'.$id,
             'ThoiGian' => $utcTimestamp,
             'TrangThai' => PaymentStatus::Paid->value,
         ]);
@@ -671,6 +675,7 @@ class DashboardRevenueChartTest extends TestCase
             'ThanhToanID' => $id,
             'DonHangID' => $orderId,
             'SoTien' => $amount,
+            'MaGiaoDich' => 'RPC-fixture-'.$id,
             'ThoiGian' => $utcTimestamp,
             'TrangThai' => $status->value,
         ]);

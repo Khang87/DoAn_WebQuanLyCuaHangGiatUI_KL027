@@ -8,7 +8,7 @@ use RuntimeException;
 
 class OtpMailer
 {
-    public function send(string $email, string $otp, int $minutes): void
+    public function send(string $email, string $otp, int $minutes, bool $isInternal = false): void
     {
         $sender = config('mail.mailers.gmail.username');
         if (! is_string($sender) || trim($sender) === '') {
@@ -17,6 +17,6 @@ class OtpMailer
 
         Mail::mailer('gmail')
             ->to($email)
-            ->send((new PasswordResetOtpMail($otp, $minutes))->from($sender)->mailer('gmail'));
+            ->send((new PasswordResetOtpMail($otp, $minutes, $isInternal))->from($sender)->mailer('gmail'));
     }
 }

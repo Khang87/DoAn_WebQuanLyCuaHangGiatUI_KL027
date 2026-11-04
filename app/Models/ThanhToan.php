@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\PaymentStatus;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Carbon;
 
 class ThanhToan extends Model
 {
@@ -26,6 +27,20 @@ class ThanhToan extends Model
         'SoTien' => 'float',
         'ThoiGian' => 'datetime',
     ];
+
+    public function getThoiGianAttribute(?string $value): ?Carbon
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        // Mobile RPC payments use the database UTC default; web payments are written in Vietnam time.
+        $storageTimezone = str_starts_with((string) ($this->attributes['MaGiaoDich'] ?? ''), 'RPC-')
+            ? 'UTC'
+            : config('app.timezone');
+
+        return Carbon::parse($value, $storageTimezone)->setTimezone(config('app.timezone'));
+    }
 
     public function donHang()
     {

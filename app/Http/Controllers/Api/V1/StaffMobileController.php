@@ -57,6 +57,7 @@ class StaffMobileController extends ApiController
     public function logout(Request $request): JsonResponse
     {
         DB::table('StaffApiToken')->where('TokenHash', $request->attributes->get('staff_api_token_hash'))->delete();
+
         return response()->json(['success' => true]);
     }
 
@@ -120,8 +121,7 @@ class StaffMobileController extends ApiController
         ]);
         $query = $this->staffNotificationsQuery();
         $unreadCount = (clone $query)->where('DaDoc', false)->count();
-        $page = $query->orderByDesc('ThoiGianGui')
-            ->orderByDesc('ThongBaoID')
+        $page = $query->orderByNewest()
             ->paginate($data['per_page'] ?? 20);
 
         return response()->json([
@@ -268,6 +268,7 @@ class StaffMobileController extends ApiController
             ->with(['khachHang', 'chiTietBookings.dichVu', 'chiTietBookings.loaiDoGiat', 'chiTietBookings.donViTinh',
                 'requestedServices.dichVu', 'requestedServices.loaiDoGiat', 'requestedServices.donViTinh', 'giaoNhanDuKiens'])
             ->latest('NgayTao')->get()->map(fn (Booking $b) => $this->bookingData($b));
+
         return response()->json(['data' => $rows]);
     }
 
@@ -290,12 +291,13 @@ class StaffMobileController extends ApiController
     {
         $employeeId = Auth::user()->NhanVienID;
         $rows = $this->assignedOrdersForEmployee($employeeId)->with([
-                'booking',
-                'booking.giaoNhanDuKiens' => fn ($delivery) => $delivery->where('NhanVienID', $employeeId)->where('LoaiGiaoNhan', 'GIAO_DO')->where('HinhThuc', 'Tại nhà'),
-                'giaoNhans' => fn ($delivery) => $delivery->where('NhanVienID', $employeeId)->where('LoaiGiaoNhan', 'GIAO_DO')->where('HinhThuc', 'Tại nhà'),
-                'khachHang', 'khuyenMai', 'chiTietDonHangs.dichVu', 'chiTietDonHangs.loaiDoGiat', 'chiTietDonHangs.donViTinh',
-            ])
+            'booking',
+            'booking.giaoNhanDuKiens' => fn ($delivery) => $delivery->where('NhanVienID', $employeeId)->where('LoaiGiaoNhan', 'GIAO_DO')->where('HinhThuc', 'Tại nhà'),
+            'giaoNhans' => fn ($delivery) => $delivery->where('NhanVienID', $employeeId)->where('LoaiGiaoNhan', 'GIAO_DO')->where('HinhThuc', 'Tại nhà'),
+            'khachHang', 'khuyenMai', 'chiTietDonHangs.dichVu', 'chiTietDonHangs.loaiDoGiat', 'chiTietDonHangs.donViTinh',
+        ])
             ->latest('NgayTao')->get();
+
         return response()->json(['data' => $rows->map(fn (DonHang $o) => [
             'DonHangID' => $o->DonHangID, 'BookingID' => $o->BookingID, 'MaDonHang' => $o->MaDonHang,
             'TrangThai' => $o->TrangThai, 'TongTien' => $o->TongTien, 'DiemSuDung' => $o->DiemSuDung,
@@ -364,12 +366,14 @@ class StaffMobileController extends ApiController
             } else {
                 $this->deliveries->advanceBookingDelivery($bookingDelivery);
             }
+
             return response()->json(['data' => [
                 'id' => $order->DonHangID,
                 'status' => DonHang::query()->whereKey($order->DonHangID)->value('TrangThai'),
             ]]);
         }
         $order = $this->orders->updateStatus($order, $data['status'], reason: $data['reason'] ?? null);
+
         return response()->json(['data' => ['id' => $order->DonHangID, 'status' => $order->TrangThai]]);
     }
 
@@ -396,6 +400,7 @@ class StaffMobileController extends ApiController
             $status = DeliveryStatus::parseForLeg($bookingDelivery->TrangThai, $bookingDelivery->LoaiGiaoNhan)->value;
             $orderStatus = DonHang::query()->whereKey($id)->value('TrangThai');
         }
+
         return response()->json(['data' => [
             'delivery_status' => $status,
             'order_status' => $orderStatus,
@@ -454,6 +459,7 @@ class StaffMobileController extends ApiController
     {
         $data = $this->validatedInspection($request);
         $booking = $this->bookings->saveInspectionDraft($this->assignedBooking($id), $data);
+
         return response()->json(['data' => $this->bookingData($booking)]);
     }
 
@@ -465,6 +471,7 @@ class StaffMobileController extends ApiController
             throw ValidationException::withMessages(['customer_agreed' => 'Cần xác nhận khách đã đồng ý bằng lời trước khi tạo đơn.']);
         }
         $order = $this->bookings->submitInspection($this->assignedBooking($id), $data);
+
         return response()->json(['data' => ['order_id' => $order->DonHangID, 'order_code' => $order->MaDonHang]]);
     }
 
@@ -484,6 +491,7 @@ class StaffMobileController extends ApiController
         if (! $booking || $booking->HinhThucNhanDo !== 'Tại nhà' || ! $intake || (int) $intake->NhanVienID !== $employeeId) {
             abort(404);
         }
+
         return $booking;
     }
 
@@ -507,6 +515,7 @@ class StaffMobileController extends ApiController
         if ($includeRejectionReason) {
             $rules['rejection_reason'] = ['required', 'string', 'max:500'];
         }
+
         return $request->validate($rules);
     }
 
@@ -582,6 +591,7 @@ class StaffMobileController extends ApiController
                     ->map(fn ($x) => ['id' => $x->LoaiDoGiatID, 'name' => $x->TenLoaiDoGiat]),
             ];
         }
+
         return [
             'id' => $booking->BookingID, 'code' => $booking->MaBooking, 'status' => $booking->TrangThai,
             'receive_method' => $booking->HinhThucNhanDo, 'receive_address' => $booking->DiaChiNhan,
@@ -607,7 +617,9 @@ class StaffMobileController extends ApiController
                             ->where('used_booking.KhachHangID', $booking->KhachHangID)
                             ->where('used_booking.TrangThai', '<>', BookingStatus::Cancelled->value)
                             ->where('used_booking.BookingID', '<>', $booking->BookingID));
-                        if ($booking->KhuyenMaiID) $query->orWhere('KhuyenMaiID', $booking->KhuyenMaiID);
+                        if ($booking->KhuyenMaiID) {
+                            $query->orWhere('KhuyenMaiID', $booking->KhuyenMaiID);
+                        }
                     })
                     ->orderBy('NgayKetThuc')->get(['KhuyenMaiID', 'MaKhuyenMai', 'TenKhuyenMai', 'LoaiKhuyenMai', 'GiaTriGiam', 'NgayKetThuc', 'GiaTriDonToiThieu', 'MucGiamToiDa', 'DieuKienApDung'])
                     ->map(fn (KhuyenMai $promotion) => [
@@ -630,7 +642,7 @@ class StaffMobileController extends ApiController
         return KhuyenMai::query()->whereKey($promotionId)->where('TrangThai', 'Hoạt động')
             ->whereDate('NgayBatDau', '<=', today())->whereDate('NgayKetThuc', '>=', today())
             ->where(fn ($query) => $query->whereNull('SoLuongSuDung')->orWhere('SoLuongSuDung', '>', 0))
-            ->where(function ($query) use ($booking, $promotionId): void {
+            ->where(function ($query) use ($booking): void {
                 $query->where('KhuyenMaiID', $booking->KhuyenMaiID)
                     ->orWhereNotExists(fn ($used) => $used->selectRaw('1')->from('Booking as used_booking')
                         ->whereColumn('used_booking.KhuyenMaiID', 'KhuyenMai.KhuyenMaiID')

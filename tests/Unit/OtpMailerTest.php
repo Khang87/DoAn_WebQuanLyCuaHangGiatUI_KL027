@@ -44,11 +44,11 @@ class OtpMailerTest extends TestCase
 
     public function test_internal_reset_email_contains_the_internal_reset_link(): void
     {
-        $mail = new PasswordResetOtpMail('654321', 10);
+        $mail = new PasswordResetOtpMail('654321', 3, true);
         $html = $mail->render();
 
         $this->assertStringContainsString('654321', $html);
-        $this->assertStringContainsString('10 phút', $html);
+        $this->assertStringContainsString('3 phút', $html);
         $this->assertStringContainsString(route('internal-password.reset'), $html);
     }
 

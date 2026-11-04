@@ -11,6 +11,7 @@ class PasswordResetOtpMail extends Mailable
     public function __construct(
         public readonly string $otp,
         public readonly int $minutes,
+        public readonly bool $isInternal = false,
     ) {}
 
     public function envelope(): Envelope
@@ -20,6 +21,10 @@ class PasswordResetOtpMail extends Mailable
 
     public function content(): Content
     {
-        return new Content(view: 'emails.password-reset-otp');
+        return new Content(view: 'emails.password-reset-otp', with: [
+            'otp' => $this->otp,
+            'minutes' => $this->minutes,
+            'isInternal' => $this->isInternal,
+        ]);
     }
 }

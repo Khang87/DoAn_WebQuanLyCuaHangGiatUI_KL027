@@ -711,7 +711,8 @@ body {
    nút "Thêm" luôn là phần tử ĐẦU TIÊN ở góc trên bên trái, nằm ngay dưới
    tiêu đề trang và phía trên hàng bộ lọc / bảng dữ liệu.
    Mô tả ngắn của module nằm ngay DƯỚI nút "Thêm", canh trái (flex-basis 100%
-   đẩy xuống dòng kế tiếp trong .page-toolbar).
+   đẩy xuống dòng kế tiếp trong .page-toolbar). Toolbar thông báo là ngoại lệ:
+   mô tả nằm cùng hàng để tránh tách nút thao tác sang hàng riêng.
    ---------------------------------------------------------------------- */
 .page-toolbar {
     display: flex;
@@ -729,8 +730,70 @@ body {
     max-width: 100%;
 }
 
+.notification-page-toolbar__primary {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+    min-width: 0;
+    padding-top: 12px;
+}
+
+.notification-page-toolbar {
+    column-gap: 8px;
+    align-items: flex-start;
+}
+
+.notification-list-controls {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+}
+
+.notification-list-mark-read {
+    display: flex;
+    justify-content: flex-end;
+    align-self: flex-start;
+    margin: 58px 0 0 auto;
+}
+
+.notification-list-mark-read .notification-mark-read-form {
+    margin: 0;
+}
+
+.notification-list-search {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.notification-list-status {
+    flex: 0 0 180px;
+}
+
+.notification-mark-read-form {
+    width: 180px;
+    margin: 0;
+    text-align: right;
+}
+
+.notification-list-status select.form-select.filter-select {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: none !important;
+}
+
+@media (max-width: 767.98px) {
+    .notification-list-controls {
+        flex-wrap: wrap;
+    }
+
+    .notification-list-search {
+        flex: 1 1 100%;
+    }
+}
+
 .notification-mark-read-button {
-    width: 160px;
+    width: 180px;
     font-size: 0.75rem;
     white-space: nowrap;
 }

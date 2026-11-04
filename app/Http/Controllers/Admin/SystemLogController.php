@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\NhatKyHeThong;
 use App\Models\TaiKhoan;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\View\View;
 
 class SystemLogController extends Controller
@@ -36,12 +37,40 @@ class SystemLogController extends Controller
             $query->where('TaiKhoanID', $filters['TaiKhoanID']);
         }
 
-        if (! empty($filters['from'])) {
-            $query->whereDate('ThoiGian', '>=', $filters['from']);
-        }
+        if (! empty($filters['from']) || ! empty($filters['to'])) {
+            $timezone = config('app.timezone');
+            $localFrom = ! empty($filters['from'])
+                ? Carbon::parse($filters['from'], $timezone)->startOfDay()
+                : null;
+            $localUntil = ! empty($filters['to'])
+                ? Carbon::parse($filters['to'], $timezone)->addDay()->startOfDay()
+                : null;
+            $utcFrom = $localFrom?->copy()->utc();
+            $utcUntil = $localUntil?->copy()->utc();
 
-        if (! empty($filters['to'])) {
-            $query->whereDate('ThoiGian', '<=', $filters['to']);
+            $query->where(function ($range) use ($localFrom, $localUntil, $utcFrom, $utcUntil): void {
+                $range->where(function ($utc) use ($utcFrom, $utcUntil): void {
+                    $utc->whereIn('HanhDong', NhatKyHeThong::UTC_TRIGGER_ACTIONS)
+                        ->whereNull('TaiKhoanID');
+                    if ($utcFrom !== null) {
+                        $utc->where('ThoiGian', '>=', $utcFrom);
+                    }
+                    if ($utcUntil !== null) {
+                        $utc->where('ThoiGian', '<', $utcUntil);
+                    }
+                })->orWhere(function ($local) use ($localFrom, $localUntil): void {
+                    $local->where(function ($source): void {
+                        $source->whereNotIn('HanhDong', NhatKyHeThong::UTC_TRIGGER_ACTIONS)
+                            ->orWhereNotNull('TaiKhoanID');
+                    });
+                    if ($localFrom !== null) {
+                        $local->where('ThoiGian', '>=', $localFrom);
+                    }
+                    if ($localUntil !== null) {
+                        $local->where('ThoiGian', '<', $localUntil);
+                    }
+                });
+            });
         }
 
         $logs = $query->orderByDesc('ThoiGian')->orderByDesc('NhatKyID')->paginate(30)->withQueryString();

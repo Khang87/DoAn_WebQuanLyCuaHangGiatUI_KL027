@@ -4,12 +4,19 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 class NhatKyHeThong extends Model
 {
+    public const UTC_TRIGGER_ACTIONS = [
+        'Thay đổi trạng thái đơn hàng',
+        'Cộng điểm tích lũy đơn hàng',
+        'Hoàn điểm tích lũy đơn hàng',
+    ];
+
     protected $table = 'NhatKyHeThong';
 
     protected $primaryKey = 'NhatKyID';
@@ -39,6 +46,20 @@ class NhatKyHeThong extends Model
         'DuLieuMoi' => 'array',
         'ThoiGian' => 'datetime',
     ];
+
+    public function getThoiGianAttribute(?string $value): ?Carbon
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        // PostgreSQL triggers use UTC and leave TaiKhoanID null; application logs use the local clock.
+        $isUtcTriggerLog = $this->TaiKhoanID === null
+            && in_array($this->HanhDong, self::UTC_TRIGGER_ACTIONS, true);
+        $storageTimezone = $isUtcTriggerLog ? 'UTC' : config('app.timezone');
+
+        return Carbon::parse($value, $storageTimezone)->setTimezone(config('app.timezone'));
+    }
 
     public function taiKhoan(): BelongsTo
     {
@@ -117,7 +138,7 @@ class NhatKyHeThong extends Model
      * Gộp theo bảng nên mỗi bảng chỉ truy vấn một lần, không load theo từng dòng.
      *
      * @param  Collection<int, self>  $logs
-     * @return array<int, string>  NhatKyID => mã hiển thị
+     * @return array<int, string> NhatKyID => mã hiển thị
      */
     public static function targetCodes(Collection $logs): array
     {

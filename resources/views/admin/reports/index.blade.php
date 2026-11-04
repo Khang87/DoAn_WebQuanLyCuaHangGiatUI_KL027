@@ -48,6 +48,16 @@
         font-size: 0.8125rem;
         font-weight: 500;
     }
+    @media (min-width: 1200px) {
+        .kpi-orders-main {
+            position: relative;
+            top: 2rem;
+        }
+        .kpi-orders-status {
+            position: relative;
+            top: 1.5rem;
+        }
+    }
     /* Reports table overrides - must use !important to beat global laundry.css */
     .reports-table thead th {
         font-size: 0.6875rem !important;
@@ -202,6 +212,9 @@
     :filter="$reportFilter"
     :period-label="$periodLabel"
     :period-description="$periodDescription"
+    :custom-range="true"
+    :date-from="$dateFrom"
+    :date-to="$dateTo"
     note="Bộ lọc áp dụng cho tất cả thẻ, biểu đồ và bảng bên dưới. Doanh thu, cơ cấu giá trị dịch vụ, top dịch vụ và phương thức thanh toán theo ngày thu tiền; đơn hàng và đơn đặt lịch theo ngày tạo."
 />
 
@@ -226,7 +239,7 @@
     <div class="col-12 col-sm-6 col-xl-3">
         <div class="card kpi-card h-100 shadow-sm border-0">
             <div class="card-body p-3">
-                <div class="d-flex align-items-start">
+                <div class="kpi-orders-main d-flex align-items-start">
                     <div class="stat-icon bg-success-subtle text-success flex-shrink-0">
                         <i class="bi bi-receipt"></i>
                     </div>
@@ -235,7 +248,7 @@
                         <div class="stat-label text-muted mt-1">Tổng đơn hàng</div>
                     </div>
                 </div>
-                <div class="mt-3">
+                <div class="kpi-orders-status mt-3">
                     <small class="text-muted d-flex flex-wrap gap-1">
                         <span class="badge bg-success-subtle text-success-emphasis border border-success rounded-pill">{{ $kpi['completed_orders'] }} Hoàn thành</span>
                         <span class="badge bg-primary-subtle text-primary-emphasis border border-primary-subtle fw-semibold rounded-pill">{{ $kpi['processing_orders'] }} Đang xử lý</span>
@@ -305,7 +318,7 @@
     <div class="col-12 col-lg-5">
         <div class="card h-100 shadow-sm border-0">
             <div class="card-header">
-                <span>Cơ cấu giá trị dịch vụ (Chưa gồm phí ship &amp; giảm giá)</span>
+                <span>Giá trị dịch vụ (Chưa gồm phí ship &amp; giảm giá)</span>
             </div>
             <div class="card-body p-3">
                 <div class="chart-container" style="position: relative; height: 380px; width: 100%;">
@@ -349,7 +362,7 @@
                             <tr>
                                 <th scope="col">STT</th>
                                 <th class="fw-bold text-dark">Dịch vụ</th>
-                                <th class="fw-bold text-dark text-center" style="width: 80px;">SL bán</th>
+                                <th class="fw-bold text-dark text-center text-nowrap" style="width: 130px;">Số lượng bán</th>
                                 <th class="fw-bold text-dark text-end" style="width: 150px;">Doanh thu</th>
                             </tr>
                         </thead>
@@ -359,9 +372,8 @@
                                 <td>{{ $loop->iteration }}</td>
                                 <td>
                                     <span class="fw-semibold">{{ $service->name }}</span>
-                                    <small class="text-muted d-block">({{ $service->unit ?: 'ĐVT' }})</small>
                                 </td>
-                                <td class="text-center">{{ number_format($service->total_qty, 2, ',', '.') }}</td>
+                                <td class="text-center">{{ number_format($service->total_qty, 0, ',', '.') }}</td>
                                 <td class="text-end fw-semibold text-primary">{{ number_format($service->total_revenue, 0, ',', '.') }} VNĐ</td>
                             </tr>
                             @empty
@@ -389,7 +401,7 @@
                             <tr>
                                 <th scope="col">STT</th>
                                 <th class="fw-bold text-dark">Phương thức</th>
-                                <th class="fw-bold text-dark text-center" style="width: 80px;">GD</th>
+                                <th class="fw-bold text-dark text-center text-nowrap" style="width: 130px;">Số giao dịch</th>
                                 <th class="fw-bold text-dark text-end" style="width: 150px;">Tổng tiền</th>
                             </tr>
                         </thead>
@@ -442,7 +454,7 @@
                         </thead>
                         <tbody class="fs-7">
                             @forelse($recentOrders as $order)
-                            @php($createdAt = $order->created_at?->copy()->setTimezone('Asia/Ho_Chi_Minh'))
+                            @php($createdAt = $order->created_at)
                             <tr>
                                 <td>{{ $loop->iteration }}</td>
                                 <td class="ps-3 fw-bold text-primary">{{ $order->code }}</td>

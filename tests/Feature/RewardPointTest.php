@@ -516,12 +516,12 @@ class RewardPointTest extends TestCase
         $this->assertSame(10000.0, (float) $booking->chiTietBookings()->first()->DonGia);
     }
 
-    public function test_washing_order_cannot_jump_to_delivered_or_move_backwards(): void
+    public function test_washing_order_can_roll_back_but_cannot_skip_to_delivered_or_cancel_without_reason(): void
     {
         $customer = $this->createCustomer(1, 0);
         $order = $this->createOrder($customer, 10000, 0);
         $order->update(['TrangThai' => OrderStatus::Washing->value]);
-        foreach ([OrderStatus::Delivered, OrderStatus::Received, OrderStatus::Cancelled] as $target) {
+        foreach ([OrderStatus::Delivered, OrderStatus::Cancelled] as $target) {
             try {
                 app(OrderService::class)->updateStatus($order, $target->value);
                 $this->fail('Invalid transition should be rejected.');
@@ -530,6 +530,10 @@ class RewardPointTest extends TestCase
             }
         }
         $this->assertSame(OrderStatus::Washing->value, $order->fresh()->TrangThai);
+
+        $rolledBackOrder = app(OrderService::class)->updateStatus($order->fresh(), OrderStatus::Received->value);
+
+        $this->assertSame(OrderStatus::Received->value, $rolledBackOrder->TrangThai);
     }
 
     public function test_unpaid_delivered_order_cannot_be_manually_marked_as_settled(): void

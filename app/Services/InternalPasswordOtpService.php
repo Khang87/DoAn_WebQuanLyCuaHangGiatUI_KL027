@@ -15,6 +15,8 @@ use Throwable;
 
 class InternalPasswordOtpService
 {
+    public const OTP_LIFETIME_MINUTES = 3;
+
     private function cache(): Repository
     {
         return Cache::store(config('cache.internal_otp_store', 'redis'));
@@ -51,7 +53,7 @@ class InternalPasswordOtpService
                 if ($cache->add($candidateLookupKey, [
                     'account_id' => (int) $account->getKey(),
                     'email' => $account->Email,
-                ], 600)) {
+                ], self::OTP_LIFETIME_MINUTES * 60)) {
                     $otp = $candidate;
                     $lookupKey = $candidateLookupKey;
                     break;
@@ -68,9 +70,9 @@ class InternalPasswordOtpService
                 'email' => $account->Email,
                 'hash' => Hash::make($otp),
                 'attempts' => 0,
-                'expires_at' => now()->addMinutes(10)->timestamp,
+                'expires_at' => now()->addMinutes(self::OTP_LIFETIME_MINUTES)->timestamp,
                 'lookup_key' => $lookupKey,
-            ], 600)) {
+            ], self::OTP_LIFETIME_MINUTES * 60)) {
                 $cache->forget($lookupKey);
                 $cache->forget($key.':cooldown');
                 throw new PasswordResetOtpException('Không thể lưu mã OTP lúc này.');
@@ -82,7 +84,7 @@ class InternalPasswordOtpService
             try {
                 DB::transaction(function () use ($account, $otp): void {
                     $this->clearNotifications((int) $account->getKey());
-                    $account->notify(new InternalPasswordResetOtp($otp));
+                    $account->notify(new InternalPasswordResetOtp($otp, self::OTP_LIFETIME_MINUTES));
                 });
             } catch (Throwable $exception) {
                 $this->forgetOtp($cache, $key, [

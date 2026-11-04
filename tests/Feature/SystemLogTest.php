@@ -161,6 +161,44 @@ class SystemLogTest extends TestCase
         $this->assertStringContainsString('bg-success-subtle text-success-emphasis', $tableBody[1]);
     }
 
+    public function test_date_filter_uses_vietnam_calendar_days_for_utc_trigger_and_local_logs(): void
+    {
+        $owner = $this->createAccount('owner');
+        $this->assignRole($owner, 'Owner');
+        $utcTriggerLog = NhatKyHeThong::query()->create([
+            'TaiKhoanID' => null,
+            'HanhDong' => 'Thay đổi trạng thái đơn hàng',
+            'BangDuLieu' => 'DonHang',
+            'BanGhiID' => 24,
+            'ThoiGian' => '2026-11-03 17:30:00',
+        ]);
+        $localApplicationLog = NhatKyHeThong::query()->create([
+            'TaiKhoanID' => $owner->TaiKhoanID,
+            'HanhDong' => 'Cập nhật thông tin',
+            'BangDuLieu' => 'DonHang',
+            'BanGhiID' => 24,
+            'ThoiGian' => '2026-11-04 00:45:00',
+        ]);
+        $nextLocalDayLog = NhatKyHeThong::query()->create([
+            'TaiKhoanID' => null,
+            'HanhDong' => 'Thay đổi trạng thái đơn hàng',
+            'BangDuLieu' => 'DonHang',
+            'BanGhiID' => 24,
+            'ThoiGian' => '2026-11-04 17:30:00',
+        ]);
+
+        $this->actingAs($owner)
+            ->get(route('admin.system-logs.index', ['from' => '2026-11-04', 'to' => '2026-11-04']))
+            ->assertOk()
+            ->assertViewHas('logs', function ($logs) use ($utcTriggerLog, $localApplicationLog, $nextLocalDayLog): bool {
+                $ids = $logs->getCollection()->pluck('NhatKyID')->all();
+
+                return in_array($utcTriggerLog->NhatKyID, $ids, true)
+                    && in_array($localApplicationLog->NhatKyID, $ids, true)
+                    && ! in_array($nextLocalDayLog->NhatKyID, $ids, true);
+            });
+    }
+
     public function test_dropdown_and_account_column_show_linked_names(): void
     {
         $owner = $this->createAccount('owner');

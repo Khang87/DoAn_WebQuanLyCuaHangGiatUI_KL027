@@ -6,8 +6,8 @@ use App\Enums\OrderStatus;
 use App\Http\Controllers\Controller;
 use App\Services\ReportsService;
 use App\Support\TimePeriod;
-use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\View\View;
 use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
@@ -34,8 +34,7 @@ class ReportsController extends Controller
     {
         Gate::authorize('reports.view');
 
-        $filter = TimePeriod::normalize($request->query('filter'), TimePeriod::ALL_TIME);
-        $filters = ['range' => $filter];
+        ['filter' => $filter, 'filters' => $filters] = $this->resolvePeriodFilter($request);
 
         $kpi = $this->reportsService->getKpiMetrics($filters);
         $chartData = $this->reportsService->getRevenueChartData($filters);
@@ -72,8 +71,12 @@ class ReportsController extends Controller
             'paymentMethodLabels',
         ) + [
             'reportFilter' => $filter,
-            'periodLabel' => TimePeriod::label($filter),
-            'periodDescription' => TimePeriod::description($filter),
+            'periodLabel' => $filters['range'] === 'custom'
+                ? 'Từ '.Carbon::parse($filters['date_from'])->format('d/m/Y').' đến '.Carbon::parse($filters['date_to'])->format('d/m/Y')
+                : TimePeriod::label($filter),
+            'periodDescription' => $this->periodDescription($filter, $filters),
+            'dateFrom' => $filters['date_from'] ?? '',
+            'dateTo' => $filters['date_to'] ?? '',
         ]);
     }
 
@@ -81,8 +84,7 @@ class ReportsController extends Controller
     {
         Gate::authorize('reports.view');
 
-        $filter = TimePeriod::normalize($request->query('filter'), TimePeriod::ALL_TIME);
-        $filters = ['range' => $filter];
+        ['filter' => $filter, 'filters' => $filters] = $this->resolvePeriodFilter($request);
         $kpi = $this->reportsService->getKpiMetrics($filters);
         $spreadsheet = new Spreadsheet;
         $spreadsheet->getDefaultStyle()->getFont()->setName('Arial')->setSize(10);
@@ -94,7 +96,7 @@ class ReportsController extends Controller
         $this->setText($summary, 'A2', 'Tên báo cáo');
         $this->setText($summary, 'B2', 'BÁO CÁO & THỐNG KÊ KINH DOANH GIẶT ỦI');
         $this->setText($summary, 'A3', 'Thời gian áp dụng');
-        $this->setText($summary, 'B3', $this->exportPeriodLabel($filter));
+        $this->setText($summary, 'B3', $this->exportPeriodLabel($filter, $filters));
         $summary->getStyle('A1:A3')->getFont()->setBold(true)->getColor()->setRGB('475569');
         $summary->getStyle('A1:A3')->getFill()->setFillType('solid')->getStartColor()->setRGB('F1F5F9');
         $summary->getStyle('B1:B3')->getAlignment()->setHorizontal('left');
@@ -216,11 +218,11 @@ class ReportsController extends Controller
             $this->setText($ordersSheet, 'D'.$row, $services !== '' ? $services : '—');
             $this->setText($ordersSheet, 'E'.$row, OrderStatus::tryFrom((string) $order->TrangThai)?->label() ?? (string) $order->TrangThai);
             $ordersSheet->setCellValue('F'.$row, (float) ($order->ThanhTien ?? 0));
-            $createdAt = $order->getRawOriginal('NgayTao');
+            $createdAt = $order->NgayTao;
             if ($createdAt !== null) {
                 $ordersSheet->setCellValue(
                     'G'.$row,
-                    Date::dateTimeToExcel(Carbon::parse($createdAt, 'UTC')->setTimezone('Asia/Ho_Chi_Minh')),
+                    Date::dateTimeToExcel($createdAt),
                 );
             }
             $row++;
@@ -246,7 +248,10 @@ class ReportsController extends Controller
             }
         }
 
-        $fileName = 'Bao_Cao_'.str_replace('_', '-', $filter).'_'.now()->format('Y_m_d').'.xlsx';
+        $periodFileName = ($filters['range'] ?? null) === 'custom'
+            ? $filters['date_from'].'_den_'.$filters['date_to']
+            : str_replace('_', '-', $filter);
+        $fileName = 'Bao_Cao_'.$periodFileName.'_'.now()->format('Y_m_d').'.xlsx';
 
         return response()->streamDownload(function () use ($spreadsheet): void {
             (new Xlsx($spreadsheet))->save('php://output');
@@ -285,12 +290,57 @@ class ReportsController extends Controller
         }
     }
 
-    private function exportPeriodLabel(string $filter): string
+    /**
+     * @return array{filter: string, filters: array{range: string, date_from?: string, date_to?: string}}
+     */
+    private function resolvePeriodFilter(Request $request): array
     {
-        $dates = $this->reportsService->getDateRange(['range' => $filter]);
+        $filter = TimePeriod::normalize($request->query('filter'), TimePeriod::ALL_TIME);
+        $validated = $request->validate([
+            'date_from' => ['nullable', 'date_format:Y-m-d', 'required_with:date_to'],
+            'date_to' => ['nullable', 'date_format:Y-m-d', 'required_with:date_from', 'after_or_equal:date_from'],
+        ]);
+        $hasDateRange = $filter === TimePeriod::ALL_TIME
+            && ! empty($validated['date_from'])
+            && ! empty($validated['date_to']);
+
+        return [
+            'filter' => $filter,
+            'filters' => $hasDateRange
+                ? [
+                    'range' => 'custom',
+                    'date_from' => $validated['date_from'],
+                    'date_to' => $validated['date_to'],
+                ]
+                : ['range' => $filter],
+        ];
+    }
+
+    /**
+     * @param  array{range: string, date_from?: string, date_to?: string}  $filters
+     */
+    private function periodDescription(string $filter, array $filters): string
+    {
+        if (($filters['range'] ?? null) === 'custom') {
+            return 'Giờ Việt Nam (UTC+7)';
+        }
+
+        return TimePeriod::description($filter);
+    }
+
+    /**
+     * @param  array{range: string, date_from?: string, date_to?: string}  $filters
+     */
+    private function exportPeriodLabel(string $filter, array $filters): string
+    {
+        $dates = $this->reportsService->getDateRange($filters);
 
         if ($dates['local_from'] === null || $dates['local_to'] === null) {
             return TimePeriod::label($filter);
+        }
+
+        if (($filters['range'] ?? null) === 'custom') {
+            return 'Từ '.$dates['local_from']->format('d/m/Y').' đến '.$dates['local_to']->format('d/m/Y');
         }
 
         return TimePeriod::label($filter).' ('.$dates['local_from']->format('d/m/Y').' – '.$dates['local_to']->format('d/m/Y').')';
