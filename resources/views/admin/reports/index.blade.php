@@ -58,6 +58,7 @@
         background-color: #f8fafc !important;
         border-bottom: 2px solid #e2e8f0 !important;
         padding: 0.75rem 1rem !important;
+        white-space: nowrap;
     }
     .reports-table tbody td {
         padding: 0.625rem 1rem !important;
@@ -105,6 +106,17 @@
     .reports-table .border-warning { border-color: #f59e0b !important; }
     .reports-table .border-danger { border-color: #ef4444 !important; }
     .reports-table .border-info { border-color: #06b6d4 !important; }
+    .report-summary-table {
+        table-layout: fixed;
+    }
+    .report-summary-table th:first-child,
+    .report-summary-table td:first-child { width: 9%; }
+    .report-summary-table th:nth-child(3),
+    .report-summary-table td:nth-child(3) { width: 22%; }
+    .report-summary-table th:last-child,
+    .report-summary-table td:last-child { width: 30%; }
+    .report-summary-table th:nth-child(2),
+    .report-summary-table td:nth-child(2) { width: 39%; }
     .reports-table a:not(.badge):not(.btn) {
         color: inherit !important;
         font-weight: inherit !important;
@@ -340,17 +352,17 @@
     <div class="col-12 col-xl-6">
         <div class="card h-100 shadow-sm border-0">
             <div class="card-header">
-                <span>Top 5 dịch vụ bán chạy</span>
+                <span>Top 5 dịch vụ được đặt nhiều nhất</span>
             </div>
             <div class="card-body p-0">
                 <div class="table-responsive">
-                    <table class="table table-hover align-middle mb-0 reports-table">
+                    <table class="table table-hover align-middle mb-0 reports-table report-summary-table">
                         <thead class="table-light">
                             <tr>
                                 <th scope="col">STT</th>
                                 <th class="fw-bold text-dark">Dịch vụ</th>
-                                <th class="fw-bold text-dark text-center" style="width: 80px;">SL bán</th>
-                                <th class="fw-bold text-dark text-end" style="width: 150px;">Doanh thu</th>
+                                <th class="fw-bold text-dark text-center">Số lượt đặt</th>
+                                <th class="fw-bold text-dark text-end">Doanh thu</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -359,9 +371,8 @@
                                 <td>{{ $loop->iteration }}</td>
                                 <td>
                                     <span class="fw-semibold">{{ $service->name }}</span>
-                                    <small class="text-muted d-block">({{ $service->unit ?: 'ĐVT' }})</small>
                                 </td>
-                                <td class="text-center">{{ number_format($service->total_qty, 2, ',', '.') }}</td>
+                                <td class="text-center">{{ number_format($service->total_qty, 0, ',', '.') }}</td>
                                 <td class="text-end fw-semibold text-primary">{{ number_format($service->total_revenue, 0, ',', '.') }} VNĐ</td>
                             </tr>
                             @empty
@@ -384,13 +395,13 @@
             </div>
             <div class="card-body p-0">
                 <div class="table-responsive">
-                    <table class="table table-hover align-middle mb-0 reports-table">
+                    <table class="table table-hover align-middle mb-0 reports-table report-summary-table">
                         <thead class="table-light">
                             <tr>
                                 <th scope="col">STT</th>
                                 <th class="fw-bold text-dark">Phương thức</th>
-                                <th class="fw-bold text-dark text-center" style="width: 80px;">GD</th>
-                                <th class="fw-bold text-dark text-end" style="width: 150px;">Tổng tiền</th>
+                                <th class="fw-bold text-dark text-center">Số giao dịch</th>
+                                <th class="fw-bold text-dark text-end">Tổng tiền</th>
                             </tr>
                         </thead>
                         <tbody>
