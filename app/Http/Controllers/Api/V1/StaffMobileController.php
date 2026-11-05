@@ -305,6 +305,10 @@ class StaffMobileController extends ApiController
             'ThanhTien' => $o->ThanhTien, 'NgayTao' => $o->NgayTao?->toIso8601String(),
             'KhuyenMai' => $o->khuyenMai ? ['MaKhuyenMai' => $o->khuyenMai->MaKhuyenMai] : null,
             'KhachHang' => $o->khachHang ? ['HoTen' => $o->khachHang->HoTen, 'SoDienThoai' => $o->khachHang->SoDienThoai] : null,
+            'PhuongThucThanhToan' => $o->booking?->PhuongThucThanhToan
+                ?? (preg_match('/Hình thức thanh toán:\s*([^|]+)/u', (string) $o->GhiChu, $matches)
+                    ? trim($matches[1])
+                    : null),
             'CanConfirmDelivery' => $o->giaoNhans->isNotEmpty() || $o->booking?->giaoNhanDuKiens->isNotEmpty(),
             'GiaoNhan' => $o->giaoNhans->map(fn (GiaoNhan $leg) => [
                 'LoaiGiaoNhan' => $leg->LoaiGiaoNhan,
