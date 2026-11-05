@@ -28,7 +28,6 @@ test('booking prices are requested only after inspection fields are initialized'
             pricingOptions: '[]',
             serviceOptions: '[]',
             garmentOptions: '[]',
-            minimumWeight: '3',
         },
         querySelector: element,
     };

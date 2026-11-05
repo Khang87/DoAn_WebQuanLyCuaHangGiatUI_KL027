@@ -7,7 +7,7 @@ use Tests\TestCase;
 
 class TinhTienGiatUiServiceTest extends TestCase
 {
-    public function test_kg_items_use_minimum_weight_without_multiplying_quantity(): void
+    public function test_kg_items_use_actual_weight_without_multiplying_quantity(): void
     {
         $service = new TinhTienGiatUiService;
 
@@ -18,10 +18,10 @@ class TinhTienGiatUiServiceTest extends TestCase
             'TenDonViTinh' => 'kg',
         ]);
 
-        $this->assertSame(30000.0, $amount);
+        $this->assertSame(20000.0, $amount);
     }
 
-    public function test_kg_units_are_matched_case_insensitively_and_use_actual_weight_above_minimum(): void
+    public function test_kg_units_are_matched_case_insensitively_and_use_actual_weight(): void
     {
         $service = new TinhTienGiatUiService;
 
@@ -62,7 +62,7 @@ class TinhTienGiatUiServiceTest extends TestCase
         $this->assertSame(18750.0, $amount);
     }
 
-    public function test_explicit_minimum_weight_overrides_the_configured_default(): void
+    public function test_kg_calculation_uses_actual_weight_even_if_legacy_minimum_is_passed(): void
     {
         $service = new TinhTienGiatUiService;
 
@@ -73,7 +73,7 @@ class TinhTienGiatUiServiceTest extends TestCase
             'MucToiThieu' => 5,
         ]);
 
-        $this->assertSame(5003.0, $amount);
+        $this->assertSame(4002.0, $amount);
     }
 
     public function test_invoice_total_sums_the_rounded_line_amounts(): void
@@ -85,6 +85,6 @@ class TinhTienGiatUiServiceTest extends TestCase
             ['SoLuong' => 2, 'DonGia' => 12500, 'TenDonViTinh' => 'Cái'],
         ]);
 
-        $this->assertSame(28000.0, $total);
+        $this->assertSame(26000.0, $total);
     }
 }

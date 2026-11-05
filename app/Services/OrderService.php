@@ -419,7 +419,7 @@ class OrderService
      * Tạo các dòng mặt hàng từ dữ liệu form, chốt Đơn giá lịch sử và tính tạm tính.
      *
      * Đơn giá lấy từ BangGia theo bộ ba DichVuID + LoaiDoGiatID + DonViTinhID:
-     *   - Đơn vị "kg"  → Tạm tính = max(Khối lượng, mức tối thiểu) × Đơn giá
+     *   - Đơn vị "kg"  → Tạm tính = Khối lượng × Đơn giá
      *   - Đơn vị khác  → Tạm tính = Số lượng × Đơn giá
      *
      * @return array{0: array<int, array<string, mixed>>, 1: float}
@@ -512,13 +512,11 @@ class OrderService
                 ]);
             }
 
-            $minimumWeight = (float) config('giatui.khoi_luong_toi_thieu', 3.0);
             $calculationItem = [
                 'SoLuong' => $quantity ?? 0,
                 'KhoiLuong' => $weight ?? 0,
                 'DonGia' => $price,
                 'TenDonViTinh' => $unit,
-                'MucToiThieu' => $minimumWeight,
             ];
             $lineSubtotal = $this->tinhTienGiatUiService->tinhThanhTienChiTiet($calculationItem);
             $calculationItems[] = $calculationItem;

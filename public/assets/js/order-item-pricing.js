@@ -1,6 +1,6 @@
 /* Shared create/edit item controls. The server remains authoritative on save. */
 (function (root) {
-    root.OrderItemPricing = function ({ prices, garments, minimumWeight }) {
+    root.OrderItemPricing = function ({ prices, garments }) {
         function eligiblePrices(row) {
             const service = row.querySelector('.item-service').value;
             const garment = row.querySelector('.item-garment').value;
@@ -67,7 +67,7 @@
 
         function calculateAmount(price, isKg, quantity, weight) {
             return Math.round(
-                (Number(price) || 0) * (isKg ? Math.max(weight, minimumWeight) : quantity) * 100,
+                (Number(price) || 0) * (isKg ? weight : quantity) * 100,
             ) / 100;
         }
 

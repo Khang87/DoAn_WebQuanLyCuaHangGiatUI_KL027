@@ -544,7 +544,6 @@
                     data-pricing-options="{{ $pricingUnitOptions->toJson(JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) }}"
                     data-service-options="{{ $serviceOptions->toJson(JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) }}"
                     data-garment-options="{{ $garmentOptions->toJson(JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) }}"
-                    data-minimum-weight="{{ config('giatui.khoi_luong_toi_thieu', 3.0) }}"
                     data-available-points="{{ $availablePoints }}"
                 >
                     <div class="card-body">

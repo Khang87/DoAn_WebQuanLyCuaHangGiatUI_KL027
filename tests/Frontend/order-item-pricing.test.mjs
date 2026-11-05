@@ -24,7 +24,7 @@ test('unit selection preserves tuples and updates price, quantity, weight and to
         const price = row.querySelector('.item-price');
         const quantity = row.querySelector('.item-quantity');
         const weight = row.querySelector('.item-weight');
-        const controls = OrderItemPricing({minimumWeight: 3, garments: {1: 'Áo'}, prices: [
+        const controls = OrderItemPricing({garments: {1: 'Áo'}, prices: [
             {service_id: 1, garment_id: 1, unit_id: 1, unit: 'Cái', price: 15000},
             {service_id: 1, garment_id: 1, unit_id: 2, unit: 'KG', price: 40000},
             {service_id: 2, garment_id: 1, unit_id: 3, unit: 'Đôi', price: 9000}
@@ -39,10 +39,10 @@ test('unit selection preserves tuples and updates price, quantity, weight and to
         price.value = '1';
         check(controls.updateRow(row) === 30000, 'tampered price cannot alter preview');
         unit.value = '2'; weight.value = '1.5';
-        check(controls.updateRow(row) === 120000, 'KG minimum is charged');
+        check(controls.updateRow(row) === 60000, 'KG uses actual weight below 3kg');
         check(unit.value === '2' && quantity.disabled && !weight.disabled, 'unit survives repeated updates and changes enabled fields');
         weight.value = '4';
-        check(controls.updateRow(row) === 160000, 'KG above minimum is charged');
+        check(controls.updateRow(row) === 160000, 'KG uses actual weight above 3kg');
         unit.value = '1';
         controls.updateRow(row); quantity.value = '3';
         check(controls.updateRow(row) === 45000 && weight.disabled && weight.value === '0', 'switch back to quantity');

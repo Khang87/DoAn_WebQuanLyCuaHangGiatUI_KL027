@@ -16,7 +16,6 @@ if (panel) {
     const pricingOptions = JSON.parse(panel.dataset.pricingOptions);
     const services = JSON.parse(panel.dataset.serviceOptions);
     const garments = JSON.parse(panel.dataset.garmentOptions);
-    const minimumWeight = Number(panel.dataset.minimumWeight);
     const itemPricing = window.OrderItemPricing({
         prices: pricingOptions.map(option => ({
             service_id: option.serviceId,
@@ -26,7 +25,6 @@ if (panel) {
             price: option.price,
         })),
         garments: Object.fromEntries(garments.map(garment => [garment.id, garment.name])),
-        minimumWeight,
     });
     const money = value => new Intl.NumberFormat('vi-VN').format(value) + ' VNĐ';
     let estimateData;

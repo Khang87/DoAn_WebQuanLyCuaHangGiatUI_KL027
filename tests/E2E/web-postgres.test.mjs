@@ -78,7 +78,7 @@ test('browser → HTTP → PostgreSQL business flows with real session, CSRF and
             assert.deepEqual(result, {status:200, path:`/orders/${saved.orders[0].DonHangID}`});
             assert.deepEqual(state('booking', cases.replay), saved, 'No duplicate money, detail, legs or audit');
         });
-        await t.test('E2E-06: actual pages preserve both units, minimum kg and readonly prices', async () => {
+        await t.test('E2E-06: actual pages preserve both units, actual kg pricing and readonly prices', async () => {
             await b.navigate('/orders/create');
             const preview = await b.evaluate(`(() => {
                 const row=document.querySelector('#itemsTable tbody tr');
@@ -91,14 +91,14 @@ test('browser → HTTP → PostgreSQL business flows with real session, CSRF and
                 set('.item-unit-value','1');set('.item-weight','1.5','input');
                 return {units,piece,restored,kg:[Number(price.value),Number(row.querySelector('.item-subtotal').value),row.querySelector('.item-quantity').disabled]};
             })()`);
-            assert.deepEqual(preview, {units:['1','2'],piece:[true,10000,20000],restored:10000,kg:[2500,7500,true]});
+            assert.deepEqual(preview, {units:['1','2'],piece:[true,10000,20000],restored:10000,kg:[2500,3750,true]});
             await b.navigate(`/orders/${cases.legacy}/edit`);
             assert.equal(b.responses.filter(r => r.type === 'Document').at(-1).status, 200, 'Legacy edit page really rendered');
             assert.equal(await b.evaluate(`(()=>{const p=[...document.querySelectorAll('.item-price')];return p.length>0&&p.every(f=>f.readOnly)})()`), true);
             const {saved} = await inspect('kg', {unit:'1', measurement:'1.5'});
             assert.equal(Number(saved.details[0].DonViTinhID), 1);
             assert.equal(Number(saved.details[0].DonGia), 2500);
-            assert.equal(Number(saved.orders[0].TongTien), 7500);
+            assert.equal(Number(saved.orders[0].TongTien), 3750);
         });
         await t.test('E2E-09: display row numbers remain continuous without rewriting submitted indexes', async () => {
             const before = state('order', cases.legacy);

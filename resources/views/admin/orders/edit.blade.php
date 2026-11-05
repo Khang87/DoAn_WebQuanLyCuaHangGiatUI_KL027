@@ -29,7 +29,6 @@
                     \App\Enums\OrderStatus::Paid->value,
                 ], true),
             );
-            $minimumWeight = (float) config('giatui.khoi_luong_toi_thieu', 3.0);
             $savedPaidPayment = $order->thanhToans
                 ->sortByDesc('ThoiGian')
                 ->first(fn ($payment) => $payment->TrangThai === \App\Enums\PaymentStatus::Paid->value);
@@ -173,7 +172,7 @@
                             </tbody>
                         </table>
                     </div>
-                    <div class="form-text">Đơn giá lấy từ bảng giá hiện hành và không sửa trực tiếp. Dịch vụ có đơn vị <strong>kg</strong> sẽ tính theo khối lượng, tối thiểu {{ number_format($minimumWeight, 1) }} kg; các đơn vị khác tính theo số lượng.</div>
+                    <div class="form-text">Đơn giá lấy từ bảng giá hiện hành và không sửa trực tiếp. Dịch vụ có đơn vị <strong>kg</strong> tính theo khối lượng thực tế; các đơn vị khác tính theo số lượng.</div>
                 </div>
 
                 {{-- ======== Ưu đãi và điểm tích lũy ======== --}}
@@ -253,7 +252,6 @@
 <script src="{{ asset('assets/js/order-item-pricing.js') }}"></script>
 <script>
 (function () {
-    const minimumWeight = @json($minimumWeight);
     const prices = {!! $pricesJson !!};
     const services = @json($services->mapWithKeys(fn ($service) => [
         $service->DichVuID => ['name' => $service->TenDichVu, 'category_id' => $service->LoaiDichVuID],
@@ -281,7 +279,7 @@
     const fmt = value => new Intl.NumberFormat('vi-VN').format(Math.round(Number(value) || 0));
 
     const { syncGarmentOptions, updateRowState, updateRow } = window.OrderItemPricing({
-        prices, garments, minimumWeight,
+        prices, garments,
     });
 
     function promotionDiscountFor(subtotal) {

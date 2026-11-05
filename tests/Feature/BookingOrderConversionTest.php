@@ -2864,9 +2864,8 @@ class BookingOrderConversionTest extends TestCase
         ]);
     }
 
-    public function test_weight_booking_applies_the_configured_minimum_to_each_line_and_keeps_actual_weights(): void
+    public function test_weight_booking_prices_each_line_from_its_actual_weight(): void
     {
-        config(['giatui.khoi_luong_toi_thieu' => 3.0]);
         DB::table('DonViTinh')->insert([
             'DonViTinhID' => 1,
             'TenDonViTinh' => 'Kilogram',
@@ -2902,9 +2901,9 @@ class BookingOrderConversionTest extends TestCase
 
         $this->assertCount(2, $items);
         $this->assertSame([1.5, 4.0], $items->pluck('KhoiLuong')->map(fn ($weight): float => (float) $weight)->all());
-        $this->assertSame([30000.0, 40000.0], $items->pluck('ThanhTien')->map(fn ($amount): float => (float) $amount)->all());
+        $this->assertSame([15000.0, 40000.0], $items->pluck('ThanhTien')->map(fn ($amount): float => (float) $amount)->all());
         $this->assertNull($items[0]->SoLuong);
-        $this->assertSame(80000.0, (float) $order->ThanhTien);
+        $this->assertSame(55000.0, (float) $order->ThanhTien);
     }
 
     public function test_pending_order_cannot_skip_receiving_inspection_to_change_status(): void
@@ -3570,8 +3569,8 @@ class BookingOrderConversionTest extends TestCase
 
         $items = $order->chiTietDonHangs;
         $this->assertSame([1.24, 4.24], $items->pluck('KhoiLuong')->map(fn ($weight): float => (float) $weight)->all());
-        $this->assertSame([30000.0, 42400.0], $items->pluck('ThanhTien')->map(fn ($amount): float => (float) $amount)->all());
-        $this->assertSame(72400.0, (float) $order->ThanhTien);
+        $this->assertSame([12400.0, 42400.0], $items->pluck('ThanhTien')->map(fn ($amount): float => (float) $amount)->all());
+        $this->assertSame(54800.0, (float) $order->ThanhTien);
     }
 
     public function test_order_request_rounds_excess_weight_precision_before_validation(): void
