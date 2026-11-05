@@ -1734,8 +1734,11 @@ class BookingOrderConversionTest extends TestCase
             'NgayKetThuc' => today()->addDay()->toDateString(),
             'TrangThai' => 'Hoạt động',
         ]);
+        $booking = $this->createBooking();
+        $booking->forceFill(['KhuyenMaiID' => 3])->saveQuietly();
         $order = DonHang::query()->create([
             'MaDonHang' => 'DH0001',
+            'BookingID' => $booking->BookingID,
             'KhachHangID' => 9,
             'NhanVienID' => 1,
             'TrangThai' => OrderStatus::Pending->value,
@@ -1764,6 +1767,8 @@ class BookingOrderConversionTest extends TestCase
             ->assertSee('name="PhuongThucThanhToan"', false)
             ->assertSee('value="Tiền mặt" selected', false)
             ->assertSee('50 điểm (50 VNĐ)')
+            ->assertDontSee('data-saved-voucher-warning', false)
+            ->assertSee('"value":10,"minimum":0,"maximum":0', false)
             ->assertDontSee('name="use_points"', false)
             ->assertDontSee('name="DiemSuDung"', false);
     }

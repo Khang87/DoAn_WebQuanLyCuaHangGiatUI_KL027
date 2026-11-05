@@ -11,7 +11,12 @@
             <a href="{{ route('orders.index') }}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left me-1"></i>Quay lại</a>
         </div>
         @php
-            $savedVoucherWarning = $order->khuyenMai?->rejectionReasonForCustomer($order->khachHang, (float) $order->TongTien, (int) $order->DonHangID);
+            $savedVoucherWarning = $order->khuyenMai?->rejectionReasonForCustomer(
+                $order->khachHang,
+                (float) $order->TongTien,
+                excludeOrderId: (int) $order->DonHangID,
+                excludeBookingId: $order->booking?->BookingID,
+            );
             $savedPromotionPreview = $order->khuyenMai && !$savedVoucherWarning ? [
                 'type' => $order->khuyenMai->LoaiKhuyenMai,
                 'value' => (float) $order->khuyenMai->GiaTriGiam,
