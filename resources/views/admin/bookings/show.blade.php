@@ -125,15 +125,15 @@
                 @endphp
                 <dl class="mb-0" data-booking-money-summary>
                     @foreach($bookingRows as $field => $label)
-                        @if($field === 'TienGiamKhuyenMai' && $booking->HinhThucNhanDo === 'Tại nhà')
+                        @if($field === 'TienGiamKhuyenMai')
                             <div class="d-flex justify-content-between gap-3 py-2">
-                                <dt class="fw-normal">Phí nhận đồ · {{ number_format((int) $booking->PickupDistanceMeters / 1000, 1, '.', '') }} km</dt>
+                                <dt class="fw-normal">Phí nhận đồ · {{ rtrim(rtrim(number_format((int) $booking->PickupDistanceMeters / 1000, 1, '.', ''), '0'), '.') }} km</dt>
                                 <dd class="mb-0 text-end"><x-admin.detail.money :value="$booking->PickupDeliveryFee" /></dd>
                             </div>
                         @endif
-                        @if($field === 'TienGiamKhuyenMai' && $booking->HinhThucTraDo === 'Tại nhà')
+                        @if($field === 'TienGiamKhuyenMai')
                             <div class="d-flex justify-content-between gap-3 py-2">
-                                <dt class="fw-normal">Phí giao đồ · {{ number_format((int) $booking->DeliveryDistanceMeters / 1000, 1, '.', '') }} km</dt>
+                                <dt class="fw-normal">Phí giao đồ · {{ rtrim(rtrim(number_format((int) $booking->DeliveryDistanceMeters / 1000, 1, '.', ''), '0'), '.') }} km</dt>
                                 <dd class="mb-0 text-end"><x-admin.detail.money :value="$booking->DeliveryFee" /></dd>
                             </div>
                         @endif
