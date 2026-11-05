@@ -764,7 +764,11 @@ class DeliveryService
     private function isCancellableReturnDelivery(DonHang $order, GiaoNhan $delivery): bool
     {
         return $this->isEditableReturnDelivery($order, $delivery)
-            && in_array($order->statusEnum(), [OrderStatus::Washed, OrderStatus::Delivering], true);
+            && ! in_array($order->statusEnum(), [
+                OrderStatus::Paid,
+                OrderStatus::Delivered,
+                OrderStatus::Cancelled,
+            ], true);
     }
 
     private function updateLocked(DonHang $order, GiaoNhan $current, array $data): GiaoNhan

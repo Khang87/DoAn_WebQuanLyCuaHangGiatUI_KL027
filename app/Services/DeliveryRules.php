@@ -33,7 +33,7 @@ class DeliveryRules
     {
         $data = array_merge($current ? self::inputFor($current) : ['status' => 'pending', 'fulfillment' => 'Tại nhà'], $data);
         $data['status'] = $data['status'] ?: 'pending';
-        $requiresIntakeSchedule = $current !== null || ($data['method'] ?? null) === 'nhan_do';
+        $requiresIntakeSchedule = ($data['method'] ?? null) === 'nhan_do';
         Validator::make($data, [
             'order_id' => ['required', 'integer'],
             'method' => ['required', 'in:nhan_do,giao_do'],
@@ -43,11 +43,11 @@ class DeliveryRules
             'status' => ['required', 'in:'.implode(',', DeliveryStatus::values())],
             'pickup_date' => ['nullable', Rule::requiredIf(
                 $requiresIntakeSchedule
-                || ($data['fulfillment'] === 'Tại nhà' && in_array($data['status'], ['delivering', 'completed'], true))
+                || in_array($data['status'], ['delivering', 'completed'], true)
             ), 'required_with:pickup_time', 'date_format:Y-m-d'],
             'pickup_time' => ['nullable', Rule::requiredIf(
                 $requiresIntakeSchedule
-                || ($data['fulfillment'] === 'Tại nhà' && in_array($data['status'], ['delivering', 'completed'], true))
+                || in_array($data['status'], ['delivering', 'completed'], true)
             ), 'required_with:pickup_date', 'date_format:H:i'],
             'notes' => ['nullable', 'string', 'max:500'],
         ], [
