@@ -162,7 +162,7 @@
                                             :action="route('accounts.reset-password', $account->getKey())"
                                             method="POST"
                                             title="Gửi mã đặt lại mật khẩu?"
-                                            text="Gửi OTP qua email và thông báo riêng. Mã có hiệu lực trong 10 phút để người dùng tự đặt mật khẩu mới."
+                                            text="Gửi OTP qua email. Mã có hiệu lực trong 10 phút để người dùng tự đặt mật khẩu mới."
                                             label="Gửi OTP"
                                             icon="bi-key"
                                             variant="btn-order-action"

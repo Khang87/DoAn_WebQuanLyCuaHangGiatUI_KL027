@@ -607,7 +607,7 @@ class DeliveryContractTest extends TestCase
 
         $detailResponse = $this->get(route('deliveries.booking-documents.show', $documentId))
             ->assertOk()
-            ->assertSee('Phiếu nhận đồ từ đặt lịch')
+            ->assertSee('Chi tiết phiếu nhận đồ')
             ->assertSee('Mã phiếu')
             ->assertSee('BGN-'.$documentId)
             ->assertDontSee('Chứng từ')
@@ -616,12 +616,13 @@ class DeliveryContractTest extends TestCase
             ->assertSee('08/10/2026')
             ->assertSee('href="'.route('bookings.show', 2).'"', false)
             ->assertSee('Chưa tạo đơn hàng')
-            ->assertSee('Không yêu cầu địa chỉ giao tận nhà')
+            ->assertSee(config('services.google_routes.store_address'))
+            ->assertDontSee('Không yêu cầu địa chỉ giao tận nhà')
             ->assertDontSee('Kết quả kiểm kê');
         $this->assertReadOnlyBookingDocument($detailResponse);
         $this->get(route('deliveries.show', $documentId))
             ->assertOk()
-            ->assertSee('Chi tiết phiếu giao nhận')
+            ->assertSee('Chi tiết phiếu giao đồ')
             ->assertSee('Mã phiếu')
             ->assertSee('GN-'.$documentId);
 

@@ -234,6 +234,36 @@ class DashboardRevenueChartTest extends TestCase
         $this->assertSame(1, $allTime['totalReviews']);
     }
 
+    public function test_dashboard_all_time_can_filter_metrics_and_chart_by_a_custom_date_range(): void
+    {
+        $this->clearDashboardData();
+        $this->seedActivity(1, '2026-10-01 17:00:00', 100);
+        $this->seedActivity(2, '2026-10-03 16:59:59', 200);
+        $this->seedActivity(3, '2026-10-03 17:00:00', 300);
+        $request = Request::create('/admin/dashboard', 'GET', [
+            'filter' => 'all_time',
+            'date_from' => '2026-10-02',
+            'date_to' => '2026-10-03',
+        ]);
+
+        $dashboard = app(DashboardController::class)->index($request)->getData();
+        $chart = app(DashboardController::class)->getRevenueChartData($request)->getData(true);
+        $html = app(DashboardController::class)->index($request)->render();
+
+        $this->assertSame('Từ 02/10/2026 đến 03/10/2026', $dashboard['periodLabel']);
+        $this->assertSame('2026-10-02', $dashboard['dateFrom']);
+        $this->assertSame('2026-10-03', $dashboard['dateTo']);
+        $this->assertSame(2, $dashboard['totalOrders']);
+        $this->assertSame(300.0, $dashboard['totalRevenue']);
+        $this->assertSame(['02/10/2026', '03/10/2026'], $chart['labels']);
+        $this->assertEquals([100, 200], $chart['data']);
+        $this->assertStringContainsString('data-allow-custom="true"', $html);
+        $this->assertStringContainsString('id="period-date-from"', $html);
+        $this->assertStringContainsString('value="2026-10-02"', $html);
+        $this->assertStringContainsString('id="period-date-to"', $html);
+        $this->assertStringContainsString('value="2026-10-03"', $html);
+    }
+
     public function test_all_metrics_and_latest_rows_share_the_selected_period_and_services_count_distinct_orders(): void
     {
         $this->clearDashboardData();

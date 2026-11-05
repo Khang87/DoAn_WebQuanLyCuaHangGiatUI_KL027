@@ -6,6 +6,7 @@
         ?->sortByDesc('ThoiGian')
         ->first(fn ($payment) => $payment->TrangThai === \App\Enums\PaymentStatus::Paid->value);
     $summaryPaymentMethod = $summaryBooking?->PhuongThucThanhToan
+        ?: $summaryOrder?->recorded_payment_method
         ?: $summaryPaidPayment?->getMethodLabel()
         ?: 'Chưa chọn';
     $summarySubtotal = $summaryOrder?->subtotal ?? $summaryInvoice?->TongTien ?? 0;

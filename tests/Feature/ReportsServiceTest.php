@@ -601,8 +601,11 @@ class ReportsServiceTest extends TestCase
             ->assertDontSee('Khoảng ngày tùy chọn')
             ->assertDontSee('<option value="custom"', false)
             ->assertSee('Số liệu · Từ 10/01/2026 đến 10/01/2026')
+            ->assertSee('class="period-filter-layout"', false)
+            ->assertSee('class="period-date-range-fields "', false)
             ->assertSee('value="2026-01-10"', false)
             ->assertSee('Từ ngày', false)
+            ->assertSee('Đến ngày', false)
             ->assertSee(htmlspecialchars(route('reports.export', [
                 'filter' => 'all_time',
                 'date_from' => '2026-01-10',

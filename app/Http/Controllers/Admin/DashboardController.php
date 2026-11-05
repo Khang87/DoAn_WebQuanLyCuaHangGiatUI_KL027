@@ -30,10 +30,16 @@ class DashboardController extends Controller
 
     public function index(Request $request)
     {
-        $dashboardFilter = TimePeriod::normalize($request->query('filter'));
-        [$from, $until] = TimePeriod::bounds($dashboardFilter);
-        $periodLabel = TimePeriod::label($dashboardFilter);
-        $periodDescription = TimePeriod::description($dashboardFilter);
+        $period = $this->resolveDashboardPeriod($request);
+        $dashboardFilter = $period['filter'];
+        $from = $period['from'];
+        $until = $period['until'];
+        $periodLabel = $period['date_from'] !== null
+            ? 'Từ '.Carbon::parse($period['date_from'])->format('d/m/Y').' đến '.Carbon::parse($period['date_to'])->format('d/m/Y')
+            : TimePeriod::label($dashboardFilter);
+        $periodDescription = $period['date_from'] !== null
+            ? 'Giờ Việt Nam (UTC+7)'
+            : TimePeriod::description($dashboardFilter);
 
         $revenueChartData = $this->buildRevenueChartData($dashboardFilter, $from, $until);
         $totalRevenue = (float) array_sum($revenueChartData['data']);
@@ -79,6 +85,8 @@ class DashboardController extends Controller
             'dashboardFilter' => $dashboardFilter,
             'periodLabel' => $periodLabel,
             'periodDescription' => $periodDescription,
+            'dateFrom' => $period['date_from'] ?? '',
+            'dateTo' => $period['date_to'] ?? '',
             'totalRevenue' => $totalRevenue,
             'statusCounts' => $statusCounts,
             'totalOrders' => $totalOrders,
@@ -138,19 +146,20 @@ class DashboardController extends Controller
 
     public function getRevenueChartData(Request $request)
     {
-        $filter = TimePeriod::normalize($request->query('filter'));
-        [$from, $until] = TimePeriod::bounds($filter);
+        $period = $this->resolveDashboardPeriod($request);
 
-        return response()->json($this->buildRevenueChartData($filter, $from, $until));
+        return response()->json($this->buildRevenueChartData($period['filter'], $period['from'], $period['until']));
     }
 
     private function buildRevenueChartData(string $filter, ?Carbon $from, ?Carbon $until): array
     {
-        $groupBy = match ($filter) {
-            TimePeriod::TODAY => 'hour',
-            TimePeriod::ALL_TIME => 'month',
-            default => 'day',
-        };
+        $groupBy = $filter === TimePeriod::ALL_TIME && $from !== null
+            ? 'day'
+            : match ($filter) {
+                TimePeriod::TODAY => 'hour',
+                TimePeriod::ALL_TIME => 'month',
+                default => 'day',
+            };
         $totals = $this->getGroupedRevenueTotals($from, $until, $groupBy);
         $labels = [];
         $periodKeys = [];
@@ -255,5 +264,36 @@ class DashboardController extends Controller
             ->mapWithKeys(fn ($row): array => [
                 $groupBy === 'hour' ? (int) $row->period_key : (string) $row->period_key => (float) $row->total,
             ])->all();
+    }
+
+    /**
+     * @return array{filter: string, from: Carbon|null, until: Carbon|null, date_from: string|null, date_to: string|null}
+     */
+    private function resolveDashboardPeriod(Request $request): array
+    {
+        $filter = TimePeriod::normalize($request->query('filter'));
+        $validated = $request->validate([
+            'date_from' => ['nullable', 'date_format:Y-m-d', 'required_with:date_to'],
+            'date_to' => ['nullable', 'date_format:Y-m-d', 'required_with:date_from', 'after_or_equal:date_from'],
+        ]);
+        $dateFrom = $filter === TimePeriod::ALL_TIME ? ($validated['date_from'] ?? null) : null;
+        $dateTo = $filter === TimePeriod::ALL_TIME ? ($validated['date_to'] ?? null) : null;
+
+        if ($dateFrom !== null && $dateTo !== null) {
+            $from = Carbon::createFromFormat('!Y-m-d', $dateFrom, config('app.timezone'));
+            $until = Carbon::createFromFormat('!Y-m-d', $dateTo, config('app.timezone'))->addDay();
+
+            return compact('filter', 'from', 'until') + [
+                'date_from' => $dateFrom,
+                'date_to' => $dateTo,
+            ];
+        }
+
+        [$from, $until] = TimePeriod::bounds($filter);
+
+        return compact('filter', 'from', 'until') + [
+            'date_from' => null,
+            'date_to' => null,
+        ];
     }
 }

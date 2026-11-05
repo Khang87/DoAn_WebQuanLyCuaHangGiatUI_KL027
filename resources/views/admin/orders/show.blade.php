@@ -169,6 +169,10 @@
                     @endif
                 </x-admin.detail.info-item>
                 <x-admin.detail.info-item
+                    label="Phương thức thanh toán"
+                    :value="$booking?->PhuongThucThanhToan ?: $order->recorded_payment_method ?: $paidPayment?->getMethodLabel() ?: 'Chưa chọn'"
+                />
+                <x-admin.detail.info-item
                     label="Tình trạng hóa đơn"
                     :value="$order->hoaDons->first()?->TrangThai ?: 'Chưa lập hóa đơn'"
                 />

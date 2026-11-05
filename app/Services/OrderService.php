@@ -352,7 +352,7 @@ class OrderService
             $order = DonHang::create(array_merge([
                 'MaDonHang' => 'TMP'.Str::ulid(),
                 'KhachHangID' => $booking->KhachHangID,
-                'NhanVienID' => null,
+                'NhanVienID' => $employeeId,
                 'BookingID' => $booking->BookingID,
                 'TrangThai' => OrderStatus::Received->value,
                 'GhiChu' => $notes,
@@ -834,6 +834,7 @@ class OrderService
         Validator::make($data, [
             'KhuyenMaiID' => ['prohibited'],
             'promotion_code' => ['prohibited'],
+            'PhuongThucThanhToan' => ['sometimes', 'required', 'in:Tiền mặt,Chuyển khoản / QR'],
         ])->validate();
 
         unset($data['MaDonHang']);
@@ -872,7 +873,32 @@ class OrderService
             }
 
             if (array_key_exists('NhanVienID', $data)) {
-                EmployeeAssignment::assertAssignable((int) $data['NhanVienID'], 'NhanVienID', $lockedOrder->NhanVienID);
+                $requestedEmployeeId = $data['NhanVienID'] === null ? null : (int) $data['NhanVienID'];
+                $currentEmployeeId = $lockedOrder->NhanVienID === null ? null : (int) $lockedOrder->NhanVienID;
+
+                if ($requestedEmployeeId !== $currentEmployeeId) {
+                    throw ValidationException::withMessages([
+                        'NhanVienID' => 'Nhân viên phụ trách không thể thay đổi sau khi đơn đã tạo.',
+                    ]);
+                }
+
+                unset($data['NhanVienID']);
+            }
+
+            if (array_key_exists('PhuongThucThanhToan', $data)) {
+                $paymentMethod = $data['PhuongThucThanhToan'];
+
+                if ($lockedOrder->booking()->exists()) {
+                    $lockedOrder->booking()->update([
+                        'PhuongThucThanhToan' => $paymentMethod === 'Chuyển khoản / QR'
+                            ? 'Chuyển khoản'
+                            : $paymentMethod,
+                    ]);
+                } else {
+                    $customerNotes = trim((string) ($data['GhiChu'] ?? $lockedOrder->notes ?? ''));
+                    $data['GhiChu'] = 'Hình thức thanh toán: '.$paymentMethod
+                        .($customerNotes !== '' ? ' | '.$customerNotes : '');
+                }
             }
 
             [$items, $subtotal] = $this->buildItems($data['items'] ?? [], [], $lockedOrder);

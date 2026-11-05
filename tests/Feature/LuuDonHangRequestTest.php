@@ -30,6 +30,11 @@ class LuuDonHangRequestTest extends TestCase
         Schema::create('DonHang', function (Blueprint $table): void {
             $table->increments('DonHangID');
             $table->string('MaDonHang')->unique();
+            $table->unsignedInteger('NhanVienID')->nullable();
+        });
+        Schema::create('NhanVien', function (Blueprint $table): void {
+            $table->increments('NhanVienID');
+            $table->string('TrangThai');
         });
         Schema::create('KhuyenMai', function (Blueprint $table): void {
             $table->increments('KhuyenMaiID');
@@ -38,8 +43,12 @@ class LuuDonHangRequestTest extends TestCase
         $this->testSchemaCreated = true;
 
         DB::table('DonHang')->insert([
-            ['DonHangID' => 7, 'MaDonHang' => 'DH-007'],
-            ['DonHangID' => 8, 'MaDonHang' => 'DH-008'],
+            ['DonHangID' => 7, 'MaDonHang' => 'DH-007', 'NhanVienID' => 3],
+            ['DonHangID' => 8, 'MaDonHang' => 'DH-008', 'NhanVienID' => null],
+        ]);
+        DB::table('NhanVien')->insert([
+            ['NhanVienID' => 3, 'TrangThai' => 'Hoạt động'],
+            ['NhanVienID' => 4, 'TrangThai' => 'Hoạt động'],
         ]);
     }
 
@@ -47,6 +56,7 @@ class LuuDonHangRequestTest extends TestCase
     {
         if ($this->testSchemaCreated) {
             Schema::dropIfExists('KhuyenMai');
+            Schema::dropIfExists('NhanVien');
             Schema::dropIfExists('DonHang');
         }
 
@@ -121,7 +131,29 @@ class LuuDonHangRequestTest extends TestCase
         $this->assertTrue($validator->errors()->has('use_points'));
     }
 
-    public function test_manual_order_payment_method_is_validated_only_on_creation(): void
+    public function test_order_update_keeps_the_existing_responsible_employee(): void
+    {
+        $employeeRule = $this->orderRequestRules(7)['NhanVienID'];
+
+        $this->assertTrue(Validator::make(
+            ['NhanVienID' => 3],
+            ['NhanVienID' => $employeeRule],
+        )->passes());
+
+        $this->assertTrue(Validator::make(
+            ['NhanVienID' => 4],
+            ['NhanVienID' => $employeeRule],
+        )->fails());
+
+        $legacyOrderRule = $this->orderRequestRules(8)['NhanVienID'];
+        $this->assertTrue(Validator::make([], ['NhanVienID' => $legacyOrderRule])->passes());
+        $this->assertTrue(Validator::make(
+            ['NhanVienID' => 3],
+            ['NhanVienID' => $legacyOrderRule],
+        )->fails());
+    }
+
+    public function test_manual_order_payment_method_is_validated_on_create_and_update(): void
     {
         $createRules = $this->orderRequestRules(0, 'POST');
         $updateRules = $this->orderRequestRules(7);
@@ -138,10 +170,16 @@ class LuuDonHangRequestTest extends TestCase
         $this->assertTrue($invalidMethod->fails());
 
         $updateMethod = Validator::make(
-            ['PhuongThucThanhToan' => 'Tiền mặt'],
+            ['PhuongThucThanhToan' => 'Chuyển khoản / QR'],
             ['PhuongThucThanhToan' => $updateRules['PhuongThucThanhToan']],
         );
-        $this->assertTrue($updateMethod->fails());
+        $this->assertTrue($updateMethod->passes());
+
+        $invalidUpdateMethod = Validator::make(
+            ['PhuongThucThanhToan' => 'Ví điện tử'],
+            ['PhuongThucThanhToan' => $updateRules['PhuongThucThanhToan']],
+        );
+        $this->assertTrue($invalidUpdateMethod->fails());
     }
 
     private function orderRequestRules(int $orderId, string $method = 'PUT'): array

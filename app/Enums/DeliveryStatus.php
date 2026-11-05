@@ -151,7 +151,7 @@ enum DeliveryStatus: string
         $status = self::parseForLeg($value, $deliveryType, $default);
 
         if ($status === self::Pending) {
-            return mb_strtoupper($deliveryType) === 'NHAN_DO' ? 'Chờ lấy đồ' : 'Chờ giao đồ';
+            return mb_strtoupper($deliveryType) === 'NHAN_DO' ? 'Chờ nhận đồ' : 'Chờ giao đồ';
         }
 
         return $status->label();

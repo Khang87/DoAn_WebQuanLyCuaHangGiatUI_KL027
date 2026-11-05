@@ -231,7 +231,33 @@ class DonHang extends Model
 
     public function getNotesAttribute(): ?string
     {
-        return $this->GhiChu;
+        $paymentDetails = $this->manualOrderPaymentDetails();
+
+        return $paymentDetails !== null ? $paymentDetails['notes'] : $this->GhiChu;
+    }
+
+    public function getRecordedPaymentMethodAttribute(): ?string
+    {
+        return $this->manualOrderPaymentDetails()['method'] ?? null;
+    }
+
+    /**
+     * @return array{method: string, notes: string|null}|null
+     */
+    private function manualOrderPaymentDetails(): ?array
+    {
+        $notes = trim((string) $this->GhiChu);
+
+        if (preg_match('/^Hình thức thanh toán:\s*(Tiền mặt|Chuyển khoản \/ QR)(?:\s*\|\s*(.*))?$/us', $notes, $matches) !== 1) {
+            return null;
+        }
+
+        $customerNotes = trim($matches[2] ?? '');
+
+        return [
+            'method' => $matches[1],
+            'notes' => $customerNotes !== '' ? $customerNotes : null,
+        ];
     }
 
     public function getSubtotalAttribute(): ?float
