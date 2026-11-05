@@ -37,14 +37,14 @@ try {
     $midnightBoundary = '2026-10-09T17:30:00Z';
     $phpDay = Carbon::parse($midnightBoundary)->setTimezone(date_default_timezone_get())->toDateString();
     pgExpect([$phpDay, DB::selectOne('SELECT ?::timestamptz::date::text AS day', [$midnightBoundary])->day], ['2026-10-10', '2026-10-10'], 'Both fixture clocks cross Vietnamese midnight before UTC midnight');
-    foreach ([[1, 1.5, 7500.0, 2500.0], [1, 4.2, 10500.0, 2500.0], [2, 2, 20000.0, 10000.0]] as [$unit, $measurement, $total, $price]) {
+    foreach ([[1, 1.5, 3750.0, 2500.0], [1, 4.2, 10500.0, 2500.0], [2, 2, 20000.0, 10000.0]] as [$unit, $measurement, $total, $price]) {
         pgActor(1);
         $key = (string) Str::uuid();
         $cart = json_encode([['banggiaid' => $unit === 1 ? 1 : 5, 'measurement' => $measurement]]);
         $query = "SELECT public.submit_laundry_order_cart_with_points(?::jsonb, 'Tại cửa hàng', NULL, current_date+1, '10:00', NULL, ?::uuid, true) AS result";
         $result = json_decode(DB::selectOne($query, [$cart, $key])->result, true);
         $booking = Booking::findOrFail($result['bookingid']);
-        pgExpect((float) $result['thanhtien'], $total, 'RPC effective triple/minimum/date boundaries');
+        pgExpect((float) $result['thanhtien'], $total, 'RPC effective triple/actual weight/date boundaries');
         pgExpect((int) DB::table('DiemTichLuy')->where('KhachHangID', 1)->value('DiemHienTai'), 500, 'RPC point intent does not redeem');
         pgExpect($booking->DiemDaTru, false, 'RPC reservation flag is false');
         $replay = json_decode(DB::selectOne($query, [$cart, $key])->result, true);

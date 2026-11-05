@@ -18,9 +18,8 @@ class TinhTienGiatUiService
 
         if (BangGia::isWeightUnit($donViTinh)) {
             $khoiLuong = (float) ($item['KhoiLuong'] ?? 0);
-            $mucToiThieu = (float) ($item['MucToiThieu'] ?? config('giatui.khoi_luong_toi_thieu', 3.0));
 
-            return round(max($khoiLuong, $mucToiThieu) * $donGia, 0);
+            return round($khoiLuong * $donGia, 0);
         }
 
         $soLuong = (float) ($item['SoLuong'] ?? 0);

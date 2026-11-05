@@ -31,7 +31,6 @@
         @php
             $garmentOptions = $garments;
             $priceOptions = $pricings;
-            $minimumWeight = (float) config('giatui.khoi_luong_toi_thieu', 3.0);
 
             $items = old('items', [[
                 'DichVuID' => '',
@@ -690,7 +689,6 @@
     'use strict';
 
     const POINT_VALUE = {{ \App\Services\OrderService::POINT_VALUE }};
-    const minimumWeight = @json($minimumWeight);
 
     const prices = {!! $pricesJson !!};
     const customerPoints = {!! $customerPointsJson !!};
@@ -736,7 +734,6 @@
     } = window.OrderItemPricing({
         prices,
         garments,
-        minimumWeight
     });
 
     function updateCustomerPointsHint() {

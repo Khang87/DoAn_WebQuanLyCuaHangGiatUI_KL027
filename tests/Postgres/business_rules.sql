@@ -23,7 +23,7 @@ BEGIN
  PERFORM set_config('test.user_id','00000000-0000-0000-0000-000000000001',true);
  result:=public.submit_laundry_order_cart_with_points('[{"banggiaid":1,"measurement":1}]','Tại cửa hàng',NULL,current_date+1,'10:00',NULL,'10000000-0000-0000-0000-000000000001',true);
  b:=(result->>'bookingid')::bigint;
- ASSERT (result->>'thanhtien')::numeric=7500,'Newest effective price, tie ID, minimum 3 kg';
+ ASSERT (result->>'thanhtien')::numeric=3750,'Newest effective price and tie ID, actual weight';
  ASSERT (SELECT "DiemHienTai" FROM public."DiemTichLuy" WHERE "KhachHangID"=1)=500,'Booking cannot deduct points';
  ASSERT (SELECT NOT "DiemDaTru" AND "DiemSuDung"=500 FROM public."Booking" WHERE "BookingID"=b),'Booking contains intent only';
  repeated:=public.submit_laundry_order_cart_with_points('[{"banggiaid":1,"measurement":1}]','Tại cửa hàng',NULL,current_date+1,'10:00',NULL,'10000000-0000-0000-0000-000000000001',true);
