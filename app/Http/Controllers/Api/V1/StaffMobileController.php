@@ -306,6 +306,11 @@ class StaffMobileController extends ApiController
             'KhuyenMai' => $o->khuyenMai ? ['MaKhuyenMai' => $o->khuyenMai->MaKhuyenMai] : null,
             'KhachHang' => $o->khachHang ? ['HoTen' => $o->khachHang->HoTen, 'SoDienThoai' => $o->khachHang->SoDienThoai] : null,
             'CanConfirmDelivery' => $o->giaoNhans->isNotEmpty() || $o->booking?->giaoNhanDuKiens->isNotEmpty(),
+            'GiaoNhan' => $o->giaoNhans->map(fn (GiaoNhan $leg) => [
+                'LoaiGiaoNhan' => $leg->LoaiGiaoNhan,
+                'HinhThuc' => $leg->HinhThuc,
+                'DiaChi' => $leg->DiaChi,
+            ])->values(),
             'Booking' => $o->booking ? [
                 'BookingID' => $o->booking->BookingID, 'MaBooking' => $o->booking->MaBooking,
                 'HinhThucNhanDo' => $o->booking->HinhThucNhanDo, 'HinhThucTraDo' => $o->booking->HinhThucTraDo,
