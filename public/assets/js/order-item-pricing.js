@@ -49,7 +49,7 @@
             price.value = match?.price ?? 0;
             quantity.disabled = isKg;
             quantity.required = !isKg;
-            if (isKg) quantity.value = '1';
+            if (isKg) quantity.value = '0';
             weight.disabled = !isKg;
             weight.required = isKg;
             if (!isKg) weight.value = '0';
