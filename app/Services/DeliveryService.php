@@ -835,8 +835,12 @@ class DeliveryService
 
     private function notifyBookingPickupAssignment(BookingGiaoNhan $document): void
     {
+        if ($document->NhanVienID === null || $document->HinhThuc !== 'Tại nhà') {
+            return;
+        }
+
         $booking = $document->booking()->with('khachHang')->first();
-        if ($booking === null || $document->NhanVienID === null) {
+        if ($booking === null || $booking->HinhThucNhanDo !== 'Tại nhà') {
             return;
         }
 
@@ -863,7 +867,7 @@ class DeliveryService
 
     private function notifyDeliveryAssignment(GiaoNhan $delivery, DonHang $order): void
     {
-        if ($delivery->NhanVienID === null) {
+        if ($delivery->NhanVienID === null || $delivery->HinhThuc !== 'Tại nhà') {
             return;
         }
 
