@@ -40,11 +40,13 @@ test('unit selection preserves tuples and updates price, quantity, weight and to
         check(controls.updateRow(row) === 30000, 'tampered price cannot alter preview');
         unit.value = '2'; weight.value = '1.5';
         check(controls.updateRow(row) === 120000, 'KG minimum is charged');
-        check(unit.value === '2' && quantity.disabled && !weight.disabled, 'unit survives repeated updates and changes enabled fields');
+        check(unit.value === '2' && quantity.disabled && quantity.value === '0' && !weight.disabled, 'KG disables quantity and shows zero');
         weight.value = '4';
         check(controls.updateRow(row) === 160000, 'KG above minimum is charged');
         unit.value = '1';
-        controls.updateRow(row); quantity.value = '3';
+        controls.updateRow(row);
+        check(!quantity.disabled && quantity.value === '1', 'switching from KG restores a valid quantity');
+        quantity.value = '3';
         check(controls.updateRow(row) === 45000 && weight.disabled && weight.value === '0', 'switch back to quantity');
         row.querySelector('.item-service').value = '2';
         controls.syncGarmentOptions(row); controls.updateRow(row);
@@ -100,7 +102,12 @@ test('unit selection preserves tuples and updates price, quantity, weight and to
         assert.equal(result, 'PASS: multi-unit browser regression');
     } finally {
         socket?.close();
-        if (browser?.pid) { try { process.kill(-browser.pid, 'SIGKILL'); } catch {} }
+        if (browser?.pid) {
+            try {
+                if (process.platform === 'win32') browser.kill();
+                else process.kill(-browser.pid, 'SIGKILL');
+            } catch {}
+        }
         await delay(100);
         rmSync(dir, { recursive: true, force: true });
     }
