@@ -30,6 +30,15 @@
                 ], true),
             );
             $minimumWeight = (float) config('giatui.khoi_luong_toi_thieu', 3.0);
+            $savedPaidPayment = $order->thanhToans
+                ->sortByDesc('ThoiGian')
+                ->first(fn ($payment) => $payment->TrangThai === \App\Enums\PaymentStatus::Paid->value);
+            $savedPaymentMethod = $order->booking?->PhuongThucThanhToan === 'Chuyển khoản'
+                ? 'Chuyển khoản / QR'
+                : ($order->booking?->PhuongThucThanhToan
+                    ?: $order->recorded_payment_method
+                    ?: $savedPaidPayment?->getMethodLabel()
+                    ?: 'Tiền mặt');
             $items = old('items');
             if (!is_array($items)) {
                 $items = $order->chiTietDonHangs->map(fn ($item) => [
@@ -79,13 +88,18 @@
                     </select>
                 </div>
                 <div class="col-md-6">
-                    <label class="form-label" for="employee_id">Nhân viên phụ trách <span class="text-danger ms-1">*</span></label>
-                    <select class="form-select @error('NhanVienID') is-invalid @enderror" id="employee_id" name="NhanVienID" required>
-                        <option value="">Chọn nhân viên phụ trách</option>
+                    <label class="form-label" for="employee_id">Nhân viên phụ trách</label>
+                    <select class="form-select bg-light" id="employee_id" disabled style="background-color: #e9ecef !important; background-image: none !important; padding-right: 0.75rem !important; color: #6c757d !important;">
+                        @if($order->NhanVienID === null)
+                            <option value="" selected>Chưa xác định</option>
+                        @endif
                         @foreach($employeeOptions as $employee)
-                            <option value="{{ $employee->NhanVienID }}" @selected(old('NhanVienID', $order->NhanVienID) == $employee->NhanVienID)>{{ $employee->HoTen }}</option>
+                            <option value="{{ $employee->NhanVienID }}" @selected($order->NhanVienID == $employee->NhanVienID)>{{ $employee->HoTen }}</option>
                         @endforeach
                     </select>
+                    @if($order->NhanVienID !== null)
+                        <input type="hidden" name="NhanVienID" value="{{ $order->NhanVienID }}">
+                    @endif
                     @error('NhanVienID')<div class="invalid-feedback">{{ $message }}</div>@enderror
                 </div>
                 <div class="col-md-6">
@@ -103,6 +117,14 @@
                             required
                         />
                     @endif
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label" for="PhuongThucThanhToan">Phương thức thanh toán <span class="text-danger ms-1">*</span></label>
+                    <select class="form-select @error('PhuongThucThanhToan') is-invalid @enderror" id="PhuongThucThanhToan" name="PhuongThucThanhToan" required>
+                        <option value="Tiền mặt" @selected(old('PhuongThucThanhToan', $savedPaymentMethod) === 'Tiền mặt')>Tiền mặt</option>
+                        <option value="Chuyển khoản / QR" @selected(old('PhuongThucThanhToan', $savedPaymentMethod) === 'Chuyển khoản / QR')>Chuyển khoản / QR</option>
+                    </select>
+                    @error('PhuongThucThanhToan')<div class="invalid-feedback">{{ $message }}</div>@enderror
                 </div>
 
                 <div class="col-12">
@@ -215,7 +237,7 @@
 
                 <div class="col-12">
                     <label class="form-label" for="notes">Ghi chú</label>
-                    <textarea class="form-control" id="notes" name="GhiChu" rows="3">{{ old('GhiChu', $order->GhiChu) }}</textarea>
+                    <textarea class="form-control" id="notes" name="GhiChu" rows="3">{{ old('GhiChu', $order->notes) }}</textarea>
                 </div>
             </div>
             <div class="d-flex justify-content-end gap-2 mt-4">

@@ -159,6 +159,78 @@
         border-color: #3b82f6;
         box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
     }
+    .period-filter-layout {
+        display: grid;
+        grid-template-columns: minmax(300px, 1fr) auto;
+        align-items: center;
+        gap: 0.75rem;
+    }
+    .period-filter-layout #period-filter-form {
+        grid-column: 2;
+        grid-row: 1;
+        display: flex;
+        flex-wrap: nowrap;
+        align-items: end;
+        gap: 0.5rem;
+    }
+    .period-filter-layout > div:first-child {
+        grid-column: 1;
+        grid-row: 1;
+    }
+    .period-filter-field {
+        display: flex;
+        flex: 0 0 200px;
+        flex-direction: column;
+        min-width: 0;
+    }
+    .period-filter-layout #period-filter-select {
+        width: 100%;
+    }
+    .period-filter-layout > #period-filter-form > .period-filter-field {
+        flex-basis: 180px;
+    }
+    .period-date-range-fields {
+        display: flex;
+        flex: 1 1 auto;
+        flex-wrap: nowrap;
+        align-items: end;
+        gap: 0.5rem;
+        min-width: 0;
+    }
+    .period-date-range-fields .period-filter-field {
+        flex-basis: 170px;
+    }
+    .period-date-range-fields #period-date-from + input,
+    .period-date-range-fields #period-date-to + input {
+        width: 170px;
+    }
+    .period-date-range-fields #period-filter-apply {
+        height: 33px;
+        padding: 6px 12px;
+        white-space: nowrap;
+    }
+    .period-date-range-fields .btn-outline-success {
+        flex-shrink: 0;
+        white-space: nowrap;
+    }
+    @media (max-width: 1399.98px) {
+        .period-filter-layout {
+            grid-template-columns: minmax(0, 1fr);
+        }
+        .period-filter-layout #period-filter-form {
+            grid-column: 1;
+            grid-row: 2;
+            flex-wrap: wrap;
+        }
+        .period-filter-field {
+            flex-basis: min(200px, 100%);
+        }
+        .period-date-range-fields {
+            flex-basis: 100%;
+            flex-wrap: wrap;
+            max-width: 100%;
+        }
+    }
     /* Pagination fix for Bootstrap 5 */
     .pagination .page-link {
         color: #3b82f6;

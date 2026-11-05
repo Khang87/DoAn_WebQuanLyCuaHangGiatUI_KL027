@@ -59,6 +59,9 @@
     :filter="$dashboardFilter"
     :period-label="$periodLabel"
     :period-description="$periodDescription"
+    :custom-range="true"
+    :date-from="$dateFrom"
+    :date-to="$dateTo"
     note="Bộ lọc áp dụng cho tất cả thẻ, biểu đồ và danh sách bên dưới. Doanh thu theo ngày thu tiền; đơn hàng và dịch vụ theo ngày tạo đơn; khách hàng theo ngày tạo hồ sơ; đánh giá theo ngày đánh giá."
 />
 @if(auth()->user()?->canAny(['reports.revenue', 'orders.view', 'customers.view', 'reviews.view']))

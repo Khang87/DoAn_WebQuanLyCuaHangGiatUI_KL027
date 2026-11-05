@@ -667,7 +667,6 @@
                         rows="3"
                         maxlength="450"
                     >{{ old('GhiChu') }}</textarea>
-                    <div class="form-text">Tối đa 450 ký tự để dành chỗ lưu hình thức thanh toán.</div>
                 </div>
             </div>
 

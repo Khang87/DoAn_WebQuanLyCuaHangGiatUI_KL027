@@ -1654,16 +1654,16 @@ class BookingOrderConversionTest extends TestCase
 
         $response = $this->get(route('orders.show', $order))->assertOk();
         $response->assertSeeTextInOrder([
-            'Hình thức',
+            'Phương thức thanh toán',
             $paymentMethod,
-            'Tổng tiền đơn hàng theo bảng giá',
+            'Tình trạng hóa đơn',
+            'Chưa lập hóa đơn',
+            'Tổng tiền đơn hàng',
             '700.000 VNĐ',
             'Phí nhận đồ · 8.1 km',
             number_format($pickupFee, 0, ',', '.').' VNĐ',
             'Phí giao đồ · 8.1 km',
             number_format(max(0, $fee - $pickupFee), 0, ',', '.').' VNĐ',
-            'Tổng tiền được giảm',
-            '-'.number_format($promotionDiscount + $pointsDiscount, 0, ',', '.').' VNĐ',
             'Tổng tiền thanh toán',
             number_format($total, 0, ',', '.').' VNĐ',
             'Giá cuối cùng có thể được điều chỉnh sau khi cửa hàng kiểm nhận đồ.',
@@ -1729,9 +1729,59 @@ class BookingOrderConversionTest extends TestCase
 
         $this->get(route('orders.edit', $order))->assertOk()
             ->assertSee('BOOKING10')
+            ->assertSee('id="employee_id" disabled', false)
+            ->assertSee('name="NhanVienID" value="1"', false)
+            ->assertSee('name="PhuongThucThanhToan"', false)
+            ->assertSee('value="Tiền mặt" selected', false)
             ->assertSee('50 điểm (50 VNĐ)')
             ->assertDontSee('name="use_points"', false)
             ->assertDontSee('name="DiemSuDung"', false);
+    }
+
+    public function test_order_update_cannot_reassign_the_responsible_employee(): void
+    {
+        $this->createInspectionCatalog();
+        $order = DonHang::query()->create([
+            'MaDonHang' => 'DH0001',
+            'KhachHangID' => 9,
+            'NhanVienID' => 1,
+            'TrangThai' => OrderStatus::Received->value,
+            'TongTien' => 0,
+            'ThanhTien' => 0,
+        ]);
+
+        try {
+            app(OrderService::class)->update($order, ['NhanVienID' => 2], true);
+            $this->fail('The responsible employee must remain unchanged after order creation.');
+        } catch (ValidationException $exception) {
+            $this->assertArrayHasKey('NhanVienID', $exception->errors());
+        }
+
+        $this->assertSame(1, (int) $order->fresh()->NhanVienID);
+    }
+
+    public function test_order_update_changes_booking_payment_method(): void
+    {
+        $this->createInspectionCatalog();
+        $booking = $this->createBooking(['PhuongThucThanhToan' => 'Tiền mặt']);
+        $order = $this->createConvertedOrderForBooking($booking);
+        $order->chiTietDonHangs()->create([
+            'DichVuID' => 1,
+            'LoaiDoGiatID' => 2,
+            'DonViTinhID' => 3,
+            'SoLuong' => 2,
+            'DonGia' => 15000,
+            'ThanhTien' => 30000,
+            'TinhTrangTruocKhiGiat' => 'Bình thường',
+        ]);
+
+        app(OrderService::class)->update($order, [
+            'PhuongThucThanhToan' => 'Chuyển khoản / QR',
+            'items' => $this->actualItems(),
+        ], true);
+
+        $this->assertSame('Chuyển khoản', $booking->fresh()->PhuongThucThanhToan);
+        $this->assertNull($order->fresh()->GhiChu);
     }
 
     public function test_booking_confirmation_preserves_saved_coupon_and_points_without_a_reward_control(): void
@@ -1897,12 +1947,35 @@ class BookingOrderConversionTest extends TestCase
         $this->assertSame(1, $order->NhanVienID);
         $this->assertSame(OrderStatus::Received->value, $order->TrangThai);
         $this->assertSame('Hình thức thanh toán: Chuyển khoản / QR | Khách yêu cầu thanh toán qua QR', $order->GhiChu);
-        $this->assertSame('Ố nhẹ ở cổ áo', $order->chiTietDonHangs()->sole()->TinhTrangTruocKhiGiat);
-        $this->assertSame(20000.0, $order->ThanhTien);
-        $this->assertSame(0.0, (float) $order->PhiGiaoHang);
+        $this->assertSame('Khách yêu cầu thanh toán qua QR', $order->notes);
+        $this->assertSame('Chuyển khoản / QR', $order->recorded_payment_method);
+        $updatedOrder = app(OrderService::class)->update($order, [
+            'PhuongThucThanhToan' => 'Tiền mặt',
+            'GhiChu' => 'Ghi chú sau khi chỉnh sửa',
+            'items' => [[
+                'DichVuID' => 1,
+                'LoaiDoGiatID' => 2,
+                'DonViTinhID' => 2,
+                'SoLuong' => 2,
+                'TinhTrangTruocKhiGiat' => 'Ố nhẹ ở cổ áo',
+            ]],
+            'TrangThai' => OrderStatus::Received->value,
+        ], true);
+        $this->assertSame('Hình thức thanh toán: Tiền mặt | Ghi chú sau khi chỉnh sửa', $updatedOrder->GhiChu);
+        $this->assertSame('Tiền mặt', $updatedOrder->recorded_payment_method);
+        $this->assertSame('Ghi chú sau khi chỉnh sửa', $updatedOrder->notes);
+        $paymentBreakdown = view('admin.orders.partials.payment-breakdown', [
+            'order' => $updatedOrder,
+            'invoice' => null,
+        ])->render();
+        $this->assertStringContainsString('Tiền mặt', $paymentBreakdown);
+        $this->assertStringNotContainsString('Hình thức thanh toán:', $paymentBreakdown);
+        $this->assertSame('Ố nhẹ ở cổ áo', $updatedOrder->chiTietDonHangs()->sole()->TinhTrangTruocKhiGiat);
+        $this->assertSame(20000.0, $updatedOrder->ThanhTien);
+        $this->assertSame(0.0, (float) $updatedOrder->PhiGiaoHang);
         $this->assertDatabaseCount('GiaoNhan', 0);
-        app(OrderService::class)->updateStatus($order, OrderStatus::Washing->value);
-        $this->assertSame(OrderStatus::Washing->value, $order->fresh()->TrangThai);
+        app(OrderService::class)->updateStatus($updatedOrder, OrderStatus::Washing->value);
+        $this->assertSame(OrderStatus::Washing->value, $updatedOrder->fresh()->TrangThai);
     }
 
     public function test_manual_order_store_rejects_account_without_employee_profile_despite_client_employee_id(): void
@@ -2019,7 +2092,7 @@ class BookingOrderConversionTest extends TestCase
         $this->assertSame('12 Nguyễn Huệ', $delivery->DiaChi);
         $this->assertSame('2026-10-05 14:30:00', $delivery->ThoiGianDuKien->format('Y-m-d H:i:s'));
         $this->assertSame(0, GiaoNhan::query()->where('DonHangID', $order->DonHangID)->count());
-        $this->assertNull($order->NhanVienID);
+        $this->assertSame(1, (int) $order->NhanVienID);
         $this->assertSame(2, $booking->fresh()->NhanVienID);
         $this->assertSame(1, $booking->fresh()->NhanVienXacNhanID);
         $this->assertSame(2, DB::table('ChiTietBooking')->where('BookingID', $booking->BookingID)->count());
@@ -2173,7 +2246,7 @@ class BookingOrderConversionTest extends TestCase
         $order = DonHang::query()->where('BookingID', $booking->BookingID)->firstOrFail();
         $response->assertRedirect(route('orders.show', $order));
         $this->assertSame(BookingStatus::Confirmed->value, $booking->fresh()->TrangThai);
-        $this->assertNull($order->NhanVienID);
+        $this->assertSame(1, (int) $order->NhanVienID);
         $this->assertSame(1, $booking->fresh()->NhanVienID);
         $this->assertSame(1, $booking->fresh()->NhanVienXacNhanID);
         $this->assertNotNull($booking->fresh()->ThoiGianXacNhan);

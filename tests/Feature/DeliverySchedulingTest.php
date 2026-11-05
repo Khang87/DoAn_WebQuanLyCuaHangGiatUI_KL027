@@ -170,7 +170,7 @@ class DeliverySchedulingTest extends TestCase
             'deliveryType' => 'GIAO_DO',
         ])->render();
 
-        $this->assertStringContainsString('Chờ lấy đồ', $pickupBadge);
+        $this->assertStringContainsString('Chờ nhận đồ', $pickupBadge);
         $this->assertStringContainsString('Chờ giao đồ', $returnBadge);
     }
 

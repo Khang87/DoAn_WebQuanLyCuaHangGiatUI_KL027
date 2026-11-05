@@ -62,7 +62,13 @@ class NotificationService
     {
         return ThongBao::query()
             ->when($recipientId !== null, fn ($q) => $q->where('TaiKhoanID', $recipientId))
-            ->with(['taiKhoan.nhanVien', 'taiKhoan.khachHang', 'donHang', 'tinNhan.sender'])
+            ->with([
+                'taiKhoan.nhanVien',
+                'taiKhoan.khachHang',
+                'donHang',
+                'tinNhan.sender.nhanVien',
+                'tinNhan.sender.khachHang',
+            ])
             ->find($id);
     }
 

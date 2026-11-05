@@ -70,7 +70,11 @@ class LuuDonHangRequest extends FormRequest
             'KhachHangID' => ['required', 'integer', 'exists:KhachHang,KhachHangID'],
             'NhanVienID' => $isCreating
                 ? ['sometimes', 'integer']
-                : ['required', 'integer', EmployeeAssignment::rule($currentOrder?->NhanVienID)],
+                : ($currentOrder !== null
+                    ? ($currentOrder->NhanVienID !== null
+                        ? ['required', 'integer', Rule::in([(int) $currentOrder->NhanVienID]), EmployeeAssignment::rule((int) $currentOrder->NhanVienID)]
+                        : ['prohibited'])
+                    : ['required', 'integer', EmployeeAssignment::rule()]),
             'BookingID' => $isCreating ? ['prohibited'] : ['nullable', 'integer', 'exists:Booking,BookingID'],
             'KhuyenMaiID' => ['prohibited'],
             'promotion_code' => ['prohibited'],
@@ -100,7 +104,7 @@ class LuuDonHangRequest extends FormRequest
             ],
             'PhuongThucThanhToan' => $isCreating
                 ? ['required', Rule::in(['Tiền mặt', 'Chuyển khoản / QR'])]
-                : ['prohibited'],
+                : ['sometimes', 'required', Rule::in(['Tiền mặt', 'Chuyển khoản / QR'])],
             // Không dùng PhiGiaoHang do trình duyệt gửi lên làm nguồn tính tiền.
 
             'TrangThai' => [
@@ -110,7 +114,7 @@ class LuuDonHangRequest extends FormRequest
                     : array_values(array_diff(OrderStatus::values(), [OrderStatus::Paid->value]))),
             ],
             'cancellation_reason' => ['nullable', 'required_if:TrangThai,Đã hủy', 'string', 'max:500'],
-            'GhiChu' => ['nullable', 'string', 'max:'.($isCreating ? 450 : 500)],
+            'GhiChu' => ['nullable', 'string', 'max:'.($isCreating || $currentOrder?->BookingID === null ? 450 : 500)],
             'items' => $isCreating ? ['required', 'array', 'min:1'] : ['nullable', 'array'],
             'items.*.DichVuID' => ['required', 'integer', 'exists:DichVu,DichVuID'],
             'items.*.LoaiDoGiatID' => ['required', 'integer', 'exists:LoaiDoGiat,LoaiDoGiatID'],

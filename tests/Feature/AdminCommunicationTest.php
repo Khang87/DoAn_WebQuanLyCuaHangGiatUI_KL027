@@ -778,12 +778,12 @@ class AdminCommunicationTest extends TestCase
             ->assertDontSee('navbar-action-badge');
     }
 
-    public function test_notification_detail_shows_the_recipient_full_name(): void
+    public function test_notification_detail_shows_the_sender_full_name(): void
     {
         $staff = $this->createAccount('notification-staff');
         DB::table('NhanVien')->insert([
             'NhanVienID' => 1,
-            'HoTen' => 'Nguyễn Văn Nhận',
+            'HoTen' => 'Nhân viên nhận thông báo',
         ]);
         DB::table('TaiKhoan')->where('TaiKhoanID', $staff->TaiKhoanID)->update(['NhanVienID' => 1]);
         $this->assignRole($staff, 'Owner');
@@ -799,6 +799,16 @@ class AdminCommunicationTest extends TestCase
             'QuyenID' => $permissionId,
         ]);
 
+        DB::table('KhachHang')->insert([
+            'KhachHangID' => 18,
+            'HoTen' => 'Nguyễn Văn Gửi',
+        ]);
+        $sender = $this->createAccount('notification-sender', 18);
+        $message = TinNhan::query()->create([
+            'NguoiGuiID' => $sender->TaiKhoanID,
+            'NguoiNhanID' => $staff->TaiKhoanID,
+            'NoiDung' => 'Nội dung tin nhắn kiểm thử.',
+        ]);
         $notification = ThongBao::query()->create([
             'TaiKhoanID' => $staff->TaiKhoanID,
             'LoaiThongBao' => 'system',
@@ -807,11 +817,17 @@ class AdminCommunicationTest extends TestCase
             'ThoiGianGui' => now(),
             'DaDoc' => false,
         ]);
+        DB::table('ThongBao')
+            ->where('ThongBaoID', $notification->ThongBaoID)
+            ->update(['TinNhanID' => $message->TinNhanID]);
 
         $this->actingAs($staff)
             ->get(route('notifications.show', $notification->ThongBaoID))
             ->assertOk()
-            ->assertSee('Nguyễn Văn Nhận')
+            ->assertSee('Người gửi')
+            ->assertSee('Nguyễn Văn Gửi')
+            ->assertDontSee('Người nhận')
+            ->assertDontSee('Nhân viên nhận thông báo')
             ->assertDontSee('Loại thông báo')
             ->assertDontSee('Ngày đọc');
     }
