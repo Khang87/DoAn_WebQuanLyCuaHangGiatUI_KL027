@@ -450,10 +450,7 @@
     {{-- ============ CỘT PHỤ (4/12) ============ --}}
     <div class="col-lg-4 d-flex flex-column">
         <x-admin.detail.panel title="Tổng thanh toán" icon="bi-calculator" :iconClass="'bg-success-subtle text-success'">
-            @include('admin.orders.partials.payment-breakdown', ['order' => $order])
-            @if($isReceiving)
-                <p class="text-muted small mt-3 mb-0">Giá cuối cùng có thể được điều chỉnh sau khi cửa hàng kiểm nhận đồ.</p>
-            @endif
+            @include('admin.orders.partials.payment-breakdown', ['order' => $order, 'matchMobile' => true])
 
             @if($booking?->PhuongThucThanhToan === 'Chuyển khoản')
                 <div class="border-top mt-3 pt-3" data-order-payment-status

@@ -74,6 +74,25 @@ class DeliverySchedulingTest extends TestCase
         $this->assertFalse($validator->fails());
     }
 
+    public function test_order_return_assignment_requires_both_schedule_fields(): void
+    {
+        $request = LuuGiaoNhanRequest::create(route('orders.delivery-assignment.store', 1), 'POST');
+        $route = app('router')->getRoutes()->match($request);
+        $request->setRouteResolver(fn () => $route);
+        $validator = Validator::make([
+            'order_id' => 1,
+            'employee_id' => 1,
+            'method' => 'giao_do',
+            'fulfillment' => 'Tại nhà',
+            'address' => '12 Nguyễn Huệ',
+            'status' => 'pending',
+        ], $request->rules(), $request->messages());
+
+        $this->assertTrue($validator->fails());
+        $this->assertArrayHasKey('pickup_date', $validator->errors()->toArray());
+        $this->assertArrayHasKey('pickup_time', $validator->errors()->toArray());
+    }
+
     public function test_deleting_delivery_redirects_to_index_and_reports_success(): void
     {
         $delivery = new GiaoNhan;
@@ -128,8 +147,8 @@ class DeliverySchedulingTest extends TestCase
         $this->assertMatchesRegularExpression('/<input type="hidden" name="method" value="giao_do">/', $html);
         $this->assertMatchesRegularExpression('/id="method_display" value="Giao đồ" readonly/', $html);
         $this->assertMatchesRegularExpression('/id="fulfillment_display" value="Tại cửa hàng" readonly/', $html);
-        $this->assertDoesNotMatchRegularExpression('/name="pickup_date"[^>]*required/', $html);
-        $this->assertDoesNotMatchRegularExpression('/name="pickup_time"[^>]*required/', $html);
+        $this->assertMatchesRegularExpression('/name="pickup_date"[^>]*required/', $html);
+        $this->assertMatchesRegularExpression('/name="pickup_time"[^>]*required/', $html);
         $this->assertStringContainsString('name="fulfillment"', $html);
         $this->assertStringContainsString('data-address-autocomplete', $html);
         $this->assertStringContainsString('delivery-address-suggestions', $html);

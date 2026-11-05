@@ -69,6 +69,17 @@ class DetailPageActionLayoutTest extends TestCase
         $this->assertStringContainsString("route('invoices.create'", $source);
         $this->assertStringContainsString("route('payments.create'", $source);
         $this->assertStringContainsString('orders.destroy', $source);
+        $this->assertStringContainsString('$isDirectHomeReturnFlow = $order->booking === null', $source);
+        $this->assertStringContainsString('($isBookingReturnFlow || $isDirectHomeReturnFlow)', $source);
+        $this->assertStringContainsString('$isDirectHomeReturnFlow && in_array($operationalStatus, [\\App\\Enums\\OrderStatus::Washed, \\App\\Enums\\OrderStatus::Delivering], true)', $source);
+        $this->assertStringContainsString('$returnDelivery->NhanVienID !== null', $source);
+        $this->assertStringContainsString('$operationalStatus === \\App\\Enums\\OrderStatus::Delivering', $source);
+        $this->assertStringContainsString("route('orders.delivery-assignment', [\$order]", $source);
+        $this->assertStringContainsString("route('deliveries.show', [\$returnDelivery]", $source);
+        $this->assertStringContainsString('title="Xem phiếu giao"', $source);
+        $this->assertStringContainsString('title="Tạo phiếu giao"', $source);
+        $this->assertSame(2, substr_count($source, '<i class="bi bi-box-arrow-up-right" aria-hidden="true"></i>'));
+        $this->assertSame(3, substr_count($source, '<i class="bi bi-truck" aria-hidden="true"></i>'));
     }
 
     public function test_order_list_rows_stay_one_line_tall(): void

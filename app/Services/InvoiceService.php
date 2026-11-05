@@ -66,6 +66,7 @@ class InvoiceService
             ?->load([
                 'donHang.khachHang',
                 'donHang.booking',
+                'donHang.khuyenMai',
                 'donHang.chiTietDonHangs.dichVu',
                 'donHang.chiTietDonHangs.loaiDoGiat',
                 'donHang.thanhToans',

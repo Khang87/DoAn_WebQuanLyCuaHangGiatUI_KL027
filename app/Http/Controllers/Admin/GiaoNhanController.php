@@ -212,6 +212,18 @@ class GiaoNhanController extends Controller
         }
     }
 
+    public function storeForOrder(LuuGiaoNhanRequest $request, DonHang $order)
+    {
+        $data = $request->validated();
+        abort_unless(
+            (int) $data['order_id'] === (int) $order->getKey() && $data['method'] === 'giao_do',
+            422,
+            'Phiếu giao phải khớp với đơn hàng được chọn.',
+        );
+
+        return $this->store($request);
+    }
+
     public function show(int $id)
     {
         $delivery = $this->deliveryService->find($id);

@@ -214,6 +214,10 @@ Route::middleware(['auth', 'reject.customer'])->group(function () {
     Route::get('/orders/{order}/delivery-assignment', [GiaoNhanController::class, 'assignForOrder'])
         ->whereNumber('order')
         ->name('orders.delivery-assignment');
+    Route::post('/orders/{order}/delivery-assignment', [GiaoNhanController::class, 'storeForOrder'])
+        ->whereNumber('order')
+        ->middleware('permission:deliveries.create')
+        ->name('orders.delivery-assignment.store');
 
     Route::middleware('permission:orders.delete')->group(function () {
         Route::delete('/orders/{order}', [DonHangController::class, 'destroy'])->name('orders.destroy');

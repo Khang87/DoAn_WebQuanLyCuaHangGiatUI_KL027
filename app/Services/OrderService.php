@@ -771,8 +771,8 @@ class OrderService
                 ChiTietDonHang::create(array_merge(['DonHangID' => $order->DonHangID], $item));
             }
 
-            // Tạo phiếu giao nhận tự động cho từng chặng tại nhà.
-            // Chặng tại cửa hàng không cần phiếu vận chuyển.
+            // Ghi nhận chặng nhận đồ tại cửa hàng; chỉ chặng trả tại cửa hàng
+            // mới không cần phiếu giao nhận.
             $deliveryLegs = [
                 [
                     'method' => $data['HinhThucNhanDo'],
@@ -791,7 +791,8 @@ class OrderService
             ];
 
             foreach ($deliveryLegs as $leg) {
-                if ($leg['method'] !== $leg['home']) {
+                $isStoreIntake = $leg['type'] === 'NHAN_DO' && $leg['method'] !== $leg['home'];
+                if ($leg['method'] !== $leg['home'] && ! $isStoreIntake) {
                     continue;
                 }
 
@@ -800,13 +801,18 @@ class OrderService
                     // Để trống để quản lý giao nhận phân công người thực hiện.
                     'NhanVienID' => null,
                     'LoaiGiaoNhan' => $leg['type'],
-                    'HinhThuc' => 'Tại nhà',
-                    'DiaChi' => $leg['address'],
+                    'HinhThuc' => $leg['method'],
+                    'DiaChi' => $leg['method'] === $leg['home'] ? $leg['address'] : null,
                     'ThoiGianDuKien' => null,
                     'PhiGiaoNhan' => $leg['fee'],
-                    'TrangThai' => DeliveryStatus::Pending->dbValue(),
+                    'TrangThai' => $isStoreIntake
+                        ? DeliveryStatus::Completed->dbValue()
+                        : DeliveryStatus::Pending->dbValue(),
                     'GhiChu' => 'Tự động tạo từ đơn hàng '.$order->MaDonHang,
                 ];
+                if ($isStoreIntake && Schema::hasColumn('GiaoNhan', 'ThoiGianThucTe')) {
+                    $attributes['ThoiGianThucTe'] = now();
+                }
                 if (Schema::hasColumn('GiaoNhan', 'NgayTao')) {
                     $attributes['NgayTao'] = now();
                 }

@@ -125,8 +125,12 @@
     <div class="col-lg-4 d-flex flex-column">
         {{-- Giữ nguyên khối "đầu hóa đơn" để CSS in ẩn/hiện đúng như cũ --}}
         <div class="invoice-header">
-            <x-admin.detail.panel title="Tổng hợp" icon="bi-receipt-cutoff" :iconClass="'bg-success-subtle text-success'">
-                @include('admin.orders.partials.payment-breakdown', ['order' => $order, 'invoice' => $invoice])
+            <x-admin.detail.panel title="Thanh toán" icon="bi-receipt-cutoff" :iconClass="'bg-success-subtle text-success'">
+                @include('admin.orders.partials.payment-breakdown', [
+                    'order' => $order,
+                    'invoice' => $invoice,
+                    'matchMobile' => true,
+                ])
                 @if($paidPayment || $order?->booking?->PhuongThucThanhToan)
                     <div class="border-top mt-3 pt-3">
                         <small class="text-muted d-block mt-2">

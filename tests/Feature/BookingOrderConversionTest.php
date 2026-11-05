@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Enums\BookingStatus;
+use App\Enums\DeliveryStatus;
 use App\Enums\OrderStatus;
 use App\Http\Middleware\EnsureUserHasPermission;
 use App\Http\Middleware\RejectCustomerRole;
@@ -20,6 +21,7 @@ use App\Services\BookingService;
 use App\Services\NotificationService;
 use App\Services\OrderService;
 use App\Services\PricingService;
+use App\Support\OrderWorkflow;
 use Carbon\Carbon;
 use Illuminate\Auth\Middleware\Authenticate;
 use Illuminate\Database\QueryException;
@@ -1666,7 +1668,6 @@ class BookingOrderConversionTest extends TestCase
             number_format(max(0, $fee - $pickupFee), 0, ',', '.').' VNĐ',
             'Tổng tiền thanh toán',
             number_format($total, 0, ',', '.').' VNĐ',
-            'Giá cuối cùng có thể được điều chỉnh sau khi cửa hàng kiểm nhận đồ.',
         ]);
 
         if ($promotionDiscount > 0) {
@@ -1679,6 +1680,35 @@ class BookingOrderConversionTest extends TestCase
         } else {
             $response->assertDontSeeText('Giảm từ điểm');
         }
+    }
+
+    public function test_order_payment_breakdown_does_not_show_zero_distance_when_no_distance_was_saved(): void
+    {
+        $order = (new DonHang)->forceFill([
+            'TongTien' => 100000,
+            'PhiGiaoHang' => 11000,
+            'ThanhTien' => 111000,
+        ]);
+        $order->setRelation('booking', null);
+        $order->setRelation('khuyenMai', null);
+        $order->setRelation('chiTietDonHangs', collect());
+        $order->setRelation('thanhToans', collect());
+        $order->setRelation('giaoNhans', collect([
+            (new GiaoNhan)->forceFill([
+                'LoaiGiaoNhan' => 'GIAO_DO',
+                'HinhThuc' => 'Tại nhà',
+                'PhiGiaoNhan' => 11000,
+            ]),
+        ]));
+
+        $html = view('admin.orders.partials.payment-breakdown', [
+            'order' => $order,
+            'matchMobile' => true,
+        ])->render();
+
+        $this->assertStringContainsString('Phí giao đồ', $html);
+        $this->assertStringContainsString('11.000 VNĐ', $html);
+        $this->assertDoesNotMatchRegularExpression('/Phí giao đồ\s*·\s*0 km/u', $html);
     }
 
     public static function orderPaymentSummaryCases(): array
@@ -1973,9 +2003,62 @@ class BookingOrderConversionTest extends TestCase
         $this->assertSame('Ố nhẹ ở cổ áo', $updatedOrder->chiTietDonHangs()->sole()->TinhTrangTruocKhiGiat);
         $this->assertSame(20000.0, $updatedOrder->ThanhTien);
         $this->assertSame(0.0, (float) $updatedOrder->PhiGiaoHang);
-        $this->assertDatabaseCount('GiaoNhan', 0);
+        $this->assertDatabaseHas('GiaoNhan', [
+            'DonHangID' => $updatedOrder->DonHangID,
+            'LoaiGiaoNhan' => 'NHAN_DO',
+            'HinhThuc' => 'Tại cửa hàng',
+            'TrangThai' => DeliveryStatus::Completed->dbValue(),
+        ]);
+        $this->assertDatabaseCount('GiaoNhan', 1);
         app(OrderService::class)->updateStatus($updatedOrder, OrderStatus::Washing->value);
         $this->assertSame(OrderStatus::Washing->value, $updatedOrder->fresh()->TrangThai);
+    }
+
+    public function test_direct_order_with_home_return_creates_linked_intake_and_delivery_tickets(): void
+    {
+        $this->createRequestCatalog();
+        DB::table('BangGia')->insert([
+            'DichVuID' => 1,
+            'LoaiDoGiatID' => 2,
+            'DonViTinhID' => 2,
+            'DonGia' => 10000,
+            'NgayApDung' => '2026-01-01',
+            'TrangThai' => 'Hoạt động',
+        ]);
+        $this->actingAsBookingEmployee();
+        $this->withoutMiddleware([Authenticate::class, EnsureUserHasPermission::class, RejectCustomerRole::class, RestoreRememberedLogin::class]);
+
+        $this->post(route('orders.store'), [
+            'KhachHangID' => 9,
+            'TrangThai' => OrderStatus::Received->value,
+            'HinhThucTraDo' => 'Tại nhà',
+            'DiaChiTra' => '88 Lê Lợi',
+            'items' => [[
+                'DichVuID' => 1,
+                'LoaiDoGiatID' => 2,
+                'DonViTinhID' => 2,
+                'SoLuong' => 1,
+                'TinhTrangTruocKhiGiat' => 'Bình thường',
+            ]],
+        ])->assertSessionHasNoErrors();
+
+        $order = DonHang::query()->with('giaoNhans')->sole();
+        $deliveryLegs = $order->giaoNhans->keyBy('LoaiGiaoNhan');
+        $intake = $deliveryLegs->get('NHAN_DO');
+        $delivery = $deliveryLegs->get('GIAO_DO');
+
+        $this->assertCount(2, $deliveryLegs);
+        $this->assertSame($order->DonHangID, $intake->DonHangID);
+        $this->assertSame('Tại cửa hàng', $intake->HinhThuc);
+        $this->assertNull($intake->DiaChi);
+        $this->assertSame(DeliveryStatus::Completed->dbValue(), $intake->TrangThai);
+        $this->assertSame($order->DonHangID, $delivery->DonHangID);
+        $this->assertSame('GIAO_DO', $delivery->LoaiGiaoNhan);
+        $this->assertSame('Tại nhà', $delivery->HinhThuc);
+        $this->assertSame('88 Lê Lợi', $delivery->DiaChi);
+        $this->assertSame('Chờ thực hiện', $delivery->TrangThai);
+        $this->assertTrue($order->requiresHomeDelivery());
+        $this->assertSame($delivery->GiaoNhanID, OrderWorkflow::activeReturnDelivery($order)?->GiaoNhanID);
     }
 
     public function test_manual_order_store_rejects_account_without_employee_profile_despite_client_employee_id(): void

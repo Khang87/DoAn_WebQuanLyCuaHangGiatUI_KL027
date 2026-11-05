@@ -7,6 +7,7 @@ use App\Enums\PaymentStatus;
 use App\Models\Booking;
 use App\Models\DonHang;
 use App\Models\HoaDon;
+use App\Models\KhuyenMai;
 use App\Models\LichSuThayDoiHoaDon;
 use App\Models\ThanhToan;
 use App\Models\TinNhan;
@@ -222,6 +223,9 @@ class InvoiceHistoryObserverTest extends TestCase
         ]);
         $order->setRelation('khachHang', null);
         $order->setRelation('booking', $booking);
+        $order->setRelation('khuyenMai', (new KhuyenMai)->forceFill([
+            'MaKhuyenMai' => 'GIAM7K',
+        ]));
         $order->setRelation('chiTietDonHangs', collect());
         $order->setRelation('thanhToans', collect([
             (new ThanhToan)->forceFill([
@@ -240,16 +244,23 @@ class InvoiceHistoryObserverTest extends TestCase
         ])->render();
 
         $this->assertStringNotContainsString('Thanh toán Tiền mặt', $html);
-        $this->assertStringContainsString('Tổng tiền đơn hàng theo bảng giá', $html);
+        $this->assertStringContainsString('Phương thức thanh toán', $html);
+        $this->assertStringContainsString('Tổng tiền đơn hàng', $html);
+        $this->assertStringContainsString('Tiền mặt', $html);
+        $this->assertStringContainsString('Mã khuyến mãi', $html);
+        $this->assertStringContainsString('GIAM7K', $html);
         $this->assertMatchesRegularExpression('/Phí nhận đồ\s*·\s*8\.1 km/u', $html);
         $this->assertMatchesRegularExpression('/Phí giao đồ\s*·\s*8\.1 km/u', $html);
+        $this->assertStringContainsString('Điểm đã sử dụng', $html);
+        $this->assertStringContainsString('5.000 điểm', $html);
         $this->assertStringContainsString('Giảm từ mã khuyến mãi', $html);
         $this->assertStringContainsString('-7.000 VNĐ', $html);
         $this->assertStringContainsString('Giảm từ điểm', $html);
-        $this->assertStringContainsString('(5.000 điểm)', $html);
         $this->assertStringContainsString('-5.000 VNĐ', $html);
-        $this->assertStringContainsString('-12.000 VNĐ', $html);
+        $this->assertStringContainsString('Tổng tiền được giảm', $html);
+        $this->assertStringContainsString('12.000 VNĐ', $html);
         $this->assertStringContainsString('115.000 VNĐ', $html);
+        $this->assertStringContainsString('Thanh toán', $html);
         $this->assertStringContainsString('Đã thanh toán', $html);
         $this->assertStringContainsString('Mã giao dịch: TM_DH00000001_20261101170642', $html);
         $this->assertSame(
@@ -259,6 +270,41 @@ class InvoiceHistoryObserverTest extends TestCase
         $this->assertSame(1, substr_count($html, '<i class="fas fa-check-circle me-1"></i>'));
         $this->assertStringNotContainsString('Tổng đã thu', $html);
         $this->assertStringNotContainsString('Còn nợ', $html);
+    }
+
+    public function test_invoice_summary_uses_combined_delivery_fee_when_delivery_legs_are_unavailable(): void
+    {
+        $invoice = $this->createInvoice();
+        $invoice->forceFill([
+            'TongTien' => 75000,
+            'PhiGiaoHang' => 9000,
+            'ThanhTien' => 84000,
+        ]);
+        $order = (new DonHang)->forceFill([
+            'DonHangID' => 1,
+            'MaDonHang' => 'DH00000001',
+            'TongTien' => 75000,
+            'PhiGiaoHang' => 9000,
+            'ThanhTien' => 84000,
+        ]);
+        $order->setRelation('khachHang', null);
+        $order->setRelation('booking', null);
+        $order->setRelation('chiTietDonHangs', collect());
+        $order->setRelation('khuyenMai', null);
+        $order->setRelation('thanhToans', collect());
+        $invoice->setRelation('donHang', $order);
+        $invoice->setRelation('lichSuThayDoiHoaDons', collect());
+
+        $html = view('admin.invoices.show', [
+            'invoice' => $invoice,
+            'totalPaid' => 0,
+            'balance' => 84000,
+        ])->render();
+
+        $this->assertStringContainsString('Phí giao nhận', $html);
+        $this->assertStringContainsString('9.000 VNĐ', $html);
+        $this->assertDoesNotMatchRegularExpression('/Phí nhận đồ\s*·\s*0 km/u', $html);
+        $this->assertDoesNotMatchRegularExpression('/Phí giao đồ\s*·\s*0 km/u', $html);
     }
 
     public function test_invoice_created_from_order_inherits_its_delivery_fee_and_discounts(): void
@@ -305,7 +351,7 @@ class InvoiceHistoryObserverTest extends TestCase
             $this->assertSame(0, $xpath->query('//h5[normalize-space(.)="Thao tác"]')->length);
             $this->assertSame(1, $xpath->query('//a[@href="'.route('invoices.index').'" and contains(normalize-space(.), "Quay lại")]')->length);
             $this->assertStringNotContainsString('window.print()', $html);
-            $this->assertStringContainsString('Tổng hợp', $html);
+            $this->assertStringContainsString('Thanh toán', $html);
             $this->assertStringContainsString('Thông tin hóa đơn', $html);
             $this->assertStringContainsString('Lịch sử thay đổi', $html);
             $this->assertStringContainsString('@media print', $html);

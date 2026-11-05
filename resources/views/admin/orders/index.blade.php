@@ -91,7 +91,9 @@
                                 $orderInvoice = $order->hoaDons->first();
                                 $isBookingReturnFlow = $order->booking !== null
                                     && in_array($operationalStatus, [\App\Enums\OrderStatus::Washed, \App\Enums\OrderStatus::Delivering], true);
-                                $returnDelivery = $isBookingReturnFlow
+                                $isDirectHomeReturnFlow = $order->booking === null
+                                    && $order->requiresHomeDelivery();
+                                $returnDelivery = ($isBookingReturnFlow || $isDirectHomeReturnFlow)
                                     ? \App\Support\OrderWorkflow::activeReturnDelivery($order)
                                     : null;
                             @endphp
@@ -109,7 +111,36 @@
                                         </a>
                                     @endcan
                                 @endif
-                                @if($nextOrderAction && $nextOrderAction['kind'] === 'delivery')
+                                @if($isDirectHomeReturnFlow && in_array($operationalStatus, [\App\Enums\OrderStatus::Washed, \App\Enums\OrderStatus::Delivering], true))
+                                    @if($returnDelivery && ($returnDelivery->NhanVienID !== null || $operationalStatus === \App\Enums\OrderStatus::Delivering))
+                                        @can('deliveries.view')
+                                            <a href="{{ route('deliveries.show', [$returnDelivery] + \App\Support\OrderWorkflow::listReturnParams()) }}"
+                                               class="btn btn-order-action"
+                                               title="Xem phiếu giao"
+                                               aria-label="Xem phiếu giao của đơn {{ $order->MaDonHang }}">
+                                                <i class="bi bi-box-arrow-up-right" aria-hidden="true"></i>
+                                            </a>
+                                        @endcan
+                                    @elseif($returnDelivery)
+                                        @can('deliveries.edit')
+                                            <a href="{{ route('orders.delivery-assignment', [$order] + \App\Support\OrderWorkflow::listReturnParams()) }}"
+                                               class="btn btn-order-action"
+                                               title="Tạo phiếu giao"
+                                               aria-label="Tạo phiếu giao cho đơn {{ $order->MaDonHang }}">
+                                                <i class="bi bi-truck" aria-hidden="true"></i>
+                                            </a>
+                                        @endcan
+                                    @else
+                                        @can('deliveries.create')
+                                            <a href="{{ route('orders.delivery-assignment', [$order] + \App\Support\OrderWorkflow::listReturnParams()) }}"
+                                               class="btn btn-order-action"
+                                               title="Tạo phiếu giao"
+                                               aria-label="Tạo phiếu giao cho đơn {{ $order->MaDonHang }}">
+                                                <i class="bi bi-truck" aria-hidden="true"></i>
+                                            </a>
+                                        @endcan
+                                    @endif
+                                @elseif($nextOrderAction && $nextOrderAction['kind'] === 'delivery')
                                     @if($order->hasActiveReturnDelivery()
                                         ? auth()->user()?->canPermission('deliveries.edit')
                                         : auth()->user()?->canPermission('deliveries.create'))

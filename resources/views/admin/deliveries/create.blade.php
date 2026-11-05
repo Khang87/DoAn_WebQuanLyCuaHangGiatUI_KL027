@@ -65,7 +65,7 @@
 @endphp
 <div class="card"><div class="card-body">
     <div class="d-flex justify-content-between align-items-center mb-4"><h5 class="mb-0">Thông tin lịch {{ $selectedMethod === 'giao_do' ? 'giao đồ' : 'nhận đồ' }}</h5><a href="{{ $backUrl }}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left me-1"></i>Quay lại</a></div>
-    <form action="{{ route('deliveries.store') }}" method="POST" data-booking-prefill>@csrf
+    <form action="{{ $lockDeliveryType ? route('orders.delivery-assignment.store', $selectedOrderId) : route('deliveries.store') }}" method="POST" data-booking-prefill>@csrf
         @if($errors->any())
             <div class="alert alert-danger" role="alert"><ul class="mb-0">@foreach($errors->all() as $message)<li>{{ $message }}</li>@endforeach</ul></div>
         @endif
@@ -137,8 +137,8 @@
                     <div class="form-text" data-address-autocomplete-status role="status" aria-live="polite"></div>
                 </div>
             </div>
-            <div class="col-md-6"><label class="form-label" for="pickup_date">Ngày {{ $selectedMethod === 'giao_do' ? 'giao' : 'nhận' }} đồ dự kiến</label><input type="date" class="form-control" id="pickup_date" name="pickup_date" value="{{ old('pickup_date') }}">@error('pickup_date')<div class="text-danger small">{{ $message }}</div>@enderror</div>
-            <div class="col-md-6"><label class="form-label" for="pickup_time">Giờ {{ $selectedMethod === 'giao_do' ? 'giao' : 'nhận' }} đồ dự kiến</label><input type="time" class="form-control" id="pickup_time" name="pickup_time" value="{{ old('pickup_time') }}">@error('pickup_time')<div class="text-danger small">{{ $message }}</div>@enderror</div>
+            <div class="col-md-6"><label class="form-label" for="pickup_date">Ngày {{ $selectedMethod === 'giao_do' ? 'giao' : 'nhận' }} đồ dự kiến @if($lockDeliveryType)<span class="text-danger ms-1">*</span>@endif</label><input type="date" class="form-control" id="pickup_date" name="pickup_date" value="{{ old('pickup_date') }}" @required($lockDeliveryType)>@error('pickup_date')<div class="text-danger small">{{ $message }}</div>@enderror</div>
+            <div class="col-md-6"><label class="form-label" for="pickup_time">Giờ {{ $selectedMethod === 'giao_do' ? 'giao' : 'nhận' }} đồ dự kiến @if($lockDeliveryType)<span class="text-danger ms-1">*</span>@endif</label><input type="time" class="form-control" id="pickup_time" name="pickup_time" value="{{ old('pickup_time') }}" @required($lockDeliveryType)>@error('pickup_time')<div class="text-danger small">{{ $message }}</div>@enderror</div>
             <div class="col-md-6"><label class="form-label" for="status">Trạng thái</label><x-admin.status-select name="status" id="status" :options="$statusOptions" selected="pending" class="form-select" /></div>
             <div class="col-12"><label class="form-label" for="notes">Ghi chú</label><textarea class="form-control" id="notes" name="notes" rows="3">{{ old('notes') }}</textarea></div>
         </div>

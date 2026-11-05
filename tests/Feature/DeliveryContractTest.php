@@ -360,6 +360,8 @@ class DeliveryContractTest extends TestCase
             'method' => 'nhan_do',
             'fulfillment' => 'Tại cửa hàng',
             'employee_id' => 1,
+            'pickup_date' => '2026-10-08',
+            'pickup_time' => '10:00',
         ]))->assertSessionHasNoErrors();
 
         $delivery = GiaoNhan::findOrFail(1);
@@ -1737,7 +1739,7 @@ class DeliveryContractTest extends TestCase
         }
     }
 
-    public function test_request_allows_unscheduled_pending_return_but_requires_complete_schedule_when_executing(): void
+    public function test_editing_pending_return_requires_complete_schedule(): void
     {
         $manager = Mockery::mock(User::class)->makePartial();
         $manager->TaiKhoanID = 100;
@@ -1758,12 +1760,19 @@ class DeliveryContractTest extends TestCase
         ]);
 
         $this->put(route('deliveries.update', 2), $this->data())
-            ->assertSessionHasNoErrors();
+            ->assertSessionHasErrors(['pickup_date', 'pickup_time']);
         $this->put(route('deliveries.update', 2), $this->data(['pickup_date' => '2026-10-08']))
             ->assertSessionHasErrors('pickup_time');
+        $this->put(route('deliveries.update', 2), $this->data([
+            'pickup_date' => '2026-10-08',
+            'pickup_time' => '10:00',
+        ]))->assertSessionHasNoErrors();
         $this->put(route('deliveries.update', 2), $this->data(['status' => 'delivering']))
             ->assertSessionHasErrors(['pickup_date', 'pickup_time']);
-        $this->assertNull(GiaoNhan::findOrFail(2)->ThoiGianDuKien);
+        $this->assertSame(
+            '2026-10-08 10:00:00',
+            GiaoNhan::findOrFail(2)->ThoiGianDuKien?->format('Y-m-d H:i:s'),
+        );
     }
 
     public function test_booking_return_creation_is_idempotent_and_cancelled_leg_can_be_replaced(): void
@@ -1802,12 +1811,15 @@ class DeliveryContractTest extends TestCase
         $this->assertTrue($response->getData()['lockDeliveryType']);
         view()->share('errors', new ViewErrorBag);
         $html = $response->render();
+        $this->assertStringContainsString('action="'.route('orders.delivery-assignment.store', $order).'"', $html);
+        $this->assertMatchesRegularExpression('/name="pickup_date"[^>]*required/', $html);
+        $this->assertMatchesRegularExpression('/name="pickup_time"[^>]*required/', $html);
         $this->assertMatchesRegularExpression('/<select[^>]*id="method"[^>]*disabled/', $html);
         $this->assertMatchesRegularExpression('/<input type="hidden" name="method" value="giao_do">/', $html);
         $this->assertStringContainsString('value="12 Nguyễn Huệ"', $html);
         $this->assertDoesNotMatchRegularExpression('/id="address"[^>]*disabled/', $html);
-        $this->assertStringContainsString('Lưu lịch giao nhận', $html);
-        $this->assertStringContainsString('btn btn-success', $html);
+        $this->assertStringContainsString('Cập nhật', $html);
+        $this->assertStringContainsString('btn btn-primary', $html);
         $this->assertDoesNotMatchRegularExpression('/>Hủy<\/a>/', $html);
         $this->assertSame(OrderStatus::Washed->value, $order->fresh()->TrangThai);
         $this->assertSame(0, GiaoNhan::count());
@@ -2258,7 +2270,11 @@ class DeliveryContractTest extends TestCase
         $editor->shouldReceive('canPermission')
             ->andReturnUsing(fn (string $permission): bool => $permission === 'deliveries.edit');
         $this->actingAs($editor)
-            ->put(route('deliveries.update', $delivery), $this->data(['status' => 'cancelled']))
+            ->put(route('deliveries.update', $delivery), $this->data([
+                'status' => 'cancelled',
+                'pickup_date' => '2026-10-08',
+                'pickup_time' => '10:00',
+            ]))
             ->assertForbidden();
         $this->get(route('deliveries.edit', $delivery))
             ->assertOk()
@@ -2338,7 +2354,7 @@ class DeliveryContractTest extends TestCase
             $editView->getData()['statusOptions'],
         );
 
-        $this->put(route('deliveries.update', $delivery), $this->data(['status' => 'cancelled']))
+        $this->post(route('deliveries.cancel-return', $delivery))
             ->assertRedirect(route('deliveries.index'))
             ->assertSessionHas('success');
 
