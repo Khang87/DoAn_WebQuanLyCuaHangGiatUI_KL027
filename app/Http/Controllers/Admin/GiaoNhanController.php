@@ -339,6 +339,21 @@ class GiaoNhanController extends Controller
             'address.required' => 'Vui lòng nhập địa chỉ nhận đồ tại nhà.',
         ]);
 
+        // Custom validation: so sánh với giờ hẹn của booking và kiểm tra giờ làm việc
+        $workingHourMin = '08:00';
+        $workingHourMax = '17:00';
+        
+        if (!empty($validated['pickup_time'])) {
+            $inputTime = Carbon::parse('1970-01-01 ' . $validated['pickup_time']);
+            
+            // Kiểm tra giờ làm việc
+            if ($inputTime->format('H:i') < $workingHourMin || $inputTime->format('H:i') > $workingHourMax) {
+                throw ValidationException::withMessages([
+                    'pickup_time' => 'Giờ nhận đồ phải trong khung giờ làm việc từ 8:00 đến 17:00.',
+                ]);
+            }
+        }
+
         // Custom validation: so sánh với giờ hẹn của booking
         $appointmentDateTime = $bookingDocument->booking?->getAppointmentDateTime();
         if ($appointmentDateTime) {

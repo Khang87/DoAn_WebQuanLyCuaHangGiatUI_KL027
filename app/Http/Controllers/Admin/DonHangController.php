@@ -369,7 +369,9 @@ class DonHangController extends Controller
             return $denied;
         }
 
-        $override = $this->canDeleteSettled();
+        // Owner có thể xóa mọi đơn hàng (đã thanh toán hoặc quyết toán)
+        $isOwner = auth()->user()?->isOwner() ?? false;
+        $override = $isOwner || $this->canDeleteSettled();
 
         if ($order->isLocked() && ! $override) {
             return $this->denySettled(

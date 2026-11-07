@@ -122,8 +122,9 @@
 
                     @php
                         $appointmentDateTime = $booking?->getAppointmentDateTime();
-                        // Chỉ enforce min date cho ngày nhận, không enforce time picker vì phức tạp
-                        // Backend validation sẽ check kỹ hơn
+                        // Ràng buộc giờ làm việc: 8:00 - 17:00
+                        $workingHourMin = '08:00';
+                        $workingHourMax = '17:00';
                     @endphp
                     <div class="col-md-6">
                         <label class="form-label" for="pickup_date">Ngày nhận đồ dự kiến <span class="text-danger">*</span></label>
@@ -140,8 +141,13 @@
                     <div class="col-md-6">
                         <label class="form-label" for="pickup_time">Giờ nhận đồ dự kiến <span class="text-danger">*</span></label>
                         <input type="time" class="form-control" id="pickup_time" name="pickup_time"
+                               min="{{ $workingHourMin }}" max="{{ $workingHourMax }}"
+                               step="3600"
                                value="{{ old('pickup_time', $bookingDocument->ThoiGianDuKien?->format('H:i')) }}" required>
-                        @error('pickup_time')<div class="text-danger small mt-1">{{ $message }}</div>@enderror
+                        @error('pickup_time')<div class="text-danger small mt-1">{{ $message }}</div>@enderror>
+                        <div class="form-text text-muted">
+                            Giờ làm việc: 8:00 - 17:00
+                        </div>
                     </div>
                 </div>
 
