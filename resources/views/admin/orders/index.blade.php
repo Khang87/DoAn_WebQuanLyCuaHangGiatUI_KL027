@@ -21,7 +21,7 @@
         <x-admin.status-select
             name="status"
             id="filter-status"
-            :options="$statusFlow ?? \App\Enums\OrderStatus::options()"
+            :options="array_diff_key($statusFlow ?? \App\Enums\OrderStatus::options(), [\App\Enums\OrderStatus::Pending->value => true])"
             placeholder="Tất cả trạng thái"
             class="form-select form-select-sm filter-select shadow-sm rounded-3"
             submit
@@ -122,8 +122,8 @@
                                         @can('deliveries.edit')
                                             <a href="{{ route('orders.delivery-assignment', [$order] + \App\Support\OrderWorkflow::listReturnParams()) }}"
                                                class="btn btn-order-action"
-                                               title="Tạo phiếu giao"
-                                               aria-label="Tạo phiếu giao cho đơn {{ $order->MaDonHang }}">
+                                               title="Cập nhật phiếu giao"
+                                               aria-label="Cập nhật phiếu giao cho đơn {{ $order->MaDonHang }}">
                                                 <i class="bi bi-file-earmark-plus" aria-hidden="true"></i>
                                             </a>
                                         @endcan
@@ -131,8 +131,8 @@
                                         @can('deliveries.create')
                                             <a href="{{ route('orders.delivery-assignment', [$order] + \App\Support\OrderWorkflow::listReturnParams()) }}"
                                                class="btn btn-order-action"
-                                               title="Tạo phiếu giao"
-                                               aria-label="Tạo phiếu giao cho đơn {{ $order->MaDonHang }}">
+                                               title="Cập nhật phiếu giao"
+                                               aria-label="Cập nhật phiếu giao cho đơn {{ $order->MaDonHang }}">
                                                 <i class="bi bi-file-earmark-plus" aria-hidden="true"></i>
                                             </a>
                                         @endcan
@@ -180,8 +180,8 @@
                                         @can('deliveries.create')
                                             <a href="{{ route('orders.delivery-assignment', [$order] + \App\Support\OrderWorkflow::listReturnParams()) }}"
                                                class="btn btn-order-action"
-                                               title="Tạo phiếu giao"
-                                               aria-label="Tạo phiếu giao cho đơn {{ $order->MaDonHang }}">
+                                               title="Cập nhật phiếu giao"
+                                               aria-label="Cập nhật phiếu giao cho đơn {{ $order->MaDonHang }}">
                                                 <i class="bi bi-file-earmark-plus" aria-hidden="true"></i>
                                             </a>
                                         @endcan

@@ -80,7 +80,9 @@
 
 <x-admin.detail.page-header
     title="{{ $delivery->LoaiGiaoNhan === 'NHAN_DO' ? 'Trạng thái phiếu nhận đồ' : 'Trạng thái phiếu giao đồ' }}"
-    backUrl="{{ \App\Support\OrderWorkflow::listBackUrl(route('deliveries.index')) }}"
+    :backUrl="request()->query('return_to') === 'deliveries'
+        ? route('deliveries.index', request()->only(['page', 'search', 'customer_id', 'method', 'status', 'sort_by', 'sort_order']))
+        : \App\Support\OrderWorkflow::listBackUrl(route('deliveries.index'))"
 >
     <x-slot:badge>
         <x-admin.status-badge :status="$deliveryStatus" :enum="\App\Enums\DeliveryStatus::class" :deliveryType="$delivery->LoaiGiaoNhan" />

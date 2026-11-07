@@ -489,7 +489,12 @@ class RewardPointTest extends TestCase
         $order->update(['TrangThai' => OrderStatus::Received->value]);
         $service = app(OrderService::class);
         $service->updateStatus($order, OrderStatus::Cancelled->value, false, 'Khách yêu cầu hủy');
-        $service->updateStatus($order->fresh(), OrderStatus::Cancelled->value);
+        try {
+            $service->updateStatus($order->fresh(), OrderStatus::Cancelled->value);
+            $this->fail('A cancelled order cannot be cancelled again.');
+        } catch (ValidationException $exception) {
+            $this->assertArrayHasKey('TrangThai', $exception->errors());
+        }
         $this->assertSame(500, $customer->fresh()->points());
         try {
             $service->delete($order->fresh());
@@ -499,6 +504,42 @@ class RewardPointTest extends TestCase
         }
         $this->assertNotNull($order->fresh());
         $this->assertSame(500, $customer->fresh()->points());
+    }
+
+    public function test_orders_can_only_be_cancelled_from_received_status(): void
+    {
+        $customer = $this->createCustomer(1, 0);
+        $order = $this->createOrder($customer, 10000, 0);
+        $service = app(OrderService::class);
+
+        foreach ([
+            OrderStatus::Pending,
+            OrderStatus::Washing,
+            OrderStatus::Washed,
+            OrderStatus::Delivering,
+            OrderStatus::Delivered,
+            OrderStatus::Paid,
+            OrderStatus::Cancelled,
+        ] as $status) {
+            $order->forceFill(['TrangThai' => $status->value])->saveQuietly();
+
+            try {
+                $service->updateStatus($order->fresh(), OrderStatus::Cancelled->value, reason: 'Yêu cầu hủy');
+                $this->fail("Order in {$status->value} status must not be cancellable.");
+            } catch (ValidationException $exception) {
+                $this->assertSame(
+                    ['Chỉ được hủy đơn hàng khi đơn đang ở trạng thái Đã tiếp nhận.'],
+                    $exception->errors()['TrangThai'],
+                );
+            }
+
+            $this->assertSame($status->value, $order->fresh()->TrangThai);
+        }
+
+        $order->forceFill(['TrangThai' => OrderStatus::Received->value])->saveQuietly();
+        $service->updateStatus($order->fresh(), OrderStatus::Cancelled->value, reason: 'Yêu cầu hủy');
+
+        $this->assertSame(OrderStatus::Cancelled->value, $order->fresh()->TrangThai);
     }
 
     public function test_inspection_reprices_estimated_booking_details_at_current_effective_price(): void

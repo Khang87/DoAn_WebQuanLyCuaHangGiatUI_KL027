@@ -451,7 +451,9 @@ class DeliveryService
                     : $data['pickup_date'].' '.$data['pickup_time'].':00';
             }
             if (array_key_exists('address', $data)) {
-                $attributes['DiaChi'] = $current->HinhThuc === 'Tại nhà' ? $data['address'] : null;
+                $attributes['DiaChi'] = $current->HinhThuc === 'Tại nhà'
+                    ? ($current->booking?->DiaChiNhan ?? $current->DiaChi)
+                    : null;
             }
 
             if ($attributes !== []) {

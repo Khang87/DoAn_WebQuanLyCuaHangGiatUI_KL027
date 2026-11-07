@@ -22,6 +22,16 @@
         cursor: not-allowed;
         opacity: 1;
     }
+
+    #booking-edit-form #booking-pickup-address[readonly],
+    #booking-edit-form #booking-return-address[readonly] {
+        background-color: #e9ecef !important;
+        background-image: none;
+        border-color: #ced4da;
+        color: #6c757d !important;
+        cursor: not-allowed;
+        opacity: 1;
+    }
 </style>
 @endpush
 
@@ -39,6 +49,15 @@
     $customerEmail = $customer?->Email ?: $customerAccount?->Email;
     $intakeDocument = $booking->giaoNhanDuKiens->firstWhere('LoaiGiaoNhan', 'NHAN_DO');
     $intakeEmployee = $intakeDocument?->nhanVien;
+    $storeAddress = config('services.google_routes.store_address');
+    $pickupMethod = old('method', $booking->HinhThucNhanDo);
+    $returnMethod = old('return_method', $booking->HinhThucTraDo);
+    $pickupAddress = $pickupMethod === \App\Enums\ReceiveMethod::Home->value
+        ? old('address', $booking->DiaChiNhan)
+        : $storeAddress;
+    $returnAddress = $returnMethod === \App\Enums\ReturnMethod::Home->value
+        ? old('return_address', $booking->DiaChiTra)
+        : $storeAddress;
     $legacyRequestPrefix = 'Khách chọn dịch vụ chưa rõ số lượng: ';
     $bookingNoteLines = preg_split('/\r\n|\r|\n/', (string) ($booking->GhiChu ?? ''));
     $legacyRequestedServices = collect($bookingNoteLines)
@@ -105,17 +124,18 @@
                             <h6 class="mb-3">Thông tin nhận và giao đồ từ đặt lịch</h6>
                             <div class="row g-3">
                 @endif
-                <div class="col-md-6"><label class="form-label">Hình thức nhân viên nhận đồ <span class="text-danger ms-1">*</span></label><select class="form-select booking-main-control @error('method') is-invalid @enderror" name="method" id="booking-method" required @disabled($inspectionMode)>@foreach(\App\Enums\ReceiveMethod::options() as $value => $label)<option value="{{ $value }}" @selected(old('method', $booking->HinhThucNhanDo) === $value)>{{ $label }}</option>@endforeach</select>@if($inspectionMode)<input type="hidden" name="method" value="{{ $booking->HinhThucNhanDo }}">@endif @error('method')<div class="invalid-feedback">{{ $message }}</div>@enderror</div>
+                <div class="col-md-6"><label class="form-label">Hình thức nhân viên nhận đồ <span class="text-danger ms-1">*</span></label><select class="form-select booking-main-control @if($inspectionMode) bg-light text-muted @endif @error('method') is-invalid @enderror" name="method" id="booking-method" required @disabled($inspectionMode)>@foreach(\App\Enums\ReceiveMethod::options() as $value => $label)<option value="{{ $value }}" @selected($pickupMethod === $value)>{{ $label }}</option>@endforeach</select>@if($inspectionMode)<input type="hidden" name="method" value="{{ $booking->HinhThucNhanDo }}">@endif @error('method')<div class="invalid-feedback">{{ $message }}</div>@enderror</div>
                 <div class="col-md-6">
                     <label class="form-label" for="booking-pickup-address">Địa chỉ nhân viên nhận đồ</label>
                     <div class="position-relative">
                         <input
                             type="text"
                             id="booking-pickup-address"
-                            class="form-control booking-main-control @error('address') is-invalid @enderror"
+                            class="form-control booking-main-control @if($inspectionMode) bg-light text-muted @endif @error('address') is-invalid @enderror"
                             name="address"
-                            value="{{ old('address', $booking->DiaChiNhan) }}"
+                            value="{{ $pickupAddress }}"
                             maxlength="255"
+                            data-store-address="{{ $storeAddress }}"
                             @unless($inspectionMode)
                                 data-address-autocomplete
                                 data-autocomplete-url="{{ route('bookings.address-autocomplete') }}"
@@ -137,10 +157,10 @@
                 </div>
                 <div class="col-md-6">
                     <label class="form-label" for="booking-return-method">Hình thức nhân viên giao đồ <span class="text-danger">*</span></label>
-                    <select class="form-select booking-main-control @error('return_method') is-invalid @enderror" name="return_method" id="booking-return-method" required @disabled($inspectionMode)>
+                    <select class="form-select booking-main-control @if($inspectionMode) bg-light text-muted @endif @error('return_method') is-invalid @enderror" name="return_method" id="booking-return-method" required @disabled($inspectionMode)>
                         <option value="">Chọn hình thức giao</option>
                         @foreach(\App\Enums\ReturnMethod::options() as $value => $label)
-                            <option value="{{ $value }}" @selected(old('return_method', $booking->HinhThucTraDo) === $value)>{{ $label }}</option>
+                            <option value="{{ $value }}" @selected($returnMethod === $value)>{{ $label }}</option>
                         @endforeach
                     </select>
                     @if($inspectionMode)
@@ -154,10 +174,11 @@
                         <input
                             type="text"
                             id="booking-return-address"
-                            class="form-control booking-main-control @error('return_address') is-invalid @enderror"
+                            class="form-control booking-main-control @if($inspectionMode) bg-light text-muted @endif @error('return_address') is-invalid @enderror"
                             name="return_address"
-                            value="{{ old('return_address', $booking->DiaChiTra) }}"
+                            value="{{ $returnAddress }}"
                             maxlength="255"
+                            data-store-address="{{ $storeAddress }}"
                             @unless($inspectionMode)
                                 data-address-autocomplete
                                 data-autocomplete-url="{{ route('bookings.address-autocomplete') }}"
@@ -182,10 +203,10 @@
                         </div>
                     </div>
                 @endif
-                <div class="col-md-6"><label class="form-label">Ngày hẹn nhân viên nhận đồ <span class="text-danger ms-1">*</span></label><input type="date" class="form-control booking-main-control @error('scheduled_date') is-invalid @enderror" name="scheduled_date" value="{{ old('scheduled_date', $booking->NgayHen?->format('Y-m-d')) }}" required @readonly($inspectionMode)>@error('scheduled_date')<div class="invalid-feedback">{{ $message }}</div>@enderror</div>
+                <div class="col-md-6"><label class="form-label">Ngày hẹn nhân viên nhận đồ <span class="text-danger ms-1">*</span></label><input type="date" class="form-control booking-main-control @if($inspectionMode) bg-light text-muted @endif @error('scheduled_date') is-invalid @enderror" name="scheduled_date" value="{{ old('scheduled_date', $booking->NgayHen?->format('Y-m-d')) }}" required @readonly($inspectionMode)>@error('scheduled_date')<div class="invalid-feedback">{{ $message }}</div>@enderror</div>
                 <div class="col-md-6">
                     <label class="form-label">Giờ hẹn nhân viên nhận đồ <span class="text-danger ms-1">*</span></label>
-                    <input type="time" min="08:00" max="17:00" step="60" class="form-control booking-main-control @error('scheduled_time') is-invalid @enderror" name="scheduled_time" value="{{ old('scheduled_time', $booking->GioHen?->format('H:i')) }}" required @readonly($inspectionMode)>
+                    <input type="time" min="08:00" max="17:00" step="60" class="form-control booking-main-control @if($inspectionMode) bg-light text-muted @endif @error('scheduled_time') is-invalid @enderror" name="scheduled_time" value="{{ old('scheduled_time', $booking->GioHen?->format('H:i')) }}" required @readonly($inspectionMode)>
                     <div class="form-text">Giờ nhận đơn đặt lịch: 08:00 - 17:00</div>
                     @error('scheduled_time')<div class="invalid-feedback">{{ $message }}</div>@enderror
                 </div>
@@ -257,7 +278,7 @@
                     @endif
                     <div class="col-12">
                         <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
-                            <h6 class="mb-0">Mặt hàng từ đặt lịch · kiểm tra và chỉnh nếu cần</h6>
+                            <h6 class="mb-0">Mặt hàng từ đặt lịch - Kiểm tra và chỉnh nếu cần</h6>
                             <button type="button" class="btn btn-sm btn-outline-primary" id="add-booking-item">
                                 <i class="bi bi-plus-lg me-1"></i>Thêm mặt hàng
                             </button>
@@ -620,6 +641,7 @@
         const returnMethod = document.getElementById('booking-return-method');
         const returnAddress = document.getElementById('booking-return-address');
         const address = document.querySelector('[name="address"]');
+        const storeAddress = @json($storeAddress);
         const itemsContainer = document.getElementById('booking-items');
         const addItemButton = document.getElementById('add-booking-item');
         const pricingUnitOptions = @json($pricingUnitOptions);
@@ -664,7 +686,14 @@
         function updateAddressRequirement() {
             address.required = method.value === @json(\App\Enums\ReceiveMethod::Home->value);
             returnAddress.required = returnMethod.value === @json(\App\Enums\ReturnMethod::Home->value);
-            for (const field of [address, returnAddress]) {
+            for (const [field, isHome] of [[address, address.required], [returnAddress, returnAddress.required]]) {
+                if (!isHome) {
+                    field.value = storeAddress;
+                    field.dataset.storeAddressValue = 'true';
+                } else if (field.dataset.storeAddressValue === 'true') {
+                    field.value = '';
+                    delete field.dataset.storeAddressValue;
+                }
                 field.disabled = !field.required;
                 field.classList.toggle('bg-light', field.disabled);
                 field.classList.toggle('text-muted', field.disabled);

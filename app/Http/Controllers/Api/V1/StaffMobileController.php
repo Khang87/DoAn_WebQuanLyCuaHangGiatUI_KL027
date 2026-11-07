@@ -320,7 +320,12 @@ class StaffMobileController extends ApiController
             'Booking' => $o->booking ? [
                 'BookingID' => $o->booking->BookingID, 'MaBooking' => $o->booking->MaBooking,
                 'HinhThucNhanDo' => $o->booking->HinhThucNhanDo, 'HinhThucTraDo' => $o->booking->HinhThucTraDo,
-                'DiaChiNhan' => $o->booking->DiaChiNhan, 'DiaChiTra' => $o->booking->DiaChiTra,
+                'DiaChiNhan' => $o->booking->HinhThucNhanDo === 'Tại cửa hàng'
+                    ? config('services.google_routes.store_address')
+                    : $o->booking->DiaChiNhan,
+                'DiaChiTra' => $o->booking->HinhThucTraDo === 'Tại cửa hàng'
+                    ? config('services.google_routes.store_address')
+                    : $o->booking->DiaChiTra,
                 'PhuongThucThanhToan' => $o->booking->PhuongThucThanhToan,
                 'NgayHen' => $o->booking->NgayHen?->format('Y-m-d'), 'GioHen' => $o->booking->GioHen,
                 'GhiChu' => $o->booking->GhiChu,
@@ -619,8 +624,14 @@ class StaffMobileController extends ApiController
 
         return [
             'id' => $booking->BookingID, 'code' => $booking->MaBooking, 'status' => $booking->TrangThai,
-            'receive_method' => $booking->HinhThucNhanDo, 'receive_address' => $booking->DiaChiNhan,
-            'return_method' => $booking->HinhThucTraDo, 'return_address' => $booking->DiaChiTra,
+            'receive_method' => $booking->HinhThucNhanDo,
+            'receive_address' => $booking->HinhThucNhanDo === 'Tại cửa hàng'
+                ? config('services.google_routes.store_address')
+                : $booking->DiaChiNhan,
+            'return_method' => $booking->HinhThucTraDo,
+            'return_address' => $booking->HinhThucTraDo === 'Tại cửa hàng'
+                ? config('services.google_routes.store_address')
+                : $booking->DiaChiTra,
             'appointment_date' => $booking->NgayHen?->format('Y-m-d'), 'appointment_time' => $appointmentTime,
             'appointment' => $booking->NgayHen?->format('Y-m-d').' '.($appointmentTime ?? ''),
             'note' => $booking->GhiChu, 'created_at' => $booking->NgayTao?->toIso8601String(),

@@ -44,6 +44,17 @@
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
                 </div>
+                <div class="col-md-6">
+                    <label class="form-label">Trạng thái hồ sơ</label>
+                    <select class="form-select @error('TrangThai') is-invalid @enderror" name="TrangThai">
+                        @foreach(['Hoạt động' => 'Đang hoạt động', 'Ngừng hoạt động' => 'Tạm ngưng', 'Khóa' => 'Khóa'] as $value => $label)
+                            <option value="{{ $value }}" @selected(old('TrangThai', $customer->TrangThai ?: 'Hoạt động') === $value)>{{ $label }}</option>
+                        @endforeach
+                    </select>
+                    @error('TrangThai')
+                        <div class="invalid-feedback">{{ $message }}</div>
+                    @enderror
+                </div>
                 <div class="col-12">
                     <label class="form-label">Địa chỉ</label>
                     <div class="position-relative">

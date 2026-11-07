@@ -530,6 +530,22 @@ class SupportMessagesTest extends TestCase
         $this->assertSame([2, 3], $service->supportCustomers()->getCollection()->pluck('TaiKhoanID')->all());
     }
 
+    public function test_order_inbox_search_matches_normalized_legacy_order_code(): void
+    {
+        DB::table('DonHang')->where('DonHangID', 1)->update(['MaDonHang' => 'DH0047']);
+
+        $orders = app(MessageService::class)->getOrders('DH00000047');
+
+        $this->assertSame(1, $orders->total());
+        $this->assertSame('DH00000047', $orders->first()->MaDonHang);
+
+        $this->actingAs(User::findOrFail(1))
+            ->getJson('/admin/messages/inbox?tab=orders&q=DH00000047')
+            ->assertOk()
+            ->assertJsonPath('conversations.0.number', 'DH00000047')
+            ->assertJsonPath('conversations.0.id', 1);
+    }
+
     public function test_opening_recent_window_clears_older_unread_history_without_touching_later_arrivals(): void
     {
         Http::fake();

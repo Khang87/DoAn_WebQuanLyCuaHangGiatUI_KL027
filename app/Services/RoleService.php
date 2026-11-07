@@ -7,6 +7,8 @@ use App\Models\VaiTro;
 use App\Support\PermissionCache;
 use App\Support\PermissionRegistry;
 use App\Support\QuyenMapper;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -27,6 +29,14 @@ class RoleService
      */
     public function getAllWithPermissions(): Collection
     {
+        return $this->rolesWithPermissionsQuery()->get();
+    }
+
+    /**
+     * @return Builder<VaiTro>
+     */
+    private function rolesWithPermissionsQuery(): Builder
+    {
         return VaiTro::query()
             ->with([
                 'quyens' => fn ($query) => $query
@@ -43,20 +53,21 @@ class RoleService
             ->orderByRaw(
                 'CASE "TenVaiTro" WHEN \'Chủ cửa hàng\' THEN 0 WHEN \'Quản lý\' THEN 1'
                 .' WHEN \'Nhân viên\' THEN 2 ELSE 3 END'
-            )
-            ->get();
+            );
     }
 
     /**
      * @return array{
-     *     roles: Collection<int, VaiTro>,
+     *     roles: LengthAwarePaginator<int, VaiTro>,
      *     metrics: array{roles: int, permissions: int, assignedAccounts: int}
      * }
      */
     public function getRoleManagementData(): array
     {
         return [
-            'roles' => $this->getAllWithPermissions(),
+            'roles' => $this->rolesWithPermissionsQuery()
+                ->paginate(9)
+                ->withQueryString(),
             'metrics' => [
                 'roles' => (int) VaiTro::query()->count(),
                 'permissions' => (int) Quyen::query()

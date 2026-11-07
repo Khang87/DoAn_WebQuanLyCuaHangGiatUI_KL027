@@ -49,15 +49,19 @@
     $employeeNameCounts = $employeeOptions->countBy(fn ($employee) => mb_strtolower(trim((string) $employee->HoTen)));
     $selectedEmployee = $employeeOptions->firstWhere('NhanVienID', (int) old('employee_id', $delivery->NhanVienID));
     $statusOptions ??= \App\Enums\DeliveryStatus::optionsForLeg($delivery->LoaiGiaoNhan);
+    $deliveryListContext = request()->only(['page', 'search', 'customer_id', 'method', 'status', 'sort_by', 'sort_order', 'return_to']);
+    $deliveryListBackUrl = request()->query('return_to') === 'deliveries'
+        ? route('deliveries.index', request()->only(['page', 'search', 'customer_id', 'method', 'status', 'sort_by', 'sort_order']))
+        : \App\Support\OrderWorkflow::listBackUrl(route('deliveries.index'));
 @endphp
 <div class="delivery-form-shell"><div class="card"><div class="card-body">
     <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
         <h2 class="h5 mb-0">Cập nhật phiếu {{ $delivery->LoaiGiaoNhan === 'NHAN_DO' ? 'nhận' : 'giao' }} đồ</h2>
-        <a href="{{ \App\Support\OrderWorkflow::listBackUrl(route('deliveries.index')) }}" class="btn btn-outline-secondary btn-sm">
+        <a href="{{ $deliveryListBackUrl }}" class="btn btn-outline-secondary btn-sm">
             <i class="bi bi-arrow-left me-1"></i>Quay lại
         </a>
     </div>
-    <form action="{{ route('deliveries.update', $delivery) }}" method="POST" data-delivery-edit-form
+    <form action="{{ route('deliveries.update', [$delivery] + $deliveryListContext) }}" method="POST" data-delivery-edit-form
           @if($bookingScheduleDate && $bookingScheduleTime)
               data-booking-schedule-date="{{ $bookingScheduleDate }}"
               data-booking-schedule-time="{{ $bookingScheduleTime }}"

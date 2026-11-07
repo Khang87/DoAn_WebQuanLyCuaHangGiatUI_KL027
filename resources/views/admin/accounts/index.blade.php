@@ -24,12 +24,13 @@
                 <li>
                     @can('orders.view')
                         <a href="{{ route('orders.show', $order['id']) }}">
-                            {{ $order['code'] }} ({{ $order['status'] }})
+                            {{ $order['code'] }}
                         </a>
                     @else
-                        {{ $order['code'] }} ({{ $order['status'] }})
+                        {{ $order['code'] }}
                     @endcan
-                    — {{ $order['payment_status'] }}
+                    — Trạng thái đơn: {{ $order['status'] }}
+                    — Thanh toán: {{ $order['payment_status'] }}
                 </li>
             @endforeach
         </ul>

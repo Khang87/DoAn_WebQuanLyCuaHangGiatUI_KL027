@@ -460,8 +460,10 @@ class DynamicRolePermissionTest extends TestCase
 
         $this->assertSame(0, $xpath->query('//form[@action="'.route('roles.destroy', $ownerRole).'"]')->length);
         $this->assertSame(1, $xpath->query('//form[@action="'.route('roles.destroy', $customRole).'"]//input[@name="_method" and @value="DELETE"]')->length);
+        $this->assertSame(1, $xpath->query('//form[@action="'.route('roles.destroy', $customRole).'"]/button[contains(@class, "dropdown-item") and contains(@class, "text-danger") and not(contains(@class, "btn-sm"))]')->length);
         $this->assertStringContainsString('Có sẵn', $html);
         $this->assertStringContainsString('Tùy chỉnh', $html);
+        $this->assertStringContainsString('Xóa nhóm', $html);
         $this->assertStringContainsString('Đang hoạt động', $html);
         $this->assertStringContainsString('Ngừng hoạt động', $html);
     }
@@ -486,7 +488,7 @@ class DynamicRolePermissionTest extends TestCase
         $response = $this->actingAs($owner)
             ->get(route('roles.index'))
             ->assertOk()
-            ->assertSee('Quản lý nhóm quyền')
+            ->assertSee('Nhóm quyền')
             ->assertSee('Quyền có thể cấp')
             ->assertSee('Tài khoản đã được phân nhóm')
             ->assertSee('Kế toán')
@@ -510,7 +512,7 @@ class DynamicRolePermissionTest extends TestCase
         $this->actingAs($owner)
             ->get(route('roles.index'))
             ->assertOk()
-            ->assertSee('Quản lý nhóm quyền')
+            ->assertSee('Nhóm quyền')
             ->assertSee('Kế toán')
             ->assertSee('Xem báo cáo')
             ->assertSee('data-permission-role="'.$role->getKey().'"', false)

@@ -10,6 +10,14 @@
     $employee = ($canAssignEmployee ?? false)
         ? $employees->firstWhere('NhanVienID', (int) old('employee_id', $bookingDocument->NhanVienID))
         : ($isEmployee ? $booking?->nhanVienXacNhan : $bookingDocument->nhanVien);
+    $deliveryListContext = request()->only(['page', 'search', 'customer_id', 'method', 'status', 'sort_by', 'sort_order', 'return_to']);
+    $deliveryListBackUrl = request()->query('return_to') === 'deliveries'
+        ? route('deliveries.index', request()->only(['page', 'search', 'customer_id', 'method', 'status', 'sort_by', 'sort_order']))
+        : route('deliveries.index');
+    $storeAddress = config('services.google_routes.store_address');
+    $intakeAddress = $bookingDocument->HinhThuc === 'Tại nhà'
+        ? ($booking?->DiaChiNhan ?: $bookingDocument->DiaChi)
+        : $storeAddress;
 @endphp
 
 <div class="delivery-form-shell">
@@ -20,7 +28,7 @@
                     <h2 class="h5 mb-1">Cập nhật phiếu nhận đồ</h2>
                     <p class="text-muted mb-0">{{ $displayCode ?? 'BGN-'.$bookingDocument->BookingGiaoNhanID }} · {{ $booking?->MaBooking ?: 'Đặt lịch' }}</p>
                 </div>
-                <a href="{{ route('deliveries.index') }}" class="btn btn-outline-secondary btn-sm">
+                <a href="{{ $deliveryListBackUrl }}" class="btn btn-outline-secondary btn-sm">
                     <i class="bi bi-arrow-left me-1"></i>Quay lại
                 </a>
             </div>
@@ -35,7 +43,7 @@
                 </div>
             @endif
 
-            <form action="{{ route('deliveries.booking-documents.update', $bookingDocument) }}" method="POST">
+            <form action="{{ route('deliveries.booking-documents.update', [$bookingDocument] + $deliveryListContext) }}" method="POST">
                 @csrf
                 @method('PUT')
                 @php
@@ -108,17 +116,14 @@
                         @endif
                     </div>
 
-                    @if($bookingDocument->HinhThuc === 'Tại nhà')
-                        <div class="col-12">
-                            <label class="form-label" for="address">Địa chỉ nhận đồ <span class="text-danger">*</span></label>
-                            <div class="position-relative">
-                                <input class="form-control" id="address" name="address" value="{{ old('address', $bookingDocument->DiaChi) }}" required maxlength="255" data-address-autocomplete data-autocomplete-url="{{ route('bookings.address-autocomplete') }}" aria-autocomplete="list" aria-controls="booking-document-address-suggestions" aria-expanded="false" autocomplete="off">
-                                <div id="booking-document-address-suggestions" class="list-group address-autocomplete-suggestions position-absolute top-100 start-0 w-100 shadow d-none" role="listbox" aria-label="Gợi ý địa chỉ nhận đồ"></div>
-                                <div class="form-text" data-address-autocomplete-status role="status" aria-live="polite"></div>
-                            </div>
-                            @error('address')<div class="text-danger small mt-1">{{ $message }}</div>@enderror
-                        </div>
-                    @endif
+                    <div class="col-12">
+                        <label class="form-label" for="address">Địa chỉ nhân viên nhận đồ</label>
+                        <input class="form-control bg-light text-muted" id="address" name="address"
+                               value="{{ old('address', $intakeAddress) }}" readonly aria-readonly="true"
+                               @if($bookingDocument->HinhThuc === 'Tại nhà') required maxlength="255" @endif>
+                        <div class="form-text">Địa chỉ được lấy từ thông tin đặt lịch trên mobile và không thể chỉnh sửa tại đây.</div>
+                        @error('address')<div class="text-danger small mt-1">{{ $message }}</div>@enderror
+                    </div>
 
                     @php
                         $appointmentDateTime = $booking?->getAppointmentDateTime();

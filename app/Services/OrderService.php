@@ -1202,11 +1202,11 @@ class OrderService
             if ($order === null) {
                 return false;
             }
-            
+
             // Owner có thể xóa cascade dữ liệu liên quan
             if ($overrideSettled) {
                 \Log::info('CASCADE DELETE ORDER', ['order_id' => $order->DonHangID, 'code' => $order->MaDonHang]);
-                
+
                 // Xóa cascade tất cả bảng con
                 $order->chiTietDonHangs()->delete();  // Xóa chi tiết đơn hàng
                 $order->giaoNhans()->delete();        // Xóa giao nhận
@@ -1215,16 +1215,16 @@ class OrderService
                 $order->thongBaos()->delete();        // Xóa thông báo
                 $order->tinNhans()->delete();         // Xóa tin nhắn
                 $order->danhGia()?->delete();         // Xóa đánh giá
-                
+
                 // Xóa lịch sử hệ thống
                 NhatKyHeThong::query()
                     ->where('BangDuLieu', 'DonHang')
                     ->where('BanGhiID', $order->getKey())
                     ->delete();
-                
+
                 \Log::info('CASCADE DATA DELETED FOR ORDER', ['order_id' => $order->DonHangID]);
             }
-            
+
             if ($order->isLocked() && ! $overrideSettled) {
                 throw SettledOrderException::forOrder($order->MaDonHang);
             }
@@ -1390,6 +1390,11 @@ class OrderService
         }
 
         $current = $lockedOrder->statusEnum();
+        if ($target === OrderStatus::Cancelled && $current !== OrderStatus::Received) {
+            throw ValidationException::withMessages([
+                'TrangThai' => 'Chỉ được hủy đơn hàng khi đơn đang ở trạng thái Đã tiếp nhận.',
+            ]);
+        }
         if ($target === OrderStatus::Delivered && $lockedOrder->BookingID !== null) {
             throw ValidationException::withMessages([
                 'TrangThai' => 'Hoàn tất bàn giao qua phiếu giao đồ để đồng bộ đơn hàng và đặt lịch.',

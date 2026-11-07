@@ -15,7 +15,7 @@
         <div class="page-toolbar__actions">
             <form action="{{ route('notifications.mark-all-read') }}" method="POST" class="d-inline">
                 @csrf
-                <button type="submit" class="btn btn-outline-secondary btn-sm notification-mark-read-button" title="Đánh dấu tất cả thông báo của tài khoản hiện tại là đã đọc" style="width: 240px;">
+                <button type="submit" class="btn btn-outline-secondary btn-sm notification-mark-read-button" title="Đánh dấu tất cả thông báo của tài khoản hiện tại là đã đọc">
                     <i class="bi bi-check2-all"></i> Đánh dấu tất cả đã đọc
                 </button>
             </form>

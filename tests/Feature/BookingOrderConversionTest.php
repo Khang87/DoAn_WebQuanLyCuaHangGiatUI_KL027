@@ -139,7 +139,7 @@ class BookingOrderConversionTest extends TestCase
 
         $this->assertSame(BookingStatus::Confirmed->value, $booking->fresh()->TrangThai);
         $this->assertSame(1, (int) $booking->fresh()->NhanVienXacNhanID);
-        $this->assertSame(1, (int) DB::table('BookingGiaoNhan')
+        $this->assertNull(DB::table('BookingGiaoNhan')
             ->where('BookingID', $booking->BookingID)
             ->where('LoaiGiaoNhan', 'NHAN_DO')
             ->value('NhanVienID'));

@@ -68,7 +68,9 @@ class OrderStatusSchemaTest extends TestCase
         $this->assertTrue(OrderStatus::Washed->canTransitionTo(OrderStatus::Washing));
         $this->assertTrue(OrderStatus::Delivered->canTransitionTo(OrderStatus::Received));
         $this->assertTrue(OrderStatus::Delivered->canTransitionTo(OrderStatus::Delivering));
+        $this->assertTrue(OrderStatus::Received->canTransitionTo(OrderStatus::Cancelled));
 
+        $this->assertFalse(OrderStatus::Pending->canTransitionTo(OrderStatus::Cancelled));
         $this->assertFalse(OrderStatus::Received->canTransitionTo(OrderStatus::Pending));
         $this->assertFalse(OrderStatus::Paid->canTransitionTo(OrderStatus::Delivered));
         $this->assertFalse(OrderStatus::Cancelled->canTransitionTo(OrderStatus::Washing));

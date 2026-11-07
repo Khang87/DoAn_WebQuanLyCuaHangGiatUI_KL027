@@ -99,25 +99,27 @@ class CustomerService
      * @return array{
      *     message: string,
      *     orders: list<array{id: int, code: string, status: string, payment_status: string}>,
-     *     accounts: list<array{id: int, email: string, username: string, provider: string}>
+     *     accounts: list<array{id: int, email: string, username: string, provider: string}>,
+     *     archived?: bool
      * }|null
      */
     public function delete(KhachHang $customer): ?array
     {
         return DB::transaction(function () use ($customer): ?array {
+            $lockedCustomer = KhachHang::query()->lockForUpdate()->findOrFail($customer->getKey());
             $orders = DonHang::query()
-                ->where('KhachHangID', $customer->getKey())
+                ->where('KhachHangID', $lockedCustomer->getKey())
                 ->with(['hoaDons', 'statusChanges'])
                 ->orderBy('MaDonHang')
                 ->lockForUpdate()
                 ->get()
                 ->map(function (DonHang $order): array {
                     $status = $order->operationalStatusEnum()->value;
-                    $invoiceStatus = $order->hoaDons->first()?->TrangThai;
-                    $paymentStatus = $order->statusEnum() === OrderStatus::Paid
-                        || $invoiceStatus === InvoiceStatus::Paid->value
-                        ? InvoiceStatus::Paid->value
-                        : ($invoiceStatus ?? InvoiceStatus::Unpaid->value);
+                    $paidInvoice = $order->hoaDons->first(
+                        fn ($invoice): bool => $invoice->TrangThai === InvoiceStatus::Paid->value,
+                    );
+                    $invoiceStatus = $paidInvoice?->TrangThai ?? $order->hoaDons->first()?->TrangThai;
+                    $paymentStatus = $invoiceStatus ?? InvoiceStatus::Unpaid->value;
 
                     return [
                         'id' => (int) $order->getKey(),
@@ -126,18 +128,16 @@ class CustomerService
                         'payment_status' => (string) $paymentStatus,
                     ];
                 })
-                ->filter(fn (array $order): bool => ! in_array($order['status'], [
-                    OrderStatus::Delivered->value,
-                    OrderStatus::Cancelled->value,
-                ], true) || ! in_array($order['payment_status'], [
-                    InvoiceStatus::Paid->value,
-                    InvoiceStatus::Cancelled->value,
-                ], true))
-                ->values()
                 ->all();
+            $blockingOrders = array_values(array_filter(
+                $orders,
+                fn (array $order): bool => ! in_array($order['status'], [
+                    OrderStatus::Delivered->value,
+                ], true) || $order['payment_status'] !== InvoiceStatus::Paid->value,
+            ));
 
             $accounts = DB::table('TaiKhoan')
-                ->where('KhachHangID', $customer->getKey())
+                ->where('KhachHangID', $lockedCustomer->getKey())
                 ->orderBy('TaiKhoanID')
                 ->get(['TaiKhoanID', 'Email', 'TenDangNhap', 'UserAuthId'])
                 ->map(fn (object $account): array => [
@@ -148,26 +148,41 @@ class CustomerService
                 ])
                 ->all();
 
-            $relatedRecords = array_filter([
-                'đơn hàng' => $customer->donHangs()->count(),
-                'lịch hẹn' => $customer->bookings()->count(),
-                'đánh giá' => $customer->danhGia()->count(),
-                'tài khoản' => count($accounts),
-            ]);
+            $hasRelatedRecords = $lockedCustomer->donHangs()->exists()
+                || $lockedCustomer->bookings()->exists()
+                || $lockedCustomer->danhGia()->exists()
+                || $accounts !== [];
 
-            if ($relatedRecords !== []) {
+            if ($blockingOrders !== []) {
                 return [
-                    'message' => 'Không thể xóa khách hàng vì dữ liệu lịch sử và tài khoản liên kết cần được giữ lại.',
-                    'orders' => $orders,
+                    'message' => 'Không thể lưu trữ khách hàng vì còn đơn hàng chưa giao hoặc chưa thanh toán.',
+                    'orders' => $blockingOrders,
                     'accounts' => $accounts,
                 ];
             }
 
+            if ($hasRelatedRecords) {
+                $updated = KhachHang::query()
+                    ->whereKey($lockedCustomer->getKey())
+                    ->update(['TrangThai' => 'Ngừng hoạt động']);
+
+                if ($updated !== 1) {
+                    throw new \RuntimeException('Không thể lưu trữ hồ sơ khách hàng. Trạng thái không được cập nhật.');
+                }
+
+                return [
+                    'message' => 'Hồ sơ khách hàng đã được lưu trữ ở trạng thái Tạm ngưng. Lịch sử và dữ liệu liên quan được giữ nguyên.',
+                    'orders' => [],
+                    'accounts' => [],
+                    'archived' => true,
+                ];
+            }
+
             DiemTichLuy::query()
-                ->where('KhachHangID', $customer->getKey())
+                ->where('KhachHangID', $lockedCustomer->getKey())
                 ->delete();
 
-            if (! $customer->delete()) {
+            if (! $lockedCustomer->delete()) {
                 return [
                     'message' => 'Không thể xóa khách hàng. Vui lòng thử lại.',
                     'orders' => [],

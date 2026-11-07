@@ -230,7 +230,7 @@ class RemainingInspectionCasesTest extends TestCase
     public function test_303_cancelled_legacy_refunds_once_and_cannot_be_inspected(): void
     {
         DB::table('DiemTichLuy')->insert(['KhachHangID' => 9, 'DiemHienTai' => 10]);
-        $order = DonHang::create(['MaDonHang' => 'LEG-CANCEL', 'KhachHangID' => 9, 'NhanVienID' => 1, 'TrangThai' => OrderStatus::Pending->value, 'DiemSuDung' => 100, 'TienGiamDoDiem' => 100]);
+        $order = DonHang::create(['MaDonHang' => 'LEG-CANCEL', 'KhachHangID' => 9, 'NhanVienID' => 1, 'TrangThai' => OrderStatus::Received->value, 'DiemSuDung' => 100, 'TienGiamDoDiem' => 100]);
         $service = app(OrderService::class);
         $service->updateStatus($order, OrderStatus::Cancelled->value, reason: 'Local cancellation');
         $this->assertSame(110, (int) DB::table('DiemTichLuy')->value('DiemHienTai'));

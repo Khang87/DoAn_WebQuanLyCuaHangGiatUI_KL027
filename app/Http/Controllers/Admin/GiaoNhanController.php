@@ -17,16 +17,27 @@ use App\Models\User;
 use App\Services\BookingService;
 use App\Services\DeliveryService;
 use App\Services\EmployeeAssignment;
+use App\Support\BookingTimeWindow;
 use App\Support\FriendlyError;
 use App\Support\OrderWorkflow;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
-use Carbon\Carbon;
 
 class GiaoNhanController extends Controller
 {
+    private const DELIVERY_LIST_QUERY_PARAMETERS = [
+        'page',
+        'search',
+        'customer_id',
+        'method',
+        'status',
+        'sort_by',
+        'sort_order',
+    ];
+
     public function __construct(
         private DeliveryService $deliveryService,
         private BookingService $bookingService,
@@ -203,13 +214,19 @@ class GiaoNhanController extends Controller
         try {
             $delivery = $this->deliveryService->create($request->validated());
 
+            if ($redirect = $this->deliveryListRedirect($request)) {
+                return $redirect->with('success', 'Giao nhận đã được tạo thành công.');
+            }
+
             return redirect()->route('deliveries.show', $delivery)->with('success', 'Giao nhận đã được tạo thành công.');
         } catch (ValidationException $e) {
             throw $e;
         } catch (SettledOrderException $e) {
             return back()->with('error', $e->getMessage())->withInput();
         } catch (\Exception $e) {
-            return redirect()->route('deliveries.create')->with('error', FriendlyError::message($e))->withInput();
+            return redirect()->route('deliveries.create', $this->deliveryListParameters($request))
+                ->with('error', FriendlyError::message($e))
+                ->withInput();
         }
     }
 
@@ -318,7 +335,7 @@ class GiaoNhanController extends Controller
                 'max:255',
             ],
         ];
-        
+
         if ($canAssignEmployee && $user !== null) {
             $rules['employee_id'] = [
                 'required',
@@ -339,32 +356,32 @@ class GiaoNhanController extends Controller
             'address.required' => 'Vui lòng nhập địa chỉ nhận đồ tại nhà.',
         ]);
 
-        // Custom validation: so sánh với giờ hẹn của booking và kiểm tra giờ làm việc
-        $workingHourMin = '08:00';
-        $workingHourMax = '17:00';
-        
-        if (!empty($validated['pickup_time'])) {
-            $inputTime = Carbon::parse('1970-01-01 ' . $validated['pickup_time']);
-            
-            // Kiểm tra giờ làm việc
-            if ($inputTime->format('H:i') < $workingHourMin || $inputTime->format('H:i') > $workingHourMax) {
-                throw ValidationException::withMessages([
-                    'pickup_time' => 'Giờ nhận đồ phải trong khung giờ làm việc từ 8:00 đến 17:00.',
-                ]);
-            }
+        $scheduledAt = Carbon::createFromFormat(
+            '!Y-m-d H:i',
+            $validated['pickup_date'].' '.$validated['pickup_time'],
+            config('app.timezone'),
+        );
+        $scheduleUnchanged = $bookingDocument->ThoiGianDuKien?->format('Y-m-d H:i') === $scheduledAt->format('Y-m-d H:i');
+
+        if (! $scheduleUnchanged && ! BookingTimeWindow::allows($validated['pickup_time'])) {
+            throw ValidationException::withMessages([
+                'pickup_time' => BookingTimeWindow::DELIVERY_MESSAGE,
+            ]);
+        }
+
+        if (! $scheduleUnchanged && $scheduledAt->lessThanOrEqualTo(now())) {
+            throw ValidationException::withMessages([
+                'pickup_time' => 'Thời gian giao nhận phải sau thời điểm hiện tại.',
+            ]);
         }
 
         // Custom validation: so sánh với giờ hẹn của booking
         $appointmentDateTime = $bookingDocument->booking?->getAppointmentDateTime();
         if ($appointmentDateTime) {
-            $inputDate = Carbon::createFromFormat('Y-m-d', $validated['pickup_date']);
-            $inputTime = Carbon::createFromFormat('H:i', $validated['pickup_time'])->setDateFrom($inputDate);
-            $appointmentInput = $inputTime;
-
-            if ($appointmentInput->isBefore($appointmentDateTime)) {
+            if ($scheduledAt->isBefore($appointmentDateTime)) {
                 throw ValidationException::withMessages([
-                    'pickup_date' => 'Thời gian nhận đồ phải bằng hoặc sau thời gian khách đã đặt lịch hẹn (' . 
-                        $appointmentDateTime->format('d/m/Y H:i') . ').',
+                    'pickup_date' => 'Thời gian nhận đồ phải bằng hoặc sau thời gian khách đã đặt lịch hẹn ('.
+                        $appointmentDateTime->format('d/m/Y H:i').').',
                 ]);
             }
         }
@@ -374,11 +391,15 @@ class GiaoNhanController extends Controller
 
         $this->deliveryService->updateBookingIntake($bookingDocument, $validated);
 
+        if ($redirect = $this->deliveryListRedirect($request)) {
+            return $redirect->with('success', 'Phiếu nhận đồ đã được cập nhật.');
+        }
+
         return redirect()->route('deliveries.booking-documents.show', $bookingDocument)
             ->with('success', 'Phiếu nhận đồ đã được cập nhật.');
     }
 
-    public function advanceProgress(int $id): RedirectResponse
+    public function advanceProgress(Request $request, int $id): RedirectResponse
     {
         $delivery = $this->deliveryService->find($id);
 
@@ -393,18 +414,33 @@ class GiaoNhanController extends Controller
         } catch (ValidationException $exception) {
             $message = collect($exception->errors())->flatten()->first() ?? $exception->getMessage();
 
+            if ($redirect = $this->deliveryListRedirect($request)) {
+                return $redirect->with('error', $message);
+            }
+
             return redirect()->route('deliveries.show', $delivery)->with('error', $message);
         } catch (SettledOrderException $exception) {
+            if ($redirect = $this->deliveryListRedirect($request)) {
+                return $redirect->with('error', $exception->getMessage());
+            }
+
             return redirect()->route('deliveries.show', $delivery)->with('error', $exception->getMessage());
         }
 
         $status = DeliveryStatus::parseForLeg($delivery->TrangThai, $delivery->LoaiGiaoNhan);
 
+        if ($redirect = $this->deliveryListRedirect($request)) {
+            return $redirect->with(
+                'success',
+                'Đã xác nhận tiến độ: '.DeliveryStatus::labelForLeg($status, $delivery->LoaiGiaoNhan).'.',
+            );
+        }
+
         return redirect()->route('deliveries.show', $delivery)
             ->with('success', 'Đã xác nhận tiến độ: '.DeliveryStatus::labelForLeg($status, $delivery->LoaiGiaoNhan).'.');
     }
 
-    public function advanceBookingDocument(int $bookingDelivery): RedirectResponse
+    public function advanceBookingDocument(Request $request, int $bookingDelivery): RedirectResponse
     {
         $document = $this->deliveryService->findBookingDocument($bookingDelivery);
         abort_if(! $document, 404);
@@ -420,11 +456,23 @@ class GiaoNhanController extends Controller
 
             $this->deliveryService->advanceBookingDelivery($document);
         } catch (ValidationException $exception) {
+            if ($redirect = $this->deliveryListRedirect($request)) {
+                return $redirect->with('error', collect($exception->errors())->flatten()->first());
+            }
+
             return redirect()->route('deliveries.booking-documents.show', $document)
                 ->with('error', collect($exception->errors())->flatten()->first());
         } catch (SettledOrderException $exception) {
+            if ($redirect = $this->deliveryListRedirect($request)) {
+                return $redirect->with('error', $exception->getMessage());
+            }
+
             return redirect()->route('deliveries.booking-documents.show', $document)
                 ->with('error', $exception->getMessage());
+        }
+
+        if ($redirect = $this->deliveryListRedirect($request)) {
+            return $redirect->with('success', 'Đã cập nhật tiến độ giao đồ.');
         }
 
         return redirect()->route('deliveries.booking-documents.show', $document)
@@ -455,12 +503,7 @@ class GiaoNhanController extends Controller
         $orders = $this->orderOptions($delivery->DonHangID);
         $statusOptions = DeliveryStatus::optionsForLeg($delivery->LoaiGiaoNhan);
         unset($statusOptions[$delivery->LoaiGiaoNhan === 'GIAO_DO' ? DeliveryStatus::Picking->value : DeliveryStatus::Delivering->value]);
-        $isCompletedPickup = $delivery->LoaiGiaoNhan === 'NHAN_DO'
-            && DeliveryStatus::parseForLeg($delivery->TrangThai, $delivery->LoaiGiaoNhan) === DeliveryStatus::Completed;
-        if (
-            $isCompletedPickup
-            && (! $user?->isManager() || ! $user?->canPermission('deliveries.delete'))
-        ) {
+        if (DeliveryStatus::parseForLeg($delivery->TrangThai, $delivery->LoaiGiaoNhan) === DeliveryStatus::Completed) {
             unset($statusOptions[DeliveryStatus::Cancelled->value]);
         }
         $canCancelReturnDelivery = $delivery->LoaiGiaoNhan === 'GIAO_DO'
@@ -488,13 +531,12 @@ class GiaoNhanController extends Controller
             'Lịch giao đồ không còn ở trạng thái có thể chỉnh sửa.',
         );
         if ($request->input('status') === DeliveryStatus::Cancelled->value) {
+            abort_if(
+                DeliveryStatus::parseForLeg($delivery->TrangThai, $delivery->LoaiGiaoNhan) === DeliveryStatus::Completed,
+                422,
+                'Không thể hủy phiếu giao nhận đã hoàn thành.',
+            );
             abort_unless($request->user()?->canPermission('deliveries.delete'), 403);
-            if (
-                $delivery->LoaiGiaoNhan === 'NHAN_DO'
-                && DeliveryStatus::parseForLeg($delivery->TrangThai, $delivery->LoaiGiaoNhan) === DeliveryStatus::Completed
-            ) {
-                abort_unless($request->user()?->isManager(), 403);
-            }
         }
 
         try {
@@ -506,7 +548,7 @@ class GiaoNhanController extends Controller
                     $this->deliveryService->update($delivery, $data);
                 }
 
-                return redirect()->route('deliveries.index')
+                return ($this->deliveryListRedirect($request) ?? redirect()->route('deliveries.index'))
                     ->with(
                         'success',
                         $delivery->LoaiGiaoNhan === 'GIAO_DO'
@@ -517,17 +559,24 @@ class GiaoNhanController extends Controller
 
             $this->deliveryService->update($delivery, $data);
 
+            if ($redirect = $this->deliveryListRedirect($request)) {
+                return $redirect->with('success', 'Giao nhận đã được cập nhật.');
+            }
+
             return redirect()->route('deliveries.show', $delivery)->with('success', 'Giao nhận đã được cập nhật.');
         } catch (ValidationException $e) {
             throw $e;
         } catch (SettledOrderException $e) {
             return back()->with('error', $e->getMessage())->withInput();
         } catch (\Exception $e) {
-            return redirect()->route('deliveries.edit', $delivery)->with('error', FriendlyError::message($e))->withInput();
+            return redirect()->route(
+                'deliveries.edit',
+                [$delivery] + $this->deliveryListParameters($request),
+            )->with('error', FriendlyError::message($e))->withInput();
         }
     }
 
-    public function destroy(int $id)
+    public function destroy(Request $request, int $id)
     {
         $delivery = $this->deliveryService->find($id);
 
@@ -539,20 +588,23 @@ class GiaoNhanController extends Controller
 
         try {
             if (! $this->deliveryService->delete($delivery)) {
-                return redirect()->route('deliveries.index')->with('error', 'Không thể xóa giao nhận. Vui lòng thử lại.');
+                return ($this->deliveryListRedirect($request) ?? redirect()->route('deliveries.index'))
+                    ->with('error', 'Không thể xóa giao nhận. Vui lòng thử lại.');
             }
 
-            return redirect()->route('deliveries.index')->with('success', 'Đã xóa giao nhận.');
+            return ($this->deliveryListRedirect($request) ?? redirect()->route('deliveries.index'))
+                ->with('success', 'Đã xóa giao nhận.');
         } catch (ValidationException $e) {
             throw $e;
         } catch (SettledOrderException $e) {
             return back()->with('error', $e->getMessage())->withInput();
         } catch (\Exception $e) {
-            return redirect()->route('deliveries.index')->with('error', FriendlyError::message($e));
+            return ($this->deliveryListRedirect($request) ?? redirect()->route('deliveries.index'))
+                ->with('error', FriendlyError::message($e));
         }
     }
 
-    public function cancelReturnDelivery(int $id): RedirectResponse
+    public function cancelReturnDelivery(Request $request, int $id): RedirectResponse
     {
         $delivery = $this->deliveryService->find($id);
         abort_if(! $delivery, 404);
@@ -562,9 +614,13 @@ class GiaoNhanController extends Controller
         try {
             $this->deliveryService->cancelReturnDelivery($delivery);
 
-            return redirect()->route('deliveries.index')
+            return ($this->deliveryListRedirect($request) ?? redirect()->route('deliveries.index'))
                 ->with('success', 'Đã hủy lịch giao. Đơn hàng và trạng thái thanh toán không thay đổi.');
         } catch (ValidationException $exception) {
+            if ($redirect = $this->deliveryListRedirect($request)) {
+                return $redirect->withErrors($exception->errors());
+            }
+
             return redirect()->route('deliveries.show', $delivery)->withErrors($exception->errors());
         }
     }
@@ -586,12 +642,44 @@ class GiaoNhanController extends Controller
                     $query->orWhereDoesntHave('giaoNhans', fn ($leg) => $leg
                         ->where('LoaiGiaoNhan', $type)->where('TrangThai', '!=', 'Đã hủy'));
                 }
+
                 if ($currentOrderId !== null) {
                     $query->orWhereKey($currentOrderId);
                 }
             })
             ->orderByDesc('NgayTao')
             ->get();
+    }
+
+    private function deliveryListRedirect(Request $request): ?RedirectResponse
+    {
+        if ($request->query('return_to') !== 'deliveries') {
+            return null;
+        }
+
+        $query = array_intersect_key(
+            $request->query(),
+            array_flip(self::DELIVERY_LIST_QUERY_PARAMETERS),
+        );
+
+        return redirect()->route('deliveries.index', $query);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function deliveryListParameters(Request $request): array
+    {
+        $query = array_intersect_key(
+            $request->query(),
+            array_flip(self::DELIVERY_LIST_QUERY_PARAMETERS),
+        );
+
+        if ($request->query('return_to') === 'deliveries') {
+            $query['return_to'] = 'deliveries';
+        }
+
+        return $query;
     }
 
     private function requireActiveEmployeeForNewDelivery(?User $user): void

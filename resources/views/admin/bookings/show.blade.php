@@ -16,7 +16,7 @@
 
 @php $order = $booking->donHangs->first() @endphp
 @php
-    $storeAddress = '140 Lê Trọng Tấn, Tây Thạnh, Hồ Chí Minh, Việt Nam';
+    $storeAddress = config('services.google_routes.store_address');
     $receiveAtStore = $booking->HinhThucNhanDo === 'Tại cửa hàng';
     $returnAtStore = $booking->HinhThucTraDo === 'Tại cửa hàng';
     $intakeDocument = $booking->giaoNhanDuKiens->firstWhere('LoaiGiaoNhan', 'NHAN_DO');
@@ -69,7 +69,7 @@
                     :value="number_format((float) ($booking->DeliveryFee ?? 0), 0, ',', '.').' đ'"
                 />
                 <x-admin.detail.info-item label="Nhân viên xác nhận đặt lịch" :value="$booking->nhanVienXacNhan?->HoTen ?? '—'" />
-                <x-admin.detail.info-item label="Nhân viên nhận và kiểm tra đồ" :value="$intakeDocument?->nhanVien?->HoTen ?? 'Chưa phân công'" />
+                <x-admin.detail.info-item label="Nhân viên nhận và kiểm tra đồ" :value="$intakeDocument?->nhanVien?->HoTen ?? 'Chờ phân công'" />
                 <x-admin.detail.info-item label="Thời gian xác nhận đặt lịch" :value="$booking->ThoiGianXacNhan?->format('d/m/Y H:i') ?? '—'" />
                 <x-admin.detail.info-item label="Ngày hẹn nhận đồ" :value="$booking->NgayHen?->format('d/m/Y')" />
                 <x-admin.detail.info-item label="Giờ hẹn nhận đồ" :value="$booking->GioHen?->format('H:i')" />

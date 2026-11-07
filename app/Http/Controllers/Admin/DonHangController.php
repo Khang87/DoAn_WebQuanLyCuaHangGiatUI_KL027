@@ -356,11 +356,12 @@ class DonHangController extends Controller
         // FORCE DELETE WITHOUT PERMISSION CHECKS (TEMP)
         try {
             $this->orderService->delete($order, true); // Override=true
-            
+
             return redirect()->route('orders.index')->with('success', 'Đơn hàng đã được xóa.');
         } catch (\Exception $e) {
             \Log::error('ORDER DELETE FAILED', ['order_id' => $order->DonHangID, 'error' => $e->getMessage()]);
-            return redirect()->route('orders.index')->with('error', 'Xóa thất bại: ' . $e->getMessage());
+
+            return redirect()->route('orders.index')->with('error', 'Xóa thất bại: '.$e->getMessage());
         }
     }
 
@@ -380,7 +381,7 @@ class DonHangController extends Controller
 
             return back()->with('success', 'Trạng thái đơn hàng đã được cập nhật.');
         } catch (ValidationException $exception) {
-            return back()->withErrors($exception->errors());
+            return back()->with('error', collect($exception->errors())->flatten()->first());
         } catch (\Exception $e) {
             return back()->with('error', FriendlyError::message($e));
         }

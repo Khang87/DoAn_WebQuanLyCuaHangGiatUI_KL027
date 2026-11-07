@@ -81,20 +81,22 @@
                                     <i class="bi bi-three-dots"></i>
                                 </button>
                                 <ul class="dropdown-menu dropdown-menu-end">
-                                    <li><a class="dropdown-item" href="{{ route('roles.edit', $role->getKey()) }}#role-info"><i class="bi bi-pencil me-2"></i>Chỉnh sửa nhóm</a></li>
                                     @if(! $role->isOwner())
-                                        <li><hr class="dropdown-divider"></li>
                                         <li>
                                             <x-admin.detail.confirm-form
                                                 :action="route('roles.destroy', $role)"
                                                 title="Xóa nhóm quyền?"
                                                 text="Hành động này sẽ xóa toàn bộ cấu hình quyền hạn của nhóm. Tài khoản đang thuộc nhóm này sẽ mất quyền hạn tương ứng."
-                                                label="Xóa group"
-                                                variant="btn-link text-danger dropdown-item"
-                                                icon="bi bi-trash me-2"
+                                                label="Xóa nhóm"
+                                                variant="text-danger"
+                                                icon="bi bi-trash"
+                                                iconSpacing="me-2"
+                                                :menuItem="true"
                                             />
                                         </li>
+                                        <li><hr class="dropdown-divider"></li>
                                     @endif
+                                    <li><a class="dropdown-item" href="{{ route('roles.edit', $role->getKey()) }}#role-info"><i class="bi bi-pencil me-2"></i>Chỉnh sửa nhóm</a></li>
                                 </ul>
                             </div>
                         @endcan
@@ -171,4 +173,3 @@
     }
 </style>
 @endpush
-@endsection

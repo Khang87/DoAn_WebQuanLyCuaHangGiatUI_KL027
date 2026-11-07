@@ -8,7 +8,7 @@ namespace App\Enums;
  * Giá trị lưu trong database (bảng `DonHang`, cột `TrangThai`) là tiếng Việt,
  * khớp với ràng buộc CHECK `CK_DonHang_TrangThai`:
  *
- *   Chờ tiếp nhận -> Đã tiếp nhận -> Đang giặt -> Hoàn thành giặt
+ *   Chờ tiếp nhận -> Đã tiếp nhận (có thể hủy) -> Đang giặt -> Hoàn thành giặt
  *                  -> Đang giao -> Đã giao
  *   Đã hủy
  *
@@ -104,7 +104,7 @@ enum OrderStatus: string
         }
 
         return match ($this) {
-            self::Pending => $target === self::Cancelled,
+            self::Pending => false,
             self::Received => in_array($target, [self::Washing, self::Cancelled], true),
             self::Washing => $target === self::Washed,
             self::Washed => in_array($target, [self::Delivering, self::Delivered], true),

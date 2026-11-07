@@ -177,6 +177,17 @@ class OrderListPerformanceTest extends TestCase
         $this->assertStringContainsString('DH-01', $ownerHtml);
     }
 
+    public function test_order_status_filter_omits_pending_intake_status(): void
+    {
+        $this->seedOrder(1, OrderStatus::Pending);
+        $html = view('admin.orders.index', [
+            'orders' => app(OrderService::class)->getAll(),
+        ])->render();
+
+        $this->assertStringNotContainsString('<option value="Chờ tiếp nhận">', $html);
+        $this->assertStringContainsString('value="Đã tiếp nhận"', $html);
+    }
+
     public function test_edit_button_is_hidden_when_order_status_blocks_editing_unless_user_is_owner(): void
     {
         $this->seedOrder(1, OrderStatus::Pending);

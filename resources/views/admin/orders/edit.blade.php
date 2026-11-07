@@ -27,12 +27,16 @@
             $employeeOptions = $employees;
             $priceOptions = $pricings;
             $isPendingOrder = $order->statusEnum() === \App\Enums\OrderStatus::Pending;
+            $canCancelOrder = $order->statusEnum() === \App\Enums\OrderStatus::Received;
             $statusOptions = array_filter(
                 $statusFlow ?? \App\Enums\OrderStatus::options(),
                 fn ($status) => ! in_array($status, [
                     \App\Enums\OrderStatus::Pending->value,
                     \App\Enums\OrderStatus::Paid->value,
-                ], true),
+                ], true)
+                    && ($status !== \App\Enums\OrderStatus::Cancelled->value
+                        || $canCancelOrder
+                        || $status === $order->TrangThai),
             );
             $savedPaidPayment = $order->thanhToans
                 ->sortByDesc('ThoiGian')
@@ -120,6 +124,9 @@
                             class="form-select"
                             required
                         />
+                        @if(! $canCancelOrder && $order->statusEnum() !== \App\Enums\OrderStatus::Cancelled)
+                            <div class="form-text">Chỉ được hủy đơn hàng khi đơn đang ở trạng thái Đã tiếp nhận.</div>
+                        @endif
                     @endif
                 </div>
                 <div class="col-md-6">

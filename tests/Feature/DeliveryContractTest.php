@@ -584,6 +584,7 @@ class DeliveryContractTest extends TestCase
     public function test_booking_intake_documents_are_listed_and_open_without_an_order(): void
     {
         DB::table('KhachHang')->insert(['KhachHangID' => 2, 'HoTen' => 'Khách Booking', 'SoDienThoai' => '0900000000']);
+        DB::table('NhanVien')->where('NhanVienID', 1)->update(['HoTen' => 'Nhân viên nhận đồ']);
         DB::table('Booking')->insert([
             'BookingID' => 2,
             'MaBooking' => 'DL-BOOK-2',
@@ -597,7 +598,6 @@ class DeliveryContractTest extends TestCase
             'BookingID' => 2,
             'LoaiGiaoNhan' => 'NHAN_DO',
             'HinhThuc' => 'Tại cửa hàng',
-            'NhanVienID' => 1,
             'TrangThai' => 'Chờ thực hiện',
         ], 'BookingGiaoNhanID');
         DB::table('GiaoNhan')->insert([
@@ -611,11 +611,13 @@ class DeliveryContractTest extends TestCase
         ]);
         $manager = Mockery::mock(User::class)->makePartial();
         $manager->shouldReceive('isManager')->andReturn(true);
+        $manager->shouldReceive('isEmployee')->andReturn(false);
         $manager->shouldReceive('isActive')->andReturn(true);
         $manager->shouldReceive('isOwner')->andReturn(false);
         $manager->shouldReceive('canPermission')->andReturnUsing(
             fn (string $permission): bool => in_array($permission, [
                 'deliveries.view',
+                'deliveries.edit',
                 'bookings.view',
                 'orders.view',
             ], true),
@@ -632,10 +634,24 @@ class DeliveryContractTest extends TestCase
             ->assertSee('GN-'.$documentId)
             ->assertSee('data-delivery-key="booking:'.$documentId.'"', false)
             ->assertSee('data-delivery-key="operational:'.$documentId.'"', false)
-            ->assertSee('data-detail-url="'.route('deliveries.booking-documents.show', $documentId).'"', false)
-            ->assertSee('data-detail-url="'.route('deliveries.show', $documentId).'"', false)
+            ->assertSee('data-detail-url="'.route('deliveries.booking-documents.show', $documentId), false)
+            ->assertSee('data-detail-url="'.route('deliveries.show', $documentId), false)
             ->assertSee(route('deliveries.booking-documents.show', $documentId), false)
             ->assertSee(route('deliveries.show', $documentId), false);
+        $listHtml = $this->get(route('deliveries.index'))->getContent();
+        $listDocument = new DOMDocument;
+        @$listDocument->loadHTML('<?xml encoding="UTF-8">'.$listHtml);
+        $listXPath = new DOMXPath($listDocument);
+        $employeeCell = $listXPath->query('//tr[@data-delivery-key="booking:'.$documentId.'"]/td[5]');
+        $statusCell = $listXPath->query('//tr[@data-delivery-key="booking:'.$documentId.'"]/td[7]');
+
+        $this->assertSame('—', trim($employeeCell->item(0)?->textContent ?? ''));
+        $this->assertSame('—', trim($statusCell->item(0)?->textContent ?? ''));
+        $this->assertStringNotContainsString('Chờ phân công', $listHtml);
+        $this->assertStringNotContainsString(
+            'action="'.route('deliveries.booking-documents.advance-progress', $documentId).'"',
+            $this->get(route('deliveries.index'))->getContent(),
+        );
 
         $detailResponse = $this->get(route('deliveries.booking-documents.show', $documentId))
             ->assertOk()
@@ -649,9 +665,21 @@ class DeliveryContractTest extends TestCase
             ->assertSee('href="'.route('bookings.show', 2).'"', false)
             ->assertSee('Chưa tạo đơn hàng')
             ->assertSee(config('services.google_routes.store_address'))
+            ->assertDontSee('Chờ phân công')
             ->assertDontSee('Không yêu cầu địa chỉ giao tận nhà')
             ->assertDontSee('Kết quả kiểm kê');
         $this->assertReadOnlyBookingDocument($detailResponse);
+        DB::table('BookingGiaoNhan')->where('BookingGiaoNhanID', $documentId)->update(['NhanVienID' => 1]);
+        $this->get(route('deliveries.index'))
+            ->assertOk()
+            ->assertSee('action="'.route('deliveries.booking-documents.advance-progress', $documentId), false)
+            ->assertSee('Bắt đầu nhận đồ');
+        $this->get(route('deliveries.booking-documents.edit', $documentId))
+            ->assertOk()
+            ->assertSee('Địa chỉ nhân viên nhận đồ')
+            ->assertSee(config('services.google_routes.store_address'))
+            ->assertSee('Địa chỉ được lấy từ thông tin đặt lịch trên mobile và không thể chỉnh sửa tại đây.')
+            ->assertSee('readonly aria-readonly="true"', false);
         $this->get(route('deliveries.show', $documentId))
             ->assertOk()
             ->assertSee('Chi tiết phiếu giao đồ')
@@ -723,9 +751,9 @@ class DeliveryContractTest extends TestCase
         preg_match('/<select\b[^>]*id="filter-status"[^>]*>.*?<\/select>/s', $response->getContent(), $statusFilter);
         $this->assertNotEmpty($statusFilter);
         $this->assertStringNotContainsString('Đã nhận đồ', $statusFilter[0]);
-        $response->assertSee(route('deliveries.edit', $pendingId), false)
+        $response->assertSee(route('deliveries.edit', [$pendingId, 'return_to' => 'deliveries']), false)
             ->assertDontSee('action="'.route('deliveries.cancel-return', $pendingId).'"', false)
-            ->assertSee('action="'.route('deliveries.advance-progress', $pendingId).'"', false)
+            ->assertSee('action="'.route('deliveries.advance-progress', [$pendingId, 'return_to' => 'deliveries']).'"', false)
             ->assertSee('Bắt đầu giao đồ')
             ->assertSee('data-confirm-form', false)
             ->assertSee('method="POST"', false)
@@ -809,6 +837,7 @@ class DeliveryContractTest extends TestCase
             'MaBooking' => 'DL-EDIT-2',
             'TrangThai' => 'DaXacNhan',
             'HinhThucNhanDo' => 'Tại nhà',
+            'DiaChiNhan' => '12 Nguyễn Huệ',
         ]);
         $intake = $this->createBookingIntake(['BookingID' => 2]);
         $manager = Mockery::mock(User::class)->makePartial();
@@ -840,6 +869,8 @@ class DeliveryContractTest extends TestCase
             ->assertSee('name="_method" value="PUT"', false)
             ->assertSee('BGN-'.$intake->BookingGiaoNhanID)
             ->assertSee('name="address"', false)
+            ->assertSee('readonly aria-readonly="true"', false)
+            ->assertSee('Địa chỉ được lấy từ thông tin đặt lịch trên mobile và không thể chỉnh sửa tại đây.')
             ->assertSee('name="pickup_date"', false)
             ->assertSee('name="pickup_time"', false);
         $this->assertMatchesRegularExpression('/name="pickup_date"[^>]*required/', $editResponse->getContent());
@@ -855,6 +886,27 @@ class DeliveryContractTest extends TestCase
             'employee_id' => 1,
             'address' => '99 Lê Lợi',
             'pickup_date' => '2026-10-09',
+            'pickup_time' => '07:59',
+        ])->assertSessionHasErrors('pickup_time');
+
+        $this->put(route('deliveries.booking-documents.update', $intake), [
+            'employee_id' => 1,
+            'address' => '99 Lê Lợi',
+            'pickup_date' => '2026-10-09',
+            'pickup_time' => '17:01',
+        ])->assertSessionHasErrors('pickup_time');
+
+        $this->put(route('deliveries.booking-documents.update', $intake), [
+            'employee_id' => 1,
+            'address' => '99 Lê Lợi',
+            'pickup_date' => '2026-10-06',
+            'pickup_time' => '11:30',
+        ])->assertSessionHasErrors('pickup_time');
+
+        $this->put(route('deliveries.booking-documents.update', $intake), [
+            'employee_id' => 1,
+            'address' => '99 Lê Lợi',
+            'pickup_date' => '2026-10-09',
             'pickup_time' => '11:30',
             'BookingID' => 999,
         ])->assertRedirect(route('deliveries.booking-documents.show', $intake))
@@ -862,7 +914,7 @@ class DeliveryContractTest extends TestCase
         $intake->refresh();
         $this->assertSame(2, (int) $intake->BookingID);
         $this->assertSame(1, (int) $intake->NhanVienID);
-        $this->assertSame('99 Lê Lợi', $intake->DiaChi);
+        $this->assertSame('12 Nguyễn Huệ', $intake->DiaChi);
         $this->assertSame('2026-10-09 11:30:00', $intake->ThoiGianDuKien->format('Y-m-d H:i:s'));
         $this->assertFalse(Route::has('deliveries.booking-documents.cancel'));
         $this->post('/deliveries/booking-documents/'.$intake->BookingGiaoNhanID.'/cancel')->assertNotFound();
@@ -871,8 +923,8 @@ class DeliveryContractTest extends TestCase
         $this->get(route('deliveries.index'))
             ->assertOk()
             ->assertSee('BGN-'.$intake->BookingGiaoNhanID)
-            ->assertSee(route('deliveries.booking-documents.edit', $intake), false)
-            ->assertSee('action="'.route('deliveries.booking-documents.advance-progress', $intake).'"', false)
+            ->assertSee(route('deliveries.booking-documents.edit', [$intake, 'return_to' => 'deliveries']), false)
+            ->assertSee('action="'.route('deliveries.booking-documents.advance-progress', [$intake, 'return_to' => 'deliveries']).'"', false)
             ->assertSee('Bắt đầu nhận đồ')
             ->assertDontSee(route('bookings.inspection', 2), false)
             ->assertDontSee('cancelBookingDeliveryForm_'.$intake->BookingGiaoNhanID, false);
@@ -2086,8 +2138,13 @@ class DeliveryContractTest extends TestCase
         $this->assertSame('DaXacNhan', DB::table('Booking')->where('BookingID', 1)->value('TrangThai'));
 
         $this->withoutMiddleware()
-            ->post(route('deliveries.advance-progress', $delivery))
-            ->assertRedirect(route('deliveries.show', $delivery))
+            ->post(route('deliveries.advance-progress', [
+                $delivery,
+                'return_to' => 'deliveries',
+                'page' => 4,
+                'method' => 'giao_do',
+            ]))
+            ->assertRedirect(route('deliveries.index', ['page' => 4, 'method' => 'giao_do']))
             ->assertSessionHas('success');
 
         $completed = $delivery->fresh();
@@ -2420,12 +2477,17 @@ class DeliveryContractTest extends TestCase
             DeliveryStatus::Cancelled->value,
             $editView->getData()['statusOptions'],
         );
-        $this->put(route('deliveries.update', $delivery), $this->data([
+        $this->put(route('deliveries.update', [
+            $delivery,
+            'return_to' => 'deliveries',
+            'page' => 4,
+            'method' => 'giao_do',
+        ]), $this->data([
             'status' => 'cancelled',
             'pickup_date' => '2026-10-08',
             'pickup_time' => '10:00',
         ]))
-            ->assertRedirect(route('deliveries.index'))
+            ->assertRedirect(route('deliveries.index', ['page' => 4, 'method' => 'giao_do']))
             ->assertSessionHas('success');
 
         $this->assertSame(1, GiaoNhan::query()->whereKey($delivery->getKey())->count());
@@ -2526,7 +2588,7 @@ class DeliveryContractTest extends TestCase
         $this->assertSame(DeliveryStatus::Pending->dbValue(), $delivery->fresh()->TrangThai);
     }
 
-    public function test_manager_can_cancel_completed_pickup_delivery(): void
+    public function test_manager_cannot_cancel_completed_pickup_delivery(): void
     {
         DB::table('DonHang')->where('DonHangID', 1)->update([
             'TrangThai' => OrderStatus::Received->value,
@@ -2548,28 +2610,32 @@ class DeliveryContractTest extends TestCase
         $this->actingAs($manager);
 
         $editView = app(GiaoNhanController::class)->edit($delivery->getKey());
-        $this->assertArrayHasKey(DeliveryStatus::Cancelled->value, $editView->getData()['statusOptions']);
+        $this->assertArrayNotHasKey(DeliveryStatus::Cancelled->value, $editView->getData()['statusOptions']);
 
         $this->withoutMiddleware()->put(route('deliveries.update', $delivery), $this->data([
             'method' => 'nhan_do',
             'status' => 'cancelled',
             'pickup_date' => '2026-10-08',
             'pickup_time' => '10:00',
-        ]))
-            ->assertRedirect(route('deliveries.index'))
-            ->assertSessionHas(
-                'success',
-                'Đã hủy lịch nhận đồ và phiếu giao đi kèm (nếu có). Đơn hàng và trạng thái thanh toán không thay đổi.',
-            );
+        ]))->assertUnprocessable();
 
-        $this->assertSame(DeliveryStatus::Cancelled->dbValue(), $delivery->fresh()->TrangThai);
+        $this->reject(
+            fn () => app(DeliveryService::class)->update($delivery, [
+                'status' => 'cancelled',
+                'pickup_date' => '2026-10-08',
+                'pickup_time' => '10:00',
+            ]),
+            'status',
+        );
+
+        $this->assertSame(DeliveryStatus::Completed->dbValue(), $delivery->fresh()->TrangThai);
         $this->assertSame(
             OrderStatus::Received->value,
             DB::table('DonHang')->where('DonHangID', 1)->value('TrangThai'),
         );
     }
 
-    public function test_non_manager_cannot_cancel_completed_pickup_delivery(): void
+    public function test_employee_cannot_cancel_completed_pickup_delivery(): void
     {
         DB::table('DonHang')->where('DonHangID', 1)->update([
             'TrangThai' => OrderStatus::Received->value,
@@ -2599,7 +2665,7 @@ class DeliveryContractTest extends TestCase
             'status' => 'cancelled',
             'pickup_date' => '2026-10-08',
             'pickup_time' => '10:00',
-        ]))->assertForbidden();
+        ]))->assertUnprocessable();
 
         $this->assertSame(DeliveryStatus::Completed->dbValue(), $delivery->fresh()->TrangThai);
     }
@@ -2824,6 +2890,41 @@ class DeliveryContractTest extends TestCase
         $this->reject(fn () => $service->update($delivery, ['pickup_date' => '2026-10-09', 'pickup_time' => '10:00']), 'pickup_time');
         $delivery = $service->update($delivery, ['pickup_date' => null, 'pickup_time' => null]);
         $this->assertNull($delivery->ThoiGianDuKien);
+    }
+
+    public function test_intake_and_return_schedules_must_be_within_working_hours(): void
+    {
+        $service = app(DeliveryService::class);
+
+        foreach ([
+            ['nhan_do', '07:59'],
+            ['nhan_do', '17:01'],
+            ['giao_do', '07:59'],
+            ['giao_do', '17:01'],
+        ] as [$method, $time]) {
+            $this->reject(
+                fn () => $service->create($this->data([
+                    'method' => $method,
+                    'pickup_date' => '2026-10-08',
+                    'pickup_time' => $time,
+                ])),
+                'pickup_time',
+            );
+        }
+
+        $intake = $service->create($this->data([
+            'method' => 'nhan_do',
+            'pickup_date' => '2026-10-08',
+            'pickup_time' => '08:00',
+        ]));
+        $return = $service->create($this->data([
+            'method' => 'giao_do',
+            'pickup_date' => '2026-10-08',
+            'pickup_time' => '17:00',
+        ]));
+
+        $this->assertSame('2026-10-08 08:00:00', $intake->fresh()->ThoiGianDuKien->format('Y-m-d H:i:s'));
+        $this->assertSame('2026-10-08 17:00:00', $return->fresh()->ThoiGianDuKien->format('Y-m-d H:i:s'));
     }
 
     public static function deliveryProgressDisplayCases(): array

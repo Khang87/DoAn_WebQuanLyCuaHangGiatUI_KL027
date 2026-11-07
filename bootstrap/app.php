@@ -1,8 +1,9 @@
 <?php
 
+use App\Http\Middleware\AuthenticateStaffApiToken;
 use App\Http\Middleware\EnsureUserHasPermission;
 use App\Http\Middleware\EnsureUserHasRole;
-use App\Http\Middleware\AuthenticateStaffApiToken;
+use App\Http\Middleware\PreserveListPageContext;
 use App\Http\Middleware\RejectCustomerRole;
 use App\Http\Middleware\RestoreRememberedLogin;
 use App\Support\VercelRuntime;
@@ -34,7 +35,10 @@ $app = Application::configure(basePath: dirname(__DIR__))
             'reject.customer' => RejectCustomerRole::class,
             'staff.api' => AuthenticateStaffApiToken::class,
         ]);
-        $middleware->web(append: [RestoreRememberedLogin::class]);
+        $middleware->web(append: [
+            RestoreRememberedLogin::class,
+            PreserveListPageContext::class,
+        ]);
         $middleware->prependToPriorityList(AuthenticatesRequests::class, RestoreRememberedLogin::class);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

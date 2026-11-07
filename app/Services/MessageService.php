@@ -13,6 +13,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Client\Response;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
@@ -37,8 +38,19 @@ class MessageService
 
         if ($search !== null && $search !== '') {
             $term = '%'.mb_strtolower($search).'%';
+            $legacyOrderCodes = [];
+            if (preg_match('/^dh0*(\d+)$/i', $search, $matches) === 1) {
+                $orderNumber = ltrim($matches[1], '0') ?: '0';
+                $paddingVariants = max(0, 8 - strlen($orderNumber));
+                for ($padding = 0; $padding <= $paddingVariants; $padding++) {
+                    $legacyOrderCodes[] = 'dh'.str_repeat('0', $padding).$orderNumber;
+                }
+            }
+
             $orders->where(fn ($query) => $query
                 ->whereRaw('LOWER("DonHang"."MaDonHang") LIKE ?', [$term])
+                ->when($legacyOrderCodes !== [], fn ($query) => $query
+                    ->orWhereIn(DB::raw('LOWER("DonHang"."MaDonHang")'), $legacyOrderCodes))
                 ->orWhereHas('khachHang', fn ($customer) => $customer
                     ->whereRaw('LOWER("HoTen") LIKE ?', [$term])
                     ->orWhere('SoDienThoai', 'like', '%'.$search.'%')));

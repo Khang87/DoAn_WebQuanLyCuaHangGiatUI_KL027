@@ -61,11 +61,14 @@
     $selectedAddress ??= old('address');
     $lockDeliveryType ??= false;
     $statusOptions ??= \App\Enums\DeliveryStatus::optionsForLeg($selectedMethod === 'giao_do' ? 'GIAO_DO' : 'NHAN_DO');
-    $backUrl ??= route('deliveries.index');
+    $backUrl ??= request()->query('return_to') === 'deliveries'
+        ? route('deliveries.index', request()->only(['page', 'search', 'customer_id', 'method', 'status', 'sort_by', 'sort_order']))
+        : route('deliveries.index');
+    $deliveryListContext = request()->only(['page', 'search', 'customer_id', 'method', 'status', 'sort_by', 'sort_order', 'return_to']);
 @endphp
 <div class="card"><div class="card-body">
     <div class="d-flex justify-content-between align-items-center mb-4"><h5 class="mb-0">Thông tin lịch {{ $selectedMethod === 'giao_do' ? 'giao đồ' : 'nhận đồ' }}</h5><a href="{{ $backUrl }}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left me-1"></i>Quay lại</a></div>
-    <form action="{{ $lockDeliveryType ? route('orders.delivery-assignment.store', $selectedOrderId) : route('deliveries.store') }}" method="POST" data-booking-prefill
+    <form action="{{ $lockDeliveryType ? route('orders.delivery-assignment.store', $selectedOrderId) : route('deliveries.store', $deliveryListContext) }}" method="POST" data-booking-prefill
           @if($selectedMethod === 'nhan_do' && $selectedOrderId)
               data-booking-schedule-date="{{ $orders->firstWhere('DonHangID', $selectedOrderId)?->booking?->NgayHen?->format('Y-m-d') }}"
               data-booking-schedule-time="{{ $orders->firstWhere('DonHangID', $selectedOrderId)?->booking?->GioHen?->format('H:i') }}"

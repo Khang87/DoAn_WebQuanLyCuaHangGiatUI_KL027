@@ -77,9 +77,22 @@ class DetailPageActionLayoutTest extends TestCase
         $this->assertStringContainsString("route('orders.delivery-assignment', [\$order]", $source);
         $this->assertStringContainsString("route('deliveries.show', [\$returnDelivery]", $source);
         $this->assertStringContainsString('title="Xem phiếu giao"', $source);
-        $this->assertStringContainsString('title="Tạo phiếu giao"', $source);
+        $this->assertStringNotContainsString('title="Tạo phiếu giao"', $source);
         $this->assertSame(2, substr_count($source, '<i class="bi bi-box-arrow-up-right" aria-hidden="true"></i>'));
         $this->assertSame(3, substr_count($source, '<i class="bi bi-truck" aria-hidden="true"></i>'));
+    }
+
+    public function test_existing_unassigned_return_delivery_button_says_update_on_hover(): void
+    {
+        $source = $this->source('orders/index');
+
+        $this->assertStringContainsString('title="Cập nhật phiếu giao"', $source);
+        $this->assertStringContainsString('aria-label="Cập nhật phiếu giao cho đơn {{ $order->MaDonHang }}"', $source);
+        $this->assertSame(
+            3,
+            substr_count($source, 'title="Cập nhật phiếu giao"'),
+        );
+        $this->assertStringNotContainsString('title="Tạo phiếu giao"', $source);
     }
 
     public function test_order_list_rows_stay_one_line_tall(): void

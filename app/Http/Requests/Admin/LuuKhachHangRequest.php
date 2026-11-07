@@ -50,6 +50,7 @@ class LuuKhachHangRequest extends FormRequest
             ],
             'DiaChi' => ['nullable', 'string', 'max:500'],
             'DiemHienTai' => ['nullable', 'integer', 'min:0'],
+            'TrangThai' => ['sometimes', Rule::in(['Hoạt động', 'Ngừng hoạt động', 'Khóa'])],
         ];
     }
 

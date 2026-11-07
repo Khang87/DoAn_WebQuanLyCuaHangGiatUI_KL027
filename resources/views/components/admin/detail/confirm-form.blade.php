@@ -8,7 +8,9 @@
     'variant' => 'btn-outline-danger',
     'size' => 'btn-sm',
     'block' => false,
+    'menuItem' => false,
     'iconOnly' => false,
+    'iconSpacing' => 'me-1',
     'color' => '#dc2626',
     'iconName' => 'warning',
     'hidden' => [],
@@ -29,7 +31,7 @@
       data-confirm-label="{{ $label }}"
       data-confirm-color="{{ $color }}"
       data-confirm-icon="{{ $iconName }}"
-      class="{{ $block ? 'd-grid' : 'd-inline' }}">
+      class="{{ $menuItem ? 'd-block p-0' : ($block ? 'd-grid' : 'd-inline') }}">
     @csrf
     @if(strtoupper($method) !== 'POST')
         @method(strtoupper($method))
@@ -37,8 +39,8 @@
     @foreach($hidden as $field => $value)
         <input type="hidden" name="{{ $field }}" value="{{ $value }}">
     @endforeach
-    <button type="submit" class="btn {{ $variant }} {{ $size }} {{ $block ? 'w-100' : '' }}" @if($iconOnly) title="{{ $label }}" aria-label="{{ $label }}" @endif>
-        <i class="{{ $icon }} {{ $iconOnly ? '' : 'me-1' }}"></i>@unless($iconOnly){{ $slot->isEmpty() ? $label : $slot }}@endunless
+    <button type="submit" class="{{ $menuItem ? 'dropdown-item '.$variant : 'btn '.$variant.' '.$size.' '.($block ? 'w-100' : '') }}" @if($iconOnly) title="{{ $label }}" aria-label="{{ $label }}" @endif>
+        <i class="{{ $icon }} {{ $iconOnly ? '' : $iconSpacing }}"></i>@unless($iconOnly){{ $slot->isEmpty() ? $label : $slot }}@endunless
     </button>
 </form>
 

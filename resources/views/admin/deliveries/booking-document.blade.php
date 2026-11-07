@@ -23,7 +23,9 @@
 
 <x-admin.detail.page-header
     title="{{ $isIntake ? 'Trạng thái nhân viên nhận đồ' : 'Trạng thái nhân viên giao đồ' }}"
-    :backUrl="route('deliveries.index')"
+    :backUrl="request()->query('return_to') === 'deliveries'
+        ? route('deliveries.index', request()->only(['page', 'search', 'customer_id', 'method', 'status', 'sort_by', 'sort_order']))
+        : route('deliveries.index')"
 >
     <x-slot:badge>
         @if($isIntake && $statusValue === 'Hoàn thành')
@@ -48,7 +50,7 @@
                 <x-admin.detail.info-item label="Số điện thoại" :value="$booking?->khachHang?->SoDienThoai ?: '—'" />
                 <x-admin.detail.info-item :label="$isIntake ? 'HÌNH THỨC NHÂN VIÊN NHẬN ĐỒ' : 'HÌNH THỨC NHÂN VIÊN GIAO ĐỒ'" :value="$bookingDocument->HinhThuc ?: '—'" />
                 <x-admin.detail.info-item :label="$isIntake ? 'Địa chỉ nhận đồ' : 'Địa chỉ giao đồ'" :value="$documentAddress" />
-                <x-admin.detail.info-item :label="$isIntake ? 'Nhân viên phụ trách nhận đồ' : 'Nhân viên phụ trách giao đồ'" :value="$bookingDocument->nhanVien?->HoTen ?: 'Chưa phân công'" />
+                <x-admin.detail.info-item :label="$isIntake ? 'Nhân viên phụ trách nhận đồ' : 'Nhân viên phụ trách giao đồ'" :value="$bookingDocument->nhanVien?->HoTen ?: '—'" />
                 <x-admin.detail.info-item label="Nhân viên xác nhận đặt lịch" :value="$booking?->nhanVienXacNhan?->HoTen ?: '—'" />
                 <x-admin.detail.info-item :label="$isIntake ? 'Thời gian nhận đồ dự kiến' : 'Thời gian giao đồ dự kiến'" :value="$bookingDocument->ThoiGianDuKien?->format('d/m/Y H:i') ?: 'Chưa lên lịch'" />
                 <x-admin.detail.info-item :label="$isIntake ? 'Thời gian nhận đồ thực tế' : 'Thời gian giao đồ thực tế'" :value="$bookingDocument->ThoiGianThucTe?->format('d/m/Y H:i') ?: 'Chưa ghi nhận'" />

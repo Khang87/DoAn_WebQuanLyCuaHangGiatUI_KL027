@@ -43,6 +43,7 @@
                         <th class="fw-bold text-dark">Địa chỉ</th>
                         <th class="fw-bold text-dark">Điểm tích lũy</th>
                         <th class="fw-bold text-dark">Ngày đăng ký</th>
+                        <th class="fw-bold text-dark">Trạng thái</th>
                         @if(auth()->user()?->canAny(['customers.view', 'customers.edit', 'customers.delete']))
                         <th class="fw-bold text-dark">Thao tác</th>
                         @endif
@@ -66,6 +67,12 @@
                         <td class="text-dark">{{ $customer->DiaChi ?: '-' }}</td>
                         <td class="text-dark">{{ number_format((int) ($customer->diemTichLuy?->DiemHienTai ?? 0)) }} điểm</td>
                         <td class="text-dark">{{ $customer->NgayTao?->format('d/m/Y') ?: '-' }}</td>
+                        <td>
+                            <x-admin.status-badge
+                                :status="$customer->TrangThai ?: 'Hoạt động'"
+                                :enum="\App\Enums\RecordStatus::class"
+                            />
+                        </td>
                         @if(auth()->user()?->canAny(['customers.view', 'customers.edit', 'customers.delete', 'orders.create']))
                         <td>
                             <div class="d-flex gap-2">
@@ -90,7 +97,7 @@
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="{{ auth()->user()?->canAny(['customers.view', 'customers.edit', 'customers.delete', 'orders.create']) ? 8 : 7 }}" class="text-center text-muted py-4">Chưa có khách hàng nào</td>
+                        <td colspan="{{ auth()->user()?->canAny(['customers.view', 'customers.edit', 'customers.delete', 'orders.create']) ? 9 : 8 }}" class="text-center text-muted py-4">Chưa có khách hàng nào</td>
                     </tr>
                     @endforelse
                 </tbody>
@@ -177,14 +184,14 @@
                 }
 
                 Swal.fire({
-                    title: 'Xóa khách hàng?',
-                    text: 'Hành động này không thể hoàn tác.',
+                    title: 'Xóa hoặc lưu trữ khách hàng?',
+                    text: 'Nếu có đơn hàng hoặc dữ liệu liên quan, hồ sơ sẽ được chuyển sang trạng thái Tạm ngưng để giữ nguyên lịch sử. Chỉ hồ sơ không có dữ liệu liên quan mới bị xóa hẳn.',
                     icon: 'warning',
                     showCancelButton: true,
                     reverseButtons: true,
                     confirmButtonColor: '#dc2626',
                     cancelButtonColor: '#64748b',
-                    confirmButtonText: 'Xóa',
+                    confirmButtonText: 'Tiếp tục',
                     cancelButtonText: 'Hủy'
                 }).then((result) => {
                     if (result.isConfirmed) {

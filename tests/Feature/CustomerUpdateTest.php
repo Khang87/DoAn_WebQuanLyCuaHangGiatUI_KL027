@@ -71,6 +71,49 @@ class CustomerUpdateTest extends TestCase
         ]);
     }
 
+    public function test_customer_status_accepts_only_live_database_values(): void
+    {
+        $customerId = DB::table('KhachHang')->insertGetId([
+            'HoTen' => 'Khách hiện tại',
+            'Email' => 'status@example.com',
+            'SoDienThoai' => '0901234567',
+            'TrangThai' => 'Hoạt động',
+        ], 'KhachHangID');
+
+        $this->actingAs($this->makeAuthenticatedUser())->withoutMiddleware([
+            RejectCustomerRole::class,
+            EnsureUserHasPermission::class,
+        ])->from(route('customers.edit', $customerId))
+            ->put(route('customers.update', $customerId), [
+                'HoTen' => 'Khách hiện tại',
+                'Email' => 'status@example.com',
+                'SoDienThoai' => '0901234567',
+                'TrangThai' => 'Tạm ngưng',
+            ])
+            ->assertRedirect(route('customers.edit', $customerId))
+            ->assertSessionHasErrors(['TrangThai']);
+
+        $this->assertDatabaseHas('KhachHang', [
+            'KhachHangID' => $customerId,
+            'TrangThai' => 'Hoạt động',
+        ]);
+
+        $this->actingAs($this->makeAuthenticatedUser())->withoutMiddleware([
+            RejectCustomerRole::class,
+            EnsureUserHasPermission::class,
+        ])->put(route('customers.update', $customerId), [
+            'HoTen' => 'Khách hiện tại',
+            'Email' => 'status@example.com',
+            'SoDienThoai' => '0901234567',
+            'TrangThai' => 'Ngừng hoạt động',
+        ])->assertRedirect(route('customers.index'))->assertSessionHasNoErrors();
+
+        $this->assertDatabaseHas('KhachHang', [
+            'KhachHangID' => $customerId,
+            'TrangThai' => 'Ngừng hoạt động',
+        ]);
+    }
+
     public function test_duplicate_customer_email_returns_the_specific_validation_message(): void
     {
         DB::table('KhachHang')->insert([

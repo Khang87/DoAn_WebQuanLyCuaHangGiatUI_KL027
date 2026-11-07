@@ -104,6 +104,10 @@ class KhachHangController extends Controller
             $error = $this->customerService->delete($customer);
 
             if ($error !== null) {
+                if ($error['archived'] ?? false) {
+                    return redirect()->route('customers.index')->with('success', $error['message']);
+                }
+
                 $orders = array_map(
                     fn (array $order): array => $order + ['url' => route('orders.show', $order['id'])],
                     $error['orders'],

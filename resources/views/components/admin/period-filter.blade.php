@@ -86,15 +86,20 @@
                 width: 170px;
             }
 
-            .period-date-range-fields #period-filter-apply {
+            .period-filter-layout #period-filter-form #period-filter-apply,
+            .period-filter-layout #period-filter-form > .btn-outline-success {
+                display: inline-flex;
+                flex: 0 0 102px;
+                align-items: center;
+                justify-content: center;
+                width: 102px;
                 height: 33px;
                 padding: 6px 12px;
                 white-space: nowrap;
             }
 
             .period-filter-layout #period-filter-form > .btn-outline-success {
-                flex-shrink: 0;
-                white-space: nowrap;
+                margin-left: 0.5rem;
             }
 
             @media (max-width: 1399.98px) {

@@ -8,6 +8,7 @@ use App\Enums\OrderStatus;
 use App\Models\Booking;
 use App\Models\DonHang;
 use App\Models\GiaoNhan;
+use App\Support\BookingTimeWindow;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
@@ -78,6 +79,12 @@ class DeliveryRules
             ? DeliveryStatus::parseForLeg($current->TrangThai, $current->LoaiGiaoNhan)
             : DeliveryStatus::Pending;
         $isReturnLeg = $data['method'] === 'giao_do';
+
+        if ($current && $previous === DeliveryStatus::Completed && $target === DeliveryStatus::Cancelled) {
+            throw ValidationException::withMessages([
+                'status' => 'Không thể hủy phiếu giao nhận đã hoàn thành.',
+            ]);
+        }
 
         if (
             $current
@@ -151,10 +158,8 @@ class DeliveryRules
             }
         }
 
-        $isCompletedPickupCancellation = $current?->LoaiGiaoNhan === 'NHAN_DO'
-            && $target === DeliveryStatus::Cancelled;
         if ($previous !== $target && (
-            ($previous === DeliveryStatus::Completed && ! $isCompletedPickupCancellation)
+            $previous === DeliveryStatus::Completed
             || $previous === DeliveryStatus::Cancelled
             || (in_array($previous, [DeliveryStatus::Picking, DeliveryStatus::Delivering], true) && $target === DeliveryStatus::Pending)
         )) {
@@ -203,6 +208,14 @@ class DeliveryRules
             return;
         }
         $scheduled = Carbon::createFromFormat('!Y-m-d H:i', $data['pickup_date'].' '.$data['pickup_time'], config('app.timezone'));
+        $unchanged = $current?->ThoiGianDuKien?->format('Y-m-d H:i') === $scheduled->format('Y-m-d H:i');
+
+        if (! $unchanged && ! BookingTimeWindow::allows($scheduled->format('H:i'))) {
+            throw ValidationException::withMessages([
+                'pickup_time' => BookingTimeWindow::DELIVERY_MESSAGE,
+            ]);
+        }
+
         if (($data['method'] ?? null) === 'nhan_do') {
             $order ??= $current?->donHang;
             if (! $order && is_numeric($data['order_id'] ?? null)) {
@@ -227,7 +240,6 @@ class DeliveryRules
             }
         }
 
-        $unchanged = $current?->ThoiGianDuKien?->format('Y-m-d H:i') === $scheduled->format('Y-m-d H:i');
         if (! $unchanged && $scheduled->lessThanOrEqualTo(now())) {
             throw ValidationException::withMessages(['pickup_time' => 'Thời gian giao nhận phải sau thời điểm hiện tại.']);
         }

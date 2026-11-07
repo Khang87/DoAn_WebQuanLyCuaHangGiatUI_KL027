@@ -455,6 +455,7 @@
     @endif
 
     <!-- Custom JS -->
+    <script defer src="{{ asset('assets/js/admin-form-validation.js') }}?v={{ filemtime(public_path('assets/js/admin-form-validation.js')) }}"></script>
     <script>
         const sidebarMenu = document.querySelector('#sidebar > .overflow-y-auto');
         const sidebarScrollStorageKey = 'sky-laundry-sidebar-scroll-top';
@@ -493,6 +494,25 @@
     </script>
 
     <script>
+        const autoSearchFocusKey = 'auto-search-focus';
+        const savedAutoSearchFocus = sessionStorage.getItem(autoSearchFocusKey);
+        sessionStorage.removeItem(autoSearchFocusKey);
+
+        if (savedAutoSearchFocus) {
+            const focusState = JSON.parse(savedAutoSearchFocus);
+            const focusedSearch = Array.from(document.querySelectorAll('[data-auto-search-input]'))
+                .find(function(input) {
+                    return input.name === focusState.name && input.value === focusState.value;
+                });
+
+            if (location.pathname === focusState.path && focusedSearch) {
+                window.addEventListener('pageshow', function() {
+                    focusedSearch.focus({ preventScroll: true });
+                    focusedSearch.setSelectionRange(focusState.selectionStart, focusState.selectionEnd);
+                }, { once: true });
+            }
+        }
+
         document.querySelectorAll('[data-auto-search-input]').forEach(function(input) {
             const form = input.form;
             let searchTimeout;
@@ -507,25 +527,33 @@
                 }
 
                 window.clearTimeout(searchTimeout);
-                searchTimeout = window.setTimeout(function() {
-                    if (typeof form.requestSubmit === 'function') {
-                        form.requestSubmit();
-                    } else {
-                        form.submit();
-                    }
-                }, 350);
+                searchTimeout = window.setTimeout(submitSearch, 350);
             });
 
             input.addEventListener('compositionend', function() {
                 window.clearTimeout(searchTimeout);
-                searchTimeout = window.setTimeout(function() {
-                    form.requestSubmit();
-                }, 350);
+                searchTimeout = window.setTimeout(submitSearch, 350);
             });
 
             form.addEventListener('submit', function() {
                 window.clearTimeout(searchTimeout);
             });
+
+            function submitSearch() {
+                sessionStorage.setItem(autoSearchFocusKey, JSON.stringify({
+                    path: location.pathname,
+                    name: input.name,
+                    value: input.value,
+                    selectionStart: input.selectionStart,
+                    selectionEnd: input.selectionEnd,
+                }));
+
+                if (typeof form.requestSubmit === 'function') {
+                    form.requestSubmit();
+                } else {
+                    form.submit();
+                }
+            }
         });
     </script>
 

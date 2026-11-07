@@ -124,7 +124,7 @@ class CustomerDeletionTest extends TestCase
 
         $result = app(CustomerService::class)->delete($customer);
 
-        $this->assertSame('Không thể xóa khách hàng vì dữ liệu lịch sử và tài khoản liên kết cần được giữ lại.', $result['message']);
+        $this->assertSame('Không thể lưu trữ khách hàng vì còn đơn hàng chưa giao hoặc chưa thanh toán.', $result['message']);
         $this->assertSame([], $result['accounts']);
         $this->assertSame([[
             'id' => $orderId,
@@ -181,7 +181,7 @@ class CustomerDeletionTest extends TestCase
         $this->assertSame([], $result['accounts']);
     }
 
-    public function test_settled_delivered_order_is_not_listed_but_linked_account_is(): void
+    public function test_settled_delivered_order_archives_customer_and_preserves_linked_account(): void
     {
         $customer = $this->createCustomer();
         $orderId = DB::table('DonHang')->insertGetId([
@@ -203,13 +203,11 @@ class CustomerDeletionTest extends TestCase
         $result = app(CustomerService::class)->delete($customer);
 
         $this->assertSame([], $result['orders']);
-        $this->assertSame([[
-            'id' => $accountId,
-            'email' => 'linked@example.test',
-            'username' => 'linked-user',
-            'provider' => 'Google',
-        ]], $result['accounts']);
-        $this->assertSame('Không thể xóa khách hàng vì dữ liệu lịch sử và tài khoản liên kết cần được giữ lại.', $result['message']);
+        $this->assertTrue($result['archived']);
+        $this->assertSame('Ngừng hoạt động', $customer->fresh()->TrangThai);
+        $this->assertDatabaseHas('TaiKhoan', ['TaiKhoanID' => $accountId]);
+        $this->assertDatabaseHas('DonHang', ['DonHangID' => $orderId, 'KhachHangID' => $customer->KhachHangID]);
+        $this->assertDatabaseHas('HoaDon', ['DonHangID' => $orderId, 'TrangThai' => 'Đã thanh toán']);
     }
 
     public function test_legacy_paid_order_that_was_delivered_is_not_listed_as_blocking(): void
@@ -236,13 +234,12 @@ class CustomerDeletionTest extends TestCase
         $result = app(CustomerService::class)->delete($customer);
 
         $this->assertSame([], $result['orders']);
-        $this->assertSame(
-            'Không thể xóa khách hàng vì dữ liệu lịch sử và tài khoản liên kết cần được giữ lại.',
-            $result['message']
-        );
+        $this->assertTrue($result['archived']);
+        $this->assertSame('Ngừng hoạt động', $customer->fresh()->TrangThai);
+        $this->assertDatabaseHas('DonHang', ['DonHangID' => $orderId, 'KhachHangID' => $customer->KhachHangID]);
     }
 
-    public function test_legacy_paid_order_overrides_an_unpaid_invoice_in_deletion_blockers(): void
+    public function test_paid_legacy_order_with_unpaid_invoice_cannot_be_archived(): void
     {
         $customer = $this->createCustomer();
         $orderId = DB::table('DonHang')->insertGetId([
@@ -265,14 +262,18 @@ class CustomerDeletionTest extends TestCase
 
         $result = app(CustomerService::class)->delete($customer);
 
-        $this->assertSame([], $result['orders']);
-        $this->assertSame(
-            'Không thể xóa khách hàng vì dữ liệu lịch sử và tài khoản liên kết cần được giữ lại.',
-            $result['message']
-        );
+        $this->assertSame('Không thể lưu trữ khách hàng vì còn đơn hàng chưa giao hoặc chưa thanh toán.', $result['message']);
+        $this->assertSame([[
+            'id' => $orderId,
+            'code' => 'DH00000025',
+            'status' => 'Đã giao',
+            'payment_status' => 'Chưa thanh toán',
+        ]], $result['orders']);
+        $this->assertNull($customer->fresh()->TrangThai);
+        $this->assertDatabaseHas('KhachHang', ['KhachHangID' => $customer->KhachHangID]);
     }
 
-    public function test_legacy_paid_order_without_status_history_is_not_listed_as_blocking(): void
+    public function test_legacy_paid_order_without_status_history_can_be_archived_when_invoice_is_paid(): void
     {
         $customer = $this->createCustomer();
         $orderId = DB::table('DonHang')->insertGetId([
@@ -288,10 +289,8 @@ class CustomerDeletionTest extends TestCase
         $result = app(CustomerService::class)->delete($customer);
 
         $this->assertSame([], $result['orders']);
-        $this->assertSame(
-            'Không thể xóa khách hàng vì dữ liệu lịch sử và tài khoản liên kết cần được giữ lại.',
-            $result['message']
-        );
+        $this->assertTrue($result['archived']);
+        $this->assertSame('Ngừng hoạt động', $customer->fresh()->TrangThai);
     }
 
     public function test_delete_failure_is_reported_as_an_error_flash_not_success(): void
@@ -305,8 +304,13 @@ class CustomerDeletionTest extends TestCase
             ->once()
             ->with($customer)
             ->andReturn([
-                'message' => 'Không thể xóa khách hàng vì dữ liệu lịch sử và tài khoản liên kết cần được giữ lại.',
-                'orders' => [],
+                'message' => 'Không thể lưu trữ khách hàng vì còn đơn hàng chưa giao hoặc chưa thanh toán.',
+                'orders' => [[
+                    'id' => 80,
+                    'code' => 'DH00000080',
+                    'status' => 'Đang giặt',
+                    'payment_status' => 'Đã thanh toán',
+                ]],
                 'accounts' => [[
                     'id' => 2,
                     'email' => 'linked@example.test',
@@ -325,8 +329,8 @@ class CustomerDeletionTest extends TestCase
             ->delete(route('customers.destroy', 42));
 
         $response->assertRedirect(route('customers.index'))
-            ->assertSessionHas('error', 'Không thể xóa khách hàng vì dữ liệu lịch sử và tài khoản liên kết cần được giữ lại.')
-            ->assertSessionHas('customer_blocking_orders', [])
+            ->assertSessionHas('error', 'Không thể lưu trữ khách hàng vì còn đơn hàng chưa giao hoặc chưa thanh toán.')
+            ->assertSessionHas('customer_blocking_orders.0.id', 80)
             ->assertSessionHas('customer_linked_accounts.0.email', 'linked@example.test')
             ->assertSessionMissing('success');
 
@@ -334,7 +338,31 @@ class CustomerDeletionTest extends TestCase
             ->assertOk()
             ->assertSee('linked@example.test')
             ->assertSee('Google')
+            ->assertSee('DH00000080')
             ->assertSee('Không thể xóa khách hàng', false);
+    }
+
+    public function test_archiving_customer_is_reported_as_a_success_flash(): void
+    {
+        $customer = new KhachHang;
+        $customer->KhachHangID = 43;
+        $message = 'Hồ sơ khách hàng đã được lưu trữ ở trạng thái Tạm ngưng. Lịch sử và dữ liệu liên quan được giữ nguyên.';
+
+        $customerService = Mockery::mock(CustomerService::class);
+        $customerService->shouldReceive('find')->once()->with(43)->andReturn($customer);
+        $customerService->shouldReceive('delete')->once()->with($customer)->andReturn([
+            'message' => $message,
+            'orders' => [],
+            'accounts' => [],
+            'archived' => true,
+        ]);
+        $this->app->instance(CustomerService::class, $customerService);
+
+        $this->withoutMiddleware()
+            ->delete(route('customers.destroy', 43))
+            ->assertRedirect(route('customers.index'))
+            ->assertSessionHas('success', $message)
+            ->assertSessionMissing('error');
     }
 
     public function test_successful_delete_is_reported_as_a_success_flash(): void

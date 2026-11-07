@@ -2,9 +2,13 @@
 @section('title', 'Quản lý giao nhận - Sky Laundry')
 @section('page-title', 'Quản lý giao nhận')
 @section('content')
+@php
+    $deliveryListContext = request()->only(['page', 'search', 'customer_id', 'method', 'status', 'sort_by', 'sort_order']);
+    $deliveryListContext['return_to'] = 'deliveries';
+@endphp
 <div class="page-toolbar">
     @can('deliveries.create')
-        <a href="{{ route('deliveries.create') }}" class="btn btn-create">
+        <a href="{{ route('deliveries.create', $deliveryListContext) }}" class="btn btn-create">
             <i class="bi bi-plus-lg"></i>Thêm lịch giao nhận
         </a>
     @endcan
@@ -84,8 +88,8 @@
                                 ? \Illuminate\Support\Carbon::parse($delivery->expected_at)
                                 : null;
                             $detailUrl = $isBookingDocument
-                                ? route('deliveries.booking-documents.show', $delivery->source_id)
-                                : route('deliveries.show', $delivery->source_id);
+                                ? route('deliveries.booking-documents.show', [$delivery->source_id] + $deliveryListContext)
+                                : route('deliveries.show', [$delivery->source_id] + $deliveryListContext);
                         @endphp
                         <tr data-delivery-key="{{ $delivery->source_type }}:{{ $delivery->source_id }}"
                             data-detail-url="{{ $detailUrl }}">
@@ -131,7 +135,9 @@
                                 @endif
                             </td>
                             <td>
-                                @if($delivery->status_key === 'received')
+                                @if($isBookingDocument && $isIntake && $delivery->employee_id === null && $deliveryStatus === \App\Enums\DeliveryStatus::Pending)
+                                    —
+                                @elseif($delivery->status_key === 'received')
                                     <x-admin.status-badge
                                         :status="\App\Enums\DeliveryStatus::Completed"
                                         :enum="\App\Enums\DeliveryStatus::class"
@@ -149,13 +155,13 @@
                                 <div class="d-flex gap-2 justify-content-center">
                                     @can('deliveries.view')
                                         @if($isBookingDocument)
-                                            <a href="{{ route('deliveries.booking-documents.show', $delivery->source_id) }}"
+                                            <a href="{{ route('deliveries.booking-documents.show', [$delivery->source_id] + $deliveryListContext) }}"
                                                class="btn btn-order-action view" title="Xem chi tiết"
                                                aria-label="Xem chi tiết {{ $delivery->source_code }}">
                                                 <i class="bi bi-eye"></i>
                                             </a>
                                         @else
-                                            <a href="{{ route('deliveries.show', $delivery->source_id) }}"
+                                            <a href="{{ route('deliveries.show', [$delivery->source_id] + $deliveryListContext) }}"
                                                class="btn btn-order-action view" title="Xem chi tiết"
                                                aria-label="Xem chi tiết {{ $delivery->source_code }}">
                                                 <i class="bi bi-eye"></i>
@@ -165,7 +171,7 @@
 
                                     @if($isMutableBookingIntake)
                                         @can('deliveries.edit')
-                                            <a href="{{ route('deliveries.booking-documents.edit', $delivery->source_id) }}"
+                                            <a href="{{ route('deliveries.booking-documents.edit', [$delivery->source_id] + $deliveryListContext) }}"
                                                class="btn btn-order-action edit" title="Sửa phiếu nhận đồ">
                                                 <i class="bi bi-pencil"></i>
                                             </a>
@@ -185,7 +191,7 @@
                                         @if($progressAction)
                                             @can('deliveries.edit')
                                                 <x-admin.detail.confirm-form
-                                                    :action="route('deliveries.booking-documents.advance-progress', $delivery->source_id)"
+                                                    :action="route('deliveries.booking-documents.advance-progress', [$delivery->source_id] + $deliveryListContext)"
                                                     method="POST"
                                                     :title="$progressAction['label'].'?'"
                                                     text="Bắt đầu tiếp nhận đồ đã phân công để chuyển sang bước kiểm tra thực tế."
@@ -215,7 +221,7 @@
                                                     @endcan
                                                 @else
                                                     <x-admin.detail.confirm-form
-                                                        :action="route('deliveries.booking-documents.advance-progress', $delivery->source_id)"
+                                                        :action="route('deliveries.booking-documents.advance-progress', [$delivery->source_id] + $deliveryListContext)"
                                                         method="POST"
                                                         :title="$progressAction['label'].'?'"
                                                         text="Trạng thái phiếu được cập nhật và ghi vào lịch sử."
@@ -249,7 +255,7 @@
                                                     @endcan
                                                 @else
                                                     <x-admin.detail.confirm-form
-                                                        :action="route('deliveries.advance-progress', $delivery->source_id)"
+                                                        :action="route('deliveries.advance-progress', [$delivery->source_id] + $deliveryListContext)"
                                                         method="POST"
                                                         :title="$progressAction['label'].'?'"
                                                         text="Trạng thái phiếu được cập nhật và ghi vào lịch sử."
@@ -266,7 +272,7 @@
                                         @endif
                                         @if($canEditOperationalDelivery)
                                             @can('deliveries.edit')
-                                                <a href="{{ route('deliveries.edit', $delivery->source_id) }}"
+                                                <a href="{{ route('deliveries.edit', [$delivery->source_id] + $deliveryListContext) }}"
                                                    class="btn btn-order-action edit" title="Sửa">
                                                     <i class="bi bi-pencil"></i>
                                                 </a>

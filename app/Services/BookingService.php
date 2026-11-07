@@ -170,7 +170,7 @@ class BookingService
                     [
                         'HinhThuc' => $method,
                         'DiaChi' => $method === 'Tại nhà' ? $address : null,
-                        'NhanVienID' => $leg === 'NHAN_DO' ? $employeeId : null,
+                        'NhanVienID' => null,
                         'ThoiGianDuKien' => $leg === 'NHAN_DO' ? $locked->NgayHen->format('Y-m-d').' '.$locked->GioHen->format('H:i:s') : null,
                         'PhiGiaoNhan' => $method === 'Tại nhà' ? $fee : 0,
                         'NgayTao' => now(),

@@ -352,7 +352,9 @@ class UserAccountAuditTest extends TestCase
             ->assertOk()
             ->assertSee(route('orders.show', 104), false)
             ->assertSee('DH00104')
+            ->assertSee('Trạng thái đơn:')
             ->assertSee(OrderStatus::Pending->value)
+            ->assertSee('Thanh toán:')
             ->assertSee(InvoiceStatus::Unpaid->value)
             ->assertSee(route('orders.show', 105), false)
             ->assertSee('DH00105')
@@ -382,6 +384,16 @@ class UserAccountAuditTest extends TestCase
         ]);
         DB::table('HoaDon')->insert([
             'DonHangID' => 103,
+            'TrangThai' => InvoiceStatus::Paid->value,
+        ]);
+        DB::table('DonHang')->insert([
+            'DonHangID' => 107,
+            'MaDonHang' => 'DH00107',
+            'KhachHangID' => $customer,
+            'TrangThai' => OrderStatus::Paid->value,
+        ]);
+        DB::table('HoaDon')->insert([
+            'DonHangID' => 107,
             'TrangThai' => InvoiceStatus::Paid->value,
         ]);
         DB::table('DonHang')->insert([
@@ -434,6 +446,7 @@ class UserAccountAuditTest extends TestCase
         $this->assertDatabaseMissing('NhatKyHeThong', ['TaiKhoanID' => $user->TaiKhoanID]);
         $this->assertDatabaseMissing('push_device_tokens', ['TaiKhoanID' => $user->TaiKhoanID]);
         $this->assertDatabaseHas('DonHang', ['DonHangID' => 103]);
+        $this->assertDatabaseHas('DonHang', ['DonHangID' => 107]);
         $this->assertDatabaseHas('DonHang', ['DonHangID' => 106]);
         $this->assertDatabaseHas('KhachHang', ['KhachHangID' => $customer]);
     }
