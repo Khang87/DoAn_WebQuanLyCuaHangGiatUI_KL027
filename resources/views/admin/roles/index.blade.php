@@ -5,9 +5,11 @@
 
 @section('content')
 <div class="page-toolbar">
-    <a href="{{ route('roles.create') }}" class="btn btn-create">
-        <i class="bi bi-plus-lg"></i>Thêm nhóm quyền
-    </a>
+    @can('roles.manage')
+        <a href="{{ route('roles.create') }}" class="btn btn-create">
+            <i class="bi bi-plus-lg"></i>Thêm nhóm quyền
+        </a>
+    @endcan
     <p class="text-muted page-toolbar__desc">Xem quyền hạn và thành viên được phân vào từng nhóm.</p>
 </div>
 
@@ -73,25 +75,27 @@
                                 />
                             </div>
                         </div>
-                        <div class="dropdown">
-                            <button class="btn btn-sm btn-light border" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Thao tác nhóm {{ $role->TenVaiTro }}">
-                                <i class="bi bi-three-dots"></i>
-                            </button>
-                            <ul class="dropdown-menu dropdown-menu-end">
-                                <li><a class="dropdown-item" href="{{ route('roles.edit', $role->getKey()) }}#role-info"><i class="bi bi-pencil me-2"></i>Chỉnh sửa nhóm</a></li>
-                                @if(! $role->isOwner())
-                                    <li><hr class="dropdown-divider"></li>
-                                    <li>
-                                        <form method="POST" action="{{ route('roles.destroy', $role->getKey()) }}"
-                                              onsubmit="return confirm('Xóa hoặc ngừng hoạt động nhóm quyền này?')">
-                                            @csrf
-                                            @method('DELETE')
-                                            <button class="dropdown-item text-danger" type="submit"><i class="bi bi-trash me-2"></i>Xóa nhóm</button>
-                                        </form>
-                                    </li>
-                                @endif
-                            </ul>
-                        </div>
+                        @can('roles.manage')
+                            <div class="dropdown">
+                                <button class="btn btn-sm btn-light border" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Thao tác nhóm {{ $role->TenVaiTro }}">
+                                    <i class="bi bi-three-dots"></i>
+                                </button>
+                                <ul class="dropdown-menu dropdown-menu-end">
+                                    <li><a class="dropdown-item" href="{{ route('roles.edit', $role->getKey()) }}#role-info"><i class="bi bi-pencil me-2"></i>Chỉnh sửa nhóm</a></li>
+                                    @if(! $role->isOwner())
+                                        <li><hr class="dropdown-divider"></li>
+                                        <li>
+                                            <form method="POST" action="{{ route('roles.destroy', $role->getKey()) }}"
+                                                  onsubmit="return confirm('Xóa hoặc ngừng hoạt động nhóm quyền này?')">
+                                                @csrf
+                                                @method('DELETE')
+                                                <button class="dropdown-item text-danger" type="submit"><i class="bi bi-trash me-2"></i>Xóa nhóm</button>
+                                            </form>
+                                        </li>
+                                    @endif
+                                </ul>
+                            </div>
+                        @endcan
                     </div>
 
                     <p class="text-muted small mt-3 mb-3 flex-grow-1">
@@ -120,9 +124,11 @@
                         @endforelse
                     </div>
 
-                    <a href="{{ route('roles.show', $role->getKey()) }}" class="btn btn-outline-primary btn-sm mt-auto">
-                        Xem chi tiết nhóm <i class="bi bi-arrow-right ms-1"></i>
-                    </a>
+                    @can('roles.manage')
+                        <a href="{{ route('roles.show', $role->getKey()) }}" class="btn btn-outline-primary btn-sm mt-auto">
+                            Xem chi tiết nhóm <i class="bi bi-arrow-right ms-1"></i>
+                        </a>
+                    @endcan
                 </div>
             </article>
         </div>

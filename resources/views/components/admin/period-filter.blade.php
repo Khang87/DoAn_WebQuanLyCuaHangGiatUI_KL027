@@ -81,19 +81,14 @@
                         <button type="submit" id="period-filter-apply" class="btn btn-primary btn-sm">
                             Áp dụng
                         </button>
-                        @if($exportRoute)
-                            <a class="btn btn-outline-success btn-sm" href="{{ route($exportRoute, $exportParameters) }}">
-                                <i class="bi bi-file-earmark-excel me-1" aria-hidden="true"></i>Xuất Excel
-                            </a>
-                        @endif
                     </div>
                 @endif
+                @if($exportRoute)
+                    <a class="btn btn-outline-success btn-sm" href="{{ route($exportRoute, $exportParameters) }}">
+                        <i class="bi bi-file-earmark-excel me-1" aria-hidden="true"></i>Xuất Excel
+                    </a>
+                @endif
             </form>
-            @if($exportRoute && ! $customRange)
-                <a class="btn btn-outline-success btn-sm" href="{{ route($exportRoute, $exportParameters) }}">
-                    <i class="bi bi-file-earmark-excel me-1" aria-hidden="true"></i>Xuất Excel
-                </a>
-            @endif
         </div>
         <p class="small text-muted mb-0 mt-2">{{ $note }}</p>
     </div>

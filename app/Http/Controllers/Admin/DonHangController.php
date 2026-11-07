@@ -17,6 +17,7 @@ use App\Models\LoaiDichVu;
 use App\Models\LoaiDoGiat;
 use App\Models\NhanVien;
 use App\Services\DeliveryFeeService;
+use App\Services\EmployeeAssignment;
 use App\Services\OrderService;
 use App\Services\PricingService;
 use App\Support\FriendlyError;
@@ -82,12 +83,18 @@ class DonHangController extends Controller
             ->whereKey($request->user()?->NhanVienID)
             ->where('TrangThai', 'Hoạt động')
             ->first(['NhanVienID', 'HoTen']);
+        $pickupEmployees = EmployeeAssignment::canAssignNewDelivery($request->user())
+            ? EmployeeAssignment::deliveryCandidates()
+                ->orderBy('HoTen')
+                ->orderBy('NhanVienID')
+                ->get(['NhanVienID', 'HoTen'])
+            : collect($authenticatedEmployee ? [$authenticatedEmployee] : []);
         $statusFlow = $this->orderService->getStatusFlow();
         $pricings = $this->pricingService->orderOptions();
         $nextOrderCode = $this->orderService->nextOrderCode();
 
         return view('admin.orders.create', array_merge(
-            compact('customers', 'selectedCustomer', 'services', 'garments', 'authenticatedEmployee', 'statusFlow', 'pricings', 'nextOrderCode'),
+            compact('customers', 'selectedCustomer', 'services', 'garments', 'authenticatedEmployee', 'pickupEmployees', 'statusFlow', 'pricings', 'nextOrderCode'),
             $this->categoryOptions()
         ));
     }

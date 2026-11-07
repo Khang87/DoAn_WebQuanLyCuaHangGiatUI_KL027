@@ -183,7 +183,12 @@
                     </div>
                 @endif
                 <div class="col-md-6"><label class="form-label">Ngày hẹn nhân viên nhận đồ <span class="text-danger ms-1">*</span></label><input type="date" class="form-control booking-main-control @error('scheduled_date') is-invalid @enderror" name="scheduled_date" value="{{ old('scheduled_date', $booking->NgayHen?->format('Y-m-d')) }}" required @readonly($inspectionMode)>@error('scheduled_date')<div class="invalid-feedback">{{ $message }}</div>@enderror</div>
-                <div class="col-md-6"><label class="form-label">Giờ hẹn nhân viên nhận đồ <span class="text-danger ms-1">*</span></label><input type="time" class="form-control booking-main-control @error('scheduled_time') is-invalid @enderror" name="scheduled_time" value="{{ old('scheduled_time', $booking->GioHen?->format('H:i')) }}" required @readonly($inspectionMode)>@error('scheduled_time')<div class="invalid-feedback">{{ $message }}</div>@enderror</div>
+                <div class="col-md-6">
+                    <label class="form-label">Giờ hẹn nhân viên nhận đồ <span class="text-danger ms-1">*</span></label>
+                    <input type="time" min="08:00" max="17:00" step="60" class="form-control booking-main-control @error('scheduled_time') is-invalid @enderror" name="scheduled_time" value="{{ old('scheduled_time', $booking->GioHen?->format('H:i')) }}" required @readonly($inspectionMode)>
+                    <div class="form-text">Giờ nhận đơn đặt lịch: 08:00 - 17:00</div>
+                    @error('scheduled_time')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                </div>
                 @if(! $inspectionMode)
                     <div class="col-md-6"><label class="form-label">Trạng thái</label><x-admin.status-select name="status" id="booking-status" :options="\App\Enums\BookingStatus::options()" :selected="old('status', $booking->TrangThai)" class="form-select booking-main-control @error('status') is-invalid @enderror" />@error('status')<div class="invalid-feedback">{{ $message }}</div>@enderror</div>
                 @endif

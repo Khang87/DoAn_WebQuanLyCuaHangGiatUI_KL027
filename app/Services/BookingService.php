@@ -15,6 +15,7 @@ use App\Models\KhuyenMai;
 use App\Models\NhanVien;
 use App\Models\NhatKyHeThong;
 use App\Models\StaffBookingDraft;
+use App\Support\BookingTimeWindow;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -108,6 +109,13 @@ class BookingService
 
     public function create(array $data): Booking
     {
+        if (array_key_exists('booking_time', $data) && ! array_key_exists('scheduled_time', $data)) {
+            $data['scheduled_time'] = $data['booking_time'];
+        }
+        if (array_key_exists('scheduled_time', $data)) {
+            BookingTimeWindow::assertAllowed($data['scheduled_time'], 'booking_time');
+        }
+
         return DB::transaction(function () use ($data): Booking {
             CatalogAvailability::assertItemsAvailable($data['items'] ?? []);
             $booking = Booking::create($this->mapRequestData($data));
@@ -162,6 +170,7 @@ class BookingService
                     [
                         'HinhThuc' => $method,
                         'DiaChi' => $method === 'Tại nhà' ? $address : null,
+                        'NhanVienID' => $leg === 'NHAN_DO' ? $employeeId : null,
                         'ThoiGianDuKien' => $leg === 'NHAN_DO' ? $locked->NgayHen->format('Y-m-d').' '.$locked->GioHen->format('H:i:s') : null,
                         'PhiGiaoNhan' => $method === 'Tại nhà' ? $fee : 0,
                         'NgayTao' => now(),
@@ -224,6 +233,8 @@ class BookingService
 
     public function submitInspection(Booking $booking, array $data): DonHang
     {
+        BookingTimeWindow::assertAllowed($data['scheduled_time'] ?? null, 'scheduled_time');
+
         return DB::transaction(function () use ($booking, $data): DonHang {
             $locked = Booking::query()->lockForUpdate()->findOrFail($booking->BookingID);
             $existing = $this->findOrderForBooking($locked);
@@ -249,10 +260,7 @@ class BookingService
                 ->firstOrFail();
             $this->assertAssignedIntakeHandler($intake, $employeeId, allowManager: true);
             if (
-                ! in_array($intake->TrangThai, [
-                    DeliveryStatus::Pending->dbValue(),
-                    DeliveryStatus::Picking->dbValue(),
-                ], true)
+                $intake->TrangThai !== DeliveryStatus::Picking->dbValue()
                 || $intake->ThoiGianThucTe !== null
                 || $intake->DonHangID !== null
                 || $intake->BookingKiemKeID !== null
@@ -395,6 +403,8 @@ class BookingService
 
     public function saveInspectionDraft(Booking $booking, array $data): Booking
     {
+        BookingTimeWindow::assertAllowed($data['scheduled_time'] ?? null, 'scheduled_time');
+
         return DB::transaction(function () use ($booking, $data): Booking {
             $locked = Booking::query()->lockForUpdate()->findOrFail($booking->BookingID);
             if ($locked->TrangThai !== BookingStatus::Confirmed->value || $this->hasConvertedOrder($locked)) {
@@ -403,7 +413,7 @@ class BookingService
             $employeeId = $this->requireAuthenticatedEmployeeId('booking', 'Cần nhân viên đang hoạt động để lưu kết quả kiểm tra.');
             $intake = BookingGiaoNhan::query()->where('BookingID', $locked->BookingID)->where('LoaiGiaoNhan', 'NHAN_DO')->lockForUpdate()->firstOrFail();
             $this->assertAssignedIntakeHandler($intake, $employeeId, allowManager: true);
-            if (! in_array($intake->TrangThai, [DeliveryStatus::Pending->dbValue(), DeliveryStatus::Picking->dbValue()], true)
+            if ($intake->TrangThai !== DeliveryStatus::Picking->dbValue()
                 || $intake->ThoiGianThucTe !== null || $intake->DonHangID !== null || $intake->BookingKiemKeID !== null
                 || BookingKiemKe::query()->where('BookingID', $locked->BookingID)->exists()) {
                 throw ValidationException::withMessages(['booking' => 'Phiếu nhận không còn ở trạng thái cho phép lưu kết quả kiểm tra.']);
@@ -605,10 +615,7 @@ class BookingService
     private function intakeLegAllowsInspection(?BookingGiaoNhan $intake): bool
     {
         return $intake !== null
-            && in_array($intake->TrangThai, [
-                DeliveryStatus::Pending->dbValue(),
-                DeliveryStatus::Picking->dbValue(),
-            ], true)
+            && $intake->TrangThai === DeliveryStatus::Picking->dbValue()
             && $intake->ThoiGianThucTe === null
             && $intake->DonHangID === null
             && $intake->BookingKiemKeID === null;
@@ -627,6 +634,8 @@ class BookingService
 
     public function refuseQuote(Booking $booking, array $data): Booking
     {
+        BookingTimeWindow::assertAllowed($data['scheduled_time'] ?? null, 'scheduled_time');
+
         return DB::transaction(function () use ($booking, $data): Booking {
             $user = auth()->user();
             abort_unless($user?->isActive(), 403);
@@ -897,6 +906,10 @@ class BookingService
 
     public function update(Booking $booking, array $data): Booking
     {
+        if (array_key_exists('scheduled_time', $data)) {
+            BookingTimeWindow::assertAllowed($data['scheduled_time']);
+        }
+
         return DB::transaction(function () use ($booking, $data): Booking {
             $lockedBooking = Booking::query()
                 ->lockForUpdate()

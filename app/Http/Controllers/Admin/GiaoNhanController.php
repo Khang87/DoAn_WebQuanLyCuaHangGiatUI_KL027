@@ -275,9 +275,12 @@ class GiaoNhanController extends Controller
         );
 
         $canAssignEmployee = EmployeeAssignment::canAssignBookingIntake($user);
+        $assignedEmployee = $user?->isEmployee()
+            ? $bookingDocument->booking?->nhanVienXacNhan
+            : $bookingDocument->nhanVien;
         $employees = $canAssignEmployee
             ? $this->bookingIntakeAssignableEmployees()
-            : new Collection([$bookingDocument->nhanVien]);
+            : new Collection($assignedEmployee === null ? [] : [$assignedEmployee]);
         $displayCode = 'BGN-'.$bookingDocument->BookingGiaoNhanID;
 
         return view('admin.deliveries.booking-document-edit', compact(
@@ -372,6 +375,13 @@ class GiaoNhanController extends Controller
         $this->restrictToOwnBookingDocument($document, auth()->user());
 
         try {
+            if ($document->LoaiGiaoNhan === 'NHAN_DO') {
+                $this->deliveryService->startBookingIntake($document);
+
+                return redirect()->route('bookings.inspection', $document->BookingID)
+                    ->with('success', 'Đã bắt đầu tiếp nhận đồ. Hãy kiểm tra thực tế trước khi tạo đơn hàng.');
+            }
+
             $this->deliveryService->advanceBookingDelivery($document);
         } catch (ValidationException $exception) {
             return redirect()->route('deliveries.booking-documents.show', $document)
@@ -440,10 +450,19 @@ class GiaoNhanController extends Controller
         try {
             $data = $request->validated();
             if (($data['status'] ?? null) === DeliveryStatus::Cancelled->value) {
-                $this->deliveryService->cancelReturnDelivery($delivery);
+                if ($delivery->LoaiGiaoNhan === 'GIAO_DO') {
+                    $this->deliveryService->cancelReturnDelivery($delivery);
+                } else {
+                    $this->deliveryService->update($delivery, $data);
+                }
 
                 return redirect()->route('deliveries.index')
-                    ->with('success', 'Đã hủy lịch giao. Đơn hàng và trạng thái thanh toán không thay đổi.');
+                    ->with(
+                        'success',
+                        $delivery->LoaiGiaoNhan === 'GIAO_DO'
+                            ? 'Đã hủy lịch giao. Đơn hàng và trạng thái thanh toán không thay đổi.'
+                            : 'Đã hủy lịch nhận đồ. Đơn hàng và trạng thái thanh toán không thay đổi.',
+                    );
             }
 
             $this->deliveryService->update($delivery, $data);

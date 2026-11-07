@@ -13,14 +13,7 @@
 
 <form action="{{ url()->current() }}" method="GET" class="row g-3 align-items-center mb-4">
     <div class="col-12 col-md-auto flex-grow-1">
-        <div class="input-group input-group-sm shadow-sm rounded-3 overflow-hidden filter-search">
-            <button type="submit" class="input-group-text bg-white border-end-0 ps-3" aria-label="Tìm kiếm giao nhận" title="Tìm kiếm">
-                <i class="fas fa-search text-muted" aria-hidden="true"></i>
-            </button>
-            <input type="search" name="search" class="form-control form-control-sm border-start-0 ps-2"
-                   placeholder="Tìm mã phiếu, đơn hàng, đặt lịch, khách hàng, nhân viên hoặc địa chỉ..."
-                   value="{{ request('search') }}">
-        </div>
+        <x-admin.search-field placeholder="Tìm mã phiếu, đơn hàng, đặt lịch, khách hàng, nhân viên hoặc địa chỉ..." label="Tìm kiếm giao nhận" />
     </div>
     <div class="col-12 col-sm-6 col-md-auto">
         <select name="method" class="form-select form-select-sm filter-select shadow-sm rounded-3" onchange="this.form.submit()">
@@ -69,12 +62,17 @@
                             $isBookingDocument = $delivery->source_type === 'booking';
                             $isIntake = $delivery->task_type === 'NHAN_DO';
                             $isMutableBookingIntake = $isBookingDocument && (int) $delivery->intake_mutable === 1;
-                            $isReturnIntake = $isBookingDocument && $delivery->task_type === 'GIAO_DO';
+                            $isBookingReturn = $isBookingDocument && $delivery->task_type === 'GIAO_DO';
                             $deliveryStatus = \App\Enums\DeliveryStatus::parseForLeg($delivery->raw_status, $delivery->task_type);
                             $isDirectReturnWaitingForIntake = ! $isBookingDocument
                                 && $delivery->booking_id === null
                                 && $delivery->task_type === 'GIAO_DO'
                                 && ! (bool) $delivery->intake_completed;
+                            $progressAction = \App\Support\DeliveryWorkflow::progressAction(
+                                $delivery->task_type,
+                                $delivery->fulfillment,
+                                $deliveryStatus,
+                            );
                             $canEditOperationalDelivery = ! $isBookingDocument
                                 && ($delivery->task_type !== 'GIAO_DO'
                                     || (
@@ -183,9 +181,27 @@
                                             </a>
                                         @endcan
                                     @endif
-                                    @if($isReturnIntake && $delivery->employee_name !== null && $delivery->order_id !== null && in_array($deliveryStatus, [\App\Enums\DeliveryStatus::Pending, \App\Enums\DeliveryStatus::Picking, \App\Enums\DeliveryStatus::Delivering], true))
+                                    @if($isBookingDocument && $isIntake && $delivery->employee_name !== null && $deliveryStatus === \App\Enums\DeliveryStatus::Pending)
+                                        @if($progressAction)
+                                            @can('deliveries.edit')
+                                                <x-admin.detail.confirm-form
+                                                    :action="route('deliveries.booking-documents.advance-progress', $delivery->source_id)"
+                                                    method="POST"
+                                                    :title="$progressAction['label'].'?'"
+                                                    text="Bắt đầu tiếp nhận đồ đã phân công để chuyển sang bước kiểm tra thực tế."
+                                                    :label="$progressAction['label']"
+                                                    :icon="$progressAction['icon']"
+                                                    variant="btn-order-action"
+                                                    size=""
+                                                    iconOnly
+                                                    :color="$progressAction['color']"
+                                                    iconName="question"
+                                                />
+                                            @endcan
+                                        @endif
+                                    @endif
+                                    @if($isBookingReturn && $delivery->employee_name !== null && $delivery->order_id !== null && in_array($deliveryStatus, [\App\Enums\DeliveryStatus::Pending, \App\Enums\DeliveryStatus::Picking, \App\Enums\DeliveryStatus::Delivering], true))
                                         @php
-                                            $progressAction = \App\Support\DeliveryWorkflow::progressAction($delivery->task_type, $delivery->fulfillment, $deliveryStatus);
                                             $order = $delivery->order_id ? \App\Models\DonHang::find($delivery->order_id) : null;
                                             $paymentNotDone = $progressAction && $deliveryStatus === \App\Enums\DeliveryStatus::Delivering && ! $order?->isLocked();
                                         @endphp
@@ -217,8 +233,6 @@
                                     @endif
                                     @if(! $isBookingDocument)
                                         @php
-                                            $progressAction = \App\Support\DeliveryWorkflow::progressAction($delivery->task_type, $delivery->fulfillment, $deliveryStatus);
-                                            
                                             $order = $delivery->order_id ? \App\Models\DonHang::find($delivery->order_id) : null;
                                             $paymentNotDone = $progressAction && $delivery->task_type === 'GIAO_DO'
                                                 && in_array($deliveryStatus, [\App\Enums\DeliveryStatus::Pending, \App\Enums\DeliveryStatus::Delivering], true)

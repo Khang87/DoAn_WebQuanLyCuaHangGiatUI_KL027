@@ -37,10 +37,9 @@
         <div class="card border-0 shadow-sm">
             <div class="card-header bg-white py-3">
                 <h5 class="mb-3 fw-semibold"><i class="bi bi-chat-dots me-2"></i>Hội thoại</h5>
-                <form action="{{ route('admin.messages.index') }}" method="GET" role="search" class="input-group input-group-sm">
+                <form action="{{ route('admin.messages.index') }}" method="GET" role="search">
                     <input type="hidden" name="tab" value="{{ $activeTab }}">
-                    <input type="search" name="q" value="{{ $search }}" class="form-control" maxlength="100" placeholder="Tên, SĐT hoặc mã đơn" aria-label="Tìm hội thoại">
-                    <button class="btn btn-outline-primary" type="submit" aria-label="Tìm kiếm"><i class="bi bi-search"></i></button>
+                    <x-admin.search-field name="q" :value="$search" placeholder="Tên, SĐT hoặc mã đơn" label="Tìm hội thoại" />
                 </form>
             </div>
             <nav class="nav nav-pills nav-fill gap-1 p-2 border-bottom" aria-label="Loại hội thoại">
@@ -225,7 +224,9 @@
                     </div>
                 @endif
                 <div class="d-flex justify-content-between gap-2 mb-3"><span class="text-muted">Giá trị đơn</span><strong>{{ number_format((float) $selectedOrder->ThanhTien) }} đ</strong></div>
-                <a href="{{ route('orders.show', $selectedOrder) }}" class="btn btn-sm btn-outline-primary w-100">Xem chi tiết đơn</a>
+                @can('orders.view')
+                    <a href="{{ route('orders.show', $selectedOrder) }}" class="btn btn-sm btn-outline-primary w-100">Xem chi tiết đơn</a>
+                @endcan
             </div>
         </div>
         @endif

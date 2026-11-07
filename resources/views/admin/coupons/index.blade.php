@@ -11,19 +11,16 @@
             <i class="bi bi-plus-lg"></i>Thêm coupon
         </a>
     @endcan
-    <a href="{{ route('promotions.index') }}" class="btn btn-outline-secondary">
-        <i class="bi bi-arrow-left me-1"></i>Quay lại Khuyến mãi
-    </a>
+    @can('promotions.view')
+        <a href="{{ route('promotions.index') }}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i>Quay lại Khuyến mãi
+        </a>
+    @endcan
     <p class="text-muted page-toolbar__desc">Danh sách mã giảm giá đã phát ra, theo dõi số lượt dùng và thời hạn hiệu lực.</p>
 </div>
 <form action="{{ url()->current() }}" method="GET" class="row g-3 align-items-center mb-4">
     <div class="col-12 col-md-auto flex-grow-1">
-        <div class="input-group input-group-sm shadow-sm rounded-3 overflow-hidden filter-search">
-            <span class="input-group-text bg-white border-end-0 ps-3">
-                <i class="fas fa-search text-muted"></i>
-            </span>
-            <input type="text" name="search" class="form-control form-control-sm border-start-0 ps-2" placeholder="Tìm kiếm mã..." value="{{ request('search') }}">
-        </div>
+        <x-admin.search-field placeholder="Tìm kiếm mã..." label="Tìm kiếm mã giảm giá" />
     </div>
     <div class="col-12 col-sm-6 col-md-auto">
         <select name="promotion_id" class="form-select form-select-sm filter-select shadow-sm rounded-3" onchange="this.form.submit()">

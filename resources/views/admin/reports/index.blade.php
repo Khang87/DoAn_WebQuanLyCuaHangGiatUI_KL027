@@ -209,7 +209,7 @@
         padding: 6px 12px;
         white-space: nowrap;
     }
-    .period-date-range-fields .btn-outline-success {
+    .period-filter-layout #period-filter-form > .btn-outline-success {
         flex-shrink: 0;
         white-space: nowrap;
     }
@@ -446,7 +446,7 @@
                             <tr>
                                 <th scope="col">STT</th>
                                 <th class="fw-bold text-dark">Dịch vụ</th>
-                                <th class="fw-bold text-dark text-center text-nowrap" style="width: 130px;">Số lượng bán</th>
+                                <th class="fw-bold text-dark text-center text-nowrap" style="width: 130px;">Số lượng đặt</th>
                                 <th class="fw-bold text-dark text-end" style="width: 150px;">Doanh thu</th>
                             </tr>
                         </thead>
@@ -533,7 +533,9 @@
                                 <th scope="col" style="width: 12%;" class="text-center">Trạng thái</th>
                                 <th scope="col" style="width: 12%;" class="text-end">Tổng tiền</th>
                                 <th scope="col" style="width: 11%;" class="text-end">Ngày tạo</th>
-                                <th scope="col" style="width: 8%;" class="text-end pe-3">Thao tác</th>
+                                @can('orders.view')
+                                    <th scope="col" style="width: 8%;" class="text-end pe-3">Thao tác</th>
+                                @endcan
                             </tr>
                         </thead>
                         <tbody class="fs-7">
@@ -559,13 +561,15 @@
                                     <div class="text-dark fw-medium">{{ $createdAt?->format('d/m/Y') ?? '-' }}</div>
                                     <small class="text-muted fs-8">{{ $createdAt?->format('H:i') ?? '' }}</small>
                                 </td>
-                                <td class="text-end pe-3">
-                                    <a href="{{ route('orders.show', $order) }}" class="btn btn-order-action view" title="Xem chi tiết"><i class="bi bi-eye"></i></a>
-                                </td>
+                                @can('orders.view')
+                                    <td class="text-end pe-3">
+                                        <a href="{{ route('orders.show', $order) }}" class="btn btn-order-action view" title="Xem chi tiết"><i class="bi bi-eye"></i></a>
+                                    </td>
+                                @endcan
                             </tr>
                             @empty
                             <tr>
-                                <td colspan="8" class="text-center text-muted py-4">Chưa có đơn hàng nào</td>
+                                <td colspan="{{ auth()->user()?->can('orders.view') ? 8 : 7 }}" class="text-center text-muted py-4">Chưa có đơn hàng nào</td>
                             </tr>
                             @endforelse
                         </tbody>

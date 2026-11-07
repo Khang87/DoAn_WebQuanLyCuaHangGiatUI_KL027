@@ -6,9 +6,10 @@
 @section('content')
 @php
     $booking = $bookingDocument->booking;
+    $isEmployee = auth()->user()?->isEmployee() ?? false;
     $employee = ($canAssignEmployee ?? false)
         ? $employees->firstWhere('NhanVienID', (int) old('employee_id', $bookingDocument->NhanVienID))
-        : $bookingDocument->nhanVien;
+        : ($isEmployee ? $booking?->nhanVienXacNhan : $bookingDocument->nhanVien);
 @endphp
 
 <div class="delivery-form-shell">
@@ -52,7 +53,7 @@
                     </div>
 
                     <div class="col-12">
-                        <label class="form-label" for="employee_select">Nhân viên phụ trách nhận đồ</label>
+                        <label class="form-label" for="{{ $canAssignEmployee ? 'employee_select' : 'employee_display' }}">Nhân viên phụ trách nhận đồ</label>
                         @if($canAssignEmployee ?? true)
                             <div class="delivery-employee-picker" data-employee-picker>
                                 <button class="form-select text-start text-truncate" id="employee_select" type="button"
@@ -92,8 +93,12 @@
                             </div>
                             @error('employee_id')<div class="text-danger small mt-1" role="alert">{{ $message }}</div>@enderror
                         @else
-                            <input class="form-control" id="employee_display" value="{{ $employee?->HoTen ?: 'Chưa phân công' }}" readonly>
-                            <input type="hidden" name="employee_id" value="{{ $employee?->NhanVienID ?? '' }}">
+                            <input class="form-control bg-light text-muted" id="employee_display"
+                                   value="{{ $employee?->HoTen ?: ($isEmployee ? 'Chưa ghi nhận nhân viên xác nhận' : 'Chưa phân công') }}"
+                                   readonly disabled aria-disabled="true">
+                            @if($isEmployee)
+                                <div class="form-text">Nhân viên phụ trách được cố định theo người xác nhận đặt lịch.</div>
+                            @endif
                         @endif
                     </div>
 

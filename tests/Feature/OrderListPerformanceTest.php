@@ -5,10 +5,12 @@ namespace Tests\Feature;
 use App\Enums\InvoiceStatus;
 use App\Enums\OrderStatus;
 use App\Enums\PaymentStatus;
+use App\Models\User;
 use App\Services\OrderService;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Mockery;
 use Tests\TestCase;
 
 class OrderListPerformanceTest extends TestCase
@@ -52,6 +54,13 @@ class OrderListPerformanceTest extends TestCase
             'AvatarURL' => 'https://example.test/avatars/customer-1.jpg',
             'MatKhau' => 'fixture-password-must-not-be-selected',
         ]);
+        Schema::create('ThongBao', function (Blueprint $t): void {
+            $t->increments('ThongBaoID');
+            $t->integer('TaiKhoanID')->nullable();
+            $t->string('LoaiThongBao')->nullable();
+            $t->boolean('DaDoc')->default(false);
+            $t->dateTime('ThoiGianGui')->nullable();
+        });
         Schema::create('NhatKyHeThong', function (Blueprint $t): void {
             $t->increments('NhatKyID');
             $t->integer('BanGhiID');
@@ -137,6 +146,56 @@ class OrderListPerformanceTest extends TestCase
             $connection->disableQueryLog();
             $connection->flushQueryLog();
         }
+    }
+
+    public function test_edit_button_is_hidden_when_order_status_blocks_editing_unless_user_is_owner(): void
+    {
+        $this->seedOrder(1, OrderStatus::Pending);
+        $this->seedOrder(2, OrderStatus::Received);
+
+        $staff = Mockery::mock(User::class)->makePartial();
+        $staff->shouldReceive('isActive')->andReturnTrue();
+        $staff->shouldReceive('isOwner')->andReturnFalse();
+        $staff->shouldReceive('canPermission')->andReturnUsing(
+            fn (string $permission): bool => $permission === 'orders.edit'
+        );
+        $this->actingAs($staff);
+
+        $html = view('admin.orders.index', ['orders' => app(OrderService::class)->getAll()])->render();
+
+        $this->assertStringContainsString(route('orders.edit', 1), $html);
+        $this->assertStringNotContainsString(route('orders.edit', 2), $html);
+
+        $owner = Mockery::mock(User::class)->makePartial();
+        $owner->shouldReceive('isActive')->andReturnTrue();
+        $owner->shouldReceive('isOwner')->andReturnTrue();
+        $owner->shouldReceive('canPermission')->andReturnTrue();
+        $this->actingAs($owner);
+
+        $html = view('admin.orders.index', ['orders' => app(OrderService::class)->getAll()])->render();
+
+        $this->assertStringContainsString(route('orders.edit', 2), $html);
+    }
+
+    public function test_create_invoice_button_is_hidden_for_settled_order_without_invoice(): void
+    {
+        $this->seedOrder(1, OrderStatus::Delivered);
+        $this->seedOrder(2, OrderStatus::Delivered);
+        DB::table('ThanhToan')->insert([
+            'DonHangID' => 2,
+            'TrangThai' => PaymentStatus::Paid->value,
+        ]);
+
+        $staff = Mockery::mock(User::class)->makePartial();
+        $staff->shouldReceive('isActive')->andReturnTrue();
+        $staff->shouldReceive('isOwner')->andReturnFalse();
+        $staff->shouldReceive('canPermission')->andReturnTrue();
+        $this->actingAs($staff);
+
+        $html = view('admin.orders.index', ['orders' => app(OrderService::class)->getAll()])->render();
+
+        $this->assertStringContainsString(route('invoices.create', ['order_id' => 1]), $html);
+        $this->assertStringNotContainsString(route('invoices.create', ['order_id' => 2]), $html);
     }
 
     public function test_multiple_customers_and_missing_accounts_keep_avatar_queries_bounded(): void

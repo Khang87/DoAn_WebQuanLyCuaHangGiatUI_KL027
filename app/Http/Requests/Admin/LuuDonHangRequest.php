@@ -75,6 +75,19 @@ class LuuDonHangRequest extends FormRequest
                         ? ['required', 'integer', Rule::in([(int) $currentOrder->NhanVienID]), EmployeeAssignment::rule((int) $currentOrder->NhanVienID)]
                         : ['prohibited'])
                     : ['required', 'integer', EmployeeAssignment::rule()]),
+            'NhanVienNhanDoID' => $isCreating
+                ? [
+                    'sometimes',
+                    'required',
+                    'integer',
+                    EmployeeAssignment::rule(),
+                    ...($this->has('NhanVienNhanDoID')
+                        && $this->user()
+                        && ! EmployeeAssignment::canAssignNewDelivery($this->user())
+                        ? [Rule::in([(int) $this->user()->NhanVienID])]
+                        : []),
+                ]
+                : ['prohibited'],
             'BookingID' => $isCreating ? ['prohibited'] : ['nullable', 'integer', 'exists:Booking,BookingID'],
             'KhuyenMaiID' => ['prohibited'],
             'promotion_code' => ['prohibited'],
@@ -130,6 +143,20 @@ class LuuDonHangRequest extends FormRequest
     public function withValidator(Validator $validator): void
     {
         $validator->after(function (Validator $validator): void {
+            $employeeId = $this->input('NhanVienNhanDoID');
+            if (
+                $this->isMethod('POST')
+                && is_numeric($employeeId)
+                && ! $validator->errors()->has('NhanVienNhanDoID')
+                && EmployeeAssignment::canAssignNewDelivery($this->user())
+                && ! EmployeeAssignment::deliveryCandidates()->whereKey((int) $employeeId)->exists()
+            ) {
+                $validator->errors()->add(
+                    'NhanVienNhanDoID',
+                    'Chỉ được phân công nhân viên có tài khoản nội bộ được cấp quyền xử lý giao nhận.',
+                );
+            }
+
             foreach ($this->input('items', []) as $index => $item) {
                 if (! is_array($item) || $validator->errors()->has("items.{$index}.DonViTinhID")) {
                     continue;
@@ -168,6 +195,8 @@ class LuuDonHangRequest extends FormRequest
             'KhachHangID.required' => 'Khách hàng là bắt buộc.',
             'KhachHangID.exists' => 'Khách hàng không tồn tại.',
             'NhanVienID.exists' => 'Vui lòng chọn nhân viên đang hoạt động.',
+            'NhanVienNhanDoID.required' => 'Vui lòng chọn nhân viên phụ trách nhận đồ.',
+            'NhanVienNhanDoID.exists' => 'Vui lòng chọn nhân viên nhận đồ đang hoạt động.',
             'KhuyenMaiID.prohibited' => 'Mã giảm giá chỉ được kế thừa từ đặt lịch, không thể thêm hoặc đổi trên đơn web.',
             'promotion_code.prohibited' => 'Mã giảm giá chỉ được kế thừa từ đặt lịch, không thể thêm hoặc đổi trên đơn web.',
             'TrangThai.required' => 'Trạng thái là bắt buộc.',

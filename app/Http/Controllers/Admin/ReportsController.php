@@ -125,7 +125,7 @@ class ReportsController extends Controller
 
         $summary->mergeCells('A14:E14');
         $this->setText($summary, 'A14', 'Top 5 Dịch vụ bán chạy');
-        $summary->fromArray([['STT', 'Dịch vụ', 'Đơn vị tính (ĐVT)', 'Số lượng bán', 'Doanh thu (VNĐ)']], null, 'A15');
+        $summary->fromArray([['STT', 'Dịch vụ', 'Đơn vị tính (ĐVT)', 'Số lượng đặt', 'Doanh thu (VNĐ)']], null, 'A15');
 
         $topServices = $this->reportsService->getTopServices($filters, 5);
         $row = 16;

@@ -658,6 +658,24 @@ class OrderService
             ]);
         }
         $data['NhanVienID'] = (int) $authenticatedEmployeeId;
+        $hasExplicitPickupEmployee = isset($data['NhanVienNhanDoID']);
+        $data['NhanVienNhanDoID'] = (int) ($data['NhanVienNhanDoID'] ?? $authenticatedEmployeeId);
+        if ($hasExplicitPickupEmployee) {
+            $canAssignPickupEmployee = EmployeeAssignment::canAssignNewDelivery(Auth::user());
+            if (! $canAssignPickupEmployee && $data['NhanVienNhanDoID'] !== (int) $authenticatedEmployeeId) {
+                throw ValidationException::withMessages([
+                    'NhanVienNhanDoID' => 'Bạn chỉ có thể phân công phiếu nhận đồ cho chính mình.',
+                ]);
+            }
+            if (
+                $canAssignPickupEmployee
+                && ! EmployeeAssignment::deliveryCandidates()->whereKey($data['NhanVienNhanDoID'])->exists()
+            ) {
+                throw ValidationException::withMessages([
+                    'NhanVienNhanDoID' => 'Chỉ được phân công nhân viên có tài khoản nội bộ được cấp quyền xử lý giao nhận.',
+                ]);
+            }
+        }
 
         // Tương thích với các nơi gọi create() chưa truyền phương thức nhận/trả đồ.
         $data['HinhThucNhanDo'] ??= 'Tại cửa hàng';
@@ -666,6 +684,7 @@ class OrderService
         // Direct callers must obey the same inspection boundary as the Web form.
         Validator::make($data, [
             'NhanVienID' => ['required', 'integer', EmployeeAssignment::rule()],
+            'NhanVienNhanDoID' => ['required', 'integer', EmployeeAssignment::rule()],
             'BookingID' => ['prohibited'],
             'KhuyenMaiID' => ['prohibited'],
             'promotion_code' => ['prohibited'],
@@ -722,6 +741,7 @@ class OrderService
         return DB::transaction(function () use ($data, $deliveryQuote) {
 
             EmployeeAssignment::assertAssignable((int) $data['NhanVienID'], 'NhanVienID');
+            EmployeeAssignment::assertAssignable((int) $data['NhanVienNhanDoID'], 'NhanVienNhanDoID');
 
             $data['MaDonHang'] = 'TMP'.Str::ulid();
 
@@ -796,12 +816,11 @@ class OrderService
 
                 $attributes = [
                     'DonHangID' => $order->DonHangID,
-                    // Để trống để quản lý giao nhận phân công người thực hiện.
-                    'NhanVienID' => null,
+                    'NhanVienID' => $leg['type'] === 'NHAN_DO' ? $data['NhanVienNhanDoID'] : null,
                     'LoaiGiaoNhan' => $leg['type'],
                     'HinhThuc' => $leg['method'],
                     'DiaChi' => $leg['method'] === $leg['home'] ? $leg['address'] : null,
-                    'ThoiGianDuKien' => null,
+                    'ThoiGianDuKien' => $leg['type'] === 'NHAN_DO' ? $data['NgayTao'] : null,
                     'PhiGiaoNhan' => $leg['fee'],
                     'TrangThai' => $isStoreIntake
                         ? DeliveryStatus::Completed->dbValue()
@@ -809,7 +828,7 @@ class OrderService
                     'GhiChu' => 'Tự động tạo từ đơn hàng '.$order->MaDonHang,
                 ];
                 if ($isStoreIntake && Schema::hasColumn('GiaoNhan', 'ThoiGianThucTe')) {
-                    $attributes['ThoiGianThucTe'] = now();
+                    $attributes['ThoiGianThucTe'] = $data['NgayTao'];
                 }
                 if (Schema::hasColumn('GiaoNhan', 'NgayTao')) {
                     $attributes['NgayTao'] = now();

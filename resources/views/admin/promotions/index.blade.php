@@ -15,12 +15,7 @@
 </div>
 <form action="{{ url()->current() }}" method="GET" class="row g-3 align-items-center mb-4">
     <div class="col-12 col-md-auto flex-grow-1">
-        <div class="input-group input-group-sm shadow-sm rounded-3 overflow-hidden filter-search">
-            <span class="input-group-text bg-white border-end-0 ps-3">
-                <i class="fas fa-search text-muted"></i>
-            </span>
-            <input type="text" name="search" class="form-control form-control-sm border-start-0 ps-2" placeholder="Tìm theo mã khuyến mãi, tên chương trình..." value="{{ request('search') }}">
-        </div>
+        <x-admin.search-field placeholder="Tìm theo mã khuyến mãi, tên chương trình..." label="Tìm kiếm khuyến mãi" />
     </div>
     <div class="col-12 col-sm-6 col-md-auto">
         <x-admin.status-select
@@ -126,7 +121,7 @@
 
                 Swal.fire({
                     title: 'Xóa khuyến mãi?',
-                    text: 'Hành động này không thể hoàn tác.',
+                    text: 'Chương trình hết hạn hoặc hết lượt sẽ được xóa vĩnh viễn. Liên kết trên đơn hàng/Booking sẽ được gỡ; số tiền giảm đã lưu trên đơn hàng được giữ nguyên.',
                     icon: 'warning',
                     showCancelButton: true,
                     reverseButtons: true,

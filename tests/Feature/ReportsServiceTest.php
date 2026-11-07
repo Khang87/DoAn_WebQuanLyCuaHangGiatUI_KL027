@@ -436,13 +436,13 @@ class ReportsServiceTest extends TestCase
             ->assertOk()
             ->assertSee('Báo cáo', false)
             ->assertSee('Giá trị dịch vụ (Chưa gồm phí ship &amp; giảm giá)', false)
-            ->assertSee('Số lượng bán')
+            ->assertSee('Số lượng đặt')
             ->assertSee('Số giao dịch')
             ->assertSee('order-status-badges d-inline-flex align-items-center flex-nowrap gap-1 text-nowrap', false)
             ->assertSee('formatter: value => formatCurrency(value)', false);
 
         $this->assertMatchesRegularExpression(
-            '/<th(?=[^>]*style="width: 130px;")(?=[^>]*class="fw-bold text-dark text-center text-nowrap")[^>]*>Số lượng bán<\\/th>/',
+            '/<th(?=[^>]*style="width: 130px;")(?=[^>]*class="fw-bold text-dark text-center text-nowrap")[^>]*>Số lượng đặt<\\/th>/',
             $response->getContent(),
         );
         $this->assertMatchesRegularExpression(
@@ -585,7 +585,63 @@ class ReportsServiceTest extends TestCase
         foreach (['today', 'this_week', 'this_month', 'all_time'] as $filter) {
             $this->get('/reports?filter='.$filter)
                 ->assertOk()
-                ->assertSee('data-active-filter="'.$filter.'"', false);
+                ->assertSee('data-active-filter="'.$filter.'"', false)
+                ->assertSee(htmlspecialchars(route('reports.export', ['filter' => $filter]), ENT_QUOTES, 'UTF-8'), false)
+                ->assertSee('Xuất Excel');
+        }
+    }
+
+    public function test_recent_order_links_are_hidden_without_order_view_permission(): void
+    {
+        $viewer = Mockery::mock(User::class)->makePartial();
+        $viewer->shouldReceive('isActive')->andReturn(true);
+        $viewer->shouldReceive('isOwner')->andReturn(false);
+        $viewer->shouldReceive('roleSlug')->andReturn('manager');
+        $viewer->shouldReceive('canPermission')->andReturnUsing(
+            fn (string $permission): bool => $permission === 'reports.view'
+        );
+
+        $html = $this->actingAs($viewer)->get('/reports')->assertOk()->getContent();
+
+        $this->assertStringContainsString('DH-001', $html);
+        $this->assertStringNotContainsString(route('orders.show', 1), $html);
+        $this->assertStringNotContainsString('>Thao tác</th>', $html);
+    }
+
+    public function test_quick_periods_export_excel_with_the_selected_period(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-01-10 12:00:00', 'Asia/Ho_Chi_Minh'));
+        $staff = $this->reportOwner();
+        $expectedLabels = [
+            'today' => 'Hôm nay (10/01/2026 – 10/01/2026)',
+            'this_week' => 'Tuần này (05/01/2026 – 10/01/2026)',
+            'this_month' => 'Tháng này (01/01/2026 – 31/01/2026)',
+        ];
+
+        foreach ($expectedLabels as $filter => $expectedLabel) {
+            $response = $this->actingAs($staff)
+                ->get('/reports/export?filter='.$filter)
+                ->assertOk()
+                ->assertDownload();
+
+            $temporaryFile = tempnam(sys_get_temp_dir(), 'reports-period-export-');
+            $this->assertNotFalse($temporaryFile);
+            if ($temporaryFile === false) {
+                return;
+            }
+
+            file_put_contents($temporaryFile, $response->streamedContent());
+
+            try {
+                $workbook = IOFactory::load($temporaryFile);
+                $this->assertSame($expectedLabel, $workbook->getSheet(0)->getCell('B3')->getValue());
+            } finally {
+                if (isset($workbook)) {
+                    $workbook->disconnectWorksheets();
+                    unset($workbook);
+                }
+                unlink($temporaryFile);
+            }
         }
     }
 

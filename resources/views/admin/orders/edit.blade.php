@@ -92,7 +92,7 @@
                     </select>
                 </div>
                 <div class="col-md-6">
-                    <label class="form-label" for="employee_id">Nhân viên phụ trách</label>
+                    <label class="form-label" for="employee_id">Nhân viên phụ trách tạo đơn hàng</label>
                     <select class="form-select bg-light" id="employee_id" disabled style="background-color: #e9ecef !important; background-image: none !important; padding-right: 0.75rem !important; color: #6c757d !important;">
                         @if($order->NhanVienID === null)
                             <option value="" selected>Chưa xác định</option>

@@ -456,6 +456,24 @@
 
     <!-- Custom JS -->
     <script>
+        const sidebarMenu = document.querySelector('#sidebar > .overflow-y-auto');
+        const sidebarScrollStorageKey = 'sky-laundry-sidebar-scroll-top';
+
+        if (sidebarMenu) {
+            const savedScrollTop = Number(sessionStorage.getItem(sidebarScrollStorageKey));
+
+            if (Number.isFinite(savedScrollTop)) {
+                sidebarMenu.scrollTop = savedScrollTop;
+            }
+
+            const saveSidebarScroll = function() {
+                sessionStorage.setItem(sidebarScrollStorageKey, String(sidebarMenu.scrollTop));
+            };
+
+            sidebarMenu.addEventListener('scroll', saveSidebarScroll, { passive: true });
+            window.addEventListener('pagehide', saveSidebarScroll);
+        }
+
         // Sidebar Toggle
         document.getElementById('sidebar-toggle')?.addEventListener('click', function() {
             document.getElementById('sidebar').classList.toggle('show');
@@ -471,6 +489,43 @@
                     sidebar.classList.remove('show');
                 }
             }
+        });
+    </script>
+
+    <script>
+        document.querySelectorAll('[data-auto-search-input]').forEach(function(input) {
+            const form = input.form;
+            let searchTimeout;
+
+            if (!form) {
+                return;
+            }
+
+            input.addEventListener('input', function(event) {
+                if (event.isComposing) {
+                    return;
+                }
+
+                window.clearTimeout(searchTimeout);
+                searchTimeout = window.setTimeout(function() {
+                    if (typeof form.requestSubmit === 'function') {
+                        form.requestSubmit();
+                    } else {
+                        form.submit();
+                    }
+                }, 350);
+            });
+
+            input.addEventListener('compositionend', function() {
+                window.clearTimeout(searchTimeout);
+                searchTimeout = window.setTimeout(function() {
+                    form.requestSubmit();
+                }, 350);
+            });
+
+            form.addEventListener('submit', function() {
+                window.clearTimeout(searchTimeout);
+            });
         });
     </script>
 

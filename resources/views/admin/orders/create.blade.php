@@ -141,6 +141,29 @@
                 </div>
 
                 <div class="col-md-6">
+                    <label class="form-label" for="NhanVienNhanDoID">
+                        Nhân viên phụ trách nhận đồ <span class="text-danger ms-1">*</span>
+                    </label>
+                    <select
+                        class="form-select @error('NhanVienNhanDoID') is-invalid @enderror"
+                        id="NhanVienNhanDoID"
+                        name="NhanVienNhanDoID"
+                        required
+                    >
+                        <option value="">Chọn nhân viên nhận đồ</option>
+                        @foreach($pickupEmployees as $employee)
+                            <option
+                                value="{{ $employee->NhanVienID }}"
+                                @selected(old('NhanVienNhanDoID', $authenticatedEmployee?->NhanVienID) == $employee->NhanVienID)
+                            >
+                                {{ $employee->HoTen }}
+                            </option>
+                        @endforeach
+                    </select>
+                    @error('NhanVienNhanDoID')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                </div>
+
+                <div class="col-md-6">
                     <label class="form-label" for="status">
                         Trạng thái <span class="text-danger ms-1">*</span>
                     </label>
@@ -166,7 +189,7 @@
                         <option value="Tiền mặt" @selected(old('PhuongThucThanhToan', 'Tiền mặt') === 'Tiền mặt')>Tiền mặt</option>
                         <option value="Chuyển khoản / QR" @selected(old('PhuongThucThanhToan') === 'Chuyển khoản / QR')>Chuyển khoản / QR</option>
                     </select>
-                    <div class="form-text">Lựa chọn sẽ được ghi vào ghi chú đơn hàng; chưa ghi nhận thanh toán.</div>
+
                     @error('PhuongThucThanhToan')<div class="invalid-feedback">{{ $message }}</div>@enderror
                 </div>
 

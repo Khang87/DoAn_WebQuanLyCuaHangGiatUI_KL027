@@ -22,9 +22,13 @@
         <ul class="mb-0">
             @foreach(session('blocking_orders') as $order)
                 <li>
-                    <a href="{{ route('orders.show', $order['id']) }}">
+                    @can('orders.view')
+                        <a href="{{ route('orders.show', $order['id']) }}">
+                            {{ $order['code'] }} ({{ $order['status'] }})
+                        </a>
+                    @else
                         {{ $order['code'] }} ({{ $order['status'] }})
-                    </a>
+                    @endcan
                     — {{ $order['payment_status'] }}
                 </li>
             @endforeach
@@ -36,12 +40,7 @@
 @endif
 <form action="{{ url()->current() }}" method="GET" class="row g-3 align-items-center mb-4">
     <div class="col-12 col-md-auto flex-grow-1">
-        <div class="input-group input-group-sm shadow-sm rounded-3 overflow-hidden filter-search">
-            <span class="input-group-text bg-white border-end-0 ps-3">
-                <i class="fas fa-search text-muted"></i>
-            </span>
-            <input type="text" name="search" class="form-control form-control-sm border-start-0 ps-2" placeholder="Tìm tên, email, SĐT..." value="{{ request('search') }}">
-        </div>
+        <x-admin.search-field placeholder="Tìm tên, email, SĐT..." label="Tìm kiếm tài khoản" />
     </div>
     <div class="col-12 col-sm-6 col-md-auto">
         <select name="role_id" class="form-select form-select-sm filter-select shadow-sm rounded-3" onchange="this.form.submit()">
@@ -162,8 +161,8 @@
                                             :action="route('accounts.reset-password', $account->getKey())"
                                             method="POST"
                                             title="Gửi mã đặt lại mật khẩu?"
-                                            text="Gửi OTP qua email. Mã có hiệu lực trong 10 phút để người dùng tự đặt mật khẩu mới."
-                                            label="Gửi OTP"
+                                            text="Gửi OTP qua email. Mã có hiệu lực trong 3 phút để người dùng tự đặt mật khẩu mới."
+                                            label="Đổi mật khẩu"
                                             icon="bi-key"
                                             variant="btn-order-action"
                                             size=""

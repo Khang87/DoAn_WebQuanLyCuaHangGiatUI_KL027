@@ -46,6 +46,11 @@ class KhuyenMai extends Model
         return $this->hasMany(DonHang::class, 'KhuyenMaiID');
     }
 
+    public function bookings()
+    {
+        return $this->hasMany(Booking::class, 'KhuyenMaiID', 'KhuyenMaiID');
+    }
+
     /* ---------------------------------------------------------------------
      | Alias tiếng Anh cho tầng trên
      |---------------------------------------------------------------------*/
@@ -103,6 +108,7 @@ class KhuyenMai extends Model
     {
         return RecordStatus::databaseOptions() + [self::STATUS_EXPIRED => self::STATUS_EXPIRED];
     }
+
     /**
      * Tìm khuyến mãi theo mã (không phân biệt hoa thường).
      */

@@ -92,7 +92,7 @@ class InternalOtpTest extends TestCase
         $this->staff->vaiTros()->attach($staffRole);
         app(DefaultNotificationPermission::class)->backfill();
         $mailer = \Mockery::mock(OtpMailer::class);
-        $mailer->shouldReceive('send')->with($this->staff->Email, \Mockery::type('string'), 10, true)
+        $mailer->shouldReceive('send')->with($this->staff->Email, \Mockery::type('string'), 3, true)
             ->andReturnUsing(function ($email, $otp) {
                 $this->otp = $otp;
             });
@@ -103,7 +103,7 @@ class InternalOtpTest extends TestCase
     {
         $this->actingAs($this->owner)->post(route('accounts.reset-password', $this->staff))
             ->assertRedirect(route('accounts.show', $this->staff))
-            ->assertSessionHas('success', 'Đã gửi OTP qua email và thông báo riêng của tài khoản. Mã có hiệu lực trong 10 phút.');
+            ->assertSessionHas('success', 'Đã gửi OTP qua email và thông báo riêng của tài khoản. Mã có hiệu lực trong 3 phút.');
     }
 
     private function reset(?string $otp = null)
@@ -135,11 +135,11 @@ class InternalOtpTest extends TestCase
         $this->assertMatchesRegularExpression('/^\d{6}$/', $this->otp);
         $this->assertTrue(Hash::check($this->otp, $record['hash']));
         $this->assertNotSame($this->otp, $record['hash']);
-        $this->assertSame(now()->addMinutes(10)->timestamp, $record['expires_at']);
+        $this->assertSame(now()->addMinutes(3)->timestamp, $record['expires_at']);
         $this->assertSame($old, $this->staff->fresh()->MatKhau);
         $this->assertDatabaseHas('ThongBao', ['TaiKhoanID' => $this->staff->getKey(), 'LoaiThongBao' => 'internal_password_otp']);
         $this->assertStringContainsString($this->otp, ThongBao::first()->NoiDung);
-        $this->assertStringContainsString('10 phút', ThongBao::first()->NoiDung);
+        $this->assertStringContainsString('3 phút', ThongBao::first()->NoiDung);
         $this->assertStringNotContainsString($this->otp, session('success'));
         $this->assertDatabaseCount('ThongBao', 1);
     }
@@ -157,13 +157,21 @@ class InternalOtpTest extends TestCase
         $this->reset()->assertSessionHas('error');
     }
 
-    public function test_expiration_and_notification_visibility_are_ten_minutes(): void
+    public function test_expiration_and_notification_visibility_are_three_minutes(): void
     {
         $this->issue();
-        $this->travel(10)->minutes();
+        $this->travel(3)->minutes();
         $this->assertSame(0, ThongBao::count());
         $this->reset()->assertSessionHas('error');
         $this->assertTrue(Hash::check('OldPassword123', $this->staff->fresh()->MatKhau));
+    }
+
+    public function test_otp_remains_valid_before_three_minute_expiration(): void
+    {
+        $this->issue();
+        $this->travel(2)->minutes();
+        $this->reset()->assertRedirect(route('login'));
+        $this->assertTrue(Hash::check('NewPassword123', $this->staff->fresh()->MatKhau));
     }
 
     public function test_wrong_otps_do_not_consume_the_issued_code(): void

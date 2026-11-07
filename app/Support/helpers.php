@@ -73,9 +73,8 @@ if (! function_exists('format_weight_display')) {
 if (! function_exists('format_quantity_weight')) {
     /**
      * Định dạng số lượng và khối lượng cho cùng một dòng chi tiết.
-     * Chỉ in ra con số (và "kg" cho khối lượng); đơn vị tính do cột riêng hiển thị.
      */
-    function format_quantity_weight(float|int|string|null $quantity, float|int|string|null $weight): string
+    function format_quantity_weight(float|int|string|null $quantity, float|int|string|null $weight, bool $includeWeightUnit = true): string
     {
         $parts = [];
 
@@ -84,7 +83,7 @@ if (! function_exists('format_quantity_weight')) {
         }
 
         if ($weight !== null && $weight !== '' && (float) $weight > 0) {
-            $parts[] = format_weight_display($weight).' kg';
+            $parts[] = format_weight_display($weight).($includeWeightUnit ? ' kg' : '');
         }
 
         return implode(' · ', $parts);

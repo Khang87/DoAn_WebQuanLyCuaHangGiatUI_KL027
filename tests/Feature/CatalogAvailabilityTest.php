@@ -22,6 +22,7 @@ use App\Services\OrderService;
 use App\Services\PricingService;
 use App\Support\OrderWorkflow;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Route;
 use Illuminate\Support\Facades\DB;
@@ -145,6 +146,43 @@ class CatalogAvailabilityTest extends TestCase
     private function newBooking(): Booking
     {
         return app(BookingService::class)->create($this->bookingData([$this->item()]));
+    }
+
+    public function test_booking_creation_rejects_times_outside_the_business_window(): void
+    {
+        foreach (['07:59', '17:01'] as $time) {
+            $this->assertRejected(
+                fn () => app(BookingService::class)->create(array_replace(
+                    $this->bookingData([$this->item()]),
+                    ['scheduled_time' => $time],
+                )),
+                'booking_time',
+            );
+        }
+
+        $this->assertDatabaseCount('Booking', 0);
+    }
+
+    public function test_staff_booking_api_returns_the_required_time_window_error(): void
+    {
+        $method = new \ReflectionMethod(StaffMobileController::class, 'validatedInspection');
+        $method->setAccessible(true);
+
+        foreach (['07:59', '17:01'] as $time) {
+            try {
+                $method->invoke(
+                    app(StaffMobileController::class),
+                    Request::create('/api/v1/staff/bookings/1/draft', 'POST', ['booking_time' => $time]),
+                );
+                $this->fail('Out-of-window booking times must be rejected by the mobile API.');
+            } catch (HttpResponseException $exception) {
+                $this->assertSame(422, $exception->getResponse()->getStatusCode());
+                $this->assertSame([
+                    'status' => 'error',
+                    'message' => 'Thời gian đặt lịch phải nằm trong khung giờ từ 08:00 đến 17:00.',
+                ], json_decode($exception->getResponse()->getContent(), true));
+            }
+        }
     }
 
     private function newOrder(): DonHang

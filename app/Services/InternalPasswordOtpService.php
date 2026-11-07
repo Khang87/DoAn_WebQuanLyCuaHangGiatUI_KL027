@@ -15,7 +15,7 @@ use Throwable;
 
 class InternalPasswordOtpService
 {
-    public const OTP_LIFETIME_MINUTES = 10;
+    public const OTP_LIFETIME_MINUTES = 3;
 
     private function cache(): Repository
     {

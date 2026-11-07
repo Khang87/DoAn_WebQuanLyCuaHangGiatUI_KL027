@@ -426,6 +426,17 @@ class DeliveryService
             $current = $this->lockMutableBookingIntake($document->getKey());
             $attributes = [];
 
+            if (auth()->user()?->isEmployee() && ! array_key_exists('employee_id', $data)) {
+                $confirmerId = (int) ($current->booking?->NhanVienXacNhanID ?? 0);
+                if ($confirmerId < 1) {
+                    throw ValidationException::withMessages([
+                        'employee_id' => 'Đặt lịch chưa ghi nhận nhân viên xác nhận; vui lòng yêu cầu quản lý phân công.',
+                    ]);
+                }
+
+                $attributes['NhanVienID'] = $confirmerId;
+            }
+
             if (array_key_exists('employee_id', $data)) {
                 EmployeeAssignment::assertBookingIntakeAssignable(
                     auth()->user(),
@@ -656,6 +667,43 @@ class DeliveryService
             }
 
             return $current->fresh();
+        });
+    }
+
+    public function startBookingIntake(BookingGiaoNhan $delivery): BookingGiaoNhan
+    {
+        return DB::transaction(function () use ($delivery): BookingGiaoNhan {
+            $current = BookingGiaoNhan::query()->lockForUpdate()->findOrFail($delivery->getKey());
+            $booking = Booking::query()->lockForUpdate()->findOrFail($current->BookingID);
+            $user = auth()->user();
+            $isManager = $user?->isManager() ?? false;
+
+            if (
+                $current->LoaiGiaoNhan !== 'NHAN_DO'
+                || $booking->statusEnum() !== BookingStatus::Confirmed
+                || $current->TrangThai !== DeliveryStatus::Pending->dbValue()
+                || $current->NhanVienID === null
+                || ! NhanVien::query()->whereKey($current->NhanVienID)->where('TrangThai', 'Hoạt động')->exists()
+                || $current->ThoiGianThucTe !== null
+                || $current->DonHangID !== null
+                || $current->BookingKiemKeID !== null
+                || BookingKiemKe::query()->where('BookingID', $booking->BookingID)->exists()
+                || DonHang::query()->where('BookingID', $booking->BookingID)->exists()
+            ) {
+                throw ValidationException::withMessages([
+                    'booking_delivery' => 'Phiếu nhận không còn ở trạng thái có thể bắt đầu tiếp nhận.',
+                ]);
+            }
+
+            if (! $isManager && (int) $current->NhanVienID !== (int) ($user?->NhanVienID ?? 0)) {
+                throw ValidationException::withMessages([
+                    'booking_delivery' => 'Chỉ nhân viên được phân công mới có thể bắt đầu nhận đồ.',
+                ]);
+            }
+
+            $current->update(['TrangThai' => DeliveryStatus::Picking->dbValue()]);
+
+            return $current->fresh(['booking', 'nhanVien']);
         });
     }
 

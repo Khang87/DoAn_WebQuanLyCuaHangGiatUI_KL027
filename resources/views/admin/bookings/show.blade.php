@@ -143,7 +143,6 @@
                         </div>
                     @endforeach
                 </dl>
-                @if($bookingAmounts['promotion_warning'])<div class="alert alert-warning mt-3 mb-0" role="status">{{ $bookingAmounts['promotion_warning'] }}</div>@endif
             @endif
         </x-admin.detail.panel>
     </div>

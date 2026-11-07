@@ -78,6 +78,7 @@ class DeliveryContractTest extends TestCase
             $table->increments('BookingID');
             $table->string('MaBooking')->default('DL-test');
             $table->unsignedInteger('KhachHangID')->nullable();
+            $table->unsignedInteger('NhanVienXacNhanID')->nullable();
             $table->string('TrangThai')->default('DaXacNhan');
             $table->string('HinhThucNhanDo')->nullable();
             $table->string('DiaChiNhan')->nullable();
@@ -185,6 +186,17 @@ class DeliveryContractTest extends TestCase
             $table->string('IPAddress')->nullable();
             $table->text('UserAgent')->nullable();
         });
+        Schema::create('ThongBao', function (Blueprint $table): void {
+            $table->increments('ThongBaoID');
+            $table->unsignedInteger('TaiKhoanID');
+            $table->unsignedInteger('DonHangID')->nullable();
+            $table->unsignedInteger('BookingID')->nullable();
+            $table->string('LoaiThongBao')->nullable();
+            $table->string('TieuDe');
+            $table->text('NoiDung');
+            $table->dateTime('ThoiGianGui');
+            $table->boolean('DaDoc')->default(false);
+        });
         DB::table('Booking')->insert(['BookingID' => 1, 'HinhThucTraDo' => 'Tại nhà', 'DiaChiTra' => '12 Nguyễn Huệ']);
         DB::table('DonHang')->insert(['DonHangID' => 1, 'BookingID' => 1]);
         DB::table('BookingGiaoNhan')->insert([
@@ -208,7 +220,7 @@ class DeliveryContractTest extends TestCase
         try {
             if ($this->app) {
                 $this->assertInMemoryDatabase();
-                foreach (['NhatKyHeThong', 'HoaDon', 'ThanhToan', 'BookingKiemKe', 'BookingGiaoNhan', 'GiaoNhan', 'VaiTro_Quyen', 'Quyen', 'TaiKhoan_VaiTro', 'VaiTro', 'TaiKhoan', 'NhanVien', 'KhachHang', 'Booking', 'DonHang'] as $table) {
+                foreach (['ThongBao', 'NhatKyHeThong', 'HoaDon', 'ThanhToan', 'BookingKiemKe', 'BookingGiaoNhan', 'GiaoNhan', 'VaiTro_Quyen', 'Quyen', 'TaiKhoan_VaiTro', 'VaiTro', 'TaiKhoan', 'NhanVien', 'KhachHang', 'Booking', 'DonHang'] as $table) {
                     Schema::dropIfExists($table);
                 }
                 $this->travelBack();
@@ -771,8 +783,9 @@ class DeliveryContractTest extends TestCase
         $this->assertSame(DeliveryStatus::Delivering->badgeClass(), DeliveryStatus::Picking->badgeClass());
     }
 
-    public function test_booking_intake_can_be_edited_but_has_no_separate_cancellation_route_or_action(): void
+    public function test_booking_intake_can_be_edited_and_started_for_inspection_without_separate_cancellation_route(): void
     {
+        DB::table('NhanVien')->where('NhanVienID', 1)->update(['HoTen' => 'Trần Văn Bình']);
         DB::table('Booking')->insert([
             'BookingID' => 2,
             'MaBooking' => 'DL-EDIT-2',
@@ -841,7 +854,20 @@ class DeliveryContractTest extends TestCase
             ->assertOk()
             ->assertSee('BGN-'.$intake->BookingGiaoNhanID)
             ->assertSee(route('deliveries.booking-documents.edit', $intake), false)
+            ->assertSee('action="'.route('deliveries.booking-documents.advance-progress', $intake).'"', false)
+            ->assertSee('Bắt đầu nhận đồ')
+            ->assertDontSee(route('bookings.inspection', 2), false)
             ->assertDontSee('cancelBookingDeliveryForm_'.$intake->BookingGiaoNhanID, false);
+
+        $this->post(route('deliveries.booking-documents.advance-progress', $intake))
+            ->assertRedirect(route('bookings.inspection', 2))
+            ->assertSessionHas('success', 'Đã bắt đầu tiếp nhận đồ. Hãy kiểm tra thực tế trước khi tạo đơn hàng.');
+        $this->assertSame(DeliveryStatus::Picking->dbValue(), $intake->fresh()->TrangThai);
+        $this->get(route('deliveries.index'))
+            ->assertOk()
+            ->assertSee(route('bookings.inspection', 2), false)
+            ->assertSee('Kiểm tra và tạo đơn');
+
         $this->get(route('deliveries.booking-documents.show', $intake))
             ->assertOk()
             ->assertDontSee('Hủy phiếu nhận đồ');
@@ -1162,7 +1188,9 @@ class DeliveryContractTest extends TestCase
         $this->get(route('deliveries.booking-documents.edit', $intake))
             ->assertOk()
             ->assertDontSee('<select class="form-select" id="employee_id"', false)
-            ->assertSee('id="employee_display" value="Chưa phân công" readonly', false);
+            ->assertSee('id="employee_display"', false)
+            ->assertSee('value="Chưa phân công"', false)
+            ->assertSee('readonly disabled aria-disabled="true"', false);
 
         $this->put(route('deliveries.booking-documents.update', $intake), [
             'employee_id' => 2,
@@ -1172,6 +1200,66 @@ class DeliveryContractTest extends TestCase
         ])->assertForbidden();
 
         $this->assertSame(1, (int) $intake->fresh()->NhanVienID);
+    }
+
+    public function test_employee_uses_booking_confirmer_for_intake_assignment_and_cannot_override_it(): void
+    {
+        DB::table('NhanVien')->where('NhanVienID', 1)->update(['HoTen' => 'Nhân viên xác nhận']);
+        DB::table('NhanVien')->insert([
+            'NhanVienID' => 3,
+            'HoTen' => 'Nhân viên được phân công trước đó',
+            'TrangThai' => 'Hoạt động',
+        ]);
+        DB::table('Booking')->insert([
+            'BookingID' => 2,
+            'TrangThai' => BookingStatus::Confirmed->value,
+            'NhanVienXacNhanID' => 1,
+        ]);
+        $intake = $this->createBookingIntake(['BookingID' => 2, 'NhanVienID' => 3]);
+        $user = Mockery::mock(User::class)->makePartial();
+        $user->TaiKhoanID = 150;
+        $user->NhanVienID = 1;
+        $user->shouldReceive('isEmployee')->andReturn(true);
+        $user->shouldReceive('isManager')->andReturn(false);
+        $user->shouldReceive('isActive')->andReturn(true);
+        $user->shouldReceive('isOwner')->andReturn(false);
+        $user->shouldReceive('canPermission')->andReturnUsing(
+            fn (string $permission): bool => $permission === 'deliveries.edit',
+        );
+        $this->actingAs($user)->withoutMiddleware();
+        view()->share('errors', new ViewErrorBag);
+
+        $this->get(route('deliveries.booking-documents.edit', $intake))
+            ->assertOk()
+            ->assertSee('value="Nhân viên xác nhận"', false)
+            ->assertSee('readonly disabled aria-disabled="true"', false)
+            ->assertDontSee('id="employee_select"', false)
+            ->assertDontSee('<input type="hidden" id="employee_id"', false);
+
+        $payload = [
+            'address' => '12 Nguyễn Huệ',
+            'pickup_date' => '2026-10-08',
+            'pickup_time' => '10:00',
+        ];
+        $this->put(route('deliveries.booking-documents.update', $intake), $payload + ['employee_id' => 3])
+            ->assertForbidden();
+        $this->assertSame(3, (int) $intake->fresh()->NhanVienID);
+
+        $this->put(route('deliveries.booking-documents.update', $intake), $payload)
+            ->assertRedirect(route('deliveries.booking-documents.show', $intake));
+        $this->assertSame(1, (int) $intake->fresh()->NhanVienID);
+
+        DB::table('Booking')->insert([
+            'BookingID' => 3,
+            'TrangThai' => BookingStatus::Confirmed->value,
+        ]);
+        $unconfirmedIntake = $this->createBookingIntake(['BookingID' => 3, 'NhanVienID' => 3]);
+        $this->assertNull($unconfirmedIntake->booking->NhanVienXacNhanID);
+        $this->reject(
+            fn () => app(DeliveryService::class)->updateBookingIntake($unconfirmedIntake, $payload),
+            'employee_id',
+        );
+        $this->assertSame(3, (int) $unconfirmedIntake->fresh()->NhanVienID);
     }
 
     public function test_booking_intake_mutation_is_denied_without_permission_or_after_workflow_progress(): void
@@ -2329,6 +2417,50 @@ class DeliveryContractTest extends TestCase
 
         $this->assertSame(2, app(DeliveryService::class)->create($this->data())->GiaoNhanID);
         $this->assertSame(2, GiaoNhan::query()->count());
+    }
+
+    public function test_pickup_cancellation_uses_regular_delivery_update_without_changing_order_status(): void
+    {
+        $this->mock(NotificationService::class, function ($mock): void {
+            $mock->shouldReceive('notifyEmployeeAssignment')->andReturn(0);
+        });
+        DB::table('DonHang')->where('DonHangID', 1)->update([
+            'TrangThai' => OrderStatus::Received->value,
+        ]);
+        $delivery = app(DeliveryService::class)->create($this->data([
+            'method' => 'nhan_do',
+            'pickup_date' => '2026-10-08',
+            'pickup_time' => '10:00',
+        ]));
+        $manager = Mockery::mock(User::class)->makePartial();
+        $manager->shouldReceive('isManager')->andReturn(true);
+        $manager->shouldReceive('isActive')->andReturn(true);
+        $manager->shouldReceive('isCustomer')->andReturn(false);
+        $manager->shouldReceive('isOwner')->andReturn(false);
+        $manager->shouldReceive('canPermission')->andReturnUsing(
+            fn (string $permission): bool => in_array($permission, ['deliveries.delete', 'deliveries.edit', 'deliveries.view'], true),
+        );
+
+        $this->actingAs($manager)
+            ->get(route('deliveries.edit', $delivery))
+            ->assertOk()
+            ->assertSee('Hủy lịch nhận đồ?');
+
+        $this->actingAs($manager)
+            ->put(route('deliveries.update', $delivery), $this->data([
+                'method' => 'nhan_do',
+                'status' => 'cancelled',
+                'pickup_date' => '2026-10-08',
+                'pickup_time' => '10:00',
+            ]))
+            ->assertRedirect(route('deliveries.index'))
+            ->assertSessionHas('success', 'Đã hủy lịch nhận đồ. Đơn hàng và trạng thái thanh toán không thay đổi.');
+
+        $this->assertSame('Đã hủy', $delivery->fresh()->TrangThai);
+        $this->assertSame(
+            OrderStatus::Received->value,
+            DB::table('DonHang')->where('DonHangID', 1)->value('TrangThai'),
+        );
     }
 
     public function test_pending_return_can_be_cancelled_before_inspection_without_a_schedule(): void

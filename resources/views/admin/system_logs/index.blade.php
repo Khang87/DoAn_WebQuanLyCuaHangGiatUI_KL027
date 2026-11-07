@@ -41,7 +41,7 @@
             </div>
             <div class="col-md-3">
                 <label for="action" class="form-label">Hành động</label>
-                <input id="action" name="action" value="{{ $filters['action'] ?? '' }}" class="form-control" maxlength="255" placeholder="Tìm hành động">
+                <x-admin.search-field name="action" :value="$filters['action'] ?? ''" placeholder="Tìm hành động" label="Tìm hành động trong nhật ký" />
             </div>
             <div class="col-md-2">
                 <label for="TaiKhoanID" class="form-label">Tài khoản</label>

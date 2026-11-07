@@ -15,12 +15,7 @@
 </div>
 <form action="{{ url()->current() }}" method="GET" class="row g-3 align-items-center mb-4">
     <div class="col-12 col-md-auto flex-grow-1">
-        <div class="input-group input-group-sm shadow-sm rounded-3 overflow-hidden filter-search">
-            <span class="input-group-text bg-white border-end-0 ps-3">
-                <i class="fas fa-search text-muted"></i>
-            </span>
-            <input type="text" name="search" class="form-control form-control-sm border-start-0 ps-2" placeholder="Tìm kiếm đơn hàng..." value="{{ request('search') }}">
-        </div>
+        <x-admin.search-field placeholder="Tìm kiếm đơn hàng..." label="Tìm kiếm đơn hàng" />
     </div>
     <div class="col-12 col-sm-6 col-md-auto">
         <x-admin.status-select
@@ -84,6 +79,8 @@
                         <td class="text-nowrap">
                             @php
                                 $canManageSettled = ! $order->isLocked() || auth()->user()?->isOwner();
+                                $canEditOrder = $order->TrangThai === \App\Enums\OrderStatus::Pending->value
+                                    || (auth()->user()?->canPermission('orders.edit_completed') ?? false);
                                 $operationalStatus = $order->operationalStatusEnum();
                                 $nextOrderAction = $canManageSettled
                                     ? \App\Support\OrderWorkflow::nextAction($order)
@@ -127,7 +124,7 @@
                                                class="btn btn-order-action"
                                                title="Tạo phiếu giao"
                                                aria-label="Tạo phiếu giao cho đơn {{ $order->MaDonHang }}">
-                                                <i class="bi bi-truck" aria-hidden="true"></i>
+                                                <i class="bi bi-file-earmark-plus" aria-hidden="true"></i>
                                             </a>
                                         @endcan
                                     @else
@@ -136,7 +133,7 @@
                                                class="btn btn-order-action"
                                                title="Tạo phiếu giao"
                                                aria-label="Tạo phiếu giao cho đơn {{ $order->MaDonHang }}">
-                                                <i class="bi bi-truck" aria-hidden="true"></i>
+                                                <i class="bi bi-file-earmark-plus" aria-hidden="true"></i>
                                             </a>
                                         @endcan
                                     @endif
@@ -185,7 +182,7 @@
                                                class="btn btn-order-action"
                                                title="Tạo phiếu giao"
                                                aria-label="Tạo phiếu giao cho đơn {{ $order->MaDonHang }}">
-                                                <i class="bi bi-truck" aria-hidden="true"></i>
+                                                <i class="bi bi-file-earmark-plus" aria-hidden="true"></i>
                                             </a>
                                         @endcan
                                     @endif
@@ -199,7 +196,7 @@
                                             <i class="bi bi-file-earmark-text" aria-hidden="true"></i>
                                         </a>
                                     @endcan
-                                @elseif(! $orderInvoice && in_array($order->TrangThai, ['Hoàn thành giặt', 'Đang giao', 'Đã giao'], true))
+                                @elseif(! $orderInvoice && ! $order->isLocked() && in_array($order->TrangThai, ['Hoàn thành giặt', 'Đang giao', 'Đã giao'], true))
                                     @can('invoices.create')
                                         <a href="{{ route('invoices.create', ['order_id' => $order->getKey()]) }}"
                                            class="btn btn-order-action"
@@ -221,9 +218,11 @@
                                     @endcan
                                 @endif
                                 @if($canManageSettled)
-                                    @can('orders.edit')
-                                        <a href="{{ route('orders.edit', $order) }}" class="btn btn-order-action edit" title="Sửa"><i class="bi bi-pencil"></i></a>
-                                    @endcan
+                                    @if($canEditOrder)
+                                        @can('orders.edit')
+                                            <a href="{{ route('orders.edit', $order) }}" class="btn btn-order-action edit" title="Sửa"><i class="bi bi-pencil"></i></a>
+                                        @endcan
+                                    @endif
                                     @can('orders.delete')
                                         <x-admin.detail.confirm-form
                                             :action="route('orders.destroy', $order)"

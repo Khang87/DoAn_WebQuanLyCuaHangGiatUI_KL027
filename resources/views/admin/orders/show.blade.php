@@ -364,7 +364,7 @@
                                         <td>{{ $item->donViTinh?->KyHieu ?? $item->donViTinh?->TenDonViTinh ?? '—' }}</td>
                                         <td class="text-end"><x-admin.detail.money :value="$item->DonGia" /></td>
                                         <td class="text-end">
-                                            {{ format_quantity_weight($item->SoLuong, $item->KhoiLuong) ?: '—' }}
+                                            {{ format_quantity_weight($item->SoLuong, $item->KhoiLuong, false) ?: '—' }}
                                         </td>
                                         <td class="text-end fw-semibold"><x-admin.detail.money :value="$item->ThanhTien" /></td>
                                         <td>{{ $item->TinhTrangTruocKhiGiat ?: '—' }}</td>

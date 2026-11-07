@@ -21,7 +21,9 @@ use App\Services\DeliveryFeeService;
 use App\Services\DeliveryService;
 use App\Services\OrderService;
 use App\Services\PricingService;
+use App\Support\BookingTimeWindow;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -506,6 +508,20 @@ class StaffMobileController extends ApiController
 
     private function validatedInspection(Request $request, bool $includeRejectionReason = false): array
     {
+        if ($request->has('booking_time') && ! $request->has('scheduled_time')) {
+            $request->merge(['scheduled_time' => $request->input('booking_time')]);
+        }
+
+        $scheduledTime = $request->input('scheduled_time');
+        if (is_string($scheduledTime)
+            && preg_match('/^\d{2}:\d{2}(?::\d{2})?$/D', $scheduledTime) === 1
+            && ! BookingTimeWindow::allows($scheduledTime)) {
+            throw new HttpResponseException(response()->json([
+                'status' => 'error',
+                'message' => BookingTimeWindow::MESSAGE,
+            ], 422));
+        }
+
         $rules = [
             'method' => ['required', 'in:Tại nhà,Tại cửa hàng'],
             'address' => ['nullable', 'required_if:method,Tại nhà', 'string', 'max:255'],

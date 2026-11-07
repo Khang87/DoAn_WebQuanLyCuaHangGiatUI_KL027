@@ -37,6 +37,7 @@
         default => '—',
     };
     $deliveryLegLabel = $delivery->LoaiGiaoNhan === 'NHAN_DO' ? 'nhận đồ' : 'giao đồ';
+    $cancelActionLabel = $delivery->LoaiGiaoNhan === 'NHAN_DO' ? 'Hủy lịch nhận' : 'Hủy lịch giao';
     $assignedEmployeeName = $assignedEmployee?->HoTen ?? $delivery->nhanVien?->HoTen ?? 'Chưa phân công';
     $employeeOptions = $employees ?? collect();
     $employeeNameCounts = $employeeOptions->countBy(fn ($employee) => mb_strtolower(trim((string) $employee->HoTen)));
@@ -164,7 +165,7 @@
         }
 
         if (typeof Swal === 'undefined') {
-            if (window.confirm('Hủy lịch giao?\nPhiếu được giữ lại làm lịch sử; đơn hàng và trạng thái thanh toán không thay đổi.')) {
+            if (window.confirm('{{ $cancelActionLabel }} đồ?\nPhiếu được giữ lại làm lịch sử; đơn hàng và trạng thái thanh toán không thay đổi.')) {
                 submitCancellation();
             }
 
@@ -172,14 +173,14 @@
         }
 
         Swal.fire({
-            title: 'Hủy lịch giao?',
+            title: '{{ $cancelActionLabel }} đồ?',
             text: 'Phiếu được giữ lại làm lịch sử; đơn hàng và trạng thái thanh toán không thay đổi.',
             icon: 'warning',
             showCancelButton: true,
             reverseButtons: true,
             confirmButtonColor: '#dc2626',
             cancelButtonColor: '#64748b',
-            confirmButtonText: 'Hủy lịch giao',
+            confirmButtonText: '{{ $cancelActionLabel }} đồ',
             cancelButtonText: 'Quay lại',
         }).then(function (result) {
             if (result.isConfirmed) {

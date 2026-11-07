@@ -114,13 +114,39 @@ class PromotionService
 
     public function delete(KhuyenMai $promotion): bool
     {
-        if ($promotion->donHangs()->exists()) {
-            $promotion->update(['TrangThai' => 'Tạm ngưng']);
+        return DB::transaction(function () use ($promotion): bool {
+            $lockedPromotion = KhuyenMai::query()
+                ->lockForUpdate()
+                ->findOrFail($promotion->getKey());
+            $hasOrderReferences = $lockedPromotion->donHangs()->exists();
+            $hasBookingReferences = $lockedPromotion->bookings()->exists();
+            $canDeleteUsedPromotion = $lockedPromotion->isExpired()
+                || ($lockedPromotion->SoLuongSuDung !== null && $lockedPromotion->SoLuongSuDung <= 0);
 
-            return true;
-        }
+            if (($hasOrderReferences || $hasBookingReferences) && ! $canDeleteUsedPromotion) {
+                if ($lockedPromotion->TrangThai !== 'Tạm ngưng') {
+                    $lockedPromotion->update(['TrangThai' => 'Tạm ngưng']);
+                    $promotion->setAttribute('TrangThai', 'Tạm ngưng');
+                }
 
-        return $promotion->delete();
+                return false;
+            }
+
+            if ($hasOrderReferences || $hasBookingReferences) {
+                $lockedPromotion->donHangs()->update(['KhuyenMaiID' => null]);
+                $lockedPromotion->bookings()->update([
+                    'KhuyenMaiID' => null,
+                    'KhuyenMaiDaTru' => false,
+                ]);
+            }
+
+            $deleted = (bool) $lockedPromotion->delete();
+            if ($deleted) {
+                $promotion->exists = false;
+            }
+
+            return $deleted;
+        });
     }
 
     public function getActive(): Collection

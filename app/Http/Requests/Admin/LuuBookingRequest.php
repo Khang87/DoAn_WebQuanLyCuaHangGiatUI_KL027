@@ -6,6 +6,7 @@ use App\Enums\BookingStatus;
 use App\Enums\ReceiveMethod;
 use App\Enums\ReturnMethod;
 use App\Models\DonViTinh;
+use App\Support\BookingTimeWindow;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Validator;
 
@@ -26,7 +27,15 @@ class LuuBookingRequest extends FormRequest
             'return_address' => ['nullable', 'string', 'max:255', 'required_if:return_method,'.ReturnMethod::Home->value],
             'address' => ['nullable', 'string', 'max:255', 'required_if:method,'.ReceiveMethod::Home->value],
             'scheduled_date' => ['required', 'date_format:Y-m-d'],
-            'scheduled_time' => ['required', 'date_format:H:i'],
+            'scheduled_time' => [
+                'required',
+                'date_format:H:i',
+                function (string $attribute, mixed $value, \Closure $fail): void {
+                    if (! BookingTimeWindow::allows($value)) {
+                        $fail(BookingTimeWindow::MESSAGE);
+                    }
+                },
+            ],
             'notes' => ['nullable', 'string', 'max:500'],
             'status' => ['nullable', 'in:'.implode(',', BookingStatus::values())],
             'DiemSuDung' => ['nullable', 'integer', 'min:0'],
@@ -43,6 +52,10 @@ class LuuBookingRequest extends FormRequest
 
     protected function prepareForValidation(): void
     {
+        if ($this->has('booking_time') && ! $this->has('scheduled_time')) {
+            $this->merge(['scheduled_time' => $this->input('booking_time')]);
+        }
+
         $items = $this->input('items');
         if (! is_array($items)) {
             return;
