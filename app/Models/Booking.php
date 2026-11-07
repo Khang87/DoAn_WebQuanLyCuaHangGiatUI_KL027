@@ -221,6 +221,28 @@ class Booking extends Model
             : Carbon::parse($value)->format('H:i:s');
     }
 
+    /**
+     * Kết hợp ngày hẹn và giờ hẹn thành một Carbon instance để so sánh.
+     */
+    public function getAppointmentDateTime(): ?Carbon
+    {
+        if (!$this->NgayHen) {
+            return null;
+        }
+
+        $date = Carbon::parse($this->NgayHen);
+        
+        if ($this->GioHen) {
+            return $date->setTime(
+                $this->GioHen->hour,
+                $this->GioHen->minute,
+                $this->GioHen->second
+            );
+        }
+
+        return $date;
+    }
+
     /* ---------------------------------------------------------------------
      | Nghiệp vụ
      |---------------------------------------------------------------------*/

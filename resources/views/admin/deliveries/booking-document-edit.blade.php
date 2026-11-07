@@ -120,11 +120,22 @@
                         </div>
                     @endif
 
+                    @php
+                        $appointmentDateTime = $booking?->getAppointmentDateTime();
+                        // Chỉ enforce min date cho ngày nhận, không enforce time picker vì phức tạp
+                        // Backend validation sẽ check kỹ hơn
+                    @endphp
                     <div class="col-md-6">
                         <label class="form-label" for="pickup_date">Ngày nhận đồ dự kiến <span class="text-danger">*</span></label>
                         <input type="date" class="form-control" id="pickup_date" name="pickup_date"
-                               value="{{ old('pickup_date', $bookingDocument->ThoiGianDuKien?->format('Y-m-d')) }}" required>
+                               value="{{ old('pickup_date', $bookingDocument->ThoiGianDuKien?->format('Y-m-d')) }}" 
+                               required {{ $appointmentDateTime ? 'min="'.$appointmentDateTime->format('Y-m-d').'"' : '' }}>
                         @error('pickup_date')<div class="text-danger small mt-1">{{ $message }}</div>@enderror
+                        @if($appointmentDateTime)
+                            <div class="form-text text-muted">
+                                Ngày phải >= {{ $appointmentDateTime->format('d/m/Y') }}{{ ($appointmentDateTime->hour > 0 || $appointmentDateTime->minute > 0) ? ' lúc ' . $appointmentDateTime->format('H:i') : '' }}
+                            </div>
+                        @endif
                     </div>
                     <div class="col-md-6">
                         <label class="form-label" for="pickup_time">Giờ nhận đồ dự kiến <span class="text-danger">*</span></label>

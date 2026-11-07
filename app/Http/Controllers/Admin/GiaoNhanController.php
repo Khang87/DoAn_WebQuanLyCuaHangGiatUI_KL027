@@ -23,6 +23,7 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
+use Carbon\Carbon;
 
 class GiaoNhanController extends Controller
 {
@@ -307,6 +308,7 @@ class GiaoNhanController extends Controller
         $canAssignEmployee = EmployeeAssignment::canAssignBookingIntake($user);
         abort_if($request->exists('employee_id') && ! $canAssignEmployee, 403);
 
+        // Validation custom với so sánh giờ hẹn
         $rules = [
             'pickup_date' => ['required', 'date_format:Y-m-d'],
             'pickup_time' => ['required', 'date_format:H:i'],
@@ -316,6 +318,7 @@ class GiaoNhanController extends Controller
                 'max:255',
             ],
         ];
+        
         if ($canAssignEmployee && $user !== null) {
             $rules['employee_id'] = [
                 'required',
@@ -335,6 +338,24 @@ class GiaoNhanController extends Controller
             'pickup_time.date_format' => 'Giờ nhận đồ không hợp lệ.',
             'address.required' => 'Vui lòng nhập địa chỉ nhận đồ tại nhà.',
         ]);
+
+        // Custom validation: so sánh với giờ hẹn của booking
+        $appointmentDateTime = $bookingDocument->booking?->getAppointmentDateTime();
+        if ($appointmentDateTime) {
+            $inputDate = Carbon::createFromFormat('Y-m-d', $validated['pickup_date']);
+            $inputTime = Carbon::createFromFormat('H:i', $validated['pickup_time'])->setDateFrom($inputDate);
+            $appointmentInput = $inputTime;
+
+            if ($appointmentInput->isBefore($appointmentDateTime)) {
+                throw ValidationException::withMessages([
+                    'pickup_date' => 'Thời gian nhận đồ phải bằng hoặc sau thời gian khách đã đặt lịch hẹn (' . 
+                        $appointmentDateTime->format('d/m/Y H:i') . ').',
+                ]);
+            }
+        }
+
+        $validated['pickup_date'] = $validated['pickup_date'];
+        $validated['pickup_time'] = $validated['pickup_time'];
 
         $this->deliveryService->updateBookingIntake($bookingDocument, $validated);
 

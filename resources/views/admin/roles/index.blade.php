@@ -85,13 +85,35 @@
                                     @if(! $role->isOwner())
                                         <li><hr class="dropdown-divider"></li>
                                         <li>
-                                            <form method="POST" action="{{ route('roles.destroy', $role->getKey()) }}"
-                                                  onsubmit="return confirm('Xóa hoặc ngừng hoạt động nhóm quyền này?')">
-                                                @csrf
-                                                @method('DELETE')
-                                                <button class="dropdown-item text-danger" type="submit"><i class="bi bi-trash me-2"></i>Xóa nhóm</button>
-                                            </form>
+                                            <button type="button" class="dropdown-item text-danger" data-bs-toggle="modal" data-bs-target="#deleteRoleModal-{{ $role->getKey() }}">
+                                                <i class="bi bi-trash me-2"></i>Xóa nhóm
+                                            </button>
                                         </li>
+                                        <!-- Modal xóa -->
+                                        <div class="modal fade" id="deleteRoleModal-{{ $role->getKey() }}" tabindex="-1" aria-labelledby="deleteRoleModalLabel-{{ $role->getKey() }}" aria-hidden="true">
+                                            <div class="modal-dialog">
+                                                <div class="modal-content">
+                                                    <div class="modal-header">
+                                                        <h5 class="modal-title" id="deleteRoleModalLabel-{{ $role->getKey() }}">Xác nhận xóa nhóm quyền</h5>
+                                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button>
+                                                    </div>
+                                                    <div class="modal-body">
+                                                        <p>Bạn có chắc chắn muốn xóa nhóm quyền <strong>"{{ $role->TenVaiTro }}"</strong> không?</p>
+                                                        <div class="alert alert-warning mb-0">
+                                                            <i class="bi bi-exclamation-triangle me-2"></i>Hành động này sẽ xóa toàn bộ cấu hình quyền hạn của nhóm. Tài khoản đang thuộc nhóm này sẽ mất quyền hạn tương ứng.
+                                                        </div>
+                                                    </div>
+                                                    <div class="modal-footer">
+                                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                                                        <form method="POST" action="{{ route('roles.destroy', $role->getKey()) }}" style="display: inline;">
+                                                            @csrf
+                                                            @method('DELETE')
+                                                            <button type="submit" class="btn btn-danger ms-auto">Xóa nhóm</button>
+                                                        </form>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
                                     @endif
                                 </ul>
                             </div>
