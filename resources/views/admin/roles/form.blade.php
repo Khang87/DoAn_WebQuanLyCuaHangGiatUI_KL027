@@ -70,9 +70,11 @@
                     @endif
                 </div>
             @endif
-            <button type="submit" class="btn btn-primary">
-                <i class="bi bi-{{ $editing ? 'check-lg' : 'plus-lg' }} me-1"></i>{{ $editing ? 'Cập nhật' : 'Thêm mới' }}
-            </button>
+            <div class="d-flex justify-content-end gap-2 mt-4">
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-{{ $editing ? 'check-lg' : 'plus-lg' }} me-1"></i>{{ $editing ? 'Cập nhật' : 'Thêm mới' }}
+                </button>
+            </div>
         </form>
     </div>
 </div>

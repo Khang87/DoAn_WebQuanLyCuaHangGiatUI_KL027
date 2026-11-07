@@ -664,6 +664,38 @@ class AdminCommunicationTest extends TestCase
         $this->assertStringNotContainsString('Xóa lọc', $html);
     }
 
+    public function test_system_log_screen_hides_account_deletion_rows_without_before_or_after_data(): void
+    {
+        $account = $this->createAccount('log-owner');
+        $this->assignRole($account, 'Owner');
+        $this->actingAs($account);
+
+        $emptyDeletion = NhatKyHeThong::query()->create([
+            'TaiKhoanID' => $account->TaiKhoanID,
+            'HanhDong' => 'Xóa tài khoản',
+            'BangDuLieu' => 'TaiKhoan',
+            'BanGhiID' => 41,
+            'DuLieuCu' => [],
+            'DuLieuMoi' => [],
+        ]);
+        $informativeDeletion = NhatKyHeThong::query()->create([
+            'TaiKhoanID' => $account->TaiKhoanID,
+            'HanhDong' => 'Xóa tài khoản',
+            'BangDuLieu' => 'TaiKhoan',
+            'BanGhiID' => 42,
+            'DuLieuCu' => ['Email' => 'deleted@example.test'],
+            'DuLieuMoi' => [],
+        ]);
+
+        $request = Request::create('/admin/system-logs');
+        $request->setUserResolver(fn () => $account);
+        $logs = app(SystemLogController::class)->index($request)->getData()['logs'];
+
+        $this->assertSame(1, $logs->total());
+        $this->assertSame($informativeDeletion->NhatKyID, $logs->items()[0]->NhatKyID);
+        $this->assertDatabaseHas('NhatKyHeThong', ['NhatKyID' => $emptyDeletion->NhatKyID]);
+    }
+
     public function test_owner_can_view_system_logs_and_sees_the_menu_link(): void
     {
         $owner = $this->createAccount('log-owner');

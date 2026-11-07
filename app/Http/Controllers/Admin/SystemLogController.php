@@ -24,6 +24,13 @@ class SystemLogController extends Controller
         ]);
 
         $query = NhatKyHeThong::query()->with(['taiKhoan.nhanVien', 'taiKhoan.khachHang']);
+        $query->whereNot(function ($emptyAccountDeletion): void {
+            $emptyAccountDeletion
+                ->where('BangDuLieu', 'TaiKhoan')
+                ->where('HanhDong', 'Xóa tài khoản')
+                ->whereRaw('CAST("DuLieuCu" AS TEXT) = ?', ['[]'])
+                ->whereRaw('CAST("DuLieuMoi" AS TEXT) = ?', ['[]']);
+        });
 
         if (! empty($filters['table'])) {
             $query->where('BangDuLieu', $filters['table']);

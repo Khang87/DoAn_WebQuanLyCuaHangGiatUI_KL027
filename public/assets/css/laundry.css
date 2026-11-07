@@ -1686,16 +1686,54 @@ select#period-filter-select {
     min-height: 44px;
 }
 
-.form-control.is-invalid:focus,
-.form-select.is-invalid:focus {
-    border-color: var(--bs-form-invalid-border-color, #dc3545);
-    box-shadow: 0 0 0 0.25rem rgba(220, 53, 69, 0.25);
+.form-control.is-invalid,
+.form-control.is-valid,
+.form-select.is-invalid,
+.form-select.is-valid,
+.was-validated .form-control:invalid,
+.was-validated .form-control:valid,
+.was-validated .form-select:invalid,
+.was-validated .form-select:valid {
+    border-color: var(--border-medium) !important;
+    box-shadow: none !important;
 }
 
+.form-control.is-invalid,
+.form-control.is-valid,
+.was-validated .form-control:invalid,
+.was-validated .form-control:valid {
+    background-image: none !important;
+}
+
+select.form-select.is-invalid,
+select.form-select.is-valid,
+.was-validated select.form-select:invalid,
+.was-validated select.form-select:valid {
+    background-image: var(--bs-form-select-bg-img) !important;
+    background-position: right 0.75rem center !important;
+    padding-right: 2.5rem !important;
+}
+
+select.form-select-sm.is-invalid,
+select.form-select-sm.is-valid,
+.was-validated select.form-select-sm:invalid,
+.was-validated select.form-select-sm:valid {
+    background-position: right 0.5rem center !important;
+    padding-right: 2rem !important;
+}
+
+.form-control:focus,
+.form-select:focus,
+.form-control.is-invalid:focus,
 .form-control.is-valid:focus,
-.form-select.is-valid:focus {
-    border-color: var(--bs-form-valid-border-color, #198754);
-    box-shadow: 0 0 0 0.25rem rgba(25, 135, 84, 0.25);
+.form-select.is-invalid:focus,
+.form-select.is-valid:focus,
+.was-validated .form-control:invalid:focus,
+.was-validated .form-control:valid:focus,
+.was-validated .form-select:invalid:focus,
+.was-validated .form-select:valid:focus {
+    border-color: var(--primary-blue) !important;
+    box-shadow: 0 0 0 3px var(--primary-blue-light) !important;
 }
 
 .form-control:disabled,

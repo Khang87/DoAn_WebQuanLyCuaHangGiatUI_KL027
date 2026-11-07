@@ -84,6 +84,8 @@
             .period-date-range-fields #period-date-from + input,
             .period-date-range-fields #period-date-to + input {
                 width: 170px;
+                height: 44px;
+                min-height: 44px;
             }
 
             .period-filter-layout #period-filter-form #period-filter-apply,
@@ -93,7 +95,7 @@
                 align-items: center;
                 justify-content: center;
                 width: 102px;
-                height: 33px;
+                height: 44px;
                 padding: 6px 12px;
                 white-space: nowrap;
             }
