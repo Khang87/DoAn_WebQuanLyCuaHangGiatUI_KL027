@@ -188,7 +188,7 @@ class DashboardController extends Controller
             'labels' => $labels,
             'data' => array_map(fn (int|string $key): float => $totals[$key] ?? 0.0, $periodKeys),
             'filter' => $filter,
-            'filter_label' => 'Doanh thu · '.TimePeriod::label($filter),
+            'filter_label' => 'Doanh thu - '.TimePeriod::label($filter),
         ];
     }
 

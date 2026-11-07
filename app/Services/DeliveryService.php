@@ -504,7 +504,7 @@ class DeliveryService
 
     public function find(int $id): ?GiaoNhan
     {
-        $relations = ['donHang.khachHang', 'nhanVien'];
+        $relations = ['donHang.booking', 'donHang.khachHang', 'nhanVien'];
         if (config('giatui.booking_two_step')) {
             $relations = array_merge($relations, [
                 'donHang.booking.kiemKe',

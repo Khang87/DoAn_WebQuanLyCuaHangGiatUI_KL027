@@ -32,6 +32,13 @@ class DeliverySchedulingTest extends TestCase
 
         Schema::create('DonHang', function (Blueprint $table): void {
             $table->increments('DonHangID');
+            $table->unsignedInteger('BookingID')->nullable();
+        });
+
+        Schema::create('Booking', function (Blueprint $table): void {
+            $table->increments('BookingID');
+            $table->date('NgayHen')->nullable();
+            $table->time('GioHen')->nullable();
         });
 
         Schema::create('NhanVien', function (Blueprint $table): void {
@@ -46,6 +53,7 @@ class DeliverySchedulingTest extends TestCase
     protected function tearDown(): void
     {
         Schema::dropIfExists('NhanVien');
+        Schema::dropIfExists('Booking');
         Schema::dropIfExists('DonHang');
         Carbon::setTestNow();
 
@@ -72,6 +80,33 @@ class DeliverySchedulingTest extends TestCase
         $validator = $this->deliveryValidator('2026-10-03', '18:31');
 
         $this->assertFalse($validator->fails());
+    }
+
+    public function test_booking_pickup_schedule_cannot_precede_customer_appointment(): void
+    {
+        Carbon::setTestNow('2026-10-03 18:30:00');
+        DB::table('Booking')->insert([
+            'BookingID' => 1,
+            'NgayHen' => '2026-10-08',
+            'GioHen' => '10:30:00',
+        ]);
+        DB::table('DonHang')->where('DonHangID', 1)->update(['BookingID' => 1]);
+
+        $beforeAppointment = $this->deliveryValidator('2026-10-08', '10:29');
+        $this->assertTrue($beforeAppointment->fails());
+        $this->assertSame(
+            'Thời gian nhận đồ dự kiến phải bằng hoặc sau lịch hẹn của khách (08/10/2026 10:30).',
+            $beforeAppointment->errors()->first('pickup_time'),
+        );
+
+        $atAppointment = $this->deliveryValidator('2026-10-08', '10:30');
+        $this->assertFalse($atAppointment->fails());
+
+        $afterAppointment = $this->deliveryValidator('2026-10-08', '10:31');
+        $this->assertFalse($afterAppointment->fails());
+
+        $nextDay = $this->deliveryValidator('2026-10-09', '08:00');
+        $this->assertFalse($nextDay->fails());
     }
 
     public function test_order_return_assignment_requires_both_schedule_fields(): void

@@ -7,6 +7,7 @@
     const address = document.getElementById('address');
     const order = document.getElementById('order_id');
     const scheduleHelp = document.getElementById('schedule-help');
+    const bookingScheduleHelp = document.getElementById('booking-schedule-help');
     if (method && status && date && time && fulfillment) {
         function prefillFromBooking() {
             if (!order || !method.form?.hasAttribute('data-booking-prefill')) return;
@@ -26,6 +27,33 @@
             }
             update();
         }
+        function updateBookingSchedule() {
+            const option = order?.selectedOptions?.[0];
+            const bookingDate = method.value === 'nhan_do'
+                ? (option ? (option.dataset.pickupDate || '') : (method.form?.dataset.bookingScheduleDate || ''))
+                : '';
+            const bookingTime = method.value === 'nhan_do'
+                ? (option ? (option.dataset.pickupTime || '') : (method.form?.dataset.bookingScheduleTime || ''))
+                : '';
+            const hasBookingSchedule = Boolean(bookingDate && bookingTime);
+            const message = 'Thời gian nhận đồ dự kiến phải bằng hoặc sau lịch hẹn của khách.';
+            const beforeBooking = hasBookingSchedule && (
+                date.value < bookingDate
+                || (date.value === bookingDate && bookingTime && time.value && time.value < bookingTime)
+            );
+
+            date.min = hasBookingSchedule ? bookingDate : '';
+            time.min = hasBookingSchedule && date.value === bookingDate ? bookingTime : '';
+            date.setCustomValidity(beforeBooking ? message : '');
+            time.setCustomValidity(beforeBooking ? message : '');
+
+            if (bookingScheduleHelp) {
+                bookingScheduleHelp.hidden = !hasBookingSchedule;
+                bookingScheduleHelp.textContent = hasBookingSchedule
+                    ? `${message} (${bookingDate.split('-').reverse().join('/')} ${bookingTime}).`
+                    : '';
+            }
+        }
         function update() {
             const executing = ['picking', 'delivering', 'completed'].includes(status.value);
             const required = method.value === 'nhan_do' || executing;
@@ -41,6 +69,7 @@
                     ? 'Chặng nhận đồ hoặc chặng đang thực hiện cần đủ ngày và giờ.'
                     : 'Phiếu trả đang chờ có thể chưa đặt lịch. Khi đặt lịch, hãy nhập đủ ngày và giờ.';
             }
+            updateBookingSchedule();
         }
 
         [method, status, date, time, fulfillment].forEach(control => control.addEventListener('change', update));

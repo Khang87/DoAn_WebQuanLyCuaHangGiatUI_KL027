@@ -236,11 +236,6 @@
                                         />
                                     @endcan
                                 @endif
-                                @if($order->isLocked() && auth()->user()?->isOwner())
-                                    <span class="badge bg-secondary-subtle text-secondary-emphasis border border-secondary px-3 py-2 rounded-pill d-flex align-items-center" title="Đã quyết toán">
-                                        <i class="bi bi-lock me-1"></i>Đã quyết toán
-                                    </span>
-                                @endif
                             </div>
                         </td>
                     </tr>

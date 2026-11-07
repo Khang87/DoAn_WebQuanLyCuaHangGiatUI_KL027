@@ -39,6 +39,12 @@
     $deliveryLegLabel = $delivery->LoaiGiaoNhan === 'NHAN_DO' ? 'nhận đồ' : 'giao đồ';
     $cancelActionLabel = $delivery->LoaiGiaoNhan === 'NHAN_DO' ? 'Hủy lịch nhận' : 'Hủy lịch giao';
     $assignedEmployeeName = $assignedEmployee?->HoTen ?? $delivery->nhanVien?->HoTen ?? 'Chưa phân công';
+    $booking = $delivery->donHang?->booking;
+    $hasBookingSchedule = $delivery->LoaiGiaoNhan === 'NHAN_DO'
+        && $booking?->NgayHen !== null
+        && $booking?->GioHen !== null;
+    $bookingScheduleDate = $hasBookingSchedule ? $booking->NgayHen->format('Y-m-d') : null;
+    $bookingScheduleTime = $hasBookingSchedule ? $booking->GioHen->format('H:i') : null;
     $employeeOptions = $employees ?? collect();
     $employeeNameCounts = $employeeOptions->countBy(fn ($employee) => mb_strtolower(trim((string) $employee->HoTen)));
     $selectedEmployee = $employeeOptions->firstWhere('NhanVienID', (int) old('employee_id', $delivery->NhanVienID));
@@ -51,7 +57,12 @@
             <i class="bi bi-arrow-left me-1"></i>Quay lại
         </a>
     </div>
-    <form action="{{ route('deliveries.update', $delivery) }}" method="POST" data-delivery-edit-form>@csrf @method('PUT')
+    <form action="{{ route('deliveries.update', $delivery) }}" method="POST" data-delivery-edit-form
+          @if($bookingScheduleDate && $bookingScheduleTime)
+              data-booking-schedule-date="{{ $bookingScheduleDate }}"
+              data-booking-schedule-time="{{ $bookingScheduleTime }}"
+          @endif
+    >@csrf @method('PUT')
         <input type="hidden" name="order_id" value="{{ $delivery->DonHangID }}">
         <input type="hidden" name="method" value="{{ strtolower($delivery->LoaiGiaoNhan) }}">
         <input type="hidden" name="fulfillment" value="{{ $delivery->HinhThuc }}">
@@ -131,8 +142,11 @@
                     <div class="form-text" data-address-autocomplete-status role="status" aria-live="polite"></div>
                 </div>
             </div>
-            <div class="col-md-6"><label class="form-label" for="pickup_date">Ngày {{ $deliveryLegLabel }} dự kiến <span class="text-danger ms-1">*</span></label><input type="date" class="form-control" id="pickup_date" name="pickup_date" value="{{ old('pickup_date', $delivery->ThoiGianDuKien?->format('Y-m-d')) }}" required>@error('pickup_date')<div class="text-danger small">{{ $message }}</div>@enderror</div>
-            <div class="col-md-6"><label class="form-label" for="pickup_time">Giờ {{ $deliveryLegLabel }} dự kiến <span class="text-danger ms-1">*</span></label><input type="time" class="form-control" id="pickup_time" name="pickup_time" value="{{ old('pickup_time', $delivery->ThoiGianDuKien?->format('H:i')) }}" required>@error('pickup_time')<div class="text-danger small">{{ $message }}</div>@enderror</div>
+            <div class="col-md-6"><label class="form-label" for="pickup_date">Ngày {{ $deliveryLegLabel }} dự kiến <span class="text-danger ms-1">*</span></label><input type="date" class="form-control" id="pickup_date" name="pickup_date" value="{{ old('pickup_date', $delivery->ThoiGianDuKien?->format('Y-m-d')) }}" @if($bookingScheduleDate) min="{{ $bookingScheduleDate }}" @endif required>@error('pickup_date')<div class="text-danger small">{{ $message }}</div>@enderror</div>
+            <div class="col-md-6"><label class="form-label" for="pickup_time">Giờ {{ $deliveryLegLabel }} dự kiến <span class="text-danger ms-1">*</span></label><input type="time" class="form-control" id="pickup_time" name="pickup_time" value="{{ old('pickup_time', $delivery->ThoiGianDuKien?->format('H:i')) }}" @if($bookingScheduleDate && $bookingScheduleTime && $delivery->ThoiGianDuKien?->format('Y-m-d') === $bookingScheduleDate) min="{{ $bookingScheduleTime }}" @endif required>@error('pickup_time')<div class="text-danger small">{{ $message }}</div>@enderror</div>
+            @if($bookingScheduleDate && $bookingScheduleTime)
+                <div class="col-12"><div class="form-text">Giờ nhận đồ dự kiến phải bằng hoặc sau lịch hẹn của khách ({{ $booking?->NgayHen?->format('d/m/Y') }} {{ $booking?->GioHen?->format('H:i') }}).</div></div>
+            @endif
             @if($delivery->LoaiGiaoNhan === 'GIAO_DO')
                 <div class="col-12"><div class="form-text" id="schedule-help">Vui lòng chọn đầy đủ ngày và giờ giao đồ dự kiến khi cập nhật phiếu.</div></div>
             @endif

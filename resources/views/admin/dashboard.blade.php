@@ -29,6 +29,14 @@
     .dashboard-kpi-grid .stat-card {
         min-height: 220px;
     }
+    .dashboard-status-column,
+    .dashboard-status-column .card {
+        min-width: 0;
+        height: 100%;
+    }
+    .dashboard-status-column .card {
+        min-height: 512px;
+    }
     .dashboard-kpi-grid .stat-card .card-body {
         display: flex;
         flex-direction: column;
@@ -58,6 +66,11 @@
     }
     .dashboard-kpi-grid .dashboard-kpi-detail .badge {
         font-size: 0.65rem;
+    }
+    @media (max-width: 1199.98px) {
+        .dashboard-status-column .card {
+            min-height: 0;
+        }
     }
     
     /* Table enhancements */
@@ -93,12 +106,15 @@
     :period-label="$periodLabel"
     :period-description="$periodDescription"
     :custom-range="true"
+    :reserve-range-space="true"
     :date-from="$dateFrom"
     :date-to="$dateTo"
     note="Bộ lọc áp dụng cho tất cả thẻ, biểu đồ và danh sách bên dưới. Doanh thu theo ngày thu tiền; đơn hàng và dịch vụ theo ngày tạo đơn; khách hàng theo ngày tạo hồ sơ; đánh giá theo ngày đánh giá."
 />
 @if(auth()->user()?->canAny(['reports.revenue', 'orders.view', 'customers.view', 'reviews.view']))
-<div class="row g-4 mb-4 dashboard-kpi-grid">
+<div class="row g-4 mb-4 dashboard-overview">
+    <div class="col-12 col-xl-8">
+        <div class="row g-4 dashboard-kpi-grid">
     @can('reports.revenue')
     <div class="col-12 col-md-6">
         <div class="card stat-card stat-card--revenue h-100">
@@ -175,15 +191,28 @@
         </div>
     </div>
     @endcan
+        </div>
+    </div>
+    @can('orders.view')
+    <div class="col-12 col-xl-4 dashboard-status-column">
+        <div class="card">
+            <div class="card-header">
+                Tỷ lệ đơn hàng theo trạng thái - {{ $periodLabel }}
+            </div>
+            <div class="card-body">
+                <div id="status-chart" style="height: 360px;"></div>
+            </div>
+        </div>
+    </div>
+    @endcan
 </div>
 @endif
 
 <!-- ===== Charts Row ===== -->
-@if(auth()->user()?->canAny(['reports.revenue', 'orders.view']))
+@can('reports.revenue')
 <div class="row g-4 mb-4">
     <!-- Doanh thu theo bộ lọc -->
-    @can('reports.revenue')
-    <div class="col-12 col-xl-8">
+    <div class="col-12">
         <div class="card h-100">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <h5 class="card-title mb-0" id="revenue-chart-title">{{ $revenueChartData['filter_label'] }}</h5>
@@ -193,23 +222,8 @@
             </div>
         </div>
     </div>
-
-    <!-- Trạng thái đơn hàng (Donut) -->
-    @endcan
-    @can('orders.view')
-    <div class="col-12 col-xl-4">
-        <div class="card h-100">
-            <div class="card-header">
-                <h5 class="card-title mb-0">Tỷ lệ đơn hàng theo trạng thái</h5>
-            </div>
-            <div class="card-body">
-                <div id="status-chart" style="height: 300px;"></div>
-            </div>
-        </div>
-    </div>
-    @endcan
 </div>
-@endif
+@endcan
 
 <!-- ===== Top Services ===== -->
 @can('services.view')
@@ -217,8 +231,8 @@
     <div class="col-12">
         <div class="card h-100">
             <div class="card-header d-flex justify-content-between align-items-center">
-                <h5 class="card-title mb-0">Top dịch vụ được đặt nhiều nhất</h5>
-                @can('services.view')<a href="{{ route('services.index') }}" class="btn btn-sm btn-outline-primary">Xem tất cả</a>@endcan
+                <h5 class="card-title mb-0">Top dịch vụ được đặt nhiều nhất - {{ $periodLabel }}</h5>
+                <a href="{{ route('services.index') }}" class="btn btn-sm btn-outline-primary">Xem tất cả</a>
             </div>
             <div class="card-body">
                 <div id="top-service-chart" style="height: 320px;"></div>
@@ -236,7 +250,7 @@
     <div class="col-12 col-xl-7">
         <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
-                <h5 class="card-title mb-0">Đơn hàng mới nhất</h5>
+                <h5 class="card-title mb-0">Đơn hàng mới nhất - {{ $periodLabel }}</h5>
                 @can('orders.view')<a href="{{ route('orders.index') }}" class="btn btn-sm btn-outline-primary">Xem tất cả</a>@endcan
             </div>
             <div class="card-body p-0">
@@ -289,7 +303,7 @@
     <div class="col-12 col-xl-5">
         <div class="card h-100">
             <div class="card-header d-flex justify-content-between align-items-center">
-                <h5 class="card-title mb-0">Đánh giá mới nhất</h5>
+                <h5 class="card-title mb-0">Đánh giá mới nhất - {{ $periodLabel }}</h5>
                 @can('reviews.view')<a href="{{ route('reviews.index') }}" class="btn btn-sm btn-outline-primary">Xem tất cả</a>@endcan
             </div>
             <div class="card-body">
@@ -309,7 +323,7 @@
                         <small class="text-muted">{{ Str::limit($review->BinhLuan ?: '', 100) }}</small>
                     </div>
                     <div class="text-end">
-                        <small class="text-muted">{{ $review->NgayDanhGia?->format('d/m H:i') }}</small>
+                        <small class="text-muted">{{ $review->NgayDanhGia?->format('d/m/Y H:i') }}</small>
                     </div>
                 </div>
                 @empty
@@ -393,13 +407,14 @@
         series: @json($statusDistribution->values()->all()),
         chart: {
             type: 'donut',
-            height: 300,
+            height: 360,
             fontFamily: 'Open Sans, Arial, sans-serif'
         },
-        colors: ['#F59E0B', '#3B82F6', '#22C55E', '#EF4444', '#8B5CF6', '#10B981'],
+        colors: ['#F59E0B', '#3B82F6', '#22C55E', '#EF4444', '#8B5CF6', '#10B981', '#EC4899'],
         labels: @json(collect($statusDistribution->keys()->all())->map(fn ($status) => \App\Enums\OrderStatus::labelFor($status))->all()),
         plotOptions: {
             pie: {
+                customScale: 1.08,
                 donut: {
                     size: '70%',
                     labels: {
@@ -415,7 +430,18 @@
                 }
             }
         },
-        dataLabels: { enabled: false },
+        dataLabels: {
+            enabled: true,
+            formatter: function (percentage, options) {
+                return options.w.globals.series[options.seriesIndex];
+            },
+            style: {
+                fontSize: '12px',
+                fontWeight: 600,
+                colors: ['#fff']
+            },
+            dropShadow: { enabled: true }
+        },
         legend: {
             position: 'bottom',
             fontSize: '13px',

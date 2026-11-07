@@ -258,10 +258,17 @@ class DashboardRevenueChartTest extends TestCase
         $this->assertSame(['02/10/2026', '03/10/2026'], $chart['labels']);
         $this->assertEquals([100, 200], $chart['data']);
         $this->assertStringContainsString('data-allow-custom="true"', $html);
-        $this->assertStringContainsString('id="period-date-from"', $html);
-        $this->assertStringContainsString('value="2026-10-02"', $html);
-        $this->assertStringContainsString('id="period-date-to"', $html);
-        $this->assertStringContainsString('value="2026-10-03"', $html);
+        $this->assertStringContainsString('period-date-range-fields--reserved', $html);
+
+        $weeklyHtml = app(DashboardController::class)
+            ->index(Request::create('/admin/dashboard', 'GET', ['filter' => 'this_week']))
+            ->render();
+        $this->assertStringContainsString('period-date-range-fields--reserved', $weeklyHtml);
+        $this->assertStringContainsString('aria-hidden="true"', $weeklyHtml);
+        $this->assertStringContainsString(
+            '.period-filter-layout #period-date-range-fields[aria-hidden="true"]',
+            $weeklyHtml,
+        );
     }
 
     public function test_all_metrics_and_latest_rows_share_the_selected_period_and_services_count_distinct_orders(): void

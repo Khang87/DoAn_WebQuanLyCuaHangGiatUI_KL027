@@ -253,91 +253,6 @@
     .card-body {
         padding: 1.25rem;
     }
-    .form-select-sm, .form-control-sm {
-        font-size: 0.8125rem;
-        padding: 0.375rem 0.75rem;
-        border-radius: 8px;
-        border-color: #d1d5db;
-    }
-    .form-select-sm:focus, .form-control-sm:focus {
-        border-color: #3b82f6;
-        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
-    }
-    .period-filter-layout {
-        display: grid;
-        grid-template-columns: minmax(300px, 1fr) auto;
-        align-items: center;
-        gap: 0.75rem;
-    }
-    .period-filter-layout #period-filter-form {
-        grid-column: 2;
-        grid-row: 1;
-        display: flex;
-        flex-wrap: nowrap;
-        align-items: end;
-        gap: 0.5rem;
-    }
-    .period-filter-layout > div:first-child {
-        grid-column: 1;
-        grid-row: 1;
-    }
-    .period-filter-field {
-        display: flex;
-        flex: 0 0 200px;
-        flex-direction: column;
-        min-width: 0;
-    }
-    .period-filter-layout #period-filter-select {
-        width: 100%;
-    }
-    .period-filter-layout #period-date-range-fields[aria-hidden="true"] {
-        visibility: hidden;
-    }
-    .period-filter-layout > #period-filter-form > .period-filter-field {
-        flex-basis: 180px;
-    }
-    .period-date-range-fields {
-        display: flex;
-        flex: 1 1 auto;
-        flex-wrap: nowrap;
-        align-items: end;
-        gap: 0.5rem;
-        min-width: 0;
-    }
-    .period-date-range-fields .period-filter-field {
-        flex-basis: 170px;
-    }
-    .period-date-range-fields #period-date-from + input,
-    .period-date-range-fields #period-date-to + input {
-        width: 170px;
-    }
-    .period-date-range-fields #period-filter-apply {
-        height: 33px;
-        padding: 6px 12px;
-        white-space: nowrap;
-    }
-    .period-filter-layout #period-filter-form > .btn-outline-success {
-        flex-shrink: 0;
-        white-space: nowrap;
-    }
-    @media (max-width: 1399.98px) {
-        .period-filter-layout {
-            grid-template-columns: minmax(0, 1fr);
-        }
-        .period-filter-layout #period-filter-form {
-            grid-column: 1;
-            grid-row: 2;
-            flex-wrap: wrap;
-        }
-        .period-filter-field {
-            flex-basis: min(200px, 100%);
-        }
-        .period-date-range-fields {
-            flex-basis: 100%;
-            flex-wrap: wrap;
-            max-width: 100%;
-        }
-    }
     /* Pagination fix for Bootstrap 5 */
     .pagination .page-link {
         color: #3b82f6;
@@ -482,7 +397,7 @@
         <!-- Service Composition Chart -->
         <div class="card h-100 shadow-sm border-0">
             <div class="card-header">
-                <span>Giá trị dịch vụ (Chưa gồm phí ship &amp; giảm giá)</span>
+                <span>Giá trị dịch vụ (Chưa gồm phí ship &amp; giảm giá) - {{ $periodLabel }}</span>
             </div>
             <div class="card-body p-3">
                 <div class="chart-container" style="position: relative; height: 280px; width: 100%;">
@@ -514,7 +429,7 @@
 <!-- Revenue Chart -->
 <div class="card shadow-sm border-0 mb-4">
     <div class="card-header d-flex justify-content-between align-items-center">
-        <span>Xu hướng doanh thu</span>
+        <span>Xu hướng doanh thu - {{ $periodLabel }}</span>
         <select id="chartType" class="form-select form-select-sm" style="width: auto; min-width: 100px;" aria-label="Loại biểu đồ doanh thu">
             <option value="line" selected>Đường</option>
             <option value="bar">Cột</option>
@@ -537,7 +452,7 @@
     <div class="col-12 col-xl-6">
         <div class="card h-100 shadow-sm border-0">
             <div class="card-header">
-                <span>Top 5 dịch vụ được đặt nhiều nhất</span>
+                <span>Top 5 dịch vụ được đặt nhiều nhất - {{ $periodLabel }}</span>
             </div>
             <div class="card-body p-0">
                 <div class="table-responsive">
@@ -576,7 +491,7 @@
     <div class="col-12 col-xl-6">
         <div class="card h-100 shadow-sm border-0">
             <div class="card-header">
-                <span>Doanh thu theo phương thức thanh toán</span>
+                <span>Doanh thu theo phương thức thanh toán - {{ $periodLabel }}</span>
             </div>
             <div class="card-body p-0">
                 <div class="table-responsive">
@@ -619,7 +534,7 @@
     <div class="col-12">
         <div class="card shadow-sm border-0 rounded-3">
             <div class="card-header bg-transparent border-bottom py-3">
-                <h6 class="card-title fw-bold m-0 text-dark">Đơn hàng gần đây</h6>
+                <h6 class="card-title fw-bold m-0 text-dark">Đơn hàng gần đây - {{ $periodLabel }}</h6>
             </div>
             <div class="card-body p-0">
                 <div class="table-responsive">
@@ -658,8 +573,8 @@
                                 </td>
                                 <td class="text-end fw-bold text-dark">{{ number_format($order->total_amount, 0, ',', '.') }} VNĐ</td>
                                 <td class="text-end">
-                                    <div class="text-dark fw-medium">{{ $createdAt?->format('d/m/Y') ?? '-' }}</div>
-                                    <small class="text-muted fs-8">{{ $createdAt?->format('H:i') ?? '' }}</small>
+                                    <div class="text-dark fw-bold">{{ $createdAt?->format('d/m/Y') ?? '-' }}</div>
+                                    <small class="text-muted fs-8 fw-bold">{{ $createdAt?->format('H:i') ?? '' }}</small>
                                 </td>
                                 @can('orders.view')
                                     <td class="text-end pe-3">

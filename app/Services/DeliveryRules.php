@@ -192,17 +192,41 @@ class DeliveryRules
                 throw ValidationException::withMessages(['status' => 'Chỉ có thể hoàn tất sau khi xác nhận bàn giao hợp lệ.']);
             }
         }
-        self::validateSchedule($data, $current);
+        self::validateSchedule($data, $current, $order);
 
         return $data;
     }
 
-    public static function validateSchedule(array $data, ?GiaoNhan $current = null): void
+    public static function validateSchedule(array $data, ?GiaoNhan $current = null, ?DonHang $order = null): void
     {
         if (empty($data['pickup_date']) || empty($data['pickup_time'])) {
             return;
         }
         $scheduled = Carbon::createFromFormat('!Y-m-d H:i', $data['pickup_date'].' '.$data['pickup_time'], config('app.timezone'));
+        if (($data['method'] ?? null) === 'nhan_do') {
+            $order ??= $current?->donHang;
+            if (! $order && is_numeric($data['order_id'] ?? null)) {
+                $order = DonHang::query()->with('booking')->find((int) $data['order_id']);
+            } else {
+                $order?->loadMissing('booking');
+            }
+
+            $booking = $order?->booking;
+            if ($booking?->NgayHen !== null && $booking->GioHen !== null) {
+                $bookingSchedule = Carbon::createFromFormat(
+                    '!Y-m-d H:i',
+                    $booking->NgayHen->format('Y-m-d').' '.$booking->GioHen->format('H:i'),
+                    config('app.timezone'),
+                );
+
+                if ($scheduled->lt($bookingSchedule)) {
+                    throw ValidationException::withMessages([
+                        'pickup_time' => 'Thời gian nhận đồ dự kiến phải bằng hoặc sau lịch hẹn của khách ('.$bookingSchedule->format('d/m/Y H:i').').',
+                    ]);
+                }
+            }
+        }
+
         $unchanged = $current?->ThoiGianDuKien?->format('Y-m-d H:i') === $scheduled->format('Y-m-d H:i');
         if (! $unchanged && $scheduled->lessThanOrEqualTo(now())) {
             throw ValidationException::withMessages(['pickup_time' => 'Thời gian giao nhận phải sau thời điểm hiện tại.']);

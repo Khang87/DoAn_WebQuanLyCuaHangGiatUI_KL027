@@ -685,7 +685,7 @@ class ReportsServiceTest extends TestCase
             ->assertSee('data-active-filter="all_time"', false)
             ->assertDontSee('Khoảng ngày tùy chọn')
             ->assertDontSee('<option value="custom"', false)
-            ->assertSee('Số liệu · Từ 10/01/2026 đến 10/01/2026')
+            ->assertSee('Số liệu - Từ 10/01/2026 đến 10/01/2026')
             ->assertSee('class="period-filter-layout"', false)
             ->assertSee('period-date-range-fields--reserved', false)
             ->assertSee('value="2026-01-10"', false)

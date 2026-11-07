@@ -148,7 +148,7 @@ class OrderListPerformanceTest extends TestCase
         }
     }
 
-    public function test_settlement_badge_is_only_visible_to_store_owner(): void
+    public function test_settlement_badge_is_not_shown_in_order_list(): void
     {
         $this->seedOrder(1, OrderStatus::Paid);
         DB::table('HoaDon')->insert(['DonHangID' => 1, 'TrangThai' => InvoiceStatus::Paid->value]);
@@ -173,8 +173,8 @@ class OrderListPerformanceTest extends TestCase
         $this->actingAs($owner);
         $ownerHtml = view('admin.orders.index', ['orders' => $orders])->render();
 
-        $this->assertStringContainsString('title="Đã quyết toán"', $ownerHtml);
-        $this->assertStringContainsString('<i class="bi bi-lock me-1"></i>Đã quyết toán', $ownerHtml);
+        $this->assertStringNotContainsString('title="Đã quyết toán"', $ownerHtml);
+        $this->assertStringContainsString('DH-01', $ownerHtml);
     }
 
     public function test_edit_button_is_hidden_when_order_status_blocks_editing_unless_user_is_owner(): void

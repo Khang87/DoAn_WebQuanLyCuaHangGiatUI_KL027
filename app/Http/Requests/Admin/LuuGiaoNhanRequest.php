@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Admin;
 
 use App\Enums\DeliveryStatus;
+use App\Models\DonHang;
 use App\Models\GiaoNhan;
 use App\Models\NhanVien;
 use App\Models\User;
@@ -88,7 +89,13 @@ class LuuGiaoNhanRequest extends FormRequest
             }
 
             try {
-                DeliveryRules::validateSchedule($validator->getData(), $this->currentDelivery());
+                $data = $validator->getData();
+                $current = $this->currentDelivery();
+                $order = $current?->donHang;
+                if (! $order && is_numeric($data['order_id'] ?? null)) {
+                    $order = DonHang::query()->with('booking')->find((int) $data['order_id']);
+                }
+                DeliveryRules::validateSchedule($data, $current, $order);
             } catch (ValidationException $exception) {
                 foreach ($exception->errors() as $field => $messages) {
                     $validator->errors()->add($field, $messages[0]);
