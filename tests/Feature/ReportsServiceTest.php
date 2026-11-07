@@ -427,7 +427,8 @@ class ReportsServiceTest extends TestCase
         $this->actingAs($this->reportOwner())
             ->get('/reports?filter%5B%5D=today')
             ->assertOk()
-            ->assertSee('data-active-filter="all_time"', false);
+            ->assertSee('data-active-filter="all_time"', false)
+            ->assertSee('value="all_time" selected', false);
     }
 
     public function test_reports_page_renders_for_owner_with_isolated_fixtures(): void
@@ -439,7 +440,9 @@ class ReportsServiceTest extends TestCase
             ->assertSee('Số lượng đặt')
             ->assertSee('Số giao dịch')
             ->assertSee('order-status-badges d-inline-flex align-items-center flex-nowrap gap-1 text-nowrap', false)
-            ->assertSee('formatter: value => formatCurrency(value)', false);
+            ->assertSee('formatter: value => formatCurrency(value)', false)
+            ->assertSee('period-date-range-fields--reserved', false)
+            ->assertSee('visibility: hidden;', false);
 
         $this->assertMatchesRegularExpression(
             '/<th(?=[^>]*style="width: 130px;")(?=[^>]*class="fw-bold text-dark text-center text-nowrap")[^>]*>Số lượng đặt<\\/th>/',
@@ -467,6 +470,31 @@ class ReportsServiceTest extends TestCase
         );
         $this->assertStringNotContainsString('Nhiều ĐVT', $topServicesSection[1]);
         $this->assertStringNotContainsString('(kg)', $topServicesSection[1]);
+    }
+
+    public function test_report_revenue_chart_is_full_width_below_aligned_kpi_and_service_cards(): void
+    {
+        $html = $this->actingAs($this->reportOwner())->get('/reports')
+            ->assertOk()
+            ->assertSee('reports-analytics-layout', false)
+            ->assertSee('reports-kpi-grid', false)
+            ->assertSee('reports-service-column', false)
+            ->assertSee('reports-revenue-chart', false)
+            ->getContent();
+
+        $analyticsEnd = strpos($html, '<!-- Revenue Chart -->');
+        $revenueChart = strpos($html, 'id="revenueChart"');
+        $serviceChart = strpos($html, 'id="compositionChart"');
+
+        $this->assertNotFalse($analyticsEnd);
+        $this->assertNotFalse($revenueChart);
+        $this->assertNotFalse($serviceChart);
+        $this->assertLessThan($analyticsEnd, $serviceChart);
+        $this->assertGreaterThan($analyticsEnd, $revenueChart);
+        $this->assertStringContainsString(
+            '<div class="card shadow-sm border-0 mb-4">',
+            substr($html, $analyticsEnd, $revenueChart - $analyticsEnd),
+        );
     }
 
     public function test_reports_export_contains_two_requested_sheets_and_excel_typed_values(): void
@@ -586,6 +614,7 @@ class ReportsServiceTest extends TestCase
             $this->get('/reports?filter='.$filter)
                 ->assertOk()
                 ->assertSee('data-active-filter="'.$filter.'"', false)
+                ->assertSee('period-date-range-fields--reserved', false)
                 ->assertSee(htmlspecialchars(route('reports.export', ['filter' => $filter]), ENT_QUOTES, 'UTF-8'), false)
                 ->assertSee('Xuất Excel');
         }
@@ -658,7 +687,7 @@ class ReportsServiceTest extends TestCase
             ->assertDontSee('<option value="custom"', false)
             ->assertSee('Số liệu · Từ 10/01/2026 đến 10/01/2026')
             ->assertSee('class="period-filter-layout"', false)
-            ->assertSee('class="period-date-range-fields "', false)
+            ->assertSee('period-date-range-fields--reserved', false)
             ->assertSee('value="2026-01-10"', false)
             ->assertSee('Từ ngày', false)
             ->assertSee('Đến ngày', false)

@@ -50,12 +50,16 @@ class EmployeeAssignment
             && $user->canPermission('deliveries.edit');
     }
 
-    /** A management title is not required when the account has the RBAC permission. */
     public static function canManageAssignments(?User $user): bool
     {
         return $user === null
             || $user->isManager()
             || $user->canPermission('deliveries.edit');
+    }
+
+    public static function canAssignToOtherEmployees(?User $user): bool
+    {
+        return $user === null || $user->isManager();
     }
 
     public static function canAssignNewDelivery(?User $user): bool

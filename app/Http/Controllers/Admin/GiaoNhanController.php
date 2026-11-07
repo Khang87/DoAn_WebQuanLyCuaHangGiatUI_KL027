@@ -62,7 +62,7 @@ class GiaoNhanController extends Controller
     {
         $user = auth()->user();
         $this->requireActiveEmployeeForNewDelivery($user);
-        $canAssignEmployee = EmployeeAssignment::canAssignNewDelivery($user);
+        $canAssignEmployee = EmployeeAssignment::canAssignToOtherEmployees($user);
         $linkedEmployee = $user?->nhanVien;
         if ($linkedEmployee?->TrangThai !== 'Hoạt động') {
             $linkedEmployee = null;
@@ -160,9 +160,9 @@ class GiaoNhanController extends Controller
         if ($linkedEmployee?->TrangThai !== 'Hoạt động') {
             $linkedEmployee = null;
         }
-        $canAssignEmployee = EmployeeAssignment::canAssignNewDelivery($user);
+        $canAssignEmployee = EmployeeAssignment::canAssignToOtherEmployees($user);
         $employees = $canAssignEmployee
-            ? $this->assignableEmployees() : new Collection([$linkedEmployee]);
+            ? $this->assignableEmployees() : new Collection(array_filter([$linkedEmployee]));
         $employeeNameCounts = $employees->countBy(fn ($employee) => mb_strtolower(trim((string) $employee->HoTen)));
         $orders = $this->orderOptions($order->getKey());
         $selectedFulfillment = $isBookingReturn ? $returnMethod : 'Tại nhà';
@@ -410,7 +410,7 @@ class GiaoNhanController extends Controller
             403,
             'Lịch giao đồ không còn ở trạng thái có thể chỉnh sửa.',
         );
-        $canAssignEmployee = EmployeeAssignment::canManageAssignments($user);
+        $canAssignEmployee = EmployeeAssignment::canAssignToOtherEmployees($user);
         $assignedEmployee = $canAssignEmployee ? null : $user->nhanVien;
 
         $customers = KhachHang::query()->orderBy('HoTen')->get(['KhachHangID', 'HoTen']);
@@ -419,6 +419,14 @@ class GiaoNhanController extends Controller
         $orders = $this->orderOptions($delivery->DonHangID);
         $statusOptions = DeliveryStatus::optionsForLeg($delivery->LoaiGiaoNhan);
         unset($statusOptions[$delivery->LoaiGiaoNhan === 'GIAO_DO' ? DeliveryStatus::Picking->value : DeliveryStatus::Delivering->value]);
+        $isCompletedPickup = $delivery->LoaiGiaoNhan === 'NHAN_DO'
+            && DeliveryStatus::parseForLeg($delivery->TrangThai, $delivery->LoaiGiaoNhan) === DeliveryStatus::Completed;
+        if (
+            $isCompletedPickup
+            && (! $user?->isManager() || ! $user?->canPermission('deliveries.delete'))
+        ) {
+            unset($statusOptions[DeliveryStatus::Cancelled->value]);
+        }
         $canCancelReturnDelivery = $delivery->LoaiGiaoNhan === 'GIAO_DO'
             && auth()->user()?->canPermission('deliveries.delete')
             && $this->deliveryService->canCancelReturnDelivery($delivery);
@@ -445,6 +453,12 @@ class GiaoNhanController extends Controller
         );
         if ($request->input('status') === DeliveryStatus::Cancelled->value) {
             abort_unless($request->user()?->canPermission('deliveries.delete'), 403);
+            if (
+                $delivery->LoaiGiaoNhan === 'NHAN_DO'
+                && DeliveryStatus::parseForLeg($delivery->TrangThai, $delivery->LoaiGiaoNhan) === DeliveryStatus::Completed
+            ) {
+                abort_unless($request->user()?->isManager(), 403);
+            }
         }
 
         try {
@@ -461,7 +475,7 @@ class GiaoNhanController extends Controller
                         'success',
                         $delivery->LoaiGiaoNhan === 'GIAO_DO'
                             ? 'Đã hủy lịch giao. Đơn hàng và trạng thái thanh toán không thay đổi.'
-                            : 'Đã hủy lịch nhận đồ. Đơn hàng và trạng thái thanh toán không thay đổi.',
+                            : 'Đã hủy lịch nhận đồ và phiếu giao đi kèm (nếu có). Đơn hàng và trạng thái thanh toán không thay đổi.',
                     );
             }
 

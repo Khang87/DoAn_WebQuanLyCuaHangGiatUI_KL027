@@ -71,7 +71,7 @@
                                     <td>{{ $loop->iteration }}</td>
                                     <td class="fw-semibold">{{ $item->dichVu?->TenDichVu ?: ($item->loaiDoGiat?->TenLoaiDoGiat ?: '—') }}</td>
                                     <td class="text-end">{{ $item->donViTinh?->KyHieu ?? $item->donViTinh?->TenDonViTinh ?? '—' }}</td>
-                                    <td class="text-end">{{ format_quantity_weight($item->SoLuong, $item->KhoiLuong) ?: '—' }}</td>
+                                    <td class="text-end">{{ format_quantity_weight($item->SoLuong, $item->KhoiLuong, false) ?: '—' }}</td>
                                     <td class="text-end"><x-admin.detail.money :value="$item->DonGia ?? 0" /></td>
                                     <td class="text-end fw-semibold"><x-admin.detail.money :value="$item->ThanhTien ?? 0" /></td>
                                 </tr>

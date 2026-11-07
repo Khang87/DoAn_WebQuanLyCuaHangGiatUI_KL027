@@ -70,16 +70,22 @@
                                     <div class="delivery-employee-dropdown__results" id="delivery-employee-options"
                                          role="listbox" aria-label="Nhân viên có thể được phân công" data-employee-options>
                                         @foreach($employees as $candidate)
+                                            @php
+                                                $candidateTitle = trim((string) ($candidate->ChucDanh ?? ''));
+                                                if ($candidateTitle === 'Nhân viên') {
+                                                    $candidateTitle = 'Nhân viên giao nhận';
+                                                }
+                                            @endphp
                                             <button class="delivery-employee-option" type="button" role="option"
                                                     aria-selected="{{ (int) old('employee_id', $bookingDocument->NhanVienID) === (int) $candidate->NhanVienID ? 'true' : 'false' }}" data-employee-option
                                                     data-employee-id="{{ $candidate->NhanVienID }}"
                                                     data-employee-name="{{ $candidate->HoTen }}"
-                                                    data-employee-description="{{ $candidate->ChucDanh }}"
-                                                    data-employee-search-text="{{ $candidate->HoTen }} {{ $candidate->ChucDanh }}">
+                                                    data-employee-description="{{ $candidateTitle }}"
+                                                    data-employee-search-text="{{ $candidate->HoTen }} {{ $candidateTitle }}">
                                                     <span>
                                                         <span class="d-block">
                                                             @if((int) $candidate->NhanVienID === $currentUserEmployeeId)Bản thân tôi — @endif
-                                                            {{ $candidate->HoTen }}{{ $candidate->ChucDanh ? ' · '.$candidate->ChucDanh : '' }}@if(($duplicateEmployeeNames[mb_strtolower(trim((string) $candidate->HoTen))] ?? 0) > 1) · {{ $candidate->SoDienThoai ?: ($candidate->Email ?: 'Mã NV '.$candidate->NhanVienID) }}@endif
+                                                            {{ $candidate->HoTen }}{{ $candidateTitle ? ' · '.$candidateTitle : '' }}@if(($duplicateEmployeeNames[mb_strtolower(trim((string) $candidate->HoTen))] ?? 0) > 1) · {{ $candidate->SoDienThoai ?: ($candidate->Email ?: 'Mã NV '.$candidate->NhanVienID) }}@endif
                                                         </span>
                                                     </span>
                                                     <i class="bi bi-check2 text-primary" aria-hidden="true" hidden data-selected-indicator></i>

@@ -840,6 +840,25 @@ class DeliveryService
             $attributes['ThoiGianThucTe'] = now();
         }
         $current->update($attributes);
+        $targetStatus = DeliveryStatus::parseForLeg($current->TrangThai, $current->LoaiGiaoNhan);
+        if (
+            $current->LoaiGiaoNhan === 'NHAN_DO'
+            && $previousStatus !== DeliveryStatus::Cancelled
+            && $targetStatus === DeliveryStatus::Cancelled
+        ) {
+            $linkedReturnDeliveries = GiaoNhan::query()
+                ->where('DonHangID', $order->DonHangID)
+                ->where('LoaiGiaoNhan', 'GIAO_DO')
+                ->where('TrangThai', '!=', DeliveryStatus::Cancelled->dbValue())
+                ->lockForUpdate()
+                ->get();
+
+            foreach ($linkedReturnDeliveries as $linkedReturnDelivery) {
+                $linkedReturnDelivery->update([
+                    'TrangThai' => DeliveryStatus::Cancelled->dbValue(),
+                ]);
+            }
+        }
         if (
             array_key_exists('NhanVienID', $attributes)
             && (int) $previousEmployeeId !== (int) $current->NhanVienID
@@ -847,7 +866,6 @@ class DeliveryService
         ) {
             $this->notifyDeliveryAssignment($current, $order);
         }
-        $targetStatus = DeliveryStatus::parseForLeg($current->TrangThai, $current->LoaiGiaoNhan);
 
         if (
             $current->LoaiGiaoNhan === 'GIAO_DO'

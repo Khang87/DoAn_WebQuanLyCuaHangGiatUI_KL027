@@ -21,6 +21,13 @@
     $returnAtStore = $booking->HinhThucTraDo === 'Tại cửa hàng';
     $intakeDocument = $booking->giaoNhanDuKiens->firstWhere('LoaiGiaoNhan', 'NHAN_DO');
     $legacyRequestPrefix = 'Khách chọn dịch vụ chưa rõ số lượng: ';
+    $formatBookingDistance = static function (int $meters): string {
+        $kilometers = $meters / 1000;
+
+        return $kilometers === (float) round($kilometers)
+            ? number_format($kilometers, 0, '.', ',').' km'
+            : number_format($kilometers, 1, '.', ',').' km';
+    };
     $bookingNoteLines = preg_split('/\r\n|\r|\n/', (string) ($booking->GhiChu ?? ''));
     $legacyRequestedServices = collect($bookingNoteLines)
         ->filter(fn ($line) => str_starts_with($line, $legacyRequestPrefix))
@@ -29,6 +36,16 @@
     $visibleBookingNotes = collect($bookingNoteLines)
         ->reject(fn ($line) => str_starts_with($line, $legacyRequestPrefix))
         ->implode("\n");
+@endphp
+
+@php
+    $allBookingServiceQuantitiesKnown = $booking->requestedServices->isEmpty()
+        && $legacyRequestedServices->isEmpty()
+        && $booking->chiTietBookings->isNotEmpty()
+        && $booking->chiTietBookings->every(fn ($item) => (float) ($item->SoLuong ?? 0) > 0 || (float) ($item->KhoiLuong ?? 0) > 0);
+    $bookingSubtotalLabel = $allBookingServiceQuantitiesKnown
+        ? 'Tổng tiền các dịch vụ đã chọn'
+        : 'Tạm tính các dịch vụ đã rõ số lượng';
 @endphp
 
 <div class="row g-4 align-items-start">
@@ -43,6 +60,14 @@
                 <x-admin.detail.info-item label="ĐỊA CHỈ NHÂN VIÊN NHẬN ĐỒ" :value="$receiveAtStore ? $storeAddress : ($booking->DiaChiNhan ?: '—')" />
                 <x-admin.detail.info-item label="HÌNH THỨC NHÂN VIÊN GIAO ĐỒ" :value="$booking->return_method_label" />
                 <x-admin.detail.info-item label="ĐỊA CHỈ NHÂN VIÊN GIAO ĐỒ" :value="$returnAtStore ? $storeAddress : ($booking->DiaChiTra ?: '—')" />
+                <x-admin.detail.info-item
+                    :label="'Phí nhận đồ: '.$formatBookingDistance((int) ($booking->PickupDistanceMeters ?? 0))"
+                    :value="number_format((float) ($booking->PickupDeliveryFee ?? 0), 0, ',', '.').' đ'"
+                />
+                <x-admin.detail.info-item
+                    :label="'Phí giao đồ: '.$formatBookingDistance((int) ($booking->DeliveryDistanceMeters ?? 0))"
+                    :value="number_format((float) ($booking->DeliveryFee ?? 0), 0, ',', '.').' đ'"
+                />
                 <x-admin.detail.info-item label="Nhân viên xác nhận đặt lịch" :value="$booking->nhanVienXacNhan?->HoTen ?? '—'" />
                 <x-admin.detail.info-item label="Nhân viên nhận và kiểm tra đồ" :value="$intakeDocument?->nhanVien?->HoTen ?? 'Chưa phân công'" />
                 <x-admin.detail.info-item label="Thời gian xác nhận đặt lịch" :value="$booking->ThoiGianXacNhan?->format('d/m/Y H:i') ?? '—'" />
@@ -103,47 +128,14 @@
             @endif
         </x-admin.detail.panel>
 
-        <x-admin.detail.panel title="Tạm tính từ đặt lịch" icon="bi-calculator" :iconClass="'bg-info-subtle text-info'">
-            <div class="d-flex justify-content-between gap-3 py-2">
-                <span>Phương thức thanh toán</span>
-                <span class="text-end">{{ $booking->PhuongThucThanhToan ?: 'Chưa chọn' }}</span>
-            </div>
-            @if($bookingAmounts !== null)
-                @php
-                    $allBookingServiceQuantitiesKnown = $booking->requestedServices->isEmpty()
-                        && $legacyRequestedServices->isEmpty()
-                        && $booking->chiTietBookings->isNotEmpty()
-                        && $booking->chiTietBookings->every(fn ($item) => (float) ($item->SoLuong ?? 0) > 0 || (float) ($item->KhoiLuong ?? 0) > 0);
-                    $bookingRows = [
-                        'TongTien' => $allBookingServiceQuantitiesKnown
-                            ? 'Tổng tiền các dịch vụ đã chọn'
-                            : 'Tạm tính các dịch vụ đã rõ số lượng',
-                        'TienGiamKhuyenMai' => 'Giảm từ mã khuyến mãi',
-                        'TienGiamDoDiem' => 'Giảm từ điểm tích lũy',
-                        'ThanhTien' => 'Tổng tiền thanh toán',
-                    ];
-                @endphp
-                <dl class="mb-0" data-booking-money-summary>
-                    @foreach($bookingRows as $field => $label)
-                        @if($field === 'TienGiamKhuyenMai')
-                            <div class="d-flex justify-content-between gap-3 py-2">
-                                <dt class="fw-normal">Phí nhận đồ · {{ rtrim(rtrim(number_format((int) $booking->PickupDistanceMeters / 1000, 1, '.', ''), '0'), '.') }} km</dt>
-                                <dd class="mb-0 text-end"><x-admin.detail.money :value="$booking->PickupDeliveryFee" /></dd>
-                            </div>
-                        @endif
-                        @if($field === 'TienGiamKhuyenMai')
-                            <div class="d-flex justify-content-between gap-3 py-2">
-                                <dt class="fw-normal">Phí giao đồ · {{ rtrim(rtrim(number_format((int) $booking->DeliveryDistanceMeters / 1000, 1, '.', ''), '0'), '.') }} km</dt>
-                                <dd class="mb-0 text-end"><x-admin.detail.money :value="$booking->DeliveryFee" /></dd>
-                            </div>
-                        @endif
-                        <div class="d-flex justify-content-between gap-3 py-2 {{ $field === 'ThanhTien' ? 'border-top fw-bold' : '' }}">
-                            <dt class="fw-normal">{{ $label }}</dt>
-                            <dd class="mb-0 text-end" data-booking-amount="{{ $field }}"><x-admin.detail.money :value="$bookingAmounts[$field]" :negative="in_array($field, ['TienGiamKhuyenMai', 'TienGiamDoDiem'])" /></dd>
-                        </div>
-                    @endforeach
-                </dl>
-            @endif
+        <x-admin.detail.panel title="Thanh toán" icon="bi-calculator" :iconClass="'bg-info-subtle text-info'">
+            @include('admin.orders.partials.payment-breakdown', [
+                'order' => $order,
+                'booking' => $booking,
+                'bookingAmounts' => $bookingAmounts,
+                'bookingSubtotalLabel' => $bookingSubtotalLabel,
+                'matchMobile' => true,
+            ])
         </x-admin.detail.panel>
     </div>
 

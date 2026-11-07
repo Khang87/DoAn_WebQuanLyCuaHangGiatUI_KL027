@@ -91,7 +91,10 @@
                                 @foreach($employees as $employee)
                                     @php
                                         $employeeNameKey = mb_strtolower(trim((string) $employee->HoTen));
-                                        $employeeDescription = (string) ($employee->ChucDanh ?? '');
+                                        $employeeDescription = trim((string) ($employee->ChucDanh ?? ''));
+                                        if ($employeeDescription === 'Nhân viên') {
+                                            $employeeDescription = 'Nhân viên giao nhận';
+                                        }
                                         $employeeSelected = $selectedEmployee
                                             && (int) $selectedEmployee->NhanVienID === (int) $employee->NhanVienID;
                                     @endphp
@@ -151,5 +154,5 @@
 
 @push('scripts')
 @vite('resources/js/booking-address-autocomplete.js')
-<script src="{{ asset('assets/js/delivery-schedule.js') }}"></script>
+<script src="{{ asset('assets/js/delivery-schedule.js') }}?v={{ filemtime(public_path('assets/js/delivery-schedule.js')) }}"></script>
 @endpush

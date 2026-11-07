@@ -56,7 +56,7 @@
     const employeePicker = document.querySelector('[data-employee-picker]');
     if (employeePicker) {
         const employeeSearch = employeePicker.querySelector('[data-employee-search]');
-        const employeeId = employeePicker.querySelector('input[name="employee_id"][data-employee-id]');
+        const employeeId = employeePicker.querySelector('input[data-employee-id]');
         const selectedEmployeeSearch = employeePicker.querySelector('[data-selected-employee-search]');
         const dropdown = employeePicker.querySelector('[data-employee-dropdown]');
         const toggle = employeePicker.querySelector('[data-employee-toggle]');
@@ -104,6 +104,8 @@
 
         const chooseEmployee = option => {
             employeeId.value = option.dataset.employeeId;
+            toggle.removeAttribute('aria-invalid');
+            toggle.classList.remove('is-invalid');
             selectedName.textContent = option.dataset.employeeName;
             selectedEmployeeSearch.value = option.dataset.employeeName;
             options.forEach(item => {
@@ -164,9 +166,15 @@
             });
         });
 
-        employeePicker.closest('form').addEventListener('submit', () => {
+        employeePicker.closest('form').addEventListener('submit', event => {
             if (!dropdown.hidden && employeeSearch.value.trim()) {
                 employeeId.value = '';
+            }
+            if (toggle.getAttribute('aria-required') === 'true' && !employeeId.value) {
+                event.preventDefault();
+                toggle.setAttribute('aria-invalid', 'true');
+                toggle.classList.add('is-invalid');
+                toggle.focus();
             }
         });
         document.addEventListener('pointerdown', event => {

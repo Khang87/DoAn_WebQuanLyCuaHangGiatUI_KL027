@@ -292,6 +292,8 @@ class DeliveryContractTest extends TestCase
         $user->TaiKhoanID = 100;
         $user->NhanVienID = 1;
         $user->shouldReceive('isManager')->andReturn(false);
+        $user->shouldReceive('canPermission')
+            ->andReturnUsing(fn (string $permission): bool => $permission === 'deliveries.create');
         $this->actingAs($user)->withoutMiddleware();
         view()->share('errors', new ViewErrorBag);
 
@@ -386,6 +388,7 @@ class DeliveryContractTest extends TestCase
         );
 
         $manager = Mockery::mock(User::class)->makePartial();
+        $manager->NhanVienID = 1;
         $manager->shouldReceive('isManager')->andReturn(false);
         $manager->shouldReceive('canPermission')->andReturnUsing(
             fn (string $permission): bool => $permission === 'deliveries.edit',
@@ -394,9 +397,18 @@ class DeliveryContractTest extends TestCase
 
         $this->get(route('deliveries.edit', 1))
             ->assertOk()
-            ->assertSee('class="form-select text-start text-truncate" id="employee_select" type="button"', false)
-            ->assertSee('data-employee-search', false)
-            ->assertSee('name="employee_id"', false);
+            ->assertSee('class="form-control delivery-fixed-field" id="employee_id" value="Trần Văn Bình" readonly', false)
+            ->assertSee('type="hidden" name="employee_id" value="1"', false)
+            ->assertDontSee('data-employee-toggle', false)
+            ->assertDontSee('data-employee-search', false);
+
+        DB::table('NhanVien')->insert(['NhanVienID' => 3, 'HoTen' => 'Nhân viên khác', 'TrangThai' => 'Hoạt động']);
+        $this->putJson(route('deliveries.update', 1), $this->data([
+            'employee_id' => 3,
+            'pickup_date' => '2026-10-08',
+            'pickup_time' => '10:00',
+        ]))->assertUnprocessable()->assertJsonValidationErrors('employee_id');
+        $this->assertSame(1, (int) GiaoNhan::findOrFail(1)->NhanVienID);
     }
 
     public function test_manager_assignment_list_excludes_owner_and_manager_profiles(): void
@@ -415,7 +427,7 @@ class DeliveryContractTest extends TestCase
 
         $this->actingAs($manager)->withoutMiddleware()->get(route('deliveries.create'))
             ->assertOk()->assertSee('Nhân viên giao nhận')
-            ->assertSee('Tài khoản chưa có nhân viên hợp lệ được liên kết')
+            ->assertSee('data-employee-toggle', false)
             ->assertDontSee('Chủ cửa hàng mẫu')->assertDontSee('Quản lý mẫu');
         $this->postJson(route('deliveries.store'), $this->data(['employee_id' => 4]))
             ->assertUnprocessable()->assertJsonValidationErrors('employee_id');
@@ -423,7 +435,10 @@ class DeliveryContractTest extends TestCase
 
     public function test_create_form_defaults_to_linked_eligible_employee_and_supports_name_search(): void
     {
-        DB::table('NhanVien')->where('NhanVienID', 1)->update(['HoTen' => 'Nhân viên giao nhận']);
+        DB::table('NhanVien')->where('NhanVienID', 1)->update([
+            'HoTen' => 'Nhân viên giao nhận',
+            'ChucDanh' => 'Nhân viên',
+        ]);
         $manager = Mockery::mock(User::class)->makePartial();
         $manager->NhanVienID = 1;
         $manager->shouldReceive('isManager')->andReturn(true);
@@ -441,6 +456,9 @@ class DeliveryContractTest extends TestCase
             ->assertSee('name="employee_search"', false)
             ->assertSee('placeholder="Tìm theo tên nhân viên..."', false)
             ->assertSee('data-selected-employee-name>Nhân viên giao nhận</span>', false)
+            ->assertSee('data-employee-description="Nhân viên giao nhận"', false)
+            ->assertSee('Nhân viên giao nhận · Nhân viên giao nhận')
+            ->assertDontSee('data-employee-description="Nhân viên"', false)
             ->assertDontSee('Thay đổi')
             ->assertDontSee('bi-person-fill')
             ->assertSee('id="employee_id" name="employee_id"', false)
@@ -1913,8 +1931,9 @@ class DeliveryContractTest extends TestCase
         $this->assertSame(0, GiaoNhan::count());
     }
 
-    public function test_delivery_create_permission_can_assign_the_new_slip_to_another_employee(): void
+    public function test_delivery_create_permission_cannot_assign_the_new_slip_to_another_employee(): void
     {
+        DB::table('NhanVien')->where('NhanVienID', 1)->update(['HoTen' => 'Nhân viên giao nhận']);
         DB::table('NhanVien')->insert([
             'NhanVienID' => 3,
             'HoTen' => 'Nhân viên được chọn',
@@ -1942,17 +1961,16 @@ class DeliveryContractTest extends TestCase
 
         $assignmentPage = app(GiaoNhanController::class)->assignForOrder($request, DonHang::findOrFail(1));
         $this->assertInstanceOf(View::class, $assignmentPage);
-        $this->assertTrue($assignmentPage->getData()['canAssignEmployee']);
-        $this->assertStringContainsString('data-employee-toggle', $assignmentPage->render());
-        $this->assertStringContainsString('Nhân viên được chọn', $assignmentPage->render());
+        $this->assertFalse($assignmentPage->getData()['canAssignEmployee']);
+        $this->assertStringNotContainsString('data-employee-toggle', $assignmentPage->render());
+        $this->assertStringContainsString('value="Nhân viên giao nhận" readonly', $assignmentPage->render());
 
-        $this->post(route('deliveries.store'), $this->data([
+        $this->postJson(route('deliveries.store'), $this->data([
             'employee_id' => 3,
             'employee_search' => 'Nhân viên được chọn',
-        ]))->assertRedirect()
-            ->assertSessionHasNoErrors();
+        ]))->assertUnprocessable()->assertJsonValidationErrors('employee_id');
 
-        $this->assertSame(3, (int) GiaoNhan::firstOrFail()->NhanVienID);
+        $this->assertSame(0, GiaoNhan::query()->count());
     }
 
     public function test_booking_store_return_assignment_screen_uses_store_fulfillment_without_an_address(): void
@@ -2341,6 +2359,15 @@ class DeliveryContractTest extends TestCase
             'SoTien' => 15000,
         ]);
         $delivery = app(DeliveryService::class)->create($this->data());
+        $pickupId = DB::table('GiaoNhan')->insertGetId([
+            'DonHangID' => 1,
+            'NhanVienID' => 1,
+            'LoaiGiaoNhan' => 'NHAN_DO',
+            'HinhThuc' => 'Tại nhà',
+            'DiaChi' => '12 Nguyễn Huệ',
+            'ThoiGianDuKien' => '2026-10-08 10:00:00',
+            'TrangThai' => DeliveryStatus::Completed->dbValue(),
+        ], 'GiaoNhanID');
         $delivery = app(DeliveryService::class)->update($delivery, [
             'status' => 'delivering',
             'pickup_date' => '2026-10-08',
@@ -2403,6 +2430,10 @@ class DeliveryContractTest extends TestCase
 
         $this->assertSame(1, GiaoNhan::query()->whereKey($delivery->getKey())->count());
         $this->assertSame('Đã hủy', $delivery->fresh()->TrangThai);
+        $this->assertSame(
+            DeliveryStatus::Completed->dbValue(),
+            GiaoNhan::query()->findOrFail($pickupId)->TrangThai,
+        );
         $this->assertSame(OrderStatus::Delivering->value, DB::table('DonHang')->where('DonHangID', 1)->value('TrangThai'));
         $this->assertDatabaseHas('ThanhToan', [
             'DonHangID' => 1,
@@ -2415,8 +2446,9 @@ class DeliveryContractTest extends TestCase
             ->assertDontSee(route('deliveries.cancel-return', $delivery), false)
             ->assertDontSee(route('deliveries.edit', $delivery), false);
 
-        $this->assertSame(2, app(DeliveryService::class)->create($this->data())->GiaoNhanID);
-        $this->assertSame(2, GiaoNhan::query()->count());
+        $retry = app(DeliveryService::class)->create($this->data());
+        $this->assertNotSame($delivery->getKey(), $retry->getKey());
+        $this->assertSame(3, GiaoNhan::query()->count());
     }
 
     public function test_pickup_cancellation_uses_regular_delivery_update_without_changing_order_status(): void
@@ -2424,6 +2456,7 @@ class DeliveryContractTest extends TestCase
         $this->mock(NotificationService::class, function ($mock): void {
             $mock->shouldReceive('notifyEmployeeAssignment')->andReturn(0);
         });
+        $returnDelivery = app(DeliveryService::class)->create($this->data());
         DB::table('DonHang')->where('DonHangID', 1)->update([
             'TrangThai' => OrderStatus::Received->value,
         ]);
@@ -2454,13 +2487,121 @@ class DeliveryContractTest extends TestCase
                 'pickup_time' => '10:00',
             ]))
             ->assertRedirect(route('deliveries.index'))
-            ->assertSessionHas('success', 'Đã hủy lịch nhận đồ. Đơn hàng và trạng thái thanh toán không thay đổi.');
+            ->assertSessionHas(
+                'success',
+                'Đã hủy lịch nhận đồ và phiếu giao đi kèm (nếu có). Đơn hàng và trạng thái thanh toán không thay đổi.',
+            );
 
         $this->assertSame('Đã hủy', $delivery->fresh()->TrangThai);
+        $this->assertSame('Đã hủy', $returnDelivery->fresh()->TrangThai);
         $this->assertSame(
             OrderStatus::Received->value,
             DB::table('DonHang')->where('DonHangID', 1)->value('TrangThai'),
         );
+    }
+
+    public function test_delivery_update_ignores_non_string_employee_search_payload(): void
+    {
+        DB::table('DonHang')->where('DonHangID', 1)->update([
+            'TrangThai' => OrderStatus::Received->value,
+        ]);
+        $delivery = app(DeliveryService::class)->create($this->data([
+            'method' => 'nhan_do',
+            'pickup_date' => '2026-11-08',
+            'pickup_time' => '10:00',
+        ]));
+        $manager = Mockery::mock(User::class)->makePartial();
+        $manager->shouldReceive('isManager')->andReturn(true);
+        $manager->shouldReceive('canPermission')->andReturn(true);
+
+        $this->actingAs($manager)->withoutMiddleware()->put(route('deliveries.update', $delivery), $this->data([
+            'method' => 'nhan_do',
+            'pickup_date' => '2026-11-08',
+            'pickup_time' => '10:00',
+            'employee_search' => ['unexpected'],
+        ]))
+            ->assertRedirect(route('deliveries.show', $delivery))
+            ->assertSessionHasNoErrors();
+
+        $this->assertSame(DeliveryStatus::Pending->dbValue(), $delivery->fresh()->TrangThai);
+    }
+
+    public function test_manager_can_cancel_completed_pickup_delivery(): void
+    {
+        DB::table('DonHang')->where('DonHangID', 1)->update([
+            'TrangThai' => OrderStatus::Received->value,
+        ]);
+        DB::table('GiaoNhan')->insert([
+            'GiaoNhanID' => 1,
+            'DonHangID' => 1,
+            'NhanVienID' => 1,
+            'LoaiGiaoNhan' => 'NHAN_DO',
+            'HinhThuc' => 'Tại cửa hàng',
+            'ThoiGianDuKien' => '2026-10-08 10:00:00',
+            'TrangThai' => DeliveryStatus::Completed->dbValue(),
+        ]);
+        $delivery = GiaoNhan::query()->findOrFail(1);
+        $manager = Mockery::mock(User::class)->makePartial();
+        $manager->shouldReceive('isManager')->andReturn(true);
+        $manager->shouldReceive('canPermission')
+            ->andReturnUsing(fn (string $permission): bool => in_array($permission, ['deliveries.delete', 'deliveries.edit'], true));
+        $this->actingAs($manager);
+
+        $editView = app(GiaoNhanController::class)->edit($delivery->getKey());
+        $this->assertArrayHasKey(DeliveryStatus::Cancelled->value, $editView->getData()['statusOptions']);
+
+        $this->withoutMiddleware()->put(route('deliveries.update', $delivery), $this->data([
+            'method' => 'nhan_do',
+            'status' => 'cancelled',
+            'pickup_date' => '2026-10-08',
+            'pickup_time' => '10:00',
+        ]))
+            ->assertRedirect(route('deliveries.index'))
+            ->assertSessionHas(
+                'success',
+                'Đã hủy lịch nhận đồ và phiếu giao đi kèm (nếu có). Đơn hàng và trạng thái thanh toán không thay đổi.',
+            );
+
+        $this->assertSame(DeliveryStatus::Cancelled->dbValue(), $delivery->fresh()->TrangThai);
+        $this->assertSame(
+            OrderStatus::Received->value,
+            DB::table('DonHang')->where('DonHangID', 1)->value('TrangThai'),
+        );
+    }
+
+    public function test_non_manager_cannot_cancel_completed_pickup_delivery(): void
+    {
+        DB::table('DonHang')->where('DonHangID', 1)->update([
+            'TrangThai' => OrderStatus::Received->value,
+        ]);
+        DB::table('GiaoNhan')->insert([
+            'GiaoNhanID' => 1,
+            'DonHangID' => 1,
+            'NhanVienID' => 1,
+            'LoaiGiaoNhan' => 'NHAN_DO',
+            'HinhThuc' => 'Tại cửa hàng',
+            'ThoiGianDuKien' => '2026-10-08 10:00:00',
+            'TrangThai' => DeliveryStatus::Completed->dbValue(),
+        ]);
+        $delivery = GiaoNhan::query()->findOrFail(1);
+        $employee = Mockery::mock(User::class)->makePartial();
+        $employee->NhanVienID = 1;
+        $employee->shouldReceive('isManager')->andReturn(false);
+        $employee->shouldReceive('canPermission')
+            ->andReturnUsing(fn (string $permission): bool => in_array($permission, ['deliveries.delete', 'deliveries.edit'], true));
+        $this->actingAs($employee);
+
+        $editView = app(GiaoNhanController::class)->edit($delivery->getKey());
+        $this->assertArrayNotHasKey(DeliveryStatus::Cancelled->value, $editView->getData()['statusOptions']);
+
+        $this->withoutMiddleware()->put(route('deliveries.update', $delivery), $this->data([
+            'method' => 'nhan_do',
+            'status' => 'cancelled',
+            'pickup_date' => '2026-10-08',
+            'pickup_time' => '10:00',
+        ]))->assertForbidden();
+
+        $this->assertSame(DeliveryStatus::Completed->dbValue(), $delivery->fresh()->TrangThai);
     }
 
     public function test_pending_return_can_be_cancelled_before_inspection_without_a_schedule(): void
@@ -2520,7 +2661,11 @@ class DeliveryContractTest extends TestCase
         DB::table('BookingGiaoNhan')->where('BookingID', 1)->where('LoaiGiaoNhan', 'GIAO_DO')
             ->update(['HinhThuc' => 'Tại cửa hàng']);
         $delivery = app(DeliveryService::class)->create($this->data(['fulfillment' => 'Tại cửa hàng']));
-        $delivery = app(DeliveryService::class)->update($delivery, ['status' => 'completed']);
+        $delivery = app(DeliveryService::class)->update($delivery, [
+            'status' => 'completed',
+            'pickup_date' => '2026-10-08',
+            'pickup_time' => '10:00',
+        ]);
         $manager = Mockery::mock(User::class)->makePartial();
         $manager->shouldReceive('isManager')->andReturn(true);
         $manager->shouldReceive('isActive')->andReturn(true);

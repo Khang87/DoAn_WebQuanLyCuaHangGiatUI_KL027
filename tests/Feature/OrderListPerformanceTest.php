@@ -148,6 +148,35 @@ class OrderListPerformanceTest extends TestCase
         }
     }
 
+    public function test_settlement_badge_is_only_visible_to_store_owner(): void
+    {
+        $this->seedOrder(1, OrderStatus::Paid);
+        DB::table('HoaDon')->insert(['DonHangID' => 1, 'TrangThai' => InvoiceStatus::Paid->value]);
+        DB::table('ThanhToan')->insert(['DonHangID' => 1, 'TrangThai' => PaymentStatus::Paid->value]);
+        $orders = app(OrderService::class)->getAll();
+        $this->assertTrue($orders->first()->isLocked());
+
+        $staff = Mockery::mock(User::class)->makePartial();
+        $staff->shouldReceive('isActive')->andReturnTrue();
+        $staff->shouldReceive('isOwner')->andReturnFalse();
+        $staff->shouldReceive('canPermission')->andReturnTrue();
+        $this->actingAs($staff);
+        $staffHtml = view('admin.orders.index', ['orders' => $orders])->render();
+
+        $this->assertStringNotContainsString('title="Đã quyết toán"', $staffHtml);
+        $this->assertStringContainsString('DH-01', $staffHtml);
+
+        $owner = Mockery::mock(User::class)->makePartial();
+        $owner->shouldReceive('isActive')->andReturnTrue();
+        $owner->shouldReceive('isOwner')->andReturnTrue();
+        $owner->shouldReceive('canPermission')->andReturnTrue();
+        $this->actingAs($owner);
+        $ownerHtml = view('admin.orders.index', ['orders' => $orders])->render();
+
+        $this->assertStringContainsString('title="Đã quyết toán"', $ownerHtml);
+        $this->assertStringContainsString('<i class="bi bi-lock me-1"></i>Đã quyết toán', $ownerHtml);
+    }
+
     public function test_edit_button_is_hidden_when_order_status_blocks_editing_unless_user_is_owner(): void
     {
         $this->seedOrder(1, OrderStatus::Pending);

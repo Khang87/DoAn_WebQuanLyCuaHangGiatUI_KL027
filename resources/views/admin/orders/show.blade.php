@@ -449,7 +449,7 @@
 
     {{-- ============ CỘT PHỤ (4/12) ============ --}}
     <div class="col-lg-4 d-flex flex-column">
-        <x-admin.detail.panel title="Tổng thanh toán" icon="bi-calculator" :iconClass="'bg-success-subtle text-success'">
+        <x-admin.detail.panel title="Thanh toán" icon="bi-calculator" :iconClass="'bg-success-subtle text-success'">
             @include('admin.orders.partials.payment-breakdown', ['order' => $order, 'matchMobile' => true])
 
             @if($booking?->PhuongThucThanhToan === 'Chuyển khoản')

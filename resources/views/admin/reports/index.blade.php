@@ -48,14 +48,118 @@
         font-size: 0.8125rem;
         font-weight: 500;
     }
-    @media (min-width: 1200px) {
-        .kpi-orders-main {
-            position: relative;
-            top: 2rem;
+    .reports-analytics-layout {
+        display: grid;
+        grid-template-columns: minmax(0, 2fr) minmax(300px, 1fr);
+        align-items: stretch;
+        gap: 1rem;
+    }
+    .reports-main-column,
+    .reports-service-column {
+        min-width: 0;
+    }
+    .reports-main-column {
+        display: flex;
+    }
+    .reports-kpi-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        grid-template-rows: repeat(2, minmax(188px, 1fr));
+        gap: 1rem;
+        flex: 1;
+        width: 100%;
+    }
+    .reports-kpi-grid .kpi-card {
+        min-height: 0;
+    }
+    .reports-kpi-grid .card-body {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 0.75rem;
+        text-align: center;
+    }
+    .reports-kpi-grid .card-body > .ms-3 {
+        margin-left: 0 !important;
+    }
+    .reports-kpi-grid .stat-icon {
+        width: 60px;
+        height: 60px;
+        font-size: 1.5rem;
+    }
+    .reports-kpi-grid .stat-value {
+        font-size: 1.75rem;
+    }
+    .reports-kpi-grid .stat-label {
+        font-size: 0.9rem;
+    }
+    .reports-kpi-grid .kpi-orders-main {
+        flex-direction: column;
+        align-items: center !important;
+        justify-content: center;
+        gap: 0.75rem;
+        margin: 0;
+    }
+    .reports-kpi-grid .kpi-orders-main > .ms-3 {
+        margin-left: 0 !important;
+        text-align: center;
+    }
+    .reports-kpi-grid .kpi-orders-status {
+        position: absolute;
+        right: 0.75rem;
+        top: calc(50% + 4.5rem);
+        left: 0.75rem;
+        margin-top: 0 !important;
+    }
+    .reports-kpi-grid .kpi-orders-status small {
+        justify-content: center;
+        gap: 0.35rem !important;
+    }
+    .reports-kpi-grid .kpi-orders-status .badge {
+        padding: 0.25em 0.5em;
+        font-size: 0.6rem;
+    }
+    .reports-kpi-grid .kpi-card:nth-child(2) .card-body {
+        position: relative;
+        gap: 0.5rem;
+    }
+    .reports-service-column,
+    .reports-service-column .card {
+        height: 100%;
+    }
+    .reports-service-column .chart-container {
+        height: 280px !important;
+        min-height: 280px;
+    }
+    .reports-revenue-chart {
+        height: 320px;
+    }
+    @media (max-width: 1199.98px) {
+        .reports-analytics-layout {
+            grid-template-columns: minmax(0, 1fr);
         }
-        .kpi-orders-status {
-            position: relative;
-            top: 1.5rem;
+        .reports-main-column {
+            display: block;
+        }
+        .reports-kpi-grid {
+            grid-template-rows: repeat(2, 188px);
+        }
+        .reports-kpi-grid .kpi-card {
+            min-height: 188px;
+        }
+        .reports-service-column,
+        .reports-service-column .card {
+            height: auto;
+        }
+    }
+    @media (max-width: 575.98px) {
+        .reports-kpi-grid {
+            grid-template-columns: minmax(0, 1fr);
+            grid-template-rows: repeat(4, 160px);
+        }
+        .reports-kpi-grid .kpi-card {
+            min-height: 160px;
         }
     }
     /* Reports table overrides - must use !important to beat global laundry.css */
@@ -186,6 +290,9 @@
     .period-filter-layout #period-filter-select {
         width: 100%;
     }
+    .period-filter-layout #period-date-range-fields[aria-hidden="true"] {
+        visibility: hidden;
+    }
     .period-filter-layout > #period-filter-form > .period-filter-field {
         flex-basis: 180px;
     }
@@ -297,115 +404,88 @@
     :period-label="$periodLabel"
     :period-description="$periodDescription"
     :custom-range="true"
+    :reserve-range-space="true"
     :date-from="$dateFrom"
     :date-to="$dateTo"
     note="Bộ lọc áp dụng cho tất cả thẻ, biểu đồ và bảng bên dưới. Doanh thu, giá trị dịch vụ, top dịch vụ và phương thức thanh toán theo ngày thu tiền; đơn hàng và đơn đặt lịch theo ngày tạo."
 />
 
-<!-- KPI Metric Cards -->
-<div class="row g-3 mb-4">
-    <!-- Card 1: Tổng doanh thu -->
-    <div class="col-12 col-sm-6 col-xl-3">
-        <div class="card kpi-card h-100 shadow-sm border-0">
-            <div class="card-body d-flex align-items-center p-3">
-                <div class="stat-icon bg-primary-subtle text-primary">
-                    <i class="bi bi-currency-dollar"></i>
-                </div>
-                <div class="ms-3">
-                    <div class="stat-value text-dark">{{ number_format($kpi['total_revenue'], 0, ',', '.') }} VNĐ</div>
-                    <div class="stat-label text-muted">Tổng doanh thu</div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Card 2: Tổng đơn hàng -->
-    <div class="col-12 col-sm-6 col-xl-3">
-        <div class="card kpi-card h-100 shadow-sm border-0">
-            <div class="card-body p-3">
-                <div class="kpi-orders-main d-flex align-items-start">
-                    <div class="stat-icon bg-success-subtle text-success flex-shrink-0">
-                        <i class="bi bi-receipt"></i>
+<div class="reports-analytics-layout mb-4">
+    <div class="reports-main-column">
+        <!-- KPI Metric Cards -->
+        <div class="reports-kpi-grid">
+            <!-- Card 1: Tổng doanh thu -->
+            <div class="card kpi-card h-100 shadow-sm border-0">
+                <div class="card-body d-flex align-items-center p-3">
+                    <div class="stat-icon bg-primary-subtle text-primary">
+                        <i class="bi bi-currency-dollar"></i>
                     </div>
-                    <div class="ms-3 flex-grow-1 min-w-0">
-                        <div class="stat-value text-dark">{{ number_format($kpi['total_orders'], 0, ',', '.') }}</div>
-                        <div class="stat-label text-muted mt-1">Tổng đơn hàng</div>
+                    <div class="ms-3">
+                        <div class="stat-value text-dark">{{ number_format($kpi['total_revenue'], 0, ',', '.') }} VNĐ</div>
+                        <div class="stat-label text-muted">Tổng doanh thu - {{ $periodLabel }}</div>
                     </div>
                 </div>
-                <div class="kpi-orders-status mt-3">
-                    <small class="text-muted d-flex flex-wrap gap-1">
-                        <span class="badge bg-success-subtle text-success-emphasis border border-success rounded-pill">{{ $kpi['completed_orders'] }} Hoàn thành</span>
-                        <span class="badge bg-primary-subtle text-primary-emphasis border border-primary-subtle fw-semibold rounded-pill">{{ $kpi['processing_orders'] }} Đang xử lý</span>
-                        <span class="badge bg-danger-subtle text-danger-emphasis border border-danger rounded-pill">{{ $kpi['cancelled_orders'] }} Đã hủy</span>
-                    </small>
+            </div>
+
+            <!-- Card 2: Tổng đơn hàng -->
+            <div class="card kpi-card h-100 shadow-sm border-0">
+                <div class="card-body p-3">
+                    <div class="kpi-orders-main d-flex align-items-start">
+                        <div class="stat-icon bg-success-subtle text-success flex-shrink-0">
+                            <i class="bi bi-receipt"></i>
+                        </div>
+                        <div class="ms-3 flex-grow-1 min-w-0">
+                            <div class="stat-value text-dark">{{ number_format($kpi['total_orders'], 0, ',', '.') }}</div>
+                            <div class="stat-label text-muted">Tổng đơn hàng - {{ $periodLabel }}</div>
+                        </div>
+                    </div>
+                    <div class="kpi-orders-status mt-3">
+                        <small class="text-muted d-flex flex-wrap gap-1">
+                            <span class="badge bg-success-subtle text-success-emphasis border border-success rounded-pill">{{ $kpi['completed_orders'] }} Hoàn thành</span>
+                            <span class="badge bg-primary-subtle text-primary-emphasis border border-primary-subtle fw-semibold rounded-pill">{{ $kpi['processing_orders'] }} Đang xử lý</span>
+                            <span class="badge bg-danger-subtle text-danger-emphasis border border-danger rounded-pill">{{ $kpi['cancelled_orders'] }} Đã hủy</span>
+                        </small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Card 3: Đơn đặt lịch mới -->
+            <div class="card kpi-card h-100 shadow-sm border-0">
+                <div class="card-body d-flex align-items-center p-3">
+                    <div class="stat-icon bg-info-subtle text-info">
+                        <i class="bi bi-calendar-check"></i>
+                    </div>
+                    <div class="ms-3">
+                        <div class="stat-value text-dark">{{ number_format($kpi['new_bookings'], 0, ',', '.') }}</div>
+                        <div class="stat-label text-muted">Đơn đặt lịch mới - {{ $periodLabel }}</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Card 4: Giá trị đơn TB (AOV) -->
+            <div class="card kpi-card h-100 shadow-sm border-0">
+                <div class="card-body d-flex align-items-center p-3">
+                    <div class="stat-icon bg-warning-subtle text-warning">
+                        <i class="bi bi-graph-up-arrow"></i>
+                    </div>
+                    <div class="ms-3">
+                        <div class="stat-value text-dark">{{ number_format($kpi['avg_order_value'], 0, ',', '.') }} VNĐ</div>
+                        <div class="stat-label text-muted">Giá trị đơn TB (AOV) - {{ $periodLabel }}</div>
+                    </div>
                 </div>
             </div>
         </div>
+
     </div>
 
-    <!-- Card 3: Đơn đặt lịch mới -->
-    <div class="col-12 col-sm-6 col-xl-3">
-        <div class="card kpi-card h-100 shadow-sm border-0">
-            <div class="card-body d-flex align-items-center p-3">
-                <div class="stat-icon bg-info-subtle text-info">
-                    <i class="bi bi-calendar-check"></i>
-                </div>
-                <div class="ms-3">
-                    <div class="stat-value text-dark">{{ number_format($kpi['new_bookings'], 0, ',', '.') }}</div>
-                    <div class="stat-label text-muted">Đơn đặt lịch mới</div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Card 4: Giá trị đơn TB (AOV) -->
-    <div class="col-12 col-sm-6 col-xl-3">
-        <div class="card kpi-card h-100 shadow-sm border-0">
-            <div class="card-body d-flex align-items-center p-3">
-                <div class="stat-icon bg-warning-subtle text-warning">
-                    <i class="bi bi-graph-up-arrow"></i>
-                </div>
-                <div class="ms-3">
-                    <div class="stat-value text-dark">{{ number_format($kpi['avg_order_value'], 0, ',', '.') }} VNĐ</div>
-                    <div class="stat-label text-muted">Giá trị đơn TB (AOV)</div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Charts Section -->
-<div class="row g-3 mb-4">
-    <!-- Revenue Chart - col-lg-7 -->
-    <div class="col-12 col-lg-7">
-        <div class="card h-100 shadow-sm border-0">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <span>Xu hướng doanh thu</span>
-                <select id="chartType" class="form-select form-select-sm" style="width: auto; min-width: 100px;" aria-label="Loại biểu đồ doanh thu">
-                    <option value="line" selected>Đường</option>
-                    <option value="bar">Cột</option>
-                </select>
-            </div>
-            <div class="card-body p-3">
-                <div class="chart-container" style="position: relative; height: 320px; width: 100%;">
-                    @if(array_sum($chartData['revenue'] ?? []) > 0)
-                    <div id="revenueChart"></div>
-                    @else
-                    <div class="report-chart-empty">Chưa có doanh thu trong khoảng thời gian này</div>
-                    @endif
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Service Composition Chart - col-lg-5 -->
-    <div class="col-12 col-lg-5">
+    <div class="reports-service-column">
+        <!-- Service Composition Chart -->
         <div class="card h-100 shadow-sm border-0">
             <div class="card-header">
                 <span>Giá trị dịch vụ (Chưa gồm phí ship &amp; giảm giá)</span>
             </div>
             <div class="card-body p-3">
-                <div class="chart-container" style="position: relative; height: 380px; width: 100%;">
+                <div class="chart-container" style="position: relative; height: 280px; width: 100%;">
                     @if(array_sum($compositionData['revenue'] ?? []) > 0)
                     <div id="compositionChart"></div>
                     @else
@@ -427,6 +507,26 @@
                 </div>
                 @endif
             </div>
+        </div>
+    </div>
+</div>
+
+<!-- Revenue Chart -->
+<div class="card shadow-sm border-0 mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span>Xu hướng doanh thu</span>
+        <select id="chartType" class="form-select form-select-sm" style="width: auto; min-width: 100px;" aria-label="Loại biểu đồ doanh thu">
+            <option value="line" selected>Đường</option>
+            <option value="bar">Cột</option>
+        </select>
+    </div>
+    <div class="card-body p-3">
+        <div class="chart-container reports-revenue-chart" style="position: relative; width: 100%;">
+            @if(array_sum($chartData['revenue'] ?? []) > 0)
+            <div id="revenueChart"></div>
+            @else
+            <div class="report-chart-empty">Chưa có doanh thu trong khoảng thời gian này</div>
+            @endif
         </div>
     </div>
 </div>
@@ -668,7 +768,7 @@
                 labels: compositionLabels,
                 chart: {
                     type: 'donut',
-                    height: 380,
+                    height: 280,
                     fontFamily: 'Open Sans, Arial, sans-serif',
                     toolbar: { show: false },
                     animations: { enabled: false },

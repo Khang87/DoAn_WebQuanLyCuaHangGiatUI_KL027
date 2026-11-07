@@ -120,24 +120,20 @@ class PromotionService
                 ->findOrFail($promotion->getKey());
             $hasOrderReferences = $lockedPromotion->donHangs()->exists();
             $hasBookingReferences = $lockedPromotion->bookings()->exists();
-            $canDeleteUsedPromotion = $lockedPromotion->isExpired()
-                || ($lockedPromotion->SoLuongSuDung !== null && $lockedPromotion->SoLuongSuDung <= 0);
 
-            if (($hasOrderReferences || $hasBookingReferences) && ! $canDeleteUsedPromotion) {
-                if ($lockedPromotion->TrangThai !== 'Tạm ngưng') {
-                    $lockedPromotion->update(['TrangThai' => 'Tạm ngưng']);
-                    $promotion->setAttribute('TrangThai', 'Tạm ngưng');
-                }
+            if ($lockedPromotion->TrangThai === 'Hoạt động') {
+                $lockedPromotion->update(['TrangThai' => 'Tạm ngưng']);
+                $promotion->setAttribute('TrangThai', 'Tạm ngưng');
 
                 return false;
             }
 
             if ($hasOrderReferences || $hasBookingReferences) {
-                $lockedPromotion->donHangs()->update(['KhuyenMaiID' => null]);
                 $lockedPromotion->bookings()->update([
                     'KhuyenMaiID' => null,
                     'KhuyenMaiDaTru' => false,
                 ]);
+                $lockedPromotion->donHangs()->update(['KhuyenMaiID' => null]);
             }
 
             $deleted = (bool) $lockedPromotion->delete();

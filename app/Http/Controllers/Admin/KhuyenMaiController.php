@@ -102,24 +102,13 @@ class KhuyenMaiController extends Controller
         }
 
         try {
-            $wasSuspended = $promotion->TrangThai === 'Tạm ngưng';
-            $hasExpiredOrExhausted = $promotion->isExpired()
-                || ($promotion->SoLuongSuDung !== null && $promotion->SoLuongSuDung <= 0);
             $deleted = $this->promotionService->delete($promotion);
 
             if ($deleted) {
-                if ($hasExpiredOrExhausted) {
-                    return redirect()->route('promotions.index')->with('success', 'Chương trình đã hết hạn hoặc hết lượt và được xóa vĩnh viễn. Liên kết khuyến mãi trên đơn hàng/Booking đã được gỡ; số tiền giảm đã lưu trên đơn hàng được giữ nguyên.');
-                }
-
-                return redirect()->route('promotions.index')->with('success', 'Chương trình khuyến mãi đã được xóa vĩnh viễn.');
+                return redirect()->route('promotions.index')->with('success', 'Chương trình khuyến mãi đã được xóa vĩnh viễn. Liên kết trên đơn hàng/Booking đã được gỡ; số tiền giảm đã lưu trên đơn hàng được giữ nguyên.');
             }
 
-            if ($wasSuspended) {
-                return redirect()->route('promotions.index')->with('error', 'Chương trình vẫn còn hạn mức sử dụng và đã được gắn với đơn hàng hoặc đặt lịch nên chưa thể xóa vĩnh viễn.');
-            }
-
-            return redirect()->route('promotions.index')->with('success', 'Chương trình vẫn còn hạn mức sử dụng và đã được gắn với đơn hàng hoặc đặt lịch nên đã chuyển sang trạng thái tạm ngưng.');
+            return redirect()->route('promotions.index')->with('success', 'Khuyến mãi có trạng thái Hoạt động không bị xóa cứng và đã được chuyển sang Tạm ngưng.');
         } catch (\Exception $e) {
             return redirect()->route('promotions.index')->with('error', FriendlyError::message($e));
         }

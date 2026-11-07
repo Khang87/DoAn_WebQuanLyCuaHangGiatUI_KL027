@@ -24,7 +24,8 @@ if (filterSelect && filterForm) {
         }
 
         const isAllTime = customRangeEnabled && filterSelect.value === 'all_time';
-        dateRangeFields.classList.toggle('d-none', !isAllTime);
+        const keepRangeSpace = dateRangeFields.classList.contains('period-date-range-fields--reserved');
+        dateRangeFields.classList.toggle('d-none', !isAllTime && !keepRangeSpace);
         dateRangeFields.setAttribute('aria-hidden', String(!isAllTime));
         dateFromInput.disabled = !isAllTime;
         dateToInput.disabled = !isAllTime;

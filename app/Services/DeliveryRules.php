@@ -151,8 +151,10 @@ class DeliveryRules
             }
         }
 
+        $isCompletedPickupCancellation = $current?->LoaiGiaoNhan === 'NHAN_DO'
+            && $target === DeliveryStatus::Cancelled;
         if ($previous !== $target && (
-            $previous === DeliveryStatus::Completed
+            ($previous === DeliveryStatus::Completed && ! $isCompletedPickupCancellation)
             || $previous === DeliveryStatus::Cancelled
             || (in_array($previous, [DeliveryStatus::Picking, DeliveryStatus::Delivering], true) && $target === DeliveryStatus::Pending)
         )) {

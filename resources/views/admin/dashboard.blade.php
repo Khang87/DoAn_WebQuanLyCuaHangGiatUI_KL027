@@ -26,6 +26,39 @@
     .stat-card .stat-change {
         font-size: 0.75rem !important;
     }
+    .dashboard-kpi-grid .stat-card {
+        min-height: 220px;
+    }
+    .dashboard-kpi-grid .stat-card .card-body {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        padding: 1rem;
+    }
+    .dashboard-kpi-grid .dashboard-kpi-main {
+        min-height: 0;
+        flex-direction: column;
+        align-items: center !important;
+        justify-content: center !important;
+        gap: 0.5rem;
+        text-align: center;
+    }
+    .dashboard-kpi-grid .dashboard-kpi-main .stat-icon {
+        order: -1;
+    }
+    .dashboard-kpi-grid .dashboard-kpi-main > div:first-child {
+        text-align: center;
+    }
+    .dashboard-kpi-grid .dashboard-kpi-detail {
+        min-height: 0;
+        margin-top: 0 !important;
+        text-align: center;
+    }
+    .dashboard-kpi-grid .dashboard-kpi-detail .badge {
+        font-size: 0.65rem;
+    }
     
     /* Table enhancements */
     .table-custom thead th {
@@ -65,19 +98,19 @@
     note="Bộ lọc áp dụng cho tất cả thẻ, biểu đồ và danh sách bên dưới. Doanh thu theo ngày thu tiền; đơn hàng và dịch vụ theo ngày tạo đơn; khách hàng theo ngày tạo hồ sơ; đánh giá theo ngày đánh giá."
 />
 @if(auth()->user()?->canAny(['reports.revenue', 'orders.view', 'customers.view', 'reviews.view']))
-<div class="row g-4 mb-4">
+<div class="row g-4 mb-4 dashboard-kpi-grid">
     @can('reports.revenue')
     <div class="col-12 col-md-6">
         <div class="card stat-card stat-card--revenue h-100">
             <div class="card-body">
-                <div class="d-flex align-items-center justify-content-between">
+                <div class="dashboard-kpi-main d-flex align-items-center justify-content-between">
                     <div>
                         <div class="stat-value" id="dashboard-total-revenue">{{ number_format($totalRevenue) }} VNĐ</div>
-                        <div class="stat-label">Doanh thu · {{ $periodLabel }}</div>
+                        <div class="stat-label">Doanh thu - {{ $periodLabel }}</div>
                     </div>
                     <div class="stat-icon"><i class="bi bi-currency-dollar"></i></div>
                 </div>
-                <div class="mt-3"><small class="text-muted">Tổng tiền đã thu trong kỳ, khớp với biểu đồ doanh thu.</small></div>
+                <div class="dashboard-kpi-detail"><small class="text-muted">Tổng tiền đã thu trong kỳ, khớp với biểu đồ doanh thu.</small></div>
             </div>
         </div>
     </div>
@@ -86,14 +119,14 @@
     <div class="col-12 col-md-6">
         <div class="card stat-card stat-card--orders h-100">
             <div class="card-body">
-                <div class="d-flex align-items-center justify-content-between">
+                <div class="dashboard-kpi-main d-flex align-items-center justify-content-between">
                     <div>
                         <div class="stat-value" id="dashboard-total-orders">{{ $totalOrders }}</div>
-                        <div class="stat-label">Tổng đơn hàng · {{ $periodLabel }}</div>
+                        <div class="stat-label">Tổng đơn hàng - {{ $periodLabel }}</div>
                     </div>
                     <div class="stat-icon"><i class="bi bi-receipt"></i></div>
                 </div>
-                <div class="mt-3">
+                <div class="dashboard-kpi-detail mt-3">
                     <small class="text-muted">
                         <span class="badge bg-success-subtle text-success-emphasis border border-success rounded-pill">{{ $statusCounts['completed'] }} Hoàn thành</span>
                         <span class="badge bg-primary-subtle text-primary-emphasis border border-primary-subtle fw-semibold rounded-pill">{{ $statusCounts['processing'] }} Đang xử lý</span>
@@ -109,14 +142,14 @@
     <div class="col-12 col-md-6">
         <div class="card stat-card stat-card--customers h-100">
             <div class="card-body">
-                <div class="d-flex align-items-center justify-content-between">
+                <div class="dashboard-kpi-main d-flex align-items-center justify-content-between">
                     <div>
                         <div class="stat-value" id="dashboard-total-customers">{{ number_format($totalCustomers) }}</div>
-                        <div class="stat-label">{{ $dashboardFilter === 'all_time' ? 'Tổng khách hàng' : 'Khách hàng mới' }} · {{ $periodLabel }}</div>
+                        <div class="stat-label">{{ $dashboardFilter === 'all_time' ? 'Tổng khách hàng' : 'Khách hàng mới' }} - {{ $periodLabel }}</div>
                     </div>
                     <div class="stat-icon"><i class="bi bi-people"></i></div>
                 </div>
-                <div class="mt-3">
+                <div class="dashboard-kpi-detail mt-3">
                     <small class="text-muted">{{ $dashboardFilter === 'all_time' ? 'Tất cả hồ sơ khách hàng.' : 'Hồ sơ khách hàng được tạo trong kỳ đã chọn.' }}</small>
                 </div>
             </div>
@@ -128,14 +161,14 @@
     <div class="col-12 col-md-6">
         <div class="card stat-card stat-card--rating h-100">
             <div class="card-body">
-                <div class="d-flex align-items-center justify-content-between">
+                <div class="dashboard-kpi-main d-flex align-items-center justify-content-between">
                     <div>
                         <div class="stat-value" id="dashboard-average-rating">{{ number_format($averageRating, 1) }}<small class="fs-6 text-muted">/5.0</small></div>
-                        <div class="stat-label">Điểm đánh giá trung bình · {{ $periodLabel }}</div>
+                        <div class="stat-label">Điểm đánh giá trung bình - {{ $periodLabel }}</div>
                     </div>
                     <div class="stat-icon"><i class="bi bi-star-fill"></i></div>
                 </div>
-                <div class="mt-3">
+                <div class="dashboard-kpi-detail mt-3">
                     <small class="stat-change text-muted" id="dashboard-total-reviews"><i class="bi bi-star"></i> {{ number_format($totalReviews) }} lượt đánh giá đang hiển thị trong kỳ</small>
                 </div>
             </div>

@@ -15,6 +15,43 @@
             cursor: not-allowed;
             opacity: 1;
         }
+
+        .delivery-employee-picker {
+            position: relative;
+            z-index: 1021;
+        }
+
+        .delivery-employee-dropdown__results {
+            max-height: min(18rem, 45vh);
+            margin-top: 0.5rem;
+            overflow-y: auto;
+        }
+
+        .delivery-employee-option {
+            display: flex;
+            width: 100%;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.75rem;
+            padding: 0.5rem 0.75rem;
+            border: 0;
+            border-radius: var(--bs-border-radius);
+            background: transparent;
+            color: var(--bs-body-color);
+            text-align: left;
+        }
+
+        .delivery-employee-option:hover,
+        .delivery-employee-option:focus-visible,
+        .delivery-employee-option[aria-selected="true"] {
+            outline: none;
+            background: var(--bs-primary-bg-subtle);
+            color: var(--bs-primary-text-emphasis);
+        }
+
+        .delivery-employee-option:focus-visible {
+            box-shadow: inset 0 0 0 2px var(--bs-primary);
+        }
     </style>
 @endpush
 
@@ -144,23 +181,92 @@
                     <label class="form-label" for="NhanVienNhanDoID">
                         Nhân viên phụ trách nhận đồ <span class="text-danger ms-1">*</span>
                     </label>
-                    <select
-                        class="form-select @error('NhanVienNhanDoID') is-invalid @enderror"
-                        id="NhanVienNhanDoID"
-                        name="NhanVienNhanDoID"
-                        required
-                    >
-                        <option value="">Chọn nhân viên nhận đồ</option>
-                        @foreach($pickupEmployees as $employee)
-                            <option
-                                value="{{ $employee->NhanVienID }}"
-                                @selected(old('NhanVienNhanDoID', $authenticatedEmployee?->NhanVienID) == $employee->NhanVienID)
+                    @php
+                        $pickupEmployeeNameCounts = $pickupEmployees->countBy(
+                            fn ($employee) => mb_strtolower(trim((string) $employee->HoTen)),
+                        );
+                        $selectedPickupEmployee = $pickupEmployees->firstWhere(
+                            'NhanVienID',
+                            old('NhanVienNhanDoID', $authenticatedEmployee?->NhanVienID),
+                        );
+                    @endphp
+                    <div class="delivery-employee-picker" data-employee-picker>
+                        <button
+                            class="form-select text-start text-truncate @error('NhanVienNhanDoID') is-invalid @enderror"
+                            id="NhanVienNhanDoID"
+                            type="button"
+                            data-employee-toggle
+                            aria-expanded="false"
+                            aria-haspopup="listbox"
+                            aria-required="true"
+                            aria-controls="delivery-employee-dropdown"
+                        >
+                            <span data-selected-employee-name>{{ $selectedPickupEmployee?->HoTen ?: 'Chọn nhân viên nhận đồ' }}</span>
+                        </button>
+                        <div class="dropdown-menu w-100 p-2" id="delivery-employee-dropdown" data-employee-dropdown hidden>
+                            <label class="visually-hidden" for="pickup_employee_search">Tìm theo tên nhân viên hoặc chức danh</label>
+                            <input
+                                class="form-control"
+                                id="pickup_employee_search"
+                                type="search"
+                                autocomplete="off"
+                                data-employee-search
+                                placeholder="Tìm theo tên nhân viên hoặc chức danh..."
+                                aria-controls="delivery-employee-options"
+                                aria-autocomplete="list"
                             >
-                                {{ $employee->HoTen }}
-                            </option>
-                        @endforeach
-                    </select>
-                    @error('NhanVienNhanDoID')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                            <div
+                                class="delivery-employee-dropdown__results"
+                                id="delivery-employee-options"
+                                role="listbox"
+                                aria-label="Nhân viên có thể được phân công nhận đồ"
+                                data-employee-options
+                            >
+                                @foreach($pickupEmployees as $employee)
+                                    @php
+                                        $employeeNameKey = mb_strtolower(trim((string) $employee->HoTen));
+                                        $employeeDescription = trim((string) ($employee->ChucDanh ?? ''));
+                                        if ($employeeDescription === 'Nhân viên') {
+                                            $employeeDescription = 'Nhân viên giao nhận';
+                                        }
+                                        $employeeSelected = $selectedPickupEmployee
+                                            && (int) $selectedPickupEmployee->NhanVienID === (int) $employee->NhanVienID;
+                                    @endphp
+                                    <button
+                                        class="delivery-employee-option"
+                                        type="button"
+                                        role="option"
+                                        aria-selected="{{ $employeeSelected ? 'true' : 'false' }}"
+                                        data-employee-option
+                                        data-employee-id="{{ $employee->NhanVienID }}"
+                                        data-employee-name="{{ $employee->HoTen }}"
+                                        data-employee-search-text="{{ $employee->HoTen }} {{ $employeeDescription }}"
+                                    >
+                                        <span class="d-block">
+                                            @if((int) $employee->NhanVienID === (int) (auth()->user()?->NhanVienID ?? 0))
+                                                Bản thân tôi —
+                                            @endif
+                                            {{ $employee->HoTen }}{{ $employeeDescription ? ' · '.$employeeDescription : '' }}@if(($pickupEmployeeNameCounts[$employeeNameKey] ?? 0) > 1) · {{ $employee->SoDienThoai ?: ($employee->Email ?: 'Mã NV '.$employee->NhanVienID) }}@endif
+                                        </span>
+                                        <i class="bi bi-check2 text-primary" aria-hidden="true" @if(! $employeeSelected) hidden @endif data-selected-indicator></i>
+                                    </button>
+                                @endforeach
+                            </div>
+                            <div class="small text-muted px-2 py-2" data-employee-empty hidden>Không tìm thấy nhân viên phù hợp</div>
+                        </div>
+                        <input
+                            type="hidden"
+                            name="NhanVienNhanDoID"
+                            value="{{ $selectedPickupEmployee?->NhanVienID }}"
+                            data-employee-id
+                        >
+                        <input
+                            type="hidden"
+                            value="{{ old('employee_search', $selectedPickupEmployee?->HoTen) }}"
+                            data-selected-employee-search
+                        >
+                    </div>
+                    @error('NhanVienNhanDoID')<div class="text-danger small mt-1" role="alert">{{ $message }}</div>@enderror
                 </div>
 
                 <div class="col-md-6">
@@ -707,6 +813,7 @@
 <script src="{{ asset('assets/js/customer-autocomplete.js') }}"></script>
 <script src="{{ asset('assets/js/order-item-pricing.js') }}"></script>
 
+<script src="{{ asset('assets/js/delivery-schedule.js') }}?v={{ filemtime(public_path('assets/js/delivery-schedule.js')) }}"></script>
 <script>
 (function () {
     'use strict';

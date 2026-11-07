@@ -54,7 +54,6 @@ class LuuGiaoNhanRequest extends FormRequest
                 'required', 'integer', EmployeeAssignment::rule($this->currentDelivery()?->NhanVienID),
                 ...($this->user() && ! $this->canSelectEmployee($this->user()) ? [Rule::in([(int) $this->user()->NhanVienID])] : []),
             ],
-            'employee_search' => ['sometimes', 'string', 'max:255'],
             'method' => ['required', 'in:nhan_do,giao_do'],
             'fulfillment' => ['sometimes', 'in:Tại cửa hàng,Tại nhà'],
             'address' => ['nullable', 'required_if:fulfillment,Tại nhà', 'string', 'max:255'],
@@ -78,7 +77,7 @@ class LuuGiaoNhanRequest extends FormRequest
                     $validator->errors()->add('employee_id', 'Chỉ được phân công nhân viên có tài khoản nội bộ được cấp quyền xử lý giao nhận.');
                 }
 
-                if ($this->exists('employee_search')
+                if (is_string($this->input('employee_search'))
                     && trim((string) $this->input('employee_search')) !== trim((string) $employee?->HoTen)) {
                     $validator->errors()->add('employee_id', 'Vui lòng chọn nhân viên từ danh sách gợi ý; không thể chỉ nhập tên.');
                 }
@@ -111,9 +110,7 @@ class LuuGiaoNhanRequest extends FormRequest
 
     private function canSelectEmployee(?User $user): bool
     {
-        return $this->isMethod('POST')
-            ? EmployeeAssignment::canAssignNewDelivery($user)
-            : EmployeeAssignment::canManageAssignments($user);
+        return EmployeeAssignment::canAssignToOtherEmployees($user);
     }
 
     private function requiresSchedule(): bool

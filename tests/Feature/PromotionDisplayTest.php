@@ -38,6 +38,7 @@ class PromotionDisplayTest extends TestCase
 
         Schema::create('DonHang', function (Blueprint $table): void {
             $table->increments('DonHangID');
+            $table->unsignedInteger('BookingID')->nullable();
             $table->unsignedInteger('KhuyenMaiID')->nullable();
             $table->decimal('TienGiamKhuyenMai', 12, 2)->default(0);
             $table->string('TrangThai');
@@ -209,6 +210,55 @@ class PromotionDisplayTest extends TestCase
         $this->assertDatabaseMissing('KhuyenMai', ['KhuyenMaiID' => 1]);
     }
 
+    public function test_suspended_used_promotion_can_be_permanently_deleted_without_losing_order_discount(): void
+    {
+        DB::table('KhuyenMai')->insert([
+            'KhuyenMaiID' => 1,
+            'MaKhuyenMai' => 'PAUSED10',
+            'TenKhuyenMai' => 'Khuyến mãi tạm ngưng',
+            'LoaiKhuyenMai' => 'Phần trăm',
+            'GiaTriGiam' => 10,
+            'SoLuongSuDung' => 5,
+            'NgayBatDau' => today()->toDateString(),
+            'NgayKetThuc' => today()->addDays(30)->toDateString(),
+            'TrangThai' => 'Tạm ngưng',
+        ]);
+        DB::table('Booking')->insert(['BookingID' => 3, 'KhuyenMaiID' => 1, 'KhuyenMaiDaTru' => true]);
+        DB::table('DonHang')->insert([
+            'DonHangID' => 4,
+            'BookingID' => 3,
+            'KhuyenMaiID' => 1,
+            'TienGiamKhuyenMai' => 15000,
+            'TrangThai' => 'Đã tiếp nhận',
+        ]);
+        DB::unprepared(<<<'SQL'
+            CREATE TRIGGER restore_booking_promotion_before_order_update
+            AFTER UPDATE OF KhuyenMaiID ON DonHang
+            FOR EACH ROW
+            WHEN NEW.KhuyenMaiID IS NULL
+                AND (SELECT KhuyenMaiID FROM Booking WHERE BookingID = NEW.BookingID) IS NOT NULL
+            BEGIN
+                UPDATE DonHang
+                SET KhuyenMaiID = (SELECT KhuyenMaiID FROM Booking WHERE BookingID = NEW.BookingID)
+                WHERE DonHangID = NEW.DonHangID;
+            END;
+        SQL);
+        $promotion = KhuyenMai::query()->findOrFail(1);
+
+        $this->assertTrue(app(PromotionService::class)->delete($promotion));
+        $this->assertDatabaseMissing('KhuyenMai', ['KhuyenMaiID' => 1]);
+        $this->assertDatabaseHas('DonHang', [
+            'DonHangID' => 4,
+            'KhuyenMaiID' => null,
+            'TienGiamKhuyenMai' => 15000,
+        ]);
+        $this->assertDatabaseHas('Booking', [
+            'BookingID' => 3,
+            'KhuyenMaiID' => null,
+            'KhuyenMaiDaTru' => false,
+        ]);
+    }
+
     public function test_expired_used_promotion_can_be_deleted_and_order_discount_is_preserved(): void
     {
         DB::table('KhuyenMai')->insert([
@@ -218,9 +268,9 @@ class PromotionDisplayTest extends TestCase
             'LoaiKhuyenMai' => 'Phần trăm',
             'GiaTriGiam' => 10,
             'SoLuongSuDung' => 5,
-            'NgayBatDau' => '2026-10-01',
-            'NgayKetThuc' => '2026-10-31',
-            'TrangThai' => 'Hoạt động',
+            'NgayBatDau' => today()->subDays(30)->toDateString(),
+            'NgayKetThuc' => today()->subDay()->toDateString(),
+            'TrangThai' => 'Hết hạn',
         ]);
         DB::table('Booking')->insert(['BookingID' => 3, 'KhuyenMaiID' => 1, 'KhuyenMaiDaTru' => true]);
         DB::table('DonHang')->insert([
@@ -245,7 +295,7 @@ class PromotionDisplayTest extends TestCase
         ]);
     }
 
-    public function test_exhausted_used_promotion_can_be_deleted(): void
+    public function test_exhausted_active_promotion_is_suspended_instead_of_deleted(): void
     {
         DB::table('KhuyenMai')->insert([
             'KhuyenMaiID' => 1,
@@ -254,20 +304,38 @@ class PromotionDisplayTest extends TestCase
             'LoaiKhuyenMai' => 'Phần trăm',
             'GiaTriGiam' => 10,
             'SoLuongSuDung' => 0,
-            'NgayBatDau' => '2026-10-01',
-            'NgayKetThuc' => '2026-12-31',
+            'NgayBatDau' => today()->toDateString(),
+            'NgayKetThuc' => today()->addDays(30)->toDateString(),
             'TrangThai' => 'Hoạt động',
         ]);
         DB::table('Booking')->insert(['BookingID' => 3, 'KhuyenMaiID' => 1, 'KhuyenMaiDaTru' => true]);
         $promotion = KhuyenMai::query()->findOrFail(1);
 
-        $this->assertTrue(app(PromotionService::class)->delete($promotion));
-        $this->assertDatabaseMissing('KhuyenMai', ['KhuyenMaiID' => 1]);
+        $this->assertFalse(app(PromotionService::class)->delete($promotion));
+        $this->assertDatabaseHas('KhuyenMai', ['KhuyenMaiID' => 1, 'TrangThai' => 'Tạm ngưng']);
         $this->assertDatabaseHas('Booking', [
             'BookingID' => 3,
-            'KhuyenMaiID' => null,
-            'KhuyenMaiDaTru' => false,
+            'KhuyenMaiID' => 1,
+            'KhuyenMaiDaTru' => true,
         ]);
+    }
+
+    public function test_active_promotion_past_end_date_without_references_is_suspended_instead_of_deleted(): void
+    {
+        DB::table('KhuyenMai')->insert([
+            'KhuyenMaiID' => 1,
+            'MaKhuyenMai' => 'ACTIVE10',
+            'TenKhuyenMai' => 'Khuyến mãi đang chạy',
+            'LoaiKhuyenMai' => 'Phần trăm',
+            'GiaTriGiam' => 10,
+            'NgayBatDau' => today()->subDays(30)->toDateString(),
+            'NgayKetThuc' => today()->subDay()->toDateString(),
+            'TrangThai' => 'Hoạt động',
+        ]);
+        $promotion = KhuyenMai::query()->findOrFail(1);
+
+        $this->assertFalse(app(PromotionService::class)->delete($promotion));
+        $this->assertDatabaseHas('KhuyenMai', ['KhuyenMaiID' => 1, 'TrangThai' => 'Tạm ngưng']);
     }
 
     public function test_used_active_promotion_with_remaining_uses_is_suspended_without_deleting_it(): void

@@ -85,7 +85,7 @@
                                 @can('promotions.delete')
                                     <form action="{{ route('promotions.destroy', $promotion->KhuyenMaiID) }}" method="POST" class="d-inline" id="deletePromotionForm_{{ $promotion->KhuyenMaiID }}">
                                         @csrf @method('DELETE')
-                                        <button type="submit" class="btn btn-order-action delete" title="Xóa"><i class="bi bi-trash"></i></button>
+                                        <button type="submit" class="btn btn-order-action delete" title="Xóa" data-promotion-active="{{ $promotion->TrangThai === 'Hoạt động' ? 'true' : 'false' }}"><i class="bi bi-trash"></i></button>
                                     </form>
                                 @endcan
                             </div>
@@ -111,9 +111,13 @@
         document.querySelectorAll('[id^="deletePromotionForm_"]').forEach(function(form) {
             form.addEventListener('submit', function(e) {
                 e.preventDefault();
+                const isActive = form.querySelector('[data-promotion-active]').dataset.promotionActive === 'true';
+                const confirmationText = isActive
+                    ? 'Khuyến mãi có trạng thái Hoạt động sẽ được chuyển sang Tạm ngưng, không bị xóa cứng.'
+                    : 'Khuyến mãi sẽ bị xóa vĩnh viễn. Liên kết trên đơn hàng/Booking sẽ được gỡ; số tiền giảm đã lưu trên đơn hàng được giữ nguyên.';
 
                 if (typeof Swal === 'undefined') {
-                    if (confirm('Xóa?')) {
+                    if (confirm(confirmationText)) {
                         form.submit();
                     }
                     return;
@@ -121,7 +125,7 @@
 
                 Swal.fire({
                     title: 'Xóa khuyến mãi?',
-                    text: 'Chương trình hết hạn hoặc hết lượt sẽ được xóa vĩnh viễn. Liên kết trên đơn hàng/Booking sẽ được gỡ; số tiền giảm đã lưu trên đơn hàng được giữ nguyên.',
+                    text: confirmationText,
                     icon: 'warning',
                     showCancelButton: true,
                     reverseButtons: true,

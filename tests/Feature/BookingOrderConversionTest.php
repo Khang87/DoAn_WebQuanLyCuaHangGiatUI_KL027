@@ -1163,8 +1163,13 @@ class BookingOrderConversionTest extends TestCase
         $booking->chiTietBookings()->create(['DichVuID' => 1, 'LoaiDoGiatID' => 2, 'DonViTinhID' => 3, 'SoLuong' => 1, 'DonGia' => 15000, 'ThanhTien' => 15000]);
         $this->withoutMiddleware([Authenticate::class, EnsureUserHasPermission::class, RejectCustomerRole::class, RestoreRememberedLogin::class]);
         $this->get(route('bookings.show', $booking))->assertOk()
-            ->assertSee('Ước tính từ lịch đặt')
-            ->assertSee('data-booking-amount="TienGiamKhuyenMai"', false)
+            ->assertSee('Thanh toán')
+            ->assertSee('Tổng tiền các dịch vụ đã chọn')
+            ->assertSee('15.000 đ')
+            ->assertSee('10.000 đ')
+            ->assertSee('25.000 đ')
+            ->assertSee('Giá cuối cùng có thể được điều chỉnh sau khi cửa hàng kiểm nhận đồ.')
+            ->assertDontSee('data-booking-amount="TienGiamKhuyenMai"', false)
             ->assertSee('data-booking-amount="ThanhTien"', false)
             ->assertViewHas('bookingAmounts', fn (array $amounts): bool => $amounts['TongTien'] === 15000.0 && $amounts['ThanhTien'] === 25000.0 && $amounts['DiemSuDung'] === 0);
         $this->assertDatabaseCount('DonHang', 0);
@@ -1175,9 +1180,50 @@ class BookingOrderConversionTest extends TestCase
         $booking = $this->createBooking();
         $this->withoutMiddleware([Authenticate::class, EnsureUserHasPermission::class, RejectCustomerRole::class, RestoreRememberedLogin::class]);
         $this->get(route('bookings.show', $booking))->assertOk()
-            ->assertSee('Chưa có dịch vụ dự kiến để tính tổng tiền')
+            ->assertSeeTextInOrder([
+                'Phí nhận đồ',
+                '10.000 đ',
+                'Phí giao đồ',
+                '0 đ',
+                'Hình thức',
+                'Tổng phí giao nhận',
+                '10.000 đ',
+                'Tổng tiền đơn hàng',
+                'Cửa hàng sẽ báo giá',
+                'Tổng tiền thanh toán',
+                'Cửa hàng sẽ báo giá',
+            ])
+            ->assertSee('Cửa hàng sẽ báo giá')
+            ->assertDontSee('Cửa hàng sẽ báo giá sau khi kiểm nhận đồ.')
             ->assertDontSee('data-booking-money-summary', false)
             ->assertViewHas('bookingAmounts', fn ($amounts): bool => $amounts === null);
+    }
+
+    public function test_booking_detail_uses_linked_order_totals_after_inspection(): void
+    {
+        $this->createInspectionCatalog();
+        $booking = $this->createBooking();
+        $booking->chiTietBookings()->create([
+            'DichVuID' => 1,
+            'LoaiDoGiatID' => 2,
+            'DonViTinhID' => 3,
+            'SoLuong' => 1,
+            'DonGia' => 15000,
+            'ThanhTien' => 15000,
+        ]);
+        $order = $this->createConvertedOrderForBooking($booking);
+        $order->forceFill([
+            'TongTien' => 20000,
+            'PhiGiaoHang' => 0,
+            'ThanhTien' => 20000,
+        ])->save();
+        $this->withoutMiddleware([Authenticate::class, EnsureUserHasPermission::class, RejectCustomerRole::class, RestoreRememberedLogin::class]);
+
+        $this->get(route('bookings.show', $booking))->assertOk()
+            ->assertSeeText('Tổng tiền đơn hàng')
+            ->assertSeeText('20.000 đ')
+            ->assertDontSeeText('Tổng tiền các dịch vụ đã chọn')
+            ->assertDontSeeText('15.000 đ');
     }
 
     public function test_booking_estimate_uses_saved_points_and_returns_each_priced_service_line(): void
@@ -1659,6 +1705,7 @@ class BookingOrderConversionTest extends TestCase
         $this->withoutMiddleware();
 
         $response = $this->get(route('orders.show', $order))->assertOk();
+        $response->assertSee('>Thanh toán</', false);
         $response->assertDontSee('detail-field__label mb-2">Ghi chú', false);
         $order->forceFill(['GhiChu' => 'Ghi chú kiểm tra'])->save();
         $this->get(route('orders.show', $order))
@@ -1670,22 +1717,22 @@ class BookingOrderConversionTest extends TestCase
             'Tình trạng hóa đơn',
             'Chưa lập hóa đơn',
             'Tổng tiền đơn hàng',
-            '700.000 VNĐ',
-            'Phí nhận đồ · 8.1 km',
-            number_format($pickupFee, 0, ',', '.').' VNĐ',
-            'Phí giao đồ · 8.1 km',
-            number_format(max(0, $fee - $pickupFee), 0, ',', '.').' VNĐ',
+            '700.000 đ',
+            'Phí nhận đồ: 8.1 km',
+            number_format($pickupFee, 0, ',', '.').' đ',
+            'Phí giao đồ: 8.1 km',
+            number_format(max(0, $fee - $pickupFee), 0, ',', '.').' đ',
             'Tổng tiền thanh toán',
-            number_format($total, 0, ',', '.').' VNĐ',
+            number_format($total, 0, ',', '.').' đ',
         ]);
 
         if ($promotionDiscount > 0) {
-            $response->assertSeeText('Giảm từ mã khuyến mãi')->assertSeeText('-'.number_format($promotionDiscount, 0, ',', '.').' VNĐ');
+            $response->assertSeeText('Giảm từ mã khuyến mãi')->assertSeeText('-'.number_format($promotionDiscount, 0, ',', '.').' đ');
         } else {
             $response->assertDontSeeText('Giảm từ mã khuyến mãi');
         }
         if ($pointsDiscount > 0) {
-            $response->assertSeeText('Giảm từ điểm')->assertSeeText('-'.number_format($pointsDiscount, 0, ',', '.').' VNĐ');
+            $response->assertSeeText('Giảm từ điểm')->assertSeeText('-'.number_format($pointsDiscount, 0, ',', '.').' đ');
         } else {
             $response->assertDontSeeText('Giảm từ điểm');
         }
@@ -1694,7 +1741,7 @@ class BookingOrderConversionTest extends TestCase
             ->assertDontSeeText('Tổng tiền được giảm');
     }
 
-    public function test_order_payment_breakdown_does_not_show_zero_distance_when_no_distance_was_saved(): void
+    public function test_order_payment_breakdown_matches_mobile_zero_distance_format(): void
     {
         $order = (new DonHang)->forceFill([
             'TongTien' => 100000,
@@ -1719,8 +1766,9 @@ class BookingOrderConversionTest extends TestCase
         ])->render();
 
         $this->assertStringContainsString('Phí giao đồ', $html);
-        $this->assertStringContainsString('11.000 VNĐ', $html);
-        $this->assertDoesNotMatchRegularExpression('/Phí giao đồ\s*·\s*0 km/u', $html);
+        $this->assertStringContainsString('11.000 đ', $html);
+        $this->assertMatchesRegularExpression('/Phí giao đồ\s*:\s*0 km/u', $html);
+        $this->assertStringContainsString('Giá cuối cùng có thể được điều chỉnh sau khi cửa hàng kiểm nhận đồ.', $html);
     }
 
     public static function orderPaymentSummaryCases(): array
@@ -1922,8 +1970,18 @@ class BookingOrderConversionTest extends TestCase
                 ->assertSee('value="Chuyển khoản / QR"', false)
                 ->assertSee('name="NhanVienNhanDoID"', false)
                 ->assertSee('Nhân viên phụ trách nhận đồ')
+                ->assertSee('data-employee-picker', false)
+                ->assertSee('data-employee-toggle', false)
+                ->assertSee('data-employee-search', false)
+                ->assertSee('data-employee-option', false)
+                ->assertSee('delivery-employee-option', false)
+                ->assertSee('aria-required="true"', false)
                 ->assertDontSee('name="NhanVienID"', false)
                 ->assertDontSee('<input type="hidden" name="TrangThai"', false);
+            $this->assertMatchesRegularExpression(
+                '/<input(?=[^>]*type="hidden")(?=[^>]*name="NhanVienNhanDoID")(?=[^>]*value="1")[^>]*>/',
+                $response->getContent(),
+            );
             $this->assertMatchesRegularExpression(
                 '/<option[^>]*value="Tại cửa hàng"[^>]*disabled[^>]*class="text-muted"[^>]*>\\s*Nhân viên nhận đồ tại tiệm/',
                 $response->getContent(),
@@ -1933,7 +1991,8 @@ class BookingOrderConversionTest extends TestCase
                 $response->getContent(),
             );
             $response->assertSee('background-image: none !important;', false)
-                ->assertSee('background-color: #e9ecef !important;', false);
+                ->assertSee('background-color: #e9ecef !important;', false)
+                ->assertSee('placeholder="Tìm theo tên nhân viên hoặc chức danh..."', false);
             $this->assertMatchesRegularExpression(
                 '/<option(?=[^>]*value="Tại cửa hàng")(?=[^>]*selected)[^>]*>/',
                 $response->getContent(),

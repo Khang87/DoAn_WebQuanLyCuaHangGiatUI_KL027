@@ -6,6 +6,7 @@
     'note',
     'exportRoute' => null,
     'customRange' => false,
+    'reserveRangeSpace' => false,
     'dateFrom' => '',
     'dateTo' => '',
 ])
@@ -49,7 +50,7 @@
                 @if($customRange)
                     <div
                         id="period-date-range-fields"
-                        class="period-date-range-fields {{ $filter === 'all_time' ? '' : 'd-none' }}"
+                        class="period-date-range-fields {{ $filter === 'all_time' || $reserveRangeSpace ? '' : 'd-none' }} {{ $reserveRangeSpace ? 'period-date-range-fields--reserved' : '' }}"
                         aria-hidden="{{ $filter === 'all_time' ? 'false' : 'true' }}"
                     >
                         <div class="period-filter-field">

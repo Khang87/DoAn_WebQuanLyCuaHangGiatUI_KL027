@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Enums\OrderStatus;
 use App\Enums\PaymentStatus;
 use App\Models\Booking;
+use App\Models\ChiTietDonHang;
 use App\Models\DonHang;
 use App\Models\HoaDon;
 use App\Models\KhuyenMai;
@@ -219,14 +220,23 @@ class InvoiceHistoryObserverTest extends TestCase
             'TienGiamDoDiem' => 5000,
             'DiemSuDung' => 5000,
             'PhiGiaoHang' => 52000,
-            'ThanhTien' => 115000,
+            'ThanhTien' => 120000,
         ]);
         $order->setRelation('khachHang', null);
         $order->setRelation('booking', $booking);
         $order->setRelation('khuyenMai', (new KhuyenMai)->forceFill([
             'MaKhuyenMai' => 'GIAM7K',
         ]));
-        $order->setRelation('chiTietDonHangs', collect());
+        $laundryDetail = (new ChiTietDonHang)->forceFill([
+            'SoLuong' => null,
+            'KhoiLuong' => 0.5,
+            'DonGia' => 1000,
+            'ThanhTien' => 500,
+        ]);
+        $laundryDetail->setRelation('dichVu', null);
+        $laundryDetail->setRelation('loaiDoGiat', null);
+        $laundryDetail->setRelation('donViTinh', null);
+        $order->setRelation('chiTietDonHangs', collect([$laundryDetail]));
         $order->setRelation('thanhToans', collect([
             (new ThanhToan)->forceFill([
                 'PhuongThuc' => 'Tiền mặt',
@@ -245,21 +255,25 @@ class InvoiceHistoryObserverTest extends TestCase
 
         $this->assertStringNotContainsString('Thanh toán Tiền mặt', $html);
         $this->assertStringContainsString('Phương thức thanh toán', $html);
+        $this->assertStringContainsString('<td class="text-end">0.50</td>', $html);
+        $this->assertStringNotContainsString('0.50 kg', $html);
         $this->assertStringContainsString('Tổng tiền đơn hàng', $html);
         $this->assertStringContainsString('Tiền mặt', $html);
-        $this->assertStringContainsString('Mã khuyến mãi', $html);
-        $this->assertStringContainsString('GIAM7K', $html);
-        $this->assertMatchesRegularExpression('/Phí nhận đồ\s*·\s*8\.1 km/u', $html);
-        $this->assertMatchesRegularExpression('/Phí giao đồ\s*·\s*8\.1 km/u', $html);
-        $this->assertStringContainsString('Điểm đã sử dụng', $html);
-        $this->assertStringContainsString('5.000 điểm', $html);
+        $this->assertMatchesRegularExpression('/Phí nhận đồ\s*:\s*8\.1 km/u', $html);
+        $this->assertMatchesRegularExpression('/Phí giao đồ\s*:\s*8\.1 km/u', $html);
+        $this->assertStringNotContainsString('GIAM7K', $html);
+        $this->assertStringNotContainsString('Điểm đã sử dụng', $html);
+        $this->assertStringNotContainsString('5.000 điểm', $html);
         $this->assertStringContainsString('Giảm từ mã khuyến mãi', $html);
-        $this->assertStringContainsString('-7.000 VNĐ', $html);
+        $this->assertStringContainsString('-7.000 đ', $html);
         $this->assertStringContainsString('Giảm từ điểm', $html);
-        $this->assertStringContainsString('-5.000 VNĐ', $html);
-        $this->assertStringContainsString('Tổng tiền được giảm', $html);
-        $this->assertStringContainsString('12.000 VNĐ', $html);
-        $this->assertStringContainsString('115.000 VNĐ', $html);
+        $this->assertStringContainsString('-5.000 đ', $html);
+        $this->assertStringNotContainsString('Tổng tiền được giảm', $html);
+        $this->assertStringNotContainsString('12.000 đ', $html);
+        $this->assertStringContainsString('115.000 đ', $html);
+        $this->assertStringNotContainsString('120.000 đ', $html);
+        $this->assertStringNotContainsString('115.000 VNĐ', $html);
+        $this->assertStringContainsString('Giá cuối cùng có thể được điều chỉnh sau khi cửa hàng kiểm nhận đồ.', $html);
         $this->assertStringContainsString('Thanh toán', $html);
         $this->assertStringContainsString('Đã thanh toán', $html);
         $this->assertStringContainsString('Mã giao dịch: TM_DH00000001_20261101170642', $html);
@@ -302,8 +316,7 @@ class InvoiceHistoryObserverTest extends TestCase
         ])->render();
 
         $this->assertStringContainsString('Phí giao nhận', $html);
-        $this->assertStringContainsString('9.000 VNĐ', $html);
-        $this->assertDoesNotMatchRegularExpression('/Phí nhận đồ\s*·\s*0 km/u', $html);
+        $this->assertStringContainsString('9.000 đ', $html);
         $this->assertDoesNotMatchRegularExpression('/Phí giao đồ\s*·\s*0 km/u', $html);
     }
 

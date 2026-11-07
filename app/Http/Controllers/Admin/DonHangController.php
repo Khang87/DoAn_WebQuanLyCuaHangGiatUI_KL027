@@ -87,7 +87,7 @@ class DonHangController extends Controller
             ? EmployeeAssignment::deliveryCandidates()
                 ->orderBy('HoTen')
                 ->orderBy('NhanVienID')
-                ->get(['NhanVienID', 'HoTen'])
+                ->get(['NhanVienID', 'HoTen', 'ChucDanh', 'SoDienThoai', 'Email'])
             : collect($authenticatedEmployee ? [$authenticatedEmployee] : []);
         $statusFlow = $this->orderService->getStatusFlow();
         $pricings = $this->pricingService->orderOptions();
