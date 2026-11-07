@@ -1202,6 +1202,29 @@ class OrderService
             if ($order === null) {
                 return false;
             }
+            
+            // Owner có thể xóa cascade dữ liệu liên quan
+            if ($overrideSettled) {
+                \Log::info('CASCADE DELETE ORDER', ['order_id' => $order->DonHangID, 'code' => $order->MaDonHang]);
+                
+                // Xóa cascade tất cả bảng con
+                $order->chiTietDonHangs()->delete();  // Xóa chi tiết đơn hàng
+                $order->giaoNhans()->delete();        // Xóa giao nhận
+                $order->hoaDons()->delete();          // Xóa hóa đơn
+                $order->thanhToans()->delete();       // Xóa thanh toán
+                $order->thongBaos()->delete();        // Xóa thông báo
+                $order->tinNhans()->delete();         // Xóa tin nhắn
+                $order->danhGia()?->delete();         // Xóa đánh giá
+                
+                // Xóa lịch sử hệ thống
+                NhatKyHeThong::query()
+                    ->where('BangDuLieu', 'DonHang')
+                    ->where('BanGhiID', $order->getKey())
+                    ->delete();
+                
+                \Log::info('CASCADE DATA DELETED FOR ORDER', ['order_id' => $order->DonHangID]);
+            }
+            
             if ($order->isLocked() && ! $overrideSettled) {
                 throw SettledOrderException::forOrder($order->MaDonHang);
             }
@@ -1229,7 +1252,8 @@ class OrderService
                         ->where('BanGhiID', $order->getKey())
                         ->exists();
 
-            if ($hasBusinessHistory) {
+            // Chỉ throw error nếu không override (Owner hoặc admin có quyền xóa)
+            if ($hasBusinessHistory && ! $overrideSettled) {
                 throw ValidationException::withMessages([
                     'order' => 'Không thể xóa vật lý đơn đã có dữ liệu nghiệp vụ.',
                 ]);

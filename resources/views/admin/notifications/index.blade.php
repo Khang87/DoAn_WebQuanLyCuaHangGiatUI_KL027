@@ -15,7 +15,7 @@
         <div class="page-toolbar__actions">
             <form action="{{ route('notifications.mark-all-read') }}" method="POST" class="d-inline">
                 @csrf
-                <button type="submit" class="btn btn-outline-secondary btn-sm notification-mark-read-button" title="Đánh dấu tất cả thông báo của tài khoản hiện tại là đã đọc">
+                <button type="submit" class="btn btn-outline-secondary btn-sm notification-mark-read-button" title="Đánh dấu tất cả thông báo của tài khoản hiện tại là đã đọc" style="width: 240px;">
                     <i class="bi bi-check2-all"></i> Đánh dấu tất cả đã đọc
                 </button>
             </form>
@@ -28,7 +28,7 @@
         <x-admin.search-field placeholder="Tìm thông báo..." label="Tìm kiếm thông báo" />
     </div>
     <div class="col-12 col-sm-6 col-md-auto">
-        <select name="read" class="form-select form-select-sm filter-select shadow-sm rounded-3" onchange="this.form.submit()">
+        <select name="read" class="form-select form-select-sm filter-select shadow-sm rounded-3" onchange="this.form.submit()" style="width: 240px;">
             <option value="">Tất cả trạng thái</option>
             <option value="unread" @selected(request('read') === 'unread')>Chưa đọc</option>
             <option value="read" @selected(request('read') === 'read')>Đã đọc</option>

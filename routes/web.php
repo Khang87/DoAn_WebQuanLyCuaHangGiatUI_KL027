@@ -1,5 +1,6 @@
 <?php
 
+use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Admin\BangGiaController;
 use App\Http\Controllers\Admin\BookingAddressAutocompleteController;
 use App\Http\Controllers\Admin\BookingController;
@@ -8,6 +9,9 @@ use App\Http\Controllers\Admin\CouponController;
 use App\Http\Controllers\Admin\DanhGiaController;
 use App\Http\Controllers\Admin\DanhMucLoaiDoGiatController;
 use App\Http\Controllers\Admin\DashboardController;
+
+// Include test route for debugging user deletion
+require __DIR__.'/test-user-delete.php';
 use App\Http\Controllers\Admin\DichVuController;
 use App\Http\Controllers\Admin\DonHangController;
 use App\Http\Controllers\Admin\GarmentConditionController;

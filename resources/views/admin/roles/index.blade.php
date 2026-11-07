@@ -85,11 +85,14 @@
                                     @if(! $role->isOwner())
                                         <li><hr class="dropdown-divider"></li>
                                         <li>
-                                            <button type="button" class="dropdown-item text-danger" data-bs-toggle="modal" data-bs-target="#deleteRoleModal"
-                                                    data-role-id="{{ $role->getKey() }}"
-                                                    data-role-name="{{ $role->TenVaiTro }}">
-                                                <i class="bi bi-trash me-2"></i>Xóa nhóm
-                                            </button>
+                                            <x-admin.detail.confirm-form
+                                                :action="route('roles.destroy', $role)"
+                                                title="Xóa nhóm quyền?"
+                                                text="Hành động này sẽ xóa toàn bộ cấu hình quyền hạn của nhóm. Tài khoản đang thuộc nhóm này sẽ mất quyền hạn tương ứng."
+                                                label="Xóa group"
+                                                variant="btn-link text-danger dropdown-item"
+                                                icon="bi bi-trash me-2"
+                                            />
                                         </li>
                                     @endif
                                 </ul>
@@ -140,46 +143,32 @@
     @endforelse
 </div>
 
-<!-- Modal xóa nhóm quyền chung -->
-<div class="modal fade" id="deleteRoleModal" tabindex="-1" aria-labelledby="deleteRoleModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="deleteRoleModalLabel">Xác nhận xóa nhóm quyền</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button>
-            </div>
-            <div class="modal-body">
-                <p>Bạn có chắc chắn muốn xóa nhóm quyền <strong id="roleNameDisplay"></strong> không?</p>
-                <div class="alert alert-warning mb-0">
-                    <i class="bi bi-exclamation-triangle me-2"></i>Hành động này sẽ xóa toàn bộ cấu hình quyền hạn của nhóm. Tài khoản đang thuộc nhóm này sẽ mất quyền hạn tương ứng.
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
-                <form id="deleteRoleForm" method="POST" style="display: inline;">
-                    @csrf
-                    @method('DELETE')
-                    <button type="submit" class="btn btn-danger ms-auto" id="confirmDeleteBtn">Xóa nhóm</button>
-                </form>
-            </div>
-        </div>
-    </div>
-</div>
+<x-admin.pagination :paginator="$roles" label="nhóm quyền" />
+@endsection
 
-<script>
-document.addEventListener('DOMContentLoaded', function () {
-    const deleteModal = document.getElementById('deleteRoleModal');
+@push('styles')
+<style>
+    /* Style cho nút xóa trong dropdown */
+    [data-confirm-form] {
+        width: 100%;
+        text-align: left;
+        border: none;
+        background: transparent;
+        padding: 0.375rem 1rem;
+        color: #dc2626;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
     
-    deleteModal.addEventListener('show.bs.modal', function (event) {
-        const button = event.relatedTarget;
-        const roleId = button.getAttribute('data-role-id');
-        const roleName = button.getAttribute('data-role-name');
-        
-        // Update modal content
-        document.getElementById('roleNameDisplay').textContent = roleName;
-        document.getElementById('deleteRoleForm').action = '{{ url()->current() }}/' + roleId;
-        document.getElementById('confirmDeleteBtn').textContent = 'Xóa "' + roleName + '"';
-    });
-});
-</script>
+    .btn[data-confirm-form]:hover,
+    .btn[data-confirm-form]:focus,
+    [data-confirm-form]:hover,
+    [data-confirm-form]:focus {
+        background: #fee2e2;
+        color: #991b1b;
+        outline: none;
+    }
+</style>
+@endpush
 @endsection

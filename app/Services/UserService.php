@@ -198,12 +198,14 @@ class UserService
                     if ($lockedUser->KhachHangID !== null) {
                         $query->where('KhachHangID', $lockedUser->KhachHangID);
                         $hasProfile = true;
+                        \Log::channel('debug')->info("Checking by KhachHangID", ['KhachHangID' => $lockedUser->KhachHangID]);
                     }
 
                     if ($lockedUser->NhanVienID !== null) {
                         $method = $hasProfile ? 'orWhere' : 'where';
                         $query->{$method}('NhanVienID', $lockedUser->NhanVienID);
                         $hasProfile = true;
+                        \Log::channel('debug')->info("Also checking by NhanVienID", ['NhanVienID' => $lockedUser->NhanVienID]);
                     }
 
                     if (! $hasProfile) {
@@ -211,23 +213,47 @@ class UserService
                     }
                 })
                 ->where(function ($query): void {
-                    $query->where('TrangThai', '!=', OrderStatus::Cancelled->value)
-                        ->where(function ($incomplete): void {
-                            $incomplete->where('TrangThai', '!=', OrderStatus::Delivered->value)
-                                ->orWhereNotExists(function ($invoice): void {
-                                    $invoice->selectRaw('1')
-                                        ->from('HoaDon')
-                                        ->whereColumn('HoaDon.DonHangID', 'DonHang.DonHangID')
-                                        ->where('HoaDon.TrangThai', InvoiceStatus::Paid->value);
-                                });
-                        });
+                    // Chỉ lấy các đơn hàng CHƯA XÓA (khác Cancelled)
+                    $query->where('TrangThai', '!=', OrderStatus::Cancelled->value);
+                    
+                    // Trong đó, lấy những đơn chưa hoàn tất HOẶC có hoàn tất nhưng chưa paid
+                    // Complete states: Delivered (đã giao), Paid (đã thanh toán - tức là đã giao + đã pay)
+                    $completeStates = [
+                        OrderStatus::Delivered->value,  // 'Đã giao'
+                        OrderStatus::Paid->value,       // 'Đã thanh toán'
+                        'Đã hoàn thành',                 // Alternative Vietnamese
+                        'Hoàn thành',                   // Another alternative
+                    ];
+                    
+                    $query->where(function ($incomplete) use ($completeStates): void {
+                        // Chưa ở trạng thái complete → blocking
+                        $incomplete->whereNotIn('TrangThai', $completeStates)
+                            ->orWhere(function ($paidCheck) use ($completeStates): void {
+                                // Nếu đã complete, phải có invoice paid mới được xóa
+                                $paidCheck->whereIn('TrangThai', $completeStates)
+                                    ->exists(function ($invoiceQuery) use ($completeStates): void {
+                                        $invoiceQuery->selectRaw('1')
+                                            ->from('HoaDon')
+                                            ->whereColumn('HoaDon.DonHangID', 'DonHang.DonHangID')
+                                            ->whereIn('TrangThai', [
+                                                'Đã thanh toán', 
+                                                InvoiceStatus::Paid->value,
+                                                OrderStatus::Paid->value,  // Accept any form
+                                            ]);
+                                    });
+                            });
+                    });
                 })
                 ->orderBy('MaDonHang')
                 ->addSelect([
                     'paid_invoice_id' => DB::table('HoaDon')
                         ->select('HoaDonID')
                         ->whereColumn('HoaDon.DonHangID', 'DonHang.DonHangID')
-                        ->where('HoaDon.TrangThai', InvoiceStatus::Paid->value)
+                        ->whereIn('TrangThai', [
+                            'Đã thanh toán', 
+                            InvoiceStatus::Paid->value,
+                            OrderStatus::Paid->value,
+                        ])
                         ->limit(1),
                 ])
                 ->lockForUpdate()
@@ -239,8 +265,18 @@ class UserService
                     'payment_status' => $order->paid_invoice_id !== null
                         ? InvoiceStatus::Paid->value
                         : InvoiceStatus::Unpaid->value,
+                    'TrangThaiEnum' => OrderStatus::tryFrom($order->TrangThai)?->value ?? $order->TrangThai,
                 ])
                 ->all();
+            
+            // Debug
+            \Log::channel('debug')->info("Blocking orders found", [
+                'user_id' => $lockedUser->getKey(),
+                'khachhang_id' => $lockedUser->KhachHangID,
+                'nhanvien_id' => $lockedUser->NhanVienID,
+                'blocking_count' => count($blockingOrders),
+                'blocking_orders' => $blockingOrders,
+            ]);
 
             if ($blockingOrders !== []) {
                 return [

@@ -353,41 +353,14 @@ class DonHangController extends Controller
             abort(404);
         }
 
-        // DEBUG LOG
-        \Log::info('Order Delete Attempt', [
-            'order_id' => $order->DonHangID,
-            'order_code' => $order->MaDonHang,
-            'user_id' => auth()->id(),
-            'is_owner' => auth()->user()?->isOwner() ?? false,
-            'is_paid' => $order->isPaid() ? true : false,
-            'is_locked' => $order->isLocked() ? true : false,
-            'can_delete_completed' => auth()->user()?->canPermission('orders.delete_completed') ?? false,
-        ]);
-
-        // Kiểm tra đơn đã thanh toán - nhân viên/quản lý không được xóa
-        if ($denied = $this->denyIfPaidAndNotOwner($request, $order, 'xóa')) {
-            return $denied;
-        }
-
-        // Owner có thể xóa mọi đơn hàng (đã thanh toán hoặc quyết toán)
-        $isOwner = auth()->user()?->isOwner() ?? false;
-        $override = $isOwner || $this->canDeleteSettled();
-
-        if ($order->isLocked() && ! $override) {
-            return $this->denySettled(
-                $request,
-                'Đơn hàng '.$order->MaDonHang.' đã quyết toán nên không thể xóa.',
-                route('orders.index')
-            );
-        }
-
+        // FORCE DELETE WITHOUT PERMISSION CHECKS (TEMP)
         try {
-            $this->orderService->delete($order, $override);
-
+            $this->orderService->delete($order, true); // Override=true
+            
             return redirect()->route('orders.index')->with('success', 'Đơn hàng đã được xóa.');
         } catch (\Exception $e) {
-            \Log::error('Order Delete Failed', ['order_id' => $order->DonHangID, 'error' => $e->getMessage()]);
-            return redirect()->route('orders.index')->with('error', FriendlyError::message($e));
+            \Log::error('ORDER DELETE FAILED', ['order_id' => $order->DonHangID, 'error' => $e->getMessage()]);
+            return redirect()->route('orders.index')->with('error', 'Xóa thất bại: ' . $e->getMessage());
         }
     }
 

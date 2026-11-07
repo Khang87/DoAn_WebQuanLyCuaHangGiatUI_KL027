@@ -132,11 +132,6 @@
                                value="{{ old('pickup_date', $bookingDocument->ThoiGianDuKien?->format('Y-m-d')) }}" 
                                required {{ $appointmentDateTime ? 'min="'.$appointmentDateTime->format('Y-m-d').'"' : '' }}>
                         @error('pickup_date')<div class="text-danger small mt-1">{{ $message }}</div>@enderror
-                        @if($appointmentDateTime)
-                            <div class="form-text text-muted">
-                                Ngày phải >= {{ $appointmentDateTime->format('d/m/Y') }}{{ ($appointmentDateTime->hour > 0 || $appointmentDateTime->minute > 0) ? ' lúc ' . $appointmentDateTime->format('H:i') : '' }}
-                            </div>
-                        @endif
                     </div>
                     <div class="col-md-6">
                         <label class="form-label" for="pickup_time">Giờ nhận đồ dự kiến <span class="text-danger">*</span></label>
@@ -144,10 +139,7 @@
                                min="{{ $workingHourMin }}" max="{{ $workingHourMax }}"
                                step="3600"
                                value="{{ old('pickup_time', $bookingDocument->ThoiGianDuKien?->format('H:i')) }}" required>
-                        @error('pickup_time')<div class="text-danger small mt-1">{{ $message }}</div>@enderror>
-                        <div class="form-text text-muted">
-                            Giờ làm việc: 8:00 - 17:00
-                        </div>
+                        @error('pickup_time')<div class="text-danger small mt-1">{{ $message }}</div>@enderror
                     </div>
                 </div>
 
