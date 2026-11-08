@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Enums\BookingStatus;
 use App\Enums\DeliveryStatus;
+use App\Enums\OrderStatus;
 use App\Http\Controllers\Api\ApiController;
 use App\Models\BangGia;
 use App\Models\Booking;
@@ -292,12 +293,30 @@ class StaffMobileController extends ApiController
     public function orders(): JsonResponse
     {
         $employeeId = Auth::user()->NhanVienID;
-        $rows = $this->assignedOrdersForEmployee($employeeId)->with([
-            'booking',
-            'booking.giaoNhanDuKiens' => fn ($delivery) => $delivery->where('NhanVienID', $employeeId)->where('LoaiGiaoNhan', 'GIAO_DO')->where('HinhThuc', 'Tại nhà'),
-            'giaoNhans' => fn ($delivery) => $delivery->where('NhanVienID', $employeeId)->where('LoaiGiaoNhan', 'GIAO_DO')->where('HinhThuc', 'Tại nhà'),
-            'khachHang', 'khuyenMai', 'chiTietDonHangs.dichVu', 'chiTietDonHangs.loaiDoGiat', 'chiTietDonHangs.donViTinh',
-        ])
+        $deliveryStatuses = [
+            OrderStatus::Washed->value,
+            OrderStatus::Delivering->value,
+            OrderStatus::Delivered->value,
+            OrderStatus::Paid->value,
+        ];
+        $rows = $this->assignedOrdersForEmployee($employeeId)
+            ->where(function ($query) use ($deliveryStatuses, $employeeId): void {
+                $query->whereNotIn('TrangThai', $deliveryStatuses)
+                    ->orWhereHas('giaoNhans', fn ($delivery) => $delivery
+                        ->where('NhanVienID', $employeeId)
+                        ->where('LoaiGiaoNhan', 'GIAO_DO')
+                        ->where('HinhThuc', 'Tại nhà'))
+                    ->orWhereHas('booking.giaoNhanDuKiens', fn ($delivery) => $delivery
+                        ->where('NhanVienID', $employeeId)
+                        ->where('LoaiGiaoNhan', 'GIAO_DO')
+                        ->where('HinhThuc', 'Tại nhà'));
+            })
+            ->with([
+                'booking',
+                'booking.giaoNhanDuKiens' => fn ($delivery) => $delivery->where('NhanVienID', $employeeId)->where('LoaiGiaoNhan', 'GIAO_DO')->where('HinhThuc', 'Tại nhà'),
+                'giaoNhans' => fn ($delivery) => $delivery->where('NhanVienID', $employeeId)->where('LoaiGiaoNhan', 'GIAO_DO')->where('HinhThuc', 'Tại nhà'),
+                'khachHang', 'khuyenMai', 'chiTietDonHangs.dichVu', 'chiTietDonHangs.loaiDoGiat', 'chiTietDonHangs.donViTinh',
+            ])
             ->latest('NgayTao')->get();
 
         return response()->json(['data' => $rows->map(fn (DonHang $o) => [

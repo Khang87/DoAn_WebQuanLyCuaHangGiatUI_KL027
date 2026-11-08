@@ -326,6 +326,61 @@ class BookingOrderConversionTest extends TestCase
         $this->assertDatabaseCount('DonHang', 0);
     }
 
+    public function test_mobile_order_queue_only_includes_post_wash_orders_with_assigned_home_delivery(): void
+    {
+        $storeBooking = $this->createBooking([
+            'HinhThucNhanDo' => 'Tại cửa hàng',
+            'DiaChiNhan' => null,
+            'HinhThucTraDo' => 'Tại cửa hàng',
+            'DiaChiTra' => null,
+        ]);
+        $storeOrder = $this->createConvertedOrderForBooking($storeBooking);
+        $storeOrder->forceFill([
+            'NhanVienID' => 1,
+            'TrangThai' => OrderStatus::Washed->value,
+        ])->saveQuietly();
+
+        $processingBooking = $this->createBooking([
+            'HinhThucNhanDo' => 'Tại cửa hàng',
+            'DiaChiNhan' => null,
+            'HinhThucTraDo' => 'Tại cửa hàng',
+            'DiaChiTra' => null,
+        ]);
+        $processingOrder = $this->createConvertedOrderForBooking($processingBooking);
+        $processingOrder->forceFill([
+            'NhanVienID' => 1,
+            'TrangThai' => OrderStatus::Washing->value,
+        ])->saveQuietly();
+
+        $homeBooking = $this->createBooking([
+            'HinhThucNhanDo' => 'Tại cửa hàng',
+            'DiaChiNhan' => null,
+            'HinhThucTraDo' => 'Tại nhà',
+            'DiaChiTra' => '12 Nguyễn Huệ',
+        ]);
+        $this->actingAsBookingEmployee();
+        $this->bookingService->approve($homeBooking);
+        DB::table('BookingGiaoNhan')
+            ->where('BookingID', $homeBooking->BookingID)
+            ->where('LoaiGiaoNhan', 'GIAO_DO')
+            ->update(['NhanVienID' => 1]);
+        $homeOrder = $this->createConvertedOrderForBooking($homeBooking);
+        $homeOrder->forceFill([
+            'NhanVienID' => 1,
+            'TrangThai' => OrderStatus::Washed->value,
+        ])->saveQuietly();
+
+        $this->actingAsBookingEmployee();
+        $this->withoutMiddleware(AuthenticateStaffApiToken::class);
+
+        $response = $this->getJson('/api/v1/staff/orders')->assertOk();
+
+        $orderIds = collect($response->json('data'))->pluck('DonHangID')->all();
+        $this->assertNotContains($storeOrder->DonHangID, $orderIds);
+        $this->assertContains($processingOrder->DonHangID, $orderIds);
+        $this->assertContains($homeOrder->DonHangID, $orderIds);
+    }
+
     public function test_confirm_http_route_rejects_booking_before_actual_receipt(): void
     {
         $this->createInspectionCatalog();
