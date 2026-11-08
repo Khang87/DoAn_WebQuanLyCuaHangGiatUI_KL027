@@ -303,6 +303,10 @@
         overflow: hidden;
         text-overflow: ellipsis;
     }
+    .recent-orders-table .recent-orders-action-cell {
+        overflow: visible;
+        text-overflow: clip;
+    }
 </style>
 @endpush
 
@@ -543,13 +547,12 @@
                             <tr>
                                 <th scope="col" style="width: 48px;">STT</th>
                                 <th scope="col" style="width: 12%;" class="ps-3">Mã đơn</th>
-                                <th scope="col" style="width: 14%;">Khách hàng</th>
-                                <th scope="col" style="width: 29%;">Dịch vụ</th>
-                                <th scope="col" style="width: 12%;" class="text-center">Trạng thái</th>
-                                <th scope="col" style="width: 12%;" class="text-end">Tổng tiền</th>
-                                <th scope="col" style="width: 11%;" class="text-end">Ngày tạo</th>
+                                <th scope="col" style="width: 18%;">Khách hàng</th>
+                                <th scope="col" style="width: 32%;">Dịch vụ</th>
+                                <th scope="col" style="width: 14%;" class="text-end">Tổng tiền</th>
+                                <th scope="col" style="width: 12%;" class="text-end">Ngày tạo</th>
                                 @can('orders.view')
-                                    <th scope="col" style="width: 8%;" class="text-end pe-3">Thao tác</th>
+                                    <th scope="col" style="width: 12%;" class="text-center">Thao tác</th>
                                 @endcan
                             </tr>
                         </thead>
@@ -566,25 +569,20 @@
                                     </div>
                                 </td>
                                 <td class="text-secondary text-truncate">{{ $order->items->pluck('service.name')->filter()->join(', ') ?: ($order->service?->name ?: '-') }}</td>
-                                <td class="text-center">
-                                    <div class="order-status-badges d-inline-flex align-items-center flex-nowrap gap-1 text-nowrap">
-                                        <x-admin.order-status-badges :order="$order" :is-paid="$order->isPaid()" :is-receiving="false" compact />
-                                    </div>
-                                </td>
                                 <td class="text-end fw-bold text-dark">{{ number_format($order->total_amount, 0, ',', '.') }} VNĐ</td>
                                 <td class="text-end">
                                     <div class="text-dark fw-bold">{{ $createdAt?->format('d/m/Y') ?? '-' }}</div>
                                     <small class="text-muted fs-8 fw-bold">{{ $createdAt?->format('H:i') ?? '' }}</small>
                                 </td>
                                 @can('orders.view')
-                                    <td class="text-end pe-3">
-                                        <a href="{{ route('orders.show', $order) }}" class="btn btn-order-action view" title="Xem chi tiết"><i class="bi bi-eye"></i></a>
+                                    <td class="text-center recent-orders-action-cell">
+                                        <a href="{{ route('orders.show', $order) }}" class="btn btn-order-action view" title="Xem chi tiết" aria-label="Xem chi tiết đơn hàng {{ $order->code }}"><i class="bi bi-eye" aria-hidden="true"></i></a>
                                     </td>
                                 @endcan
                             </tr>
                             @empty
                             <tr>
-                                <td colspan="{{ auth()->user()?->can('orders.view') ? 8 : 7 }}" class="text-center text-muted py-4">Chưa có đơn hàng nào</td>
+                                <td colspan="{{ auth()->user()?->can('orders.view') ? 7 : 6 }}" class="text-center text-muted py-4">Chưa có đơn hàng nào</td>
                             </tr>
                             @endforelse
                         </tbody>

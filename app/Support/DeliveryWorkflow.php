@@ -21,7 +21,7 @@ class DeliveryWorkflow
 
         return match ($status) {
             DeliveryStatus::Pending => $isPickup
-                ? self::action('Bắt đầu nhận đồ', 'bi-box-arrow-in-down', '#2563eb')
+                ? ($isInStore ? self::action('Bắt đầu nhận đồ', 'bi-box-arrow-in-down', '#2563eb') : null)
                 : self::action(
                     $isInStore ? 'Xác nhận đã bàn giao' : 'Bắt đầu giao đồ',
                     $isInStore ? 'bi-check-circle' : 'bi-truck',

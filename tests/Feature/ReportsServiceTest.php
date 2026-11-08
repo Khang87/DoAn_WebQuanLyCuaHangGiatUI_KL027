@@ -422,6 +422,22 @@ class ReportsServiceTest extends TestCase
         $this->assertStringContainsString('Đã thanh toán', $statusBadges);
     }
 
+    public function test_recent_orders_table_hides_status_and_keeps_actions_visible(): void
+    {
+        $html = $this->actingAs($this->reportOwner())
+            ->get('/reports')
+            ->assertOk()
+            ->getContent();
+
+        preg_match('/<table[^>]*recent-orders-table[^>]*>(.*?)<\/table>/s', $html, $recentOrdersTable);
+
+        $this->assertNotEmpty($recentOrdersTable);
+        $this->assertDoesNotMatchRegularExpression('/<th[^>]*>\s*Trạng thái\s*<\/th>/', $recentOrdersTable[1]);
+        $this->assertStringContainsString('>Thao tác</th>', $recentOrdersTable[1]);
+        $this->assertStringContainsString('recent-orders-action-cell', $recentOrdersTable[1]);
+        $this->assertStringContainsString('aria-label="Xem chi tiết đơn hàng', $recentOrdersTable[1]);
+    }
+
     public function test_invalid_filter_shape_falls_back_to_the_default_period(): void
     {
         $this->actingAs($this->reportOwner())
@@ -439,7 +455,6 @@ class ReportsServiceTest extends TestCase
             ->assertSee('Giá trị dịch vụ (Chưa gồm phí ship &amp; giảm giá)', false)
             ->assertSee('Số lượng đặt')
             ->assertSee('Số giao dịch')
-            ->assertSee('order-status-badges d-inline-flex align-items-center flex-nowrap gap-1 text-nowrap', false)
             ->assertSee('formatter: value => formatCurrency(value)', false)
             ->assertSee('period-date-range-fields--reserved', false)
             ->assertSee('visibility: hidden;', false);

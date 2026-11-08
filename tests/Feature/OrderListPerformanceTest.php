@@ -217,6 +217,29 @@ class OrderListPerformanceTest extends TestCase
         $this->assertStringContainsString(route('orders.edit', 2), $html);
     }
 
+    public function test_paid_orders_never_show_the_edit_button_even_to_the_owner(): void
+    {
+        $this->seedOrder(1, OrderStatus::Washed);
+        $this->seedOrder(2, OrderStatus::Delivered);
+        $this->seedOrder(3, OrderStatus::Paid);
+        $this->seedOrder(4, OrderStatus::Washed);
+        DB::table('HoaDon')->insert(['DonHangID' => 1, 'TrangThai' => InvoiceStatus::Paid->value]);
+        DB::table('ThanhToan')->insert(['DonHangID' => 2, 'TrangThai' => PaymentStatus::Paid->value]);
+
+        $owner = Mockery::mock(User::class)->makePartial();
+        $owner->shouldReceive('isActive')->andReturnTrue();
+        $owner->shouldReceive('isOwner')->andReturnTrue();
+        $owner->shouldReceive('canPermission')->andReturnTrue();
+        $this->actingAs($owner);
+
+        $html = view('admin.orders.index', ['orders' => app(OrderService::class)->getAll()])->render();
+
+        foreach ([1, 2, 3] as $paidOrderId) {
+            $this->assertStringNotContainsString(route('orders.edit', $paidOrderId), $html);
+        }
+        $this->assertStringContainsString(route('orders.edit', 4), $html);
+    }
+
     public function test_create_invoice_button_is_hidden_for_settled_order_without_invoice(): void
     {
         $this->seedOrder(1, OrderStatus::Delivered);

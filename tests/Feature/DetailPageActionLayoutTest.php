@@ -274,9 +274,10 @@ class DetailPageActionLayoutTest extends TestCase
 
     public function test_delivery_workflow_progress_action_follows_the_leg_ladder(): void
     {
+        $this->assertNull(DeliveryWorkflow::progressAction('NHAN_DO', 'Tại nhà', DeliveryStatus::Pending));
         $this->assertSame(
             'Bắt đầu nhận đồ',
-            DeliveryWorkflow::progressAction('NHAN_DO', 'Tại nhà', DeliveryStatus::Pending)['label'],
+            DeliveryWorkflow::progressAction('NHAN_DO', 'Tại cửa hàng', DeliveryStatus::Pending)['label'],
         );
         $this->assertSame(
             'Xác nhận đã nhận đồ',

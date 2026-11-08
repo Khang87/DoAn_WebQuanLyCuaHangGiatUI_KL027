@@ -79,8 +79,9 @@
                         <td class="text-nowrap">
                             @php
                                 $canManageSettled = ! $order->isLocked() || auth()->user()?->isOwner();
-                                $canEditOrder = $order->TrangThai === \App\Enums\OrderStatus::Pending->value
-                                    || (auth()->user()?->canPermission('orders.edit_completed') ?? false);
+                                $canEditOrder = ! $order->isLocked()
+                                    && ($order->TrangThai === \App\Enums\OrderStatus::Pending->value
+                                        || (auth()->user()?->canPermission('orders.edit_completed') ?? false));
                                 $operationalStatus = $order->operationalStatusEnum();
                                 $nextOrderAction = $canManageSettled
                                     ? \App\Support\OrderWorkflow::nextAction($order)

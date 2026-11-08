@@ -78,6 +78,7 @@
                                 $deliveryStatus,
                             );
                             $canEditOperationalDelivery = ! $isBookingDocument
+                                && $deliveryStatus !== \App\Enums\DeliveryStatus::Completed
                                 && ($delivery->task_type !== 'GIAO_DO'
                                     || (
                                         ! in_array($deliveryStatus, [\App\Enums\DeliveryStatus::Completed, \App\Enums\DeliveryStatus::Cancelled], true)

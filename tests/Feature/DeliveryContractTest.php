@@ -709,6 +709,7 @@ class DeliveryContractTest extends TestCase
 
     public function test_unified_delivery_actions_respect_source_permission_and_mutable_state(): void
     {
+        DB::table('DonHang')->insert(['DonHangID' => 2, 'BookingID' => null]);
         DB::table('BookingGiaoNhan')->insert([
             'BookingID' => 1,
             'DonHangID' => 1,
@@ -729,6 +730,14 @@ class DeliveryContractTest extends TestCase
             'DonHangID' => 1,
             'NhanVienID' => 1,
             'LoaiGiaoNhan' => 'GIAO_DO',
+            'HinhThuc' => 'Tại nhà',
+            'DiaChi' => '12 Nguyễn Huệ',
+            'TrangThai' => 'Hoàn thành',
+        ], 'GiaoNhanID');
+        $completedPickupId = DB::table('GiaoNhan')->insertGetId([
+            'DonHangID' => 2,
+            'NhanVienID' => 1,
+            'LoaiGiaoNhan' => 'NHAN_DO',
             'HinhThuc' => 'Tại nhà',
             'DiaChi' => '12 Nguyễn Huệ',
             'TrangThai' => 'Hoàn thành',
@@ -759,6 +768,7 @@ class DeliveryContractTest extends TestCase
             ->assertSee('method="POST"', false)
             ->assertDontSee('title="Hủy lịch giao"', false)
             ->assertDontSee(route('deliveries.edit', $completedId), false)
+            ->assertDontSee(route('deliveries.edit', $completedPickupId), false)
             ->assertDontSee('deliveries/booking-documents/1/edit', false)
             ->assertDontSee('deleteDeliveryForm', false)
             ->assertDontSee('value="DELETE"', false);
@@ -773,7 +783,7 @@ class DeliveryContractTest extends TestCase
             ->assertSee('Quay lại');
         $this->get(route('deliveries.edit', $completedId))->assertForbidden();
         $successBadge = 'badge status-badge bg-success-subtle text-success-emphasis border border-success rounded-pill px-3 py-2';
-        $this->assertSame(2, substr_count($response->getContent(), $successBadge));
+        $this->assertSame(3, substr_count($response->getContent(), $successBadge));
         $response->assertSee('Đã nhận đồ')->assertSee('Hoàn thành')
             ->assertSee('badge status-badge bg-warning-subtle text-warning-emphasis border border-warning rounded-pill px-3 py-2', false)
             ->assertSee('Chờ giao đồ');
@@ -813,9 +823,9 @@ class DeliveryContractTest extends TestCase
 
         $this->actingAs($manager)->withoutMiddleware()->get(route('deliveries.index'))
             ->assertOk()
-            ->assertSee('action="'.route('deliveries.advance-progress', $intakeId).'"', false)
+            ->assertDontSee('action="'.route('deliveries.advance-progress', $intakeId).'"', false)
             ->assertDontSee('action="'.route('deliveries.advance-progress', $returnId).'"', false)
-            ->assertSee('Bắt đầu nhận đồ')
+            ->assertDontSee('Bắt đầu nhận đồ')
             ->assertDontSee('Bắt đầu giao đồ');
 
         DB::table('GiaoNhan')->where('GiaoNhanID', $intakeId)
@@ -823,7 +833,7 @@ class DeliveryContractTest extends TestCase
 
         $this->get(route('deliveries.index'))
             ->assertOk()
-            ->assertSee('action="'.route('deliveries.advance-progress', $returnId).'"', false)
+            ->assertSee('action="'.route('deliveries.advance-progress', [$returnId, 'return_to' => 'deliveries']).'"', false)
             ->assertSee('Bắt đầu giao đồ');
 
         $this->assertSame(DeliveryStatus::Delivering->badgeClass(), DeliveryStatus::Picking->badgeClass());
@@ -923,10 +933,10 @@ class DeliveryContractTest extends TestCase
 
         $this->get(route('deliveries.index'))
             ->assertOk()
+            ->assertDontSee('action="'.route('deliveries.booking-documents.advance-progress', [$intake, 'return_to' => 'deliveries']).'"', false)
+            ->assertDontSee('Bắt đầu nhận đồ')
             ->assertSee('BGN-'.$intake->BookingGiaoNhanID)
             ->assertSee(route('deliveries.booking-documents.edit', [$intake, 'return_to' => 'deliveries']), false)
-            ->assertSee('action="'.route('deliveries.booking-documents.advance-progress', [$intake, 'return_to' => 'deliveries']).'"', false)
-            ->assertSee('Bắt đầu nhận đồ')
             ->assertDontSee(route('bookings.inspection', 2), false)
             ->assertDontSee('cancelBookingDeliveryForm_'.$intake->BookingGiaoNhanID, false);
 
