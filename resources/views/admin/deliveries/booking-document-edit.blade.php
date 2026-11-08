@@ -127,6 +127,10 @@
 
                     @php
                         $appointmentDateTime = $booking?->getAppointmentDateTime();
+                        $minimumScheduleDate = max(
+                            now()->toDateString(),
+                            $appointmentDateTime?->format('Y-m-d') ?? now()->toDateString(),
+                        );
                         // Ràng buộc giờ làm việc: 8:00 - 17:00
                         $workingHourMin = '08:00';
                         $workingHourMax = '17:00';
@@ -134,8 +138,8 @@
                     <div class="col-md-6">
                         <label class="form-label" for="pickup_date">Ngày nhận đồ dự kiến <span class="text-danger">*</span></label>
                         <input type="date" class="form-control" id="pickup_date" name="pickup_date"
-                               value="{{ old('pickup_date', $bookingDocument->ThoiGianDuKien?->format('Y-m-d')) }}" 
-                               required {{ $appointmentDateTime ? 'min="'.$appointmentDateTime->format('Y-m-d').'"' : '' }}>
+                               value="{{ old('pickup_date', $bookingDocument->ThoiGianDuKien?->format('Y-m-d')) }}"
+                               min="{{ $minimumScheduleDate }}" required>
                         @error('pickup_date')<div class="text-danger small mt-1">{{ $message }}</div>@enderror
                     </div>
                     <div class="col-md-6">

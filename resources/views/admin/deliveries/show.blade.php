@@ -6,6 +6,9 @@
 @section('content')
 @php
     $deliveryStatus = \App\Enums\DeliveryStatus::parseForLeg($delivery->TrangThai, $delivery->LoaiGiaoNhan);
+    $deliveryAddress = $delivery->HinhThuc === 'Tại cửa hàng'
+        ? config('services.google_routes.store_address')
+        : ($delivery->DiaChi ?: 'Chưa cập nhật địa chỉ.');
     $activeDeliveryStatus = $delivery->LoaiGiaoNhan === 'NHAN_DO'
         ? \App\Enums\DeliveryStatus::Picking
         : \App\Enums\DeliveryStatus::Delivering;
@@ -102,7 +105,7 @@
                 <x-admin.detail.info-item label="Khách hàng" :value="$delivery->donHang?->khachHang?->HoTen ?: '—'" />
                 <x-admin.detail.info-item label="Số điện thoại" :value="$delivery->donHang?->khachHang?->SoDienThoai ?: '—'" />
                 <x-admin.detail.info-item :label="$delivery->LoaiGiaoNhan === 'NHAN_DO' ? 'HÌNH THỨC NHÂN VIÊN NHẬN ĐỒ' : 'HÌNH THỨC NHÂN VIÊN GIAO ĐỒ'" :value="$delivery->HinhThuc" />
-                <x-admin.detail.info-item :label="$delivery->LoaiGiaoNhan === 'NHAN_DO' ? 'Địa chỉ nhân viên nhận đồ' : 'Địa chỉ nhân viên giao đồ'" :value="$delivery->DiaChi ?: 'Chưa cập nhật địa chỉ.'" />
+                <x-admin.detail.info-item :label="$delivery->LoaiGiaoNhan === 'NHAN_DO' ? 'Địa chỉ nhân viên nhận đồ' : 'Địa chỉ nhân viên giao đồ'" :value="$deliveryAddress" />
                 <x-admin.detail.info-item :label="$delivery->LoaiGiaoNhan === 'NHAN_DO' ? 'Nhân viên phụ trách nhận đồ' : 'Nhân viên phụ trách giao đồ'" :value="$delivery->nhanVien?->HoTen ?: 'Chưa phân công'" />
                 <x-admin.detail.info-item :label="$delivery->LoaiGiaoNhan === 'NHAN_DO' ? 'Thời gian nhận đồ dự kiến' : 'Thời gian giao đồ dự kiến'" :value="$delivery->ThoiGianDuKien?->format('d/m/Y H:i')" />
                 <x-admin.detail.info-item :label="$delivery->LoaiGiaoNhan === 'NHAN_DO' ? 'Thời gian nhận đồ thực tế' : 'Thời gian giao đồ thực tế'" :value="$delivery->ThoiGianThucTe?->format('d/m/Y H:i') ?: 'Chưa hoàn tất'" />

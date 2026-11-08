@@ -16,7 +16,7 @@
     $statusValue = ! $isIntake
         ? ($bookingDocument->donHang?->giaoNhans->firstWhere('LoaiGiaoNhan', 'GIAO_DO')?->TrangThai ?? $bookingDocument->TrangThai)
         : $bookingDocument->TrangThai;
-    $documentAddress = $isIntake && $bookingDocument->HinhThuc === 'Tại cửa hàng'
+    $documentAddress = $bookingDocument->HinhThuc === 'Tại cửa hàng'
         ? config('services.google_routes.store_address')
         : ($bookingDocument->DiaChi ?: 'Không yêu cầu địa chỉ giao tận nhà');
 @endphp
@@ -49,7 +49,7 @@
                 <x-admin.detail.info-item label="Khách hàng" :value="$booking?->khachHang?->HoTen ?: '—'" />
                 <x-admin.detail.info-item label="Số điện thoại" :value="$booking?->khachHang?->SoDienThoai ?: '—'" />
                 <x-admin.detail.info-item :label="$isIntake ? 'HÌNH THỨC NHÂN VIÊN NHẬN ĐỒ' : 'HÌNH THỨC NHÂN VIÊN GIAO ĐỒ'" :value="$bookingDocument->HinhThuc ?: '—'" />
-                <x-admin.detail.info-item :label="$isIntake ? 'Địa chỉ nhận đồ' : 'Địa chỉ giao đồ'" :value="$documentAddress" />
+                <x-admin.detail.info-item :label="$isIntake ? 'Địa chỉ nhân viên nhận đồ' : 'Địa chỉ nhân viên giao đồ'" :value="$documentAddress" />
                 <x-admin.detail.info-item :label="$isIntake ? 'Nhân viên phụ trách nhận đồ' : 'Nhân viên phụ trách giao đồ'" :value="$bookingDocument->nhanVien?->HoTen ?: '—'" />
                 <x-admin.detail.info-item label="Nhân viên xác nhận đặt lịch" :value="$booking?->nhanVienXacNhan?->HoTen ?: '—'" />
                 <x-admin.detail.info-item :label="$isIntake ? 'Thời gian nhận đồ dự kiến' : 'Thời gian giao đồ dự kiến'" :value="$bookingDocument->ThoiGianDuKien?->format('d/m/Y H:i') ?: 'Chưa lên lịch'" />

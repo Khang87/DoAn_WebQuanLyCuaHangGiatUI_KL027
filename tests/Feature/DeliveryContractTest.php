@@ -874,6 +874,7 @@ class DeliveryContractTest extends TestCase
             ->assertSee('name="pickup_date"', false)
             ->assertSee('name="pickup_time"', false);
         $this->assertMatchesRegularExpression('/name="pickup_date"[^>]*required/', $editResponse->getContent());
+        $this->assertMatchesRegularExpression('/name="pickup_date"[^>]*min="2026-10-07"/', $editResponse->getContent());
         $this->assertMatchesRegularExpression('/name="pickup_time"[^>]*required/', $editResponse->getContent());
         $this->assertSame(1, substr_count($editResponse->getContent(), '</i>Quay lại'));
 
@@ -928,6 +929,15 @@ class DeliveryContractTest extends TestCase
             ->assertSee('Bắt đầu nhận đồ')
             ->assertDontSee(route('bookings.inspection', 2), false)
             ->assertDontSee('cancelBookingDeliveryForm_'.$intake->BookingGiaoNhanID, false);
+
+        $this->travelTo(now()->setDate(2026, 10, 10)->startOfDay());
+        $this->put(route('deliveries.booking-documents.update', $intake), [
+            'employee_id' => 1,
+            'address' => '12 Nguyễn Huệ',
+            'pickup_date' => '2026-10-09',
+            'pickup_time' => '11:30',
+        ])->assertSessionHasErrors('pickup_time');
+        $this->assertSame('2026-10-09 11:30:00', $intake->fresh()->ThoiGianDuKien->format('Y-m-d H:i:s'));
 
         $this->post(route('deliveries.booking-documents.advance-progress', $intake))
             ->assertRedirect(route('bookings.inspection', 2))
@@ -2025,7 +2035,7 @@ class DeliveryContractTest extends TestCase
         $this->assertSame(0, GiaoNhan::query()->count());
     }
 
-    public function test_booking_store_return_assignment_screen_uses_store_fulfillment_without_an_address(): void
+    public function test_booking_store_return_assignment_screen_uses_the_store_address(): void
     {
         DB::table('Booking')->where('BookingID', 1)->update([
             'HinhThucTraDo' => 'Tại cửa hàng',
@@ -2042,10 +2052,11 @@ class DeliveryContractTest extends TestCase
 
         $this->assertInstanceOf(View::class, $response);
         $this->assertSame('Tại cửa hàng', $response->getData()['selectedFulfillment']);
-        $this->assertNull($response->getData()['selectedAddress']);
+        $this->assertSame(config('services.google_routes.store_address'), $response->getData()['selectedAddress']);
         view()->share('errors', new ViewErrorBag);
         $html = $response->render();
         $this->assertMatchesRegularExpression('/<input[^>]*class="form-control delivery-locked-control bg-light text-muted"[^>]*id="address"[^>]*disabled/', $html);
+        $this->assertStringContainsString('value="'.config('services.google_routes.store_address').'"', $html);
         $this->assertSame(0, GiaoNhan::count());
     }
 
@@ -2934,6 +2945,59 @@ class DeliveryContractTest extends TestCase
             ['GIAO_DO', 'Đang thực hiện', 'Đang giao đồ', 'Hiện tại'],
             ['GIAO_DO', 'Hoàn thành', 'Hoàn thành', 'Đã hoàn tất'],
         ];
+    }
+
+    public function test_store_delivery_address_is_shown_on_details_and_edit_forms(): void
+    {
+        $storeAddress = config('services.google_routes.store_address');
+        view()->share('errors', new ViewErrorBag);
+        $delivery = (new GiaoNhan)->forceFill([
+            'GiaoNhanID' => 1,
+            'LoaiGiaoNhan' => 'GIAO_DO',
+            'HinhThuc' => 'Tại cửa hàng',
+            'DiaChi' => null,
+            'TrangThai' => 'Chờ thực hiện',
+        ]);
+        $delivery->setRelation('donHang', null);
+        $delivery->setRelation('nhanVien', null);
+
+        $detailHtml = view('admin.deliveries.show', [
+            'delivery' => $delivery,
+            'displayCode' => 'GN-1',
+            'canCancelReturnDelivery' => false,
+            'canEditReturnDelivery' => false,
+        ])->render();
+        $this->assertStringContainsString('Địa chỉ nhân viên giao đồ', $detailHtml);
+        $this->assertStringContainsString($storeAddress, $detailHtml);
+
+        $editHtml = view('admin.deliveries.edit', [
+            'delivery' => $delivery,
+            'assignedEmployee' => null,
+            'employees' => collect(),
+            'orders' => collect(),
+            'statusOptions' => DeliveryStatus::optionsForLeg('GIAO_DO'),
+            'canAssignEmployee' => true,
+        ])->render();
+        $this->assertStringContainsString('value="'.$storeAddress.'"', $editHtml);
+
+        $bookingDocument = (new BookingGiaoNhan)->forceFill([
+            'BookingGiaoNhanID' => 1,
+            'LoaiGiaoNhan' => 'GIAO_DO',
+            'HinhThuc' => 'Tại cửa hàng',
+            'DiaChi' => null,
+            'TrangThai' => 'Chờ thực hiện',
+        ]);
+        $bookingDocument->setRelation('booking', null);
+        $bookingDocument->setRelation('donHang', null);
+        $bookingDocument->setRelation('nhanVien', null);
+
+        $bookingDocumentHtml = view('admin.deliveries.booking-document', [
+            'bookingDocument' => $bookingDocument,
+            'displayCode' => 'BGN-1',
+            'isIntake' => false,
+        ])->render();
+        $this->assertStringContainsString('Địa chỉ nhân viên giao đồ', $bookingDocumentHtml);
+        $this->assertStringContainsString($storeAddress, $bookingDocumentHtml);
     }
 
     #[DataProvider('deliveryProgressDisplayCases')]

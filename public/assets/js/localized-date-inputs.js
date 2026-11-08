@@ -43,6 +43,7 @@ document.addEventListener('DOMContentLoaded', function () {
             dateFormat: dateFormat,
             disableMobile: true,
             enableTime: includesTime,
+            minDate: input.min || null,
             showMonthsShort: false, // Full month names instead of abbreviated
             nativeInputOffsetForJqueryUI: [0, 0],
             onReady: function (_dates, _dateString, instance) {

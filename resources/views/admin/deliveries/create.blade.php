@@ -59,6 +59,9 @@
     $selectedMethod ??= old('method', 'nhan_do');
     $selectedFulfillment ??= old('fulfillment', 'Tại nhà');
     $selectedAddress ??= old('address');
+    if ($selectedFulfillment === 'Tại cửa hàng') {
+        $selectedAddress = config('services.google_routes.store_address');
+    }
     $lockDeliveryType ??= false;
     $statusOptions ??= \App\Enums\DeliveryStatus::optionsForLeg($selectedMethod === 'giao_do' ? 'GIAO_DO' : 'NHAN_DO');
     $backUrl ??= request()->query('return_to') === 'deliveries'
@@ -78,7 +81,7 @@
             <div class="alert alert-danger" role="alert"><ul class="mb-0">@foreach($errors->all() as $message)<li>{{ $message }}</li>@endforeach</ul></div>
         @endif
         <div class="row g-3">
-            <div class="col-md-6"><label class="form-label" for="order_id">Đơn hàng <span class="text-danger">*</span></label><select class="form-select" id="order_id" name="order_id" required><option value="">Chọn đơn hàng</option>@foreach($orders as $order)<option value="{{ $order->DonHangID }}" data-booking-id="{{ $order->booking?->BookingID }}" data-receive-method="{{ $order->booking?->HinhThucNhanDo }}" data-receive-address="{{ $order->booking?->DiaChiNhan }}" data-return-method="{{ $order->booking?->HinhThucTraDo }}" data-return-address="{{ $order->booking?->DiaChiTra }}" data-pickup-date="{{ $order->booking?->NgayHen?->format('Y-m-d') }}" data-pickup-time="{{ $order->booking?->GioHen?->format('H:i') }}" @selected($selectedOrderId == $order->DonHangID)>{{ $order->MaDonHang }} · {{ $order->khachHang?->HoTen ?: 'Khách hàng' }}</option>@endforeach</select></div>
+            <div class="col-md-6"><label class="form-label" for="order_id">Đơn hàng <span class="text-danger">*</span></label><select class="form-select" id="order_id" name="order_id" required><option value="">Chọn đơn hàng</option>@foreach($orders as $order)<option value="{{ $order->DonHangID }}" data-booking-id="{{ $order->booking?->BookingID }}" data-receive-method="{{ $order->booking?->HinhThucNhanDo }}" data-receive-address="{{ $order->booking?->HinhThucNhanDo === 'Tại cửa hàng' ? config('services.google_routes.store_address') : $order->booking?->DiaChiNhan }}" data-return-method="{{ $order->booking?->HinhThucTraDo }}" data-return-address="{{ $order->booking?->HinhThucTraDo === 'Tại cửa hàng' ? config('services.google_routes.store_address') : $order->booking?->DiaChiTra }}" data-pickup-date="{{ $order->booking?->NgayHen?->format('Y-m-d') }}" data-pickup-time="{{ $order->booking?->GioHen?->format('H:i') }}" @selected($selectedOrderId == $order->DonHangID)>{{ $order->MaDonHang }} · {{ $order->khachHang?->HoTen ?: 'Khách hàng' }}</option>@endforeach</select></div>
             <div class="col-md-6">
                 <label class="form-label" for="employee_select">Nhân viên phụ trách {{ $selectedMethod === 'giao_do' ? 'giao đồ' : 'nhận đồ' }} <span class="text-danger">*</span></label>
                 @if($canAssignEmployee ?? true)

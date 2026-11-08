@@ -180,7 +180,7 @@ class GiaoNhanController extends Controller
         $selectedFulfillment = $isBookingReturn ? $returnMethod : 'Tại nhà';
         $selectedAddress = $selectedFulfillment === 'Tại nhà'
             ? ($order->booking?->DiaChiTra ?? $latestLeg?->DiaChi)
-            : null;
+            : config('services.google_routes.store_address');
         $selectedEmployee = $employees->firstWhere(
             'NhanVienID',
             (int) old('employee_id', $linkedEmployee?->NhanVienID),
@@ -369,7 +369,7 @@ class GiaoNhanController extends Controller
             ]);
         }
 
-        if (! $scheduleUnchanged && $scheduledAt->lessThanOrEqualTo(now())) {
+        if ($scheduledAt->lessThanOrEqualTo(now())) {
             throw ValidationException::withMessages([
                 'pickup_time' => 'Thời gian giao nhận phải sau thời điểm hiện tại.',
             ]);

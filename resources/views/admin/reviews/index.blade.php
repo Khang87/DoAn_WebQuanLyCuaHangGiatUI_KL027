@@ -88,7 +88,7 @@
                     <tr>
                         <td>{{ $reviews->firstItem() + $loop->index }}</td>
                         <td>{{ $review->NgayDanhGia?->format('d/m/Y H:i') ?? '—' }}</td>
-                        <td><span class="fw-semibold text-dark">{{ $review->donHang?->MaDonHang ?: '—' }}</span></td>
+                        <td><span class="fw-bold text-dark">{{ $review->donHang?->MaDonHang ?: '—' }}</span></td>
                         <td>
                             <div class="d-flex align-items-center gap-2">
                                 <x-admin.customer-avatar :customer="$review->khachHang" />

@@ -40,6 +40,9 @@
     $cancelActionLabel = $delivery->LoaiGiaoNhan === 'NHAN_DO' ? 'Hủy lịch nhận' : 'Hủy lịch giao';
     $assignedEmployeeName = $assignedEmployee?->HoTen ?? $delivery->nhanVien?->HoTen ?? 'Chưa phân công';
     $booking = $delivery->donHang?->booking;
+    $deliveryAddress = old('fulfillment', $delivery->HinhThuc) === 'Tại cửa hàng'
+        ? config('services.google_routes.store_address')
+        : old('address', $delivery->DiaChi ?? '');
     $hasBookingSchedule = $delivery->LoaiGiaoNhan === 'NHAN_DO'
         && $booking?->NgayHen !== null
         && $booking?->GioHen !== null;
@@ -141,7 +144,7 @@
             <div class="col-12">
                 <label class="form-label" for="address">Địa chỉ nhân viên {{ $deliveryLegLabel }} (bắt buộc khi tại nhà)</label>
                 <div class="position-relative">
-                    <input type="text" class="form-control" id="address" name="address" value="{{ old('address', $delivery->DiaChi) }}" data-address-autocomplete data-autocomplete-url="{{ route('bookings.address-autocomplete') }}" aria-autocomplete="list" aria-controls="delivery-address-suggestions" aria-expanded="false" autocomplete="off" @required(old('fulfillment', $delivery->HinhThuc) === 'Tại nhà') @disabled(old('fulfillment', $delivery->HinhThuc) === 'Tại cửa hàng')>
+                    <input type="text" class="form-control" id="address" name="address" value="{{ old('address', $deliveryAddress) }}" data-address-autocomplete data-autocomplete-url="{{ route('bookings.address-autocomplete') }}" aria-autocomplete="list" aria-controls="delivery-address-suggestions" aria-expanded="false" autocomplete="off" @required(old('fulfillment', $delivery->HinhThuc) === 'Tại nhà') @disabled(old('fulfillment', $delivery->HinhThuc) === 'Tại cửa hàng')>
                     <div id="delivery-address-suggestions" class="list-group address-autocomplete-suggestions position-absolute top-100 start-0 w-100 shadow d-none" role="listbox" aria-label="Gợi ý địa chỉ giao nhận"></div>
                     <div class="form-text" data-address-autocomplete-status role="status" aria-live="polite"></div>
                 </div>

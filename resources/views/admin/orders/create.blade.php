@@ -21,6 +21,10 @@
             z-index: 1021;
         }
 
+        #customer_suggestions {
+            z-index: 1022;
+        }
+
         .delivery-employee-dropdown__results {
             max-height: min(18rem, 45vh);
             margin-top: 0.5rem;

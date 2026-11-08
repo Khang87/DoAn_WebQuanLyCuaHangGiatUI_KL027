@@ -584,13 +584,15 @@
                     </div>
                 </div>
                 <div class="col-12">
-                    <div class="form-check border rounded-3 p-3">
-                        <input class="form-check-input ms-0 me-2" type="checkbox" id="customer_accepted" name="customer_accepted" value="1" required @checked(old('customer_accepted'))>
-                        <label class="form-check-label fw-semibold" for="customer_accepted">
-                            Tôi xác nhận đã báo kết quả kiểm tra và tổng tiền thực tế trực tiếp cho khách hàng, và khách đã đồng ý bằng lời.
-                        </label>
-                        <div class="form-text">Đây là ghi nhận của nhân viên, không phải chữ ký hay bằng chứng xác nhận độc lập từ khách.</div>
-                        @error('customer_accepted')<div class="text-danger small mt-2">{{ $message }}</div>@enderror
+                    <div class="border rounded-3 p-3 d-flex align-items-start gap-2">
+                        <input class="form-check-input flex-shrink-0 ms-0 me-0 mt-1" type="checkbox" id="customer_accepted" name="customer_accepted" value="1" required @checked(old('customer_accepted'))>
+                        <div class="flex-grow-1">
+                            <label class="d-block fw-semibold mb-0" for="customer_accepted">
+                                Tôi xác nhận đã báo kết quả kiểm tra và tổng tiền thực tế trực tiếp cho khách hàng, và khách đã đồng ý bằng lời.
+                            </label>
+                            <div class="form-text">Đây là ghi nhận của nhân viên, không phải chữ ký hay bằng chứng xác nhận độc lập từ khách.</div>
+                            @error('customer_accepted')<div class="text-danger small mt-2">{{ $message }}</div>@enderror
+                        </div>
                     </div>
                 </div>
             @endif
