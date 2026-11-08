@@ -449,6 +449,8 @@ class StaffMobileController extends ApiController
     {
         $booking = $this->assignedBooking($id);
         $data = $this->validatedInspection($request);
+        // Trên mobile, lần đầu yêu cầu tính giá kiểm kê cũng bắt đầu tiếp nhận.
+        $this->bookings->markReceived($booking);
         $this->bookings->assertCanInspect($booking);
         if ($data['method'] !== $booking->HinhThucNhanDo || ($data['address'] ?? null) !== $booking->DiaChiNhan
             || $data['return_method'] !== $booking->HinhThucTraDo || ($data['return_address'] ?? null) !== $booking->DiaChiTra) {

@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Enums\BookingStatus;
 use App\Enums\DeliveryStatus;
 use App\Enums\OrderStatus;
+use App\Http\Middleware\AuthenticateStaffApiToken;
 use App\Http\Middleware\EnsureUserHasPermission;
 use App\Http\Middleware\RejectCustomerRole;
 use App\Http\Middleware\RestoreRememberedLogin;
@@ -280,6 +281,49 @@ class BookingOrderConversionTest extends TestCase
         $this->assertDatabaseCount('BookingKiemKe', 0);
         $this->assertDatabaseCount('DonHang', 0);
         $this->assertDatabaseCount('GiaoNhan', 0);
+    }
+
+    public function test_mobile_estimate_starts_a_pending_assigned_intake_before_calculating_price(): void
+    {
+        $this->createInspectionCatalog();
+        $this->createPromotionTable();
+        $booking = $this->createBooking();
+        $employee = Mockery::mock(User::class)->makePartial();
+        $employee->forceFill([
+            'TaiKhoanID' => 1,
+            'NhanVienID' => 1,
+            'TrangThai' => 'Hoạt động',
+        ]);
+        $employee->shouldReceive('isManager')->andReturn(false);
+        $this->actingAs($employee);
+        $this->bookingService->approve($booking);
+        DB::table('BookingGiaoNhan')
+            ->where('BookingID', $booking->BookingID)
+            ->where('LoaiGiaoNhan', 'NHAN_DO')
+            ->update(['NhanVienID' => 1]);
+        $this->withoutMiddleware(AuthenticateStaffApiToken::class);
+
+        $response = $this->postJson(
+            '/api/v1/staff/bookings/'.$booking->BookingID.'/estimate',
+            array_replace($this->inspectionPayload($booking, 1), ['items' => $this->actualItems()]),
+        );
+
+        $response->assertOk()->assertJsonStructure(['data' => ['TongTien']]);
+        $this->assertDatabaseHas('BookingGiaoNhan', [
+            'BookingID' => $booking->BookingID,
+            'LoaiGiaoNhan' => 'NHAN_DO',
+            'TrangThai' => DeliveryStatus::Picking->dbValue(),
+            'ThoiGianThucTe' => null,
+        ]);
+        $this->assertDatabaseCount('BookingKiemKe', 0);
+        $this->assertDatabaseCount('DonHang', 0);
+
+        $this->postJson(
+            '/api/v1/staff/bookings/'.$booking->BookingID.'/draft',
+            array_replace($this->inspectionPayload($booking, 1), ['items' => $this->actualItems()]),
+        )->assertOk();
+        $this->assertDatabaseCount('StaffBookingDraft', 1);
+        $this->assertDatabaseCount('DonHang', 0);
     }
 
     public function test_confirm_http_route_rejects_booking_before_actual_receipt(): void
