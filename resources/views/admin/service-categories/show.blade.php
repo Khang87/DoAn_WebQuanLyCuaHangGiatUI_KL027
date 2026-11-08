@@ -66,7 +66,7 @@
             :icon="'bi-folder'"
             :iconClass="'bg-primary-subtle text-primary'"
         >
-            <x-admin.detail.info-grid :columns="2">
+            <x-admin.detail.info-grid :columns="3" class="row-cols-sm-3">
                 <x-admin.detail.info-item label="Tên danh mục" :value="$category->TenLoaiDichVu" />
                 <x-admin.detail.info-item label="Số dịch vụ" :value="$category->dichVus()->count()" />
                 <x-admin.detail.info-item label="Trạng thái">
