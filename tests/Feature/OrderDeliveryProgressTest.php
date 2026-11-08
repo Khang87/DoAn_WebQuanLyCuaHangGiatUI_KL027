@@ -138,6 +138,24 @@ class OrderDeliveryProgressTest extends TestCase
         $this->assertSame(OrderStatus::Washed->value, DB::table('DonHang')->where('DonHangID', 2)->value('TrangThai'));
     }
 
+    public function test_direct_store_return_ticket_completes_the_order_on_handover(): void
+    {
+        $this->createOrder(20);
+        DB::table('NhanVien')->insert(['NhanVienID' => 1, 'TrangThai' => 'Hoạt động']);
+        DB::table('GiaoNhan')->insert([
+            'DonHangID' => 20,
+            'NhanVienID' => 1,
+            'LoaiGiaoNhan' => 'GIAO_DO',
+            'HinhThuc' => 'Tại cửa hàng',
+            'TrangThai' => 'Chờ thực hiện',
+        ]);
+
+        $delivery = app(DeliveryService::class)->advanceProgress(GiaoNhan::findOrFail(1));
+
+        $this->assertSame('Hoàn thành', $delivery->TrangThai);
+        $this->assertSame(OrderStatus::Delivered->value, DB::table('DonHang')->where('DonHangID', 20)->value('TrangThai'));
+    }
+
     public function test_order_can_return_to_an_earlier_processing_status_before_delivery(): void
     {
         $order = $this->createOrder(12);
@@ -162,13 +180,12 @@ class OrderDeliveryProgressTest extends TestCase
         }
     }
 
-    public function test_store_return_order_can_be_completed_without_delivery_leg(): void
+    public function test_store_return_order_cannot_be_completed_without_delivery_ticket(): void
     {
         $order = $this->createOrder(3);
 
-        $updated = app(OrderService::class)->updateStatus($order, OrderStatus::Delivered->value);
-
-        $this->assertSame(OrderStatus::Delivered->value, $updated->TrangThai);
+        $this->expectException(ValidationException::class);
+        app(OrderService::class)->updateStatus($order, OrderStatus::Delivered->value);
     }
 
     public function test_staff_dashboard_status_route_returns_a_status_that_remains_in_its_order_list(): void
@@ -188,20 +205,16 @@ class OrderDeliveryProgressTest extends TestCase
         $this->assertSame(OrderStatus::Washing->value, DB::table('DonHang')->where('DonHangID', 9)->value('TrangThai'));
     }
 
-    public function test_staff_dashboard_status_route_returns_a_status_that_removes_a_store_pickup_order_from_its_list(): void
+    public function test_staff_dashboard_cannot_complete_store_pickup_order_without_delivery_ticket(): void
     {
         $this->createOrder(10);
         $this->actingAs($this->userWithStatusPermission());
 
         $this->patchJson(route('staff.dashboard.update-order-status', 10), [
             'status' => OrderStatus::Delivered->value,
-        ])->assertOk()->assertJson([
-            'success' => true,
-            'status' => OrderStatus::Delivered->value,
-            'status_label' => OrderStatus::Delivered->label(),
-        ]);
+        ])->assertStatus(422);
 
-        $this->assertSame(OrderStatus::Delivered->value, DB::table('DonHang')->where('DonHangID', 10)->value('TrangThai'));
+        $this->assertSame(OrderStatus::Washed->value, DB::table('DonHang')->where('DonHangID', 10)->value('TrangThai'));
     }
 
     public function test_booking_for_home_return_requires_delivery_even_without_delivery_leg(): void

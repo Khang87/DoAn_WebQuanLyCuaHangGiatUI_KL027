@@ -208,67 +208,40 @@
                                         @endif
                                     @endif
                                     @if($isBookingReturn && $delivery->employee_name !== null && $delivery->order_id !== null && in_array($deliveryStatus, [\App\Enums\DeliveryStatus::Pending, \App\Enums\DeliveryStatus::Picking, \App\Enums\DeliveryStatus::Delivering], true))
-                                        @php
-                                            $order = $delivery->order_id ? \App\Models\DonHang::find($delivery->order_id) : null;
-                                            $paymentNotDone = $progressAction && $deliveryStatus === \App\Enums\DeliveryStatus::Delivering && ! $order?->isLocked();
-                                        @endphp
                                         @if($progressAction)
                                             @can('deliveries.edit')
-                                                @if($paymentNotDone)
-                                                    @can('payments.create')
-                                                        <a class="btn btn-order-action payment" href="{{ route('payments.create', ['order_id' => $delivery->order_id]) }}" title="Thanh toán" aria-label="Thanh toán đơn {{ $delivery->order_code }}">
-                                                            <i class="bi bi-credit-card" aria-hidden="true"></i>
-                                                        </a>
-                                                    @endcan
-                                                @else
-                                                    <x-admin.detail.confirm-form
-                                                        :action="route('deliveries.booking-documents.advance-progress', [$delivery->source_id] + $deliveryListContext)"
-                                                        method="POST"
-                                                        :title="$progressAction['label'].'?'"
-                                                        text="Trạng thái phiếu được cập nhật và ghi vào lịch sử."
-                                                        :label="$progressAction['label']"
-                                                        :icon="$progressAction['icon']"
-                                                        variant="btn-order-action"
-                                                        size=""
-                                                        iconOnly
-                                                        :color="$progressAction['color']"
-                                                        iconName="question"
-                                                    />
-                                                @endif
+                                                <x-admin.detail.confirm-form
+                                                    :action="route('deliveries.booking-documents.advance-progress', [$delivery->source_id] + $deliveryListContext)"
+                                                    method="POST"
+                                                    :title="$progressAction['label'].'?'"
+                                                    text="Trạng thái phiếu được cập nhật và ghi vào lịch sử."
+                                                    :label="$progressAction['label']"
+                                                    :icon="$progressAction['icon']"
+                                                    variant="btn-order-action"
+                                                    size=""
+                                                    iconOnly
+                                                    :color="$progressAction['color']"
+                                                    iconName="question"
+                                                />
                                             @endcan
                                         @endif
                                     @endif
                                     @if(! $isBookingDocument)
-                                        @php
-                                            $order = $delivery->order_id ? \App\Models\DonHang::find($delivery->order_id) : null;
-                                            $paymentNotDone = $progressAction && $delivery->task_type === 'GIAO_DO'
-                                                && in_array($deliveryStatus, [\App\Enums\DeliveryStatus::Pending, \App\Enums\DeliveryStatus::Delivering], true)
-                                                && ($deliveryStatus === \App\Enums\DeliveryStatus::Delivering || $delivery->fulfillment === 'Tại cửa hàng')
-                                                && ! $order?->isLocked();
-                                        @endphp
                                         @if($progressAction && ! $isDirectReturnWaitingForIntake)
                                             @can('deliveries.edit')
-                                                @if($paymentNotDone)
-                                                    @can('payments.create')
-                                                        <a class="btn btn-order-action payment" href="{{ route('payments.create', ['order_id' => $delivery->order_id]) }}" title="Thanh toán" aria-label="Thanh toán đơn {{ $delivery->order_code }}">
-                                                            <i class="bi bi-credit-card" aria-hidden="true"></i>
-                                                        </a>
-                                                    @endcan
-                                                @else
-                                                    <x-admin.detail.confirm-form
-                                                        :action="route('deliveries.advance-progress', [$delivery->source_id] + $deliveryListContext)"
-                                                        method="POST"
-                                                        :title="$progressAction['label'].'?'"
-                                                        text="Trạng thái phiếu được cập nhật và ghi vào lịch sử."
-                                                        :label="$progressAction['label']"
-                                                        :icon="$progressAction['icon']"
-                                                        variant="btn-order-action"
-                                                        size=""
-                                                        iconOnly
-                                                        :color="$progressAction['color']"
-                                                        iconName="question"
-                                                    />
-                                                @endif
+                                                <x-admin.detail.confirm-form
+                                                    :action="route('deliveries.advance-progress', [$delivery->source_id] + $deliveryListContext)"
+                                                    method="POST"
+                                                    :title="$progressAction['label'].'?'"
+                                                    text="Trạng thái phiếu được cập nhật và ghi vào lịch sử."
+                                                    :label="$progressAction['label']"
+                                                    :icon="$progressAction['icon']"
+                                                    variant="btn-order-action"
+                                                    size=""
+                                                    iconOnly
+                                                    :color="$progressAction['color']"
+                                                    iconName="question"
+                                                />
                                             @endcan
                                         @endif
                                         @if($canEditOperationalDelivery)

@@ -817,7 +817,11 @@ class DeliveryContractTest extends TestCase
         $manager->shouldReceive('isActive')->andReturn(true);
         $manager->shouldReceive('isOwner')->andReturn(false);
         $manager->shouldReceive('canPermission')->andReturnUsing(
-            fn (string $permission): bool => in_array($permission, ['deliveries.view', 'deliveries.edit'], true),
+            fn (string $permission): bool => in_array($permission, [
+                'deliveries.view',
+                'deliveries.edit',
+                'payments.create',
+            ], true),
         );
         view()->share('errors', new ViewErrorBag);
 
@@ -836,7 +840,48 @@ class DeliveryContractTest extends TestCase
             ->assertSee('action="'.route('deliveries.advance-progress', [$returnId, 'return_to' => 'deliveries']).'"', false)
             ->assertSee('Bắt đầu giao đồ');
 
+        DB::table('GiaoNhan')->where('GiaoNhanID', $returnId)
+            ->update(['TrangThai' => DeliveryStatus::Delivering->dbValue()]);
+        DB::table('DonHang')->where('DonHangID', 1)
+            ->update(['TrangThai' => OrderStatus::Delivering->value]);
+
+        $this->get(route('deliveries.index'))
+            ->assertOk()
+            ->assertSee('action="'.route('deliveries.advance-progress', [$returnId, 'return_to' => 'deliveries']).'"', false)
+            ->assertSee('Xác nhận đã giao đồ')
+            ->assertDontSee(route('payments.create', ['order_id' => 1]), false);
+
         $this->assertSame(DeliveryStatus::Delivering->badgeClass(), DeliveryStatus::Picking->badgeClass());
+    }
+
+    public function test_booking_return_progress_does_not_require_payment(): void
+    {
+        DB::table('NhanVien')->where('NhanVienID', 1)->update(['HoTen' => 'Nhân viên giao nhận']);
+        DB::table('BookingGiaoNhan')->where('BookingID', 1)
+            ->update([
+                'NhanVienID' => 1,
+                'TrangThai' => DeliveryStatus::Delivering->dbValue(),
+            ]);
+        DB::table('DonHang')->where('DonHangID', 1)
+            ->update(['TrangThai' => OrderStatus::Delivering->value]);
+
+        $manager = Mockery::mock(User::class)->makePartial();
+        $manager->shouldReceive('isManager')->andReturn(true);
+        $manager->shouldReceive('isActive')->andReturn(true);
+        $manager->shouldReceive('isOwner')->andReturn(false);
+        $manager->shouldReceive('canPermission')->andReturnUsing(
+            fn (string $permission): bool => in_array($permission, [
+                'deliveries.view',
+                'deliveries.edit',
+                'payments.create',
+            ], true),
+        );
+
+        $this->actingAs($manager)->withoutMiddleware()->get(route('deliveries.index'))
+            ->assertOk()
+            ->assertSee('action="'.route('deliveries.booking-documents.advance-progress', [1, 'return_to' => 'deliveries']).'"', false)
+            ->assertSee('Xác nhận đã giao đồ')
+            ->assertDontSee(route('payments.create', ['order_id' => 1]), false);
     }
 
     public function test_booking_intake_can_be_edited_and_started_for_inspection_without_separate_cancellation_route(): void
@@ -2068,6 +2113,27 @@ class DeliveryContractTest extends TestCase
         $this->assertMatchesRegularExpression('/<input[^>]*class="form-control delivery-locked-control bg-light text-muted"[^>]*id="address"[^>]*disabled/', $html);
         $this->assertStringContainsString('value="'.config('services.google_routes.store_address').'"', $html);
         $this->assertSame(0, GiaoNhan::count());
+    }
+
+    public function test_direct_store_return_assignment_opens_the_existing_delivery_ticket(): void
+    {
+        DB::table('DonHang')->where('DonHangID', 1)->update([
+            'BookingID' => null,
+            'TrangThai' => OrderStatus::Received->value,
+        ]);
+        $deliveryId = DB::table('GiaoNhan')->insertGetId([
+            'DonHangID' => 1,
+            'LoaiGiaoNhan' => 'GIAO_DO',
+            'HinhThuc' => 'Tại cửa hàng',
+            'TrangThai' => 'Chờ thực hiện',
+        ], 'GiaoNhanID');
+
+        $response = app(GiaoNhanController::class)->assignForOrder(
+            $this->requestWithPermissions(['deliveries.edit']),
+            DonHang::findOrFail(1),
+        );
+
+        $this->assertTrue($response->isRedirect(route('deliveries.edit', [$deliveryId, ...OrderWorkflow::listReturnParams()])));
     }
 
     public function test_washing_completion_does_not_automatically_create_a_booking_return_slip(): void

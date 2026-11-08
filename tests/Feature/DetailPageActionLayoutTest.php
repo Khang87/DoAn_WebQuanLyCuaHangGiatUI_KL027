@@ -245,7 +245,7 @@ class DetailPageActionLayoutTest extends TestCase
             [OrderStatus::Pending, null],
             [OrderStatus::Received, 'Bắt đầu giặt'],
             [OrderStatus::Washing, 'Hoàn thành giặt'],
-            [OrderStatus::Washed, 'Xác nhận khách đã nhận tại cửa hàng'],
+            [OrderStatus::Washed, null],
             [OrderStatus::Delivered, null],
         ];
 
@@ -257,7 +257,10 @@ class DetailPageActionLayoutTest extends TestCase
         }
 
         $order->TrangThai = OrderStatus::Washed->value;
-        $order->setRelation('giaoNhans', collect([new GiaoNhan(['LoaiGiaoNhan' => 'GIAO_DO'])]));
+        $order->setRelation('giaoNhans', collect([new GiaoNhan([
+            'LoaiGiaoNhan' => 'GIAO_DO',
+            'HinhThuc' => 'Tại nhà',
+        ])]));
         $this->assertSame(
             ['kind' => 'delivery', 'label' => 'Bắt đầu giao hàng'],
             collect(OrderWorkflow::nextAction($order))->only(['kind', 'label'])->all(),

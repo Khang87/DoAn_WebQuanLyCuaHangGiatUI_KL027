@@ -125,18 +125,20 @@ class GiaoNhanController extends Controller
             fn ($leg): bool => DeliveryStatus::parseForLeg($leg->TrangThai, $leg->LoaiGiaoNhan) !== DeliveryStatus::Cancelled
         );
         $latestLeg = $returnLegs->first();
-        $isHomeReturn = $order->requiresHomeDelivery();
         $isBookingReturn = $order->booking !== null;
-        $returnMethod = $order->booking?->HinhThucTraDo;
+        $returnMethod = $order->booking?->HinhThucTraDo
+            ?? $latestLeg?->HinhThuc
+            ?? ($order->requiresHomeDelivery() ? 'Tại nhà' : null);
         $bookingCancelled = $order->booking?->statusEnum() === BookingStatus::Cancelled;
-        $isEligibleReturnMethod = $isBookingReturn
-            ? in_array($returnMethod, ['Tại nhà', 'Tại cửa hàng'], true)
-            : $isHomeReturn;
+        $isEligibleReturnMethod = in_array($returnMethod, ['Tại nhà', 'Tại cửa hàng'], true);
+        $eligibleActiveOrderStatuses = $isBookingReturn
+            ? [OrderStatus::Washed, OrderStatus::Delivering]
+            : [OrderStatus::Received, OrderStatus::Washing, OrderStatus::Washed, OrderStatus::Delivering];
 
         if (
             $bookingCancelled
             || ! $isEligibleReturnMethod
-            || ! in_array($order->statusEnum(), [OrderStatus::Washed, OrderStatus::Delivering], true)
+            || ! in_array($order->statusEnum(), $eligibleActiveOrderStatuses, true)
         ) {
             abort(422, 'Đơn hàng chưa sẵn sàng cho phân công phiếu giao trả.');
         }
@@ -156,6 +158,10 @@ class GiaoNhanController extends Controller
         }
 
         abort_unless($request->user()?->canPermission('deliveries.create'), 403);
+
+        if (! in_array($order->statusEnum(), [OrderStatus::Washed, OrderStatus::Delivering], true)) {
+            abort(422, 'Chỉ đơn đã hoàn thành giặt mới được tạo lại phiếu giao trả.');
+        }
 
         $isRetryAfterCancelledReturn = $latestLeg !== null
             && DeliveryStatus::parseForLeg($latestLeg->TrangThai, $latestLeg->LoaiGiaoNhan) === DeliveryStatus::Cancelled;
@@ -177,7 +183,7 @@ class GiaoNhanController extends Controller
             ? $this->assignableEmployees() : new Collection(array_filter([$linkedEmployee]));
         $employeeNameCounts = $employees->countBy(fn ($employee) => mb_strtolower(trim((string) $employee->HoTen)));
         $orders = $this->orderOptions($order->getKey());
-        $selectedFulfillment = $isBookingReturn ? $returnMethod : 'Tại nhà';
+        $selectedFulfillment = $returnMethod;
         $selectedAddress = $selectedFulfillment === 'Tại nhà'
             ? ($order->booking?->DiaChiTra ?? $latestLeg?->DiaChi)
             : config('services.google_routes.store_address');

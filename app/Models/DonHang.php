@@ -106,8 +106,14 @@ class DonHang extends Model
         }
 
         return $this->relationLoaded('giaoNhans')
-            ? $this->giaoNhans->contains('LoaiGiaoNhan', 'GIAO_DO')
-            : $this->giaoNhans()->where('LoaiGiaoNhan', 'GIAO_DO')->exists();
+            ? $this->giaoNhans->contains(
+                fn (GiaoNhan $delivery): bool => $delivery->LoaiGiaoNhan === 'GIAO_DO'
+                    && $delivery->HinhThuc === ReturnMethod::Home->value,
+            )
+            : $this->giaoNhans()
+                ->where('LoaiGiaoNhan', 'GIAO_DO')
+                ->where('HinhThuc', ReturnMethod::Home->value)
+                ->exists();
     }
 
     public function hasActiveReturnDelivery(): bool

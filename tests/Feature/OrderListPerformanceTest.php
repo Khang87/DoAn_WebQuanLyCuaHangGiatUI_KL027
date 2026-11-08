@@ -240,6 +240,63 @@ class OrderListPerformanceTest extends TestCase
         $this->assertStringContainsString(route('orders.edit', 4), $html);
     }
 
+    public function test_direct_store_return_shows_the_update_action_only_after_washing_is_complete(): void
+    {
+        $this->seedOrder(1, OrderStatus::Received);
+        $this->seedOrder(2, OrderStatus::Washing);
+        $this->seedOrder(3, OrderStatus::Washed);
+        DB::table('DonHang')->whereIn('DonHangID', [1, 2, 3])->update(['BookingID' => null]);
+        DB::table('GiaoNhan')->insert([
+            ['DonHangID' => 1, 'LoaiGiaoNhan' => 'GIAO_DO', 'HinhThuc' => 'Tại cửa hàng', 'TrangThai' => 'Chờ thực hiện'],
+            ['DonHangID' => 2, 'LoaiGiaoNhan' => 'GIAO_DO', 'HinhThuc' => 'Tại cửa hàng', 'TrangThai' => 'Chờ thực hiện'],
+            ['DonHangID' => 3, 'LoaiGiaoNhan' => 'GIAO_DO', 'HinhThuc' => 'Tại cửa hàng', 'TrangThai' => 'Chờ thực hiện'],
+        ]);
+
+        $owner = Mockery::mock(User::class)->makePartial();
+        $owner->shouldReceive('isActive')->andReturnTrue();
+        $owner->shouldReceive('isOwner')->andReturnTrue();
+        $owner->shouldReceive('canPermission')->andReturnTrue();
+        $this->actingAs($owner);
+
+        $html = view('admin.orders.index', ['orders' => app(OrderService::class)->getAll()])->render();
+
+        $this->assertStringContainsString('title="Cập nhật phiếu giao"', $html);
+        $this->assertStringNotContainsString(
+            route('orders.delivery-assignment', [1, 'from' => 'don-hang']),
+            $html,
+        );
+        $this->assertStringNotContainsString(
+            route('orders.delivery-assignment', [2, 'from' => 'don-hang']),
+            $html,
+        );
+        $this->assertStringContainsString(
+            route('orders.delivery-assignment', [3, 'from' => 'don-hang']),
+            $html,
+        );
+        $this->assertStringContainsString(route('orders.update-status', 1), $html);
+        $this->assertStringContainsString('title="Bắt đầu giặt"', $html);
+        $this->assertStringContainsString(route('orders.update-status', 2), $html);
+        $this->assertStringContainsString('title="Hoàn thành giặt"', $html);
+        $this->assertStringNotContainsString(route('orders.update-status', 3), $html);
+    }
+
+    public function test_direct_store_return_without_delivery_ticket_does_not_show_a_direct_handover_action(): void
+    {
+        $this->seedOrder(1, OrderStatus::Washed);
+        DB::table('DonHang')->where('DonHangID', 1)->update(['BookingID' => null]);
+
+        $owner = Mockery::mock(User::class)->makePartial();
+        $owner->shouldReceive('isActive')->andReturnTrue();
+        $owner->shouldReceive('isOwner')->andReturnTrue();
+        $owner->shouldReceive('canPermission')->andReturnTrue();
+        $this->actingAs($owner);
+
+        $html = view('admin.orders.index', ['orders' => app(OrderService::class)->getAll()])->render();
+
+        $this->assertStringNotContainsString('Xác nhận khách đã nhận tại cửa hàng', $html);
+        $this->assertStringNotContainsString(route('orders.update-status', 1), $html);
+    }
+
     public function test_create_invoice_button_is_hidden_for_settled_order_without_invoice(): void
     {
         $this->seedOrder(1, OrderStatus::Delivered);

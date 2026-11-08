@@ -60,7 +60,7 @@ class OrderWorkflow
         $next = $status->nextProcessStatus();
 
         if ($status === OrderStatus::Washed && ! $order->requiresHomeDelivery()) {
-            $next = $order->booking === null ? OrderStatus::Delivered : null;
+            $next = null;
         }
 
         return match ($next) {

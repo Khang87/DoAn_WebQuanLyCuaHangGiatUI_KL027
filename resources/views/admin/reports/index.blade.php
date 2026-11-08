@@ -559,6 +559,7 @@
                         <tbody class="fs-7">
                             @forelse($recentOrders as $order)
                             @php($createdAt = $order->created_at)
+                            @php($serviceNames = $order->items->pluck('service.name')->filter()->unique()->values())
                             <tr>
                                 <td>{{ $loop->iteration }}</td>
                                 <td class="ps-3 fw-bold text-primary">{{ $order->code }}</td>
@@ -568,7 +569,7 @@
                                         <span>{{ $order->customer?->name ?: '-' }}</span>
                                     </div>
                                 </td>
-                                <td class="text-secondary text-truncate">{{ $order->items->pluck('service.name')->filter()->join(', ') ?: ($order->service?->name ?: '-') }}</td>
+                                <td class="text-secondary text-truncate">{{ $serviceNames->isNotEmpty() ? $serviceNames->first().($serviceNames->count() > 1 ? ',...' : '') : ($order->service?->name ?: '-') }}</td>
                                 <td class="text-end fw-bold text-dark">{{ number_format($order->total_amount, 0, ',', '.') }} VNĐ</td>
                                 <td class="text-end">
                                     <div class="text-dark fw-bold">{{ $createdAt?->format('d/m/Y') ?? '-' }}</div>

@@ -2196,6 +2196,46 @@ class BookingOrderConversionTest extends TestCase
         $this->assertSame($delivery->GiaoNhanID, OrderWorkflow::activeReturnDelivery($order)?->GiaoNhanID);
     }
 
+    public function test_direct_order_with_store_return_creates_a_pending_delivery_ticket_automatically(): void
+    {
+        $this->createRequestCatalog();
+        DB::table('BangGia')->insert([
+            'DichVuID' => 1,
+            'LoaiDoGiatID' => 2,
+            'DonViTinhID' => 2,
+            'DonGia' => 10000,
+            'NgayApDung' => '2026-01-01',
+            'TrangThai' => 'Hoạt động',
+        ]);
+        $this->actingAsBookingEmployee();
+        $this->createPermissionTables();
+        $this->withoutMiddleware([Authenticate::class, EnsureUserHasPermission::class, RejectCustomerRole::class, RestoreRememberedLogin::class]);
+
+        $this->post(route('orders.store'), [
+            'KhachHangID' => 9,
+            'TrangThai' => OrderStatus::Received->value,
+            'HinhThucTraDo' => 'Tại cửa hàng',
+            'items' => [[
+                'DichVuID' => 1,
+                'LoaiDoGiatID' => 2,
+                'DonViTinhID' => 2,
+                'SoLuong' => 1,
+                'TinhTrangTruocKhiGiat' => 'Bình thường',
+            ]],
+        ])->assertSessionHasNoErrors();
+
+        $order = DonHang::query()->with('giaoNhans')->sole();
+        $deliveryLegs = $order->giaoNhans->keyBy('LoaiGiaoNhan');
+        $delivery = $deliveryLegs->get('GIAO_DO');
+
+        $this->assertCount(2, $deliveryLegs);
+        $this->assertSame('Tại cửa hàng', $delivery->HinhThuc);
+        $this->assertNull($delivery->NhanVienID);
+        $this->assertSame(DeliveryStatus::Pending->dbValue(), $delivery->TrangThai);
+        $this->assertFalse($order->requiresHomeDelivery());
+        $this->assertSame($delivery->GiaoNhanID, OrderWorkflow::activeReturnDelivery($order)?->GiaoNhanID);
+    }
+
     public function test_manual_order_store_rejects_account_without_employee_profile_despite_client_employee_id(): void
     {
         $this->createRequestCatalog();

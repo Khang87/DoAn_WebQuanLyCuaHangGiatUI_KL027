@@ -436,6 +436,7 @@ class ReportsServiceTest extends TestCase
         $this->assertStringContainsString('>Thao tác</th>', $recentOrdersTable[1]);
         $this->assertStringContainsString('recent-orders-action-cell', $recentOrdersTable[1]);
         $this->assertStringContainsString('aria-label="Xem chi tiết đơn hàng', $recentOrdersTable[1]);
+        $this->assertStringContainsString('>Giặt thường,...</td>', $recentOrdersTable[1]);
     }
 
     public function test_invalid_filter_shape_falls_back_to_the_default_period(): void

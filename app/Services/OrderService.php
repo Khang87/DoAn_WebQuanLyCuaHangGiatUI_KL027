@@ -810,9 +810,6 @@ class OrderService
 
             foreach ($deliveryLegs as $leg) {
                 $isStoreIntake = $leg['type'] === 'NHAN_DO' && $leg['method'] !== $leg['home'];
-                if ($leg['method'] !== $leg['home'] && ! $isStoreIntake) {
-                    continue;
-                }
 
                 $attributes = [
                     'DonHangID' => $order->DonHangID,
@@ -1310,7 +1307,7 @@ class OrderService
                 || $lockedDelivery->LoaiGiaoNhan !== 'GIAO_DO'
                 || ($isBookingReturn
                     ? $booking->HinhThucTraDo !== $lockedDelivery->HinhThuc
-                    : ! $lockedOrder->requiresHomeDelivery())
+                    : ! in_array($lockedDelivery->HinhThuc, ['Tại nhà', 'Tại cửa hàng'], true))
             ) {
                 throw ValidationException::withMessages(['delivery' => 'Phiếu giao đồ không thuộc chặng giao hợp lệ của đơn hàng.']);
             }
@@ -1411,16 +1408,19 @@ class OrderService
         if (
             $current === OrderStatus::Washed
             && $target === OrderStatus::Delivered
-            && $lockedOrder->requiresHomeDelivery()
+            && (
+                ! $lockedOrder->requiresHomeDelivery()
+                || $lockedOrder->hasActiveReturnDelivery()
+            )
         ) {
             throw ValidationException::withMessages([
-                'TrangThai' => 'Đơn hàng giao tại nhà phải qua bước đang giao trước khi xác nhận đã giao.',
+                'TrangThai' => 'Hãy hoàn tất phiếu giao đồ để đồng bộ trạng thái đơn hàng.',
             ]);
         }
         if (
             $current === OrderStatus::Delivering
             && $target === OrderStatus::Delivered
-            && $lockedOrder->requiresHomeDelivery()
+            && ($lockedOrder->requiresHomeDelivery() || $lockedOrder->hasActiveReturnDelivery())
         ) {
             throw ValidationException::withMessages([
                 'TrangThai' => 'Hãy hoàn tất phiếu giao đồ để đồng bộ trạng thái đơn hàng.',

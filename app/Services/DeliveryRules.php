@@ -35,6 +35,9 @@ class DeliveryRules
         $data = array_merge($current ? self::inputFor($current) : ['status' => 'pending', 'fulfillment' => 'Tại nhà'], $data);
         $data['status'] = $data['status'] ?: 'pending';
         $requiresIntakeSchedule = ($data['method'] ?? null) === 'nhan_do';
+        $requiresReturnSchedule = ($data['method'] ?? null) === 'giao_do'
+            && ($data['fulfillment'] ?? null) !== 'Tại cửa hàng'
+            && in_array($data['status'], ['delivering', 'completed'], true);
         Validator::make($data, [
             'order_id' => ['required', 'integer'],
             'method' => ['required', 'in:nhan_do,giao_do'],
@@ -44,11 +47,11 @@ class DeliveryRules
             'status' => ['required', 'in:'.implode(',', DeliveryStatus::values())],
             'pickup_date' => ['nullable', Rule::requiredIf(
                 $requiresIntakeSchedule
-                || in_array($data['status'], ['delivering', 'completed'], true)
+                || $requiresReturnSchedule
             ), 'required_with:pickup_time', 'date_format:Y-m-d'],
             'pickup_time' => ['nullable', Rule::requiredIf(
                 $requiresIntakeSchedule
-                || in_array($data['status'], ['delivering', 'completed'], true)
+                || $requiresReturnSchedule
             ), 'required_with:pickup_date', 'date_format:H:i'],
             'notes' => ['nullable', 'string', 'max:500'],
         ], [
@@ -102,9 +105,17 @@ class DeliveryRules
                 ? Booking::query()->find($order->BookingID)
                 : null;
             $isBookingReturn = $booking !== null;
+            $directReturnMethod = $current?->HinhThuc
+                ?? GiaoNhan::query()
+                    ->where('DonHangID', $order->DonHangID)
+                    ->where('LoaiGiaoNhan', 'GIAO_DO')
+                    ->orderByDesc('GiaoNhanID')
+                    ->value('HinhThuc');
             $returnMethodMatches = $isBookingReturn
                 ? $booking->HinhThucTraDo === $data['fulfillment']
-                : $data['fulfillment'] === 'Tại nhà' && $order->requiresHomeDelivery();
+                : ($directReturnMethod !== null
+                    ? $directReturnMethod === $data['fulfillment']
+                    : $data['fulfillment'] === 'Tại nhà' && $order->requiresHomeDelivery());
 
             if ($isBookingReturn && ! $current && $booking->statusEnum() !== BookingStatus::Confirmed) {
                 throw ValidationException::withMessages([

@@ -91,7 +91,9 @@
                                     && in_array($operationalStatus, [\App\Enums\OrderStatus::Washed, \App\Enums\OrderStatus::Delivering], true);
                                 $isDirectHomeReturnFlow = $order->booking === null
                                     && $order->requiresHomeDelivery();
-                                $returnDelivery = ($isBookingReturnFlow || $isDirectHomeReturnFlow)
+                                $isDirectStoreReturnFlow = $order->booking === null
+                                    && \App\Support\OrderWorkflow::activeReturnDelivery($order)?->HinhThuc === 'Tại cửa hàng';
+                                $returnDelivery = ($isBookingReturnFlow || $isDirectHomeReturnFlow || $isDirectStoreReturnFlow)
                                     ? \App\Support\OrderWorkflow::activeReturnDelivery($order)
                                     : null;
                             @endphp
@@ -109,7 +111,49 @@
                                         </a>
                                     @endcan
                                 @endif
-                                @if($isDirectHomeReturnFlow && in_array($operationalStatus, [\App\Enums\OrderStatus::Washed, \App\Enums\OrderStatus::Delivering], true))
+                                @if($isDirectStoreReturnFlow && $returnDelivery)
+                                    @if($returnDelivery->NhanVienID !== null || \App\Enums\DeliveryStatus::parseForLeg($returnDelivery->TrangThai, $returnDelivery->LoaiGiaoNhan) === \App\Enums\DeliveryStatus::Completed)
+                                        @can('deliveries.view')
+                                            <a href="{{ route('deliveries.show', [$returnDelivery] + \App\Support\OrderWorkflow::listReturnParams()) }}"
+                                               class="btn btn-order-action"
+                                               title="Xem phiếu giao"
+                                               aria-label="Xem phiếu giao của đơn {{ $order->MaDonHang }}">
+                                                <i class="bi bi-box-arrow-up-right" aria-hidden="true"></i>
+                                            </a>
+                                        @endcan
+                                    @elseif($operationalStatus === \App\Enums\OrderStatus::Washed)
+                                        @can('deliveries.edit')
+                                            <a href="{{ route('orders.delivery-assignment', [$order] + \App\Support\OrderWorkflow::listReturnParams()) }}"
+                                               class="btn btn-order-action"
+                                               title="Cập nhật phiếu giao"
+                                               aria-label="Cập nhật phiếu giao cho đơn {{ $order->MaDonHang }}">
+                                                <i class="bi bi-file-earmark-plus" aria-hidden="true"></i>
+                                            </a>
+                                        @endcan
+                                    @endif
+                                    @if(
+                                        $nextOrderAction
+                                        && $nextOrderAction['kind'] === 'status'
+                                        && in_array($operationalStatus, [\App\Enums\OrderStatus::Received, \App\Enums\OrderStatus::Washing], true)
+                                    )
+                                        @can('orders.update_status')
+                                            <x-admin.detail.confirm-form
+                                                :action="route('orders.update-status', $order)"
+                                                method="PATCH"
+                                                :title="$nextOrderAction['label'].'?'"
+                                                :text="'Trạng thái đơn '. $order->MaDonHang .' sẽ chuyển sang '. $nextOrderAction['status']->label() .'.'"
+                                                :label="$nextOrderAction['label']"
+                                                :icon="$nextOrderAction['icon']"
+                                                variant="btn-order-action"
+                                                size=""
+                                                iconOnly
+                                                :hidden="['TrangThai' => $nextOrderAction['status']->value]"
+                                                color="#2563eb"
+                                                iconName="question"
+                                            />
+                                        @endcan
+                                    @endif
+                                @elseif($isDirectHomeReturnFlow && in_array($operationalStatus, [\App\Enums\OrderStatus::Washed, \App\Enums\OrderStatus::Delivering], true))
                                     @if($returnDelivery && ($returnDelivery->NhanVienID !== null || $operationalStatus === \App\Enums\OrderStatus::Delivering))
                                         @can('deliveries.view')
                                             <a href="{{ route('deliveries.show', [$returnDelivery] + \App\Support\OrderWorkflow::listReturnParams()) }}"
