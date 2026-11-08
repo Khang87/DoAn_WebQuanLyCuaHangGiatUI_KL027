@@ -53,7 +53,7 @@
         </x-admin.detail.panel>
 
         <x-admin.detail.panel title="Thông tin danh mục" icon="bi-folder" :iconClass="'bg-primary-subtle text-primary'">
-            <x-admin.detail.info-grid :columns="2">
+            <x-admin.detail.info-grid :columns="4" class="row-cols-sm-4">
                 <x-admin.detail.info-item label="Tên danh mục" :value="$category->TenDanhMuc" />
                 <x-admin.detail.info-item label="Số loại đồ" :value="$category->loaiDoGiats()->count()" />
                 <x-admin.detail.info-item label="Ngày tạo" :value="$category->NgayTao?->format('d/m/Y H:i') ?: '—'" />
