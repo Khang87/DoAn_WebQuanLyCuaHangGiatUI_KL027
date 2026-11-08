@@ -252,6 +252,14 @@ class DonHangController extends Controller
             abort(404);
         }
 
+        if ($order->statusEnum() === OrderStatus::Cancelled) {
+            return $this->denySettled(
+                $request,
+                'Đơn hàng đã hủy nên không thể chỉnh sửa.',
+                route('orders.show', $order)
+            );
+        }
+
         if (
             $order->TrangThai !== OrderStatus::Pending->value
             && ! $this->canOverrideSettled()
@@ -297,6 +305,14 @@ class DonHangController extends Controller
 
         if (! $order) {
             abort(404);
+        }
+
+        if ($order->statusEnum() === OrderStatus::Cancelled) {
+            return $this->denySettled(
+                $request,
+                'Đơn hàng đã hủy nên không thể chỉnh sửa.',
+                route('orders.show', $order)
+            );
         }
 
         if (

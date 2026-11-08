@@ -192,6 +192,7 @@ class OrderListPerformanceTest extends TestCase
     {
         $this->seedOrder(1, OrderStatus::Pending);
         $this->seedOrder(2, OrderStatus::Received);
+        $this->seedOrder(3, OrderStatus::Cancelled);
 
         $staff = Mockery::mock(User::class)->makePartial();
         $staff->shouldReceive('isActive')->andReturnTrue();
@@ -205,6 +206,7 @@ class OrderListPerformanceTest extends TestCase
 
         $this->assertStringContainsString(route('orders.edit', 1), $html);
         $this->assertStringNotContainsString(route('orders.edit', 2), $html);
+        $this->assertStringNotContainsString(route('orders.edit', 3), $html);
 
         $owner = Mockery::mock(User::class)->makePartial();
         $owner->shouldReceive('isActive')->andReturnTrue();
@@ -215,6 +217,11 @@ class OrderListPerformanceTest extends TestCase
         $html = view('admin.orders.index', ['orders' => app(OrderService::class)->getAll()])->render();
 
         $this->assertStringContainsString(route('orders.edit', 2), $html);
+        $this->assertStringNotContainsString(route('orders.edit', 3), $html);
+
+        $this->withoutMiddleware()->get(route('orders.edit', 3))
+            ->assertForbidden()
+            ->assertSee('Đơn hàng đã hủy nên không thể chỉnh sửa.');
     }
 
     public function test_paid_orders_never_show_the_edit_button_even_to_the_owner(): void

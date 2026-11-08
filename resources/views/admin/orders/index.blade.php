@@ -80,6 +80,7 @@
                             @php
                                 $canManageSettled = ! $order->isLocked() || auth()->user()?->isOwner();
                                 $canEditOrder = ! $order->isLocked()
+                                    && $order->statusEnum() !== \App\Enums\OrderStatus::Cancelled
                                     && ($order->TrangThai === \App\Enums\OrderStatus::Pending->value
                                         || (auth()->user()?->canPermission('orders.edit_completed') ?? false));
                                 $operationalStatus = $order->operationalStatusEnum();
