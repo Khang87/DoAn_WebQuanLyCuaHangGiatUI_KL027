@@ -256,7 +256,7 @@ class ReportsService
     }
 
     /**
-     * Top dịch vụ theo doanh thu.
+     * Top dịch vụ theo tổng số lượng đặt.
      *
      * Trả về `Support\Collection` vì kết quả đã được đổi tên ở tầng PHP.
      */
@@ -276,6 +276,7 @@ class ReportsService
             ->whereIn('DonHang.DonHangID', $this->collectedRevenueService->query()->select('DonHangID'))
             ->selectRaw('"DichVu"."TenDichVu" as service_name, CASE WHEN COUNT(DISTINCT "DonViTinh"."KyHieu") > 1 THEN \'Nhiều ĐVT\' ELSE MAX("DonViTinh"."KyHieu") END as unit_symbol, SUM(COALESCE("ChiTietDonHang"."SoLuong", "ChiTietDonHang"."KhoiLuong", 0)) as total_qty, SUM("ChiTietDonHang"."ThanhTien") as total_revenue')
             ->groupBy('DichVu.DichVuID', 'DichVu.TenDichVu')
+            ->orderByDesc('total_qty')
             ->orderByDesc('total_revenue')
             ->limit($limit)
             ->when($from !== null && $to !== null, fn ($query) => $query->whereIn(

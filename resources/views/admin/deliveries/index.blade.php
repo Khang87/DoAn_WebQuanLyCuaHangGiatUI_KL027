@@ -55,6 +55,7 @@
                         <th scope="col">Khách hàng</th>
                         <th scope="col">Đặt lịch / Đơn hàng</th>
                         <th scope="col">Nhân viên phụ trách</th>
+                        <th scope="col">Ngày tạo</th>
                         <th scope="col">Thời gian dự kiến</th>
                         <th scope="col">Trạng thái</th>
                         <th scope="col" class="text-center">Thao tác</th>
@@ -87,6 +88,9 @@
                                     ));
                             $expectedAt = $delivery->expected_at
                                 ? \Illuminate\Support\Carbon::parse($delivery->expected_at)
+                                : null;
+                            $createdAt = $delivery->created_at
+                                ? \Illuminate\Support\Carbon::parse($delivery->created_at)
                                 : null;
                             $detailUrl = $isBookingDocument
                                 ? route('deliveries.booking-documents.show', [$delivery->source_id] + $deliveryListContext)
@@ -127,6 +131,7 @@
                                 @endif
                             </td>
                             <td>{{ $delivery->employee_name ?: '—' }}</td>
+                            <td>{{ $createdAt?->format('d/m/Y H:i') ?: '—' }}</td>
                             <td>
                                 @if($expectedAt)
                                     {{ $expectedAt->format('d/m/Y') }}

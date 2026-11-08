@@ -54,13 +54,6 @@
                     <label class="form-label">Xác nhận mật khẩu</label>
                     <input type="password" class="form-control" name="password_confirmation" placeholder="Xác nhận mật khẩu mới">
                 </div>
-                @else
-                <div class="col-12">
-                    <div class="alert alert-info mt-4" role="alert">
-                        <i class="fas fa-info-circle me-1"></i>
-                        Vì lý do bảo mật, bạn không thể thay đổi mật khẩu của tài khoản khác.
-                    </div>
-                </div>
                 @endif
             </div>
 

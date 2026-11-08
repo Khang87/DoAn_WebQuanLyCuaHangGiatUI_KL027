@@ -72,6 +72,8 @@ class TableRowNumberingTest extends TestCase
         $this->assertSame('11', trim($xpath->query('//table/tbody/tr[1]/td[1]')->item(0)->textContent));
         $this->assertSame('12', trim($xpath->query('//table/tbody/tr[2]/td[1]')->item(0)->textContent));
         $this->assertSame(0, $xpath->query('//table/thead/tr/th[normalize-space(.)="ID khách hàng"]')->length);
+        $this->assertSame(0, $xpath->query('//table/thead/tr/th[normalize-space(.)="Điểm tích lũy"]')->length);
+        $this->assertSame(0, $xpath->query('//table/thead/tr/th[normalize-space(.)="Ngày đăng ký"]')->length);
     }
 
     public function test_status_select_trims_surrounding_whitespace_from_option_labels(): void
@@ -88,7 +90,7 @@ class TableRowNumberingTest extends TestCase
 
     public function test_empty_tables_span_all_visible_columns_without_a_fake_row_number(): void
     {
-        foreach ([['admin.loaidogiat.index', 'categories', 5], ['admin.customers.index', 'customers', 7], ['admin.orders.index', 'orders', 11]] as [$view, $name, $columns]) {
+        foreach ([['admin.loaidogiat.index', 'categories', 5], ['admin.customers.index', 'customers', 6], ['admin.orders.index', 'orders', 11]] as [$view, $name, $columns]) {
             $xpath = $this->table($view, [$name => new LengthAwarePaginator([], 0, 10), 'statusFlow' => []]);
             $this->assertSame($columns, $xpath->query('//table/thead/tr/th')->length);
             $cell = $xpath->query('//table/tbody/tr/td')->item(0);

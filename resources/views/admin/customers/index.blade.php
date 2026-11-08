@@ -41,10 +41,8 @@
                         <th class="fw-bold text-dark">Email</th>
                         <th class="fw-bold text-dark">Số điện thoại</th>
                         <th class="fw-bold text-dark">Địa chỉ</th>
-                        <th class="fw-bold text-dark">Điểm tích lũy</th>
-                        <th class="fw-bold text-dark">Ngày đăng ký</th>
                         <th class="fw-bold text-dark">Trạng thái</th>
-                        @if(auth()->user()?->canAny(['customers.view', 'customers.edit', 'customers.delete']))
+                        @if(auth()->user()?->canAny(['customers.view', 'customers.edit', 'customers.delete', 'orders.create']))
                         <th class="fw-bold text-dark">Thao tác</th>
                         @endif
                     </tr>
@@ -65,8 +63,6 @@
                         <td class="text-dark">{{ $customer->Email ?: '-' }}</td>
                         <td class="text-dark">{{ $customer->SoDienThoai ?: '-' }}</td>
                         <td class="text-dark">{{ $customer->DiaChi ?: '-' }}</td>
-                        <td class="text-dark">{{ number_format((int) ($customer->diemTichLuy?->DiemHienTai ?? 0)) }} điểm</td>
-                        <td class="text-dark">{{ $customer->NgayTao?->format('d/m/Y') ?: '-' }}</td>
                         <td>
                             <x-admin.status-badge
                                 :status="$customer->TrangThai ?: 'Hoạt động'"
@@ -97,7 +93,7 @@
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="{{ auth()->user()?->canAny(['customers.view', 'customers.edit', 'customers.delete', 'orders.create']) ? 9 : 8 }}" class="text-center text-muted py-4">Chưa có khách hàng nào</td>
+                        <td colspan="{{ auth()->user()?->canAny(['customers.view', 'customers.edit', 'customers.delete', 'orders.create']) ? 7 : 6 }}" class="text-center text-muted py-4">Chưa có khách hàng nào</td>
                     </tr>
                     @endforelse
                 </tbody>
@@ -172,32 +168,35 @@
 @endif
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        document.querySelectorAll('[id^="deleteCustomerForm_"]').forEach(function(form) {
-            form.addEventListener('submit', function(e) {
-                e.preventDefault();
+        document.addEventListener('submit', function(e) {
+            const form = e.target.closest('[id^="deleteCustomerForm_"]');
+            if (!form) {
+                return;
+            }
 
-                if (typeof Swal === 'undefined') {
-                    if (confirm('Bạn có chắc muốn xóa khách hàng này?')) {
-                        form.submit();
-                    }
-                    return;
+            e.preventDefault();
+
+            if (typeof Swal === 'undefined') {
+                if (confirm('Bạn có chắc muốn xóa khách hàng này?')) {
+                    form.submit();
                 }
+                return;
+            }
 
-                Swal.fire({
-                    title: 'Xóa hoặc lưu trữ khách hàng?',
-                    text: 'Nếu có đơn hàng hoặc dữ liệu liên quan, hồ sơ sẽ được chuyển sang trạng thái Tạm ngưng để giữ nguyên lịch sử. Chỉ hồ sơ không có dữ liệu liên quan mới bị xóa hẳn.',
-                    icon: 'warning',
-                    showCancelButton: true,
-                    reverseButtons: true,
-                    confirmButtonColor: '#dc2626',
-                    cancelButtonColor: '#64748b',
-                    confirmButtonText: 'Tiếp tục',
-                    cancelButtonText: 'Hủy'
-                }).then((result) => {
-                    if (result.isConfirmed) {
-                        form.submit();
-                    }
-                });
+            Swal.fire({
+                title: 'Xóa hoặc lưu trữ khách hàng?',
+                text: 'Nếu có đơn hàng hoặc dữ liệu liên quan, hồ sơ sẽ được chuyển sang trạng thái Tạm ngưng để giữ nguyên lịch sử. Chỉ hồ sơ không có dữ liệu liên quan mới bị xóa hẳn.',
+                icon: 'warning',
+                showCancelButton: true,
+                reverseButtons: true,
+                confirmButtonColor: '#dc2626',
+                cancelButtonColor: '#64748b',
+                confirmButtonText: 'Tiếp tục',
+                cancelButtonText: 'Hủy'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    form.submit();
+                }
             });
         });
     });

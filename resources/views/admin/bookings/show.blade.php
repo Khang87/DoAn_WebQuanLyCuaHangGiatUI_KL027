@@ -156,6 +156,7 @@
                         <span class="ms-2">{{ $leg->HinhThuc }}</span>
                         <span class="ms-2 text-muted">{{ $leg->TrangThai }}</span>
                         <div class="text-muted small">{{ $leg->DiaChi ?: 'Tại cửa hàng' }}</div>
+                        <div class="text-muted small">Ngày tạo phiếu: {{ $leg->NgayTao?->format('d/m/Y H:i') ?: '—' }}</div>
                         @if($leg->LoaiGiaoNhan === 'NHAN_DO')
                             <div class="small text-muted mt-2">
                                 {{ $leg->HinhThuc === 'Tại nhà' ? 'Nhân viên đến nhận đồ tại địa chỉ trên.' : 'Khách mang đồ đến cửa hàng để nhân viên tiếp nhận.' }}

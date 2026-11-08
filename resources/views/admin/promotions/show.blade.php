@@ -44,7 +44,7 @@
                         <span class="text-dark">Không giới hạn</span>
                     @endif
                 </x-admin.detail.info-item>
-                <x-admin.detail.info-item label="Số lượt sử dụng" :value="$promotion->usageLabel()" />
+                <x-admin.detail.info-item label="Số đơn hàng áp dụng" :value="$promotion->usageLabel()" />
                 <x-admin.detail.info-item label="Ngày bắt đầu" :value="$promotion->NgayBatDau?->format('d/m/Y')" />
                 <x-admin.detail.info-item label="Ngày kết thúc" :value="$promotion->NgayKetThuc?->format('d/m/Y')" />
                 <x-admin.detail.info-item label="Trạng thái">

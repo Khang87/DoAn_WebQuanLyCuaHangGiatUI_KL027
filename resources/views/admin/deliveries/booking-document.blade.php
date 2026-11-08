@@ -45,6 +45,7 @@
         <x-admin.detail.panel :title="$isIntake ? 'Thông tin phiếu nhận đồ' : 'Thông tin phiếu giao đồ'" icon="bi-receipt" :iconClass="'bg-primary-subtle text-primary'">
             <x-admin.detail.info-grid :columns="2">
                 <x-admin.detail.info-item label="Mã phiếu" :value="$displayCode" />
+                <x-admin.detail.info-item label="Ngày tạo" :value="$bookingDocument->NgayTao?->format('d/m/Y H:i') ?: '—'" />
                 <x-admin.detail.info-item label="Mã đặt lịch" :value="$booking?->MaBooking ?: '—'" />
                 <x-admin.detail.info-item label="Khách hàng" :value="$booking?->khachHang?->HoTen ?: '—'" />
                 <x-admin.detail.info-item label="Số điện thoại" :value="$booking?->khachHang?->SoDienThoai ?: '—'" />

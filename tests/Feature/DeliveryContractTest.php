@@ -1740,6 +1740,12 @@ class DeliveryContractTest extends TestCase
 
     public function test_unified_delivery_list_handles_missing_sources_and_scopes_staff_rows(): void
     {
+        if (Schema::hasTable('GiaoNhan') && ! Schema::hasColumn('GiaoNhan', 'NgayTao')) {
+            Schema::table('GiaoNhan', function (Blueprint $table): void {
+                $table->dateTime('NgayTao')->nullable();
+            });
+        }
+
         $manager = Mockery::mock(User::class)->makePartial();
         $manager->shouldReceive('isManager')->andReturn(true);
         $manager->shouldReceive('canPermission')->andReturn(true);
@@ -1762,6 +1768,7 @@ class DeliveryContractTest extends TestCase
             'LoaiGiaoNhan' => 'GIAO_DO',
             'HinhThuc' => 'Tại nhà',
             'TrangThai' => 'Chờ thực hiện',
+            'NgayTao' => '2026-10-02 09:20:00',
         ]);
         $staff = Mockery::mock(User::class)->makePartial();
         $staff->TaiKhoanID = 100;
@@ -1773,6 +1780,8 @@ class DeliveryContractTest extends TestCase
         $this->actingAs($staff)->withoutMiddleware()->get(route('deliveries.index'))
             ->assertOk()
             ->assertSee('data-delivery-key="operational:1"', false)
+            ->assertSee('<th scope="col">Ngày tạo</th>', false)
+            ->assertSee('02/10/2026 09:20')
             ->assertDontSee('data-delivery-key="booking:2"', false);
     }
 
@@ -3033,6 +3042,7 @@ class DeliveryContractTest extends TestCase
             'HinhThuc' => 'Tại cửa hàng',
             'DiaChi' => null,
             'TrangThai' => 'Chờ thực hiện',
+            'NgayTao' => '2026-10-08 07:30:00',
         ]);
         $delivery->setRelation('donHang', null);
         $delivery->setRelation('nhanVien', null);
@@ -3045,6 +3055,7 @@ class DeliveryContractTest extends TestCase
         ])->render();
         $this->assertStringContainsString('Địa chỉ nhân viên giao đồ', $detailHtml);
         $this->assertStringContainsString($storeAddress, $detailHtml);
+        $this->assertStringContainsString('08/10/2026 07:30', $detailHtml);
 
         $editHtml = view('admin.deliveries.edit', [
             'delivery' => $delivery,
@@ -3062,6 +3073,7 @@ class DeliveryContractTest extends TestCase
             'HinhThuc' => 'Tại cửa hàng',
             'DiaChi' => null,
             'TrangThai' => 'Chờ thực hiện',
+            'NgayTao' => '2026-10-08 08:30:00',
         ]);
         $bookingDocument->setRelation('booking', null);
         $bookingDocument->setRelation('donHang', null);
@@ -3074,6 +3086,7 @@ class DeliveryContractTest extends TestCase
         ])->render();
         $this->assertStringContainsString('Địa chỉ nhân viên giao đồ', $bookingDocumentHtml);
         $this->assertStringContainsString($storeAddress, $bookingDocumentHtml);
+        $this->assertStringContainsString('08/10/2026 08:30', $bookingDocumentHtml);
     }
 
     #[DataProvider('deliveryProgressDisplayCases')]

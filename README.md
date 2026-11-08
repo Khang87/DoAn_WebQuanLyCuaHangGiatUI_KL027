@@ -473,3 +473,20 @@ Người nhận đổi mật khẩu tại `/internal/reset-password`; thành cô
 Triển khai cần `INTERNAL_OTP_CACHE_STORE=redis` và Resend đã cấu hình. Lệnh `php artisan notifications:grant-default` backfill quyền cho nhóm hiện có, chạy lại không tạo liên kết trùng. Nhóm mới được gán mặc định trong transaction; cả ba luồng chỉnh quyền giữ quyền này. Scheduler mỗi phút dọn notification OTP hết hạn; global scope vẫn ẩn mã hết hạn dù scheduler chưa chạy. README chỉ hướng dẫn, không xác nhận backfill/scheduler đã chạy trên production.
 
 Xem [hướng dẫn OTP](./docs/ADMIN_TRIGGERED_OTP.md), [InternalOtpTest.php](./tests/Feature/InternalOtpTest.php) và **Nhóm 3 — Admin-triggered OTP** trong [TESTCASES.md](./TESTCASES.md) (STT **348–371**, gồm `TC-OTP-NOTIFY-01`–`21` và ba ca hồi quy HTTP). Số liệu 275 passed / 192 skipped trong hướng dẫn OTP là lịch sử; baseline suite hiện hành ở mục **Trạng thái kiểm thử hồi quy** phía trên. Kiểm thử tự động dùng cache cô lập và mock Resend, không xác minh email/Redis production.
+
+## Tìm kiếm nền tức thời trên danh sách — 08/11/2026
+
+- Các thanh tìm kiếm danh sách dùng cập nhật nền thay vì submit tải lại toàn trang. Trong lúc chờ máy chủ, bảng lọc ngay trên các dòng đang hiển thị; request tra cứu chính thức được gộp sau 100 ms kể từ lần gõ cuối, request cũ bị hủy và kết quả mới nhất mới được áp dụng.
+- Kết quả chính thức tiếp tục do truy vấn server-side quyết định để tìm được bản ghi ngoài trang hiện tại và giữ đúng phân trang. URL được thay bằng bộ lọc hiện hành, còn ô tìm kiếm và focus không bị thay thế. Các request AJAX nhận phần nội dung cần cập nhật thay vì toàn bộ layout.
+- Hộp thư tin nhắn giữ cơ chế phân trang hội thoại; phần hội thoại đã tải được lọc ngay, sau đó request JSON nền tải lại trang kết quả phù hợp. Không tải lại tài liệu trang.
+- Phần xem trước trên trình duyệt chỉ tìm trong những dòng đã tải; phải chờ kết quả server-side để có danh sách chính xác trên toàn bộ dữ liệu. Tốc độ cuối cùng vẫn phụ thuộc truy vấn và độ trễ máy chủ.
+- Tìm kiếm khách hàng hỗ trợ tên, số điện thoại và email. Bộ lọc khách hàng tiếp tục do server xử lý, không giới hạn ở trang hiện tại.
+- Chi tiết kiểm tra nằm trong **Nhóm 9 — Tìm kiếm nền tức thời** của [TESTCASES.md](./TESTCASES.md), STT **399–403**. Đã kiểm tra thủ công trên trình duyệt local, build Vite và biên dịch Blade; các kiểm thử PHPUnit chạy chọn lọc được ghi ở kết quả của phiên làm việc, không xem là toàn bộ suite.
+
+## Cập nhật danh sách, báo cáo và thông tin ngày tạo — 08/11/2026
+
+- **Top 5 dịch vụ** trên báo cáo xếp theo tổng số lượng dịch vụ đã đặt, doanh thu chỉ dùng làm tiêu chí phụ khi số lượng bằng nhau; dữ liệu tiếp tục hiển thị tổng lượng và đơn vị phù hợp.
+- **Ngày tạo** chỉ hiển thị khi module có trường ngày tạo tương ứng trong dữ liệu (ví dụ `NgayTao` hoặc `created_at`). Trang Bảng giá không hiện trường này khi bảng không có cột; danh mục loại đồ giặt, chứng từ Booking và danh sách/chi tiết giao nhận lấy ngày từ dữ liệu thực.
+- Trang Bảng giá trả riêng phần danh sách cho request AJAX; nội dung tìm kiếm/thay đổi bộ lọc không cần dựng lại layout đầy đủ. Màu trường disabled/readonly được thống nhất trên toàn giao diện.
+- Khối thông tin khách hàng/đơn trong hội thoại có thể thu gọn để mở rộng vùng chat.
+- Chi tiết hồi quy ở **Nhóm 10 — Báo cáo, bảng giá và giao diện quản trị** của [TESTCASES.md](./TESTCASES.md), STT **404–408**.

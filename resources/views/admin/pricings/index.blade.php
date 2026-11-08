@@ -12,9 +12,9 @@
     <p class="text-muted page-toolbar__desc">Giá dịch vụ theo loại đồ và đơn vị tính.</p>
 </div>
 
-<form action="{{ url()->current() }}" method="GET" class="row g-3 align-items-center mb-4">
+<form action="{{ url()->current() }}" method="GET" class="row g-3 align-items-center mb-4" data-live-search-form>
     <div class="col-12 col-md-auto flex-grow-1">
-        <x-admin.search-field placeholder="Tìm theo dịch vụ, loại đồ..." label="Tìm kiếm bảng giá" />
+        <x-admin.search-field placeholder="Tìm theo dịch vụ, loại đồ..." label="Tìm kiếm bảng giá" :live="true" />
     </div>
     <div class="col-12 col-sm-6 col-md-auto">
         <select name="service_id" id="filter-service" class="form-select form-select-sm filter-select shadow-sm rounded-3" onchange="this.form.submit()">
@@ -44,92 +44,131 @@
     </div>
 </form>
 
-<div class="card">
-    <div class="card-body p-0">
-        <div class="table-responsive">
-            <table class="table-custom mb-0">
-                <thead>
-                    <tr>
-                        <th scope="col">STT</th>
-                        <th>Dịch vụ</th>
-                        <th>Loại đồ giặt</th>
-                        <th>Đơn vị</th>
-                        <th>Đơn giá</th>
-                        <th>Ngày áp dụng</th>
-                        <th>Trạng thái</th>
-                        <th>Thao tác</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @forelse($pricings as $pricing)
-                    <tr>
-                        <td>{{ $pricings->firstItem() + $loop->index }}</td>
-                        <td><strong>{{ $pricing->dichVu?->TenDichVu ?: $pricing->loaiDoGiat?->TenLoaiDoGiat ?: '—' }}</strong></td>
-                        <td>{{ $pricing->loaiDoGiat?->TenLoaiDoGiat ?: '—' }}</td>
-                        <td>{{ $pricing->donViTinh?->KyHieu ?? $pricing->donViTinh?->TenDonViTinh ?: 'kg' }}</td>
-                        <td class="fw-semibold text-dark">{{ number_format($pricing->DonGia) }} VNĐ</td>
-                        <td>{{ $pricing->NgayApDung?->format('d/m/Y') ?: '—' }}</td>
-                        <td>
-                            <x-admin.status-badge :status="$pricing->TrangThai" :enum="\App\Enums\RecordStatus::class" />
-                        </td>
-                        <td>
-                            <div class="d-flex gap-2">
-                                @can('pricings.view')
-                                    <a href="{{ route('pricings.show', $pricing) }}" class="btn btn-order-action view" title="Xem"><i class="bi bi-eye"></i></a>
-                                @endcan
-                                @can('pricings.edit')
-                                    <a href="{{ route('pricings.edit', $pricing) }}" class="btn btn-order-action edit" title="Sửa"><i class="bi bi-pencil"></i></a>
-                                @endcan
-                                @can('pricings.delete')
-                                    <form action="{{ route('pricings.destroy', $pricing) }}" method="POST" class="d-inline" id="deletePricingForm_{{ $pricing->BangGiaID }}">
-                                        @csrf @method('DELETE')
-                                        <button type="submit" class="btn btn-order-action delete" title="Xóa"><i class="bi bi-trash"></i></button>
-                                    </form>
-                                @endcan
-                            </div>
-                        </td>
-                    </tr>
-                    @empty
-                    <tr><td colspan="8" class="text-center text-muted py-4">Chưa có bảng giá nào</td></tr>
-                    @endforelse
-                </tbody>
-            </table>
-        </div>
-    </div>
+<div id="pricing-results" aria-live="polite" aria-busy="false">
+    @include('admin.pricings.partials.list')
 </div>
 
-<x-admin.pagination :paginator="$pricings" label="bảng giá" />
+<p id="pricing-search-error" class="alert alert-danger mt-3" role="alert" hidden></p>
 @endsection
 
 @push('scripts')
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        document.querySelectorAll('[id^="deletePricingForm_"]').forEach(function(form) {
-            form.addEventListener('submit', function(e) {
-                e.preventDefault();
+        const searchForm = document.querySelector('[data-live-search-form]');
+        const searchInput = searchForm?.querySelector('[data-live-search-input]');
+        const results = document.getElementById('pricing-results');
+        const errorMessage = document.getElementById('pricing-search-error');
 
-                if (typeof Swal === 'undefined') {
-                    if (confirm('Bạn có chắc muốn xóa?')) {
-                        form.submit();
-                    }
-                    return;
+        if (searchForm && searchInput && results && errorMessage) {
+            let activeRequest = null;
+            let requestSequence = 0;
+
+            function searchPricings() {
+                if (activeRequest) {
+                    activeRequest.abort();
                 }
 
-                Swal.fire({
-                    title: 'Xóa bảng giá?',
-                    text: 'Hành động này không thể hoàn tác.',
-                    icon: 'warning',
-                    showCancelButton: true,
-                    reverseButtons: true,
-                    confirmButtonColor: '#dc2626',
-                    cancelButtonColor: '#64748b',
-                    confirmButtonText: 'Xóa',
-                    cancelButtonText: 'Hủy'
-                }).then((result) => {
-                    if (result.isConfirmed) {
-                        form.submit();
+                activeRequest = new AbortController();
+                const currentRequest = ++requestSequence;
+                const params = new URLSearchParams(new FormData(searchForm));
+                params.delete('page');
+                const emptyKeys = [];
+                params.forEach(function(value, key) {
+                    if (value === '') {
+                        emptyKeys.push(key);
                     }
                 });
+                emptyKeys.forEach(function(key) {
+                    params.delete(key);
+                });
+
+                const url = new URL(searchForm.action, window.location.href);
+                url.search = params.toString();
+                results.setAttribute('aria-busy', 'true');
+                errorMessage.hidden = true;
+                errorMessage.textContent = '';
+
+                fetch(url, {
+                    headers: {
+                        Accept: 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                    signal: activeRequest.signal,
+                })
+                    .then(function(response) {
+                        if (!response.ok) {
+                            throw new Error('Không thể tìm kiếm bảng giá. Vui lòng thử lại.');
+                        }
+
+                        return response.json();
+                    })
+                    .then(function(data) {
+                        if (currentRequest !== requestSequence) {
+                            return;
+                        }
+                        if (typeof data.html !== 'string') {
+                            throw new Error('Dữ liệu tìm kiếm bảng giá không hợp lệ.');
+                        }
+
+                        results.innerHTML = data.html;
+                        history.replaceState(null, '', url);
+                    })
+                    .catch(function(error) {
+                        if (error.name === 'AbortError' || currentRequest !== requestSequence) {
+                            return;
+                        }
+
+                        errorMessage.textContent = error.message || 'Không thể tìm kiếm bảng giá. Vui lòng thử lại.';
+                        errorMessage.hidden = false;
+                    })
+                    .finally(function() {
+                        if (currentRequest === requestSequence) {
+                            results.setAttribute('aria-busy', 'false');
+                        }
+                    });
+            }
+
+            searchInput.addEventListener('input', function(event) {
+                if (!event.isComposing) {
+                    searchPricings();
+                }
+            });
+            searchInput.addEventListener('compositionend', searchPricings);
+            searchForm.addEventListener('submit', function(event) {
+                event.preventDefault();
+                searchPricings();
+            });
+        }
+
+        document.addEventListener('submit', function(e) {
+            const form = e.target.closest('[id^="deletePricingForm_"]');
+            if (!form) {
+                return;
+            }
+
+            e.preventDefault();
+
+            if (typeof Swal === 'undefined') {
+                if (confirm('Bạn có chắc muốn xóa?')) {
+                    form.submit();
+                }
+                return;
+            }
+
+            Swal.fire({
+                title: 'Xóa bảng giá?',
+                text: 'Hành động này không thể hoàn tác.',
+                icon: 'warning',
+                showCancelButton: true,
+                reverseButtons: true,
+                confirmButtonColor: '#dc2626',
+                cancelButtonColor: '#64748b',
+                confirmButtonText: 'Xóa',
+                cancelButtonText: 'Hủy'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    form.submit();
+                }
             });
         });
     });

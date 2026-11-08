@@ -174,6 +174,8 @@ class DynamicRolePermissionTest extends TestCase
     {
         $owner = $this->createAccount($this->createRole('Chủ cửa hàng'));
         $account = $this->createAccount($this->createRole('Nhân viên'));
+        DB::table('TaiKhoan')->where('TaiKhoanID', $account->getKey())
+            ->update(['NgayTao' => '2026-11-08 10:11:12']);
 
         $this->actingAs($owner)
             ->get(route('accounts.index'))
@@ -189,6 +191,7 @@ class DynamicRolePermissionTest extends TestCase
             ->assertDontSee('Đơn hàng đã xử lý')
             ->assertDontSee('Phiếu giao nhận')
             ->assertDontSee('Cập nhật lần cuối')
+            ->assertSee('08/11/2026 10:11')
             ->assertDontSee('title="Hoạt động"', false);
     }
 

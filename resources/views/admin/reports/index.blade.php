@@ -547,12 +547,12 @@
                             <tr>
                                 <th scope="col" style="width: 48px;">STT</th>
                                 <th scope="col" style="width: 12%;" class="ps-3">Mã đơn</th>
-                                <th scope="col" style="width: 18%;">Khách hàng</th>
-                                <th scope="col" style="width: 32%;">Dịch vụ</th>
-                                <th scope="col" style="width: 14%;" class="text-end">Tổng tiền</th>
-                                <th scope="col" style="width: 12%;" class="text-end">Ngày tạo</th>
+                                <th scope="col" style="width: 19%;">Khách hàng</th>
+                                <th scope="col" style="width: 18%;">Dịch vụ</th>
+                                <th scope="col" style="width: 17%;" class="text-end">Tổng tiền</th>
+                                <th scope="col" style="width: 14%;" class="text-end">Ngày tạo</th>
                                 @can('orders.view')
-                                    <th scope="col" style="width: 12%;" class="text-center">Thao tác</th>
+                                    <th scope="col" style="width: 14%;" class="text-center">Thao tác</th>
                                 @endcan
                             </tr>
                         </thead>

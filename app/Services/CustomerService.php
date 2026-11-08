@@ -20,6 +20,7 @@ class CustomerService
             $search = trim($filters['search']);
             $query->where(function ($customerQuery) use ($search) {
                 $customerQuery->where('HoTen', 'like', "%{$search}%")
+                    ->orWhere('Email', 'like', "%{$search}%")
                     ->orWhere('SoDienThoai', 'like', "%{$search}%");
 
                 if (ctype_digit($search)) {

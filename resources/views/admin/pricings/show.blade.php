@@ -6,6 +6,8 @@
 @section('content')
 @php
     $pricingName = $pricing->dichVu?->TenDichVu ?: 'Bảng giá dịch vụ';
+    $hasCreationTimestamp = array_key_exists('NgayTao', $pricing->getAttributes());
+    $createdAt = $hasCreationTimestamp ? $pricing->getAttribute('NgayTao') : null;
 @endphp
 
 <x-admin.detail.page-header
@@ -27,7 +29,12 @@
                 <x-admin.detail.info-item label="Loại đồ giặt" :value="$pricing->loaiDoGiat?->TenLoaiDoGiat ?: '—'" />
                 <x-admin.detail.info-item label="Đơn vị tính" :value="$pricing->donViTinh?->KyHieu ?? $pricing->donViTinh?->TenDonViTinh ?: 'kg'" />
                 <x-admin.detail.info-item label="Ngày áp dụng" :value="$pricing->NgayApDung?->format('d/m/Y') ?: '—'" />
-                <x-admin.detail.info-item label="Ngày tạo" :value="$pricing->NgayTao?->format('d/m/Y H:i')" />
+                @if($hasCreationTimestamp)
+                    <x-admin.detail.info-item
+                        label="Ngày tạo"
+                        :value="$createdAt ? \Illuminate\Support\Carbon::parse($createdAt)->format('d/m/Y H:i') : '—'"
+                    />
+                @endif
                 <x-admin.detail.info-item label="Trạng thái">
                     <x-admin.status-badge :status="$pricing->TrangThai" :enum="\App\Enums\RecordStatus::class" />
                 </x-admin.detail.info-item>

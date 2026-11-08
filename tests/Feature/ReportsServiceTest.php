@@ -283,8 +283,24 @@ class ReportsServiceTest extends TestCase
         $this->assertSame([], $composition['percentages']);
     }
 
-    public function test_top_services_are_ranked_by_paid_revenue_with_quantity_and_unit(): void
+    public function test_top_services_are_ranked_by_ordered_quantity_with_quantity_and_unit(): void
     {
+        DB::table('DichVu')->insert([
+            'DichVuID' => 3,
+            'LoaiDichVuID' => 1,
+            'TenDichVu' => 'Ủi nhanh',
+        ]);
+        DB::table('ChiTietDonHang')->insert([
+            'ChiTietDonHangID' => 4,
+            'DonHangID' => 1,
+            'DichVuID' => 3,
+            'LoaiDoGiatID' => 1,
+            'DonViTinhID' => 2,
+            'SoLuong' => 10,
+            'KhoiLuong' => null,
+            'ThanhTien' => 1000,
+        ]);
+
         $services = app(ReportsService::class)->getTopServices([
             'range' => 'custom',
             'date_from' => '2026-01-10',
@@ -292,10 +308,10 @@ class ReportsServiceTest extends TestCase
         ], 1);
 
         $this->assertCount(1, $services);
-        $this->assertSame('Giặt thường', $services[0]->name);
-        $this->assertSame('Nhiều ĐVT', $services[0]->unit);
-        $this->assertEquals(4, $services[0]->total_qty);
-        $this->assertEquals(100000, $services[0]->total_revenue);
+        $this->assertSame('Ủi nhanh', $services[0]->name);
+        $this->assertSame('cái', $services[0]->unit);
+        $this->assertEquals(10, $services[0]->total_qty);
+        $this->assertEquals(1000, $services[0]->total_revenue);
     }
 
     public function test_payment_method_totals_include_only_successful_collected_payments(): void
@@ -437,6 +453,8 @@ class ReportsServiceTest extends TestCase
         $this->assertStringContainsString('recent-orders-action-cell', $recentOrdersTable[1]);
         $this->assertStringContainsString('aria-label="Xem chi tiết đơn hàng', $recentOrdersTable[1]);
         $this->assertStringContainsString('>Giặt thường,...</td>', $recentOrdersTable[1]);
+        $this->assertStringContainsString('style="width: 18%;">Dịch vụ</th>', $recentOrdersTable[1]);
+        $this->assertStringContainsString('style="width: 17%;" class="text-end">Tổng tiền</th>', $recentOrdersTable[1]);
     }
 
     public function test_invalid_filter_shape_falls_back_to_the_default_period(): void

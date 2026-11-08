@@ -164,6 +164,15 @@ class GarmentCategoryManagementTest extends TestCase
         $this->assertStringContainsString('<th class="fw-bold text-dark">Ngày tạo</th>', $html);
         $this->assertStringContainsString('05/10/2026 16:40', $html);
         $this->assertStringContainsString('01/10/2026 08:15', $html);
+
+        $category = $categories->getCollection()->first();
+        $detailHtml = view('admin.garment-categories.show', [
+            'category' => $category,
+            'garments' => $category->loaiDoGiats()->paginate(10),
+        ])->render();
+
+        $this->assertStringContainsString('Ngày tạo', $detailHtml);
+        $this->assertStringContainsString($category->NgayTao->format('d/m/Y H:i'), $detailHtml);
     }
 
     public function test_category_list_matches_pricing_action_styles_and_keeps_confirmation_routes(): void

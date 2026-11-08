@@ -50,10 +50,10 @@ class CustomerSortTest extends TestCase
         });
 
         DB::table('KhachHang')->insert([
-            ['KhachHangID' => 1, 'HoTen' => 'Không có điểm'],
-            ['KhachHangID' => 2, 'HoTen' => 'Có điểm cao'],
-            ['KhachHangID' => 3, 'HoTen' => 'Điểm bằng 0'],
-            ['KhachHangID' => 4, 'HoTen' => 'Có điểm thấp'],
+            ['KhachHangID' => 1, 'HoTen' => 'Không có điểm', 'Email' => null],
+            ['KhachHangID' => 2, 'HoTen' => 'Có điểm cao', 'Email' => 'haiphong@example.test'],
+            ['KhachHangID' => 3, 'HoTen' => 'Điểm bằng 0', 'Email' => 'support@skylaundry.test'],
+            ['KhachHangID' => 4, 'HoTen' => 'Có điểm thấp', 'Email' => null],
         ]);
 
         DB::table('TaiKhoan')->insert([
@@ -102,6 +102,16 @@ class CustomerSortTest extends TestCase
         $customers = app(CustomerService::class)->getAll(['sort' => 'points_asc']);
 
         $this->assertSame([1, 3, 4, 2], $customers->getCollection()->pluck('KhachHangID')->all());
+    }
+
+    public function test_customer_search_matches_email_substrings(): void
+    {
+        $customers = app(CustomerService::class)->getAll([
+            'search' => 'haiphong@example',
+            'sort' => 'id_asc',
+        ]);
+
+        $this->assertSame([2], $customers->getCollection()->pluck('KhachHangID')->all());
     }
 
     public function test_customers_can_be_sorted_by_id_in_ascending_order(): void

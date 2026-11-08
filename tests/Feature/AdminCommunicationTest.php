@@ -307,8 +307,14 @@ class AdminCommunicationTest extends TestCase
                 'tab' => $tab === 'orders' ? 'support' : 'orders', $target => $id, 'q' => 'Lazy client 23',
             ]))->assertOk()->assertViewHas('activeTab', $tab)->assertViewHas('messageDecryptionUnavailable', false)
                 ->assertSee('data-message-id="'.$messageId.'"', false)
+                ->assertSee('data-message-details-toggle', false)->assertSee('aria-expanded="false"', false)
+                ->assertSee('id="message-details-panel"', false)->assertSee('data-message-details-panel', false)
                 ->assertDontSee('data-inbox-id="'.$id.'"', false)->assertSee('data-selected-id="'.$id.'"', false)
                 ->assertSee('name="'.$target.'" value="'.$id.'"', false)->assertSee('data-message-form', false);
+            $this->assertMatchesRegularExpression(
+                '/<aside(?=[^>]*id="message-details-panel")(?=[^>]*data-message-details-panel)(?=[^>]*hidden)[^>]*>/',
+                $response->getContent(),
+            );
             $this->assertSame($id, $response->viewData($tab === 'orders' ? 'selectedOrder' : 'selectedCustomer')->getKey());
             $this->assertNull($response->viewData($tab === 'orders' ? 'selectedCustomer' : 'selectedOrder'));
             $this->assertSame([$messageId], $response->viewData('messages')->pluck('TinNhanID')->all());

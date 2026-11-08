@@ -3,12 +3,16 @@
 namespace Tests\Feature;
 
 use App\Enums\RecordStatus;
+use App\Http\Controllers\Admin\BangGiaController;
 use App\Http\Requests\Admin\LuuBangGiaRequest;
 use App\Http\Requests\Admin\LuuDichVuRequest;
+use App\Models\BangGia;
 use App\Models\LoaiDichVu;
 use App\Services\PricingService;
 use App\Services\ServiceService;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\View;
@@ -142,6 +146,48 @@ class ServiceAndPricingManagementTest extends TestCase
             (float) $data['DonGia'],
             app(PricingService::class)->getLatestPrice(1, 1, 1),
         );
+    }
+
+    public function test_pricing_details_hide_creation_date_when_the_table_has_no_creation_column(): void
+    {
+        $pricing = BangGia::make([
+            'TrangThai' => 'Hoạt động',
+            'NgayApDung' => '2026-11-08',
+        ]);
+        $pricing->setRelation('dichVu', null);
+        $pricing->setRelation('loaiDoGiat', null);
+        $pricing->setRelation('donViTinh', null);
+
+        $html = view('admin.pricings.show', ['pricing' => $pricing])->render();
+
+        $this->assertStringNotContainsString('Ngày tạo', $html);
+    }
+
+    public function test_pricing_search_ajax_returns_only_the_updated_listing(): void
+    {
+        DB::table('BangGia')->insert([
+            'BangGiaID' => 1,
+            'DichVuID' => 1,
+            'LoaiDoGiatID' => 1,
+            'DonViTinhID' => 1,
+            'DonGia' => 25000,
+            'NgayApDung' => '2026-11-08',
+            'TrangThai' => 'Hoạt động',
+        ]);
+        $request = Request::create(
+            '/pricings?search=Gi%E1%BA%B7t',
+            'GET',
+            ['search' => 'Giặt'],
+            [],
+            [],
+            ['HTTP_ACCEPT' => 'application/json'],
+        );
+
+        $response = app(BangGiaController::class)->index($request);
+
+        $this->assertInstanceOf(JsonResponse::class, $response);
+        $this->assertStringContainsString('Giặt thường', $response->getData()->html);
+        $this->assertStringNotContainsString('<!DOCTYPE html>', $response->getData()->html);
     }
 
     public function test_negative_pricing_is_rejected_without_saving_a_record(): void

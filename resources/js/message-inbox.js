@@ -5,7 +5,7 @@ if (inbox) {
     const status = inbox.querySelector('[data-inbox-status]');
     const basePage = Number(inbox.dataset.inboxPage);
     let nextPage = inbox.dataset.nextPage ? Number(inbox.dataset.nextPage) : null;
-    let timer, controller, signature, pending = false, stopped = false, disposed = false;
+    let timer, controller, signature, requestId = 0, pending = false, stopped = false, disposed = false;
     let hasAppended = false, loadError = false, refreshError = false, retry = 3000;
 
     function schedule() {
@@ -121,16 +121,18 @@ if (inbox) {
         if (pending || stopped || disposed || document.hidden || !navigator.onLine) return;
         pending = true;
         clearTimeout(timer);
-        controller = new AbortController();
-        const deadline = setTimeout(() => controller.abort(), 30000);
+        const requestController = new AbortController();
+        const currentRequestId = ++requestId;
+        controller = requestController;
+        const deadline = setTimeout(() => requestController.abort(), 30000);
         updateControls();
         try {
             const url = new URL(inbox.dataset.messageInbox, location.origin);
             url.searchParams.set('page', page);
             const response = await fetch(url.href, {
-                credentials: 'same-origin', cache: 'no-store', headers: { Accept: 'application/json' }, signal: controller.signal,
+                credentials: 'same-origin', cache: 'no-store', headers: { Accept: 'application/json' }, signal: requestController.signal,
             });
-            if (disposed || document.hidden || !navigator.onLine || controller.signal.aborted) return;
+            if (currentRequestId !== requestId || disposed || document.hidden || !navigator.onLine || requestController.signal.aborted) return;
             if ([401, 403, 404].includes(response.status)) {
                 stopped = true;
                 rows.replaceChildren();
@@ -147,20 +149,21 @@ if (inbox) {
                     || (item.avatar_url !== null && typeof item.avatar_url !== 'string')
                     || (item.preview !== null && typeof item.preview !== 'string')
                     || (item.date !== null && typeof item.date !== 'string'))) throw new Error('Invalid inbox response');
-            if (disposed || document.hidden || !navigator.onLine || controller.signal.aborted) return;
+            if (currentRequestId !== requestId || disposed || document.hidden || !navigator.onLine || requestController.signal.aborted) return;
             render(data.conversations, append);
             if (append || !hasAppended) nextPage = data.next_page;
             if (append) { hasAppended = true; loadError = false; }
             refreshError = false;
             retry = 3000;
         } catch {
-            if (!disposed && !document.hidden && navigator.onLine) {
+            if (currentRequestId === requestId && !requestController.signal.aborted && !disposed && !document.hidden && navigator.onLine) {
                 if (append) loadError = true;
                 else refreshError = true;
                 retry = Math.min(retry * 2, 120000);
             }
         } finally {
             clearTimeout(deadline);
+            if (currentRequestId !== requestId) return;
             pending = false;
             controller = null;
             updateControls();
@@ -169,6 +172,40 @@ if (inbox) {
         }
     }
     function sync() { return requestPage(basePage, false); }
+    window.addEventListener('message-inbox-search', event => {
+        clearTimeout(timer);
+        controller?.abort();
+        requestId++;
+        pending = false;
+        controller = null;
+        hasAppended = false;
+        loadError = false;
+        refreshError = false;
+        stopped = false;
+        retry = 3000;
+        signature = null;
+        nextPage = null;
+        inbox.dataset.messageInbox = event.detail.inboxUrl;
+        inbox.dataset.messageLink = event.detail.messageLink;
+        inbox.dataset.inboxPage = '1';
+        inbox.dataset.nextPage = '';
+
+        const query = String(event.detail.query ?? '').trim().toLocaleLowerCase('vi');
+        const existingRows = [...rows.querySelectorAll('[data-inbox-id]')];
+        const matchingRows = existingRows.filter(row => row.textContent.toLocaleLowerCase('vi').includes(query));
+        existingRows.forEach(row => { row.hidden = query !== '' && !matchingRows.includes(row); });
+        rows.querySelector('[data-inbox-search-preview]')?.remove();
+        if (query && existingRows.length > 0 && matchingRows.length === 0) {
+            const preview = document.createElement('div');
+            preview.className = 'text-center text-muted p-4';
+            preview.dataset.inboxSearchPreview = '';
+            preview.textContent = 'Đang tìm trên toàn bộ hội thoại...';
+            rows.append(preview);
+        }
+
+        updateControls();
+        timer = setTimeout(() => { void requestPage(1, false); }, 100);
+    });
     function loadIfNearEnd() {
         if (!loadError && !refreshError && nextPage !== null && inbox.clientHeight > 0
             && inbox.scrollHeight - inbox.scrollTop - inbox.clientHeight < 100) void requestPage(nextPage, true);

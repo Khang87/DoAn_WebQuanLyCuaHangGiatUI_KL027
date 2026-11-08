@@ -9,8 +9,6 @@
         #HinhThucNhanDo.receive-method-locked,
         #HinhThucNhanDo.receive-method-locked:disabled {
             padding-right: 0.75rem !important;
-            color: #6c757d !important;
-            background-color: #e9ecef !important;
             background-image: none !important;
             cursor: not-allowed;
             opacity: 1;

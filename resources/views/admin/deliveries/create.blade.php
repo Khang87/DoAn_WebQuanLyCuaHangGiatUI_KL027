@@ -43,13 +43,6 @@
         box-shadow: inset 0 0 0 2px var(--bs-primary);
     }
 
-    .delivery-locked-control:disabled {
-        background-color: #f1f5f9 !important;
-        border-color: #cbd5e1 !important;
-        color: #64748b !important;
-        cursor: not-allowed;
-        opacity: 1;
-    }
 </style>
 @endpush
 @section('content')

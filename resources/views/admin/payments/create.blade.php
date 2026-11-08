@@ -5,22 +5,6 @@
 
 @section('content')
 @php($initialMethod = old('method', $preselectedOrder?->booking?->PhuongThucThanhToan === 'Chuyển khoản' ? 'bank_transfer' : 'cash'))
-@push('styles')
-<style>
-    #paymentForm .form-control:read-only,
-    #paymentForm .form-control:disabled,
-    #paymentForm .form-select:disabled {
-        background-color: #e9ecef !important;
-        color: #6c757d !important;
-        cursor: not-allowed;
-        opacity: 1;
-    }
-
-    #paymentForm .payment-form__editable-muted {
-        background-color: #e9ecef;
-    }
-</style>
-@endpush
 
 <div class="card">
     <div class="card-body">

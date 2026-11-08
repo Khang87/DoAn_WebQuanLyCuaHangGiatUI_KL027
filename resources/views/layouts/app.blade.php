@@ -1,3 +1,6 @@
+@if (request()->ajax())
+    @yield('content')
+@else
 <!DOCTYPE html>
 <html lang="vi">
 
@@ -515,45 +518,198 @@
 
         document.querySelectorAll('[data-auto-search-input]').forEach(function(input) {
             const form = input.form;
-            let searchTimeout;
 
-            if (!form) {
+            if (!form || form.method.toLowerCase() !== 'get') {
                 return;
             }
 
-            input.addEventListener('input', function(event) {
-                if (event.isComposing) {
+            let activeRequest = null;
+            let searchTimer = null;
+            let requestSequence = 0;
+            let errorMessage = null;
+            let previewBody = null;
+            let previewRows = [];
+
+            function tableAfterForm(scopeForm) {
+                return Array.from(document.querySelectorAll('table')).find(function(table) {
+                    return Boolean(scopeForm.compareDocumentPosition(table) & Node.DOCUMENT_POSITION_FOLLOWING);
+                });
+            }
+
+            function showError(message) {
+                if (!errorMessage) {
+                    errorMessage = document.createElement('div');
+                    errorMessage.className = 'alert alert-danger mt-2 py-2';
+                    errorMessage.setAttribute('role', 'alert');
+                    form.appendChild(errorMessage);
+                }
+
+                errorMessage.textContent = message;
+            }
+
+            function applyImmediatePreview() {
+                const table = tableAfterForm(form);
+                const body = table?.querySelector('tbody');
+
+                if (!body) {
                     return;
                 }
 
-                window.clearTimeout(searchTimeout);
-                searchTimeout = window.setTimeout(submitSearch, 350);
-            });
-
-            input.addEventListener('compositionend', function() {
-                window.clearTimeout(searchTimeout);
-                searchTimeout = window.setTimeout(submitSearch, 350);
-            });
-
-            form.addEventListener('submit', function() {
-                window.clearTimeout(searchTimeout);
-            });
-
-            function submitSearch() {
-                sessionStorage.setItem(autoSearchFocusKey, JSON.stringify({
-                    path: location.pathname,
-                    name: input.name,
-                    value: input.value,
-                    selectionStart: input.selectionStart,
-                    selectionEnd: input.selectionEnd,
-                }));
-
-                if (typeof form.requestSubmit === 'function') {
-                    form.requestSubmit();
-                } else {
-                    form.submit();
+                if (previewBody !== body) {
+                    previewBody = body;
+                    previewRows = Array.from(body.rows, function(row) {
+                        return row.cloneNode(true);
+                    });
                 }
+
+                const query = input.value.trim().toLocaleLowerCase('vi');
+                const matchingRows = query
+                    ? previewRows.filter(function(row) {
+                        return row.textContent.toLocaleLowerCase('vi').includes(query);
+                    })
+                    : previewRows;
+
+                const rows = matchingRows.map(function(row) {
+                    return row.cloneNode(true);
+                });
+
+                if (query && rows.length === 0 && previewRows.length > 0) {
+                    const row = document.createElement('tr');
+                    const cell = document.createElement('td');
+                    row.dataset.searchPreview = '';
+                    cell.colSpan = table.querySelectorAll('thead th').length || 1;
+                    cell.className = 'text-center text-muted py-4';
+                    cell.textContent = 'Đang tìm trên toàn bộ dữ liệu...';
+                    row.appendChild(cell);
+                    rows.push(row);
+                }
+
+                body.replaceChildren(...rows);
             }
+
+            function searchInBackground() {
+                clearTimeout(searchTimer);
+
+                if (activeRequest) {
+                    activeRequest.abort();
+                }
+
+                activeRequest = new AbortController();
+                const currentRequest = ++requestSequence;
+                const url = new URL(form.action, window.location.href);
+                const params = new URLSearchParams(new FormData(form));
+                params.delete('page');
+                url.search = params.toString();
+
+                const messageInbox = document.querySelector('[data-message-inbox]');
+                if (messageInbox && input.name === 'q') {
+                    const inboxUrl = new URL(messageInbox.dataset.messageInbox, window.location.origin);
+                    inboxUrl.searchParams.set('q', input.value);
+                    inboxUrl.searchParams.delete('page');
+                    const messageLink = new URL(messageInbox.dataset.messageLink, window.location.origin);
+                    messageLink.searchParams.set('q', input.value);
+                    messageLink.searchParams.delete('order_id');
+                    messageLink.searchParams.delete('customer_id');
+
+                    history.replaceState(null, '', url);
+                    window.dispatchEvent(new CustomEvent('message-inbox-search', {
+                        detail: {
+                            inboxUrl: inboxUrl.href,
+                            messageLink: messageLink.href,
+                            query: input.value,
+                        },
+                    }));
+
+                    return;
+                }
+
+                applyImmediatePreview();
+
+                searchTimer = setTimeout(function() {
+                    fetch(url, {
+                        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                        signal: activeRequest.signal,
+                    })
+                    .then(function(response) {
+                        if (!response.ok) {
+                            throw new Error('Không thể tìm kiếm dữ liệu. Vui lòng thử lại.');
+                        }
+
+                        return response.text();
+                    })
+                    .then(function(html) {
+                        if (currentRequest !== requestSequence) {
+                            return;
+                        }
+
+                        const parsedPage = new DOMParser().parseFromString(html, 'text/html');
+                        const currentTable = tableAfterForm(form);
+                        const remoteForm = Array.from(parsedPage.querySelectorAll('form')).find(function(candidate) {
+                            return candidate.querySelector('[data-auto-search-input][name="' + CSS.escape(input.name) + '"]');
+                        });
+                        const remoteTable = remoteForm
+                            ? Array.from(parsedPage.querySelectorAll('table')).find(function(table) {
+                                return Boolean(remoteForm.compareDocumentPosition(table) & Node.DOCUMENT_POSITION_FOLLOWING)
+                                    && (!currentTable || table.querySelector('thead')?.textContent.trim() === currentTable.querySelector('thead')?.textContent.trim());
+                            })
+                            : null;
+                        const currentInboxRows = document.querySelector('[data-inbox-rows]');
+                        const remoteInboxRows = parsedPage.querySelector('[data-inbox-rows]');
+                        let updated = false;
+
+                        if (currentTable && remoteTable) {
+                            const currentBody = currentTable.querySelector('tbody');
+                            const remoteBody = remoteTable.querySelector('tbody');
+
+                            if (currentBody && remoteBody) {
+                                currentBody.innerHTML = remoteBody.innerHTML;
+                                updated = true;
+                            }
+                        } else if (currentInboxRows && remoteInboxRows) {
+                            currentInboxRows.innerHTML = remoteInboxRows.innerHTML;
+                            updated = true;
+                        }
+
+                        const currentPagination = document.querySelector('[data-admin-pagination]');
+                        const remotePagination = parsedPage.querySelector('[data-admin-pagination]');
+                        if (currentPagination && remotePagination) {
+                            currentPagination.innerHTML = remotePagination.innerHTML;
+                        }
+
+                        if (!updated) {
+                            throw new Error('Không tìm thấy danh sách để cập nhật kết quả tìm kiếm.');
+                        }
+
+                        history.replaceState(null, '', url);
+                        if (errorMessage) {
+                            errorMessage.remove();
+                            errorMessage = null;
+                        }
+                    })
+                    .catch(function(error) {
+                        if (error.name !== 'AbortError' && currentRequest === requestSequence) {
+                            if (previewBody) {
+                                previewBody.replaceChildren(...previewRows.map(function(row) {
+                                    return row.cloneNode(true);
+                                }));
+                            }
+
+                            showError(error.message || 'Không thể tìm kiếm dữ liệu. Vui lòng thử lại.');
+                        }
+                    });
+                }, 100);
+            }
+
+            input.addEventListener('input', function(event) {
+                if (!event.isComposing) {
+                    searchInBackground();
+                }
+            });
+            input.addEventListener('compositionend', searchInBackground);
+            form.addEventListener('submit', function(event) {
+                event.preventDefault();
+                searchInBackground();
+            });
         });
     </script>
 
@@ -570,3 +726,4 @@
 </body>
 
 </html>
+@endif

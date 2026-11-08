@@ -125,32 +125,35 @@
 @push('scripts')
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        document.querySelectorAll('[id^="deletePaymentForm_"]').forEach(function(form) {
-            form.addEventListener('submit', function(e) {
-                e.preventDefault();
+        document.addEventListener('submit', function(e) {
+            const form = e.target.closest('[id^="deletePaymentForm_"]');
+            if (!form) {
+                return;
+            }
 
-                if (typeof Swal === 'undefined') {
-                    if (confirm('Bạn có chắc muốn xóa?')) {
-                        form.submit();
-                    }
-                    return;
+            e.preventDefault();
+
+            if (typeof Swal === 'undefined') {
+                if (confirm('Bạn có chắc muốn xóa?')) {
+                    form.submit();
                 }
+                return;
+            }
 
-                Swal.fire({
-                    title: 'Xóa thanh toán?',
-                    text: 'Hành động này không thể hoàn tác.',
-                    icon: 'warning',
-                    showCancelButton: true,
-                    reverseButtons: true,
-                    confirmButtonColor: '#dc2626',
-                    cancelButtonColor: '#64748b',
-                    confirmButtonText: 'Xóa',
-                    cancelButtonText: 'Hủy'
-                }).then((result) => {
-                    if (result.isConfirmed) {
-                        form.submit();
-                    }
-                });
+            Swal.fire({
+                title: 'Xóa thanh toán?',
+                text: 'Hành động này không thể hoàn tác.',
+                icon: 'warning',
+                showCancelButton: true,
+                reverseButtons: true,
+                confirmButtonColor: '#dc2626',
+                cancelButtonColor: '#64748b',
+                confirmButtonText: 'Xóa',
+                cancelButtonText: 'Hủy'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    form.submit();
+                }
             });
         });
     });

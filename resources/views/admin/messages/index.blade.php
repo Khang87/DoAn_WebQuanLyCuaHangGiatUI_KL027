@@ -80,7 +80,7 @@
         </div>
     </div>
 
-    <div class="col-12 col-md-8 col-xl-6">
+    <div class="col-12 col-md-8 col-xl-9" data-message-chat-column>
         <div class="card border-0 shadow-sm message-chat-card">
             @if($selectedOrder || $selectedCustomer)
                 <div class="card-header bg-white py-3 d-flex justify-content-between align-items-start gap-3">
@@ -90,6 +90,11 @@
                         <small class="d-block text-muted" data-message-status role="status" aria-live="polite"></small>
                     </div>
                     <div class="flex-shrink-0 d-flex align-items-center gap-2 pt-1">
+                        <button type="button" class="btn btn-link text-primary p-1 message-details-toggle" data-message-details-toggle
+                            aria-controls="message-details-panel" aria-expanded="false"
+                            aria-label="Hiện thông tin khách hàng và đơn hàng" title="Thông tin chi tiết">
+                            <i class="bi bi-info-circle-fill" aria-hidden="true"></i>
+                        </button>
                         <span class="message-status-dot bg-warning text-body-secondary" data-message-connection-dot role="img" title="Chưa xác định kết nối" aria-label="Chưa xác định kết nối"></span>
                         <small class="d-block text-muted">Trạng thái kết nối</small>
                     </div>
@@ -191,7 +196,8 @@
             @endif
         </div>
     </div>
-    <aside class="col-12 col-xl-3" aria-label="Thông tin cuộc trò chuyện">
+    <aside class="col-12 col-xl-3" id="message-details-panel" data-message-details-panel
+        @if($selectedOrder || $selectedCustomer) hidden @endif aria-label="Thông tin cuộc trò chuyện">
         @if($selectedOrder || $selectedCustomer)
         <div class="card border-0 shadow-sm">
             <div class="card-header bg-white py-3"><h6 class="mb-0 fw-semibold">Thông tin khách hàng</h6></div>
@@ -242,12 +248,14 @@
 @can('messages.view')
     @if($selectedOrder || $selectedCustomer)
         @vite('resources/js/message-updates.js')
+        @vite('resources/js/message-details.js')
     @endif
 @endcan
 @endpush
 
 @push('styles')
 <style>
+    .message-details-toggle { font-size: 1.25rem; line-height: 1; text-decoration: none; }
     .message-chat-history .rounded-3 { position: relative; }
     .message-chat-history .message-actions { position: absolute; top: .35rem; right: -2.25rem; z-index: 5; }
     .message-chat-history .justify-content-end > .rounded-3 .message-actions { right: auto; left: -2.25rem; }

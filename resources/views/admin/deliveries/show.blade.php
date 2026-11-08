@@ -101,6 +101,7 @@
 
             <x-admin.detail.info-grid :columns="2">
                 <x-admin.detail.info-item label="Mã phiếu" :value="$displayCode" />
+                <x-admin.detail.info-item label="Ngày tạo" :value="$delivery->NgayTao?->format('d/m/Y H:i') ?: '—'" />
                 <x-admin.detail.info-item label="Mã đặt lịch" :value="$delivery->donHang?->booking?->MaBooking ?: '—'" />
                 <x-admin.detail.info-item label="Khách hàng" :value="$delivery->donHang?->khachHang?->HoTen ?: '—'" />
                 <x-admin.detail.info-item label="Số điện thoại" :value="$delivery->donHang?->khachHang?->SoDienThoai ?: '—'" />

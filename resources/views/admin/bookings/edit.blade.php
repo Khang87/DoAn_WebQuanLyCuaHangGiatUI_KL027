@@ -15,23 +15,6 @@
         z-index: 1080;
     }
 
-    #booking-edit-form .form-control:disabled,
-    #booking-edit-form .form-select:disabled {
-        background-color: #e9ecef !important;
-        color: #6c757d !important;
-        cursor: not-allowed;
-        opacity: 1;
-    }
-
-    #booking-edit-form #booking-pickup-address[readonly],
-    #booking-edit-form #booking-return-address[readonly] {
-        background-color: #e9ecef !important;
-        background-image: none;
-        border-color: #ced4da;
-        color: #6c757d !important;
-        cursor: not-allowed;
-        opacity: 1;
-    }
 </style>
 @endpush
 

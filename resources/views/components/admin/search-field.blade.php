@@ -3,6 +3,7 @@
     'placeholder' => 'Tìm kiếm...',
     'label' => 'Tìm kiếm',
     'value' => null,
+    'live' => false,
 ])
 
 <div class="input-group input-group-sm shadow-sm rounded-3 overflow-hidden filter-search">
@@ -13,7 +14,7 @@
         placeholder="{{ $placeholder }}"
         value="{{ $value ?? request($name) }}"
         aria-label="{{ $label }}"
-        data-auto-search-input
+        {{ $live ? 'data-live-search-input' : 'data-auto-search-input' }}
     >
     <button type="submit" class="input-group-text bg-white border-start-0 pe-3" aria-label="{{ $label }}" title="{{ $label }}">
         <i class="fas fa-search text-muted" aria-hidden="true"></i>

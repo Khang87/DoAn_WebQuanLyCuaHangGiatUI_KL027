@@ -263,7 +263,6 @@
                                 <th>Khách hàng</th>
                                 <th>Nhân viên</th>
                                 <th>Tổng tiền</th>
-                                <th class="text-center">Trạng thái</th>
                                 <th>Thao tác</th>
                             </tr>
                         </thead>
@@ -280,15 +279,10 @@
                                 </td>
                                 <td>{{ $order->nhanVien?->HoTen ?: '-' }}</td>
                                 <td><strong>{{ number_format((float) $order->ThanhTien) }} đ</strong></td>
-                                <td class="text-center">
-                                    <div class="order-status-badges d-inline-flex align-items-center flex-nowrap gap-1 text-nowrap">
-                                        <x-admin.order-status-badges :order="$order" :is-paid="$order->isPaid()" :is-receiving="false" compact />
-                                    </div>
-                                </td>
                                 <td>@can('orders.view')<a href="{{ route('orders.show', $order) }}" class="btn btn-order-action view" title="Xem"><i class="bi bi-eye"></i></a>@endcan</td>
                             </tr>
                             @empty
-                            <tr><td colspan="7" class="text-center text-muted py-4">Chưa có đơn hàng</td></tr>
+                            <tr><td colspan="6" class="text-center text-muted py-4">Chưa có đơn hàng</td></tr>
                             @endforelse
                         </tbody>
                     </table>

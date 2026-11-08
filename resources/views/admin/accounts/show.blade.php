@@ -44,7 +44,9 @@
                         <i class="fas {{ $roleIcon }} me-1"></i>{{ $roleLabel }}
                     </span>
                 </x-admin.detail.info-item>
-                <x-admin.detail.info-item label="Ngày tạo" :value="$account->created_at?->format('d/m/Y H:i')" />
+                @if(array_key_exists('NgayTao', $account->getAttributes()))
+                    <x-admin.detail.info-item label="Ngày tạo" :value="$account->NgayTao?->format('d/m/Y H:i')" />
+                @endif
                 <x-admin.detail.info-item label="Trạng thái">
                     <x-admin.status-badge
                         :status="$account->deleted_at ? 'inactive' : 'active'"

@@ -108,36 +108,39 @@
 @push('scripts')
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        document.querySelectorAll('[id^="deletePromotionForm_"]').forEach(function(form) {
-            form.addEventListener('submit', function(e) {
-                e.preventDefault();
-                const isActive = form.querySelector('[data-promotion-active]').dataset.promotionActive === 'true';
-                const confirmationText = isActive
-                    ? 'Khuyến mãi có trạng thái Hoạt động sẽ được chuyển sang Tạm ngưng, không bị xóa cứng.'
-                    : 'Khuyến mãi sẽ bị xóa vĩnh viễn. Liên kết trên đơn hàng/Booking sẽ được gỡ; số tiền giảm đã lưu trên đơn hàng được giữ nguyên.';
+        document.addEventListener('submit', function(e) {
+            const form = e.target.closest('[id^="deletePromotionForm_"]');
+            if (!form) {
+                return;
+            }
 
-                if (typeof Swal === 'undefined') {
-                    if (confirm(confirmationText)) {
-                        form.submit();
-                    }
-                    return;
+            e.preventDefault();
+            const isActive = form.querySelector('[data-promotion-active]').dataset.promotionActive === 'true';
+            const confirmationText = isActive
+                ? 'Khuyến mãi có trạng thái Hoạt động sẽ được chuyển sang Tạm ngưng, không bị xóa cứng.'
+                : 'Khuyến mãi sẽ bị xóa vĩnh viễn. Liên kết trên đơn hàng/Booking sẽ được gỡ; số tiền giảm đã lưu trên đơn hàng được giữ nguyên.';
+
+            if (typeof Swal === 'undefined') {
+                if (confirm(confirmationText)) {
+                    form.submit();
                 }
+                return;
+            }
 
-                Swal.fire({
-                    title: 'Xóa khuyến mãi?',
-                    text: confirmationText,
-                    icon: 'warning',
-                    showCancelButton: true,
-                    reverseButtons: true,
-                    confirmButtonColor: '#dc2626',
-                    cancelButtonColor: '#64748b',
-                    confirmButtonText: 'Xóa',
-                    cancelButtonText: 'Hủy'
-                }).then((result) => {
-                    if (result.isConfirmed) {
-                        form.submit();
-                    }
-                });
+            Swal.fire({
+                title: 'Xóa khuyến mãi?',
+                text: confirmationText,
+                icon: 'warning',
+                showCancelButton: true,
+                reverseButtons: true,
+                confirmButtonColor: '#dc2626',
+                cancelButtonColor: '#64748b',
+                confirmButtonText: 'Xóa',
+                cancelButtonText: 'Hủy'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    form.submit();
+                }
             });
         });
     });

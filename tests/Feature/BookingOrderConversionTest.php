@@ -4210,15 +4210,17 @@ class BookingOrderConversionTest extends TestCase
     public function test_opening_inspection_shows_required_condition_and_does_not_create_an_order(): void
     {
         $this->createInspectionCatalog();
+        $this->createPromotionTable();
         $booking = $this->createBooking(['GhiChu' => 'Ghi chú từ khách hàng cần giữ']);
         $this->bookingService->update($booking, ['items' => $this->actualItems()]);
         $this->actingAsBookingEmployee();
         $this->prepareBookingForInspection($booking);
         $this->createPermissionTables();
         $this->withoutMiddleware([Authenticate::class, EnsureUserHasPermission::class, RejectCustomerRole::class, RestoreRememberedLogin::class]);
-        $this->get(route('bookings.inspection', $booking))
+        $response = $this->get(route('bookings.inspection', $booking))
             ->assertOk()
             ->assertSee('Kiểm tra thực tế trước khi tạo đơn')
+            ->assertSee('assets/css/laundry.css', false)
             ->assertSee('href="'.route('deliveries.index').'"', false)
             ->assertSee('TinhTrangTruocKhiGiat')
             ->assertSee('name="return_method"', false)
@@ -4228,6 +4230,14 @@ class BookingOrderConversionTest extends TestCase
             ->assertDontSee('id="quality_difference"', false)
             ->assertDontSee('items[0][GhiChu]', false)
             ->assertSee('Xác nhận nhận đồ và tạo đơn', false);
+        $this->assertMatchesRegularExpression(
+            '/<input(?=[^>]*id="booking-customer-name")(?=[^>]*disabled)[^>]*>/',
+            $response->getContent(),
+        );
+        $this->assertMatchesRegularExpression(
+            '/<input(?=[^>]*id="booking-staff-name")(?=[^>]*readonly)[^>]*>/',
+            $response->getContent(),
+        );
         $this->assertSame(BookingStatus::Confirmed->value, $booking->fresh()->TrangThai);
         $this->assertSame(0, DonHang::query()->count());
         $this->assertSame(0, ChiTietDonHang::query()->count());

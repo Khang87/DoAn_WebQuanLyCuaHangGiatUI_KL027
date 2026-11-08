@@ -38,6 +38,12 @@ class BangGiaController extends Controller
         ];
         $units = BangGia::unitOptions();
 
+        if ($request->expectsJson()) {
+            return response()->json([
+                'html' => view('admin.pricings.partials.list', compact('pricings'))->render(),
+            ]);
+        }
+
         return view('admin.pricings.index', compact('pricings', 'services', 'garments', 'statuses', 'units'));
     }
 

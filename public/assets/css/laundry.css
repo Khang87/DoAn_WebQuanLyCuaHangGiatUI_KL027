@@ -1736,9 +1736,14 @@ select.form-select-sm.is-valid,
     box-shadow: 0 0 0 3px var(--primary-blue-light) !important;
 }
 
-.form-control:disabled,
-.form-select:disabled {
-    background-color: #f3f4f6;
+input:disabled:not([type="checkbox"]):not([type="radio"]):not([type="button"]):not([type="submit"]),
+input:read-only:not([type="checkbox"]):not([type="radio"]):not([type="button"]):not([type="submit"]),
+textarea:disabled,
+textarea:read-only,
+select:disabled {
+    background-color: #dee2e6 !important;
+    border-color: #adb5bd !important;
+    color: #495057 !important;
     opacity: 1;
     cursor: not-allowed;
 }

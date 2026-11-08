@@ -102,59 +102,58 @@
         let activeFrame = null;
         const errorMessage = document.getElementById('invoice-print-error');
 
-        document.querySelectorAll('[data-invoice-print]').forEach((button) => {
-            button.addEventListener('click', () => {
-                if (activeFrame) return;
+        document.addEventListener('click', (event) => {
+            const button = event.target.closest('[data-invoice-print]');
+            if (!button || activeFrame) return;
 
-                errorMessage.hidden = true;
-                button.disabled = true;
-                button.setAttribute('aria-busy', 'true');
+            errorMessage.hidden = true;
+            button.disabled = true;
+            button.setAttribute('aria-busy', 'true');
 
-                const frame = document.createElement('iframe');
-                activeFrame = frame;
-                frame.title = 'Bản in hóa đơn';
-                frame.setAttribute('aria-hidden', 'true');
-                frame.tabIndex = -1;
-                frame.style.cssText = 'position:fixed;left:-10000px;top:0;width:210mm;height:297mm;border:0;';
+            const frame = document.createElement('iframe');
+            activeFrame = frame;
+            frame.title = 'Bản in hóa đơn';
+            frame.setAttribute('aria-hidden', 'true');
+            frame.tabIndex = -1;
+            frame.style.cssText = 'position:fixed;left:-10000px;top:0;width:210mm;height:297mm;border:0;';
 
-                const cleanup = () => {
-                    clearTimeout(timeout);
-                    frame.remove();
-                    activeFrame = null;
-                    button.disabled = false;
-                    button.removeAttribute('aria-busy');
-                    button.focus({ preventScroll: true });
-                };
-                const fail = () => {
-                    if (activeFrame !== frame) return;
-                    cleanup();
-                    errorMessage.textContent = 'Không thể tải hóa đơn để in. Vui lòng thử lại.';
-                    errorMessage.hidden = false;
-                };
-                const timeout = setTimeout(fail, 30000);
+            const cleanup = () => {
+                clearTimeout(timeout);
+                frame.remove();
+                activeFrame = null;
+                button.disabled = false;
+                button.removeAttribute('aria-busy');
+                button.focus({ preventScroll: true });
+            };
+            const fail = () => {
+                if (activeFrame !== frame) return;
+                cleanup();
+                errorMessage.textContent = 'Không thể tải hóa đơn để in. Vui lòng thử lại.';
+                errorMessage.hidden = false;
+            };
+            const timeout = setTimeout(fail, 30000);
 
-                frame.addEventListener('load', async () => {
-                    try {
-                        const printWindow = frame.contentWindow;
-                        if (!printWindow.document.querySelector('.invoice-print-heading')) {
-                            fail();
-                            return;
-                        }
-
-                        await printWindow.document.fonts.ready;
-                        if (activeFrame !== frame) return;
-
-                        clearTimeout(timeout);
-                        printWindow.addEventListener('afterprint', cleanup, { once: true });
-                        printWindow.print();
-                    } catch {
+            frame.addEventListener('load', async () => {
+                try {
+                    const printWindow = frame.contentWindow;
+                    if (!printWindow.document.querySelector('.invoice-print-heading')) {
                         fail();
+                        return;
                     }
-                }, { once: true });
-                frame.addEventListener('error', fail, { once: true });
-                frame.src = button.dataset.invoicePrint;
-                document.body.appendChild(frame);
-            });
+
+                    await printWindow.document.fonts.ready;
+                    if (activeFrame !== frame) return;
+
+                    clearTimeout(timeout);
+                    printWindow.addEventListener('afterprint', cleanup, { once: true });
+                    printWindow.print();
+                } catch {
+                    fail();
+                }
+            }, { once: true });
+            frame.addEventListener('error', fail, { once: true });
+            frame.src = button.dataset.invoicePrint;
+            document.body.appendChild(frame);
         });
     })();
 </script>
