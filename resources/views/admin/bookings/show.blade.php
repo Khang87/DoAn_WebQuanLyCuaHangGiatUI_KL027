@@ -16,6 +16,10 @@
 
 @php $order = $booking->donHangs->first() @endphp
 @php
+    $inspectionDecision = $booking->kiemKe?->DuLieuThucTe['_decision'] ?? [];
+    $cancellationReason = $booking->statusEnum() === \App\Enums\BookingStatus::Cancelled
+        ? ($inspectionDecision['reason'] ?? null)
+        : null;
     $storeAddress = config('services.google_routes.store_address');
     $receiveAtStore = $booking->HinhThucNhanDo === 'Tại cửa hàng';
     $returnAtStore = $booking->HinhThucTraDo === 'Tại cửa hàng';
@@ -56,6 +60,9 @@
                 <x-admin.detail.info-item label="Trạng thái đặt lịch">
                     <x-admin.status-badge :status="$booking->TrangThai" :enum="\App\Enums\BookingStatus::class" />
                 </x-admin.detail.info-item>
+                @if(filled($cancellationReason))
+                    <x-admin.detail.info-item label="Lý do hủy" :value="$cancellationReason" />
+                @endif
                 <x-admin.detail.info-item label="HÌNH THỨC NHÂN VIÊN NHẬN ĐỒ" :value="$booking->method_label" />
                 <x-admin.detail.info-item label="ĐỊA CHỈ NHÂN VIÊN NHẬN ĐỒ" :value="$receiveAtStore ? $storeAddress : ($booking->DiaChiNhan ?: '—')" />
                 <x-admin.detail.info-item label="HÌNH THỨC NHÂN VIÊN GIAO ĐỒ" :value="$booking->return_method_label" />

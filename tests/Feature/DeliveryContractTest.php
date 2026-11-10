@@ -13,6 +13,7 @@ use App\Models\Booking;
 use App\Models\BookingGiaoNhan;
 use App\Models\DonHang;
 use App\Models\GiaoNhan;
+use App\Models\NhatKyHeThong;
 use App\Models\User;
 use App\Services\BookingService;
 use App\Services\DeliveryService;
@@ -1749,6 +1750,7 @@ class DeliveryContractTest extends TestCase
         $manager = Mockery::mock(User::class)->makePartial();
         $manager->shouldReceive('isManager')->andReturn(true);
         $manager->shouldReceive('canPermission')->andReturn(true);
+        view()->share('errors', new ViewErrorBag);
         $this->actingAs($manager)->withoutMiddleware();
         DB::table('BookingGiaoNhan')->delete();
         $this->get(route('deliveries.index'))
@@ -2658,6 +2660,49 @@ class DeliveryContractTest extends TestCase
         );
     }
 
+    public function test_cancelled_pickup_delivery_cannot_be_edited_from_list_or_direct_requests(): void
+    {
+        DB::table('DonHang')->where('DonHangID', 1)->update([
+            'TrangThai' => OrderStatus::Received->value,
+        ]);
+        $deliveryId = DB::table('GiaoNhan')->insertGetId([
+            'DonHangID' => 1,
+            'NhanVienID' => 1,
+            'LoaiGiaoNhan' => 'NHAN_DO',
+            'HinhThuc' => 'Tại nhà',
+            'DiaChi' => '12 Nguyễn Huệ',
+            'ThoiGianDuKien' => '2026-10-08 10:00:00',
+            'TrangThai' => DeliveryStatus::Cancelled->dbValue(),
+        ], 'GiaoNhanID');
+        $delivery = GiaoNhan::query()->findOrFail($deliveryId);
+        $manager = Mockery::mock(User::class)->makePartial();
+        $manager->shouldReceive('isManager')->andReturn(true);
+        $manager->shouldReceive('canPermission')->andReturn(true);
+        $this->actingAs($manager)->withoutMiddleware();
+
+        $this->get(route('deliveries.index'))
+            ->assertOk()
+            ->assertDontSee(route('deliveries.edit', $delivery), false);
+        $this->get(route('deliveries.edit', $delivery))->assertForbidden();
+        $this->put(route('deliveries.update', $delivery), $this->data([
+            'method' => 'nhan_do',
+            'status' => 'completed',
+            'pickup_date' => '2026-10-08',
+            'pickup_time' => '10:00',
+        ]))->assertForbidden();
+
+        $this->reject(
+            fn () => app(DeliveryService::class)->update($delivery, [
+                'status' => DeliveryStatus::Completed->value,
+                'pickup_date' => '2026-10-08',
+                'pickup_time' => '10:00',
+            ]),
+            'delivery',
+        );
+
+        $this->assertSame(DeliveryStatus::Cancelled->dbValue(), $delivery->fresh()->TrangThai);
+    }
+
     public function test_delivery_update_ignores_non_string_employee_search_payload(): void
     {
         DB::table('DonHang')->where('DonHangID', 1)->update([
@@ -3029,6 +3074,7 @@ class DeliveryContractTest extends TestCase
             ['NHAN_DO', 'Đang thực hiện', 'Đang nhận đồ', 'Hiện tại'],
             ['GIAO_DO', 'Đang thực hiện', 'Đang giao đồ', 'Hiện tại'],
             ['GIAO_DO', 'Hoàn thành', 'Hoàn thành', 'Đã hoàn tất'],
+            ['GIAO_DO', 'Đã hủy', 'Đã hủy', 'Hiện tại'],
         ];
     }
 
@@ -3056,6 +3102,34 @@ class DeliveryContractTest extends TestCase
         $this->assertStringContainsString('Địa chỉ nhân viên giao đồ', $detailHtml);
         $this->assertStringContainsString($storeAddress, $detailHtml);
         $this->assertStringContainsString('08/10/2026 07:30', $detailHtml);
+
+        $cancelledOrder = (new DonHang)->forceFill([
+            'DonHangID' => 2,
+            'MaDonHang' => 'DH-CANCELLED',
+            'TrangThai' => OrderStatus::Cancelled->value,
+        ]);
+        $cancelledOrder->setRelation('booking', null);
+        $cancelledOrder->setRelation('khachHang', null);
+        $cancelledOrder->setRelation('cancellationReasonLog', (new NhatKyHeThong)->forceFill([
+            'LyDo' => 'Khách yêu cầu hủy đơn.',
+        ]));
+        $intakeDelivery = (new GiaoNhan)->forceFill([
+            'GiaoNhanID' => 2,
+            'LoaiGiaoNhan' => 'NHAN_DO',
+            'HinhThuc' => 'Tại cửa hàng',
+            'TrangThai' => DeliveryStatus::Cancelled->dbValue(),
+        ]);
+        $intakeDelivery->setRelation('donHang', $cancelledOrder);
+        $intakeDelivery->setRelation('nhanVien', null);
+
+        $intakeDetailHtml = view('admin.deliveries.show', [
+            'delivery' => $intakeDelivery,
+            'displayCode' => 'GN-2',
+            'canCancelReturnDelivery' => false,
+            'canEditReturnDelivery' => false,
+        ])->render();
+        $this->assertStringContainsString('Lý do hủy đơn hàng', $intakeDetailHtml);
+        $this->assertStringContainsString('Khách yêu cầu hủy đơn.', $intakeDetailHtml);
 
         $editHtml = view('admin.deliveries.edit', [
             'delivery' => $delivery,
@@ -3117,5 +3191,9 @@ class DeliveryContractTest extends TestCase
         $this->assertStringContainsString('Tiến độ giao nhận', $html);
         $this->assertStringContainsString($currentStep, $html);
         $this->assertStringContainsString($currentLabel, $html);
+        if ($status === DeliveryStatus::Cancelled->dbValue()) {
+            $this->assertStringContainsString('detail-timeline__item--cancelled', $html);
+            $this->assertStringContainsString('bg-danger-subtle text-danger-emphasis border border-danger', $html);
+        }
     }
 }

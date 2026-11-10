@@ -9,6 +9,7 @@ use App\Enums\PaymentStatus;
 use App\Enums\ReturnMethod;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Carbon;
 
 class DonHang extends Model
@@ -147,6 +148,15 @@ class DonHang extends Model
         return $this->hasMany(NhatKyHeThong::class, 'BanGhiID', 'DonHangID')
             ->where('BangDuLieu', 'DonHang')
             ->where('HanhDong', 'Thay đổi trạng thái đơn hàng')
+            ->orderByDesc('ThoiGian')
+            ->orderByDesc('NhatKyID');
+    }
+
+    public function cancellationReasonLog(): HasOne
+    {
+        return $this->hasOne(NhatKyHeThong::class, 'BanGhiID', 'DonHangID')
+            ->where('BangDuLieu', 'DonHang')
+            ->where('HanhDong', 'Hủy đơn hàng')
             ->orderByDesc('ThoiGian')
             ->orderByDesc('NhatKyID');
     }

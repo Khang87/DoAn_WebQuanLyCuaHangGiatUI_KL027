@@ -496,6 +496,11 @@ class GiaoNhanController extends Controller
         $user = auth()->user();
         $this->restrictToOwnDelivery($delivery, $user);
         abort_unless(
+            DeliveryStatus::parseForLeg($delivery->TrangThai, $delivery->LoaiGiaoNhan) !== DeliveryStatus::Cancelled,
+            403,
+            'Phiếu giao nhận đã hủy, chỉ có thể xem lịch sử.',
+        );
+        abort_unless(
             $delivery->LoaiGiaoNhan !== 'GIAO_DO' || $this->deliveryService->canEditReturnDelivery($delivery),
             403,
             'Lịch giao đồ không còn ở trạng thái có thể chỉnh sửa.',
@@ -531,6 +536,11 @@ class GiaoNhanController extends Controller
         }
 
         $this->restrictToOwnDelivery($delivery, $request->user());
+        abort_unless(
+            DeliveryStatus::parseForLeg($delivery->TrangThai, $delivery->LoaiGiaoNhan) !== DeliveryStatus::Cancelled,
+            403,
+            'Phiếu giao nhận đã hủy, chỉ có thể xem lịch sử.',
+        );
         abort_unless(
             $delivery->LoaiGiaoNhan !== 'GIAO_DO' || $this->deliveryService->canEditReturnDelivery($delivery),
             403,

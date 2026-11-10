@@ -100,6 +100,17 @@
             box-shadow: 0 0 0 3px #dbeafe;
         }
 
+        .order-detail-timeline .detail-timeline__item--cancelled {
+            background: #fef2f2;
+            box-shadow: inset 0 0 0 1px #fca5a5;
+            color: #991b1b;
+        }
+
+        .order-detail-timeline .detail-timeline__item--cancelled .detail-timeline__dot {
+            border-color: #dc2626;
+            background: #dc2626;
+        }
+
         .order-detail-timeline .detail-timeline__item--muted {
             color: #64748b;
         }
@@ -176,6 +187,9 @@
                     label="Tình trạng hóa đơn"
                     :value="$order->hoaDons->first()?->TrangThai ?: 'Chưa lập hóa đơn'"
                 />
+                @if($isCancelled && filled($order->cancellationReasonLog?->LyDo))
+                    <x-admin.detail.info-item label="Lý do hủy" :value="$order->cancellationReasonLog->LyDo" />
+                @endif
             </x-admin.detail.info-grid>
 
             @if($order->notes)
@@ -387,9 +401,11 @@
                         $isCompletedStatus = ! $isCancelled
                             && $currentStatusIndex !== false
                             && ($loop->index < $currentStatusIndex || ($isCurrentStatus && $currentStatusIsCompleted));
-                        $timelineState = $isCompletedStatus
+                        $timelineState = $isCancelled && $isCurrentStatus
+                            ? 'cancelled'
+                            : ($isCompletedStatus
                             ? 'done'
-                            : ($isCurrentStatus ? 'current' : 'muted');
+                            : ($isCurrentStatus ? 'current' : 'muted'));
                     @endphp
                     <div class="detail-timeline__item detail-timeline__item--{{ $timelineState }}">
                         <span class="detail-timeline__dot">
@@ -397,7 +413,7 @@
                         </span>
                         <span>{{ $label }}</span>
                         @if($isCurrentStatus)
-                            <span class="badge {{ $isCompletedStatus ? 'bg-success-subtle text-success-emphasis border border-success' : 'bg-primary-subtle text-primary-emphasis border border-primary' }} px-2 py-1 rounded-pill ms-auto">
+                            <span class="badge {{ $isCancelled ? 'bg-danger-subtle text-danger-emphasis border border-danger' : ($isCompletedStatus ? 'bg-success-subtle text-success-emphasis border border-success' : 'bg-primary-subtle text-primary-emphasis border border-primary') }} px-2 py-1 rounded-pill ms-auto">
                                 {{ $isCompletedStatus ? 'Đã hoàn tất' : 'Hiện tại' }}
                             </span>
                         @endif

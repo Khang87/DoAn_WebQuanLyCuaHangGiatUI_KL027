@@ -506,7 +506,7 @@ class DeliveryService
 
     public function find(int $id): ?GiaoNhan
     {
-        $relations = ['donHang.booking', 'donHang.khachHang', 'nhanVien'];
+        $relations = ['donHang.booking', 'donHang.khachHang', 'donHang.cancellationReasonLog', 'nhanVien'];
         if (config('giatui.booking_two_step')) {
             $relations = array_merge($relations, [
                 'donHang.booking.kiemKe',
@@ -590,6 +590,12 @@ class DeliveryService
         return DB::transaction(function () use ($delivery, $data): GiaoNhan {
             $order = DonHang::query()->lockForUpdate()->findOrFail($delivery->DonHangID);
             $current = GiaoNhan::query()->lockForUpdate()->findOrFail($delivery->getKey());
+
+            if (DeliveryStatus::parseForLeg($current->TrangThai, $current->LoaiGiaoNhan) === DeliveryStatus::Cancelled) {
+                throw ValidationException::withMessages([
+                    'delivery' => 'Phiếu giao nhận đã hủy, chỉ có thể xem lịch sử.',
+                ]);
+            }
 
             if (
                 $current->LoaiGiaoNhan === 'GIAO_DO'

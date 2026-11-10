@@ -110,7 +110,10 @@
                         <x-admin.detail.info-item label="Số tiền đã thu" :value="number_format((float) $decision['charged_total'], 0, ',', '.') . ' VNĐ'" />
                     @endif
                     @if(! empty($decision['reason']))
-                        <x-admin.detail.info-item label="Lý do khách từ chối" :value="$decision['reason']" />
+                        <x-admin.detail.info-item
+                            :label="$isIntake && $booking?->TrangThai === \App\Enums\BookingStatus::Cancelled->value ? 'Lý do hủy' : 'Lý do khách từ chối'"
+                            :value="$decision['reason']"
+                        />
                     @endif
                 </x-admin.detail.info-grid>
             </x-admin.detail.panel>

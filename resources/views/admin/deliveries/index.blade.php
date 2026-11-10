@@ -79,11 +79,10 @@
                                 $deliveryStatus,
                             );
                             $canEditOperationalDelivery = ! $isBookingDocument
-                                && $deliveryStatus !== \App\Enums\DeliveryStatus::Completed
+                                && ! in_array($deliveryStatus, [\App\Enums\DeliveryStatus::Completed, \App\Enums\DeliveryStatus::Cancelled], true)
                                 && ($delivery->task_type !== 'GIAO_DO'
                                     || (
-                                        ! in_array($deliveryStatus, [\App\Enums\DeliveryStatus::Completed, \App\Enums\DeliveryStatus::Cancelled], true)
-                                        && $delivery->order_status !== \App\Enums\OrderStatus::Cancelled->value
+                                        $delivery->order_status !== \App\Enums\OrderStatus::Cancelled->value
                                         && $delivery->booking_status !== \App\Enums\BookingStatus::Cancelled->value
                                     ));
                             $expectedAt = $delivery->expected_at

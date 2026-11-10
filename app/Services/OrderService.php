@@ -615,6 +615,7 @@ class OrderService
             'giaoNhans',
             'booking',
             'statusChanges',
+            'cancellationReasonLog',
         ])->find($id);
     }
 

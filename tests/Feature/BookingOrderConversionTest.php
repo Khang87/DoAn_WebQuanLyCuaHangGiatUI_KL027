@@ -692,12 +692,17 @@ class BookingOrderConversionTest extends TestCase
             'BanGhiID' => $booking->BookingID,
             'LyDo' => 'Khách không đồng ý với tổng tiền thực tế.',
         ]);
+        $this->get(route('bookings.show', $booking))
+            ->assertOk()
+            ->assertSee('Lý do hủy')
+            ->assertSee('Khách không đồng ý với tổng tiền thực tế.');
         $this->get(route('deliveries.booking-documents.show', $intake))
             ->assertOk()
-            ->assertSee('Nhân viên chốt kiểm kê')
+            ->assertSee('Nhân viên chốt kiểm tra')
             ->assertSee($decision['employee_name'])
             ->assertSee('Khách đồng ý báo giá')
-            ->assertSee('Lý do khách từ chối')
+            ->assertSee('Lý do hủy')
+            ->assertSee('Khách không đồng ý với tổng tiền thực tế.')
             ->assertSee('Số tiền đã thu');
 
         $this->post(route('bookings.refuse-quote', $booking), $payload)
@@ -4439,5 +4444,35 @@ class BookingOrderConversionTest extends TestCase
         $booking->setRawAttributes(['NgayTao' => '2026-10-31 11:13:48']);
 
         $this->assertSame('2026-10-31 18:13:48', $booking->NgayTao->format('Y-m-d H:i:s'));
+    }
+
+    public function test_cancelled_order_detail_shows_its_cancellation_reason(): void
+    {
+        $this->createRequestCatalog();
+        $booking = $this->createBooking();
+        $order = $this->createConvertedOrderForBooking($booking);
+        $order->forceFill(['TrangThai' => OrderStatus::Cancelled->value])->saveQuietly();
+        NhatKyHeThong::query()->create([
+            'HanhDong' => 'Hủy đơn hàng',
+            'BangDuLieu' => 'DonHang',
+            'BanGhiID' => $order->DonHangID,
+            'LyDo' => 'Khách yêu cầu hủy đơn.',
+            'ThoiGian' => now(),
+        ]);
+
+        $user = Mockery::mock(User::class)->makePartial();
+        $user->forceFill(['TaiKhoanID' => 1, 'NhanVienID' => 1, 'TrangThai' => 'Hoạt động']);
+        $user->shouldReceive('isManager')->andReturn(true);
+        $user->shouldReceive('isOwner')->andReturn(true);
+        $user->shouldReceive('isActive')->andReturn(true);
+        $user->shouldReceive('canPermission')->andReturn(true);
+        $this->actingAs($user);
+        Gate::before(fn () => true);
+        $this->withoutMiddleware();
+
+        $this->get(route('orders.show', $order))
+            ->assertOk()
+            ->assertSee('Lý do hủy')
+            ->assertSee('Khách yêu cầu hủy đơn.');
     }
 }

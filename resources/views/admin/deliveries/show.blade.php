@@ -75,6 +75,17 @@
             box-shadow: 0 0 0 3px #dbeafe;
         }
 
+        .order-detail-timeline .detail-timeline__item--cancelled {
+            background: #fef2f2;
+            box-shadow: inset 0 0 0 1px #fca5a5;
+            color: #991b1b;
+        }
+
+        .order-detail-timeline .detail-timeline__item--cancelled .detail-timeline__dot {
+            border-color: #dc2626;
+            background: #dc2626;
+        }
+
         .order-detail-timeline .detail-timeline__item--muted {
             color: #64748b;
         }
@@ -127,6 +138,13 @@
                 <x-admin.detail.info-item :label="$delivery->LoaiGiaoNhan === 'NHAN_DO' ? 'Trạng thái phiếu nhận đồ' : 'Trạng thái phiếu giao đồ'">
                     <x-admin.status-badge :status="$deliveryStatus" :enum="\App\Enums\DeliveryStatus::class" :deliveryType="$delivery->LoaiGiaoNhan" />
                 </x-admin.detail.info-item>
+                @if(
+                    $delivery->LoaiGiaoNhan === 'NHAN_DO'
+                    && $delivery->donHang?->statusEnum() === \App\Enums\OrderStatus::Cancelled
+                    && filled($delivery->donHang->cancellationReasonLog?->LyDo)
+                )
+                    <x-admin.detail.info-item label="Lý do hủy đơn hàng" :value="$delivery->donHang->cancellationReasonLog->LyDo" />
+                @endif
             </x-admin.detail.info-grid>
 
             @if($delivery->GhiChu)
@@ -183,8 +201,8 @@
                 @endforeach
 
                 @if($deliveryStatus === \App\Enums\DeliveryStatus::Cancelled)
-                    <div class="detail-timeline__item text-danger fw-semibold">
-                        <span class="detail-timeline__dot bg-danger"></span>
+                    <div class="detail-timeline__item detail-timeline__item--cancelled">
+                        <span class="detail-timeline__dot"></span>
                         <span>Đã hủy</span>
                         <span class="badge bg-danger-subtle text-danger-emphasis border border-danger px-2 py-1 rounded-pill ms-auto">Hiện tại</span>
                     </div>
