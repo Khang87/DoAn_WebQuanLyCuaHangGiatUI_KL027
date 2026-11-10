@@ -542,6 +542,61 @@ class DashboardRevenueChartTest extends TestCase
         $this->assertStringContainsString('Đã thanh toán', $statusBadges);
     }
 
+    public function test_status_chart_uses_distinct_status_colors_and_shows_slice_counts(): void
+    {
+        $this->clearDashboardData();
+        foreach (OrderStatus::cases() as $index => $status) {
+            if ($status === OrderStatus::Paid) {
+                continue;
+            }
+
+            DB::table('DonHang')->insert([
+                'DonHangID' => $index + 1,
+                'TrangThai' => $status->value,
+                'ThanhTien' => 100,
+                'NgayTao' => '2026-10-04 09:00:00',
+            ]);
+        }
+
+        $staff = \Mockery::mock(User::class)->makePartial();
+        $staff->shouldReceive('isActive')->andReturn(true);
+        $staff->shouldReceive('isOwner')->andReturn(false);
+        $staff->shouldReceive('canPermission')
+            ->andReturnUsing(fn (string $permission): bool => $permission === 'orders.view');
+        $this->actingAs($staff);
+
+        $view = app(DashboardController::class)->index(
+            Request::create('/admin/dashboard', 'GET', ['filter' => 'all_time'])
+        );
+        $dashboard = $view->getData();
+        $html = $view->render();
+        $colorsByStatus = [
+            OrderStatus::Pending->value => '#F59E0B',
+            OrderStatus::Received->value => '#2563EB',
+            OrderStatus::Washing->value => '#8B5CF6',
+            OrderStatus::Washed->value => '#06B6D4',
+            OrderStatus::Delivering->value => '#F97316',
+            OrderStatus::Delivered->value => '#16A34A',
+            OrderStatus::Cancelled->value => '#DC2626',
+        ];
+        $expectedColors = $dashboard['statusDistribution']
+            ->keys()
+            ->map(fn (string $status): string => $colorsByStatus[$status])
+            ->values()
+            ->all();
+
+        $this->assertCount(count($expectedColors), array_unique($expectedColors));
+        $this->assertStringContainsString('colors: '.json_encode($expectedColors), $html);
+        $this->assertStringContainsString(
+            "dataLabels: {\n                    minAngleToShowLabel: 0",
+            $html,
+        );
+        $this->assertStringContainsString(
+            "return label + ' (' + options.w.globals.series[options.seriesIndex] + ')';",
+            $html,
+        );
+    }
+
     public function test_latest_reviews_are_limited_to_ten_visible_rows_without_limiting_review_metrics(): void
     {
         foreach (range(1, 12) as $id) {

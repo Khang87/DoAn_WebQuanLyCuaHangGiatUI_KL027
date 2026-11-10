@@ -396,19 +396,40 @@
     @endcan
 
     @can('orders.view')
+    @php
+        $statusChartColors = [
+            \App\Enums\OrderStatus::Pending->value => '#F59E0B',
+            \App\Enums\OrderStatus::Received->value => '#2563EB',
+            \App\Enums\OrderStatus::Washing->value => '#8B5CF6',
+            \App\Enums\OrderStatus::Washed->value => '#06B6D4',
+            \App\Enums\OrderStatus::Delivering->value => '#F97316',
+            \App\Enums\OrderStatus::Delivered->value => '#16A34A',
+            \App\Enums\OrderStatus::Cancelled->value => '#DC2626',
+        ];
+        $statusChartValues = $statusDistribution->values()->all();
+        $statusChartLabels = $statusDistribution->keys()
+            ->map(fn ($status) => \App\Enums\OrderStatus::labelFor($status))
+            ->all();
+        $statusChartPalette = $statusDistribution->keys()
+            ->map(fn ($status) => $statusChartColors[$status] ?? '#64748B')
+            ->all();
+    @endphp
     var statusOptions = {
         noData: { text: 'Chưa có đơn hàng trong kỳ đã chọn' },
-        series: @json($statusDistribution->values()->all()),
+        series: @json($statusChartValues),
         chart: {
             type: 'donut',
             height: 360,
             fontFamily: 'Open Sans, Arial, sans-serif'
         },
-        colors: ['#F59E0B', '#3B82F6', '#22C55E', '#EF4444', '#8B5CF6', '#10B981', '#EC4899'],
-        labels: @json(collect($statusDistribution->keys()->all())->map(fn ($status) => \App\Enums\OrderStatus::labelFor($status))->all()),
+        colors: @json($statusChartPalette),
+        labels: @json($statusChartLabels),
         plotOptions: {
             pie: {
                 customScale: 1.08,
+                dataLabels: {
+                    minAngleToShowLabel: 0
+                },
                 donut: {
                     size: '70%',
                     labels: {
@@ -440,6 +461,9 @@
             position: 'bottom',
             fontSize: '13px',
             fontWeight: 500,
+            formatter: function (label, options) {
+                return label + ' (' + options.w.globals.series[options.seriesIndex] + ')';
+            },
             markers: { width: 10, height: 10 }
         }
     };
