@@ -313,6 +313,7 @@ class StaffMobileController extends ApiController
             })
             ->with([
                 'booking',
+                'hoaDons',
                 'booking.giaoNhanDuKiens' => fn ($delivery) => $delivery->where('NhanVienID', $employeeId)->where('LoaiGiaoNhan', 'GIAO_DO')->where('HinhThuc', 'Tại nhà'),
                 'giaoNhans' => fn ($delivery) => $delivery->where('NhanVienID', $employeeId)->where('LoaiGiaoNhan', 'GIAO_DO')->where('HinhThuc', 'Tại nhà'),
                 'khachHang', 'khuyenMai', 'chiTietDonHangs.dichVu', 'chiTietDonHangs.loaiDoGiat', 'chiTietDonHangs.donViTinh',
@@ -330,6 +331,7 @@ class StaffMobileController extends ApiController
                 ?? (preg_match('/Hình thức thanh toán:\s*([^|]+)/u', (string) $o->GhiChu, $matches)
                     ? trim($matches[1])
                     : null),
+            'TrangThaiHoaDon' => $o->hoaDons->first()?->TrangThai,
             'CanConfirmDelivery' => $o->giaoNhans->isNotEmpty() || $o->booking?->giaoNhanDuKiens->isNotEmpty(),
             'GiaoNhan' => $o->giaoNhans->map(fn (GiaoNhan $leg) => [
                 'LoaiGiaoNhan' => $leg->LoaiGiaoNhan,
