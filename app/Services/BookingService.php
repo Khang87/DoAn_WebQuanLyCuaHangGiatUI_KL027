@@ -440,7 +440,11 @@ class BookingService
                 $locked, $data['items'], $promotionId, $requestedPoints, true,
             );
             if ($promotionId !== null && $estimate['promotion_warning'] !== null) {
-                throw ValidationException::withMessages(['promotion_id' => $estimate['promotion_warning']]);
+                if ($estimate['promotion_warning'] !== 'Đơn hàng chưa đạt giá trị tối thiểu để dùng mã khuyến mãi.') {
+                    throw ValidationException::withMessages(['promotion_id' => $estimate['promotion_warning']]);
+                }
+                $promotionId = null;
+                $data['promotion_id'] = null;
             }
             if ($requestedPoints > (int) $estimate['available_points']) {
                 throw ValidationException::withMessages(['points_used' => 'Số dư điểm đã thay đổi. Vui lòng tính lại giá.']);
