@@ -92,7 +92,6 @@
                                                     data-employee-search-text="{{ $candidate->HoTen }} {{ $candidateTitle }}">
                                                     <span>
                                                         <span class="d-block">
-                                                            @if((int) $candidate->NhanVienID === $currentUserEmployeeId)Bản thân tôi — @endif
                                                             {{ $candidate->HoTen }}{{ $candidateTitle ? ' · '.$candidateTitle : '' }}@if(($duplicateEmployeeNames[mb_strtolower(trim((string) $candidate->HoTen))] ?? 0) > 1) · {{ $candidate->SoDienThoai ?: ($candidate->Email ?: 'Mã NV '.$candidate->NhanVienID) }}@endif
                                                         </span>
                                                     </span>
