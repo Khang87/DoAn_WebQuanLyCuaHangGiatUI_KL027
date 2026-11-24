@@ -1244,7 +1244,9 @@ class DeliveryContractTest extends TestCase
 
         $this->get(route('deliveries.booking-documents.edit', $intake))
             ->assertOk()
-            ->assertSee('Bản thân tôi')
+            ->assertDontSee('Bản thân tôi')
+            ->assertSee('id="employee_select"', false)
+            ->assertSee('data-employee-id="4"', false)
             ->assertSee('Quản lý hiện tại')
             ->assertSee('Nhân viên cấp dưới')
             ->assertSee('0900000006')
