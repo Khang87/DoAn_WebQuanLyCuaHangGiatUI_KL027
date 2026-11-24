@@ -15,7 +15,6 @@
                 <tr>
                     <th scope="col">STT</th>
                     <th>Nhóm chức năng</th>
-                    <th>Mã quyền</th>
                     <th>Tên quyền</th>
                     <th>Mô tả</th>
                     <th>Trạng thái</th>
@@ -27,7 +26,6 @@
                     <tr>
                         <td>{{ $loop->iteration }}</td>
                         <td>{{ $module }}</td>
-                        <td><code>{{ $permission->MaQuyen }}</code></td>
                         <td>{{ $permission->TenQuyen }}</td>
                         <td>{{ $permission->MoTa ?: '—' }}</td>
                         <td>
@@ -40,7 +38,7 @@
                         </td>
                     </tr>
                 @empty
-                    <tr><td colspan="6" class="text-center text-muted py-4">Chưa có quyền hạn.</td></tr>
+                    <tr><td colspan="5" class="text-center text-muted py-4">Chưa có quyền hạn.</td></tr>
                 @endforelse
             </tbody>
         </table>
