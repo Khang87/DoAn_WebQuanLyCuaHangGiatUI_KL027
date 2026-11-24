@@ -1388,6 +1388,11 @@ class OrderService
         }
 
         $current = $lockedOrder->statusEnum();
+        if ($target === OrderStatus::Delivered && $lockedOrder->isAwaitingBankTransferPayment()) {
+            throw ValidationException::withMessages([
+                'TrangThai' => 'Đơn hàng chuyển khoản cần được xác nhận đã thanh toán trước khi xác nhận đã giao.',
+            ]);
+        }
         if ($target === OrderStatus::Cancelled && $current !== OrderStatus::Received) {
             throw ValidationException::withMessages([
                 'TrangThai' => 'Chỉ được hủy đơn hàng khi đơn đang ở trạng thái Đã tiếp nhận.',

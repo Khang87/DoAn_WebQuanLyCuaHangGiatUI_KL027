@@ -371,6 +371,39 @@ class DonHang extends Model
         return $this->hoaDons()->where('TrangThai', InvoiceStatus::Paid->value)->exists();
     }
 
+    public function requiresPrepaidBankTransfer(): bool
+    {
+        $paymentMethod = $this->booking?->PhuongThucThanhToan;
+        if ($paymentMethod === null && preg_match('/Hình thức thanh toán:\s*([^|]+)/u', (string) $this->GhiChu, $matches)) {
+            $paymentMethod = trim($matches[1]);
+        }
+
+        return in_array($paymentMethod, ['Chuyển khoản', 'Chuyển khoản / QR'], true);
+    }
+
+    public function isAwaitingBankTransferPayment(): bool
+    {
+        return $this->requiresPrepaidBankTransfer() && ! $this->hasReceivedFullPayment();
+    }
+
+    public function hasReceivedFullPayment(): bool
+    {
+        if ($this->isPaid()) {
+            return true;
+        }
+
+        $invoice = $this->relationLoaded('hoaDons')
+            ? $this->hoaDons->sortBy('HoaDonID')->first()
+            : $this->hoaDons()->orderBy('HoaDonID')->first();
+        $total = (float) ($invoice?->ThanhTien ?? $this->ThanhTien ?? 0);
+        $paid = $this->relationLoaded('thanhToans')
+            ? $this->thanhToans->where('TrangThai', PaymentStatus::Paid->value)->sum('SoTien')
+            : $this->thanhToans()->where('TrangThai', PaymentStatus::Paid->value)->sum('SoTien');
+
+        return $total > 0
+            && round((float) $paid, 2) >= round($total, 2);
+    }
+
     /**
      * Đơn đã quyết toán: chỉ đọc.
      */

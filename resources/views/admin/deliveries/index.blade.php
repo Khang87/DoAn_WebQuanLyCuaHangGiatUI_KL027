@@ -73,10 +73,18 @@
                                 && $delivery->booking_id === null
                                 && $delivery->task_type === 'GIAO_DO'
                                 && ! (bool) $delivery->intake_completed;
+                            $paymentMethod = $delivery->payment_method;
+                            if ($paymentMethod === null && preg_match('/Hình thức thanh toán:\s*([^|]+)/u', (string) $delivery->order_note, $paymentMatch)) {
+                                $paymentMethod = trim($paymentMatch[1]);
+                            }
+                            $isUnpaidBankTransfer = in_array($paymentMethod, ['Chuyển khoản', 'Chuyển khoản / QR'], true)
+                                && ! (bool) $delivery->has_full_payment
+                                && $delivery->order_status !== \App\Enums\OrderStatus::Paid->value;
                             $progressAction = \App\Support\DeliveryWorkflow::progressAction(
                                 $delivery->task_type,
                                 $delivery->fulfillment,
                                 $deliveryStatus,
+                                ! $isUnpaidBankTransfer,
                             );
                             $canEditOperationalDelivery = ! $isBookingDocument
                                 && ! in_array($deliveryStatus, [\App\Enums\DeliveryStatus::Completed, \App\Enums\DeliveryStatus::Cancelled], true)

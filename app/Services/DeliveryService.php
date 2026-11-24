@@ -113,6 +113,9 @@ class DeliveryService
                 'd.DonHangID as order_id',
                 'd.MaDonHang as order_code',
                 'd.TrangThai as order_status',
+                'b.PhuongThucThanhToan as payment_method',
+                'd.GhiChu as order_note',
+                DB::raw('EXISTS (SELECT 1 FROM "HoaDon" AS "paid_invoice" WHERE "paid_invoice"."DonHangID" = "d"."DonHangID" AND "paid_invoice"."TrangThai" = \'Đã thanh toán\') OR (COALESCE((SELECT SUM("paid_payment"."SoTien") FROM "ThanhToan" AS "paid_payment" WHERE "paid_payment"."DonHangID" = "d"."DonHangID" AND "paid_payment"."TrangThai" = \'Thành công\'), 0) >= COALESCE((SELECT "order_invoice"."ThanhTien" FROM "HoaDon" AS "order_invoice" WHERE "order_invoice"."DonHangID" = "d"."DonHangID" ORDER BY "order_invoice"."HoaDonID" LIMIT 1), "d"."ThanhTien", 0) AND COALESCE((SELECT "order_invoice"."ThanhTien" FROM "HoaDon" AS "order_invoice" WHERE "order_invoice"."DonHangID" = "d"."DonHangID" ORDER BY "order_invoice"."HoaDonID" LIMIT 1), "d"."ThanhTien", 0) > 0) as has_full_payment'),
                 'g.NhanVienID as employee_id',
                 'e.HoTen as employee_name',
                 'g.ThoiGianDuKien as expected_at',
@@ -172,6 +175,9 @@ class DeliveryService
                 'd.DonHangID as order_id',
                 'd.MaDonHang as order_code',
                 'd.TrangThai as order_status',
+                'b.PhuongThucThanhToan as payment_method',
+                'd.GhiChu as order_note',
+                DB::raw('EXISTS (SELECT 1 FROM "HoaDon" AS "paid_invoice" WHERE "paid_invoice"."DonHangID" = "d"."DonHangID" AND "paid_invoice"."TrangThai" = \'Đã thanh toán\') OR (COALESCE((SELECT SUM("paid_payment"."SoTien") FROM "ThanhToan" AS "paid_payment" WHERE "paid_payment"."DonHangID" = "d"."DonHangID" AND "paid_payment"."TrangThai" = \'Thành công\'), 0) >= COALESCE((SELECT "order_invoice"."ThanhTien" FROM "HoaDon" AS "order_invoice" WHERE "order_invoice"."DonHangID" = "d"."DonHangID" ORDER BY "order_invoice"."HoaDonID" LIMIT 1), "d"."ThanhTien", 0) AND COALESCE((SELECT "order_invoice"."ThanhTien" FROM "HoaDon" AS "order_invoice" WHERE "order_invoice"."DonHangID" = "d"."DonHangID" ORDER BY "order_invoice"."HoaDonID" LIMIT 1), "d"."ThanhTien", 0) > 0) as has_full_payment'),
                 'bg.NhanVienID as employee_id',
                 'e.HoTen as employee_name',
                 'bg.ThoiGianDuKien as expected_at',
@@ -660,6 +666,9 @@ class DeliveryService
                 }
             } elseif ($status === DeliveryStatus::Delivering
                 && in_array($order->statusEnum(), [OrderStatus::Delivering, OrderStatus::Delivered], true)) {
+                if ($order->isAwaitingBankTransferPayment()) {
+                    throw ValidationException::withMessages(['status' => 'Đơn hàng chuyển khoản cần được xác nhận đã thanh toán trước khi xác nhận đã giao.']);
+                }
                 $current->update([
                     'TrangThai' => DeliveryStatus::Completed->dbValue(),
                     'ThoiGianThucTe' => now(),
@@ -841,6 +850,14 @@ class DeliveryService
         }
         $previousStatus = DeliveryStatus::parseForLeg($current->TrangThai, $current->LoaiGiaoNhan);
         $previousEmployeeId = $current->NhanVienID;
+        if (
+            $previousStatus !== DeliveryStatus::Completed
+            && DeliveryStatus::parseForLeg($validated['status'], $current->LoaiGiaoNhan) === DeliveryStatus::Completed
+            && $current->LoaiGiaoNhan === 'GIAO_DO'
+            && $order->isAwaitingBankTransferPayment()
+        ) {
+            throw ValidationException::withMessages(['status' => 'Đơn hàng chuyển khoản cần được xác nhận đã thanh toán trước khi xác nhận đã giao.']);
+        }
         if (
             $previousStatus !== DeliveryStatus::Completed
             && DeliveryStatus::parseForLeg($validated['status'], $current->LoaiGiaoNhan) === DeliveryStatus::Completed

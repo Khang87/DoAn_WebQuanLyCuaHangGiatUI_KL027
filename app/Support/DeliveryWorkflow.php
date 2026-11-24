@@ -14,7 +14,7 @@ class DeliveryWorkflow
     /**
      * @return array{label: string, icon: string, color: string}|null
      */
-    public static function progressAction(string $deliveryType, ?string $fulfillment, DeliveryStatus $status): ?array
+    public static function progressAction(string $deliveryType, ?string $fulfillment, DeliveryStatus $status, bool $canComplete = true): ?array
     {
         $isPickup = mb_strtoupper($deliveryType) === 'NHAN_DO';
         $isInStore = $fulfillment === 'Tại cửa hàng';
@@ -28,7 +28,7 @@ class DeliveryWorkflow
                     '#2563eb',
                 ),
             DeliveryStatus::Picking => self::action('Xác nhận đã nhận đồ', 'bi-check-circle', '#16a34a'),
-            DeliveryStatus::Delivering => self::action('Xác nhận đã giao đồ', 'bi-check-circle', '#16a34a'),
+            DeliveryStatus::Delivering => $canComplete ? self::action('Xác nhận đã giao đồ', 'bi-check-circle', '#16a34a') : null,
             default => null,
         };
     }

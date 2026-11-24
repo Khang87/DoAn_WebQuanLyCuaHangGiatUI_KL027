@@ -59,6 +59,10 @@ class OrderWorkflow
 
         $next = $status->nextProcessStatus();
 
+        if ($next === OrderStatus::Delivered && $order->isAwaitingBankTransferPayment()) {
+            return null;
+        }
+
         if ($status === OrderStatus::Washed && ! $order->requiresHomeDelivery()) {
             $next = null;
         }
